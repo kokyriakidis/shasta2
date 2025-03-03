@@ -3,7 +3,6 @@
 #include "deduplicate.hpp"
 #include "HttpServer.hpp"
 #include "Marker.hpp"
-#include "mode3-AssemblyGraphPostprocessor.hpp"
 #include "mode3-LocalAssembly.hpp"
 #include "mode3-LocalAnchorGraph.hpp"
 #include "Reads.hpp"

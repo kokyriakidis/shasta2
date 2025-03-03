@@ -334,16 +334,6 @@ public:
         bool assembleSequence,
         bool debug);
 
-    // Constructor from binary data, for postprocessing.
-    // Used by AssemblyGraphPostprocessor in the http server.
-    AssemblyGraph(
-        const string& assemblyStage,
-        uint64_t componentId,
-        span<const OrientedReadId>,
-        span<const AnchorId>,
-        const Anchors&,
-        const Mode3AssemblyOptions&);
-
     // Another constructor from binary data, used in the Python API.
     // This is similar to the previous constructor, but gets the
     // orientedReadIds, anchorIds, and Anchors from the Mode3AssemblyGraph in the Assembler.

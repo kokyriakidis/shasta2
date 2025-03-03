@@ -141,12 +141,4 @@ public:
     void exploreLocalAnchorGraph(
         const vector<string>&, ostream&);
 
-    // During postprocessing, we maintain a table of currently loaded versions
-    // of the AssemblyGraph, keyed by assembly stage and componentId.
-    std::map< pair<string, uint64_t>, shared_ptr<const mode3::AssemblyGraphPostprocessor> >
-        assemblyGraphsMap;
-    const mode3::AssemblyGraphPostprocessor& getAssemblyGraph(
-        const string& assemblyStage,
-        uint64_t componentId
-        );
 };

@@ -77,48 +77,6 @@ AssemblyGraph::AssemblyGraph(
 
 
 
-// Create from binary data
-AssemblyGraph::AssemblyGraph(
-    const string& assemblyStage,
-    uint64_t componentIdArgument,
-    span<const OrientedReadId> orientedReadIds,
-    span<const AnchorId> anchorIds,
-    const Anchors& anchors,
-    const Mode3AssemblyOptions& options) :
-    MultithreadedObject<AssemblyGraph>(*this),
-    MappedMemoryOwner(anchors),
-    anchors(anchors),
-    options(options),
-    orientedReadIds(orientedReadIds),
-    anchorIds(anchorIds)
-{
-    load(assemblyStage, componentIdArgument);
-    SHASTA_ASSERT(componentId == componentIdArgument);
-}
-
-
-
-// Another constructor from binary data, used in the Python API.
-// This is similar to the previous constructor, but gets the
-// orientedReadIds, anchorIds, and Anchors from the Mode3Assembler.
-AssemblyGraph::AssemblyGraph(
-    const string& assemblyStage,
-    uint64_t componentIdArgument,
-    const Assembler& assembler,
-    const Mode3AssemblyOptions& options) :
-    MultithreadedObject<AssemblyGraph>(*this),
-    MappedMemoryOwner(assembler),
-    anchors(assembler.mode3Assembler->anchors()),
-    options(options),
-    orientedReadIds(assembler.mode3Assembler->componentOrientedReadIds[componentIdArgument]),
-    anchorIds(assembler.mode3Assembler->componentAnchorIds[componentIdArgument])
-{
-    load(assemblyStage, componentIdArgument);
-    SHASTA_ASSERT(componentId == componentIdArgument);
-}
-
-
-
 // Constructor from a vector of vectors of AnchorIds representing Chains.
 // Used for detangling with read following.
 AssemblyGraph::AssemblyGraph(
