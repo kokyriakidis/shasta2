@@ -110,28 +110,6 @@ void Assembler::exploreLocalAnchorGraph(const vector<string>& request, ostream& 
 
 
 
-void Assembler::exploreMode3AssemblyGraph(const vector<string>& request, ostream& html)
-{
-    mode3Assembler->exploreAssemblyGraph(request, html);
-}
-
-
-
-void Assembler::exploreSegment(const vector<string>& request, ostream& html)
-{
-    mode3Assembler->exploreSegment(request, html);
-}
-
-
-
-void Assembler::exploreReadFollowingAssemblyGraph(const vector<string>& request, ostream& html)
-{
-    SHASTA_ASSERT(assemblerInfo->assemblyMode == 3);
-    mode3Assembler->exploreReadFollowingAssemblyGraph(request, html);
-}
-
-
-
 // Alignment-free version of mode 3 assembly.
 void Assembler::alignmentFreeAssembly(
     const Mode3AssemblyOptions& mode3Options,
@@ -153,4 +131,6 @@ void Assembler::alignmentFreeAssembly(
     // Compute oriented read journeys.
     anchorsPointer->computeJourneys(threadCount);
 
+    // Run Mode 3 assembly.
+    mode3Assembly(threadCount, anchorsPointer, mode3Options, false);
 }

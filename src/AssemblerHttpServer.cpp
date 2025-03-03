@@ -43,9 +43,6 @@ void Assembler::fillServerFunctionTable()
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreReadFollowing);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreLocalAssembly);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreLocalAnchorGraph);
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreMode3AssemblyGraph);
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreSegment);
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreReadFollowingAssemblyGraph);
 }
 #undef SHASTA_ADD_TO_FUNCTION_TABLE
 
@@ -230,9 +227,6 @@ void Assembler::writeNavigation(ostream& html) const
 
         writeNavigation(html, "Assembly", {
             {"Local assembly", "exploreLocalAssembly"},
-            {"Local assembly graph", "exploreMode3AssemblyGraph"},
-            {"Segment", "exploreSegment"},
-            {"Read following on assembly graph", "exploreReadFollowingAssemblyGraph"},
             });
     }
 
