@@ -6,7 +6,6 @@
 #include "mode3-AssemblyGraphPostprocessor.hpp"
 #include "mode3-LocalAssembly.hpp"
 #include "mode3-LocalAnchorGraph.hpp"
-#include "mode3-LocalAssemblyGraph.hpp"
 #include "Reads.hpp"
 #include "timestamp.hpp"
 using namespace shasta;
