@@ -67,19 +67,12 @@ or something to that effect.
 #include "vector.hpp"
 
 namespace shasta {
-    class AlignOptions;
-    class Align6Options;
     class AssemblerOptions;
     class AssemblyOptions;
     class CommandLineOnlyOptions;
     class KmersOptions;
-    class MarkerGraphOptions;
-    class MinHashOptions;
-    class Mode2AssemblyOptions;
     class Mode3AssemblyOptions;
-    class PalindromicReadOptions;
     class ReadsOptions;
-    class ReadGraphOptions;
 
     // Function to convert a bool to True or False for better
     // compatibility with Python scripts.
@@ -107,18 +100,6 @@ public:
 };
 
 
-class shasta::PalindromicReadOptions {
-public:
-    bool skipFlagging;
-    int maxSkip;
-    int maxDrift;
-    int maxMarkerFrequency;
-    double alignedFractionThreshold;
-    double nearDiagonalFractionThreshold;
-    int deltaThreshold;
-    void write(ostream&) const;
-};
-
 
 // Options in the [Reads] section of the configuration file.
 // Can also be entered on the command line with option names
@@ -128,8 +109,6 @@ public:
     uint64_t representation;    // 0 = Raw, 1=RLE
     int minReadLength;
     bool noCache;
-    string desiredCoverageString;
-    uint64_t desiredCoverage;
 
     // String to control handling of duplicate reads.
     // Can be one of:
@@ -140,11 +119,7 @@ public:
     // See ReadFlags.hpp for the meaning of each option.
     string handleDuplicates;
 
-    PalindromicReadOptions palindromicReads;
-
     void write(ostream&) const;
-
-    void parseDesiredCoverageString();
 };
 
 
@@ -162,192 +137,6 @@ public:
     string file;
     string globalFrequencyOverrideDirectory;
     void write(ostream&) const;
-};
-
-
-
-// Options in the [MinHash] section of the configuration file.
-// Can also be entered on the command line with option names
-// beginning with "MinHash.".
-class shasta::MinHashOptions {
-public:
-    int version;
-    int m;
-    double hashFraction;
-    int minHashIterationCount;
-    double alignmentCandidatesPerRead;
-    int minBucketSize;
-    int maxBucketSize;
-    int minFrequency;
-    bool allPairs;
-    void write(ostream&) const;
-};
-
-
-
-class shasta::Align6Options {
-public:
-    uint64_t maxLocalFrequency;
-    uint64_t minGlobalFrequency;
-    uint64_t maxGlobalFrequency;
-    double maxGlobalFrequencyMultiplier;
-    uint64_t minLowFrequencyCount;
-    double driftRateTolerance;
-    uint64_t maxInBandCount;
-    double maxInBandRatio;
-
-    void write(ostream&) const;
-};
-
-
-
-// Options in the [Align] section of the configuration file.
-// Can also be entered on the command line with option names
-// beginning with "Align.".
-class shasta::AlignOptions {
-public:
-    int alignMethod;
-    int maxSkip;
-    int maxDrift;
-    int maxTrim;
-    int maxMarkerFrequency;
-    int minAlignedMarkerCount;
-    double minAlignedFraction;
-    int matchScore;
-    int mismatchScore;
-    int gapScore;
-    double downsamplingFactor;
-    int bandExtend;
-    int maxBand;
-    int sameChannelReadAlignmentSuppressDeltaThreshold;
-    bool suppressContainments;
-
-    // Align4.
-    uint64_t align4DeltaX;
-    uint64_t align4DeltaY;
-    uint64_t align4MinEntryCountPerCell;
-    uint64_t align4MaxDistanceFromBoundary;
-
-    // Align5.
-    double align5DriftRateTolerance;
-    uint64_t align5MinBandExtend;
-
-    // Align6.
-    Align6Options align6Options;
-
-    void write(ostream&) const;
-};
-
-
-
-// Options in the [ReadGraph] section of the configuration file.
-// Can also be entered on the command line with option names
-// beginning with "ReadGraph.".
-class shasta::ReadGraphOptions {
-public:
-    int creationMethod;
-    int maxAlignmentCount;
-    bool preferAlignedFraction;
-    int maxChimericReadDistance;
-    uint64_t strandSeparationMethod;
-    int crossStrandMaxDistance;
-    bool removeConflicts;
-    double markerCountPercentile;
-    double alignedFractionPercentile;
-    double maxSkipPercentile;
-    double maxDriftPercentile;
-    double maxTrimPercentile;
-    bool flagInconsistentAlignments;
-    uint64_t flagInconsistentAlignmentsTriangleErrorThreshold;
-    uint64_t flagInconsistentAlignmentsLeastSquareErrorThreshold;
-    uint64_t flagInconsistentAlignmentsLeastSquareMaxDistance;
-    void write(ostream& ) const;
-    // New readGraph4withStrandSeparation options
-    double epsilon;
-    double delta;
-    double WThreshold;
-    double WThresholdForBreaks;
-};
-
-
-
-// Options in the [MarkerGraph] section of the configuration file.
-// Can also be entered on the command line with option names
-// beginning with "MarkerGraph.".
-class shasta::MarkerGraphOptions {
-public:
-    int minCoverage;
-    int maxCoverage;
-    int minCoveragePerStrand;
-    uint64_t minEdgeCoverage;
-    uint64_t minEdgeCoveragePerStrand;
-    bool allowDuplicateMarkers;
-    bool cleanupDuplicateMarkers;
-    double duplicateMarkersPattern1Threshold;
-    int lowCoverageThreshold;
-    int highCoverageThreshold;
-    int maxDistance;
-    int edgeMarkerSkipThreshold;
-    int pruneIterationCount;
-    string simplifyMaxLength;
-    double crossEdgeCoverageThreshold;
-    vector<size_t> simplifyMaxLengthVector;
-    double peakFinderMinAreaFraction;
-    uint64_t peakFinderAreaStartIndex;
-
-    // Options that control secondary edges (assembly mode 2 only).
-    uint64_t secondaryEdgesMaxSkip;
-    double secondaryEdgesSplitErrorRateThreshold;
-    uint64_t secondaryEdgesSplitMinCoverage;
-
-    void parseSimplifyMaxLength();
-    void write(ostream&) const;
-};
-
-
-
-// Assembly options that are specific to Mode 2 assembly.
-// See class AssemblyGraph2 for more information.
-class shasta::Mode2AssemblyOptions {
-public:
-
-    // Threshold that defines a strong branch.
-    // A branch is strong if it is supported by at least this number of
-    // distinct oriented reads.
-    // Weak branches are subject to removal by removeWeakBranches
-    // (but at least one branch in each bubble will always be kept).
-    uint64_t strongBranchThreshold;
-
-    // Epsilon for the Bayesian model used for phasing and for bubble removal.
-    // This is the probability that a read appears on the wrong branch.
-    double epsilon;
-
-    // Parameters for bubble removal.
-    uint64_t minConcordantReadCountForBubbleRemoval;
-    uint64_t maxDiscordantReadCountForBubbleRemoval;
-    double minLogPForBubbleRemoval;
-    uint64_t componentSizeThresholdForBubbleRemoval;
-
-    // Parameters for phasing.
-    uint64_t minConcordantReadCountForPhasing;
-    uint64_t maxDiscordantReadCountForPhasing;
-    double minLogPForPhasing;
-
-    // Parameters for superbubble removal.
-    uint64_t maxSuperbubbleSize;
-    uint64_t maxSuperbubbleChunkSize;
-    uint64_t maxSuperbubbleChunkPathCount;
-    uint64_t superbubbleEdgeLengthThreshold;
-
-    // Parameters to suppress output.
-    bool suppressGfaOutput;
-    bool suppressFastaOutput;
-    bool suppressDetailedOutput;
-    bool suppressPhasedOutput;
-    bool suppressHaploidOutput;
-
-    void write(ostream&) const;
-
 };
 
 
@@ -488,9 +277,6 @@ public:
     uint64_t iterativeBridgeRemovalIterationCount;
     uint64_t iterativeBridgeRemovalMaxDistance;
 
-    // Mode 2 assembly options.
-    Mode2AssemblyOptions mode2Options;
-
     // Mode 3 assembly options.
     Mode3AssemblyOptions mode3Options;
 
@@ -507,10 +293,6 @@ public:
     CommandLineOnlyOptions commandLineOnlyOptions;
     ReadsOptions readsOptions;
     KmersOptions kmersOptions;
-    MinHashOptions minHashOptions;
-    AlignOptions alignOptions;
-    ReadGraphOptions readGraphOptions;
-    MarkerGraphOptions markerGraphOptions;
     AssemblyOptions assemblyOptions;
 
     // Constructor from a command line.
