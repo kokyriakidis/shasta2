@@ -27,7 +27,6 @@ public:
     // The constructor does all the work.
     ReadLoader(
         const string& fileName,
-        uint64_t representation, // 0 = raw sequence, 1 = RLE sequence
         uint64_t minReadLength,
         bool noCache,
         size_t threadCount,
@@ -41,10 +40,6 @@ private:
 
     // The name of the file we are processing.
     const string& fileName;
-
-    // Read representation.
-    // 0 = raw sequence, 1 = RLE sequence
-    uint64_t representation;
 
     // The minimum read length. Shorter reads are not stored.
     const uint64_t minReadLength;

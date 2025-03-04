@@ -17,7 +17,6 @@ template class MultithreadedObject<ReadLoader>;
 // Load reads from a fastq or fasta file.
 ReadLoader::ReadLoader(
     const string& fileName,
-    uint64_t representation, // 0 = raw sequence, 1 = RLE sequence
     uint64_t minReadLength,
     bool noCache,
     size_t threadCount,
@@ -27,7 +26,6 @@ ReadLoader::ReadLoader(
 
     MultithreadedObject(*this),
     fileName(fileName),
-    representation(representation),
     minReadLength(minReadLength),
     noCache(noCache),
     threadCount(threadCount),

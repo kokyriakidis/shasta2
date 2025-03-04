@@ -23,7 +23,6 @@ void Assembler::addReads(
 
     ReadLoader readLoader(
         fileName,
-        0,  // Read representation
         minReadLength,
         noCache,
         threadCount,

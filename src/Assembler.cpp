@@ -27,7 +27,6 @@ Assembler::Assembler(
 
         reads = make_unique<Reads>();
         reads->createNew(
-            0,  // Read representation
             largeDataName("Reads"),
             largeDataName("ReadNames"),
             largeDataName("ReadMetaData"),
@@ -45,7 +44,6 @@ Assembler::Assembler(
 
         reads = make_unique<Reads>();
         reads->access(
-            0,  // Read representation
             largeDataName("Reads"),
             largeDataName("ReadNames"),
             largeDataName("ReadMetaData"),
