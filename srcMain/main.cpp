@@ -9,9 +9,26 @@
 #include "Reads.hpp"
 #include "Tee.hpp"
 #include "timestamp.hpp"
+using namespace shasta;
+
+// Boost libraries.
+#include <boost/program_options.hpp>
+#include  <boost/chrono/process_cpu_clocks.hpp>
+
+//  Linux.
+#include <signal.h>
+#include <stdlib.h>
+#include <unistd.h>
+
 
 // Standard library.
+#include "chrono.hpp"
 #include <filesystem>
+#include "iostream.hpp"
+#include "iterator.hpp"
+#include "stdexcept.hpp"
+
+
 
 namespace shasta {
     namespace main {
@@ -32,6 +49,7 @@ namespace shasta {
 
         void setupHugePages();
         void segmentFaultHandler(int);
+        void setupSegmentFaultHandler();
 
         // Functions that implement --command keywords
         void assemble(const AssemblerOptions&, int argumentCount, const char** arguments);
@@ -49,54 +67,47 @@ namespace shasta {
 
     }
 
+    // This is used to duplicate cout output to stdout.log.
     Tee tee;
     ofstream shastaLog;
 }
-using namespace shasta;
-
-// Boost libraries.
-#include <boost/program_options.hpp>
-#include  <boost/chrono/process_cpu_clocks.hpp>
-
-//  Linux.
-#include <signal.h>
-#include <stdlib.h>
-#include <unistd.h>
-
-
-// Standard library.
-#include "chrono.hpp"
-#include "iostream.hpp"
-#include "iterator.hpp"
-#include "stdexcept.hpp"
 
 
 
 int main(int argumentCount, const char** arguments)
 {
     try {
-
         shasta::main::main(argumentCount, arguments);
+    }
 
-    } catch(const boost::program_options::error_with_option_name& e) {
+    catch(const boost::program_options::error_with_option_name& e) {
         cout << "Invalid option: " << e.what() << endl;
         return 1;
-    } catch (const runtime_error& e) {
+    }
+
+    catch (const runtime_error& e) {
         cout << timestamp << e.what() << endl;
         return 2;
-    } catch (const std::bad_alloc& e) {
+    }
+
+    catch (const std::bad_alloc& e) {
         cout << timestamp << e.what() << endl;
         cout << "Memory allocation failure." << endl;
         cout << "This assembly requires more memory than available." << endl;
         cout << "Rerun on a larger machine." << endl;
         return 2;
-    } catch (const exception& e) {
+    }
+
+    catch (const exception& e) {
         cout << timestamp << e.what() << endl;
         return 3;
-    } catch (...) {
+    }
+
+    catch (...) {
         cout << timestamp << "Terminated after catching a non-standard exception." << endl;
         return 4;
     }
+
     return 0;
 }
 
@@ -112,12 +123,20 @@ void shasta::main::segmentFaultHandler(int)
 }
 
 
-void shasta::main::main(int argumentCount, const char** arguments)
+
+void shasta::main::setupSegmentFaultHandler()
 {
     struct sigaction action;
     ::memset(&action, 0, sizeof(action));
     action.sa_handler = &segmentFaultHandler;
     sigaction(SIGSEGV, &action, 0);
+}
+
+
+
+void shasta::main::main(int argumentCount, const char** arguments)
+{
+    setupSegmentFaultHandler();
 
     // Parse command line options and the configuration file, if one was specified.
     AssemblerOptions assemblerOptions(argumentCount, arguments);
@@ -144,6 +163,9 @@ void shasta::main::main(int argumentCount, const char** arguments)
         return;
     } else if(assemblerOptions.commandLineOnlyOptions.command == "explore") {
         explore(assemblerOptions);
+        return;
+    } else if(assemblerOptions.commandLineOnlyOptions.command == "listCommands") {
+        listCommands();
         return;
     }
 
@@ -184,12 +206,8 @@ void shasta::main::assemble(
         throw runtime_error("Invalid value specified for --Kmers.k. "
             "Must be between 6 and 62");
     }
-    // For assembly modes other than 0, k must be even.
-    if((assemblerOptions.assemblyOptions.mode != 0) and
-        ((assemblerOptions.kmersOptions.k % 2) == 1)) {
-        throw runtime_error("Invalid value specified for --Kmers.k. "
-            "Must be even for assembly modes other than 0.");
-
+    if((assemblerOptions.kmersOptions.k % 2) == 1) {
+        throw runtime_error("Invalid value specified for --Kmers.k. Must be even.");
     }
 
     // Check that we have at least one input file.
@@ -248,8 +266,6 @@ void shasta::main::assemble(
     }
     cout << endl;
 
-
-
     // Set up the run directory as required by the memoryMode and memoryBacking options.
     size_t pageSize = 0;
     string dataDirectory;
@@ -259,14 +275,9 @@ void shasta::main::assemble(
         pageSize,
         dataDirectory);
 
-
-
-
-
     // Create the Assembler.
     Assembler assembler(dataDirectory, true, pageSize);
     assembler.assemblerInfo->assemblyMode = assemblerOptions.assemblyOptions.mode;
-
 
     // Run the assembly.
     assemble(assembler, assemblerOptions, inputFileAbsolutePaths);
@@ -413,36 +424,6 @@ void shasta::main::assemble(
     if(assembler.getReads().readCount() == 0) {
         throw runtime_error("There are no input reads.");
     }
-
-
-
-    // If requested, increase the read length cutoff
-    // to reduce coverage to the specified amount.
-    if (assemblerOptions.readsOptions.desiredCoverage > 0) {
-        // Write out the read length histogram using provided minReadLength.
-        assembler.histogramReadLength("ExtendedReadLengthHistogram.csv");
-
-        const auto newMinReadLength = assembler.adjustCoverageAndGetNewMinReadLength(
-            assemblerOptions.readsOptions.desiredCoverage);
-
-        const auto oldMinReadLength = uint64_t(assemblerOptions.readsOptions.minReadLength);
-
-        if (newMinReadLength == 0ULL) {
-            throw runtime_error(
-                "With Reads.minReadLength " +
-                to_string(assemblerOptions.readsOptions.minReadLength) +
-                ", total available coverage is " +
-                to_string(assembler.getReads().getTotalBaseCount()) +
-                ", less than desired coverage " +
-                to_string(assemblerOptions.readsOptions.desiredCoverage) +
-                ". Try reducing Reads.minReadLength if appropriate or get more coverage."
-            );
-        }
-
-        // Adjusting coverage should only ever reduce coverage if necessary.
-        SHASTA_ASSERT(newMinReadLength >= oldMinReadLength);
-    }
-
     assembler.computeReadIdsSortedByName();
     assembler.histogramReadLength("ReadLengthHistogram.csv");
 
@@ -601,15 +582,13 @@ void shasta::main::explore(
         assemblerOptions.commandLineOnlyOptions.assemblyDirectory +
         ". Use \"--memoryMode filesystem\", possibly followed by "
         "\"--command saveBinaryData\" and \"--command cleanupBinaryData\" "
-        "if you want to make sure the binary data are persistently available on disk. "
-        "See the documentations are some of these options require root access."
+        "if you want to make sure the binary data are persistently available on disk."
         );
         return;
     }
 
     // Create the Assembler.
     Assembler assembler("Data/", false, 0);
-
 
     // Access all available binary data.
     assembler.httpServerData.assemblerOptions = &assemblerOptions;
