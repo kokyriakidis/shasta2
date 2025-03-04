@@ -100,37 +100,6 @@ public:
 
 public:
 
-    bool isSelfComplementaryComponent(uint64_t componentId) const;
-    void checkComponentIsValid(uint64_t componentId) const;
-
-    void computeConnectedComponents();
-
-    // Debug output of connected components.
-    void writeConnectedComponents() const;
-    void writeConnectedComponent(uint64_t componentId) const;
-
-
-
-    // For each oriented read, store which ConnectedComponent it belongs to,
-    // and at what position.
-    // Indexed by OrientedReadId::getValue().
-    // For each OrientedReadId we store a pair (componentId, position),
-    // where componentId is the index in the connectedComponents vector
-    // and position is the index in the orientedReadIds vector
-    // for that connected component.
-    vector< pair<uint64_t, uint64_t> > orientedReadIdTable;
-
-    void assembleConnectedComponents(
-        uint64_t threadCount,
-        bool debug);
-    shared_ptr<mode3::AssemblyGraph> assembleConnectedComponent(
-        uint64_t componentId,
-        uint64_t threadCount,
-        bool assembleSequence,
-        ostream& orientedReadsCsv,
-        bool debug);
-
-public:
     // Http server functions for Mode 3 assembly.
     void exploreAnchor(const vector<string>&, ostream&);
     void exploreAnchorPair(const vector<string>&, ostream&);
