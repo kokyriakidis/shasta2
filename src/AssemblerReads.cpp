@@ -45,7 +45,7 @@ void Assembler::histogramReadLength(const string& fileName)
 
     cout << "Read statistics for reads that will be used in this assembly:" << endl;
     cout << "    Total number of reads is " << reads->readCount() << "." << endl;
-    cout << "    Total number of raw bases is " << reads->getTotalBaseCount() << "." << endl;
+    cout << "    Total number of bases is " << reads->getTotalBaseCount() << "." << endl;
     cout << "    Average read length is " << double(reads->getTotalBaseCount()) / double(reads->readCount());
     cout << " bases." << endl;
     cout << "    N50 for read length is " << reads->getN50() << " bases." << endl;
