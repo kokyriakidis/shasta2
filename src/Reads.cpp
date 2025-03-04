@@ -337,6 +337,16 @@ void Reads::computeReadIdsSortedByName()
     // Sort them by name.
     sort(readIdsSortedByName.begin(), readIdsSortedByName.end(),
         OrderReadsByName(readNames));
+
+    // Check for duplicate names.
+    for(ReadId readId=1; readId<readCount(); readId++) {
+        if(getReadName(readId - 1) == getReadName(readId)) {
+            string message = "Duplicate read name: ";
+            const auto name = getReadName(readId);
+            copy(name.begin(), name.end(), back_inserter(message));
+            throw runtime_error(message);
+        }
+    }
 }
 
 
