@@ -437,10 +437,23 @@ void shasta::main::assemble(
     // Find the markers in the reads.
     assembler.findMarkers(threadCount);
 
-    // Assembly.
-    assembler.alignmentFreeAssembly(
-        assemblerOptions.assemblyOptions.mode3Options,
+    // Create MarkerKmers.
+    assembler.createMarkerKmers(threadCount);
+
+    // Create Anchors.
+    shared_ptr<mode3::Anchors> anchorsPointer = make_shared<mode3::Anchors>(
+        MappedMemoryOwner(assembler),
+        assembler.getReads(),
+        assembler.assemblerInfo->k,
+        assembler.markers,
+        assembler.markerKmers,
+        assemblerOptions.assemblyOptions.mode3Options.minAnchorCoverage,
+        assemblerOptions.assemblyOptions.mode3Options.maxAnchorCoverage,
         threadCount);
+
+    // Compute Journeys.
+    anchorsPointer->computeJourneys(threadCount);
+
 }
 
 

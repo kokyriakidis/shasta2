@@ -80,19 +80,6 @@ PYBIND11_MODULE(shasta, shastaModule)
             arg("threadCount") = 0)
         .def("accessMarkerKmers",
             &Assembler::accessMarkerKmers)
-
-
-
-
-        // Assembly mode 3.
-        .def("mode3Reassembly",
-            &Assembler::mode3Reassembly)
-        .def("accessMode3Assembler",
-            &Assembler::accessMode3Assembler)
-
-        .def("test", &Assembler::test)
-
-        // Definition of class_Assembler ends here.
     ;
 
 

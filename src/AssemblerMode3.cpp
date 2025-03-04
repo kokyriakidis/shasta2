@@ -16,43 +16,6 @@ using namespace shasta;
 
 
 
-void Assembler::mode3Assembly(
-    uint64_t threadCount,
-    shared_ptr<mode3::Anchors> anchorsPointer,
-    const Mode3AssemblyOptions& options,
-    bool debug
-    )
-{
-    const MappedMemoryOwner& mappedMemoryOwner = *this;
-
-    mode3Assembler = make_shared<Mode3Assembler>(
-        mappedMemoryOwner,
-        assemblerInfo->k, getReads(), markers,
-        anchorsPointer, threadCount, options, debug);
-}
-
-
-
-// Same, but use existing Anchors. Python callable.
-void Assembler::mode3Reassembly(
-    uint64_t threadCount,
-    const Mode3AssemblyOptions& options,
-    bool debug
-    )
-{
-    const MappedMemoryOwner& mappedMemoryOwner = *this;
-
-    // Create the Anchors from binary data.
-    shared_ptr<mode3::Anchors> anchorsPointer =
-        make_shared<mode3::Anchors>(mappedMemoryOwner, getReads(), assemblerInfo->k, markers);
-
-    // Run the Mode 3 assembly.
-    mode3Assembler = make_shared<Mode3Assembler>(
-        mappedMemoryOwner,
-        assemblerInfo->k, getReads(), markers,
-        anchorsPointer, threadCount, options, debug);
-}
-
 void Assembler::accessMode3Assembler()
 {
     shared_ptr<mode3::Anchors> anchorsPointer =
@@ -104,31 +67,4 @@ void Assembler::exploreLocalAssembly(const vector<string>& request, ostream& htm
 void Assembler::exploreLocalAnchorGraph(const vector<string>& request, ostream& html)
 {
     mode3Assembler->exploreLocalAnchorGraph(request, html);
-}
-
-
-
-// Alignment-free version of mode 3 assembly.
-void Assembler::alignmentFreeAssembly(
-    const Mode3AssemblyOptions& mode3Options,
-    uint64_t threadCount)
-{
-    createMarkerKmers(threadCount);
-
-    shared_ptr<mode3::Anchors> anchorsPointer =
-        make_shared<mode3::Anchors>(
-            MappedMemoryOwner(*this),
-            getReads(),
-            assemblerInfo->k,
-            markers,
-            markerKmers,
-            mode3Options.minAnchorCoverage,
-            mode3Options.maxAnchorCoverage,
-            threadCount);
-
-    // Compute oriented read journeys.
-    anchorsPointer->computeJourneys(threadCount);
-
-    // Run Mode 3 assembly.
-    mode3Assembly(threadCount, anchorsPointer, mode3Options, false);
 }

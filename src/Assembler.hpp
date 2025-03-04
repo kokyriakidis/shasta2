@@ -322,8 +322,8 @@ private:
 
     // The MarkerKmers keep track of the locations in the oriented reads
     // where each marker k-mer appears.
-    shared_ptr<MarkerKmers> markerKmers;
 public:
+    shared_ptr<MarkerKmers> markerKmers;
     void createMarkerKmers(uint64_t threadCount);
     void accessMarkerKmers();
 private:
@@ -395,24 +395,6 @@ public:
     shared_ptr<Mode3Assembler> mode3Assembler;
     void accessMode3Assembler();
 
-    // Top level function for Mode 3 assembly.
-    void mode3Assembly(
-        uint64_t threadCount,
-        shared_ptr<mode3::Anchors>,
-        const Mode3AssemblyOptions&,
-        bool debug
-    );
-    // Same, but use existing Anchors. Python callable.
-    void mode3Reassembly(
-        uint64_t threadCount,
-        const Mode3AssemblyOptions&,
-        bool debug
-    );
-
-    // Alignment-free version of mode 3 assembly.
-    void alignmentFreeAssembly(
-        const Mode3AssemblyOptions&,
-        uint64_t threadCount);
 
     // Http server functions related to Mode 3 assembly.
     void exploreAnchor(const vector<string>&, ostream&);
@@ -422,9 +404,6 @@ public:
     void exploreLocalAssembly(const vector<string>&, ostream&);
     void exploreLocalAnchorGraph(const vector<string>&, ostream&);
 
-
-public:
-    void test();
 };
 
 #endif
