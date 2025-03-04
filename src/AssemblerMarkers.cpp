@@ -16,23 +16,19 @@ void Assembler::findMarkers(size_t threadCount)
     reads->checkReadsAreOpen();
     SHASTA_ASSERT(kmerChecker);
 
-    markersPointer = make_shared<Markers>();
-    markersPointer->createNew(largeDataName("Markers"), largeDataPageSize);
-    MarkerFinder markerFinder(
+    markersPointer = make_shared<Markers>(
+        *this,
         assemblerInfo->k,
         *kmerChecker,
-        getReads(),
-        *markersPointer,
+        *reads,
         threadCount);
-
 }
 
 
 
 void Assembler::accessMarkers()
 {
-    markersPointer = make_shared<Markers>();
-    markersPointer->accessExistingReadOnly(largeDataName("Markers"));
+    markersPointer = make_shared<Markers>(*this);
 }
 
 

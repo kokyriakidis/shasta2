@@ -10,6 +10,7 @@ is also a marker.
 
 *******************************************************************************/
 
+#include "MappedMemoryOwner.hpp"
 #include "MemoryMappedVectorOfVectors.hpp"
 #include "Uint.hpp"
 
@@ -17,6 +18,9 @@ namespace shasta {
 
     class Marker;
     class Markers;
+
+    class KmerChecker;
+    class Reads;
 }
 
 
@@ -33,7 +37,17 @@ public:
 
 
 // The markers on all oriented reads. Indexed by OrientedReadId::getValue().
-class shasta::Markers: public MemoryMapped::VectorOfVectors<Marker, uint64_t> {
+class shasta::Markers:
+    public MappedMemoryOwner,
+    public MemoryMapped::VectorOfVectors<Marker, uint64_t> {
 public:
 
+    Markers(
+        const MappedMemoryOwner&,
+        size_t k,
+        const KmerChecker&,
+        const Reads& reads,
+        size_t threadCount);
+
+    Markers(const MappedMemoryOwner&);
 };
