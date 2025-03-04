@@ -2,7 +2,6 @@
 #include "Mode3Assembler.hpp"
 #include "AssemblerOptions.hpp"
 #include "deduplicate.hpp"
-#include "mode3-AnchorGraph.hpp"
 #include "orderPairs.hpp"
 #include "performanceLog.hpp"
 #include "Reads.hpp"

@@ -1,7 +1,6 @@
 // Shasta.
 #include "Assembler.hpp"
 #include "deduplicate.hpp"
-#include "KmerCounter.hpp"
 #include "orderPairs.hpp"
 #include "Reads.hpp"
 using namespace shasta;

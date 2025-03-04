@@ -28,7 +28,6 @@ namespace shasta {
     class AssembledSegment;
     class Histogram2;
     class KmerChecker;
-    class KmerCounter;
     class KmersOptions;
     class LongBaseSequences;
     class MarkerKmers;

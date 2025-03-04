@@ -1,7 +1,6 @@
 // Shasta.
 #include "Assembler.hpp"
 #include "KmerChecker.hpp"
-#include "KmerCounter.hpp"
 #include "MarkerKmers.hpp"
 #include "Reads.hpp"
 using namespace shasta;

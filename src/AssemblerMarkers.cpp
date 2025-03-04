@@ -2,7 +2,6 @@
 #include "Assembler.hpp"
 #include "extractKmer.hpp"
 #include "findMarkerId.hpp"
-#include "KmerCounter.hpp"
 #include "KmerDistributionInfo.hpp"
 #include "MarkerFinder.hpp"
 #include "MarkerKmers.hpp"

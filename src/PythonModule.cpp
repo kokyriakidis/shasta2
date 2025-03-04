@@ -7,7 +7,6 @@
 #include "ConfigurationTable.hpp"
 #include "deduplicate.hpp"
 #include "diploidBayesianPhase.hpp"
-#include "enumeratePaths.hpp"
 #include "globalMsa.hpp"
 #include "LongBaseSequence.hpp"
 #include "longestPath.hpp"
@@ -202,9 +201,6 @@ PYBIND11_MODULE(shasta, shastaModule)
         );
     shastaModule.def("testLongestPath",
         testLongestPath
-        );
-    shastaModule.def("testEnumeratePaths",
-        testEnumeratePaths
         );
     shastaModule.def("globalMsaPython",
         globalMsaPython
