@@ -33,26 +33,6 @@ void Assembler::addReads(
 
     reads->checkSanity();
     reads->computeReadLengthHistogram();
-
-    cout << "Discarded read statistics for file " << fileName << ":" << endl;
-    cout << "    Discarded " << readLoader.discardedInvalidBaseReadCount <<
-        " reads containing invalid bases for a total " <<
-        readLoader.discardedInvalidBaseBaseCount << " valid bases." << endl;
-    cout << "    Discarded " << readLoader.discardedShortReadReadCount <<
-        " reads shorter than " << minReadLength <<
-        " bases for a total " << readLoader.discardedShortReadBaseCount << " bases." << endl;
-    cout << "    Discarded " << readLoader.discardedBadRepeatCountReadCount <<
-        " reads containing repeat counts 256 or more" <<
-        " for a total " << readLoader.discardedBadRepeatCountBaseCount << " bases." << endl;
-
-    // Increment the discarded reads statistics.
-    assemblerInfo->discardedInvalidBaseReadCount += readLoader.discardedInvalidBaseReadCount;
-    assemblerInfo->discardedInvalidBaseBaseCount += readLoader.discardedInvalidBaseBaseCount;
-    assemblerInfo->discardedShortReadReadCount += readLoader.discardedShortReadReadCount;
-    assemblerInfo->discardedShortReadBaseCount += readLoader.discardedShortReadBaseCount;
-    assemblerInfo->discardedBadRepeatCountReadCount += readLoader.discardedBadRepeatCountReadCount;
-    assemblerInfo->discardedBadRepeatCountBaseCount += readLoader.discardedBadRepeatCountBaseCount;
-    assemblerInfo->minReadLength = minReadLength;
 }
 
 
@@ -65,16 +45,6 @@ void Assembler::histogramReadLength(const string& fileName)
     reads->computeReadLengthHistogram();
     reads->writeReadLengthHistogram(fileName);
 
-    cout << "Discarded read statistics for all input files:" << endl;;
-    cout << "    Discarded " << assemblerInfo->discardedInvalidBaseReadCount <<
-        " reads containing invalid bases for a total " <<
-        assemblerInfo->discardedInvalidBaseBaseCount << " valid bases." << endl;
-    cout << "    Discarded " << assemblerInfo->discardedShortReadReadCount <<
-        " short reads for a total " <<
-        assemblerInfo->discardedShortReadBaseCount << " bases." << endl;
-    cout << "    Discarded " << assemblerInfo->discardedBadRepeatCountReadCount <<
-        " reads containing repeat counts 256 or more" <<
-        " for a total " << assemblerInfo->discardedBadRepeatCountBaseCount << " bases." << endl;
 
     cout << "Read statistics for reads that will be used in this assembly:" << endl;
     cout << "    Total number of reads is " << reads->readCount() << "." << endl;
@@ -87,73 +57,6 @@ void Assembler::histogramReadLength(const string& fileName)
     assemblerInfo->readCount = reads->readCount();
     assemblerInfo->baseCount = reads->getTotalBaseCount();
     assemblerInfo->readN50 = reads->getN50();
-}
-
-
-
-uint64_t Assembler::adjustCoverageAndGetNewMinReadLength(uint64_t desiredCoverage) {
-    cout << timestamp << "Adjusting for desired coverage." << endl;
-    cout << "Desired Coverage: " << desiredCoverage << endl;
-    uint64_t cumulativeBaseCount = reads->getTotalBaseCount();
-
-    assemblerInfo->minReadLength = 0ULL;
-
-    if (desiredCoverage > cumulativeBaseCount) {
-        return assemblerInfo->minReadLength;
-    }
-
-    const auto& histogram = reads->getReadLengthHistogram();
-    uint64_t lastLength = 0;
-
-    for (uint64_t length = 0; length < histogram.size(); length++) {
-        const uint64_t frequency = histogram[length];
-        if (frequency) {
-            const uint64_t baseCount = frequency * length;
-            if (cumulativeBaseCount > desiredCoverage) {
-                cumulativeBaseCount -= baseCount;
-                lastLength = length;
-                continue;
-            }
-
-            assemblerInfo->minReadLength = lastLength;
-            break;
-        }
-    }
-
-    cout << "Setting minReadLength to " + to_string(assemblerInfo->minReadLength) +
-        " to get desired coverage." << endl;
-
-    // Rename existing memory mapped files to avoid overwriting data.
-    reads->rename();
-
-    unique_ptr<Reads> newReads = make_unique<Reads>();
-    newReads->createNew(
-        0,  // Read representation
-        largeDataName("Reads"),
-        largeDataName("ReadNames"),
-        largeDataName("ReadMetaData"),
-        largeDataName("ReadFlags"),
-        largeDataName("ReadIdsSortedByName"),
-        largeDataPageSize
-    );
-
-    newReads->copyDataForReadsLongerThan(
-        getReads(),
-        assemblerInfo->minReadLength,
-        assemblerInfo->discardedShortReadReadCount,
-        assemblerInfo->discardedShortReadBaseCount
-    );
-
-    reads->remove();
-
-    reads = std::move(newReads);
-
-    // Re-compute the histogram.
-    reads->computeReadLengthHistogram();
-
-    cout << timestamp << "Done adjusting for desired coverage." << endl;
-
-    return assemblerInfo->minReadLength;
 }
 
 

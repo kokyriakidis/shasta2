@@ -37,26 +37,6 @@ public:
 
     ~ReadLoader();
 
-    // The number of reads and raw bases discarded because the read
-    // contained invalid bases.
-    uint64_t discardedInvalidBaseReadCount = 0;
-    uint64_t discardedInvalidBaseBaseCount = 0; // Only counts the valid bases in those reads.
-
-    // The number of reads and raw bases discarded because the read length
-    // was less than minReadLength.
-    uint64_t discardedShortReadReadCount = 0;
-    uint64_t discardedShortReadBaseCount = 0;
-
-    // The number of reads and raw bases discarded because the read had
-    // a q score distribution that was indicative of a palindrome.
-    uint64_t discardedPalindromicReadCount = 0;
-    uint64_t discardedPalindromicBaseCount = 0;
-
-    // The number of reads and raw bases discarded because the read
-    // contained repeat counts greater than 255.
-    uint64_t discardedBadRepeatCountReadCount = 0;
-    uint64_t discardedBadRepeatCountBaseCount = 0;
-
 private:
 
     // The name of the file we are processing.

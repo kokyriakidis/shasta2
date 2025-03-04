@@ -234,15 +234,11 @@ void ReadLoader::processFastaFileThreadFunction(size_t threadId)
 
         // If we found invalid bases, skip this read.
         if(invalidBaseCount) {
-            __sync_fetch_and_add(&discardedInvalidBaseReadCount, 1);
-            __sync_fetch_and_add(&discardedInvalidBaseReadCount, read.size());
             continue;
         }
 
         // If the read is too short, skip it.
         if(read.size() < minReadLength) {
-            __sync_fetch_and_add(&discardedShortReadReadCount, 1);
-            __sync_fetch_and_add(&discardedShortReadBaseCount, read.size());
             continue;
         }
 
@@ -459,8 +455,6 @@ void ReadLoader::processFastqFileThreadFunction(size_t threadId)
 
         // If the read is too short, skip it.
         if (read.size() < minReadLength) {
-            __sync_fetch_and_add(&discardedShortReadReadCount, 1);
-            __sync_fetch_and_add(&discardedShortReadBaseCount, read.size());
             continue;
         }
 
