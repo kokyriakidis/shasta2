@@ -122,35 +122,8 @@ public:
     MemoryMapped::VectorOfVectors<CompressedMarker, uint64_t> markers;
     void checkMarkersAreOpen() const;
 
-    // Get markers sorted by KmerId for a given OrientedReadId.
-    void getMarkersSortedByKmerId(
-        OrientedReadId,
-        vector<MarkerWithOrdinal>&) const;
-
     void findMarkers(size_t threadCount);
     void accessMarkers();
-    void writeMarkers(ReadId, Strand, const string& fileName);
-
-    // Given a marker by its OrientedReadId and ordinal,
-    // return the corresponding global marker id.
-    MarkerId getMarkerId(OrientedReadId, uint32_t ordinal) const;
-
-    MarkerId getReverseComplementMarkerId(OrientedReadId, uint32_t ordinal) const;
-    MarkerId getMarkerId(const MarkerDescriptor& m) const
-    {
-        return getMarkerId(m.first, m.second);
-    }
-    MarkerId getReverseComplementMarkerId(const MarkerDescriptor& m) const
-    {
-        return getReverseComplementMarkerId(m.first, m.second);
-    }
-
-    // Inverse of the above: given a global marker id,
-    // return its OrientedReadId and ordinal.
-    // This requires a binary search in the markers toc.
-    // This could be avoided, at the cost of storing
-    // an additional 4 bytes per marker.
-    pair<OrientedReadId, uint32_t> findMarkerId(MarkerId) const;
 
     // Low level functions to get marker Kmers/KmerIds of an oriented read.
     // They are obtained from the reads and not from CompressedMarker::kmerId,
@@ -163,11 +136,6 @@ public:
 
     // Get the marker KmerId for an oriented read and ordinal.
     KmerId getOrientedReadMarkerKmerId(OrientedReadId, uint32_t ordinal) const;
-
-    // Get all marker Kmers for an oriented read.
-    void getOrientedReadMarkerKmers(OrientedReadId, const span<Kmer>&) const;
-    void getOrientedReadMarkerKmersStrand0(ReadId, const span<Kmer>&) const;
-    void getOrientedReadMarkerKmersStrand1(ReadId, const span<Kmer>&) const;
 
     // Get all marker KmerIds for an oriented read.
     void getOrientedReadMarkerKmerIds(OrientedReadId, const span<KmerId>&) const;

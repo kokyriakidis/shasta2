@@ -56,16 +56,6 @@ PYBIND11_MODULE(shasta, shastaModule)
             &Assembler::findMarkers,
             "Find markers in reads.",
             arg("threadCount") = 0)
-        .def("writeMarkers",
-            (
-                void (Assembler::*)
-                (ReadId, Strand, const string&)
-            )
-            &Assembler::writeMarkers,
-            "Write the markers of an oriented read.",
-            arg("readId"),
-            arg("strand"),
-            arg("fileName"))
         .def("createMarkerKmers",
             &Assembler::createMarkerKmers,
             arg("threadCount") = 0)

@@ -26,8 +26,6 @@ namespace shasta {
     class Marker;
     class MarkerWithOrdinal;
 
-    // A pair the identifies a marker by its OrientedRead and ordinal.
-    using MarkerDescriptor = pair<OrientedReadId, uint32_t>;
 }
 
 
