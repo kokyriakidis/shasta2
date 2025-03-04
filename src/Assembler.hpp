@@ -351,15 +351,8 @@ private:
     Kmer getOrientedReadMarkerKmer(OrientedReadId, uint64_t ordinal) const;
     KmerId getOrientedReadMarkerKmerId(OrientedReadId, uint64_t ordinal) const;
 
-    // Given a MarkerId, compute the MarkerId of the
-    // reverse complemented marker.
-    MarkerId findReverseComplement(MarkerId) const;
-
-
     // The MarkerKmers keep track of the locations in the oriented reads
-    // where each marker k-mer appears. It is only used for alignment-free assembly
-    // (--Assembly.mode 3 --Assembly.mode3.anchorCreationMethod FromMarkerKmers)
-    // but can also be created using CreateMarkerKmers.py.
+    // where each marker k-mer appears.
     shared_ptr<MarkerKmers> markerKmers;
 public:
     void createMarkerKmers(uint64_t threadCount);

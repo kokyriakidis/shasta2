@@ -2,7 +2,6 @@
 // Shasta.
 #include "Assembler.hpp"
 #include "AssemblerOptions.hpp"
-#include "buildId.hpp"
 #include "ConfigurationTable.hpp"
 #include "filesystem.hpp"
 #include "mode3-Anchor.hpp"
@@ -123,7 +122,6 @@ void shasta::main::main(int argumentCount, const char** arguments)
 
     // Parse command line options and the configuration file, if one was specified.
     AssemblerOptions assemblerOptions(argumentCount, arguments);
-    cout << buildId() << endl;
 
     // Check that we have a valid command.
     auto it = commands.find(assemblerOptions.commandLineOnlyOptions.command);
@@ -219,25 +217,14 @@ void shasta::main::assemble(
 
 
 
-    // Create the assembly directory. If it exists and is not empty then stop.
+    // Create the assembly directory. If it exists, stop.
     bool exists = std::filesystem::exists(assemblerOptions.commandLineOnlyOptions.assemblyDirectory);
-    bool isDir = std::filesystem::is_directory(assemblerOptions.commandLineOnlyOptions.assemblyDirectory);
     if (exists) {
-        if (!isDir) {
-            throw runtime_error(
-                assemblerOptions.commandLineOnlyOptions.assemblyDirectory +
-                " already exists and is not a directory.\n"
-                "Use --assemblyDirectory to specify a different assembly directory."
-            );
-        }
-        bool isEmpty = filesystem::directoryContents(assemblerOptions.commandLineOnlyOptions.assemblyDirectory).empty();
-        if (!isEmpty) {
-            throw runtime_error(
-                "Assembly directory " +
-                assemblerOptions.commandLineOnlyOptions.assemblyDirectory +
-                " exists and is not empty.\n"
-                "Empty it for reuse or use --assemblyDirectory to specify a different assembly directory.");
-        }
+        throw runtime_error(
+            assemblerOptions.commandLineOnlyOptions.assemblyDirectory +
+            " already exists. Remove it first \n"
+            "or use --assemblyDirectory to specify a different assembly directory."
+        );
     } else {
         SHASTA_ASSERT(std::filesystem::create_directory(assemblerOptions.commandLineOnlyOptions.assemblyDirectory));
     }
@@ -285,23 +272,6 @@ void shasta::main::assemble(
     // Run the assembly.
     assemble(assembler, assemblerOptions, inputFileAbsolutePaths);
 
-    // Final disclaimer message.
-    if(assemblerOptions.commandLineOnlyOptions.memoryBacking != "2M" &&
-        assemblerOptions.commandLineOnlyOptions.memoryMode != "filesystem") {
-        cout << "This run used options \"--memoryBacking " << assemblerOptions.commandLineOnlyOptions.memoryBacking <<
-            " --memoryMode " << assemblerOptions.commandLineOnlyOptions.memoryMode << "\".\n"
-            "This could result in longer run time.\n"
-            "For faster assembly, use \"--memoryBacking 2M --memoryMode filesystem\"\n"
-            "(root privilege via sudo required).\n"
-            "Therefore the results of this run should not be used\n"
-            "for the purpose of benchmarking assembly time.\n"
-            "However the memory options don't affect assembly results in any way." << endl;
-    }
-
-    // Write out the build id again.
-    cout << buildId() << endl;
-
-    performanceLog << timestamp << "Assembly ends." << endl;
     cout << timestamp << "Assembly ends." << endl;
 }
 
@@ -646,12 +616,6 @@ void shasta::main::explore(
     assembler.httpServerData.assemblerOptions = &assemblerOptions;
     assembler.accessAllSoft();
 
-    string executablePath = filesystem::executablePath();
-    // On Linux it will be something like - `/path/to/install_root/bin/shasta`
-
-    string executableBinPath = executablePath.substr(0, executablePath.find_last_of('/'));
-    string installRootPath = executableBinPath.substr(0, executableBinPath.find_last_of('/'));
-    string docsPath = installRootPath + "/docs";
 
     // Start the http server.
     bool localOnly;

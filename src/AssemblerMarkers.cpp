@@ -1,7 +1,6 @@
 // Shasta.
 #include "Assembler.hpp"
 #include "extractKmer.hpp"
-#include "findMarkerId.hpp"
 #include "MarkerFinder.hpp"
 #include "MarkerKmers.hpp"
 #include "performanceLog.hpp"
@@ -106,36 +105,6 @@ MarkerId Assembler::getReverseComplementMarkerId(
 
 }
 
-
-// Inverse of the above: given a global marker id,
-// return its OrientedReadId and ordinal.
-// This requires a binary search in the markers toc.
-// This could be avoided, at the cost of storing
-// an additional 4 bytes per marker.
-pair<OrientedReadId, uint32_t>
-    Assembler::findMarkerId(MarkerId markerId) const
-{
-    return shasta::findMarkerId(markerId, markers);
-}
-
-
-
-// Given a MarkerId, compute the MarkerId of the
-// reverse complemented marker.
-MarkerId Assembler::findReverseComplement(MarkerId markerId) const
-{
-	// Find the oriented read id and marker ordinal.
-	OrientedReadId orientedReadId;
-	uint32_t ordinal;
-	tie(orientedReadId, ordinal) = findMarkerId(markerId);
-
-	// Reverse complement.
-	ordinal = uint32_t(markers.size(orientedReadId.getValue()) - 1 - ordinal);
-	orientedReadId.flipStrand();
-
-	// Return the corresponding Markerid.
-	return getMarkerId(orientedReadId, ordinal);
-}
 
 
 

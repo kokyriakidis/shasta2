@@ -1,7 +1,6 @@
 
 // Shasta.
 #include "Assembler.hpp"
-#include "buildId.hpp"
 #include "filesystem.hpp"
 #include "MarkerKmers.hpp"
 #include "platformDependent.hpp"

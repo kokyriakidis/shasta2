@@ -1,6 +1,5 @@
 #include "AssemblerOptions.hpp"
 #include "ConfigurationTable.hpp"
-#include "buildId.hpp"
 #include "filesystem.hpp"
 using namespace shasta;
 
@@ -69,12 +68,6 @@ AssemblerOptions::AssemblerOptions(int argumentCount, const char** arguments) :
     // If help was requested, write the help message and exit.
     if (variablesMap.count("help")) {
         cout << allOptionsDescription << endl;
-        ::exit(0);
-    }
-
-    // If version was requested, write the build id and exit.
-    if (variablesMap.count("version")) {
-        cout << buildId() << endl;
         ::exit(0);
     }
 

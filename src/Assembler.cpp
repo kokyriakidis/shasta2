@@ -1,6 +1,5 @@
 #include "Assembler.hpp"
 #include "AssemblerOptions.hpp"
-#include "buildId.hpp"
 #include "KmerCheckerFactory.hpp"
 #include "MurmurHash2.hpp"
 #include "Reads.hpp"

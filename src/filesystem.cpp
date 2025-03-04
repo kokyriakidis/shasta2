@@ -29,33 +29,6 @@ using namespace shasta;
 
 
 
-// Return the contents of a directory. In case of failure, throw an exception.
-vector<string> shasta::filesystem::directoryContents(const string& path)
-{
-    DIR* dir = opendir(path.c_str());
-    if(!dir) {
-        throw runtime_error("Error listing contents of directory " + path);
-    }
-
-    vector<string> directoryContents;
-    ::dirent* entry = 0;
-    while(true) {
-        entry = ::readdir(dir);
-        if(!entry) {
-            break;
-        }
-        const string name(entry->d_name);
-        if(name!="." && name!="..") {
-            directoryContents.push_back(path + "/" + name);
-        }
-    }
-
-    closedir(dir);
-    return directoryContents;
-}
-
-
-
 // Return the extension of a path - that is, everything following
 // the last dot after the last slash.
 // If there is no dot after the last slash, throw an exception.
@@ -100,20 +73,5 @@ string shasta::filesystem::getAbsolutePath(const string& path)
     array<char, bufferSize> buffer;
     ::realpath(path.c_str(), buffer.data());
     return string(buffer.data());
-}
-
-
-
-string shasta::filesystem::executablePath() {
-    string path;
-    vector<char> buf(PATH_MAX, 0);
-
-    size_t bufSize = buf.size();
-    ssize_t bytesRead = readlink("/proc/self/exe", &buf[0], bufSize);
-    if (bytesRead < 0) {
-        throw runtime_error("Could not read path of executable.");
-    }
-    path = string(&buf[0], bytesRead);
-    return path;
 }
 
