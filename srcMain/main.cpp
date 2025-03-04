@@ -444,7 +444,7 @@ void shasta::main::assemble(
         MappedMemoryOwner(assembler),
         assembler.getReads(),
         assembler.assemblerInfo->k,
-        assembler.markers,
+        assembler.markers(),
         assembler.markerKmers,
         assemblerOptions.assemblyOptions.mode3Options.minAnchorCoverage,
         assemblerOptions.assemblyOptions.mode3Options.maxAnchorCoverage,

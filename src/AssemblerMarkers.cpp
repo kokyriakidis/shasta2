@@ -16,12 +16,13 @@ void Assembler::findMarkers(size_t threadCount)
     reads->checkReadsAreOpen();
     SHASTA_ASSERT(kmerChecker);
 
-    markers.createNew(largeDataName("Markers"), largeDataPageSize);
+    markersPointer = make_shared<Markers>();
+    markersPointer->createNew(largeDataName("Markers"), largeDataPageSize);
     MarkerFinder markerFinder(
         assemblerInfo->k,
         *kmerChecker,
         getReads(),
-        markers,
+        *markersPointer,
         threadCount);
 
 }
@@ -30,12 +31,15 @@ void Assembler::findMarkers(size_t threadCount)
 
 void Assembler::accessMarkers()
 {
-    markers.accessExistingReadOnly(largeDataName("Markers"));
+    markersPointer = make_shared<Markers>();
+    markersPointer->accessExistingReadOnly(largeDataName("Markers"));
 }
+
+
 
 void Assembler::checkMarkersAreOpen() const
 {
-    if(!markers.isOpen()) {
+    if(not(markersPointer and !markersPointer->isOpen())) {
         throw runtime_error("Markers are not accessible.");
     }
 }
@@ -62,7 +66,7 @@ Kmer Assembler::getOrientedReadMarkerKmerStrand0(ReadId readId, uint32_t ordinal
     const uint64_t k = assemblerInfo->k;
     const auto read = reads->getRead(uint32_t(readId));
     const OrientedReadId orientedReadId0(readId, 0);
-    const auto orientedReadMarkers0 = markers[orientedReadId0.getValue()];
+    const auto orientedReadMarkers0 = markers()[orientedReadId0.getValue()];
 
     Kmer kmer0;
     extractKmer(read, uint64_t(orientedReadMarkers0[ordinal0].position), k, kmer0);
@@ -79,7 +83,7 @@ Kmer Assembler::getOrientedReadMarkerKmerStrand1(ReadId readId, uint32_t ordinal
     // We only have the read stored without reverse complement, so get it from there...
     const auto read = reads->getRead(uint32_t(readId));
     const OrientedReadId orientedReadId0(readId, 0);
-    const auto orientedReadMarkers0 = markers[orientedReadId0.getValue()];
+    const auto orientedReadMarkers0 = markers()[orientedReadId0.getValue()];
     const uint64_t readMarkerCount = orientedReadMarkers0.size();
     const uint64_t ordinal0 = readMarkerCount - 1 - ordinal1;
     Kmer kmer0;
@@ -109,7 +113,7 @@ Kmer Assembler::getOrientedReadMarkerKmer(OrientedReadId orientedReadId, uint64_
     const Strand strand = orientedReadId.getStrand();
     const auto read = reads->getRead(readId);
     const OrientedReadId orientedReadId0(uint32_t(readId), 0);
-    const auto orientedReadMarkers0 = markers[orientedReadId0.getValue()];
+    const auto orientedReadMarkers0 = markers()[orientedReadId0.getValue()];
 
     if(strand == 0) {
 
@@ -139,7 +143,7 @@ KmerId Assembler::getOrientedReadMarkerKmerId(OrientedReadId orientedReadId, uin
     const Strand strand = orientedReadId.getStrand();
     const auto read = reads->getRead(readId);
     const OrientedReadId orientedReadId0(uint32_t(readId), 0);
-    const auto orientedReadMarkers0 = markers[orientedReadId0.getValue()];
+    const auto orientedReadMarkers0 = markers()[orientedReadId0.getValue()];
 
     if(strand == 0) {
 
@@ -168,7 +172,7 @@ void Assembler::createMarkerKmers(uint64_t threadCount)
         assemblerInfo->k,
         mappedMemoryOwner,
         getReads(),
-        markers,
+        markers(),
         threadCount);
 }
 
@@ -182,6 +186,6 @@ void Assembler::accessMarkerKmers()
         assemblerInfo->k,
         mappedMemoryOwner,
         getReads(),
-        markers);
+        markers());
 }
 

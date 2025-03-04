@@ -5,7 +5,6 @@
 #include "invalid.hpp"
 #include "Kmer.hpp"
 #include "MappedMemoryOwner.hpp"
-#include "Markers.hpp"
 #include "MemoryMappedObject.hpp"
 #include "MemoryMappedVectorOfVectors.hpp"
 #include "MultithreadedObject.hpp"
@@ -25,6 +24,7 @@ namespace shasta {
     class KmerChecker;
     class KmersOptions;
     class LongBaseSequences;
+    class Markers;
     class MarkerKmers;
     class Mode3Assembler;
     class Reads;
@@ -117,10 +117,13 @@ public:
 
 
 
-    // The markers on all oriented reads. Indexed by OrientedReadId::getValue().
-    Markers markers;
+    // The markers on all oriented reads.
+    shared_ptr<Markers> markersPointer;
+    const Markers& markers() const
+    {
+        return *markersPointer;
+    }
     void checkMarkersAreOpen() const;
-
     void findMarkers(size_t threadCount);
     void accessMarkers();
 

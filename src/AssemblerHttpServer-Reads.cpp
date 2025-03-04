@@ -1,6 +1,7 @@
 // Shasta.
 #include "Assembler.hpp"
 #include "deduplicate.hpp"
+#include "Markers.hpp"
 #include "orderPairs.hpp"
 #include "Reads.hpp"
 using namespace shasta;
@@ -112,7 +113,7 @@ void Assembler::exploreReadRaw(
     // Access the read information we need.
     const OrientedReadId orientedReadId(readId, strand);
     const auto readName = reads->getReadName(readId);
-    const span<const Marker> orientedReadMarkers = markers[orientedReadId.getValue()];
+    const span<const Marker> orientedReadMarkers = markers()[orientedReadId.getValue()];
 
     // Adjust the position range, if necessary.
     if(!beginPositionIsPresent) {
@@ -349,7 +350,7 @@ void Assembler::exploreReadSequence(const vector<string>& request, ostream& html
     // Access the read information we need.
     const OrientedReadId orientedReadId(readId, strand);
     const auto readName = reads->getReadName(readId);
-    const span<const Marker> orientedReadMarkers = markers[orientedReadId.getValue()];
+    const span<const Marker> orientedReadMarkers = markers()[orientedReadId.getValue()];
 
     // Adjust the position range, if necessary.
     if(!beginPositionIsPresent) {

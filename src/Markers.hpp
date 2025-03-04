@@ -32,6 +32,7 @@ public:
 
 
 
+// The markers on all oriented reads. Indexed by OrientedReadId::getValue().
 class shasta::Markers: public MemoryMapped::VectorOfVectors<Marker, uint64_t> {
 public:
 
