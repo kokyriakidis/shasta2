@@ -1,9 +1,10 @@
 // Shasta.
 #include "Assembler.hpp"
 #include "extractKmer.hpp"
-#include "MarkerFinder.hpp"
+#include "Markers.hpp"
 #include "MarkerKmers.hpp"
 #include "performanceLog.hpp"
+#include "Reads.hpp"
 #include "timestamp.hpp"
 using namespace shasta;
 
@@ -11,7 +12,7 @@ using namespace shasta;
 #include "fstream.hpp"
 
 
-void Assembler::findMarkers(size_t threadCount)
+void Assembler::createMarkers(size_t threadCount)
 {
     reads->checkReadsAreOpen();
     SHASTA_ASSERT(kmerChecker);
@@ -19,8 +20,8 @@ void Assembler::findMarkers(size_t threadCount)
     markersPointer = make_shared<Markers>(
         *this,
         assemblerInfo->k,
-        *kmerChecker,
-        *reads,
+        kmerChecker,
+        reads,
         threadCount);
 }
 

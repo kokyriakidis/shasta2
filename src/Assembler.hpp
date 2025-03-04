@@ -124,7 +124,7 @@ public:
         return *markersPointer;
     }
     void checkMarkersAreOpen() const;
-    void findMarkers(size_t threadCount);
+    void createMarkers(size_t threadCount);
     void accessMarkers();
 
     // Get the marker Kmer for an oriented read and ordinal.

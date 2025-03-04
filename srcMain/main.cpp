@@ -433,8 +433,8 @@ void shasta::main::assemble(
     // to decide if a k-mer is a marker.
     assembler.createKmerChecker(assemblerOptions.kmersOptions, threadCount);
 
-    // Find the markers in the reads.
-    assembler.findMarkers(threadCount);
+    // Create the markers.
+    assembler.createMarkers(threadCount);
 
     // Create MarkerKmers.
     assembler.createMarkerKmers(threadCount);

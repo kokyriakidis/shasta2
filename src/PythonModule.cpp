@@ -52,8 +52,8 @@ PYBIND11_MODULE(shasta, shastaModule)
          // Markers.
         .def("accessMarkers",
             &Assembler::accessMarkers)
-        .def("findMarkers",
-            &Assembler::findMarkers,
+        .def("createMarkers",
+            &Assembler::createMarkers,
             "Find markers in reads.",
             arg("threadCount") = 0)
         .def("createMarkerKmers",

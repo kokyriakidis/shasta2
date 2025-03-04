@@ -12,7 +12,10 @@ is also a marker.
 
 #include "MappedMemoryOwner.hpp"
 #include "MemoryMappedVectorOfVectors.hpp"
+#include "MultithreadedObject.hpp"
 #include "Uint.hpp"
+
+#include "memory.hpp"
 
 namespace shasta {
 
@@ -39,15 +42,34 @@ public:
 // The markers on all oriented reads. Indexed by OrientedReadId::getValue().
 class shasta::Markers:
     public MappedMemoryOwner,
+    public MultithreadedObject<Markers>,
     public MemoryMapped::VectorOfVectors<Marker, uint64_t> {
 public:
 
     Markers(
         const MappedMemoryOwner&,
         size_t k,
-        const KmerChecker&,
-        const Reads& reads,
+        const shared_ptr<const KmerChecker>,
+        const shared_ptr<const Reads>,
         size_t threadCount);
 
     Markers(const MappedMemoryOwner&);
+
+private:
+
+    // The private data are only used when constructing the markers from scratch
+    // (the first constructor).
+
+    // The arguments passed to the constructor.
+    size_t k;
+    const shared_ptr<const KmerChecker> kmerChecker;
+    const shared_ptr<const Reads> reads;
+    size_t threadCount;
+
+    void threadFunction(size_t threadId);
+
+    // In pass 1, we count the number of markers for each
+    // read and call reads->incrementCountMultithreaded.
+    // In pass 2, we store the markers.
+    size_t pass;
 };
