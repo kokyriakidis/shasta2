@@ -22,7 +22,7 @@ Anchors::Anchors(
     const MappedMemoryOwner& mappedMemoryOwner,
     const Reads& reads,
     uint64_t k,
-    const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers) :
+    const Markers& markers) :
     MultithreadedObject<Anchors>(*this),
     MappedMemoryOwner(mappedMemoryOwner),
     reads(reads),

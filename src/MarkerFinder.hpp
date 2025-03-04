@@ -29,7 +29,7 @@ public:
         size_t k,
         const KmerChecker&,
         const Reads& reads,
-        MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers,
+        Markers& markers,
         size_t threadCount);
 
 private:
@@ -38,7 +38,7 @@ private:
     size_t k;
     const KmerChecker& kmerChecker;
     const Reads& reads;
-    MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers;
+    Markers& markers;
     size_t threadCount;
 
     void threadFunction(size_t threadId);

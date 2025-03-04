@@ -10,15 +10,13 @@ is also a marker.
 
 *******************************************************************************/
 
-#include "Kmer.hpp"
-#include "ReadId.hpp"
+#include "MemoryMappedVectorOfVectors.hpp"
 #include "Uint.hpp"
-
-#include "utility.hpp"
 
 namespace shasta {
 
     class Marker;
+    class Markers;
 }
 
 
@@ -33,3 +31,8 @@ public:
 };
 
 
+
+class shasta::Markers: public MemoryMapped::VectorOfVectors<Marker, uint64_t> {
+public:
+
+};

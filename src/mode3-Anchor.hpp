@@ -117,7 +117,7 @@ public:
         const MappedMemoryOwner&,
         const Reads& reads,
         uint64_t k,
-        const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers,
+        const Markers& markers,
         const MarkerGraph&,
         uint64_t minPrimaryCoverage,
         uint64_t maxPrimaryCoverage,
@@ -128,7 +128,7 @@ public:
         const MappedMemoryOwner&,
         const Reads& reads,
         uint64_t k,
-        const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers,
+        const Markers& markers,
         shared_ptr<MarkerKmers>,
         uint64_t minAnchorCoverage,
         uint64_t maxAnchorCoverage,
@@ -139,7 +139,7 @@ public:
         const MappedMemoryOwner&,
         const Reads& reads,
         uint64_t k,
-        const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers,
+        const Markers& markers,
         const vector<string>& jsonFileNames,
         uint64_t minPrimaryCoverage,
         uint64_t maxPrimaryCoverage,
@@ -150,7 +150,7 @@ public:
         const MappedMemoryOwner&,
         const Reads& reads,
         uint64_t k,
-        const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers);
+        const Markers& markers);
 
     Anchor operator[](AnchorId) const;
     uint64_t size() const;
@@ -201,7 +201,7 @@ public:
     const Reads& reads;
     uint64_t k;
     uint64_t kHalf;
-    const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers;
+    const Markers& markers;
 
     // The sequences of the anchors.
     // We assume that marker length k is even, and anchor sequence

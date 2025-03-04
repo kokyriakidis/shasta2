@@ -16,7 +16,7 @@ MarkerKmers::MarkerKmers(
     uint64_t k,
     const MappedMemoryOwner& mappedMemoryOwner,
     const Reads& reads,
-    const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers,
+    const Markers& markers,
     uint64_t threadCount) :
     MappedMemoryOwner(mappedMemoryOwner),
     MultithreadedObject<MarkerKmers>(*this),
@@ -73,7 +73,7 @@ MarkerKmers::MarkerKmers(
     uint64_t k,
     const MappedMemoryOwner& mappedMemoryOwner,
     const Reads& reads,
-    const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers) :
+    const Markers& markers) :
     MappedMemoryOwner(mappedMemoryOwner),
     MultithreadedObject<MarkerKmers>(*this),
     k(k),

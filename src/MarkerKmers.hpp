@@ -19,8 +19,9 @@
 namespace shasta {
     class MarkerKmers;
 
-    class Marker;
     class Reads;
+    class Marker;
+    class Markers;
 }
 
 
@@ -34,14 +35,14 @@ public:
         uint64_t k,
         const MappedMemoryOwner&,
         const Reads&,
-        const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers,
+        const Markers& markers,
         uint64_t threadCount);
 
     MarkerKmers(
         uint64_t k,
         const MappedMemoryOwner&,
         const Reads&,
-        const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers);
+        const Markers& markers);
 
     bool isOpen() const
     {

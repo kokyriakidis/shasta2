@@ -5,11 +5,8 @@
 
 namespace shasta {
 
-    class Marker;
+    class Markers;
     class Reads;
-    namespace MemoryMapped {
-        template<class T, class Int> class VectorOfVectors;
-    }
 
     // Access functions for markers Kmers and KmerIds.
     // There are similar member functions in class Assembler,
@@ -20,7 +17,7 @@ namespace shasta {
         uint32_t ordinal,
         uint64_t k,
         const Reads&,
-        const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers
+        const Markers& markers
         );
 
     Kmer getOrientedReadMarkerKmerStrand0(
@@ -28,7 +25,7 @@ namespace shasta {
         uint32_t ordinal,
         uint64_t k,
         const Reads&,
-        const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers
+        const Markers& markers
         );
 
     Kmer getOrientedReadMarkerKmerStrand1(
@@ -36,7 +33,7 @@ namespace shasta {
         uint32_t ordinal,
         uint64_t k,
         const Reads&,
-        const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers
+        const Markers& markers
         );
 
     // Get the marker KmerId for an oriented read and ordinal.
@@ -45,7 +42,7 @@ namespace shasta {
         uint32_t ordinal,
         uint64_t k,
         const Reads&,
-        const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers
+        const Markers& markers
         );
 
 }

@@ -1,6 +1,7 @@
 // shasta.
 #include "MarkerFinder.hpp"
 #include "LongBaseSequence.hpp"
+#include "Kmer.hpp"
 #include "KmerChecker.hpp"
 #include "performanceLog.hpp"
 #include "ReadId.hpp"
@@ -18,7 +19,7 @@ MarkerFinder::MarkerFinder(
     size_t k,
     const KmerChecker& kmerChecker,
     const Reads& reads,
-    MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers,
+    Markers& markers,
     size_t threadCountArgument) :
     MultithreadedObject(*this),
     k(k),

@@ -45,7 +45,7 @@ namespace seqan = seqan2;
 LocalAssembly::LocalAssembly(
     uint64_t k,
     const Reads& reads,
-    const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers,
+    const Markers& markers,
     const Anchors& anchors,
     AnchorId anchorIdA,
     AnchorId anchorIdB,

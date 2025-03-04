@@ -12,7 +12,7 @@ Anchors::Anchors(
     const MappedMemoryOwner& mappedMemoryOwner,
     const Reads& reads,
     uint64_t k,
-    const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers,
+    const Markers& markers,
     shared_ptr<MarkerKmers> markerKmers,
     uint64_t minAnchorCoverage,
     uint64_t maxAnchorCoverage,
@@ -198,7 +198,7 @@ Anchors::Anchors(
     const MappedMemoryOwner& mappedMemoryOwner,
     const Reads& reads,
     uint64_t k,
-    const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers,
+    const Markers& markers,
     uint64_t minPrimaryCoverage,
     uint64_t maxPrimaryCoverage,
     uint64_t threadCount) :
