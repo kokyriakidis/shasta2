@@ -1,6 +1,4 @@
-#ifndef SHASTA_MARKER_HPP
-#define SHASTA_MARKER_HPP
-
+#pragma once
 
 /*******************************************************************************
 
@@ -20,12 +18,7 @@ is also a marker.
 
 namespace shasta {
 
-    // Classes that will be used to represent markers
-    // when the restructuring of marker storage is complete.
     class CompressedMarker;
-    class Marker;
-    class MarkerWithOrdinal;
-
 }
 
 
@@ -36,51 +29,7 @@ public:
 
     // The position of this marker in the oriented read.
     // This limits the length of a read to 2^24=16Mib bases.
-    uint32_t position;
+    Uint24 position;
 };
 
 
-
-// This stores the same information as CompressedMarker,
-// but using built-in, aligned integers.
-class shasta::Marker {
-public:
-
-    // The id of the k-mer for this marker.
-    KmerId kmerId;
-
-    // The position of this marker in the oriented read.
-    uint32_t position;
-
-    Marker(KmerId kmerId, uint32_t position) :
-        kmerId(kmerId), position(position) {}
-
-    // Default constructor.
-    Marker() {}
-};
-
-
-
-// This also stores the ordinal, that is the index
-// of the marker in the oriented read, when the markers
-// are sorted by position in the read.
-class shasta::MarkerWithOrdinal : public Marker {
-public:
-    uint32_t ordinal;
-
-    MarkerWithOrdinal(KmerId kmerId, uint32_t position, uint32_t ordinal) :
-        Marker(kmerId, position), ordinal(ordinal) {}
-
-    // Default constructor.
-    MarkerWithOrdinal() {}
-
-    // Order by kmerId.
-    bool operator<(const MarkerWithOrdinal& that) const
-    {
-        return kmerId < that.kmerId;
-    }
-};
-
-
-
-#endif

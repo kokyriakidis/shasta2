@@ -1,7 +1,6 @@
 #pragma once
 
 // Shasta.
-#include "AssemblerOptions.hpp"
 #include "HttpServer.hpp"
 #include "invalid.hpp"
 #include "Kmer.hpp"
@@ -125,10 +124,6 @@ public:
     void findMarkers(size_t threadCount);
     void accessMarkers();
 
-    // Low level functions to get marker Kmers/KmerIds of an oriented read.
-    // They are obtained from the reads and not from CompressedMarker::kmerId,
-    // which will soon go away.
-
     // Get the marker Kmer for an oriented read and ordinal.
     Kmer getOrientedReadMarkerKmer(OrientedReadId, uint32_t ordinal) const;
     Kmer getOrientedReadMarkerKmerStrand0(ReadId, uint32_t ordinal) const;
@@ -136,26 +131,6 @@ public:
 
     // Get the marker KmerId for an oriented read and ordinal.
     KmerId getOrientedReadMarkerKmerId(OrientedReadId, uint32_t ordinal) const;
-
-    // Get all marker KmerIds for an oriented read.
-    void getOrientedReadMarkerKmerIds(OrientedReadId, const span<KmerId>&) const;
-    void getOrientedReadMarkerKmerIdsStrand0(ReadId, const span<KmerId>&) const;
-    void getOrientedReadMarkerKmerIdsStrand1(ReadId, const span<KmerId>&) const;
-
-    // Get all MarkerWithOrdinals for an oriented read (includes position, KmerId, and ordinal).
-    void getOrientedReadMarkers(OrientedReadId, const span<MarkerWithOrdinal>&) const;
-    void getOrientedReadMarkersStrand0(ReadId, const span<MarkerWithOrdinal>&) const;
-    void getOrientedReadMarkersStrand1(ReadId, const span<MarkerWithOrdinal>&) const;
-
-    // Get all marker Kmers/KmerIds for a read in both orientations.
-    void getReadMarkerKmers(
-        ReadId,
-        const span<Kmer>& Kmers0,
-        const span<Kmer>& Kmers1) const;
-    void getReadMarkerKmerIds(
-        ReadId,
-        const span<KmerId>& kmerIds0,
-        const span<KmerId>& kmerIds1) const;
 
     // Get the Kmer/KmerId for an oriented read at a given marker ordinal.
     Kmer getOrientedReadMarkerKmer(OrientedReadId, uint64_t ordinal) const;
