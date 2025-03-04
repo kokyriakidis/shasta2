@@ -24,14 +24,11 @@ namespace shasta {
     class Assembler;
     class AssemblerInfo;
     class AssemblerOptions;
-    class AssembledSegment;
     class Histogram2;
     class KmerChecker;
     class KmersOptions;
     class LongBaseSequences;
     class MarkerKmers;
-    class Mode2AssemblyOptions;
-    class Mode3AssemblyOptions;
     class Mode3Assembler;
     class Reads;
 
@@ -51,11 +48,6 @@ namespace shasta {
 }
 
 
-class DisjointSets;
-
-
-
-
 
 // Class used to store various pieces of assembler information in shared memory.
 class shasta::AssemblerInfo {
@@ -64,31 +56,8 @@ public:
     // The length of k-mers used to define markers.
     size_t k;
 
-    // The method used to generate kmers (--Kmers.generationMethod).
-    uint64_t kmerGenerationMethod;
-
     // The page size in use for this run.
     size_t largeDataPageSize;
-
-    // Assembly mode (0=haploid, 2=phased).
-    uint64_t assemblyMode;
-
-
-
-    // Statistics for the reads kept in the assembly
-    // and not discarded on input.
-    // These are computed and stored by histogramReadLength.
-    size_t readCount = 0;
-    size_t baseCount = 0;
-    size_t readN50 = 0;
-    uint64_t minReadLength = 0;
-
-    // Other read statistics.
-    size_t palindromicReadCount = 0;
-    size_t chimericReadCount = 0;
-    uint64_t isolatedReadCount = 0;
-    uint64_t isolatedReadBaseCount = 0;
-
 };
 
 

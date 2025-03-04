@@ -81,27 +81,12 @@ void Assembler::exploreReadMarkers(const vector<string>& request, ostream& html)
 
     // Write a table with some summary information for the markers of this oriented read.
     const double readMarkerDensity = double(orientedReadMarkers.size()) / double(sequence.baseCount);
-    const double assemblyMarkerDensity = double(markers.totalSize()) / double(2 * assemblerInfo->baseCount);
-    const uint64_t expectedMarkerCount = uint64_t(std::round(assemblyMarkerDensity * double(sequence.baseCount)));
     html <<
         "<table>"
         "<tr><th class=left>Length in bases<td class=centered>" << sequence.baseCount <<
         "<tr><th class=left>Number of markers<td class=centered>" << orientedReadMarkers.size() <<
         "<tr><th class=left>Average marker density for this read<td class=centered>" <<
         readMarkerDensity <<
-        "<tr><th class=left>Average marker density for this assembly<td class=centered>" <<
-        assemblyMarkerDensity <<
-        "<tr><th class=left width=400>"
-        "Expected number of markers based on average marker density for this assembly<td class=centered>" <<
-        expectedMarkerCount <<
-        "<tr><th class=left>"
-        "Deviation from expected number of markers<td class=centered>" <<
-        int64_t(orientedReadMarkers.size()) - int64_t(expectedMarkerCount) <<
-        "<tr><th class=left>"
-        "Deviation from expected number of markers, relative to "
-        "standard deviation of a Poisson distribution<td class=centered>" <<
-        double(int64_t(orientedReadMarkers.size()) - int64_t(expectedMarkerCount)) /
-        sqrt(double(expectedMarkerCount)) <<
         "</table>";
 
 

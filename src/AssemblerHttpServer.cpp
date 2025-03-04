@@ -203,31 +203,26 @@ void Assembler::writeNavigation(ostream& html) const
 
 
     // Markers menu.
-    vector<pair <string, string> > items = {
+    writeNavigation(html, "Markers", {
         {"Markers", "exploreReadMarkers"},
-    };
-    if(markerKmers and markerKmers->isOpen()) {
-        items.push_back({"Marker k-mers", "exploreMarkerKmers"});
-    }
-    writeNavigation(html, "Markers", items);
+        {"Marker k-mers", "exploreMarkerKmers"}
+        });
 
 
 
-    // Anchors and Assembly menus for assembly mode 3.
-    if(assemblerInfo->assemblyMode == 3) {
+    // Anchors menu.
+    writeNavigation(html, "Anchors", {
+        {"Anchor", "exploreAnchor"},
+        {"Anchor pair", "exploreAnchorPair"},
+        {"Journey", "exploreJourney"},
+        {"Read following on anchors", "exploreReadFollowing"},
+        {"Local anchor graph", "exploreLocalAnchorGraph"},
+        });
 
-        writeNavigation(html, "Anchors", {
-            {"Anchor", "exploreAnchor"},
-            {"Anchor pair", "exploreAnchorPair"},
-            {"Journey", "exploreJourney"},
-            {"Read following on anchors", "exploreReadFollowing"},
-            {"Local anchor graph", "exploreLocalAnchorGraph"},
-            });
-
-        writeNavigation(html, "Assembly", {
-            {"Local assembly", "exploreLocalAssembly"},
-            });
-    }
+    // Assembly menu.
+    writeNavigation(html, "Assembly", {
+        {"Local assembly", "exploreLocalAssembly"},
+        });
 
     html << "</ul>";
 }
@@ -357,23 +352,16 @@ void Assembler::accessAllSoft()
     try {
         accessMarkerKmers();
     } catch(const exception& e) {
+        cout << "Markerk-mers are not accessible." << endl;
+        allDataAreAvailable = false;
     }
 
-
-
-
-
-
-
-
     // Data specific to assembly mode 3.
-    if(assemblerInfo->assemblyMode == 3) {
-        try {
-            accessMode3Assembler();
-        } catch(const exception& e) {
-            cout << "The mode 3 assembler is not accessible." << endl;
-            allDataAreAvailable = false;
-        }
+    try {
+        accessMode3Assembler();
+    } catch(const exception& e) {
+        cout << "The mode 3 assembler is not accessible." << endl;
+        allDataAreAvailable = false;
     }
 
 

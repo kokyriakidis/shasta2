@@ -50,10 +50,6 @@ void Assembler::histogramReadLength(const string& fileName)
     cout << " bases." << endl;
     cout << "    N50 for read length is " << reads->getN50() << " bases." << endl;
 
-    // Store read statistics in AssemblerInfo.
-    assemblerInfo->readCount = reads->readCount();
-    assemblerInfo->baseCount = reads->getTotalBaseCount();
-    assemblerInfo->readN50 = reads->getN50();
 }
 
 

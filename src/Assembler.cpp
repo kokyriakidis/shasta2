@@ -72,7 +72,6 @@ void Assembler::createKmerChecker(
     }
 
     assemblerInfo->k = kmersOptions.k;
-    assemblerInfo->kmerGenerationMethod = kmersOptions.generationMethod;
 
     kmerChecker = KmerCheckerFactory::createNew(
         kmersOptions,
@@ -85,11 +84,7 @@ void Assembler::createKmerChecker(
 
 void Assembler::accessKmerChecker()
 {
-    kmerChecker = KmerCheckerFactory::createFromBinaryData(
-        assemblerInfo->k,
-        assemblerInfo->kmerGenerationMethod,
-        getReads(),
-        *this);
+    kmerChecker = KmerCheckerFactory::createFromBinaryData(*this);
 }
 
 

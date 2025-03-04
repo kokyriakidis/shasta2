@@ -43,7 +43,6 @@ void Assembler::exploreAnchorPair(const vector<string>& request, ostream& html)
 
 void Assembler::exploreJourney(const vector<string>& request, ostream& html)
 {
-    SHASTA_ASSERT(assemblerInfo->assemblyMode == 3);
     mode3Assembler->exploreJourney(request, html);
 }
 
@@ -51,7 +50,6 @@ void Assembler::exploreJourney(const vector<string>& request, ostream& html)
 
 void Assembler::exploreReadFollowing(const vector<string>& request, ostream& html)
 {
-    SHASTA_ASSERT(assemblerInfo->assemblyMode == 3);
     mode3Assembler->exploreReadFollowing(request, html);
 }
 

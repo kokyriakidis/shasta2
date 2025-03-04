@@ -28,11 +28,7 @@ public:
         const Reads&,
         const MappedMemoryOwner&);
 
-    static shared_ptr<KmerChecker> createFromBinaryData(
-        uint64_t k,
-        uint64_t generationMethod,
-        const Reads&,
-        const MappedMemoryOwner&);
+    static shared_ptr<KmerChecker> createFromBinaryData(const MappedMemoryOwner&);
 };
 
 #endif

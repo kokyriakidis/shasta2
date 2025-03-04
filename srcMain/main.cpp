@@ -277,7 +277,6 @@ void shasta::main::assemble(
 
     // Create the Assembler.
     Assembler assembler(dataDirectory, true, pageSize);
-    assembler.assemblerInfo->assemblyMode = assemblerOptions.assemblyOptions.mode;
 
     // Run the assembly.
     assemble(assembler, assemblerOptions, inputFileAbsolutePaths);

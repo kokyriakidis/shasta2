@@ -22,9 +22,6 @@ std::shared_ptr<KmerChecker> KmerCheckerFactory::createNew(
 
 
 std::shared_ptr<shasta::KmerChecker> KmerCheckerFactory::createFromBinaryData(
-    uint64_t /* k */,
-    uint64_t /* generationMethod */,
-    const Reads& /* reads */,
     const MappedMemoryOwner& mappedMemoryOwner)
 {
     return make_shared<HashedKmerChecker>(mappedMemoryOwner);
