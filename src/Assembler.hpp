@@ -6,7 +6,6 @@
 #include "HttpServer.hpp"
 #include "invalid.hpp"
 #include "Kmer.hpp"
-#include "KmerDistributionInfo.hpp"
 #include "MappedMemoryOwner.hpp"
 #include "Marker.hpp"
 #include "MemoryMappedObject.hpp"
@@ -38,10 +37,6 @@ namespace shasta {
 
     namespace mode3 {
         class Anchors;
-    }
-
-    namespace MemoryMapped {
-        class ByteAllocator;
     }
 
     // Write an html form to select strand.

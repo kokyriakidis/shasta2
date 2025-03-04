@@ -9,9 +9,7 @@
 #include "diploidBayesianPhase.hpp"
 #include "globalMsa.hpp"
 #include "LongBaseSequence.hpp"
-#include "longestPath.hpp"
 #include "mappedCopy.hpp"
-#include "MemoryMappedAllocator.hpp"
 #include "MultithreadedObject.hpp"
 #include "performanceLog.hpp"
 #include "Reads.hpp"
@@ -190,17 +188,11 @@ PYBIND11_MODULE(shasta, shastaModule)
     shastaModule.def("testLongBaseSequence",
         testLongBaseSequence
         );
-    shastaModule.def("testMemoryMappedAllocator",
-        MemoryMapped::testMemoryMappedAllocator
-        );
     shastaModule.def("testDiploidBayesianPhase",
         testDiploidBayesianPhase
         );
     shastaModule.def("testSubsetGraph",
         testSubsetGraph
-        );
-    shastaModule.def("testLongestPath",
-        testLongestPath
         );
     shastaModule.def("globalMsaPython",
         globalMsaPython
