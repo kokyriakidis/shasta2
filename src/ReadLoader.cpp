@@ -18,7 +18,6 @@ template class MultithreadedObject<ReadLoader>;
 ReadLoader::ReadLoader(
     const string& fileName,
     uint64_t minReadLength,
-    bool noCache,
     size_t threadCount,
     const string& dataNamePrefix,
     size_t pageSize,
@@ -27,7 +26,6 @@ ReadLoader::ReadLoader(
     MultithreadedObject(*this),
     fileName(fileName),
     minReadLength(minReadLength),
-    noCache(noCache),
     threadCount(threadCount),
     dataNamePrefix(dataNamePrefix),
     pageSize(pageSize),
@@ -469,19 +467,14 @@ void ReadLoader::allocateBufferAndReadFile()
 {
     allocateBuffer();
 
-    // Try reading using the requested setting of noCache/O_DIRECT.
-    // If successful, all done.
-    if(readFile(noCache)) {
+    // Try reading using O_DIRECT (no caching).
+    if(readFile(true)) {
         return;
     }
 
-    // If there was failure and we are using noCache, try turning it off.
-    // If successful, all done.
-    if(noCache) {
-        cout << "Turning off --Reads.noCache for " << fileName << endl;
-        if(readFile(false)) {
-            return;
-        }
+    // If this failed, try again without O_DIRECT.
+    if(readFile(false)) {
+        return;
     }
 
     // If getting here, nothing worked.

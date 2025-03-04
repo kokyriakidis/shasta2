@@ -15,7 +15,6 @@ using namespace shasta;
 void Assembler::addReads(
     const string& fileName,
     uint64_t minReadLength,
-    bool noCache,
     const size_t threadCount)
 {
     reads->checkReadsAreOpen();
@@ -24,7 +23,6 @@ void Assembler::addReads(
     ReadLoader readLoader(
         fileName,
         minReadLength,
-        noCache,
         threadCount,
         largeDataFileNamePrefix,
         largeDataPageSize,
