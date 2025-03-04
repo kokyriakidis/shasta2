@@ -16,7 +16,7 @@ MarkerKmers::MarkerKmers(
     uint64_t k,
     const MappedMemoryOwner& mappedMemoryOwner,
     const Reads& reads,
-    const MemoryMapped::VectorOfVectors<CompressedMarker, uint64_t>& markers,
+    const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers,
     uint64_t threadCount) :
     MappedMemoryOwner(mappedMemoryOwner),
     MultithreadedObject<MarkerKmers>(*this),
@@ -73,7 +73,7 @@ MarkerKmers::MarkerKmers(
     uint64_t k,
     const MappedMemoryOwner& mappedMemoryOwner,
     const Reads& reads,
-    const MemoryMapped::VectorOfVectors<CompressedMarker, uint64_t>& markers) :
+    const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers) :
     MappedMemoryOwner(mappedMemoryOwner),
     MultithreadedObject<MarkerKmers>(*this),
     k(k),
@@ -123,7 +123,7 @@ void MarkerKmers::gatherMarkersPass12(uint64_t pass)
 
             // Loop  over the markers.
             for(uint32_t ordinal=0; ordinal<orientedReadMarkers.size(); ordinal++) {
-                const CompressedMarker& marker = orientedReadMarkers[ordinal];
+                const Marker& marker = orientedReadMarkers[ordinal];
                 const uint32_t position = marker.position;
 
                 // Extract the Kmer at this position and its reverse complement.
@@ -174,7 +174,7 @@ Kmer MarkerKmers::getKmer(const MarkerInfo& markerInfo) const
 
     if(strand == 0) {
         const auto orientedReadMarkers = markers[orientedReadId.getValue()];
-        const CompressedMarker& marker = orientedReadMarkers[ordinal];
+        const Marker& marker = orientedReadMarkers[ordinal];
         const uint32_t position = marker.position;
         Kmer kmer;
         extractKmer(readSequence, position, k, kmer);
@@ -186,7 +186,7 @@ Kmer MarkerKmers::getKmer(const MarkerInfo& markerInfo) const
         const auto orientedRead0Markers = markers[orientedReadId0.getValue()];
         const uint32_t markerCount = uint32_t(orientedRead0Markers.size());
         const uint32_t ordinal0 = markerCount - 1 - ordinal;
-        const CompressedMarker& marker0 = orientedRead0Markers[ordinal0];
+        const Marker& marker0 = orientedRead0Markers[ordinal0];
         const uint32_t position0 = marker0.position;
         Kmer kmer0;
         extractKmer(readSequence, position0, k, kmer0);
@@ -321,7 +321,7 @@ void MarkerKmers::writeMarkerInfosCsv1() const
             const Kmer kmer = getKmer(markerInfo);
 
             const auto orientedReadMarkers = markers[orientedReadId.getValue()];
-            const CompressedMarker& marker = orientedReadMarkers[ordinal];
+            const Marker& marker = orientedReadMarkers[ordinal];
             const uint32_t position = marker.position;
 
             kmer.write(csv, k);
@@ -363,7 +363,7 @@ void MarkerKmers::writeMarkerInfosCsv2() const
                 const uint32_t ordinal = markerInfo.ordinal;
 
                 const auto orientedReadMarkers = markers[orientedReadId.getValue()];
-                const CompressedMarker& marker = orientedReadMarkers[ordinal];
+                const Marker& marker = orientedReadMarkers[ordinal];
                 const uint32_t position = marker.position;
 
                 kmer.write(csv, k);

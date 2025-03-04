@@ -65,7 +65,7 @@ void Assembler::exploreReadMarkers(const vector<string>& request, ostream& html)
     // Access the read information we need.
     const OrientedReadId orientedReadId(readId, strand);
     const auto sequence = reads->getRead(readId);
-    const span<const CompressedMarker> orientedReadMarkers = markers[orientedReadId.getValue()];
+    const span<const Marker> orientedReadMarkers = markers[orientedReadId.getValue()];
 
 
 
@@ -239,7 +239,7 @@ void Assembler::exploreMarkerKmers(const vector<string>& request, ostream& html)
     for(const MarkerKmers::MarkerInfo& markerInfo: markerInfos) {
         const OrientedReadId orientedReadId = markerInfo.orientedReadId;
         const uint32_t ordinal = markerInfo.ordinal;
-        const CompressedMarker& marker = markers[orientedReadId.getValue()][ordinal];
+        const Marker& marker = markers[orientedReadId.getValue()][ordinal];
         const uint32_t position = marker.position;
 
         html <<

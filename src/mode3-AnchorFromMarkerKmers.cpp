@@ -12,7 +12,7 @@ Anchors::Anchors(
     const MappedMemoryOwner& mappedMemoryOwner,
     const Reads& reads,
     uint64_t k,
-    const MemoryMapped::VectorOfVectors<CompressedMarker, uint64_t>& markers,
+    const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers,
     shared_ptr<MarkerKmers> markerKmers,
     uint64_t minAnchorCoverage,
     uint64_t maxAnchorCoverage,
@@ -198,7 +198,7 @@ Anchors::Anchors(
     const MappedMemoryOwner& mappedMemoryOwner,
     const Reads& reads,
     uint64_t k,
-    const MemoryMapped::VectorOfVectors<CompressedMarker, uint64_t>& markers,
+    const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers,
     uint64_t minPrimaryCoverage,
     uint64_t maxPrimaryCoverage,
     uint64_t threadCount) :
@@ -378,7 +378,7 @@ void Anchors::constructFromMarkerKmersGatherMarkersPass12(uint64_t pass)
 
             // Loop  over the markers.
             for(uint32_t ordinal=0; ordinal<orientedReadMarkers.size(); ordinal++) {
-                const CompressedMarker& marker = orientedReadMarkers[ordinal];
+                const Marker& marker = orientedReadMarkers[ordinal];
                 const uint32_t position = marker.position;
 
                 // Extract the Kmer at this position.

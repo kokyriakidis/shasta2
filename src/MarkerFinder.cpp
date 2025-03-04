@@ -18,7 +18,7 @@ MarkerFinder::MarkerFinder(
     size_t k,
     const KmerChecker& kmerChecker,
     const Reads& reads,
-    MemoryMapped::VectorOfVectors<CompressedMarker, uint64_t>& markers,
+    MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers,
     size_t threadCountArgument) :
     MultithreadedObject(*this),
     k(k),
@@ -72,8 +72,8 @@ void MarkerFinder::threadFunction(uint64_t)
 
             const LongBaseSequenceView read = reads.getRead(readId);
             size_t markerCount = 0; // For this read.
-            CompressedMarker* markerPointerStrand0 = 0;
-            CompressedMarker* markerPointerStrand1 = 0;
+            Marker* markerPointerStrand0 = 0;
+            Marker* markerPointerStrand1 = 0;
             if(pass == 2) {
                 markerPointerStrand0 = markers.begin(OrientedReadId(readId, 0).getValue());
                 markerPointerStrand1 = markers.end(OrientedReadId(readId, 1).getValue()) - 1ULL;

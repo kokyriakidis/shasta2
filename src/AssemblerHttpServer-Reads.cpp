@@ -112,7 +112,7 @@ void Assembler::exploreReadRaw(
     // Access the read information we need.
     const OrientedReadId orientedReadId(readId, strand);
     const auto readName = reads->getReadName(readId);
-    const span<const CompressedMarker> orientedReadMarkers = markers[orientedReadId.getValue()];
+    const span<const Marker> orientedReadMarkers = markers[orientedReadId.getValue()];
 
     // Adjust the position range, if necessary.
     if(!beginPositionIsPresent) {
@@ -240,7 +240,7 @@ void Assembler::exploreReadRaw(
         // Loop over the markers on this row.
         uint64_t oldPosition = 0;
         for(const uint64_t ordinal: markersOnThisRow) {
-            const CompressedMarker& marker = orientedReadMarkers[ordinal];
+            const Marker& marker = orientedReadMarkers[ordinal];
             const uint64_t position = marker.position - beginPosition;
             const Kmer kmer = getOrientedReadMarkerKmer(orientedReadId, ordinal);
 
@@ -349,7 +349,7 @@ void Assembler::exploreReadSequence(const vector<string>& request, ostream& html
     // Access the read information we need.
     const OrientedReadId orientedReadId(readId, strand);
     const auto readName = reads->getReadName(readId);
-    const span<const CompressedMarker> orientedReadMarkers = markers[orientedReadId.getValue()];
+    const span<const Marker> orientedReadMarkers = markers[orientedReadId.getValue()];
 
     // Adjust the position range, if necessary.
     if(!beginPositionIsPresent) {
@@ -477,7 +477,7 @@ void Assembler::exploreReadSequence(const vector<string>& request, ostream& html
         // Loop over the markers on this row.
         uint64_t oldPosition = 0;
         for(const uint64_t ordinal: markersOnThisRow) {
-            const CompressedMarker& marker = orientedReadMarkers[ordinal];
+            const Marker& marker = orientedReadMarkers[ordinal];
             const uint64_t position = marker.position - beginPosition;
             const Kmer kmer = getOrientedReadMarkerKmer(orientedReadId, ordinal);
 

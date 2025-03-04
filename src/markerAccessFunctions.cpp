@@ -11,7 +11,7 @@ Kmer shasta::getOrientedReadMarkerKmer(
     uint32_t ordinal,
     uint64_t k,
     const Reads& reads,
-    const MemoryMapped::VectorOfVectors<CompressedMarker, uint64_t>& markers
+    const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers
     )
 {
     const ReadId readId = orientedReadId.getReadId();
@@ -32,7 +32,7 @@ Kmer shasta::getOrientedReadMarkerKmerStrand0(
     uint32_t ordinal0,
     uint64_t k,
     const Reads& reads,
-    const MemoryMapped::VectorOfVectors<CompressedMarker, uint64_t>& markers
+    const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers
     )
 {
     const auto read = reads.getRead(uint32_t(readId));
@@ -52,7 +52,7 @@ Kmer shasta::getOrientedReadMarkerKmerStrand1(
     uint32_t ordinal1,
     uint64_t k,
     const Reads& reads,
-    const MemoryMapped::VectorOfVectors<CompressedMarker, uint64_t>& markers
+    const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers
     )
 {
 
@@ -78,7 +78,7 @@ KmerId shasta::getOrientedReadMarkerKmerId(
     uint32_t ordinal,
     uint64_t k,
     const Reads& reads,
-    const MemoryMapped::VectorOfVectors<CompressedMarker, uint64_t>& markers
+    const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers
     )
 {
     const Kmer kmer = getOrientedReadMarkerKmer(orientedReadId, ordinal, k, reads, markers);

@@ -38,7 +38,7 @@ namespace shasta {
         using AnchorId = uint64_t;
     }
 
-    class CompressedMarker;
+    class Marker;
     class Reads;
 
     namespace MemoryMapped {
@@ -125,7 +125,7 @@ public:
     LocalAssembly(
         uint64_t k,
         const Reads&,
-        const MemoryMapped::VectorOfVectors<CompressedMarker, uint64_t>& markers,
+        const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers,
         const Anchors& anchors,
         AnchorId anchorIdA,
         AnchorId anchorIdB,
@@ -150,7 +150,7 @@ private:
     uint64_t k;
     uint64_t kHalf;
     const Reads& reads;
-    const MemoryMapped::VectorOfVectors<CompressedMarker, uint64_t>& markers;
+    const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers;
     const Anchors& anchors;
     AnchorId anchorIdA;
     AnchorId anchorIdB;

@@ -18,13 +18,13 @@ is also a marker.
 
 namespace shasta {
 
-    class CompressedMarker;
+    class Marker;
 }
 
 
 
-// Markers in shared memory are stored using class CompressedMarker.
-class shasta::CompressedMarker {
+// Markers in shared memory are stored using class Marker.
+class shasta::Marker {
 public:
 
     // The position of this marker in the oriented read.

@@ -22,7 +22,7 @@ Anchors::Anchors(
     const MappedMemoryOwner& mappedMemoryOwner,
     const Reads& reads,
     uint64_t k,
-    const MemoryMapped::VectorOfVectors<CompressedMarker, uint64_t>& markers) :
+    const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers) :
     MultithreadedObject<Anchors>(*this),
     MappedMemoryOwner(mappedMemoryOwner),
     reads(reads),
@@ -75,8 +75,8 @@ vector<Base> Anchors::anchorExtendedSequence(AnchorId anchorId) const
     // Access the markers of this OrientedReadId.
     const auto orientedReadMarkers = markers[orientedReadId.getValue()];
 
-    const CompressedMarker& marker0 = orientedReadMarkers[ordinal0];
-    const CompressedMarker& marker1 = orientedReadMarkers[ordinal1];
+    const Marker& marker0 = orientedReadMarkers[ordinal0];
+    const Marker& marker1 = orientedReadMarkers[ordinal1];
 
     const uint32_t begin = marker0.position;
     const uint32_t end = marker1.position + uint32_t(k);
@@ -1037,7 +1037,7 @@ void Anchors::writeAnchorGapsByRead() const
                 for(const AnchorMarkerInterval& markerInterval: anchor) {
                     if(markerInterval.orientedReadId == orientedReadId) {
                         const uint32_t ordinal = markerInterval.ordinal0;
-                        const CompressedMarker& marker = orientedReadMarkers[ordinal];
+                        const Marker& marker = orientedReadMarkers[ordinal];
                         position = marker.position;
                         break;
                     }

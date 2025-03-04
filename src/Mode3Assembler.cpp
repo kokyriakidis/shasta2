@@ -23,7 +23,7 @@ Mode3Assembler::Mode3Assembler(
     const MappedMemoryOwner& mappedMemoryOwner,
     uint64_t k,
     const Reads& reads,
-    const MemoryMapped::VectorOfVectors<CompressedMarker, uint64_t>& markers,
+    const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers,
     shared_ptr<mode3::Anchors> anchorsPointer,
     uint64_t /* threadCount */,
     const Mode3AssemblyOptions& options,
@@ -49,7 +49,7 @@ Mode3Assembler::Mode3Assembler(
     const MappedMemoryOwner& mappedMemoryOwner,
     uint64_t k,
     const Reads& reads,
-    const MemoryMapped::VectorOfVectors<CompressedMarker, uint64_t>& markers,
+    const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers,
     shared_ptr<mode3::Anchors> anchorsPointer,
     const Mode3AssemblyOptions& options) :
     MultithreadedObject<Mode3Assembler>(*this),

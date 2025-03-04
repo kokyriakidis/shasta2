@@ -41,7 +41,7 @@ public:
         const MappedMemoryOwner&,
         uint64_t k,
         const Reads&,
-        const MemoryMapped::VectorOfVectors<CompressedMarker, uint64_t>& markers,
+        const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers,
         shared_ptr<mode3::Anchors>,
         uint64_t threadCount,
         const Mode3AssemblyOptions&,
@@ -52,14 +52,14 @@ public:
         const MappedMemoryOwner&,
         uint64_t k,
         const Reads&,
-        const MemoryMapped::VectorOfVectors<CompressedMarker, uint64_t>& markers,
+        const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers,
         shared_ptr<mode3::Anchors>,
         const Mode3AssemblyOptions&);
 
 private:
     uint64_t k;
     const Reads& reads;
-    const MemoryMapped::VectorOfVectors<CompressedMarker, uint64_t>& markers;
+    const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers;
     bool debug;
 
     // The main input to Mode3Assembler is a set of anchors.

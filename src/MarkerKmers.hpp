@@ -19,7 +19,7 @@
 namespace shasta {
     class MarkerKmers;
 
-    class CompressedMarker;
+    class Marker;
     class Reads;
 }
 
@@ -34,14 +34,14 @@ public:
         uint64_t k,
         const MappedMemoryOwner&,
         const Reads&,
-        const MemoryMapped::VectorOfVectors<CompressedMarker, uint64_t>& markers,
+        const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers,
         uint64_t threadCount);
 
     MarkerKmers(
         uint64_t k,
         const MappedMemoryOwner&,
         const Reads&,
-        const MemoryMapped::VectorOfVectors<CompressedMarker, uint64_t>& markers);
+        const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers);
 
     bool isOpen() const
     {
@@ -86,7 +86,7 @@ private:
     // Constructor arguments.
     uint64_t k;
     const Reads& reads;
-    const MemoryMapped::VectorOfVectors<CompressedMarker, uint64_t>& markers;
+    const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers;
 
     // Get the Kmer corresponding to a given MarkerInfo.
     Kmer getKmer(const MarkerInfo&) const;

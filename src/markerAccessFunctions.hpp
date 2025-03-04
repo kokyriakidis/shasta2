@@ -5,7 +5,7 @@
 
 namespace shasta {
 
-    class CompressedMarker;
+    class Marker;
     class Reads;
     namespace MemoryMapped {
         template<class T, class Int> class VectorOfVectors;
@@ -20,7 +20,7 @@ namespace shasta {
         uint32_t ordinal,
         uint64_t k,
         const Reads&,
-        const MemoryMapped::VectorOfVectors<CompressedMarker, uint64_t>& markers
+        const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers
         );
 
     Kmer getOrientedReadMarkerKmerStrand0(
@@ -28,7 +28,7 @@ namespace shasta {
         uint32_t ordinal,
         uint64_t k,
         const Reads&,
-        const MemoryMapped::VectorOfVectors<CompressedMarker, uint64_t>& markers
+        const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers
         );
 
     Kmer getOrientedReadMarkerKmerStrand1(
@@ -36,7 +36,7 @@ namespace shasta {
         uint32_t ordinal,
         uint64_t k,
         const Reads&,
-        const MemoryMapped::VectorOfVectors<CompressedMarker, uint64_t>& markers
+        const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers
         );
 
     // Get the marker KmerId for an oriented read and ordinal.
@@ -45,7 +45,7 @@ namespace shasta {
         uint32_t ordinal,
         uint64_t k,
         const Reads&,
-        const MemoryMapped::VectorOfVectors<CompressedMarker, uint64_t>& markers
+        const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers
         );
 
 }

@@ -118,7 +118,7 @@ public:
 
 
     // The markers on all oriented reads. Indexed by OrientedReadId::getValue().
-    MemoryMapped::VectorOfVectors<CompressedMarker, uint64_t> markers;
+    MemoryMapped::VectorOfVectors<Marker, uint64_t> markers;
     void checkMarkersAreOpen() const;
 
     void findMarkers(size_t threadCount);
