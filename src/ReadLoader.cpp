@@ -118,7 +118,6 @@ void ReadLoader::processFastaFileThreadFunction(size_t threadId)
     // reads it finds.
     allocatePerThreadDataStructures(threadId);
     MemoryMapped::VectorOfVectors<char, uint64_t>& thisThreadReadNames = *threadReadNames[threadId];
-    MemoryMapped::VectorOfVectors<char, uint64_t>& thisThreadReadMetaData = *threadReadMetaData[threadId];
     LongBaseSequences& thisThreadReads = *threadReads[threadId];
 
 
@@ -150,7 +149,6 @@ void ReadLoader::processFastaFileThreadFunction(size_t threadId)
 
     // Main loop over the reads in the file block allocated to this thread.
     string readName;
-    string readMetaData;
     vector<Base> read;
     vector<Base> runLengthRead;
     vector<uint8_t> readRepeatCount;
@@ -176,7 +174,6 @@ void ReadLoader::processFastaFileThreadFunction(size_t threadId)
         }
 
         // Read the meta data.
-        readMetaData.clear();
         while(true) {
             if(offset == bufferSize) {
                 throw runtime_error("Reached end of file while processing header line for read "
@@ -187,11 +184,6 @@ void ReadLoader::processFastaFileThreadFunction(size_t threadId)
                 break;
             }
             ++offset;
-            if(isspace(c) and readMetaData.empty()) {
-                // Do nothing. Only start storing after encountering the first non-space.
-            } else {
-                readMetaData.push_back(c);
-            }
         }
 
         // Consume the line end at the end of the header line.
@@ -240,7 +232,6 @@ void ReadLoader::processFastaFileThreadFunction(size_t threadId)
 
         // Store the read bases.
         thisThreadReadNames.appendVector(readName.begin(), readName.end());
-        thisThreadReadMetaData.appendVector(readMetaData.begin(), readMetaData.end());
         thisThreadReads.append(read);
     }
 
@@ -328,7 +319,6 @@ void ReadLoader::processFastqFileThreadFunction(size_t threadId)
     // reads it finds.
     allocatePerThreadDataStructures(threadId);
     MemoryMapped::VectorOfVectors<char, uint64_t>& thisThreadReadNames = *threadReadNames[threadId];
-    MemoryMapped::VectorOfVectors<char, uint64_t>& thisThreadReadMetaData = *threadReadMetaData[threadId];
     LongBaseSequences& thisThreadReads = *threadReads[threadId];
 
     // Find the total number of reads in the file.
@@ -346,7 +336,6 @@ void ReadLoader::processFastqFileThreadFunction(size_t threadId)
 
     // Loop over this range of reads.
     string readName;
-    string readMetaData;
     vector<Base> read;
     vector<Base> runLengthRead;
     vector<uint8_t> readRepeatCount;
@@ -404,19 +393,6 @@ void ReadLoader::processFastqFileThreadFunction(size_t threadId)
                 to_string(headerBegin - fileBegin) + ".");
         }
 
-        // Extract the read meta data. It starts at the first non-space character
-        // following the read name.
-        readMetaData.clear();
-        for (auto it = nameBegin + readName.size(); it != headerEnd; ++it) {
-            const char c = *it;
-            if (isspace(c) and readMetaData.empty()) {
-                // Do nothing. Only start storing at the first non-space character.
-            } else {
-                readMetaData.push_back(c);
-            }
-        }
-
-
         // Check the line containing the plus.
         // It can contain arbitrary characters after the plus.
         // We already checked above that it is at least 1 character long.
@@ -456,7 +432,6 @@ void ReadLoader::processFastqFileThreadFunction(size_t threadId)
 
         // Store the read.
         thisThreadReadNames.appendVector(readName.begin(), readName.end());
-        thisThreadReadMetaData.appendVector(readMetaData.begin(), readMetaData.end());
         thisThreadReads.append(read);
     }
 }
@@ -614,7 +589,6 @@ string ReadLoader::threadDataName(
 void ReadLoader::allocatePerThreadDataStructures()
 {
     threadReadNames.resize(threadCount);
-    threadReadMetaData.resize(threadCount);
     threadReads.resize(threadCount);
 }
 
@@ -624,9 +598,6 @@ void ReadLoader::allocatePerThreadDataStructures(size_t threadId)
     threadReadNames[threadId] = make_unique< MemoryMapped::VectorOfVectors<char, uint64_t> >();
     threadReadNames[threadId]->createNew(
         threadDataName(threadId, "ReadNames"), pageSize);
-    threadReadMetaData[threadId] = make_unique< MemoryMapped::VectorOfVectors<char, uint64_t> >();
-    threadReadMetaData[threadId]->createNew(
-        threadDataName(threadId, "ReadMetaData"), pageSize);
     threadReads[threadId] = make_unique<LongBaseSequences>();
     threadReads[threadId]->createNew(
         threadDataName(threadId, "Reads"), pageSize);
@@ -645,37 +616,29 @@ void ReadLoader::storeReads()
         MemoryMapped::VectorOfVectors<char, uint64_t>& thisThreadReadNames =
             *(threadReadNames[threadId]);
 
-        // Access the meta data.
-        MemoryMapped::VectorOfVectors<char, uint64_t>& thisThreadReadMetaData =
-            *(threadReadMetaData[threadId]);
 
         // Access the reads.
         LongBaseSequences& thisThreadReads = *(threadReads[threadId]);
         const size_t n = thisThreadReadNames.size();
         SHASTA_ASSERT(thisThreadReads.size() == n);
-        SHASTA_ASSERT(thisThreadReadMetaData.size() == n);
 
         // Store the reads.
         for(size_t i=0; i<n; i++) {
             reads.readNames.appendVector(thisThreadReadNames.begin(i), thisThreadReadNames.end(i));
-            reads.readMetaData.appendVector(thisThreadReadMetaData.begin(i), thisThreadReadMetaData.end(i));
             reads.reads.append(thisThreadReads[i]);
         }
 
         // Remove the data structures used by this thread.
         thisThreadReadNames.remove();
-        thisThreadReadMetaData.remove();
         thisThreadReads.remove();
     }
 
     // Clear the per-thread data structures.
     threadReadNames.clear();
-    threadReadMetaData.clear();
     threadReads.clear();
 
     // Free up unused allocated memory.
     reads.readNames.unreserve();
-    reads.readMetaData.unreserve();
     reads.reads.unreserve();
 
 }

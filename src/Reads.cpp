@@ -12,25 +12,21 @@ using namespace shasta;
 void Reads::createNew(
     const string& readsDataName,
     const string& readNamesDataName,
-    const string& readMetaDataDataName,
     const string& readIdsSortedByNameDataName,
     uint64_t largeDataPageSize)
 {
     reads.createNew(readsDataName, largeDataPageSize);
     readNames.createNew(readNamesDataName, largeDataPageSize);
-    readMetaData.createNew(readMetaDataDataName, largeDataPageSize);
     readIdsSortedByName.createNew(readIdsSortedByNameDataName, largeDataPageSize);
 }
 
 void Reads::access(
     const string& readsDataName,
     const string& readNamesDataName,
-    const string& readMetaDataDataName,
     const string& readIdsSortedByNameDataName)
 {
     reads.accessExistingReadWrite(readsDataName);
     readNames.accessExistingReadWrite(readNamesDataName);
-    readMetaData.accessExistingReadWrite(readMetaDataDataName);
     readIdsSortedByName.accessExistingReadWrite(readIdsSortedByNameDataName);
 }
 
@@ -39,7 +35,7 @@ void Reads::access(
 void Reads::remove() {
     reads.remove();
     readNames.remove();
-    readMetaData.remove();
+    readIdsSortedByName.remove();
 }
 
 
@@ -81,79 +77,6 @@ vector<Base> Reads::getOrientedReadSequence(OrientedReadId orientedReadId) const
 uint64_t Reads::getReadSequenceLength(ReadId readId) const
 {
     return reads[readId].baseCount;
-}
-
-
-
-// Function to write one or all reads in Fasta format.
-void Reads::writeReads(const string& fileName)
-{
-    ofstream file(fileName);
-    for(ReadId readId=0; readId<reads.size(); readId++) {
-        writeRead(readId, file);
-    }
-}
-
-
-void Reads::writeRead(ReadId readId, const string& fileName)
-{
-    ofstream file(fileName);
-    writeRead(readId, file);
-}
-
-
-void Reads::writeRead(ReadId readId, ostream& file)
-{
-    checkReadsAreOpen();
-    checkReadNamesAreOpen();
-    checkReadId(readId);
-
-    const vector<Base> rawSequence = getOrientedReadSequence(OrientedReadId(readId, 0));
-    const auto readName = readNames[readId];
-    const auto metaData = readMetaData[readId];
-
-    file << ">";
-    copy(readName.begin(), readName.end(), ostream_iterator<char>(file));
-    file << " " << readId;
-    file << " " << rawSequence.size();
-    if(metaData.size() > 0) {
-        file << " ";
-        copy(metaData.begin(), metaData.end(), ostream_iterator<char>(file));
-    }
-    file << "\n";
-    copy(rawSequence.begin(), rawSequence.end(), ostream_iterator<Base>(file));
-    file << "\n";
-
-}
-
-
-void Reads::writeOrientedRead(ReadId readId, Strand strand, const string& fileName)
-{
-    writeOrientedRead(OrientedReadId(readId, strand), fileName);
-}
-
-
-void Reads::writeOrientedRead(OrientedReadId orientedReadId, const string& fileName)
-{
-    ofstream file(fileName);
-    writeOrientedRead(orientedReadId, file);
-}
-
-
-void Reads::writeOrientedRead(OrientedReadId orientedReadId, ostream& file)
-{
-    checkReadsAreOpen();
-    checkReadNamesAreOpen();
-
-    const vector<Base> rawSequence = getOrientedReadSequence(orientedReadId);
-    const auto readName = readNames[orientedReadId.getReadId()];
-
-    file << ">" << orientedReadId;
-    file << " " << rawSequence.size() << " ";
-    copy(readName.begin(), readName.end(), ostream_iterator<char>(file));
-    file << "\n";
-    copy(rawSequence.begin(), rawSequence.end(), ostream_iterator<Base>(file));
-    file << "\n";
 }
 
 

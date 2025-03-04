@@ -112,7 +112,6 @@ void Assembler::exploreReadRaw(
     // Access the read information we need.
     const OrientedReadId orientedReadId(readId, strand);
     const auto readName = reads->getReadName(readId);
-    const auto metaData = reads->getReadMetaData(readId);
     const span<const CompressedMarker> orientedReadMarkers = markers[orientedReadId.getValue()];
 
     // Adjust the position range, if necessary.
@@ -149,9 +148,6 @@ void Assembler::exploreReadRaw(
 
     html << "<tr><th class=left>Read name<td>";
     copy(readName.begin(), readName.end(), ostream_iterator<char>(html));
-
-    html << "<tr><th class=left>Read meta data<td>";
-    copy(metaData.begin(), metaData.end(), ostream_iterator<char>(html));
 
     html << "<tr><th class=left>Length<td>" << getReads().getReadSequenceLength(readId);
 
@@ -353,7 +349,6 @@ void Assembler::exploreReadSequence(const vector<string>& request, ostream& html
     // Access the read information we need.
     const OrientedReadId orientedReadId(readId, strand);
     const auto readName = reads->getReadName(readId);
-    const auto metaData = reads->getReadMetaData(readId);
     const span<const CompressedMarker> orientedReadMarkers = markers[orientedReadId.getValue()];
 
     // Adjust the position range, if necessary.
@@ -391,9 +386,6 @@ void Assembler::exploreReadSequence(const vector<string>& request, ostream& html
     html << "<tr><th class=left>Read name<td>";
     copy(readName.begin(), readName.end(), ostream_iterator<char>(html));
 
-    html << "<tr><th class=left>Read meta data<td>";
-    copy(metaData.begin(), metaData.end(), ostream_iterator<char>(html));
-
     html << "<tr><th class=left>Length<td>" << getReads().getReadSequenceLength(readId);
 
     html << "<tr><th class=left>Length displayed<td>" << endPosition - beginPosition;
@@ -402,7 +394,6 @@ void Assembler::exploreReadSequence(const vector<string>& request, ostream& html
 
 
     // Position scale labels.
-    html << "<p>For precise alignment of the following section, use Firefox to display this page.\n";
     html << "<p><div style='font-family:Courier New;font-size:10pt;margin:0'>";
     for(size_t position=beginPosition; position<endPosition; ) {
         if((position%10)==0) {

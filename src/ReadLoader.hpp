@@ -75,7 +75,6 @@ private:
     // Vectors where each thread stores the reads it found.
     // Indexed by threadId.
     vector< unique_ptr<MemoryMapped::VectorOfVectors<char, uint64_t> > > threadReadNames;
-    vector< unique_ptr<MemoryMapped::VectorOfVectors<char, uint64_t> > > threadReadMetaData;
     vector< unique_ptr<LongBaseSequences> > threadReads;
     void allocatePerThreadDataStructures();
     void allocatePerThreadDataStructures(size_t threadId);

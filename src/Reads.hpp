@@ -26,7 +26,6 @@ public:
     void createNew(
         const string& readsDataName,
         const string& readNamesDataName,
-        const string& readMetaDataDataName,
         const string& readIdsSortedByNameDataName,
         uint64_t largeDataPageSize
     );
@@ -34,7 +33,6 @@ public:
     void access(
         const string& readsDataName,
         const string& readNamesDataName,
-        const string& readMetaDataDataName,
         const string& readIdsSortedByNameDataName
     );
 
@@ -55,10 +53,6 @@ public:
     ReadId getReadId(const string& readName) const;
     ReadId getReadId(const span<const char>& readName) const;
 
-    inline span<const char> getReadMetaData(ReadId readId) const {
-        return readMetaData[readId];
-    }
-    
     Base getOrientedReadBase(
         OrientedReadId orientedReadId,
         uint32_t position
@@ -76,33 +70,15 @@ public:
     // without embedded spaces in each Key=Value pair.
     span<const char> getMetaData(ReadId, const string& key) const;
 
-
-    // Function to write one or all reads in Fasta format.
-    void writeReads(const string& fileName);
-    void writeRead(ReadId, const string& fileName);
-    void writeOrientedRead(ReadId, Strand, const string& fileName);
-
-    void writeRead(ReadId, ostream&);
-    void writeOrientedRead(OrientedReadId, ostream&);
-    void writeOrientedRead(OrientedReadId, const string& fileName);
-
-
     // Assertions for data integrity.
     inline void checkSanity() const {
         SHASTA_ASSERT(readNames.size() == reads.size());
-        SHASTA_ASSERT(readMetaData.size() == reads.size());
     }
-
     inline void checkReadsAreOpen() const {
         SHASTA_ASSERT(reads.isOpen());
     }
-
     inline void checkReadNamesAreOpen() const {
         SHASTA_ASSERT(readNames.isOpen());
-    }
-
-    inline void checkReadMetaDataAreOpen() const {
-        SHASTA_ASSERT(readMetaData.isOpen());
     }
 
     inline void checkReadId(ReadId readId) const {
@@ -139,11 +115,6 @@ private:
     // These names are only used as an aid in tracing each read
     // back to its origin.
     MemoryMapped::VectorOfVectors<char, uint64_t> readNames;
-
-    // Read meta data. This is the information following the read name
-    // in the header line for fasta and fastq files.
-    // Indexed by ReadId.
-    MemoryMapped::VectorOfVectors<char, uint64_t> readMetaData;
 
     // The read ids, sorted by name.
     // This is used to find the read id corresponding to a name.

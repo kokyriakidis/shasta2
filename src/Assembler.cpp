@@ -29,7 +29,6 @@ Assembler::Assembler(
         reads->createNew(
             largeDataName("Reads"),
             largeDataName("ReadNames"),
-            largeDataName("ReadMetaData"),
             largeDataName("ReadIdsSortedByName"),
             largeDataPageSize
         );
@@ -45,10 +44,8 @@ Assembler::Assembler(
         reads->access(
             largeDataName("Reads"),
             largeDataName("ReadNames"),
-            largeDataName("ReadMetaData"),
             largeDataName("ReadIdsSortedByName")
         );
-        // cout << "Accessed an existing assembly with page size " << largeDataPageSize << endl;
 
     }
     SHASTA_ASSERT(largeDataPageSize == assemblerInfo->largeDataPageSize);

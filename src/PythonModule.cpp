@@ -12,7 +12,6 @@
 #include "mappedCopy.hpp"
 #include "MultithreadedObject.hpp"
 #include "performanceLog.hpp"
-#include "Reads.hpp"
 #include "ShortBaseSequence.hpp"
 #include "splitRange.hpp"
 #include "testSpoa.hpp"
@@ -30,46 +29,6 @@ using namespace pybind11;
 PYBIND11_MODULE(shasta, shastaModule)
 {
 
-    // Expose class Reads to Python
-    class_<Reads>(shastaModule, "Reads")
-        .def("readCount", &Reads::readCount, "Get the number of reads.")
-        .def("writeReads",
-            &Reads::writeReads,
-            "Write all reads to a file in fasta format.",
-            arg("fileName"))
-        .def("writeRead",
-            (
-                void (Reads::*)
-                (ReadId, const string&)
-            )
-            &Reads::writeRead,
-            "Write one read to a file in fasta format.",
-            arg("readId"),
-            arg("fileName"))
-        .def("writeOrientedRead",
-            (
-                void (Reads::*)
-                (ReadId, Strand, const string&)
-            )
-            &Reads::writeOrientedRead,
-            "Write one oriented read to a file in fasta format.",
-            arg("readId"),
-            arg("strand"),
-            arg("fileName"))
-        .def("getReadId",
-            (
-                ReadId (Reads::*)
-                (const string&) const
-            )
-            &Reads::getReadId,
-            "Find the ReadId corresponding to a given read name.")
-        ;
-
-
-
-
-
-
     // Expose class Assembler to Python.
     class_<Assembler>(shastaModule, "Assembler")
 
@@ -83,7 +42,6 @@ PYBIND11_MODULE(shasta, shastaModule)
 
 
         // Reads
-        .def("getReads", &Assembler::getReads, return_value_policy::reference)
         .def("histogramReadLength",
             &Assembler::histogramReadLength,
             "Create a histogram of read length and write it to a csv file.",
