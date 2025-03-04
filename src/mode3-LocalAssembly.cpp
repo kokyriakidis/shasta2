@@ -6,7 +6,7 @@
 #include "mode3-Anchor.hpp"
 #include "orderPairs.hpp"
 #include "performanceLog.hpp"
-#include "platformDependent.hpp"
+#include "tmpDirectory.hpp"
 #include "runCommandWithTimeout.hpp"
 #include "Reads.hpp"
 #include "timestamp.hpp"

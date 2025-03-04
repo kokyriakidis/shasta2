@@ -9,7 +9,6 @@
 #include "Reads.hpp"
 #include "Tee.hpp"
 #include "timestamp.hpp"
-#include "platformDependent.hpp"
 
 // Standard library.
 #include <filesystem>

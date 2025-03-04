@@ -1,9 +1,8 @@
 #include "runCommandWithTimeout.hpp"
-#include "platformDependent.hpp"
 #include "SHASTA_ASSERT.hpp"
 using namespace shasta;
 
-#include <cstdlib>
+// #include <cstdlib>
 
 
 
@@ -40,8 +39,7 @@ void shasta::runCommandWithTimeout(
     }
 
     // Run the command using the timeout command.
-    const string commandWithTimeout =
-        timeoutCommand() + " " + to_string(timeout) + " " + command;
+    const string commandWithTimeout = "timeout " + to_string(timeout) + " " + command;
     const int commandStatus = std::system(commandWithTimeout.c_str());
 
 

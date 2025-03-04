@@ -1,7 +1,4 @@
-#ifndef SHASTA_COMPUTE_SFDP_LAYOUT
-#define SHASTA_COMPUTE_SFDP_LAYOUT
-
-
+#pragma once
 
 /******************************************************************************
 This file contains two functions that can be used to compute the layout
@@ -34,7 +31,7 @@ v x y
 
 
 // Shasta.
-#include "platformDependent.hpp"
+#include "tmpDirectory.hpp"
 #include "runCommandWithTimeout.hpp"
 #include "SHASTA_ASSERT.hpp"
 
@@ -293,6 +290,4 @@ template<class Graph> shasta::ComputeLayoutReturnCode shasta::computeLayoutCusto
 
     return ComputeLayoutReturnCode::Success;
 }
-
-#endif
 

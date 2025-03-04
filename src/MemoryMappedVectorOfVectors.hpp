@@ -268,13 +268,6 @@ public:
         }
     }
 
-    // Touch the memory in order to cause the
-    // supporting pages of virtual memory to be loaded in real memory.
-    size_t touchMemory() const
-    {
-        return toc.touchMemory() + data.touchMemory();
-    }
-
     bool isOpen() const
     {
         return toc.isOpen && data.isOpen;

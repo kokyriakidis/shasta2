@@ -5,7 +5,6 @@
 
 // Shasta.
 #include "array.hpp"
-#include "touchMemory.hpp"
 #include "SHASTA_ASSERT.hpp"
 
 // Standard libraries.
@@ -105,15 +104,6 @@ public:
     {
         resize(0);
     }
-
-    // Touch a range of memory in order to cause the
-    // supporting pages of virtual memory to be loaded in real memory.
-    // The return value can be ignored.
-    size_t touchMemory() const
-    {
-        return shasta::touchMemory(begin(), end());
-    }
-
 
     void reserve();
     void reserve(size_t capacity);

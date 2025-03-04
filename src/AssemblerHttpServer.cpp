@@ -3,7 +3,7 @@
 #include "Assembler.hpp"
 #include "filesystem.hpp"
 #include "MarkerKmers.hpp"
-#include "platformDependent.hpp"
+#include "tmpDirectory.hpp"
 #include "Reads.hpp"
 using namespace shasta;
 

@@ -5,7 +5,6 @@
 
 // Shasta.
 #include "SHASTA_ASSERT.hpp"
-#include "touchMemory.hpp"
 
 // Standard libraries.
 #include "array.hpp"
