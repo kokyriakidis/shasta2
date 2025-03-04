@@ -150,8 +150,6 @@ void ReadLoader::processFastaFileThreadFunction(size_t threadId)
     // Main loop over the reads in the file block allocated to this thread.
     string readName;
     vector<Base> read;
-    vector<Base> runLengthRead;
-    vector<uint8_t> readRepeatCount;
     while(offset < end) {
         SHASTA_ASSERT(fastaReadBeginsHere(offset));
 
@@ -228,6 +226,12 @@ void ReadLoader::processFastaFileThreadFunction(size_t threadId)
         // If the read is too short, skip it.
         if(read.size() < minReadLength) {
             continue;
+        }
+
+        // Check if the read is too long.
+        // If this starts happening, change Marker::position from Uint24 to uint32_t.
+        if(read.size() >= (2 << 24)) {
+            throw runtime_error("Read " + readName + " is too long.");
         }
 
         // Store the read bases.
@@ -337,8 +341,6 @@ void ReadLoader::processFastqFileThreadFunction(size_t threadId)
     // Loop over this range of reads.
     string readName;
     vector<Base> read;
-    vector<Base> runLengthRead;
-    vector<uint8_t> readRepeatCount;
     const auto fileBegin = buffer.begin();
     for(uint64_t i=begin; i!=end; i++) {
 
@@ -428,6 +430,12 @@ void ReadLoader::processFastqFileThreadFunction(size_t threadId)
         // If the read is too short, skip it.
         if (read.size() < minReadLength) {
             continue;
+        }
+
+        // Check if the read is too long.
+        // If this starts happening, change Marker::position from Uint24 to uint32_t.
+        if(read.size() >= (2 << 24)) {
+            throw runtime_error("Read " + readName + " is too long.");
         }
 
         // Store the read.
