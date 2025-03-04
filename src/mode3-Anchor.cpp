@@ -283,7 +283,7 @@ void Anchors::analyzeAnchorPair(
             ++onlyACheck;
             const OrientedReadId orientedReadId = itA->orientedReadId;
             const auto orientedReadMarkers = markers[orientedReadId.getValue()];
-            const int64_t lengthInBases = int64_t(reads.getReadRawSequenceLength(orientedReadId.getReadId()));
+            const int64_t lengthInBases = int64_t(reads.getReadSequenceLength(orientedReadId.getReadId()));
 
             // Get the positions of edge A in this oriented read.
             const uint32_t ordinalA0 = itA->ordinal0;
@@ -309,7 +309,7 @@ void Anchors::analyzeAnchorPair(
             ++onlyBCheck;
             const OrientedReadId orientedReadId = itB->orientedReadId;
             const auto orientedReadMarkers = markers[orientedReadId.getValue()];
-            const int64_t lengthInBases = int64_t(reads.getReadRawSequenceLength(orientedReadId.getReadId()));
+            const int64_t lengthInBases = int64_t(reads.getReadSequenceLength(orientedReadId.getReadId()));
 
             // Get the positions of edge B in this oriented read.
             const uint32_t ordinalB0 = itB->ordinal0;
@@ -466,7 +466,7 @@ void Anchors::writeHtml(
             // This oriented read only appears in Anchor A.
             const OrientedReadId orientedReadId = itA->orientedReadId;
             const auto orientedReadMarkers = markers[orientedReadId.getValue()];
-            const int64_t lengthInBases = int64_t(reads.getReadRawSequenceLength(orientedReadId.getReadId()));
+            const int64_t lengthInBases = int64_t(reads.getReadSequenceLength(orientedReadId.getReadId()));
 
             // Get the positions of Anchor A in this oriented read.
             const uint32_t ordinalA0 = itA->ordinal0;
@@ -502,7 +502,7 @@ void Anchors::writeHtml(
             // This oriented read only appears in Anchor B.
             const OrientedReadId orientedReadId = itB->orientedReadId;
             const auto orientedReadMarkers = markers[orientedReadId.getValue()];
-            const int64_t lengthInBases = int64_t(reads.getReadRawSequenceLength(orientedReadId.getReadId()));
+            const int64_t lengthInBases = int64_t(reads.getReadSequenceLength(orientedReadId.getReadId()));
 
             // Get the positions of Anchor B in this oriented read.
             const uint32_t ordinalB0 = itB->ordinal0;
@@ -538,7 +538,7 @@ void Anchors::writeHtml(
             // This oriented read appears in both Anchors.
             const OrientedReadId orientedReadId = itA->orientedReadId;
             const auto orientedReadMarkers = markers[orientedReadId.getValue()];
-            const int64_t lengthInBases = int64_t(reads.getReadRawSequenceLength(orientedReadId.getReadId()));
+            const int64_t lengthInBases = int64_t(reads.getReadSequenceLength(orientedReadId.getReadId()));
 
             // Get the positions of Anchor A in this oriented read.
             const uint32_t ordinalA0 = itA->ordinal0;

@@ -446,7 +446,7 @@ void Mode3Assembler::exploreJourney(const vector<string>& request, ostream& html
         beginPosition = 0;
     }
     if(!endPositionIsPresent) {
-        endPosition = uint32_t(reads.getReadRawSequenceLength(readId));
+        endPosition = uint32_t(reads.getReadSequenceLength(readId));
     }
     if(endPosition <= beginPosition) {
         html << "<p>Invalid choice of begin and end position.";

@@ -13,14 +13,12 @@ void Reads::createNew(
     const string& readsDataName,
     const string& readNamesDataName,
     const string& readMetaDataDataName,
-    const string& readFlagsDataName,
     const string& readIdsSortedByNameDataName,
     uint64_t largeDataPageSize)
 {
     reads.createNew(readsDataName, largeDataPageSize);
     readNames.createNew(readNamesDataName, largeDataPageSize);
     readMetaData.createNew(readMetaDataDataName, largeDataPageSize);
-    readFlags.createNew(readFlagsDataName, largeDataPageSize);
     readIdsSortedByName.createNew(readIdsSortedByNameDataName, largeDataPageSize);
 }
 
@@ -28,63 +26,12 @@ void Reads::access(
     const string& readsDataName,
     const string& readNamesDataName,
     const string& readMetaDataDataName,
-    const string& readFlagsDataName,
     const string& readIdsSortedByNameDataName)
 {
     reads.accessExistingReadWrite(readsDataName);
     readNames.accessExistingReadWrite(readNamesDataName);
     readMetaData.accessExistingReadWrite(readMetaDataDataName);
-    readFlags.accessExistingReadWrite(readFlagsDataName);
     readIdsSortedByName.accessExistingReadWrite(readIdsSortedByNameDataName);
-}
-
-
-void Reads::rename() {
-    const string suffix = "_old";
-    const string readsDataName = reads.getName();
-    const string readNamesDataName = readNames.getName();
-    const string readMetaDataDataName = readMetaData.getName();
-    const string readFlagsDataName = readFlags.fileName;
-
-    // No need to rename if anonymous memory mode is used.
-    if (!readsDataName.empty()) {
-        reads.rename(readsDataName + suffix);
-    }
-    if (!readNamesDataName.empty()) {
-        readNames.rename(readNamesDataName + suffix);
-    }
-    if (!readMetaDataDataName.empty()) {
-        readMetaData.rename(readMetaDataDataName + suffix);
-    }
-    if (!readFlagsDataName.empty()) {
-        readFlags.rename(readFlagsDataName + suffix);
-    }
-}
-
-
-void Reads::copyDataForReadsLongerThan(
-    const Reads& rhs,
-    uint64_t newMinReadLength,
-    uint64_t& discardedShortReadCount,
-    uint64_t& discardedShortReadBases
-) {
-    for(ReadId id = 0; id < rhs.readCount(); id++) {
-        const auto len = rhs.getReadRawSequenceLength(id);
-        if (len >= newMinReadLength) {
-            // Copy over stuff.
-            readNames.appendVector(rhs.readNames.begin(id), rhs.readNames.end(id));
-            readMetaData.appendVector(rhs.readMetaData.begin(id), rhs.readMetaData.end(id));
-            reads.append(rhs.reads[id]);
-        } else {
-            discardedShortReadCount++;
-            discardedShortReadBases += len;
-        }
-    }
-
-    reads.unreserve();
-    readNames.unreserve();
-    readMetaData.unreserve();
-    readFlags.reserveAndResize(reads.size());
 }
 
 
@@ -93,7 +40,6 @@ void Reads::remove() {
     reads.remove();
     readNames.remove();
     readMetaData.remove();
-    readFlags.remove();
 }
 
 
@@ -114,34 +60,25 @@ Base Reads::getOrientedReadBase(
 
 
 // Return a vector containing the raw sequence of an oriented read.
-vector<Base> Reads::getOrientedReadRawSequence(OrientedReadId orientedReadId) const
+vector<Base> Reads::getOrientedReadSequence(OrientedReadId orientedReadId) const
 {
     // The sequence we will return;
     vector<Base> sequence;
 
-    // The number of bases stored.
-    const uint32_t storedBaseCount = uint32_t(reads[orientedReadId.getReadId()].baseCount);
+    const uint32_t baseCount = uint32_t(reads[orientedReadId.getReadId()].baseCount);
+    sequence.reserve(baseCount);
 
-    if(representation == 0) {
-
-        // We are storing the raw sequence of the read.
-        for(uint32_t position=0; position<storedBaseCount; position++) {
-            const Base base  = getOrientedReadBase(orientedReadId, position);
-            sequence.push_back(base);
-        }
-
-    } else {
-        SHASTA_ASSERT(0);
+    for(uint32_t position=0; position < baseCount; position++) {
+        const Base base  = getOrientedReadBase(orientedReadId, position);
+        sequence.push_back(base);
     }
-
 
     return sequence;
 }
 
-// Return the length of the raw sequence of a read.
-// If using the run-length representation of reads, this counts each
-// base a number of times equal to its repeat count.
-uint64_t Reads::getReadRawSequenceLength(ReadId readId) const
+
+
+uint64_t Reads::getReadSequenceLength(ReadId readId) const
 {
     return reads[readId].baseCount;
 }
@@ -171,7 +108,7 @@ void Reads::writeRead(ReadId readId, ostream& file)
     checkReadNamesAreOpen();
     checkReadId(readId);
 
-    const vector<Base> rawSequence = getOrientedReadRawSequence(OrientedReadId(readId, 0));
+    const vector<Base> rawSequence = getOrientedReadSequence(OrientedReadId(readId, 0));
     const auto readName = readNames[readId];
     const auto metaData = readMetaData[readId];
 
@@ -208,7 +145,7 @@ void Reads::writeOrientedRead(OrientedReadId orientedReadId, ostream& file)
     checkReadsAreOpen();
     checkReadNamesAreOpen();
 
-    const vector<Base> rawSequence = getOrientedReadRawSequence(orientedReadId);
+    const vector<Base> rawSequence = getOrientedReadSequence(orientedReadId);
     const auto readName = readNames[orientedReadId.getReadId()];
 
     file << ">" << orientedReadId;
@@ -219,10 +156,9 @@ void Reads::writeOrientedRead(OrientedReadId orientedReadId, ostream& file)
     file << "\n";
 }
 
+
+
 // Create a histogram of read lengths.
-// All lengths here are raw sequence lengths
-// (length of the original read), not lengths
-// in run-length representation.
 void Reads::computeReadLengthHistogram() {
     checkReadsAreOpen();
     histogram.clear();
@@ -234,7 +170,7 @@ void Reads::computeReadLengthHistogram() {
     totalBaseCount = 0;
     
     for(ReadId readId=0; readId<totalReadCount; readId++) {
-        const uint64_t length = getReadRawSequenceLength(readId);
+        const uint64_t length = getReadSequenceLength(readId);
         totalBaseCount += length;
         if(histogram.size() <= length) {
             histogram.resize(length+1, 0);

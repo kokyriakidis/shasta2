@@ -1,11 +1,9 @@
-#ifndef SHASTA_READS
-#define SHASTA_READS
+#pragma once
 
 // Shasta
 #include "Base.hpp"
 #include "LongBaseSequence.hpp"
 #include "MemoryMappedObject.hpp"
-#include "ReadFlags.hpp"
 #include "shastaTypes.hpp"
 #include "SHASTA_ASSERT.hpp"
 #include "span.hpp"
@@ -17,7 +15,7 @@ namespace shasta {
 
 
 
-// The reads used for this assembly, iIndexed by ReadId.
+// The reads used for this assembly, indexed by ReadId.
 
 class shasta::Reads {
 public:
@@ -29,7 +27,6 @@ public:
         const string& readsDataName,
         const string& readNamesDataName,
         const string& readMetaDataDataName,
-        const string& readFlagsDataName,
         const string& readIdsSortedByNameDataName,
         uint64_t largeDataPageSize
     );
@@ -38,7 +35,6 @@ public:
         const string& readsDataName,
         const string& readNamesDataName,
         const string& readMetaDataDataName,
-        const string& readFlagsDataName,
         const string& readIdsSortedByNameDataName
     );
 
@@ -62,32 +58,17 @@ public:
     inline span<const char> getReadMetaData(ReadId readId) const {
         return readMetaData[readId];
     }
-
-    inline const ReadFlags& getFlags(ReadId readId) const {
-        return readFlags[readId];
-    }
-    inline const MemoryMapped::Vector<ReadFlags>& getFlags() const {
-        return readFlags;
-    }
-
     
     Base getOrientedReadBase(
         OrientedReadId orientedReadId,
         uint32_t position
     ) const;
 
-    // Return a vector containing the raw sequence of an oriented read.
-    vector<Base> getOrientedReadRawSequence(OrientedReadId) const;
+    // Return a vector containing the sequence of an oriented read.
+    vector<Base> getOrientedReadSequence(OrientedReadId) const;
 
-    // Return the length of the raw sequence of a read.
-    // If using the run-length representation of reads, this counts each
-    // base a number of times equal to its repeat count.
-    uint64_t getReadRawSequenceLength(ReadId) const;
-
-    // Get a vector of the raw read positions
-    // corresponding to each position in the run-length
-    // representation of an oriented read.
-    vector<uint32_t> getRawPositions(OrientedReadId) const;
+    // Return the length of the sequence of a read.
+    uint64_t getReadSequenceLength(ReadId) const;
 
     // Return a meta data field for a read, or an empty string
     // if that field is missing. This treats the meta data
@@ -95,17 +76,6 @@ public:
     // without embedded spaces in each Key=Value pair.
     span<const char> getMetaData(ReadId, const string& key) const;
 
-
-    // Setters for readFlags.
-    inline void setPalindromicFlag(ReadId readId, bool value) {
-        readFlags[readId].isPalindromic = value;
-    }
-    inline void setChimericFlag(ReadId readId, bool value) {
-        readFlags[readId].isChimeric = value;
-    }
-    inline void setStrandFlag(ReadId readId, bool value) {
-        readFlags[readId].strand = value;
-    }
 
     // Function to write one or all reads in Fasta format.
     void writeReads(const string& fileName);
@@ -135,24 +105,12 @@ public:
         SHASTA_ASSERT(readMetaData.isOpen());
     }
 
-    inline void checkReadFlagsAreOpen() const {
-        SHASTA_ASSERT(readFlags.isOpen);
-    }
-
-    inline void checkReadFlagsAreOpenForWriting() const {
-        SHASTA_ASSERT(readFlags.isOpenWithWriteAccess);
-    }
-
     inline void checkReadId(ReadId readId) const {
         if (readId >= reads.size()) {
             throw runtime_error("Read id " + to_string(readId) +
                 " is not valid. Must be between 0 and " + to_string(reads.size()) +
                 " inclusive.");
         }
-    }
-
-    inline void assertReadsAndFlagsOfSameSize() const {
-        SHASTA_ASSERT(reads.size() == readFlags.size());
     }
 
     void computeReadLengthHistogram();
@@ -169,18 +127,8 @@ public:
         return histogram;
     }
 
-    void rename();
-
-    void copyDataForReadsLongerThan(
-        const Reads& rhs,
-        uint64_t newMinReadLength,
-        uint64_t& discardedShortReadCount,
-        uint64_t& discardedShortReadBases
-    );
-
     void remove();
 
-    uint64_t representation; // 0 = raw sequence, 1 = RLE sequence
 private:
     LongBaseSequences reads;
 
@@ -196,10 +144,6 @@ private:
     // in the header line for fasta and fastq files.
     // Indexed by ReadId.
     MemoryMapped::VectorOfVectors<char, uint64_t> readMetaData;
-
-    MemoryMapped::Vector<ReadFlags> readFlags;
-
-
 
     // The read ids, sorted by name.
     // This is used to find the read id corresponding to a name.
@@ -241,4 +185,3 @@ private:
     friend class ReadLoader;
 };
 
-#endif

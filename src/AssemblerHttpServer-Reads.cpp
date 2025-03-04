@@ -120,7 +120,7 @@ void Assembler::exploreReadRaw(
         beginPosition = 0;
     }
     if(!endPositionIsPresent) {
-        endPosition = uint32_t(getReads().getReadRawSequenceLength(readId));
+        endPosition = uint32_t(getReads().getReadSequenceLength(readId));
     } else {
         endPosition++; // To include the base at `endPosition`.
     }
@@ -153,7 +153,7 @@ void Assembler::exploreReadRaw(
     html << "<tr><th class=left>Read meta data<td>";
     copy(metaData.begin(), metaData.end(), ostream_iterator<char>(html));
 
-    html << "<tr><th class=left>Length<td>" << getReads().getReadRawSequenceLength(readId);
+    html << "<tr><th class=left>Length<td>" << getReads().getReadSequenceLength(readId);
 
     html << "<tr><th class=left>Length displayed<td>" << endPosition - beginPosition;
 
@@ -361,7 +361,7 @@ void Assembler::exploreReadSequence(const vector<string>& request, ostream& html
         beginPosition = 0;
     }
     if(!endPositionIsPresent) {
-        endPosition = uint32_t(getReads().getReadRawSequenceLength(readId));
+        endPosition = uint32_t(getReads().getReadSequenceLength(readId));
     } else {
         endPosition++; // To include the base at `endPosition`.
     }
@@ -394,7 +394,7 @@ void Assembler::exploreReadSequence(const vector<string>& request, ostream& html
     html << "<tr><th class=left>Read meta data<td>";
     copy(metaData.begin(), metaData.end(), ostream_iterator<char>(html));
 
-    html << "<tr><th class=left>Length<td>" << getReads().getReadRawSequenceLength(readId);
+    html << "<tr><th class=left>Length<td>" << getReads().getReadSequenceLength(readId);
 
     html << "<tr><th class=left>Length displayed<td>" << endPosition - beginPosition;
 

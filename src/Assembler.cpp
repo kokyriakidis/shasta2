@@ -30,7 +30,6 @@ Assembler::Assembler(
             largeDataName("Reads"),
             largeDataName("ReadNames"),
             largeDataName("ReadMetaData"),
-            largeDataName("ReadFlags"),
             largeDataName("ReadIdsSortedByName"),
             largeDataPageSize
         );
@@ -47,7 +46,6 @@ Assembler::Assembler(
             largeDataName("Reads"),
             largeDataName("ReadNames"),
             largeDataName("ReadMetaData"),
-            largeDataName("ReadFlags"),
             largeDataName("ReadIdsSortedByName")
         );
         // cout << "Accessed an existing assembly with page size " << largeDataPageSize << endl;

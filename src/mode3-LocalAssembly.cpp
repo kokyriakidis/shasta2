@@ -186,7 +186,6 @@ LocalAssembly::LocalAssembly(
 void LocalAssembly::checkAssumptions() const
 {
     SHASTA_ASSERT(anchorIdA != anchorIdB);
-    SHASTA_ASSERT(reads.representation == 0);
 }
 
 

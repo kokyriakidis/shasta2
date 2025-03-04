@@ -678,7 +678,5 @@ void ReadLoader::storeReads()
     reads.readMetaData.unreserve();
     reads.reads.unreserve();
 
-    // Allocate enough space for readFlags which are populated later.
-    reads.readFlags.resize(reads.readCount());
 }
 
