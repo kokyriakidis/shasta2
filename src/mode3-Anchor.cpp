@@ -1,7 +1,7 @@
 #include "mode3-Anchor.hpp"
 #include "deduplicate.hpp"
 #include "html.hpp"
-#include "Marker.hpp"
+#include "Markers.hpp"
 #include "orderPairs.hpp"
 #include "performanceLog.hpp"
 #include "Reads.hpp"

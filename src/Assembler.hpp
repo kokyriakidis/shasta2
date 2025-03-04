@@ -5,7 +5,7 @@
 #include "invalid.hpp"
 #include "Kmer.hpp"
 #include "MappedMemoryOwner.hpp"
-#include "Marker.hpp"
+#include "Markers.hpp"
 #include "MemoryMappedObject.hpp"
 #include "MemoryMappedVectorOfVectors.hpp"
 #include "MultithreadedObject.hpp"

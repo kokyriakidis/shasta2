@@ -1,7 +1,7 @@
 // Shasta.
 #include "mode3-LocalAssembly.hpp"
 #include "globalMsa.hpp"
-#include "Marker.hpp"
+#include "Markers.hpp"
 #include "markerAccessFunctions.hpp"
 #include "mode3-Anchor.hpp"
 #include "orderPairs.hpp"

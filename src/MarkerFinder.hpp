@@ -1,7 +1,7 @@
 #ifndef SHASTA_MARKER_FINDER_HPP
 #define SHASTA_MARKER_FINDER_HPP
 
-#include "Marker.hpp"
+#include "Markers.hpp"
 #include "MultithreadedObject.hpp"
 #include "Reads.hpp"
 

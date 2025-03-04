@@ -2,7 +2,7 @@
 #include "Mode3Assembler.hpp"
 #include "deduplicate.hpp"
 #include "HttpServer.hpp"
-#include "Marker.hpp"
+#include "Markers.hpp"
 #include "mode3-LocalAssembly.hpp"
 #include "mode3-LocalAnchorGraph.hpp"
 #include "Reads.hpp"

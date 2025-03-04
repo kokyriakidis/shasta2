@@ -179,7 +179,7 @@ void Anchors::constructFromMarkerKmersThreadFunction(uint64_t threadId)
 #include "mode3-Anchor.hpp"
 #include "Base.hpp"
 #include "extractKmer.hpp"
-#include "Marker.hpp"
+#include "Markers.hpp"
 #include "markerAccessFunctions.hpp"
 #include "MurmurHash2.hpp"
 #include "orderPairs.hpp"

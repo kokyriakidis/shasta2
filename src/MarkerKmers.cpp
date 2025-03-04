@@ -1,6 +1,6 @@
 #include "MarkerKmers.hpp"
 #include "extractKmer.hpp"
-#include "Marker.hpp"
+#include "Markers.hpp"
 #include "Reads.hpp"
 using namespace shasta;
 
