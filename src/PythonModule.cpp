@@ -39,8 +39,6 @@ PYBIND11_MODULE(shasta, shastaModule)
             arg("createNew") = false,
             arg("largeDataPageSize") = 2*1024*1024)
 
-
-
         // Reads
         .def("histogramReadLength",
             &Assembler::histogramReadLength,
@@ -48,8 +46,6 @@ PYBIND11_MODULE(shasta, shastaModule)
             arg("fileName") = "ReadLengthHistogram.csv")
 
         // K-mers.
-        .def("accessKmers",
-            &Assembler::accessKmers)
         .def("accessKmerChecker",
             &Assembler::accessKmerChecker)
 
@@ -70,11 +66,6 @@ PYBIND11_MODULE(shasta, shastaModule)
             arg("readId"),
             arg("strand"),
             arg("fileName"))
-        .def("computeSortedMarkers",
-            &Assembler::computeSortedMarkers,
-            arg("threadCount") = 0)
-        .def("accessSortedMarkers",
-            &Assembler::accessSortedMarkers)
         .def("createMarkerKmers",
             &Assembler::createMarkerKmers,
             arg("threadCount") = 0)

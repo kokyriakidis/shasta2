@@ -86,26 +86,3 @@ void Assembler::accessKmerChecker()
 {
     kmerChecker = KmerCheckerFactory::createFromBinaryData(*this);
 }
-
-
-
-// Hash a KmerId in such a way that it has the same hash as its reverse
-// complement. This is used by alignment method 3 to downsample markers.
-uint32_t Assembler::hashKmerId(KmerId kmerId) const
-{
-    const uint64_t k = assemblerInfo->k;
-
-    // Construct the k-mer and its reverse complement.
-    const Kmer kmer(kmerId, k);
-    const Kmer kmerRc = kmer.reverseComplement(k);
-
-    // Compute the id of the reverse complement k-mer.
-    const KmerId kmerIdRc = KmerId(kmerRc.id(k));
-
-    // Hash the sum of the two KmerIds.
-    // This guarantees that we return the same hash
-    // for a k-mer and its reverse complement.
-    const KmerId sum = kmerId + kmerIdRc;
-
-    return MurmurHash2(&sum, sizeof(sum), 13477);
-}

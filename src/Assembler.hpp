@@ -1,5 +1,4 @@
-#ifndef SHASTA_ASSEMBLER_HPP
-#define SHASTA_ASSEMBLER_HPP
+#pragma once
 
 // Shasta.
 #include "AssemblerOptions.hpp"
@@ -24,7 +23,6 @@ namespace shasta {
     class Assembler;
     class AssemblerInfo;
     class AssemblerOptions;
-    class Histogram2;
     class KmerChecker;
     class KmersOptions;
     class LongBaseSequences;
@@ -77,73 +75,40 @@ public:
     The constructor also specifies the page size for binary data files.
     Typically, for a large run binary data files will reside in a huge page
     file system backed by 2MB pages.
-    1GB huge pages are also supported.
     The page sizes specified here must be equal to, or be an exact multiple of,
     the actual size of the pages backing the data.
 
     ***************************************************************************/
 
-    // Constructor to be called one to create a new run.
+    // Constructor.
     Assembler(
         const string& largeDataFileNamePrefix,
         bool createNew,
         size_t largeDataPageSize);
 
-    // Add reads.
-    // The reads in the specified file are added to those already previously present.
-    void addReads(
-        const string& fileName,
-        uint64_t minReadLength,
-        size_t threadCount);
-
-    // Create a histogram of read lengths.
-    void histogramReadLength(const string& fileName);
 
 
-    // Functions related to markers.
-    // See the beginning of Marker.hpp for more information.
-    void findMarkers(size_t threadCount);
-    void accessMarkers();
-    void writeMarkers(ReadId, Strand, const string& fileName);
-
-
-
-
-
-
-
-    // Find the vertex of the global marker graph that contains a given marker.
-    // The marker is specified by the ReadId and Strand of the oriented read
-    // it belongs to, plus the ordinal of the marker in the oriented read.
-    MarkerGraphVertexId getGlobalMarkerGraphVertex(
-        ReadId,
-        Strand,
-        uint32_t ordinal) const;
-
-
+    // Various pieces of assembler information stored in shared memory.
+    MemoryMapped::Object<AssemblerInfo> assemblerInfo;
 
 
 
     // Reads.
     shared_ptr<Reads> reads;
-public:
     const Reads& getReads() const {
         SHASTA_ASSERT(reads);
         return *reads;
     }
     void computeReadIdsSortedByName();
-
-private:
-
-
-
-    // Various pieces of assembler information stored in shared memory.
-    // See class AssemblerInfo for more information.
-public:
-    MemoryMapped::Object<AssemblerInfo> assemblerInfo;
+    void addReads(
+        const string& fileName,
+        uint64_t minReadLength,
+        size_t threadCount);
+    void histogramReadLength(const string& fileName);
 
 
-    // The KmerChecker can find out if a given KmerId is a marker.
+
+    // The KmerChecker is used to find out if a given KmerId is a marker.
     shared_ptr<KmerChecker> kmerChecker;
     public:
     void createKmerChecker(
@@ -151,25 +116,10 @@ public:
         uint64_t threadCount);
     void accessKmerChecker();
 
-    // This one should eventually go away, but there are several scripts
-    // that depend on it.
-    void accessKmers()
-    {
-        accessKmerChecker();
-    }
 
-
-private:
-
-
-    // Hash a KmerId in such a way that it has the same hash as its reverse
-    // complement. This is used by alignment method 3 to downsample markers.
-    uint32_t hashKmerId(KmerId) const;
 
     // The markers on all oriented reads. Indexed by OrientedReadId::getValue().
-public:
     MemoryMapped::VectorOfVectors<CompressedMarker, uint64_t> markers;
-private:
     void checkMarkersAreOpen() const;
 
     // Get markers sorted by KmerId for a given OrientedReadId.
@@ -177,11 +127,14 @@ private:
         OrientedReadId,
         vector<MarkerWithOrdinal>&) const;
 
+    void findMarkers(size_t threadCount);
+    void accessMarkers();
+    void writeMarkers(ReadId, Strand, const string& fileName);
+
     // Given a marker by its OrientedReadId and ordinal,
     // return the corresponding global marker id.
-public:
     MarkerId getMarkerId(OrientedReadId, uint32_t ordinal) const;
-private:
+
     MarkerId getReverseComplementMarkerId(OrientedReadId, uint32_t ordinal) const;
     MarkerId getMarkerId(const MarkerDescriptor& m) const
     {
@@ -197,56 +150,7 @@ private:
     // This requires a binary search in the markers toc.
     // This could be avoided, at the cost of storing
     // an additional 4 bytes per marker.
-public:
     pair<OrientedReadId, uint32_t> findMarkerId(MarkerId) const;
-
-
-    // KmerIds for all markers. Indexed by OrientedReadId::getValue().
-    // Only stored during alignment computation, and then freed.
-    MemoryMapped::VectorOfVectors<KmerId, uint64_t> markerKmerIds;
-    void computeMarkerKmerIds(uint64_t threadCount);
-    void cleanupMarkerKmerIds();
-private:
-    void computeMarkerKmerIdsThreadFunction(size_t threadId);
-
-
-    // Pairs (KmerId, ordinal), sorted by KmerId, for each oriented read.
-    // Indexed by orientedReadId.getValue().
-    // Used by alignment method 4.
-public:
-    MemoryMapped::VectorOfVectors< pair<KmerId, uint32_t>, uint64_t> sortedMarkers;
-    void computeSortedMarkers(uint64_t threadCount);
-    bool accessSortedMarkers();
-private:
-    void computeSortedMarkersThreadFunction(size_t threadId);
-    // void computeSortedMarkersThreadFunction1(size_t threadId);
-    // void computeSortedMarkersThreadFunction2(size_t threadId);
-
-
-
-    // Low frequency markers for each oriented read.
-    // This stores, for each oriented read, the ordinals corresponding
-    // to marker with low frequency (up to maxMarkerFrequency), sorted by KmerId.
-    // Used by alignment method 5. It is only stored durign alignment
-    // computation.
-public:
-    MemoryMapped::VectorOfVectors<uint32_t, uint64_t> lowFrequencyMarkers;
-    void computeLowFrequencyMarkers(uint64_t maxMarkerFrequency, uint64_t threadCount);
-    void computeLowFrequencyMarkers(
-        const span<const KmerId>&,  // The marker k-mers for the oriented reads (sorted by ordinal)
-        uint64_t maxMarkerFrequency,
-        vector<uint32_t>&);         // The ordinals of the low frequency markers, sorted by KmerId.
-private:
-    void computeLowFrequencyMarkersThreadFunctionPass1(uint64_t threadId);
-    void computeLowFrequencyMarkersThreadFunctionPass2(uint64_t threadId);
-    void computeLowFrequencyMarkersThreadFunctionPass12(uint64_t pass);
-    class ComputeLowFrequencyMarkersData {
-    public:
-        uint64_t maxMarkerFrequency;
-    };
-    ComputeLowFrequencyMarkersData computeLowFrequencyMarkersData;
-
-
 
     // Low level functions to get marker Kmers/KmerIds of an oriented read.
     // They are obtained from the reads and not from CompressedMarker::kmerId,
@@ -291,11 +195,9 @@ private:
 
     // The MarkerKmers keep track of the locations in the oriented reads
     // where each marker k-mer appears.
-public:
     shared_ptr<MarkerKmers> markerKmers;
     void createMarkerKmers(uint64_t threadCount);
     void accessMarkerKmers();
-private:
 
     // Data and functions used for the http server.
     // This function puts the server into an endless loop
@@ -335,7 +237,6 @@ private:
     void exploreMarkerKmers(const vector<string>&, ostream&);
     static void addScaleSvgButtons(ostream&, uint64_t sizePixels);
 
-public:
     class HttpServerData {
     public:
 
@@ -356,7 +257,6 @@ public:
 
     // Access all available assembly data, without thorwing an exception
     // on failures.
-public:
     void accessAllSoft();
 
 
@@ -375,4 +275,3 @@ public:
 
 };
 
-#endif
