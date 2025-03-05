@@ -24,16 +24,6 @@ void Assembler::accessMode3Assembler()
         assemblerInfo->k, reads(), markers(),
         anchorsPointer, httpServerData.assemblerOptions->assemblyOptions.mode3Options);
 }
-
-
-
-void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
-{
-    mode3Assembler->exploreAnchor(request, html);
-}
-
-
-
 void Assembler::exploreAnchorPair(const vector<string>& request, ostream& html)
 {
     mode3Assembler->exploreAnchorPair(request, html);
