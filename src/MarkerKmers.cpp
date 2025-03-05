@@ -441,7 +441,7 @@ void MarkerKmers::writeFrequencyHistogram() const
         if(frequency) {
             const uint64_t count = coverage * frequency;
             totalCount += count;
-            csv << coverage << "," << frequency << count << ",\n";
+            csv << coverage << "," << frequency << "," << count << ",\n";
         }
     }
     SHASTA_ASSERT(2 * totalCount == markers.totalSize());
