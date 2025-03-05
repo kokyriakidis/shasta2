@@ -188,12 +188,6 @@ void Assembler::writeNavigation(ostream& html) const
 {
     html << "<ul class=navigationMenu>";
 
-    writeNavigation(html, "Assembly information", {
-        {"Summary", "exploreSummary"},
-        });
-
-
-
     // Reads menu.
     writeNavigation(html, "Reads", {
         {"Sequence", "exploreReadSequence"},
