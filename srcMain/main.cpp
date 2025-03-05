@@ -405,29 +405,11 @@ void shasta::main::assemble(
     }
     cout << "Number of threads: " << threadCount << endl;
 
-
-
-
     // Add reads from the specified input files.
-    performanceLog << timestamp << "Begin loading reads from " << inputFileNames.size() << " files." << endl;
-    const auto t0 = steady_clock::now();
-    for(const string& inputFileName: inputFileNames) {
-
-        assembler.addReads(
-            inputFileName,
-            assemblerOptions.readsOptions.minReadLength,
-            threadCount);
-    }
-
-    if(assembler.reads().readCount() == 0) {
-        throw runtime_error("There are no input reads.");
-    }
-    assembler.computeReadIdsSortedByName();
-    assembler.histogramReadLength("ReadLengthHistogram.csv");
-
-    const auto t1 = steady_clock::now();
-    performanceLog << timestamp << "Done loading reads from " << inputFileNames.size() << " files." << endl;
-    performanceLog << "Read loading took " << seconds(t1-t0) << "s." << endl;
+    assembler.addReads(
+        inputFileNames,
+        assemblerOptions.readsOptions.minReadLength,
+        threadCount);
 
     // Initialize the KmerChecker, which has the information needed
     // to decide if a k-mer is a marker.

@@ -95,6 +95,10 @@ public:
     }
     void computeReadIdsSortedByName();
     void addReads(
+        const vector<string>& fileNames,
+        uint64_t minReadLength,
+        size_t threadCount);
+    void addReads(
         const string& fileName,
         uint64_t minReadLength,
         size_t threadCount);

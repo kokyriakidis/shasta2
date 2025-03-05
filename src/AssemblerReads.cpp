@@ -7,8 +7,39 @@ using namespace shasta;
 
 // Standard libraries.
 #include "algorithm.hpp"
+#include "chrono.hpp"
 #include <cmath>
 #include "iterator.hpp"
+
+
+
+void Assembler::addReads(
+    const vector<string>& fileNames,
+    uint64_t minReadLength,
+    size_t threadCount)
+{
+    performanceLog << timestamp << "Begin loading reads from " << fileNames.size() << " files." << endl;
+    const auto t0 = steady_clock::now();
+
+    for(const string& fileName: fileNames) {
+        addReads(
+            fileName,
+            minReadLength,
+            threadCount);
+    }
+
+    if(reads().readCount() == 0) {
+        throw runtime_error("There are no input reads.");
+    }
+    computeReadIdsSortedByName();
+    histogramReadLength("ReadLengthHistogram.csv");
+
+    const auto t1 = steady_clock::now();
+    performanceLog << timestamp << "Done loading reads from " << fileNames.size() << " files." << endl;
+    performanceLog << "Read loading took " << seconds(t1-t0) << "s." << endl;
+
+}
+
 
 
 // Add reads.
