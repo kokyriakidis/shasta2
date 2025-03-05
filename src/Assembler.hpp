@@ -2,13 +2,9 @@
 
 // Shasta.
 #include "HttpServer.hpp"
-#include "invalid.hpp"
-#include "Kmer.hpp"
 #include "MappedMemoryOwner.hpp"
 #include "MemoryMappedObject.hpp"
-#include "MemoryMappedVectorOfVectors.hpp"
 #include "MultithreadedObject.hpp"
-#include "ReadId.hpp"
 #include "shastaTypes.hpp"
 
 // Standard library.
@@ -125,18 +121,6 @@ public:
     void checkMarkersAreOpen() const;
     void createMarkers(size_t threadCount);
     void accessMarkers();
-
-    // Get the marker Kmer for an oriented read and ordinal.
-    Kmer getOrientedReadMarkerKmer(OrientedReadId, uint32_t ordinal) const;
-    Kmer getOrientedReadMarkerKmerStrand0(ReadId, uint32_t ordinal) const;
-    Kmer getOrientedReadMarkerKmerStrand1(ReadId, uint32_t ordinal) const;
-
-    // Get the marker KmerId for an oriented read and ordinal.
-    KmerId getOrientedReadMarkerKmerId(OrientedReadId, uint32_t ordinal) const;
-
-    // Get the Kmer/KmerId for an oriented read at a given marker ordinal.
-    Kmer getOrientedReadMarkerKmer(OrientedReadId, uint64_t ordinal) const;
-    KmerId getOrientedReadMarkerKmerId(OrientedReadId, uint64_t ordinal) const;
 
     // The MarkerKmers keep track of the locations in the oriented reads
     // where each marker k-mer appears.

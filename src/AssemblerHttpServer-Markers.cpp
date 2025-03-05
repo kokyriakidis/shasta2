@@ -96,7 +96,7 @@ void Assembler::exploreReadMarkers(const vector<string>& request, ostream& html)
     const uint64_t k = assemblerInfo->k;
     std::map<Kmer, uint64_t> kmerFrequencyMap;
     for(uint64_t ordinal=0; ordinal<orientedReadMarkers.size(); ordinal++) {
-        const Kmer kmer = getOrientedReadMarkerKmer(orientedReadId, ordinal);
+        const Kmer kmer = markers().getKmer(orientedReadId, uint32_t(ordinal));
         const KmerId kmerId = kmer.id(k);
         const Kmer rcKmer = kmer.reverseComplement(k);
         const KmerId rcKmerId = rcKmer.id(k);
@@ -129,7 +129,7 @@ void Assembler::exploreReadMarkers(const vector<string>& request, ostream& html)
     // Write one row for each marker.
     for(uint64_t ordinal=0; ordinal<orientedReadMarkers.size(); ordinal++) {
         const uint64_t position = orientedReadMarkers[ordinal].position;
-        const Kmer kmer = getOrientedReadMarkerKmer(orientedReadId, ordinal);
+        const Kmer kmer = markers().getKmer(orientedReadId, uint32_t(ordinal));
         const KmerId kmerId = kmer.id(k);
         const Kmer rcKmer = kmer.reverseComplement(k);
         const KmerId rcKmerId = rcKmer.id(k);

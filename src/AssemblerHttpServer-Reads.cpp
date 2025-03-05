@@ -3,6 +3,7 @@
 #include "deduplicate.hpp"
 #include "Markers.hpp"
 #include "orderPairs.hpp"
+#include "ReadId.hpp"
 #include "Reads.hpp"
 using namespace shasta;
 
@@ -243,7 +244,7 @@ void Assembler::exploreReadRaw(
         for(const uint64_t ordinal: markersOnThisRow) {
             const Marker& marker = orientedReadMarkers[ordinal];
             const uint64_t position = marker.position - beginPosition;
-            const Kmer kmer = getOrientedReadMarkerKmer(orientedReadId, ordinal);
+            const Kmer kmer = markers().getKmer(orientedReadId, uint32_t(ordinal));
 
             // Write the required number of spaces.
             SHASTA_ASSERT((position==0) or (position > oldPosition));  // There must be at least a blank.
@@ -480,7 +481,7 @@ void Assembler::exploreReadSequence(const vector<string>& request, ostream& html
         for(const uint64_t ordinal: markersOnThisRow) {
             const Marker& marker = orientedReadMarkers[ordinal];
             const uint64_t position = marker.position - beginPosition;
-            const Kmer kmer = getOrientedReadMarkerKmer(orientedReadId, ordinal);
+            const Kmer kmer = markers().getKmer(orientedReadId, uint32_t(ordinal));
 
             // Write the required number of spaces.
             SHASTA_ASSERT((position==0) or (position > oldPosition));  // There must be at least a blank.
