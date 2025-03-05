@@ -17,8 +17,8 @@ void Assembler::addReads(
     uint64_t minReadLength,
     const size_t threadCount)
 {
-    reads->checkReadsAreOpen();
-    reads->checkReadNamesAreOpen();
+    readsPointer->checkReadsAreOpen();
+    readsPointer->checkReadNamesAreOpen();
 
     ReadLoader readLoader(
         fileName,
@@ -26,10 +26,10 @@ void Assembler::addReads(
         threadCount,
         largeDataFileNamePrefix,
         largeDataPageSize,
-        *reads);
+        *readsPointer);
 
-    reads->checkSanity();
-    reads->computeReadLengthHistogram();
+    readsPointer->checkSanity();
+    readsPointer->computeReadLengthHistogram();
 }
 
 
@@ -39,16 +39,16 @@ void Assembler::addReads(
 // in run-length representation.
 void Assembler::histogramReadLength(const string& fileName)
 {
-    reads->computeReadLengthHistogram();
-    reads->writeReadLengthHistogram(fileName);
+    readsPointer->computeReadLengthHistogram();
+    readsPointer->writeReadLengthHistogram(fileName);
 
 
     cout << "Read statistics for reads that will be used in this assembly:" << endl;
-    cout << "    Total number of reads is " << reads->readCount() << "." << endl;
-    cout << "    Total number of bases is " << reads->getTotalBaseCount() << "." << endl;
-    cout << "    Average read length is " << double(reads->getTotalBaseCount()) / double(reads->readCount());
+    cout << "    Total number of reads is " << readsPointer->readCount() << "." << endl;
+    cout << "    Total number of bases is " << readsPointer->getTotalBaseCount() << "." << endl;
+    cout << "    Average read length is " << double(readsPointer->getTotalBaseCount()) / double(readsPointer->readCount());
     cout << " bases." << endl;
-    cout << "    N50 for read length is " << reads->getN50() << " bases." << endl;
+    cout << "    N50 for read length is " << readsPointer->getN50() << " bases." << endl;
 
 }
 
@@ -56,5 +56,5 @@ void Assembler::histogramReadLength(const string& fileName)
 
 void Assembler::computeReadIdsSortedByName()
 {
-    reads->computeReadIdsSortedByName();
+    readsPointer->computeReadIdsSortedByName();
 }

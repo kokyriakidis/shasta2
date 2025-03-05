@@ -93,10 +93,9 @@ public:
 
 
     // Reads.
-    shared_ptr<Reads> reads;
+    shared_ptr<Reads> readsPointer;
     const Reads& getReads() const {
-        SHASTA_ASSERT(reads);
-        return *reads;
+        return *readsPointer;
     }
     void computeReadIdsSortedByName();
     void addReads(

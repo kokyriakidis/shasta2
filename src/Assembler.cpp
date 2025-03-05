@@ -25,8 +25,8 @@ Assembler::Assembler(
         assemblerInfo->largeDataPageSize = largeDataPageSizeArgument;
         largeDataPageSize = largeDataPageSizeArgument;
 
-        reads = make_unique<Reads>();
-        reads->createNew(
+        readsPointer = make_shared<Reads>();
+        readsPointer->createNew(
             largeDataName("Reads"),
             largeDataName("ReadNames"),
             largeDataName("ReadIdsSortedByName"),
@@ -40,8 +40,8 @@ Assembler::Assembler(
         assemblerInfo.accessExistingReadWrite(largeDataName("Info"));
         largeDataPageSize = assemblerInfo->largeDataPageSize;
 
-        reads = make_unique<Reads>();
-        reads->access(
+        readsPointer = make_shared<Reads>();
+        readsPointer->access(
             largeDataName("Reads"),
             largeDataName("ReadNames"),
             largeDataName("ReadIdsSortedByName")

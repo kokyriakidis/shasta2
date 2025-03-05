@@ -14,14 +14,14 @@ using namespace shasta;
 
 void Assembler::createMarkers(size_t threadCount)
 {
-    reads->checkReadsAreOpen();
+    readsPointer->checkReadsAreOpen();
     SHASTA_ASSERT(kmerChecker);
 
     markersPointer = make_shared<Markers>(
         *this,
         assemblerInfo->k,
         kmerChecker,
-        reads,
+        readsPointer,
         threadCount);
 }
 
@@ -61,7 +61,7 @@ Kmer Assembler::getOrientedReadMarkerKmer(OrientedReadId orientedReadId, uint32_
 Kmer Assembler::getOrientedReadMarkerKmerStrand0(ReadId readId, uint32_t ordinal0) const
 {
     const uint64_t k = assemblerInfo->k;
-    const auto read = reads->getRead(uint32_t(readId));
+    const auto read = readsPointer->getRead(uint32_t(readId));
     const OrientedReadId orientedReadId0(readId, 0);
     const auto orientedReadMarkers0 = markers()[orientedReadId0.getValue()];
 
@@ -78,7 +78,7 @@ Kmer Assembler::getOrientedReadMarkerKmerStrand1(ReadId readId, uint32_t ordinal
     const uint64_t k = assemblerInfo->k;
 
     // We only have the read stored without reverse complement, so get it from there...
-    const auto read = reads->getRead(uint32_t(readId));
+    const auto read = readsPointer->getRead(uint32_t(readId));
     const OrientedReadId orientedReadId0(readId, 0);
     const auto orientedReadMarkers0 = markers()[orientedReadId0.getValue()];
     const uint64_t readMarkerCount = orientedReadMarkers0.size();
@@ -108,7 +108,7 @@ Kmer Assembler::getOrientedReadMarkerKmer(OrientedReadId orientedReadId, uint64_
 
     const ReadId readId = orientedReadId.getReadId();
     const Strand strand = orientedReadId.getStrand();
-    const auto read = reads->getRead(readId);
+    const auto read = readsPointer->getRead(readId);
     const OrientedReadId orientedReadId0(uint32_t(readId), 0);
     const auto orientedReadMarkers0 = markers()[orientedReadId0.getValue()];
 
@@ -138,7 +138,7 @@ KmerId Assembler::getOrientedReadMarkerKmerId(OrientedReadId orientedReadId, uin
 
     const ReadId readId = orientedReadId.getReadId();
     const Strand strand = orientedReadId.getStrand();
-    const auto read = reads->getRead(readId);
+    const auto read = readsPointer->getRead(readId);
     const OrientedReadId orientedReadId0(uint32_t(readId), 0);
     const auto orientedReadMarkers0 = markers()[orientedReadId0.getValue()];
 

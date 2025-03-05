@@ -35,7 +35,7 @@ void Assembler::exploreReadRaw(
         "<th class=left>Numeric read id"
         "<td><input type=text name=readId" <<
         (readIdIsPresent ? (" value=" + to_string(readId)) : "") <<
-        " title='Enter a read id between 0 and " << reads->readCount()-1 << "'>"
+        " title='Enter a read id between 0 and " << readsPointer->readCount()-1 << "'>"
 
         "<tr>"
         "<th class=left>Read name"
@@ -100,7 +100,7 @@ void Assembler::exploreReadRaw(
     }
 
     // Sanity checks.
-    if(readId >= reads->readCount()) {
+    if(readId >= readsPointer->readCount()) {
         html << "<p>Invalid read id.";
         return;
     }
@@ -112,7 +112,7 @@ void Assembler::exploreReadRaw(
 
     // Access the read information we need.
     const OrientedReadId orientedReadId(readId, strand);
-    const auto readName = reads->getReadName(readId);
+    const auto readName = readsPointer->getReadName(readId);
     const span<const Marker> orientedReadMarkers = markers()[orientedReadId.getValue()];
 
     // Adjust the position range, if necessary.
@@ -293,7 +293,7 @@ void Assembler::exploreReadSequence(const vector<string>& request, ostream& html
         "<th class=left>Numeric read id"
         "<td><input type=text name=readId" <<
         (readIdIsPresent ? (" value=" + to_string(readId)) : "") <<
-        " title='Enter a read id between 0 and " << reads->readCount()-1 << "'>"
+        " title='Enter a read id between 0 and " << readsPointer->readCount()-1 << "'>"
 
         "<tr>"
         "<th class=left>Strand"
@@ -337,7 +337,7 @@ void Assembler::exploreReadSequence(const vector<string>& request, ostream& html
     }
 
     // Sanity checks.
-    if(readId >= reads->readCount()) {
+    if(readId >= readsPointer->readCount()) {
         html << "<p>Invalid read id.";
         return;
     }
@@ -349,7 +349,7 @@ void Assembler::exploreReadSequence(const vector<string>& request, ostream& html
 
     // Access the read information we need.
     const OrientedReadId orientedReadId(readId, strand);
-    const auto readName = reads->getReadName(readId);
+    const auto readName = readsPointer->getReadName(readId);
     const span<const Marker> orientedReadMarkers = markers()[orientedReadId.getValue()];
 
     // Adjust the position range, if necessary.
