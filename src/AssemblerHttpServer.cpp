@@ -358,9 +358,10 @@ void Assembler::accessAllSoft()
 
     // Data specific to assembly mode 3.
     try {
+        accessAnchors();
         accessMode3Assembler();
     } catch(const exception& e) {
-        cout << "The mode 3 assembler is not accessible." << endl;
+        cout << "The anchors are not accessible." << endl;
         allDataAreAvailable = false;
     }
 

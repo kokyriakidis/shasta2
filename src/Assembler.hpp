@@ -140,6 +140,19 @@ public:
     void createMarkerKmers(uint64_t threadCount);
     void accessMarkerKmers();
 
+
+    // Anchors.
+    shared_ptr<mode3::Anchors> anchorsPointer;
+    const mode3::Anchors& anchors() const
+    {
+        return *anchorsPointer;
+    }
+    void createAnchors(
+        uint64_t minAnchorCoverage,
+        uint64_t maxAnchorCoverage,
+        uint64_t threadCount);
+    void accessAnchors();
+
     // Data and functions used for the http server.
     // This function puts the server into an endless loop
     // of processing requests.

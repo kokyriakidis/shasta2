@@ -93,18 +93,10 @@ void Assembler::assemble(
     createMarkerKmers(threadCount);
 
     // Create Anchors.
-    shared_ptr<mode3::Anchors> anchorsPointer = make_shared<mode3::Anchors>(
-        MappedMemoryOwner(*this),
-        reads(),
-        assemblerInfo->k,
-        markers(),
-        markerKmers,
+    createAnchors(
         assemblerOptions.assemblyOptions.mode3Options.minAnchorCoverage,
         assemblerOptions.assemblyOptions.mode3Options.maxAnchorCoverage,
         threadCount);
-
-    // Compute Journeys.
-    anchorsPointer->computeJourneys(threadCount);
 
 }
 
@@ -135,3 +127,32 @@ void Assembler::accessKmerChecker()
 {
     kmerChecker = KmerCheckerFactory::createFromBinaryData(*this);
 }
+
+
+
+void Assembler::createAnchors(
+    uint64_t minAnchorCoverage,
+    uint64_t maxAnchorCoverage,
+    uint64_t threadCount)
+{
+    anchorsPointer = make_shared<mode3::Anchors>(
+        MappedMemoryOwner(*this),
+        reads(),
+        assemblerInfo->k,
+        markers(),
+        markerKmers,
+        minAnchorCoverage,
+        maxAnchorCoverage,
+        threadCount);
+
+    anchorsPointer->computeJourneys(threadCount);
+}
+
+
+
+void Assembler::accessAnchors()
+{
+    shared_ptr<mode3::Anchors> anchorsPointer =
+        make_shared<mode3::Anchors>(MappedMemoryOwner(*this), reads(), assemblerInfo->k, markers());
+}
+
