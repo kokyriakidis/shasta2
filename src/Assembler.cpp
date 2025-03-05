@@ -152,7 +152,7 @@ void Assembler::createAnchors(
 
 void Assembler::accessAnchors()
 {
-    shared_ptr<mode3::Anchors> anchorsPointer =
-        make_shared<mode3::Anchors>(MappedMemoryOwner(*this), reads(), assemblerInfo->k, markers());
+     anchorsPointer = make_shared<mode3::Anchors>(
+         MappedMemoryOwner(*this), reads(), assemblerInfo->k, markers());
 }
 

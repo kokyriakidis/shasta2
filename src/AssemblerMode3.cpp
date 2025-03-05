@@ -55,13 +55,6 @@ void Assembler::exploreReadFollowing(const vector<string>& request, ostream& htm
 
 
 
-void Assembler::exploreLocalAssembly(const vector<string>& request, ostream& html)
-{
-    mode3Assembler->exploreLocalAssembly(request, html);
-}
-
-
-
 void Assembler::exploreLocalAnchorGraph(const vector<string>& request, ostream& html)
 {
     mode3Assembler->exploreLocalAnchorGraph(request, html);
