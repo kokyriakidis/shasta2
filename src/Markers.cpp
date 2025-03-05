@@ -133,9 +133,11 @@ void Markers::threadFunction(uint64_t)
 }
 
 
-Markers::Markers(const MappedMemoryOwner& mappedMemoryOwner) :
+
+Markers::Markers(const MappedMemoryOwner& mappedMemoryOwner, uint64_t k) :
     MappedMemoryOwner(mappedMemoryOwner),
-    MultithreadedObject<Markers>(*this)
+    MultithreadedObject<Markers>(*this),
+    k(k)
 {
     MemoryMapped::VectorOfVectors<Marker, uint64_t>::accessExistingReadOnly(largeDataName("Markers"));
 }
