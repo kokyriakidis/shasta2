@@ -49,24 +49,24 @@ public:
     Markers(
         const MappedMemoryOwner&,
         uint64_t k,
-        const shared_ptr<const KmerChecker>,
         const shared_ptr<const Reads>,
+        const shared_ptr<const KmerChecker>,
         size_t threadCount);
 
-    Markers(const MappedMemoryOwner&, uint64_t k);
+    Markers(
+        const MappedMemoryOwner&,
+        uint64_t k,
+        const shared_ptr<const Reads>);
 
 private:
 
-    // The private data are only used when constructing the markers from scratch
-    // (the first constructor).
-
-    // The marker length is filled in by all constructors.
+    // These are filled in by all constructors.
     size_t k;
+    const Reads& reads;
 
     // The remaining arguments are only filled in by the first constructor,
     // which constructs the Markers from scratch.
     const shared_ptr<const KmerChecker> kmerChecker;
-    const shared_ptr<const Reads> reads;
     size_t threadCount;
 
     void threadFunction(size_t threadId);

@@ -16,14 +16,14 @@ template class MultithreadedObject<Markers>;
 Markers::Markers(
     const MappedMemoryOwner& mappedMemoryOwner,
     size_t k,
-    const shared_ptr<const KmerChecker> kmerChecker,
     const shared_ptr<const Reads> reads,
+    const shared_ptr<const KmerChecker> kmerChecker,
     size_t threadCount) :
     MappedMemoryOwner(mappedMemoryOwner),
     MultithreadedObject<Markers>(*this),
     k(k),
-    kmerChecker(kmerChecker),
-    reads(reads)
+    reads(*reads),
+    kmerChecker(kmerChecker)
 {
     MemoryMapped::VectorOfVectors<Marker, uint64_t>::createNew(largeDataName("Markers"), largeDataPageSize);
 
@@ -74,7 +74,7 @@ void Markers::threadFunction(uint64_t)
         // Loop over reads of this batch.
         for(ReadId readId=ReadId(begin); readId!=ReadId(end); readId++) {
 
-            const LongBaseSequenceView read = reads->getRead(readId);
+            const LongBaseSequenceView read = reads.getRead(readId);
             size_t markerCount = 0; // For this read.
             Marker* markerPointerStrand0 = 0;
             Marker* markerPointerStrand1 = 0;
@@ -135,10 +135,14 @@ void Markers::threadFunction(uint64_t)
 
 
 
-Markers::Markers(const MappedMemoryOwner& mappedMemoryOwner, uint64_t k) :
+Markers::Markers(
+    const MappedMemoryOwner& mappedMemoryOwner,
+    uint64_t k,
+    const shared_ptr<const Reads> reads) :
     MappedMemoryOwner(mappedMemoryOwner),
     MultithreadedObject<Markers>(*this),
-    k(k)
+    k(k),
+    reads(*reads)
 {
     MemoryMapped::VectorOfVectors<Marker, uint64_t>::accessExistingReadOnly(largeDataName("Markers"));
 }

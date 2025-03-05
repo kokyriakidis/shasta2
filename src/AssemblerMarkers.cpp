@@ -20,8 +20,8 @@ void Assembler::createMarkers(size_t threadCount)
     markersPointer = make_shared<Markers>(
         *this,
         assemblerInfo->k,
-        kmerChecker,
         readsPointer,
+        kmerChecker,
         threadCount);
 }
 
@@ -29,7 +29,7 @@ void Assembler::createMarkers(size_t threadCount)
 
 void Assembler::accessMarkers()
 {
-    markersPointer = make_shared<Markers>(*this, assemblerInfo->k);
+    markersPointer = make_shared<Markers>(*this, assemblerInfo->k, readsPointer);
 }
 
 
