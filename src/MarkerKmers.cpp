@@ -4,6 +4,7 @@
 #include "Reads.hpp"
 using namespace shasta;
 
+#include <cmath>
 #include "fstream.hpp"
 
 // Expplicit instantiationn.
@@ -63,8 +64,9 @@ MarkerKmers::MarkerKmers(
     runThreads(&MarkerKmers::fillKmerInfosPass2, threadCount);
     kmerInfos.endPass2(false, true);
 
+    SHASTA_ASSERT(2 * markerInfos.totalSize() == markers.totalSize());
+
     writeFrequencyHistogram();
-    // writeCsv();
 }
 
 
@@ -432,13 +434,27 @@ void MarkerKmers::writeFrequencyHistogram() const
 
     // Write it out.
     ofstream csv("MarkerKmers-Histogram.csv");
-    csv << "Coverage,Frequency,\n";
+    csv << "Coverage,Frequency,Number\n";
+    uint64_t totalCount = 0;
     for(uint64_t coverage=0; coverage<histogram.size(); coverage++) {
         const uint64_t frequency = histogram[coverage];
         if(frequency) {
-            csv << coverage << "," << frequency << ",\n";
+            const uint64_t count = coverage * frequency;
+            totalCount += count;
+            csv << coverage << "," << frequency << count << ",\n";
         }
     }
+    SHASTA_ASSERT(2 * totalCount == markers.totalSize());
+
+    const uint64_t n1 = histogram[1];
+    const double kmerErrorRate = double(n1) / double(totalCount);
+    const double baseErrorRate = 1. - std::pow(1. - kmerErrorRate, 1. /double(k));
+    const double Q = -10. * std::log10(baseErrorRate);
+    cout << "Number of distinct marker k-mers: " << size() << endl;
+    cout << "Number of marker k-mers that appear once: " << n1 << endl;
+    cout << "K-mer error rate estimated from the above: " << kmerErrorRate << endl;
+    cout << "Base error rate estimated from the above: " << baseErrorRate <<
+        " (Q = " << Q << " dB)" << endl;
 
 }
 

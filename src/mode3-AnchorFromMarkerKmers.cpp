@@ -25,7 +25,7 @@ Anchors::Anchors(
 {
     kHalf = k / 2;
 
-    cout << timestamp << "Anchor creation from marker kmers begins." << endl;
+    performanceLog << timestamp << "Anchor creation begins." << endl;
 
     // Store arguments so all threads can see them.
     ConstructFromMarkerKmersData& data = constructFromMarkerKmersData;
@@ -74,8 +74,8 @@ Anchors::Anchors(
         anchorInfos[anchorId].ordinalOffset = 0;
     }
 
-    cout << "Generated " << anchorCount << " anchors." << endl;
-    cout << timestamp << "Anchor creation from marker kmers ends." << endl;
+    cout << "Number of anchors per strand: " << anchorCount / 2 << endl;
+    performanceLog << timestamp << "Anchor creation from marker kmers ends." << endl;
 }
 
 

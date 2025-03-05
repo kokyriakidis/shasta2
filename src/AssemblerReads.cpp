@@ -7,6 +7,7 @@ using namespace shasta;
 
 // Standard libraries.
 #include "algorithm.hpp"
+#include <cmath>
 #include "iterator.hpp"
 
 
@@ -43,12 +44,11 @@ void Assembler::histogramReadLength(const string& fileName)
     readsPointer->writeReadLengthHistogram(fileName);
 
 
-    cout << "Read statistics for reads that will be used in this assembly:" << endl;
-    cout << "    Total number of reads is " << readsPointer->readCount() << "." << endl;
-    cout << "    Total number of bases is " << readsPointer->getTotalBaseCount() << "." << endl;
-    cout << "    Average read length is " << double(readsPointer->getTotalBaseCount()) / double(readsPointer->readCount());
-    cout << " bases." << endl;
-    cout << "    N50 for read length is " << readsPointer->getN50() << " bases." << endl;
+    cout << "Number of reads: " << readsPointer->readCount() << endl;
+    cout << "Number of bases: " << readsPointer->getTotalBaseCount() << endl;
+    cout << "Average read length: " <<
+        uint64_t(std::round(double(readsPointer->getTotalBaseCount()) / double(readsPointer->readCount()))) << endl;
+    cout << "Read N50: " << readsPointer->getN50() << endl;
 
 }
 

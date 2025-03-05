@@ -57,7 +57,8 @@ Markers::Markers(
     const auto tEnd = std::chrono::steady_clock::now();
     const double tTotal = 1.e-9 * double((std::chrono::duration_cast<std::chrono::nanoseconds>(tEnd - tBegin)).count());
     performanceLog << timestamp << "Finding markers completed in " << tTotal << " s." << endl;
-    cout << "Created " << totalSize() << " markers." << endl;
+    cout << "Number of markers per strand: " << totalSize() / 2 << endl;
+    cout << "Marker density: " << double(totalSize()) / double((2 * reads->getTotalBaseCount())) << endl;
 
 }
 

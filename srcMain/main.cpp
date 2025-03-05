@@ -403,7 +403,7 @@ void shasta::main::assemble(
     if(threadCount == 0) {
         threadCount = std::thread::hardware_concurrency();
     }
-    cout << "This assembly will use " << threadCount << " threads." << endl;
+    cout << "Number of threads: " << threadCount << endl;
 
 
 
