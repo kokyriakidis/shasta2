@@ -24,10 +24,3 @@ void Assembler::accessMode3Assembler()
         assemblerInfo->k, reads(), markers(),
         anchorsPointer, httpServerData.assemblerOptions->assemblyOptions.mode3Options);
 }
-
-
-
-void Assembler::exploreLocalAnchorGraph(const vector<string>& request, ostream& html)
-{
-    mode3Assembler->exploreLocalAnchorGraph(request, html);
-}
