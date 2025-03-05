@@ -27,13 +27,6 @@ void Assembler::accessMode3Assembler()
 
 
 
-void Assembler::exploreJourney(const vector<string>& request, ostream& html)
-{
-    mode3Assembler->exploreJourney(request, html);
-}
-
-
-
 void Assembler::exploreReadFollowing(const vector<string>& request, ostream& html)
 {
     mode3Assembler->exploreReadFollowing(request, html);
