@@ -4,9 +4,7 @@
 #include "AssemblerOptions.hpp"
 #include "ConfigurationTable.hpp"
 #include "filesystem.hpp"
-#include "mode3-Anchor.hpp"
 #include "performanceLog.hpp"
-#include "Reads.hpp"
 #include "Tee.hpp"
 #include "timestamp.hpp"
 using namespace shasta;
@@ -34,11 +32,6 @@ namespace shasta {
     namespace main {
 
         void main(int argumentCount, const char** arguments);
-
-        void assemble(
-            Assembler&,
-            const AssemblerOptions&,
-            vector<string> inputNames);
 
         void setupRunDirectory(
             const string& memoryMode,
@@ -279,7 +272,7 @@ void shasta::main::assemble(
     Assembler assembler(dataDirectory, true, pageSize);
 
     // Run the assembly.
-    assemble(assembler, assemblerOptions, inputFileAbsolutePaths);
+    assembler.assemble(assemblerOptions, inputFileAbsolutePaths);
 
     cout << timestamp << "Assembly ends." << endl;
 }
@@ -384,59 +377,6 @@ void shasta::main::setupRunDirectory(
             "\nValid values are: anonymous, filesystem.");
     }
 }
-
-
-
-// This runs the entire assembly, under the following assumptions:
-// - The current directory is the run directory.
-// - The Data directory has already been created and set up, if necessary.
-// - The input file names are either absolute,
-//   or relative to the run directory, which is the current directory.
-void shasta::main::assemble(
-    Assembler& assembler,
-    const AssemblerOptions& assemblerOptions,
-    vector<string> inputFileNames)
-{
-
-    // Adjust the number of threads, if necessary.
-    uint32_t threadCount = assemblerOptions.commandLineOnlyOptions.threadCount;
-    if(threadCount == 0) {
-        threadCount = std::thread::hardware_concurrency();
-    }
-    cout << "Number of threads: " << threadCount << endl;
-
-    // Add reads from the specified input files.
-    assembler.addReads(
-        inputFileNames,
-        assemblerOptions.readsOptions.minReadLength,
-        threadCount);
-
-    // Initialize the KmerChecker, which has the information needed
-    // to decide if a k-mer is a marker.
-    assembler.createKmerChecker(assemblerOptions.kmersOptions, threadCount);
-
-    // Create the markers.
-    assembler.createMarkers(threadCount);
-
-    // Create MarkerKmers.
-    assembler.createMarkerKmers(threadCount);
-
-    // Create Anchors.
-    shared_ptr<mode3::Anchors> anchorsPointer = make_shared<mode3::Anchors>(
-        MappedMemoryOwner(assembler),
-        assembler.reads(),
-        assembler.assemblerInfo->k,
-        assembler.markers(),
-        assembler.markerKmers,
-        assemblerOptions.assemblyOptions.mode3Options.minAnchorCoverage,
-        assemblerOptions.assemblyOptions.mode3Options.maxAnchorCoverage,
-        threadCount);
-
-    // Compute Journeys.
-    anchorsPointer->computeJourneys(threadCount);
-
-}
-
 
 
 

@@ -86,6 +86,14 @@ public:
     // Various pieces of assembler information stored in shared memory.
     MemoryMapped::Object<AssemblerInfo> assemblerInfo;
 
+    // This runs the entire assembly, under the following assumptions:
+    // - The current directory is the run directory.
+    // - The Data directory has already been created and set up, if necessary.
+    // - The input file names are either absolute,
+    //   or relative to the run directory, which is the current directory.
+    void assemble(
+        const AssemblerOptions& assemblerOptions,
+        vector<string> inputFileNames);
 
 
     // Reads.

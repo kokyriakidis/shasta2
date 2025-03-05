@@ -1,9 +1,11 @@
 #include "Assembler.hpp"
 #include "AssemblerOptions.hpp"
 #include "KmerCheckerFactory.hpp"
+#include "mode3-Anchor.hpp"
 #include "MurmurHash2.hpp"
 #include "Reads.hpp"
 using namespace shasta;
+using namespace mode3;
 
 #include "MultithreadedObject.tpp"
 template class MultithreadedObject<Assembler>;
@@ -58,6 +60,53 @@ Assembler::Assembler(
 
 
 
+// This runs the entire assembly, under the following assumptions:
+// - The current directory is the run directory.
+// - The Data directory has already been created and set up, if necessary.
+// - The input file names are either absolute,
+//   or relative to the run directory, which is the current directory.
+void Assembler::assemble(
+    const AssemblerOptions& assemblerOptions,
+    vector<string> inputFileNames)
+{
+    // Adjust the number of threads, if necessary.
+    uint32_t threadCount = assemblerOptions.commandLineOnlyOptions.threadCount;
+    if(threadCount == 0) {
+        threadCount = std::thread::hardware_concurrency();
+    }
+    cout << "Number of threads: " << threadCount << endl;
+
+    // Add reads from the specified input files.
+    addReads(
+        inputFileNames,
+        assemblerOptions.readsOptions.minReadLength,
+        threadCount);
+
+    // Initialize the KmerChecker, which has the information needed
+    // to decide if a k-mer is a marker.
+    createKmerChecker(assemblerOptions.kmersOptions, threadCount);
+
+    // Create the markers.
+    createMarkers(threadCount);
+
+    // Create MarkerKmers.
+    createMarkerKmers(threadCount);
+
+    // Create Anchors.
+    shared_ptr<mode3::Anchors> anchorsPointer = make_shared<mode3::Anchors>(
+        MappedMemoryOwner(*this),
+        reads(),
+        assemblerInfo->k,
+        markers(),
+        markerKmers,
+        assemblerOptions.assemblyOptions.mode3Options.minAnchorCoverage,
+        assemblerOptions.assemblyOptions.mode3Options.maxAnchorCoverage,
+        threadCount);
+
+    // Compute Journeys.
+    anchorsPointer->computeJourneys(threadCount);
+
+}
 
 
 
