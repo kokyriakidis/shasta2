@@ -419,7 +419,7 @@ void shasta::main::assemble(
             threadCount);
     }
 
-    if(assembler.getReads().readCount() == 0) {
+    if(assembler.reads().readCount() == 0) {
         throw runtime_error("There are no input reads.");
     }
     assembler.computeReadIdsSortedByName();
@@ -442,7 +442,7 @@ void shasta::main::assemble(
     // Create Anchors.
     shared_ptr<mode3::Anchors> anchorsPointer = make_shared<mode3::Anchors>(
         MappedMemoryOwner(assembler),
-        assembler.getReads(),
+        assembler.reads(),
         assembler.assemblerInfo->k,
         assembler.markers(),
         assembler.markerKmers,

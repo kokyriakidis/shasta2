@@ -168,7 +168,7 @@ void Assembler::createMarkerKmers(uint64_t threadCount)
     markerKmers = make_shared<MarkerKmers>(
         assemblerInfo->k,
         mappedMemoryOwner,
-        getReads(),
+        reads(),
         markers(),
         threadCount);
 }
@@ -182,7 +182,7 @@ void Assembler::accessMarkerKmers()
     markerKmers = make_shared<MarkerKmers>(
         assemblerInfo->k,
         mappedMemoryOwner,
-        getReads(),
+        reads(),
         markers());
 }
 

@@ -76,7 +76,7 @@ void Assembler::createKmerChecker(
     kmerChecker = KmerCheckerFactory::createNew(
         kmersOptions,
         threadCount,
-        getReads(),
+        reads(),
         *this);
 }
 

@@ -19,9 +19,9 @@ using namespace shasta;
 void Assembler::accessMode3Assembler()
 {
     shared_ptr<mode3::Anchors> anchorsPointer =
-        make_shared<mode3::Anchors>(MappedMemoryOwner(*this), getReads(), assemblerInfo->k, markers());
+        make_shared<mode3::Anchors>(MappedMemoryOwner(*this), reads(), assemblerInfo->k, markers());
     mode3Assembler = make_shared<Mode3Assembler>(*this,
-        assemblerInfo->k, getReads(), markers(),
+        assemblerInfo->k, reads(), markers(),
         anchorsPointer, httpServerData.assemblerOptions->assemblyOptions.mode3Options);
 }
 

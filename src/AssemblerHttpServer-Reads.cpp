@@ -87,7 +87,7 @@ void Assembler::exploreReadRaw(
 
     // If a read name was specified, get the read id.
     if(not requestReadName.empty()) {
-        readId = getReads().getReadId(requestReadName);
+        readId = reads().getReadId(requestReadName);
         if(readId == invalidReadId) {
             html << "A read with that name was not found. See ReadSummary.csv.";
             return;
@@ -120,7 +120,7 @@ void Assembler::exploreReadRaw(
         beginPosition = 0;
     }
     if(!endPositionIsPresent) {
-        endPosition = uint32_t(getReads().getReadSequenceLength(readId));
+        endPosition = uint32_t(reads().getReadSequenceLength(readId));
     } else {
         endPosition++; // To include the base at `endPosition`.
     }
@@ -150,7 +150,7 @@ void Assembler::exploreReadRaw(
     html << "<tr><th class=left>Read name<td>";
     copy(readName.begin(), readName.end(), ostream_iterator<char>(html));
 
-    html << "<tr><th class=left>Length<td>" << getReads().getReadSequenceLength(readId);
+    html << "<tr><th class=left>Length<td>" << reads().getReadSequenceLength(readId);
 
     html << "<tr><th class=left>Length displayed<td>" << endPosition - beginPosition;
 
@@ -189,7 +189,7 @@ void Assembler::exploreReadRaw(
 
     // Sequence.
     for(uint32_t position=beginPosition; position!=endPosition; position++) {
-        html << getReads().getOrientedReadBase(orientedReadId, position);
+        html << reads().getOrientedReadBase(orientedReadId, position);
     }
     html<< "<br>";
 
@@ -357,7 +357,7 @@ void Assembler::exploreReadSequence(const vector<string>& request, ostream& html
         beginPosition = 0;
     }
     if(!endPositionIsPresent) {
-        endPosition = uint32_t(getReads().getReadSequenceLength(readId));
+        endPosition = uint32_t(reads().getReadSequenceLength(readId));
     } else {
         endPosition++; // To include the base at `endPosition`.
     }
@@ -387,7 +387,7 @@ void Assembler::exploreReadSequence(const vector<string>& request, ostream& html
     html << "<tr><th class=left>Read name<td>";
     copy(readName.begin(), readName.end(), ostream_iterator<char>(html));
 
-    html << "<tr><th class=left>Length<td>" << getReads().getReadSequenceLength(readId);
+    html << "<tr><th class=left>Length<td>" << reads().getReadSequenceLength(readId);
 
     html << "<tr><th class=left>Length displayed<td>" << endPosition - beginPosition;
 
@@ -427,7 +427,7 @@ void Assembler::exploreReadSequence(const vector<string>& request, ostream& html
 
     // Sequence.
     for(uint32_t position=beginPosition; position!=endPosition; position++) {
-        html << getReads().getOrientedReadBase(orientedReadId, position);
+        html << reads().getOrientedReadBase(orientedReadId, position);
     }
     html<< "<br>";
 
@@ -544,7 +544,7 @@ void Assembler::exploreLookupRead(const vector<string>& request, ostream& html)
         "</form>";
 
     if(not requestReadName.empty()) {
-        const ReadId readId = getReads().getReadId(requestReadName);
+        const ReadId readId = reads().getReadId(requestReadName);
         if(readId == invalidReadId) {
             html << "A read with that name was not found. See ReadSummary.csv.";
             return;

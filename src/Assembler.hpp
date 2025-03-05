@@ -94,7 +94,7 @@ public:
 
     // Reads.
     shared_ptr<Reads> readsPointer;
-    const Reads& getReads() const {
+    const Reads& reads() const {
         return *readsPointer;
     }
     void computeReadIdsSortedByName();
