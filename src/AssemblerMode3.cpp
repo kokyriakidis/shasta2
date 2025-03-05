@@ -27,13 +27,6 @@ void Assembler::accessMode3Assembler()
 
 
 
-void Assembler::exploreReadFollowing(const vector<string>& request, ostream& html)
-{
-    mode3Assembler->exploreReadFollowing(request, html);
-}
-
-
-
 void Assembler::exploreLocalAnchorGraph(const vector<string>& request, ostream& html)
 {
     mode3Assembler->exploreLocalAnchorGraph(request, html);
