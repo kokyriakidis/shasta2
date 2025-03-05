@@ -10,11 +10,15 @@ is also a marker.
 
 *******************************************************************************/
 
+// Shasta.
+#include "Kmer.hpp"
 #include "MappedMemoryOwner.hpp"
 #include "MemoryMappedVectorOfVectors.hpp"
 #include "MultithreadedObject.hpp"
+#include "shastaTypes.hpp"
 #include "Uint.hpp"
 
+// Standard library.
 #include "memory.hpp"
 
 namespace shasta {
@@ -24,6 +28,7 @@ namespace shasta {
 
     class KmerChecker;
     class Reads;
+    class OrientedReadId;
 }
 
 
@@ -58,6 +63,14 @@ public:
         uint64_t k,
         const shared_ptr<const Reads>);
 
+    // Access functions for markers Kmers and KmerIds.
+    Kmer getKmer(
+        OrientedReadId,
+        uint32_t ordinal) const;
+    KmerId getKmerId(
+        OrientedReadId,
+        uint32_t ordinal) const;
+
 private:
 
     // These are filled in by all constructors.
@@ -75,4 +88,13 @@ private:
     // read and call reads->incrementCountMultithreaded.
     // In pass 2, we store the markers.
     size_t pass;
+
+    // Low level, private access functions.
+    Kmer getKmerStrand0(
+        ReadId,
+        uint32_t ordinal) const;
+
+    Kmer getKmerStrand1(
+        ReadId,
+        uint32_t ordinal) const;
 };

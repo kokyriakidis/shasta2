@@ -2,7 +2,6 @@
 #include "mode3-LocalAssembly.hpp"
 #include "globalMsa.hpp"
 #include "Markers.hpp"
-#include "markerAccessFunctions.hpp"
 #include "mode3-Anchor.hpp"
 #include "orderPairs.hpp"
 #include "performanceLog.hpp"
@@ -507,12 +506,9 @@ void LocalAssembly::addMarkerInfo(uint64_t i, int64_t ordinal)
     MarkerInfo markerInfo;
     markerInfo.ordinal = ordinal;
     markerInfo.position = basePosition(info.orientedReadId, ordinal);
-    markerInfo.kmerId = getOrientedReadMarkerKmerId(
+    markerInfo.kmerId = markers.getKmerId(
         info.orientedReadId,
-        uint32_t(ordinal),
-        k,
-        reads,
-        markers);
+        uint32_t(ordinal));
 
     info.markerInfos.push_back(markerInfo);
 }

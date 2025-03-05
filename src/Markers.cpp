@@ -1,4 +1,5 @@
 #include "Markers.hpp"
+#include "extractKmer.hpp"
 #include "Kmer.hpp"
 #include "KmerChecker.hpp"
 #include "performanceLog.hpp"
@@ -13,6 +14,7 @@ template class MultithreadedObject<Markers>;
 
 
 
+// Initial creation of the Markers.
 Markers::Markers(
     const MappedMemoryOwner& mappedMemoryOwner,
     size_t k,
@@ -135,6 +137,7 @@ void Markers::threadFunction(uint64_t)
 
 
 
+// Construct from binary data.
 Markers::Markers(
     const MappedMemoryOwner& mappedMemoryOwner,
     uint64_t k,
@@ -145,4 +148,72 @@ Markers::Markers(
     reads(*reads)
 {
     MemoryMapped::VectorOfVectors<Marker, uint64_t>::accessExistingReadOnly(largeDataName("Markers"));
+}
+
+
+
+Kmer Markers::getKmer(
+    OrientedReadId orientedReadId,
+    uint32_t ordinal) const
+{
+    const ReadId readId = orientedReadId.getReadId();
+    const Strand strand = orientedReadId.getStrand();
+
+    if(strand == 0) {
+        return getKmerStrand0(readId, ordinal);
+    } else {
+        return getKmerStrand1(readId, ordinal);
+    }
+
+}
+
+
+
+Kmer Markers::getKmerStrand0(
+    ReadId readId,
+    uint32_t ordinal0) const
+{
+    const Markers& markers = *this;
+
+    const auto read = reads.getRead(readId);
+    const OrientedReadId orientedReadId0(readId, 0);
+    const auto orientedReadMarkers0 = markers[orientedReadId0.getValue()];
+
+    Kmer kmer0;
+    extractKmer(read, uint64_t(orientedReadMarkers0[ordinal0].position), k, kmer0);
+
+    return kmer0;
+}
+
+
+
+Kmer Markers::getKmerStrand1(
+    ReadId readId,
+    uint32_t ordinal1) const
+{
+    const Markers& markers = *this;
+
+    // We only have the read stored without reverse complement, so get it from there
+    const auto read = reads.getRead(readId);
+    const OrientedReadId orientedReadId0(readId, 0);
+    const auto orientedReadMarkers0 = markers[orientedReadId0.getValue()];
+    const uint64_t readMarkerCount = orientedReadMarkers0.size();
+    const uint64_t ordinal0 = readMarkerCount - 1 - ordinal1;
+    Kmer kmer0;
+    extractKmer(read, uint64_t(orientedReadMarkers0[ordinal0].position), k, kmer0);
+
+    // Now do the reverse complement.
+    const Kmer kmer1 = kmer0.reverseComplement(k);
+    return kmer1;
+}
+
+
+
+// Get the marker KmerId for an oriented read and ordinal.
+KmerId Markers::getKmerId(
+    OrientedReadId orientedReadId,
+    uint32_t ordinal) const
+{
+    const Kmer kmer = getKmer(orientedReadId, ordinal);
+    return KmerId(kmer.id(k));
 }
