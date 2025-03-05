@@ -346,14 +346,12 @@ void Assembler::accessAllSoft()
     try {
         accessMarkerKmers();
     } catch(const exception& e) {
-        cout << "Markerk-mers are not accessible." << endl;
+        cout << "Marker k-mers are not accessible." << endl;
         allDataAreAvailable = false;
     }
 
-    // Data specific to assembly mode 3.
     try {
         accessAnchors();
-        accessMode3Assembler();
     } catch(const exception& e) {
         cout << "The anchors are not accessible." << endl;
         allDataAreAvailable = false;

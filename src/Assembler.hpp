@@ -214,12 +214,6 @@ public:
     void accessAllSoft();
 
 
-    // Mode 3 assembly.
-    shared_ptr<Mode3Assembler> mode3Assembler;
-    void accessMode3Assembler();
-
-
-    // Http server functions related to Mode 3 assembly.
     void exploreAnchor(const vector<string>&, ostream&);
     void exploreAnchorPair(const vector<string>&, ostream&);
     void exploreJourney(const vector<string>&, ostream&);
