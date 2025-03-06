@@ -16,7 +16,7 @@ void Assembler::exploreLocalAssembly(
 {
 
     const auto& localAssemblyOptions =
-        httpServerData.assemblerOptions->assemblyOptions.mode3Options.localAssemblyOptions;
+        httpServerData.assemblerOptions->localAssemblyOptions;
 
     LocalAssemblyDisplayOptions options(html);
 

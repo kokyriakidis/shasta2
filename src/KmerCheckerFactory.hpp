@@ -9,8 +9,6 @@ namespace shasta {
     class KmerCheckerFactory;
 
     class KmerChecker;
-    class KmersOptions;
-    class Reads;
     class MappedMemoryOwner;
 
 }
@@ -23,9 +21,8 @@ class shasta::KmerCheckerFactory {
 public:
 
     static shared_ptr<KmerChecker> createNew(
-        const KmersOptions&,
-        uint64_t threadCount,
-        const Reads&,
+        uint64_t k,
+        double markerDensity,
         const MappedMemoryOwner&);
 
     static shared_ptr<KmerChecker> createFromBinaryData(const MappedMemoryOwner&);

@@ -70,7 +70,7 @@ void Assembler::assemble(
     vector<string> inputFileNames)
 {
     // Adjust the number of threads, if necessary.
-    uint32_t threadCount = assemblerOptions.commandLineOnlyOptions.threadCount;
+    uint64_t threadCount = assemblerOptions.threadCount;
     if(threadCount == 0) {
         threadCount = std::thread::hardware_concurrency();
     }
@@ -79,12 +79,12 @@ void Assembler::assemble(
     // Add reads from the specified input files.
     addReads(
         inputFileNames,
-        assemblerOptions.readsOptions.minReadLength,
+        assemblerOptions.minReadLength,
         threadCount);
 
     // Initialize the KmerChecker, which has the information needed
     // to decide if a k-mer is a marker.
-    createKmerChecker(assemblerOptions.kmersOptions, threadCount);
+    createKmerChecker(assemblerOptions.k, assemblerOptions.markerDensity, threadCount);
 
     // Create the markers.
     createMarkers(threadCount);
@@ -94,8 +94,8 @@ void Assembler::assemble(
 
     // Create Anchors.
     createAnchors(
-        assemblerOptions.assemblyOptions.mode3Options.minAnchorCoverage,
-        assemblerOptions.assemblyOptions.mode3Options.maxAnchorCoverage,
+        assemblerOptions.minAnchorCoverage,
+        assemblerOptions.maxAnchorCoverage,
         threadCount);
 
 }
@@ -105,19 +105,19 @@ void Assembler::assemble(
 
 
 void Assembler::createKmerChecker(
-    const KmersOptions& kmersOptions,
+    uint64_t k,
+    double markerDensity,
     uint64_t threadCount)
 {
     if(threadCount == 0) {
         threadCount = std::thread::hardware_concurrency();
     }
 
-    assemblerInfo->k = kmersOptions.k;
+    assemblerInfo->k = k;
 
     kmerChecker = KmerCheckerFactory::createNew(
-        kmersOptions,
-        threadCount,
-        reads(),
+        k,
+        markerDensity,
         *this);
 }
 

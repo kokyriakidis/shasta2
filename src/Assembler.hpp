@@ -118,7 +118,8 @@ public:
     shared_ptr<KmerChecker> kmerChecker;
     public:
     void createKmerChecker(
-        const KmersOptions& kmersOptions,
+        uint64_t k,
+        double markerDensity,
         uint64_t threadCount);
     void accessKmerChecker();
 

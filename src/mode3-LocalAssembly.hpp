@@ -132,7 +132,7 @@ public:
         AnchorId anchorIdB,
         uint64_t minVertexCoverage, // 0 = automatic
         const LocalAssemblyDisplayOptions&,
-        const Mode3AssemblyOptions::LocalAssemblyOptions&,
+        const AssemblerOptions::LocalAssemblyOptions&,
         bool useA = true,
         bool useB = true);
 

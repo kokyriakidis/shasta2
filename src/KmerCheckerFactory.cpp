@@ -1,21 +1,19 @@
 #include "KmerCheckerFactory.hpp"
 #include "Kmer.hpp"
 #include "HashedKmerChecker.hpp"
-#include "AssemblerOptions.hpp"
 #include "Reads.hpp"
 using namespace shasta;
 
 
 
 std::shared_ptr<KmerChecker> KmerCheckerFactory::createNew(
-    const KmersOptions& kmersOptions,
-    uint64_t /* threadCount */,
-    const Reads& /* reads */,
+    uint64_t k,
+    double markerDensity,
     const MappedMemoryOwner& mappedMemoryOwner)
 {
     return make_shared<HashedKmerChecker>(
-        kmersOptions.k,
-        kmersOptions.probability,
+        k,
+        markerDensity,
         mappedMemoryOwner);
 }
 

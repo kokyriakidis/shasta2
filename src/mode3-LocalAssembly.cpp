@@ -50,7 +50,7 @@ LocalAssembly::LocalAssembly(
     AnchorId anchorIdB,
     uint64_t minVertexCoverage, // 0 = automatic
     const LocalAssemblyDisplayOptions& displayOptions,
-    const Mode3AssemblyOptions::LocalAssemblyOptions& options,
+    const AssemblerOptions::LocalAssemblyOptions& options,
     bool useA,
     bool useB) :
     k(k),

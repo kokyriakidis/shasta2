@@ -2,7 +2,6 @@
 
 // Shasta.
 #include "Assembler.hpp"
-#include "AssemblerOptions.hpp"
 #include "Base.hpp"
 #include "ConfigurationTable.hpp"
 #include "deduplicate.hpp"
@@ -62,18 +61,6 @@ PYBIND11_MODULE(shasta, shastaModule)
         .def("accessMarkerKmers",
             &Assembler::accessMarkerKmers)
     ;
-
-
-
-    // Expose portions of class AssemblerOptions to Python.
-    class_<AssemblerOptions>(shastaModule, "AssemblerOptions")
-        .def(pybind11::init<const string&>())
-        .def_readonly("assemblyOptions", &AssemblerOptions::assemblyOptions)
-        ;
-    class_<AssemblyOptions>(shastaModule, "AssemblyOptions")
-        .def_readonly("mode3Options", &AssemblyOptions::mode3Options)
-        ;
-    class_<Mode3AssemblyOptions>(shastaModule, "Mode3AssemblyOptions");
 
 
 
