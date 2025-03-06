@@ -25,8 +25,6 @@ LocalAnchorGraph::LocalAnchorGraph(
     const Anchors& anchors,
     const vector<AnchorId>& anchorIds,
     uint64_t maxDistance,
-    bool filterEdgesByCoverageLoss,
-    double maxCoverageLoss,
     uint64_t minCoverage) :
     anchors(anchors),
     maxDistance(maxDistance)
@@ -62,16 +60,6 @@ LocalAnchorGraph::LocalAnchorGraph(
                 continue;
             }
 
-            // Filter by coverage loss, if requested.
-            if(filterEdgesByCoverageLoss) {
-                LocalAnchorGraphEdge edge;
-                edge.coverage = coverage[i];
-                anchors.analyzeAnchorPair(anchorId0, anchorId1, edge.info);
-                if(edge.coverageLoss() > maxCoverageLoss) {
-                    continue;
-                }
-            }
-
             const vertex_descriptor v1 = boost::add_vertex(LocalAnchorGraphVertex(anchorId1, distance1), graph);
             vertexMap.insert({anchorId1, v1});
             if(distance1 < maxDistance) {
@@ -85,16 +73,6 @@ LocalAnchorGraph::LocalAnchorGraph(
             auto it1 = vertexMap.find(anchorId1);
             if(it1 != vertexMap.end()) {
                 continue;
-            }
-
-            // Filter by coverage loss, if requested.
-            if(filterEdgesByCoverageLoss) {
-                LocalAnchorGraphEdge edge;
-                edge.coverage = coverage[i];
-                anchors.analyzeAnchorPair(anchorId0, anchorId1, edge.info);
-                if(edge.coverageLoss() > maxCoverageLoss) {
-                    continue;
-                }
             }
 
             const vertex_descriptor v1 = boost::add_vertex(LocalAnchorGraphVertex(anchorId1, distance1), graph);
@@ -122,17 +100,11 @@ LocalAnchorGraph::LocalAnchorGraph(
             }
             const vertex_descriptor v1 = it1->second;
 
-            // Create the tentative edge.
+            // Create the edge.
             LocalAnchorGraphEdge edge;
             edge.coverage = coverage[i];
             anchors.analyzeAnchorPair(anchorId0, anchorId1, edge.info);
-
-            // Add it if requested.
-            if((not filterEdgesByCoverageLoss) or
-                (edge.coverageLoss() <= maxCoverageLoss)) {
-                edge_descriptor e;
-                tie(e, ignore) = add_edge(v0, v1, edge, graph);
-            }
+            add_edge(v0, v1, edge, graph);
         }
     }
 }
@@ -254,7 +226,6 @@ void LocalAnchorGraph::writeGraphviz(
     // Write the edges.
     BGL_FORALL_EDGES(e, graph, LocalAnchorGraph) {
         const LocalAnchorGraphEdge& edge = graph[e];
-        const double loss = edge.coverageLoss();
 
         const vertex_descriptor v0 = source(e, graph);
         const vertex_descriptor v1 = target(e, graph);
@@ -284,22 +255,17 @@ void LocalAnchorGraph::writeGraphviz(
             "\"" << anchorId0String << " to "
             << anchorId1String <<
             " " << edge.coverage << "/" << edge.info.common <<
-            " loss " << std::fixed << std::setprecision(2) << loss <<
             " offset " << edge.info.offsetInBases << "\"";
 
         // Label.
         if(options.edgeLabels) {
             s << " label=\"" <<
                 edge.coverage << "/" << edge.info.common <<
-                "\\nLoss " << std::fixed << std::setprecision(2) << loss <<
                 "\\nOffset " << edge.info.offsetInBases << "\"";
         }
 
         // Color.
-        if(options.edgeColoring == "byCoverageLoss") {
-            const double hue = (1. - loss) / 3.;
-            s << " color=\"" << std::fixed << std::setprecision(2) << hue << " 1. 1.\"";
-        } else if(options.edgeColoring == "random") {
+        if(options.edgeColoring == "random") {
             // To decide the color, hash the AnchorIds.
             // This way we always get the same color for the same edge.
             const auto p = make_pair(anchorId0, anchorId1);
@@ -905,13 +871,7 @@ void LocalAnchorGraph::writeEdges(
             "'>"
             "<title>" <<
             anchorIdString0 << " to " << anchorIdString1 <<
-            ", coverage " << coverage << "/" << edge.info.common <<
-            ", loss ";
-        const auto oldPrecision = html.precision(2);
-        const auto oldFlags = html.setf(std::ios_base::fixed, std::ios_base::floatfield);
-        html << edge.coverageLoss();
-        html.precision(oldPrecision);
-        html.flags(oldFlags);
+            ", coverage " << coverage << "/" << edge.info.common;
         html << "</title>""</line>";
 
         // End the hyperlink.

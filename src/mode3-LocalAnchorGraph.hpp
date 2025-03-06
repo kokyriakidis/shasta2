@@ -77,10 +77,6 @@ public:
     AnchorPairInfo info;
     uint64_t coverage;
 
-    double coverageLoss() const
-    {
-        return double(info.common - coverage) / double(info.common);
-    }
 };
 
 
@@ -91,8 +87,6 @@ public:
         const Anchors&,
         const vector<AnchorId>&,
         uint64_t maxDistance,
-        bool filterEdgesByCoverageLoss,
-        double maxCoverageLoss,
         uint64_t minCoverage);
 
     const Anchors& anchors;

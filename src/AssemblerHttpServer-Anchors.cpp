@@ -618,14 +618,6 @@ void Assembler::exploreLocalAnchorGraph(
     uint64_t minCoverage = 0;
     HttpServer::getParameterValue(request, "minCoverage", minCoverage);
 
-    string filterEdgesByCoverageLossString;
-    const bool filterEdgesByCoverageLoss = HttpServer::getParameterValue(request,
-        "filterEdgesByCoverageLoss", filterEdgesByCoverageLossString);
-
-    double maxCoverageLoss =  httpServerData.assemblerOptions->
-        assemblyOptions.mode3Options.primaryGraphOptions.maxLoss;
-    HttpServer::getParameterValue(request, "maxCoverageLoss", maxCoverageLoss);
-
     // Get the options that control graph display.
     const LocalAnchorGraphDisplayOptions displayOptions(request);
 
@@ -654,18 +646,11 @@ void Assembler::exploreLocalAnchorGraph(
         distance << ">";
 
     html <<
-        "<tr><th>Edge filtering"
-        "<td>"
-        "Minimum coverage "
+        "<tr>"
+        "<th class=left>Minimum edge coverage "
+        "<td class=centered>"
         "<input type=text name=minCoverage style='text-align:center' required size=8 value=" <<
-        minCoverage << ">"
-        "<br>"
-        "<input type=checkbox name=filterEdgesByCoverageLoss" <<
-        (filterEdgesByCoverageLoss ? " checked" : "") <<
-        ">Filter edges by coverage loss"
-        "<br><input type=text name=maxCoverageLoss style='text-align:center' required size=6 value=" <<
-        maxCoverageLoss << "> Maximum coverage loss"
-        "<hr>";
+        minCoverage << ">";
 
     // Form items for options that control graph display.
     displayOptions.writeForm(html);
@@ -709,8 +694,6 @@ void Assembler::exploreLocalAnchorGraph(
         anchors(),
         anchorIds,
         distance,
-        filterEdgesByCoverageLoss,
-        maxCoverageLoss,
         minCoverage
         );
 
