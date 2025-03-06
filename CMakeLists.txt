@@ -17,14 +17,14 @@ message(STATUS "CMAKE_SYSTEM_NAME is " ${CMAKE_SYSTEM_NAME})
 
 
 # Decide what we want to build.
-option(BUILD_STATIC_EXECUTABLE "Build the static executable." ON)
-option(BUILD_DYNAMIC_LIBRARY "Build the shared library." ON)
+option(BUILD_EXECUTABLE "Build the executable." ON)
+option(BUILD_PYTHON_MODULE "Build the Python module." ON)
 
 
 
 # Write out what we will actually build.
-message(STATUS "BUILD_STATIC_EXECUTABLE is " ${BUILD_STATIC_EXECUTABLE})
-message(STATUS "BUILD_DYNAMIC_LIBRARY is " ${BUILD_DYNAMIC_LIBRARY})
+message(STATUS "BUILD_EXECUTABLE is " ${BUILD_EXECUTABLE})
+message(STATUS "BUILD_PYTHON_MODULE is " ${BUILD_PYTHON_MODULE})
 
 
 
@@ -58,13 +58,13 @@ message(STATUS "SHASTA_LONG_MARKERS is " ${SHASTA_LONG_MARKERS})
 
 
 # Add the subdirectories we need.
-if(BUILD_STATIC_EXECUTABLE)
-    add_subdirectory(staticExecutable)
-endif(BUILD_STATIC_EXECUTABLE)
+if(BUILD_EXECUTABLE)
+    add_subdirectory(Executable)
+endif(BUILD_EXECUTABLE)
 
-if(BUILD_DYNAMIC_LIBRARY)
-    add_subdirectory(dynamicLibrary)
-endif(BUILD_DYNAMIC_LIBRARY)
+if(BUILD_PYTHON_MODULE)
+    add_subdirectory(PythonModule)
+endif(BUILD_PYTHON_MODULE)
 
 
 
