@@ -24,11 +24,11 @@ using namespace pybind11;
 
 
 
-PYBIND11_MODULE(shasta, shastaModule)
+PYBIND11_MODULE(shasta2, shasta2Module)
 {
 
     // Expose class Assembler to Python.
-    class_<Assembler>(shastaModule, "Assembler")
+    class_<Assembler>(shasta2Module, "Assembler")
 
         // Constructor.
         .def(pybind11::init<const string&, bool, size_t>(),
@@ -64,49 +64,49 @@ PYBIND11_MODULE(shasta, shastaModule)
 
 
     // Non-member functions exposed to Python.
-    shastaModule.def("openPerformanceLog",
+    shasta2Module.def("openPerformanceLog",
         openPerformanceLog
         );
-    shastaModule.def("testMultithreadedObject",
+    shasta2Module.def("testMultithreadedObject",
         testMultithreadedObject
         );
-    shastaModule.def("testMemoryMappedVector",
+    shasta2Module.def("testMemoryMappedVector",
         testMemoryMappedVector
         );
-    shastaModule.def("testBase",
+    shasta2Module.def("testBase",
         testBase
         );
-    shastaModule.def("testShortBaseSequence",
+    shasta2Module.def("testShortBaseSequence",
         testShortBaseSequence
         );
-    shastaModule.def("testLongBaseSequence",
+    shasta2Module.def("testLongBaseSequence",
         testLongBaseSequence
         );
-    shastaModule.def("testSplitRange",
+    shasta2Module.def("testSplitRange",
         testSplitRange
         );
-    shastaModule.def("testSpoa",
+    shasta2Module.def("testSpoa",
         testSpoa
         );
-    shastaModule.def("testDeduplicateAndCount",
+    shasta2Module.def("testDeduplicateAndCount",
         testDeduplicateAndCount
         );
-    shastaModule.def("testBitReversal",
+    shasta2Module.def("testBitReversal",
         testBitReversal
         );
-    shastaModule.def("mappedCopy",
+    shasta2Module.def("mappedCopy",
         mappedCopy
         );
-    shastaModule.def("testLongBaseSequence",
+    shasta2Module.def("testLongBaseSequence",
         testLongBaseSequence
         );
-    shastaModule.def("testDiploidBayesianPhase",
+    shasta2Module.def("testDiploidBayesianPhase",
         testDiploidBayesianPhase
         );
-    shastaModule.def("testSubsetGraph",
+    shasta2Module.def("testSubsetGraph",
         testSubsetGraph
         );
-    shastaModule.def("globalMsaPython",
+    shasta2Module.def("globalMsaPython",
         globalMsaPython
         );
 }
