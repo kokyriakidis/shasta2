@@ -3,7 +3,6 @@
 // Shasta.
 #include "Assembler.hpp"
 #include "Base.hpp"
-#include "ConfigurationTable.hpp"
 #include "deduplicate.hpp"
 #include "diploidBayesianPhase.hpp"
 #include "globalMsa.hpp"

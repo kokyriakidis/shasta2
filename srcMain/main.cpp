@@ -2,7 +2,6 @@
 // Shasta.
 #include "Assembler.hpp"
 #include "AssemblerOptions.hpp"
-#include "ConfigurationTable.hpp"
 #include "filesystem.hpp"
 #include "performanceLog.hpp"
 #include "Tee.hpp"
