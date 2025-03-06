@@ -12,9 +12,7 @@
 
 
 // The MarkerKmers object keeps track of the locations in the oriented reads
-// where each marker k-mer appears. It is only used for alignment-free assembly
-// (--Assembly.mode 3 --Assembly.mode3.anchorCreationMethod FromMarkerKmers)
-// but can also be created using CreateMarkerKmers.py.
+// where each marker k-mer appears.
 
 namespace shasta {
     class MarkerKmers;

@@ -247,10 +247,8 @@ void shasta::main::assemble(
     performanceLog << timestamp << "Assembly begins." << endl;
 
     // Open stdout.log and "tee" (duplicate) stdout to it.
-    if(not assemblerOptions.commandLineOnlyOptions.suppressStdoutLog) {
-        shastaLog.open("stdout.log");
-        tee.duplicate(cout, shastaLog);
-    }
+    shastaLog.open("stdout.log");
+    tee.duplicate(cout, shastaLog);
 
     // Echo out the command line options.
     cout << timestamp << "Assembly begins.\nCommand line:" << endl;

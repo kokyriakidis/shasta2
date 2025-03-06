@@ -164,10 +164,6 @@ void AssemblerOptions::addCommandLineOnlyOptions()
         value< vector<string> >(&commandLineOnlyOptions.inputFileNames)->multitoken(),
         "Names of input files containing reads. Specify at least one.")
 
-        ("anchors",
-        value< vector<string> >(&commandLineOnlyOptions.anchorFileNames)->multitoken(),
-        "Names of input files containing anchors for mode 3 assembly.")
-
         ("assemblyDirectory",
         value<string>(&commandLineOnlyOptions.assemblyDirectory)->
         default_value("ShastaRun"),
@@ -200,11 +196,6 @@ void AssemblerOptions::addCommandLineOnlyOptions()
         default_value(0),
         "Number of threads, or 0 to use one thread per virtual processor.")
         
-        ("suppressStdoutLog",
-        bool_switch(&commandLineOnlyOptions.suppressStdoutLog)->
-        default_value(false),
-        "Suppress echoing stdout to stdout.log.")
-
         ("exploreAccess",
         value<string>(&commandLineOnlyOptions.exploreAccess)->
         default_value("user"),
@@ -219,17 +210,6 @@ void AssemblerOptions::addCommandLineOnlyOptions()
         default_value(17100),
         "Port to be used by the http server (command --explore).")
 
-        ("alignmentsPafFile",
-        value<string>(&commandLineOnlyOptions.alignmentsPafFile),
-        "The name of a PAF file containing alignments of reads to "
-        "a reference. Only used for --command explore, for display of the alignment "
-        "candidate graph. Experimental."
-        )
-
-        ("saveBinaryData",
-        bool_switch(&commandLineOnlyOptions.saveBinaryData)->
-        default_value(false),
-        "Save binary data (Mode 3 assembly only).")
         ;
 
 }
@@ -248,39 +228,10 @@ void AssemblerOptions::addConfigurableOptions()
 
     configurableOptionsDescription.add_options()
 
-        ("Reads.representation",
-        value<uint64_t>(&readsOptions.representation)->
-        default_value(1),
-        "Read representation: 0 = raw sequence, 1 (default) = Run-Length Encoded (RLE) sequence. "
-        "Experimental. Do not use.")
-
         ("Reads.minReadLength",
         value<int>(&readsOptions.minReadLength)->
         default_value(10000),
         "Read length cutoff. Shorter reads are discarded.")
-
-        ("Reads.noCache",
-        bool_switch(&readsOptions.noCache)->
-        default_value(false),
-        "If set, skip the Linux cache when loading reads. "
-        "This is done by specifying the O_DIRECT flag when opening "
-        "input files containing reads.")
-
-        ("Reads.handleDuplicates",
-        value<string>(&readsOptions.handleDuplicates)->
-        default_value("useOneCopy"),
-        "Controls handling of reads with duplicate names. "
-        "Can be one of: useAllCopies, useOneCopy, useNone, forbid.")
-
-         ("Kmers.generationMethod",
-         value<int>(&kmersOptions.generationMethod)->
-         default_value(0),
-         "Method to generate marker k-mers: "
-         "0 = random, "
-         "1 = random, excluding globally overenriched k-mers,"
-         "2 = random, excluding k-mers overenriched even in a single read,"
-         "3 = read from file."
-         "4 = random, excluding k-mers appearing in two copies close to each other even in a single read.")
 
          ("Kmers.k",
          value<int>(&kmersOptions.k)->
@@ -291,28 +242,6 @@ void AssemblerOptions::addConfigurableOptions()
          value<double>(&kmersOptions.probability)->
          default_value(0.1, "0.1"),
          "Fraction k-mers used as a marker.")
-
-        ("Kmers.enrichmentThreshold",
-        value<double>(&kmersOptions.enrichmentThreshold)->
-        default_value(100., "100."),
-        "Enrichment threshold for Kmers.generationMethod 1 and 2.")
-
-        ("Kmers.distanceThreshold",
-        value<uint64_t>(&kmersOptions.distanceThreshold)->
-        default_value(1000),
-        "Distance threshold, in RLE bases, for Kmers.generationMethod 4")
-
-        ("Kmers.file",
-        value<string>(&kmersOptions.file),
-        "The absolute path of a file containing the k-mers "
-        "to be used as markers, one per line. "
-        "A relative path is not accepted. "
-        "Only used if Kmers.generationMethod is 3.")
-
-        ("Kmers.globalFrequencyOverrideDirectory",
-        value<string>(&kmersOptions.globalFrequencyOverrideDirectory),
-        "The directory containing the hash table with marker k-mer global frequencies. "
-        "Only used for Shasta development.")
 
         ("Assembly.crossEdgeCoverageThreshold",
         value<int>(&assemblyOptions.crossEdgeCoverageThreshold)->
@@ -431,12 +360,6 @@ void AssemblerOptions::addConfigurableOptions()
         default_value(2),
         "Maximum distance for read graph bridge removal for iterative assembly (experimental).")
 
-        ("Assembly.mode3.anchorCreationMethod",
-        value<string>(&assemblyOptions.mode3Options.anchorCreationMethod)->
-        default_value("FromMarkerGraphEdges"),
-        "Selects the method used to create anchors for mode 3 assembly. "
-        "Can be: FromMarkerGraphEdges, FromMarkerKmers, FromJson.")
-
         ("Assembly.mode3.minAnchorCoverage",
         value<uint64_t>(&assemblyOptions.mode3Options.minAnchorCoverage)->
         default_value(0),
@@ -452,122 +375,6 @@ void AssemblerOptions::addConfigurableOptions()
         "If minAnchorCoverage and maxAnchorCoverage are both 0, "
         "they are set automatically to appropriate values using a simple heuristic."
         "Only used with --Assembly.mode 3.")
-
-        ("Assembly.mode3.minAnchorCoverageMultiplier",
-        value<double>(&assemblyOptions.mode3Options.minAnchorCoverageMultiplier)->
-        default_value(1.),
-        "Multiplier applied to heuristically determined minimum anchor coverage "
-        "if minAnchorCoverage and maxAnchorCoverage are both 0. "
-        "Only used with --Assembly.mode 3.")
-
-        ("Assembly.mode3.maxAnchorCoverageMultiplier",
-        value<double>(&assemblyOptions.mode3Options.maxAnchorCoverageMultiplier)->
-        default_value(1.),
-        "Multiplier applied to heuristically determined maximum anchor coverage "
-        "if minAnchorCoverage and maxAnchorCoverage are both 0. "
-        "Only used with --Assembly.mode 3.")
-
-        ("Assembly.mode3.primaryGraph.maxLoss",
-        value<double>(&assemblyOptions.mode3Options.primaryGraphOptions.maxLoss)->
-        default_value(0.1),
-        "Use for weak edge removal in the primary graph. "
-        "(Mode 3 assembly only).")
-
-        ("Assembly.mode3.anchorGraph.crossEdgesLowCoverageThreshold",
-        value<uint64_t>(&assemblyOptions.mode3Options.primaryGraphOptions.crossEdgesLowCoverageThreshold)->
-        default_value(1),
-        "Low coverage threshold for cross edge removal in the anchor graph. "
-        "(Mode 3 assembly only).")
-
-        ("Assembly.mode3.anchorGraph.crossEdgesHighCoverageThreshold",
-        value<uint64_t>(&assemblyOptions.mode3Options.primaryGraphOptions.crossEdgesHighCoverageThreshold)->
-        default_value(3),
-        "High coverage threshold for cross edge removal in the anchor graph. "
-        "(Mode 3 assembly only).")
-
-        ("Assembly.mode3.assemblyGraph.detangleToleranceLow",
-        value<uint64_t>(&assemblyOptions.mode3Options.assemblyGraphOptions.detangleToleranceLow)->
-        default_value(0),
-        "Used for detangling of the assembly graph "
-        "(Mode 3 assembly only).")
-
-        ("Assembly.mode3.assemblyGraph.detangleToleranceHigh",
-        value<uint64_t>(&assemblyOptions.mode3Options.assemblyGraphOptions.detangleToleranceHigh)->
-        default_value(2),
-        "Used for detangling of the assembly graph "
-        "(Mode 3 assembly only).")
-
-        ("Assembly.mode3.assemblyGraph.epsilon",
-        value<double>(&assemblyOptions.mode3Options.assemblyGraphOptions.epsilon)->
-        default_value(0.1),
-        "Epsilon value for the Bayesian model used for detangling the assembly graph "
-        "(Mode 3 assembly only).")
-
-        ("Assembly.mode3.assemblyGraph.minLogP",
-        value<double>(&assemblyOptions.mode3Options.assemblyGraphOptions.minLogP)->
-        default_value(20.),
-        "MinLogP value (in dB) for the Bayesian model used for detangling the assembly graph "
-        "(Mode 3 assembly only).")
-
-        ("Assembly.mode3.assemblyGraph.longBubbleThreshold",
-        value<uint64_t>(&assemblyOptions.mode3Options.assemblyGraphOptions.longBubbleThreshold)->
-        default_value(5000),
-        "Long bubble threshold "
-        "(Mode 3 assembly only).")
-
-        ("Assembly.mode3.assemblyGraph.phaseErrorThreshold",
-        value<double>(&assemblyOptions.mode3Options.assemblyGraphOptions.phaseErrorThreshold)->
-        default_value(0.1),
-        "Phase error threshold for phasing "
-        "(Mode 3 assembly only).")
-
-        ("Assembly.mode3.assemblyGraph.bubbleErrorThreshold",
-        value<double>(&assemblyOptions.mode3Options.assemblyGraphOptions.bubbleErrorThreshold)->
-        default_value(0.03),
-        "Bubble error threshold for bubble cleanup "
-        "(Mode 3 assembly only).")
-
-        ("Assembly.mode3.assemblyGraph.bubbleCleanupMaxOffset",
-        value<uint64_t>(&assemblyOptions.mode3Options.assemblyGraphOptions.bubbleCleanupMaxOffset)->
-        default_value(1000),
-        "Maximum bubble offset for bubble cleanup "
-        "(Mode 3 assembly only).")
-
-        ("Assembly.mode3.assemblyGraph.chainTerminalCommonThreshold",
-        value<uint64_t>(&assemblyOptions.mode3Options.assemblyGraphOptions.chainTerminalCommonThreshold)->
-        default_value(3),
-        "Used for bubble cleanup "
-        "(Mode 3 assembly only).")
-
-        ("Assembly.mode3.assemblyGraph.superbubbleLengthThreshold1",
-        value<uint64_t>(&assemblyOptions.mode3Options.assemblyGraphOptions.superbubbleLengthThreshold1)->
-        default_value(30000),
-        "Length threshold used for superbubble cleanup "
-        "(Mode 3 assembly only).")
-
-        ("Assembly.mode3.assemblyGraph.superbubbleLengthThreshold2",
-        value<uint64_t>(&assemblyOptions.mode3Options.assemblyGraphOptions.superbubbleLengthThreshold2)->
-        default_value(10000),
-        "Low length threshold used for superbubble removal "
-        "(Mode 3 assembly only).")
-
-        ("Assembly.mode3.assemblyGraph.superbubbleLengthThreshold3",
-        value<uint64_t>(&assemblyOptions.mode3Options.assemblyGraphOptions.superbubbleLengthThreshold3)->
-        default_value(30000),
-        "High length threshold used for superbubble removal "
-        "(Mode 3 assembly only).")
-
-        ("Assembly.mode3.assemblyGraph.superbubbleLengthThreshold4",
-        value<uint64_t>(&assemblyOptions.mode3Options.assemblyGraphOptions.superbubbleLengthThreshold4)->
-        default_value(30000),
-        "Length threshold used for superbubble detangling "
-        "(Mode 3 assembly only).")
-
-        ("Assembly.mode3.assemblyGraph.pruneLength",
-        value<uint64_t>(&assemblyOptions.mode3Options.assemblyGraphOptions.pruneLength)->
-        default_value(100000),
-        "Length threshold used for pruning of the assembly graph."
-        "(Mode 3 assembly only).")
 
         ("Assembly.mode3.localAssembly.estimatedOffsetRatio",
         value<double>(&assemblyOptions.mode3Options.localAssemblyOptions.estimatedOffsetRatio)->
@@ -637,11 +444,7 @@ void AssemblerOptions::addConfigurableOptions()
 void ReadsOptions::write(ostream& s) const
 {
     s << "[Reads]\n";
-    s << "representation = " << representation << "\n";
     s << "minReadLength = " << minReadLength << "\n";
-    s << "noCache = " <<
-        convertBoolToPythonString(noCache) << "\n";
-    s << "handleDuplicates = " << handleDuplicates << "\n";
 }
 
 
@@ -649,13 +452,8 @@ void ReadsOptions::write(ostream& s) const
 void KmersOptions::write(ostream& s) const
 {
     s << "[Kmers]\n";
-    s << "generationMethod = " << generationMethod << "\n";
     s << "k = " << k << "\n";
     s << "probability = " << probability << "\n";
-    s << "enrichmentThreshold = " << enrichmentThreshold << "\n";
-    s << "distanceThreshold = " << distanceThreshold << "\n";
-    s << "file = " << file << "\n";
-    s << "globalFrequencyOverrideDirectory = " << globalFrequencyOverrideDirectory << "\n";
 }
 
 
@@ -697,44 +495,9 @@ void AssemblyOptions::write(ostream& s) const
 
 void Mode3AssemblyOptions::write(ostream& s) const
 {
-    s << "mode3.anchorCreationMethod = " << anchorCreationMethod << "\n";
     s << "mode3.minAnchorCoverage = " << minAnchorCoverage << "\n";
     s << "mode3.maxAnchorCoverage = " << maxAnchorCoverage << "\n";
-    s << "mode3.minAnchorCoverageMultiplier = " << minAnchorCoverageMultiplier << "\n";
-    s << "mode3.maxAnchorCoverageMultiplier = " << maxAnchorCoverageMultiplier << "\n";
-    primaryGraphOptions.write(s);
-    assemblyGraphOptions.write(s);
     localAssemblyOptions.write(s);
-}
-
-
-
-void Mode3AssemblyOptions::PrimaryGraphOptions::write(ostream& s) const
-{
-    s << "mode3.primaryGraph.maxLoss = " << maxLoss << "\n";
-    s << "mode3.anchorGraph.crossEdgesLowCoverageThreshold = " << crossEdgesLowCoverageThreshold << "\n";
-    s << "mode3.anchorGraph.crossEdgesHighCoverageThreshold = " << crossEdgesHighCoverageThreshold << "\n";
-
-}
-
-
-
-void Mode3AssemblyOptions::AssemblyGraphOptions::write(ostream& s) const
-{
-    s << "mode3.assemblyGraph.detangleToleranceLow = " << detangleToleranceLow << "\n";
-    s << "mode3.assemblyGraph.detangleToleranceHigh = " << detangleToleranceHigh << "\n";
-    s << "mode3.assemblyGraph.epsilon = " << epsilon << "\n";
-    s << "mode3.assemblyGraph.minLogP = " << minLogP << "\n";
-    s << "mode3.assemblyGraph.longBubbleThreshold = " << longBubbleThreshold << "\n";
-    s << "mode3.assemblyGraph.phaseErrorThreshold = " << phaseErrorThreshold << "\n";
-    s << "mode3.assemblyGraph.bubbleErrorThreshold = " << bubbleErrorThreshold << "\n";
-    s << "mode3.assemblyGraph.bubbleCleanupMaxOffset = " << bubbleCleanupMaxOffset << "\n";
-    s << "mode3.assemblyGraph.chainTerminalCommonThreshold = " << chainTerminalCommonThreshold << "\n";
-    s << "mode3.assemblyGraph.superbubbleLengthThreshold1 = " << superbubbleLengthThreshold1 << "\n";
-    s << "mode3.assemblyGraph.superbubbleLengthThreshold2 = " << superbubbleLengthThreshold2 << "\n";
-    s << "mode3.assemblyGraph.superbubbleLengthThreshold3 = " << superbubbleLengthThreshold3 << "\n";
-    s << "mode3.assemblyGraph.superbubbleLengthThreshold4 = " << superbubbleLengthThreshold4 << "\n";
-    s << "mode3.assemblyGraph.pruneLength = " << pruneLength << "\n";
 }
 
 

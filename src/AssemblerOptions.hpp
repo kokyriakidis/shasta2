@@ -86,17 +86,13 @@ class shasta::CommandLineOnlyOptions {
 public:
     string configName;
     vector <string> inputFileNames;
-    vector <string> anchorFileNames;
     string assemblyDirectory;
     string command;
     string memoryMode;
     string memoryBacking;
     uint32_t threadCount;
-    bool suppressStdoutLog;
     string exploreAccess;
     uint16_t port;
-    string alignmentsPafFile;
-    bool saveBinaryData;
 };
 
 
@@ -106,19 +102,7 @@ public:
 // beginning with "Reads.".
 class shasta::ReadsOptions {
 public:
-    uint64_t representation;    // 0 = Raw, 1=RLE
     int minReadLength;
-    bool noCache;
-
-    // String to control handling of duplicate reads.
-    // Can be one of:
-    // useAllCopies
-    // useOneCopy
-    // useNone
-    // forbid
-    // See ReadFlags.hpp for the meaning of each option.
-    string handleDuplicates;
-
     void write(ostream&) const;
 };
 
@@ -129,13 +113,8 @@ public:
 // beginning with "Kmers.".
 class shasta::KmersOptions {
 public:
-    int generationMethod;
     int k;
     double probability;
-    double enrichmentThreshold;
-    uint64_t distanceThreshold;
-    string file;
-    string globalFrequencyOverrideDirectory;
     void write(ostream&) const;
 };
 
@@ -147,58 +126,8 @@ public:
 class shasta::Mode3AssemblyOptions {
 public:
 
-    string anchorCreationMethod;
-
     uint64_t minAnchorCoverage;
     uint64_t maxAnchorCoverage;
-    double minAnchorCoverageMultiplier;
-    double maxAnchorCoverageMultiplier;
-
-    // Options used to clean up the PrimaryGraph.
-    class PrimaryGraphOptions {
-    public:
-
-        // Parameter to control removal of weak edges.
-        double maxLoss;
-
-        // Parameters to control removal of cross edges.
-        uint64_t crossEdgesLowCoverageThreshold;
-        uint64_t crossEdgesHighCoverageThreshold;
-
-        void write(ostream&) const;
-    };
-    PrimaryGraphOptions primaryGraphOptions;
-
-
-
-    class AssemblyGraphOptions {
-    public:
-
-        // Detangle tolerances.
-        uint64_t detangleToleranceLow;
-        uint64_t detangleToleranceHigh;
-
-        // Bayesian model.
-        double epsilon;
-        double minLogP;
-
-        // Other thresholds used by the mode3::AssemblyGraph
-        uint64_t longBubbleThreshold;
-        double phaseErrorThreshold;
-        double bubbleErrorThreshold;
-        uint64_t bubbleCleanupMaxOffset;
-        uint64_t chainTerminalCommonThreshold;
-        uint64_t superbubbleLengthThreshold1;
-        uint64_t superbubbleLengthThreshold2;
-        uint64_t superbubbleLengthThreshold3;
-        uint64_t superbubbleLengthThreshold4;
-        uint64_t pruneLength;
-
-        void write(ostream&) const;
-    };
-    AssemblyGraphOptions assemblyGraphOptions;
-
-
 
     // Options used by class mode3::LocalAssembly
     class LocalAssemblyOptions {

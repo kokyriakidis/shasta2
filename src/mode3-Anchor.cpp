@@ -47,9 +47,8 @@ Anchor Anchors::operator[](AnchorId anchorId) const
 
 
 
-// This returns the sequence between the midpoint of the first marker of the
-// anchor and the midpoint of the second marker.
-// When anchorCreationMethod is "FromMarkerKmers", this sequence is empty.
+
+// Currently, this sequence is always empty.
 span<const Base> Anchors::anchorSequence(AnchorId anchorId) const
 {
     return anchorSequences[anchorId];
