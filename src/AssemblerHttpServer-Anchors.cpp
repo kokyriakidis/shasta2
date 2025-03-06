@@ -4,7 +4,7 @@
 #include "deduplicate.hpp"
 #include "Markers.hpp"
 #include "mode3-Anchor.hpp"
-#include "mode3-LocalAnchorGraph.hpp"
+#include "LocalAnchorGraph.hpp"
 #include "Reads.hpp"
 using namespace shasta;
 using namespace mode3;

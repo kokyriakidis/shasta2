@@ -11,25 +11,23 @@
 #include "vector.hpp"
 
 namespace shasta {
-    namespace mode3 {
-        class LocalAnchorGraph;
-        class LocalAnchorGraphVertex;
-        class LocalAnchorGraphEdge;
+    class LocalAnchorGraph;
+    class LocalAnchorGraphVertex;
+    class LocalAnchorGraphEdge;
 
-        using LocalAnchorGraphAssemblyGraphBaseClass = boost::adjacency_list<
-            boost::listS,
-            boost::listS,
-            boost::bidirectionalS,
-            LocalAnchorGraphVertex,
-            LocalAnchorGraphEdge>;
+    using LocalAnchorGraphAssemblyGraphBaseClass = boost::adjacency_list<
+        boost::listS,
+        boost::listS,
+        boost::bidirectionalS,
+        LocalAnchorGraphVertex,
+        LocalAnchorGraphEdge>;
 
-        class LocalAnchorGraphDisplayOptions;
-    }
+    class LocalAnchorGraphDisplayOptions;
 }
 
 
 
-class shasta::mode3::LocalAnchorGraphDisplayOptions {
+class shasta::LocalAnchorGraphDisplayOptions {
 public:
     uint64_t sizePixels;
     string layoutMethod;
@@ -59,12 +57,12 @@ public:
 
 
 
-class shasta::mode3::LocalAnchorGraphVertex {
+class shasta::LocalAnchorGraphVertex {
 public:
-    AnchorId anchorId;
+    mode3::AnchorId anchorId;
     uint64_t distance;
     LocalAnchorGraphVertex(
-        AnchorId anchorId,
+        mode3::AnchorId anchorId,
         uint64_t distance) :
         anchorId(anchorId),
         distance(distance)
@@ -72,26 +70,26 @@ public:
 };
 
 
-class shasta::mode3::LocalAnchorGraphEdge {
+class shasta::LocalAnchorGraphEdge {
 public:
-    AnchorPairInfo info;
+    mode3::AnchorPairInfo info;
     uint64_t coverage;
 
 };
 
 
 
-class shasta::mode3::LocalAnchorGraph : public LocalAnchorGraphAssemblyGraphBaseClass {
+class shasta::LocalAnchorGraph : public LocalAnchorGraphAssemblyGraphBaseClass {
 public:
     LocalAnchorGraph(
-        const Anchors&,
-        const vector<AnchorId>&,
+        const mode3::Anchors&,
+        const vector<mode3::AnchorId>&,
         uint64_t maxDistance,
         uint64_t minCoverage);
 
-    const Anchors& anchors;
+    const mode3::Anchors& anchors;
     uint64_t maxDistance;
-    std::map<AnchorId, vertex_descriptor> vertexMap;
+    std::map<mode3::AnchorId, vertex_descriptor> vertexMap;
 
     void writeHtml(
         ostream& html,

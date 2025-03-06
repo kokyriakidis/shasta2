@@ -1,5 +1,5 @@
 // Shasta.
-#include "mode3-LocalAnchorGraph.hpp"
+#include "LocalAnchorGraph.hpp"
 #include "computeLayout.hpp"
 #include "html.hpp"
 #include "HttpServer.hpp"
