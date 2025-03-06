@@ -1,9 +1,8 @@
 // Shasta.
 #include "Assembler.hpp"
-#include "mode3-Anchor.hpp"
+#include "Anchor.hpp"
 #include "LocalAssembly.hpp"
 using namespace shasta;
-using namespace mode3;
 
 // Boost libraries.
 #include <boost/algorithm/string.hpp>

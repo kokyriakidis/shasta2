@@ -1,4 +1,4 @@
-#include "mode3-Anchor.hpp"
+#include "Anchor.hpp"
 #include "deduplicate.hpp"
 #include "html.hpp"
 #include "Markers.hpp"
@@ -7,7 +7,6 @@
 #include "Reads.hpp"
 #include "timestamp.hpp"
 using namespace shasta;
-using namespace mode3;
 
 #include <cmath>
 
@@ -627,7 +626,7 @@ bool Anchors::areAdjacentAnchors(AnchorId anchorId0, AnchorId anchorId1) const
 // - AnchorId n+1 is represented as m-
 // For example, the reverse complemented pair (150, 151) is represented as (75+, 75-).
 
-string shasta::mode3::anchorIdToString(AnchorId n)
+string shasta::anchorIdToString(AnchorId n)
 {
     std::ostringstream s;
 
@@ -645,7 +644,7 @@ string shasta::mode3::anchorIdToString(AnchorId n)
 
 
 
-AnchorId shasta::mode3::anchorIdFromString(const string& s)
+AnchorId shasta::anchorIdFromString(const string& s)
 {
 
     if(s.size() < 2) {

@@ -7,7 +7,6 @@
 #include "tmpDirectory.hpp"
 #include "runCommandWithTimeout.hpp"
 using namespace shasta;
-using namespace mode3;
 
 // Boost libraries.
 #include <boost/graph/iteration_macros.hpp>

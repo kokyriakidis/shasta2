@@ -1,11 +1,10 @@
 #include "Assembler.hpp"
 #include "AssemblerOptions.hpp"
 #include "KmerCheckerFactory.hpp"
-#include "mode3-Anchor.hpp"
+#include "Anchor.hpp"
 #include "MurmurHash2.hpp"
 #include "Reads.hpp"
 using namespace shasta;
-using namespace mode3;
 
 #include "MultithreadedObject.tpp"
 template class MultithreadedObject<Assembler>;
@@ -135,7 +134,7 @@ void Assembler::createAnchors(
     uint64_t maxAnchorCoverage,
     uint64_t threadCount)
 {
-    anchorsPointer = make_shared<mode3::Anchors>(
+    anchorsPointer = make_shared<Anchors>(
         MappedMemoryOwner(*this),
         reads(),
         assemblerInfo->k,
@@ -152,7 +151,7 @@ void Assembler::createAnchors(
 
 void Assembler::accessAnchors()
 {
-     anchorsPointer = make_shared<mode3::Anchors>(
+     anchorsPointer = make_shared<Anchors>(
          MappedMemoryOwner(*this), reads(), assemblerInfo->k, markers());
 }
 

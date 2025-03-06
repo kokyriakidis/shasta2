@@ -2,7 +2,7 @@
 #include "LocalAssembly.hpp"
 #include "globalMsa.hpp"
 #include "Markers.hpp"
-#include "mode3-Anchor.hpp"
+#include "Anchor.hpp"
 #include "orderPairs.hpp"
 #include "performanceLog.hpp"
 #include "tmpDirectory.hpp"
@@ -10,7 +10,6 @@
 #include "Reads.hpp"
 #include "timestamp.hpp"
 using namespace shasta;
-using namespace mode3;
 
 // Seqan.
 #include <seqan/align.h>

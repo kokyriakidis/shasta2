@@ -3,11 +3,10 @@
 #include "AssemblerOptions.hpp"
 #include "deduplicate.hpp"
 #include "Markers.hpp"
-#include "mode3-Anchor.hpp"
+#include "Anchor.hpp"
 #include "LocalAnchorGraph.hpp"
 #include "Reads.hpp"
 using namespace shasta;
-using namespace mode3;
 
 // Boost libraries.
 #include <boost/tokenizer.hpp>

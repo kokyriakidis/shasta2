@@ -15,6 +15,7 @@
 namespace shasta {
 
     class Assembler;
+    class Anchors;
     class AssemblerInfo;
     class AssemblerOptions;
     class KmerChecker;
@@ -25,9 +26,6 @@ namespace shasta {
     class Mode3Assembler;
     class Reads;
 
-    namespace mode3 {
-        class Anchors;
-    }
 
     // Write an html form to select strand.
     void writeStrandSelection(
@@ -143,8 +141,8 @@ public:
 
 
     // Anchors.
-    shared_ptr<mode3::Anchors> anchorsPointer;
-    const mode3::Anchors& anchors() const
+    shared_ptr<Anchors> anchorsPointer;
+    const Anchors& anchors() const
     {
         return *anchorsPointer;
     }

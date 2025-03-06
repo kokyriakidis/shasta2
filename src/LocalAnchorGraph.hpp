@@ -1,7 +1,7 @@
 #pragma once
 
 // Shasta.
-#include "mode3-Anchor.hpp"
+#include "Anchor.hpp"
 
 // Boost libraries.
 #include <boost/graph/adjacency_list.hpp>
@@ -59,10 +59,10 @@ public:
 
 class shasta::LocalAnchorGraphVertex {
 public:
-    mode3::AnchorId anchorId;
+    AnchorId anchorId;
     uint64_t distance;
     LocalAnchorGraphVertex(
-        mode3::AnchorId anchorId,
+        AnchorId anchorId,
         uint64_t distance) :
         anchorId(anchorId),
         distance(distance)
@@ -72,7 +72,7 @@ public:
 
 class shasta::LocalAnchorGraphEdge {
 public:
-    mode3::AnchorPairInfo info;
+    AnchorPairInfo info;
     uint64_t coverage;
 
 };
@@ -82,14 +82,14 @@ public:
 class shasta::LocalAnchorGraph : public LocalAnchorGraphAssemblyGraphBaseClass {
 public:
     LocalAnchorGraph(
-        const mode3::Anchors&,
-        const vector<mode3::AnchorId>&,
+        const Anchors&,
+        const vector<AnchorId>&,
         uint64_t maxDistance,
         uint64_t minCoverage);
 
-    const mode3::Anchors& anchors;
+    const Anchors& anchors;
     uint64_t maxDistance;
-    std::map<mode3::AnchorId, vertex_descriptor> vertexMap;
+    std::map<AnchorId, vertex_descriptor> vertexMap;
 
     void writeHtml(
         ostream& html,

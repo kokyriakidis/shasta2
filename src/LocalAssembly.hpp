@@ -4,6 +4,7 @@
 // It uses a local marker graph.
 
 // Shasta.
+#include "Anchor.hpp"
 #include "AssemblerOptions.hpp"
 #include "Base.hpp"
 #include "invalid.hpp"
@@ -33,12 +34,6 @@ namespace shasta {
         >;
     class LocalAssemblyDisplayOptions;
     class LocalAssemblyMarkerIndexes;
-
-    namespace mode3 {
-
-        class Anchors;
-        using AnchorId = uint64_t;
-    }
 
     class Marker;
     class Markers;
@@ -129,9 +124,9 @@ public:
         uint64_t k,
         const Reads&,
         const Markers& markers,
-        const mode3::Anchors& anchors,
-        mode3::AnchorId anchorIdA,
-        mode3::AnchorId anchorIdB,
+        const Anchors& anchors,
+        AnchorId anchorIdA,
+        AnchorId anchorIdB,
         uint64_t minVertexCoverage, // 0 = automatic
         const LocalAssemblyDisplayOptions&,
         const AssemblerOptions::LocalAssemblyOptions&,
@@ -154,9 +149,9 @@ private:
     uint64_t kHalf;
     const Reads& reads;
     const Markers& markers;
-    const mode3::Anchors& anchors;
-    mode3::AnchorId anchorIdA;
-    mode3::AnchorId anchorIdB;
+    const Anchors& anchors;
+    AnchorId anchorIdA;
+    AnchorId anchorIdB;
     const LocalAssemblyDisplayOptions& options;
     ostream& html;
 

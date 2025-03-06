@@ -46,7 +46,7 @@ public:
 
         // Vertex sampling rate, used to set minVertexCoverage.
         // Only used if minVertexCoverage is 0 on input to
-        // mode3::LocalAssembly constructor.
+        // LocalAssembly constructor.
         double vertexSamplingRate = 0.8;
 
         // Alignment parameters.

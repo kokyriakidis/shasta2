@@ -37,20 +37,18 @@ namespace shasta {
     // - There are no duplicate oriented reads in an anchor.
     // - The anchor coverage (number of oriented reads) is in [minPrimaryCoverage, maxPrimaryCoverage].
 
-    namespace mode3 {
 
-        using AnchorId = uint64_t;
-        class Anchor;
-        class AnchorMarkerInterval;
-        class Anchors;
-        class AnchorInfo;
-        class AnchorPairInfo;
+    using AnchorId = uint64_t;
+    class Anchor;
+    class AnchorMarkerInterval;
+    class Anchors;
+    class AnchorInfo;
+    class AnchorPairInfo;
 
-        using AnchorBaseClass = span<const AnchorMarkerInterval>;
+    using AnchorBaseClass = span<const AnchorMarkerInterval>;
 
-        string anchorIdToString(AnchorId);
-        AnchorId anchorIdFromString(const string&);
-    }
+    string anchorIdToString(AnchorId);
+    AnchorId anchorIdFromString(const string&);
 }
 
 
@@ -61,7 +59,7 @@ namespace shasta {
 // This value is the same for all marker intervals of an Anchor, by construction.
 // Currently this is also the same value for all Anchors and equal to 1,
 // but this could change.
-class shasta::mode3::AnchorMarkerInterval {
+class shasta::AnchorMarkerInterval {
 public:
     OrientedReadId orientedReadId;
     uint32_t ordinal0;
@@ -79,7 +77,7 @@ public:
 
 
 
-class shasta::mode3::AnchorInfo {
+class shasta::AnchorInfo {
 public:
     uint32_t ordinalOffset = invalid<uint32_t>;
     uint32_t componentId = invalid<uint32_t>;
@@ -89,7 +87,7 @@ public:
 
 
 // An Anchor is a set of AnchorMarkerIntervals.
-class shasta::mode3::Anchor : public AnchorBaseClass {
+class shasta::Anchor : public AnchorBaseClass {
 public:
 
     Anchor(const AnchorBaseClass& s) : AnchorBaseClass(s) {}
@@ -107,7 +105,7 @@ public:
 
 
 
-class shasta::mode3::Anchors :
+class shasta::Anchors :
     public MultithreadedObject<Anchors>,
     public MappedMemoryOwner {
 public:
@@ -395,7 +393,7 @@ private:
 
 
 // Information about the read composition similarity of two anchors A and B.
-class shasta::mode3::AnchorPairInfo {
+class shasta::AnchorPairInfo {
 public:
 
     // The total number of OrientedReadIds in each of the anchors A and B.
