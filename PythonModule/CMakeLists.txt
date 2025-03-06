@@ -62,7 +62,7 @@ target_link_libraries(
     atomic png boost_program_options boost_serialization pthread z spoa lapack blas ${SHASTA2_PYTHON_LIBRARIES})
 
 # Install the shared library into the bin directory.
-install(TARGETS shasta2PythonModule DESTINATION shasta-install/bin)
+install(TARGETS shasta2PythonModule DESTINATION shasta2-install/bin)
 
 
 

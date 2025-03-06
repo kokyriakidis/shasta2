@@ -58,6 +58,6 @@ else(X86_64)
 endif(X86_64) 
   
 # The static executable goes to the bin directory.
-install(TARGETS shasta2Executable DESTINATION shasta-install/bin)
+install(TARGETS shasta2Executable DESTINATION shasta2-install/bin)
 
 
