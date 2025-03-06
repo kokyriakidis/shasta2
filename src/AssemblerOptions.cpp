@@ -65,7 +65,7 @@ shasta::AssemblerOptions::AssemblerOptions(int argc, char** argv) :
         "Minimum anchor coverage"
         )->capture_default_str();
 
-    add_option("--max-anchor-coverage", minAnchorCoverage,
+    add_option("--max-anchor-coverage", maxAnchorCoverage,
         "Maximum anchor coverage"
         )->capture_default_str();
 
