@@ -74,9 +74,6 @@ namespace shasta {
     class Mode3AssemblyOptions;
     class ReadsOptions;
 
-    // Function to convert a bool to True or False for better
-    // compatibility with Python scripts.
-    string convertBoolToPythonString(bool);
 }
 
 
@@ -103,7 +100,6 @@ public:
 class shasta::ReadsOptions {
 public:
     int minReadLength;
-    void write(ostream&) const;
 };
 
 
@@ -115,7 +111,6 @@ class shasta::KmersOptions {
 public:
     int k;
     double probability;
-    void write(ostream&) const;
 };
 
 
@@ -164,11 +159,8 @@ public:
         // The maximum length of an MSA alignment we are willing to compute.
         uint64_t maxMsaLength;
 
-        void write(ostream&) const;
     };
     LocalAssemblyOptions localAssemblyOptions;
-
-    void write(ostream&) const;
 };
 
 
@@ -178,39 +170,7 @@ public:
 // beginning with "Assembly.".
 class shasta::AssemblyOptions {
 public:
-    uint64_t mode;
-    int crossEdgeCoverageThreshold;
-    int markerGraphEdgeLengthThresholdForConsensus;
-    string consensusCallerString;
-    string consensusCaller;
-    bool storeCoverageData;
-    int storeCoverageDataCsvLengthThreshold;
-    bool writeReadsByAssembledSegment;
-    uint64_t pruneLength;
-
-    // Options that control detangling.
-    int detangleMethod;
-    uint64_t detangleDiagonalReadCountMin;
-    uint64_t detangleOffDiagonalReadCountMax;
-    double detangleOffDiagonalRatio;
-
-    // Options that control iterative assembly.
-    bool iterative;
-    uint64_t iterativeIterationCount;
-    int64_t iterativePseudoPathAlignMatchScore;
-    int64_t iterativePseudoPathAlignMismatchScore;
-    int64_t iterativePseudoPathAlignGapScore;
-    double iterativeMismatchSquareFactor;
-    double iterativeMinScore;
-    uint64_t iterativeMaxAlignmentCount;
-    uint64_t iterativeBridgeRemovalIterationCount;
-    uint64_t iterativeBridgeRemovalMaxDistance;
-
-    // Mode 3 assembly options.
     Mode3AssemblyOptions mode3Options;
-
-    void write(ostream&) const;
-
 };
 
 
@@ -240,9 +200,6 @@ public:
     // Add configurable options to the Boost option description object.
     void addCommandLineOnlyOptions();
     void addConfigurableOptions();
-
-    // Write the options as a config file.
-    void write(ostream&) const;
 
     // Boost program_options library objects.
     boost::program_options::options_description commandLineOnlyOptionsDescription;
