@@ -24,14 +24,6 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
     const bool anchorIdStringIsPresent = HttpServer::getParameterValue(request, "anchorIdString", anchorIdString);
     boost::trim(anchorIdString);
 
-    string annotateString;
-    const bool annotate = HttpServer::getParameterValue(request,
-        "annotate", annotateString);
-
-    string assemblyStage = "Final";
-    HttpServer::getParameterValue(request, "assemblyStage", assemblyStage);
-
-
     // Begin the form.
     html <<
         "<h2>Anchor information</h2>"
@@ -47,23 +39,6 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
     html <<
         " size=8 title='Enter an anchor id between 0 and " <<
         anchors().size() / 2 - 1 << " followed by + or -.'>";
-
-    // Annotation.
-    html <<
-        "<tr>"
-        "<th class=left>Assembly graph annotations"
-        "<td class=centered><input type=checkbox name=annotate" <<
-        (annotate ? " checked" : "") << ">";
-
-    // Assembly stage for annotation.
-    html <<
-        "<tr>"
-        "<th class=left>Assembly stage for annotations"
-        "<td class=centered><input type=text name=assemblyStage style='text-align:center'";
-    if(not assemblyStage.empty()) {
-        html << " value='" << assemblyStage + "'";
-    }
-    html << " size=8>";
 
     // End the form.
     html <<
@@ -532,12 +507,6 @@ void Assembler::exploreReadFollowing(const vector<string>& request, ostream& htm
     double minCorrectedJaccard = 0.8;
     HttpServer::getParameterValue(request, "minCorrectedJaccard", minCorrectedJaccard);
 
-    string annotateString;
-    const bool annotate = HttpServer::getParameterValue(request,
-        "annotate", annotateString);
-
-    string assemblyStage = "Final";
-    HttpServer::getParameterValue(request, "assemblyStage", assemblyStage);
 
 
     // Begin the form.
@@ -556,7 +525,7 @@ void Assembler::exploreReadFollowing(const vector<string>& request, ostream& htm
         " size=8 title='Enter an anchor id between 0 and " <<
         anchors().size() / 2 - 1 << " followed by + or -.'>";
 
-    // Rea following parameters
+    // Read following parameters
     html <<
         "<tr><th class=left>Direction"
         "<td class=centered><input type=text name=direction size=8 value='" << direction << "' style='text-align:center'>"
@@ -566,23 +535,6 @@ void Assembler::exploreReadFollowing(const vector<string>& request, ostream& htm
         "<td class=centered><input type=text name=minJaccard size=8 value='" << minJaccard << "' style='text-align:center'>"
         "<tr><th class=left>minCorrectedJaccard"
         "<td class=centered><input type=text name=minCorrectedJaccard size=8 value='" << minCorrectedJaccard << "' style='text-align:center'>";
-
-    // Annotation.
-    html <<
-        "<tr>"
-        "<th class=left>Assembly graph annotations"
-        "<td class=centered><input type=checkbox name=annotate" <<
-        (annotate ? " checked" : "") << ">";
-
-    // Assembly stage for annotation.
-    html <<
-        "<tr>"
-        "<th class=left>Assembly stage for annotations"
-        "<td class=centered><input type=text name=assemblyStage style='text-align:center'";
-    if(not assemblyStage.empty()) {
-        html << " value='" << assemblyStage + "'";
-    }
-    html << " size=8>";
 
     // End the form.
     html <<
@@ -625,9 +577,6 @@ void Assembler::exploreReadFollowing(const vector<string>& request, ostream& htm
     html <<
         "<p><table>"
         "<tr><th>AnchorId<th>Offset<th>Common<th>Jaccard<th>Corrected<br>Jaccard";
-    if(annotate) {
-        html << "<th>Segment:Position";
-    }
 
 
     for(const auto& p: anchorInfos) {
