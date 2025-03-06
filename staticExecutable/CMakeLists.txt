@@ -48,7 +48,7 @@ add_definitions(-DBOOST_ERROR_CODE_HEADER_ONLY)
 add_definitions(-DBOOST_ALLOW_DEPRECATED_HEADERS)
 
 # Source files
-file(GLOB SOURCES ../srcMain/*.cpp ../src/*.cpp)
+file(GLOB SOURCES ../src/*.cpp)
 
 # Include directory.
 include_directories(../src)
