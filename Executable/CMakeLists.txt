@@ -18,15 +18,6 @@ else(BUILD_DEBUG)
     add_definitions(-DNDEBUG)
 endif(BUILD_DEBUG)
 
-# Definitions needed to eliminate dependency on the boost system library.
-add_definitions(-DBOOST_SYSTEM_NO_DEPRECATED)
-add_definitions(-DBOOST_ERROR_CODE_HEADER_ONLY)
-
-# This is needed to avoid some Boost warnings about deprecated messages.
-# We canot fix this in Shasta as it is a Boost problem.
-# It can be removed if Boost is fixed.
-add_definitions(-DBOOST_ALLOW_DEPRECATED_HEADERS)
-
 # Source files
 file(GLOB SOURCES ../src/*.cpp)
 
