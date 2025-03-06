@@ -20,19 +20,21 @@
 
 
 namespace shasta {
+
+    class LocalAssemblyVertex;
+    class LocalAssemblyEdge;
+    class LocalAssembly;
+    using LocalAssemblyBaseClass = boost::adjacency_list<
+        boost::listS,
+        boost::listS,
+        boost::bidirectionalS,
+        LocalAssemblyVertex,
+        LocalAssemblyEdge
+        >;
+    class LocalAssemblyDisplayOptions;
+    class LocalAssemblyMarkerIndexes;
+
     namespace mode3 {
-        class LocalAssemblyVertex;
-        class LocalAssemblyEdge;
-        class LocalAssembly;
-        using LocalAssemblyBaseClass = boost::adjacency_list<
-            boost::listS,
-            boost::listS,
-            boost::bidirectionalS,
-            LocalAssemblyVertex,
-            LocalAssemblyEdge
-            >;
-        class LocalAssemblyDisplayOptions;
-        class LocalAssemblyMarkerIndexes;
 
         class Anchors;
         using AnchorId = uint64_t;
@@ -49,7 +51,7 @@ namespace shasta {
 
 
 
-class shasta::mode3::LocalAssemblyDisplayOptions {
+class shasta::LocalAssemblyDisplayOptions {
 public:
 
     // If this is not open, no output takes place.
@@ -70,7 +72,7 @@ public:
 
 
 // A way to identify a marker in LocalAssembly, besides its id.
-class shasta::mode3::LocalAssemblyMarkerIndexes {
+class shasta::LocalAssemblyMarkerIndexes {
 public:
     uint64_t i; // Index in orientedReadInfos
     uint64_t j; // Index in OrientedReadInfo::markerInfos;
@@ -78,7 +80,7 @@ public:
 
 
 
-class shasta::mode3::LocalAssemblyVertex {
+class shasta::LocalAssemblyVertex {
 public:
     uint64_t disjointSetId;
     bool isAccessibleA = false;
@@ -87,7 +89,7 @@ public:
 
 
 
-class shasta::mode3::LocalAssemblyEdge {
+class shasta::LocalAssemblyEdge {
 public:
 
     // Each marker interval is identified by the two markers.
@@ -105,7 +107,7 @@ public:
 
 
 
-class shasta::mode3::LocalAssembly : public LocalAssemblyBaseClass {
+class shasta::LocalAssembly : public LocalAssemblyBaseClass {
 public:
 
     // Hide class Base defined in boost::adjacency_list.
@@ -127,9 +129,9 @@ public:
         uint64_t k,
         const Reads&,
         const Markers& markers,
-        const Anchors& anchors,
-        AnchorId anchorIdA,
-        AnchorId anchorIdB,
+        const mode3::Anchors& anchors,
+        mode3::AnchorId anchorIdA,
+        mode3::AnchorId anchorIdB,
         uint64_t minVertexCoverage, // 0 = automatic
         const LocalAssemblyDisplayOptions&,
         const AssemblerOptions::LocalAssemblyOptions&,
@@ -152,9 +154,9 @@ private:
     uint64_t kHalf;
     const Reads& reads;
     const Markers& markers;
-    const Anchors& anchors;
-    AnchorId anchorIdA;
-    AnchorId anchorIdB;
+    const mode3::Anchors& anchors;
+    mode3::AnchorId anchorIdA;
+    mode3::AnchorId anchorIdB;
     const LocalAssemblyDisplayOptions& options;
     ostream& html;
 

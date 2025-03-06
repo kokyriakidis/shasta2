@@ -1,7 +1,7 @@
 // Shasta.
 #include "Assembler.hpp"
 #include "mode3-Anchor.hpp"
-#include "mode3-LocalAssembly.hpp"
+#include "LocalAssembly.hpp"
 using namespace shasta;
 using namespace mode3;
 
