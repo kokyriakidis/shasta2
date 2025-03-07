@@ -306,7 +306,6 @@ void Assembler::exploreAnchorPair(const vector<string>& request, ostream& html)
 
 void Assembler::exploreJourney(const vector<string>& request, ostream& html)
 {
-    const uint64_t k = assemblerInfo->k;
 
     html <<
         "<h2>Oriented read journey</h2>"
@@ -406,9 +405,7 @@ void Assembler::exploreJourney(const vector<string>& request, ostream& html)
     const span<const AnchorId> journey = journeys[orientedReadId.getValue()];
 
     // Page title.
-    html << "<h2>Journey of oriented read " << orientedReadId << "</h2>"
-        "<p>Each anchor begins at the midpoint of the first marker (Marker0) "
-        "and ends at the midpoint of the second marker (Marker1).";
+    html << "<h2>Journey of oriented read " << orientedReadId << "</h2>";
 
     // Begin the main table.
     html <<
@@ -416,14 +413,8 @@ void Assembler::exploreJourney(const vector<string>& request, ostream& html)
         "<th>Position<br>in journey"
         "<th>Anchor"
         "<th>Anchor<br>coverage"
-        "<th>Marker0<br>ordinal"
-        "<th>Marker1<br>ordinal"
-        "<th>Marker0<br>position"
-        "<th>Marker1<br>position"
-        "<th>Anchor<br>begin"
-        "<th>Anchor<br>end"
-        "<th>Anchor<br>length"
-        "<th class=left>Anchor<br>sequence";
+        "<th>Marker<br>ordinal"
+        "<th>Marker<br>position";
 
     // Loop over the anchors in the journey of this oriented read.
     for(uint64_t positionInJourney=0; positionInJourney<journey.size(); positionInJourney++) {
@@ -431,22 +422,17 @@ void Assembler::exploreJourney(const vector<string>& request, ostream& html)
         const uint64_t anchorCoverage = anchors()[anchorId].coverage();
         const string anchorIdString = anchorIdToString(anchorId);
 
-        const uint64_t ordinal0 = anchors().getFirstOrdinal(anchorId, orientedReadId);
-        const uint64_t ordinal1 = ordinal0 + anchors().ordinalOffset(anchorId);
+        const uint64_t ordinal = anchors().getFirstOrdinal(anchorId, orientedReadId);
 
         const auto orientedReadMarkers = markers()[orientedReadId.getValue()];
-        const uint32_t position0 = orientedReadMarkers[ordinal0].position;
-        const uint32_t position1 = orientedReadMarkers[ordinal1].position;
+        const uint32_t position = orientedReadMarkers[ordinal].position;
 
-        if(position0 < beginPosition) {
+        if(position < beginPosition) {
             continue;
         }
-        if(position1 >= endPosition) {
+        if(position >= endPosition) {
             continue;
         }
-
-        const span<const Base> anchorSequence = anchors().anchorSequence(anchorId);
-        SHASTA_ASSERT(anchorSequence.size() == position1 - position0);
 
         html <<
             "<tr>"
@@ -455,15 +441,8 @@ void Assembler::exploreJourney(const vector<string>& request, ostream& html)
             "<a href='exploreAnchor?anchorIdString=" << HttpServer::urlEncode(anchorIdString) << "'>" <<
             anchorIdString << "</a>"
             "<td class=centered>" << anchorCoverage <<
-            "<td class=centered>" << ordinal0 <<
-            "<td class=centered>" << ordinal1 <<
-            "<td class=centered>" << position0 <<
-            "<td class=centered>" << position1 <<
-            "<td class=centered>" << position0 + k/2 <<
-            "<td class=centered>" << position1 + k/2 <<
-            "<td class=centered>" << anchorSequence.size() <<
-            "<td style='font-family:courier'>";
-        copy(anchorSequence.begin(), anchorSequence.end(), ostream_iterator<Base>(html));
+            "<td class=centered>" << ordinal <<
+            "<td class=centered>" << position;
     }
 
     html << "</table>";

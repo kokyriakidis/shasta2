@@ -32,7 +32,6 @@ Anchors::Anchors(
     kHalf = k / 2;
 
     anchorMarkerIntervals.accessExistingReadOnly(largeDataName("AnchorMarkerIntervals"));
-    anchorSequences.accessExistingReadOnly(largeDataName("AnchorSequences"));
     anchorInfos.accessExistingReadWrite(largeDataName("AnchorInfos"));
     journeys.accessExistingReadOnly(largeDataName("Journeys"));
 }
@@ -42,15 +41,6 @@ Anchors::Anchors(
 Anchor Anchors::operator[](AnchorId anchorId) const
 {
     return anchorMarkerIntervals[anchorId];
-}
-
-
-
-
-// Currently, this sequence is always empty.
-span<const Base> Anchors::anchorSequence(AnchorId anchorId) const
-{
-    return anchorSequences[anchorId];
 }
 
 
@@ -1093,8 +1083,6 @@ Anchors::Anchors(
     anchorMarkerIntervals.createNew(
             largeDataName("AnchorMarkerIntervals"),
             largeDataPageSize);
-    anchorSequences.createNew(
-        largeDataName("AnchorSequences"), largeDataPageSize);
     anchorInfos.createNew(largeDataName("AnchorInfos"), largeDataPageSize);
     for(uint64_t threadId=0; threadId<threadCount; threadId++) {
         auto& threadAnchorsPointer = data.threadAnchors[threadId];
@@ -1112,12 +1100,8 @@ Anchors::Anchors(
         threadAnchorsPointer = 0;
     }
 
-    // The anchor sequences are all empty.
     const uint64_t anchorCount = anchorMarkerIntervals.size();
     anchorInfos.resize(anchorCount);
-    for(AnchorId anchorId=0; anchorId<anchorCount; anchorId++) {
-        anchorSequences.appendVector();
-    }
 
     cout << "Number of anchors per strand: " << anchorCount / 2 << endl;
     performanceLog << timestamp << "Anchor creation from marker kmers ends." << endl;
