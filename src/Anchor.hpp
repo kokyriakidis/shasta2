@@ -9,10 +9,6 @@
 #include "MemoryMappedVectorOfVectors.hpp"
 #include "MultithreadedObject.hpp"
 
-// Boost libraries.
-#define BOOST_BIND_GLOBAL_PLACEHOLDERS
-#include <boost/property_tree/ptree_fwd.hpp>
-
 // Standard library.
 #include "cstdint.hpp"
 #include "memory.hpp"
@@ -325,69 +321,6 @@ private:
     ConstructFromMarkerKmersData constructFromMarkerKmersData;
     void constructFromMarkerKmersThreadFunction(uint64_t threadId);
 
-
-#if 0
-    // Data and functions used when constructing the Anchors from marker k-mers (old code).
-    class ConstructFromMarkerKmersData {
-    public:
-        uint64_t minPrimaryCoverage;
-        uint64_t maxPrimaryCoverage;
-
-        class MarkerInfo {
-        public:
-            OrientedReadId orientedReadId;
-            uint32_t ordinal;
-        };
-
-        // A hash table that will contain a MarkerInfo object
-        // for each marker in all oriented reads.
-        // Indexed by bucketId.
-        // The bucket is computed by hashing the k-mer of each marker,
-        // so all markers with the same k-mer end up in the same bucket.
-        MemoryMapped::VectorOfVectors<MarkerInfo, uint64_t> buckets;
-
-        // The number of buckets is chosen equal to a power of 2,
-        // so the bucketId can be obtained with a siple bitwise and
-        // with a mask equal to the number of buckets minus 1.
-        uint64_t mask;
-
-        // The MarkerInfo objects for the candidate anchors found by each thread.
-        vector< shared_ptr<MemoryMapped::VectorOfVectors<MarkerInfo, uint64_t> > > threadAnchors;
-
-        // Another hash table where we information for each Kmer.
-        class KmerInfo {
-        public:
-            Kmer kmer;
-            uint64_t isForbidden:1;
-            uint64_t frequency:63;
-            KmerInfo(const Kmer kmer, uint64_t frequencyArgument) : kmer(kmer)
-            {
-                isForbidden = 0;
-                frequency = frequencyArgument & 0x7FFFFFFFFFFFFFFFUL;
-            }
-            KmerInfo()
-            {
-                isForbidden = 0;
-                frequency = 0;
-            }
-        };
-        MemoryMapped::VectorOfVectors<KmerInfo, uint64_t > kmerInfo;
-    };
-    ConstructFromMarkerKmersData constructFromMarkerKmersData;
-    void constructFromMarkerKmersGatherMarkersPass1(uint64_t threadId);
-    void constructFromMarkerKmersGatherMarkersPass2(uint64_t threadId);
-    void constructFromMarkerKmersGatherMarkersPass12(uint64_t pass);
-    void constructFromMarkerKmersComputeKmerFrequencyPass1(uint64_t threadId);
-    void constructFromMarkerKmersComputeKmerFrequencyPass2(uint64_t threadId);
-    void constructFromMarkerKmersComputeKmerFrequencyPass12(uint64_t pass);
-    void constructFromMarkerKmersFlagForbiddenKmers(uint64_t threadId);
-    void constructFromMarkerKmersCreateAnchors(uint64_t threadId);
-#endif
-
-
-    // Process a candidate anchor from json input.
-    using Ptree = boost::property_tree::basic_ptree<string, string>;
-    bool processCandidateAnchor(const Ptree&, const string& name);
 };
 
 
