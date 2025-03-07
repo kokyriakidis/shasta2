@@ -62,11 +62,9 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
 
     html << "<h1>Anchor " << anchorIdString << "</h1>";
 
-    const uint64_t componentId = anchors().getComponent(anchorId);
     const auto markerIntervals = anchors()[anchorId];
     const uint64_t coverage = markerIntervals.size();
-    const auto sequence = anchors().anchorSequences[anchorId];
-    const vector<Base> extendedSequence = anchors().anchorExtendedSequence(anchorId);
+    const vector<Base> kmerSequence = anchors().anchorExtendedSequence(anchorId);
 
 
     vector<AnchorId> parents;
@@ -80,21 +78,9 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
     // Write a summary table.
     html <<
         "<table>"
-        "<tr><th class=left>Component<td class=centered>";
-    if(componentId == invalid<uint32_t>) {
-        html << "None";
-    } else {
-        html << componentId;
-    }
-    html <<
         "<tr><th class=left>Coverage<td class=centered>" << coverage <<
-        "<tr><th class=left>Sequence length<td class=centered>" << sequence.size() <<
-        "<tr><th class=left>Sequence<td class=centered style='font-family:courier'>";
-    copy(sequence.begin(), sequence.end(), ostream_iterator<Base>(html));
-    html <<
-        "<tr><th class=left>Extended sequence length<td class=centered>" << extendedSequence.size() <<
-        "<tr><th class=left>Extended sequence<td class=centered style='font-family:courier'>";
-    copy(extendedSequence.begin(), extendedSequence.end(), ostream_iterator<Base>(html));
+        "<tr><th class=left>K-mer sequence<td class=centered style='font-family:monospace'>";
+    copy(kmerSequence.begin(), kmerSequence.end(), ostream_iterator<Base>(html));
 
     html <<
         "<tr><th class=left>Parent anchors"
@@ -557,7 +543,6 @@ void Assembler::exploreReadFollowing(const vector<string>& request, ostream& htm
 
 
     html << "<h2>Read following</h2>";
-    const uint64_t componentId0 = anchors().getComponent(anchorId0);
 
     // Do the read following.
     vector< pair<AnchorId, AnchorPairInfo> > anchorInfos;
@@ -581,8 +566,6 @@ void Assembler::exploreReadFollowing(const vector<string>& request, ostream& htm
     for(const auto& p: anchorInfos) {
         const AnchorId anchorId1 = p.first;
         const AnchorPairInfo& info = p.second;
-
-        SHASTA_ASSERT(anchors().getComponent(anchorId1) == componentId0);
 
         html <<
             "<tr>"

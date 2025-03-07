@@ -75,9 +75,9 @@ public:
 
 class shasta::AnchorInfo {
 public:
-    uint32_t ordinalOffset = invalid<uint32_t>;
-    uint32_t componentId = invalid<uint32_t>;
-    uint64_t localAnchorIdInComponent = invalid<uint64_t>;
+    // For now this is empty but we will add here the
+    // index of the marker k-mer that originated this anchor
+    // and its reverse complement.
 };
 
 
@@ -170,13 +170,10 @@ public:
     // For precise definition see the code.
     bool areAdjacentAnchors(AnchorId, AnchorId) const;
 
-    // The offset to be added to ordinal0 of an Anchor to obtain ordinal1.
-    // * When constructing anchors from the marker graph, this is the same for all Anchors
-    //   and always equal to 1.
-    // * When reading the anchors from a json file, each anchor can have a different value.
-    uint32_t ordinalOffset(AnchorId anchorId) const
+    // This always returns 0 and will be removed.
+    uint32_t ordinalOffset(AnchorId) const
     {
-        return anchorInfos[anchorId].ordinalOffset;
+        return 0;
     }
 
     void writeCoverageHistogram() const;
@@ -249,22 +246,10 @@ public:
     // In addition to the marker intervals, we also store an AnchorInfo for each Anchor.
     MemoryMapped::Vector<AnchorInfo> anchorInfos;
 public:
-        void storeAnchorInfo(
-            AnchorId anchorId,
-            uint32_t componentId,
-            uint64_t localAnchorIdInComponent)
+        void storeAnchorInfo(AnchorId)
         {
-            AnchorInfo& anchorInfo = anchorInfos[anchorId];
-            anchorInfo.componentId =  componentId;
-            anchorInfo.localAnchorIdInComponent =  localAnchorIdInComponent;
-        }
-        uint64_t getComponent(AnchorId anchorId) const
-        {
-            return anchorInfos[anchorId].componentId;
-        }
-        uint64_t getLocalAnchorIdInComponent(AnchorId anchorId) const
-        {
-            return anchorInfos[anchorId].localAnchorIdInComponent;
+            // For now there is nothing to store.
+            // AnchorInfo& anchorInfo = anchorInfos[anchorId];
         }
 
 

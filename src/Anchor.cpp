@@ -1113,12 +1113,10 @@ Anchors::Anchors(
     }
 
     // The anchor sequences are all empty.
-    // The ordinal offsets are all 0.
     const uint64_t anchorCount = anchorMarkerIntervals.size();
     anchorInfos.resize(anchorCount);
     for(AnchorId anchorId=0; anchorId<anchorCount; anchorId++) {
         anchorSequences.appendVector();
-        anchorInfos[anchorId].ordinalOffset = 0;
     }
 
     cout << "Number of anchors per strand: " << anchorCount / 2 << endl;
