@@ -49,12 +49,6 @@ namespace shasta {
 
 
 
-// The second ordinal of the marker interval is not stored.
-// It can be obtained by adding to ordinal0 the value returned
-// by Anchors::ordinalOffset(AnchorId).
-// This value is the same for all marker intervals of an Anchor, by construction.
-// Currently this is also the same value for all Anchors and equal to 1,
-// but this could change.
 class shasta::AnchorMarkerInterval {
 public:
     OrientedReadId orientedReadId;
@@ -164,12 +158,6 @@ public:
     // Return true if the second Anchor is adjacent to the first one.
     // For precise definition see the code.
     bool areAdjacentAnchors(AnchorId, AnchorId) const;
-
-    // This always returns 0 and will be removed.
-    uint32_t ordinalOffset(AnchorId) const
-    {
-        return 0;
-    }
 
     void writeCoverageHistogram() const;
 
