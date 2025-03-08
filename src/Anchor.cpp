@@ -1114,7 +1114,7 @@ void Anchors::constructFromMarkerKmersThreadFunction(uint64_t threadId)
             // Reverse complement the usableMarkerInfos, then
             // generate the second anchor in the pair.
             for(MarkerInfo& markerInfo: usableMarkerInfos) {
-                markerInfo = markerKmers.reverseComplement(markerInfo);
+                markerInfo = markerInfo.reverseComplement(markers);
             }
             threadAnchors.appendVector(usableMarkerInfos);
         }

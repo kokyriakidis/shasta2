@@ -68,15 +68,12 @@ public:
             markerInfos.begin() + kmerInfo.end);
     }
 
-    // Construct the reverse complement of a MarkerInfo.
-    MarkerInfo reverseComplement(const MarkerInfo&) const;
-
 private:
 
     // Constructor arguments.
     uint64_t k;
     const Reads& reads;
-    const MemoryMapped::VectorOfVectors<Marker, uint64_t>& markers;
+    const Markers& markers;
 
     // Get the Kmer corresponding to a given MarkerInfo.
     Kmer getKmer(const MarkerInfo&) const;

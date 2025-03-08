@@ -516,22 +516,8 @@ void MarkerKmers::get(
         // Kmer is not canonical but kmerRc is.
         span<const MarkerInfo> s = getMarkerInfos(kmerRc);
         for(const MarkerInfo& markerInfo: s) {
-            v.push_back(reverseComplement(markerInfo));
+            v.push_back(markerInfo.reverseComplement(markers));
         }
         sort(v.begin(), v.end(), MarkerInfoSorter(*this));
     }
-}
-
-
-
-// Construct the reverse complement of a MarkerInfo.
-MarkerInfo MarkerKmers::reverseComplement(const MarkerInfo& markerInfo) const
-{
-    MarkerInfo markerInfoRc = markerInfo;
-    const uint32_t orientedReadMarkerCount = uint32_t(markers[markerInfo.orientedReadId.getValue()].size());
-
-    markerInfoRc.orientedReadId.flipStrand();
-    markerInfoRc.ordinal = orientedReadMarkerCount - 1 - markerInfoRc.ordinal;
-
-    return markerInfoRc;
 }
