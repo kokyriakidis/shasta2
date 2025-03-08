@@ -64,7 +64,7 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
 
     const auto markerIntervals = anchors()[anchorId];
     const uint64_t coverage = markerIntervals.size();
-    const vector<Base> kmerSequence = anchors().anchorExtendedSequence(anchorId);
+    const vector<Base> kmerSequence = anchors().anchorKmerSequence(anchorId);
 
 
     vector<AnchorId> parents;

@@ -45,11 +45,9 @@ Anchor Anchors::operator[](AnchorId anchorId) const
 
 
 
-// This returns the sequence between the beginning of the first marker of the
-// anchor and the end of the second marker.
-// Get the sequence from the first oriented read of the anchor
-// (all oriented reads are guaranteed to have the same anchor sequence).
-vector<Base> Anchors::anchorExtendedSequence(AnchorId anchorId) const
+// This returns the sequence of the marker k-mer
+// that this anchor was created from.
+vector<Base> Anchors::anchorKmerSequence(AnchorId anchorId) const
 {
     // Get the first AnchorMarkerInterval for this Anchor.
     const Anchor anchor = (*this)[anchorId];
@@ -57,17 +55,15 @@ vector<Base> Anchors::anchorExtendedSequence(AnchorId anchorId) const
 
     // Get the OrientedReadId and the ordinals.
     const OrientedReadId orientedReadId = firstMarkerInterval.orientedReadId;
-    const uint32_t ordinal0 = firstMarkerInterval.ordinal0;
-    const uint32_t ordinal1 = ordinal0 + ordinalOffset(anchorId);
+    const uint32_t ordinal = firstMarkerInterval.ordinal0;
 
     // Access the markers of this OrientedReadId.
     const auto orientedReadMarkers = markers[orientedReadId.getValue()];
 
-    const Marker& marker0 = orientedReadMarkers[ordinal0];
-    const Marker& marker1 = orientedReadMarkers[ordinal1];
+    const Marker& marker = orientedReadMarkers[ordinal];
 
-    const uint32_t begin = marker0.position;
-    const uint32_t end = marker1.position + uint32_t(k);
+    const uint32_t begin = marker.position;
+    const uint32_t end = begin + uint32_t(k);
 
     vector<Base> sequence;
     for(uint32_t position=begin; position!=end; position++) {

@@ -150,9 +150,9 @@ public:
     uint64_t size() const;
 
 
-    // This returns the sequence between the beginning of the first marker of the
-    // anchor and the end of the second marker.
-    vector<Base> anchorExtendedSequence(AnchorId) const;
+    // This returns the sequence of the marker k-mer
+    // that this anchor was created from.
+    vector<Base> anchorKmerSequence(AnchorId) const;
 
     // Return the number of common oriented reads between two Anchors.
     uint64_t countCommon(AnchorId, AnchorId, bool ignoreNegativeOffsets = false) const;
