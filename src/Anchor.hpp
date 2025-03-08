@@ -4,6 +4,7 @@
 #include "Kmer.hpp"
 #include "invalid.hpp"
 #include "MappedMemoryOwner.hpp"
+#include "MarkerInfo.hpp"
 #include "MemoryMappedVectorOfVectors.hpp"
 #include "MultithreadedObject.hpp"
 #include "ReadId.hpp"
@@ -39,19 +40,25 @@ namespace shasta {
 
 
 
-class shasta::AnchorMarkerInfo {
+// An Anchor is a set of AnchorMarkerInfos.
+class shasta::AnchorMarkerInfo : public MarkerInfo {
 public:
-    OrientedReadId orientedReadId;
-    uint32_t ordinal;
     uint32_t positionInJourney = invalid<uint32_t>;
 
+    // Default constructor.
     AnchorMarkerInfo() {}
 
+    // Constructor from a MarkerInfo.
+    AnchorMarkerInfo(
+        const MarkerInfo& markerInfo) :
+        MarkerInfo(markerInfo)
+    {}
+
+    // Constructor from OrientedReadId and ordinal.
     AnchorMarkerInfo(
         OrientedReadId orientedReadId,
         uint32_t ordinal) :
-        orientedReadId(orientedReadId),
-        ordinal(ordinal)
+        MarkerInfo(orientedReadId, ordinal)
     {}
 };
 
@@ -66,7 +73,7 @@ public:
 
 
 
-// An Anchor is a set of AnchorMarkerIntervals.
+// An Anchor is a set of AnchorMarkerInfos.
 class shasta::Anchor : public AnchorBaseClass {
 public:
 
