@@ -100,18 +100,6 @@ class shasta::Anchors :
     public MappedMemoryOwner {
 public:
 
-    // This constructor creates the Anchors from marker graph edges.
-    Anchors(
-        const MappedMemoryOwner&,
-        const Reads& reads,
-        uint64_t k,
-        const Markers& markers,
-        const MarkerGraph&,
-        uint64_t minPrimaryCoverage,
-        uint64_t maxPrimaryCoverage,
-        uint64_t threadCount);
-
-    // This constructor creates the Anchors from marker k-mers.
     Anchors(
         const MappedMemoryOwner&,
         const Reads& reads,
@@ -122,18 +110,7 @@ public:
         uint64_t maxAnchorCoverage,
         uint64_t threadCount);
 
-    // This constructor creates the Anchors from a json file.
-    Anchors(
-        const MappedMemoryOwner&,
-        const Reads& reads,
-        uint64_t k,
-        const Markers& markers,
-        const vector<string>& jsonFileNames,
-        uint64_t minPrimaryCoverage,
-        uint64_t maxPrimaryCoverage,
-        uint64_t threadCount);
-
-    // This constructor access existing Anchors.
+    // This constructor accesses existing Anchors.
     Anchors(
         const MappedMemoryOwner&,
         const Reads& reads,
@@ -142,7 +119,6 @@ public:
 
     Anchor operator[](AnchorId) const;
     uint64_t size() const;
-
 
     // This returns the sequence of the marker k-mer
     // that this anchor was created from.
