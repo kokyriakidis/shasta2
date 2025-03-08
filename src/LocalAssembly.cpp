@@ -210,7 +210,7 @@ void LocalAssembly::gatherOrientedReads(bool useA, bool useB)
             if(useA) {
                 const AnchorMarkerInterval& markerIntervalA = *itA;
                 const OrientedReadId orientedReadIdA = markerIntervalA.orientedReadId;
-                const uint32_t ordinalA = markerIntervalA.ordinal0 + anchors.ordinalOffset(anchorIdA);    // Because vertexIdA is the target of anchorIdA
+                const uint32_t ordinalA = markerIntervalA.ordinal0;    // Because vertexIdA is the target of anchorIdA
 
                 OrientedReadInfo info(orientedReadIdA);
                 info.ordinalA = ordinalA;
@@ -255,8 +255,8 @@ void LocalAssembly::gatherOrientedReads(bool useA, bool useB)
             SHASTA_ASSERT(orientedReadIdA == orientedReadIdB);
             const OrientedReadId orientedReadId = orientedReadIdA;
 
-            const uint32_t ordinalA = markerIntervalA.ordinal0 + anchors.ordinalOffset(anchorIdA);    // Because vertexIdA is the target of anchorIdA
-            const uint32_t ordinalB = markerIntervalB.ordinal0;    // Because vertexIdB is the source of anchorIdB
+            const uint32_t ordinalA = markerIntervalA.ordinal0;
+            const uint32_t ordinalB = markerIntervalB.ordinal0;
 
             // Only use it if the ordinal offset is not negative.
             if(ordinalB >= ordinalA) {
