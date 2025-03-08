@@ -150,11 +150,11 @@ LocalAssembly::LocalAssembly(
         // Write assembled sequence.
         if(html) {
             vector<Base> sequence;
-            getSecondarySequence(sequence);
+            getSequence(sequence);
 
             html <<
                 "<h2>Assembled sequence</h2>"
-                "Assembled sequence not including the first and last edge is " <<
+                "Assembled sequence is " <<
                 sequence.size() << " bases long."
                 "<pre style='font-family:monospace'>\n";
             copy(sequence.begin(), sequence.end(), ostream_iterator<Base>(html));
@@ -164,14 +164,6 @@ LocalAssembly::LocalAssembly(
             fasta << ">LocalAssembly " << sequence.size() << endl;
             copy(sequence.begin(), sequence.end(), ostream_iterator<Base>(fasta));
 
-            getCompleteSequence(sequence);
-
-            html <<
-                "Assembled sequence including the first and last edge is " <<
-                sequence.size() << " bases long."
-                "<pre style='font-family:monospace'>\n";
-            copy(sequence.begin(), sequence.end(), ostream_iterator<Base>(html));
-            html << "</pre>";
         }
 
         break;
@@ -1792,9 +1784,8 @@ void LocalAssembly::writeCoverageCharacterToHtml(uint64_t coverage) const
 }
 
 
-// Get the sequence between edgeIdA and edgeIdB.
-// This does not include the sequences of edgeIdA and edgeIdB themselves.
-void LocalAssembly::getSecondarySequence(
+
+void LocalAssembly::getSequence(
     vector<Base>& sequence) const
 {
     const LocalAssembly& graph = *this;
@@ -1804,30 +1795,6 @@ void LocalAssembly::getSecondarySequence(
         const vector<Base>& edgeSequence = graph[e].consensusSequence;
         copy(edgeSequence.begin(), edgeSequence.end(), back_inserter(sequence));
     }
-
-}
-
-
-
-// Get the complete sequence, including the sequences of edgeIdA and edgeIdB.
-void LocalAssembly::getCompleteSequence(
-    vector<Base>& sequence) const
-{
-    const LocalAssembly& graph = *this;
-
-    sequence.clear();
-
-    const auto edgeASequence = anchors.anchorSequences[anchorIdA];
-    copy(edgeASequence.begin(), edgeASequence.end(), back_inserter(sequence));
-
-    for(const edge_descriptor e: assemblyPath) {
-        const vector<Base>& edgeSequence = graph[e].consensusSequence;
-        copy(edgeSequence.begin(), edgeSequence.end(), back_inserter(sequence));
-    }
-
-    const auto edgeBSequence = anchors.anchorSequences[anchorIdB];
-    copy(edgeBSequence.begin(), edgeBSequence.end(), back_inserter(sequence));
-
 
 }
 

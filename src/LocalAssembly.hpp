@@ -133,14 +133,9 @@ public:
         bool useA = true,
         bool useB = true);
 
-    // Get the sequence between edgeIdA and edgeIdB.
-    // This does not include the sequences of edgeIdA and edgeIdB themselves.
-    void getSecondarySequence(
+    void getSequence(
         vector<Base>&) const;
 
-    // Get the complete sequence, including the sequences of edgeIdA and edgeIdB.
-    void getCompleteSequence(
-        vector<Base>&) const;
 
 private:
 

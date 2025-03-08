@@ -153,20 +153,6 @@ public:
     uint64_t kHalf;
     const Markers& markers;
 
-    // The sequences of the anchors.
-    // We assume that marker length k is even, and anchor sequence
-    // starts at the midpoint of the first marker of the anchor
-    // and ends at the midpoint of the second marker of the anchor.
-    // This means:
-    // - If the Anchor ordinal are consecutive (as it happens
-    //   when getting Anchors from marker graph edges),
-    //   its sequence is guaranteed to have at least one base.
-    // - If the Anchor ordinal are identical (as it may happen
-    //   in a future alignment free formulation), its sequence
-    //   is empty.
-    MemoryMapped::VectorOfVectors<Base, uint64_t> anchorSequences;
-
-
     // The journey of each oriented read is the sequence of AnchorIds
     // encountered by the oriented read.
     MemoryMapped::VectorOfVectors<AnchorId, uint64_t> journeys;
