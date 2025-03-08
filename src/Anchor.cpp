@@ -394,22 +394,18 @@ void Anchors::writeHtml(
         "<tr>"
         "<th class=centered rowspan=2>Oriented<br>read id"
         "<th class=centered colspan=2>Length"
-        "<th colspan=4>Anchor A"
-        "<th colspan=4>Anchor B"
+        "<th colspan=2>Anchor A"
+        "<th colspan=2>Anchor B"
         "<th rowspan=2>Ordinal offset"
         "<th rowspan=2>Base offset"
         "<th rowspan=2>Classification"
         "<tr>"
         "<th>Markers"
         "<th>Bases"
-        "<th>Ordinal0"
-        "<th>Ordinal1"
-        "<th>Position0"
-        "<th>Position1"
-        "<th>Ordinal0"
-        "<th>Ordinal1"
-        "<th>Position0"
-        "<th>Position1";
+        "<th>Ordinal"
+        "<th>Position"
+        "<th>Ordinal"
+        "<th>Position";
 
     // Prepare for the joint loop over OrientedReadIds of the two anchors.
     const auto markerIntervalsA = anchors[anchorIdA];
@@ -434,15 +430,12 @@ void Anchors::writeHtml(
             const int64_t lengthInBases = int64_t(reads.getReadSequenceLength(orientedReadId.getReadId()));
 
             // Get the positions of Anchor A in this oriented read.
-            const uint32_t ordinalA0 = itA->ordinal0;
-            const uint32_t ordinalA1 = ordinalA0;
-            const int64_t positionA0 = int64_t(orientedReadMarkers[ordinalA0].position);
-            const int64_t positionA1 = int64_t(orientedReadMarkers[ordinalA1].position);
+            const uint32_t ordinalA = itA->ordinal0;
+            const int64_t positionA = int64_t(orientedReadMarkers[ordinalA].position);
 
             // Find the hypothetical positions of Anchor B, assuming the estimated base offset.
-            const int64_t positionB0 = positionA0 + info.offsetInBases;
-            const int64_t positionB1 = positionA1 + info.offsetInBases;
-            const bool isShort = positionB0<0 or positionB1 >= lengthInBases;
+            const int64_t positionB = positionA + info.offsetInBases;
+            const bool isShort = positionB<0 or positionB >= lengthInBases;
 
             html <<
                 "<tr><td class=centered>"
@@ -450,13 +443,11 @@ void Anchors::writeHtml(
                 "&strand=" << orientedReadId.getStrand() << "'>" << orientedReadId << "</a>"
                 "<td class=centered>" << orientedReadMarkers.size() <<
                 "<td class=centered>" << lengthInBases <<
-                "<td class=centered>" << ordinalA0 <<
-                "<td class=centered>" << ordinalA1 <<
-                "<td class=centered>" << positionA0 <<
-                "<td class=centered>" << positionA1 <<
-                "<td><td>"
-                "<td class=centered style='color:Red'>" << positionB0 <<
-                "<td class=centered style='color:Red'>" << positionB1 << "<td><td>"
+                "<td class=centered>" << ordinalA <<
+                 "<td class=centered>" << positionA <<
+                "<td>"
+                "<td class=centered style='color:Red'>" << positionB <<
+                "<td class=centered style='color:Red'>" << "<td>"
                 "<td class=centered>OnlyA, " << (isShort ? "short" : "missing");
 
             ++itA;
@@ -470,15 +461,12 @@ void Anchors::writeHtml(
             const int64_t lengthInBases = int64_t(reads.getReadSequenceLength(orientedReadId.getReadId()));
 
             // Get the positions of Anchor B in this oriented read.
-            const uint32_t ordinalB0 = itB->ordinal0;
-            const uint32_t ordinalB1 = ordinalB0;
-            const int64_t positionB0 = int64_t(orientedReadMarkers[ordinalB0].position);
-            const int64_t positionB1 = int64_t(orientedReadMarkers[ordinalB1].position);
+            const uint32_t ordinalB = itB->ordinal0;
+            const int64_t positionB = int64_t(orientedReadMarkers[ordinalB].position);
 
             // Find the hypothetical positions of edge A, assuming the estimated base offset.
-            const int64_t positionA0 = positionB0 - info.offsetInBases;
-            const int64_t positionA1 = positionB1 - info.offsetInBases;
-            const bool isShort = positionA0<0 or positionA1 >= lengthInBases;
+            const int64_t positionA = positionB - info.offsetInBases;
+            const bool isShort = positionA<0 or positionA >= lengthInBases;
 
             html <<
                 "<tr><td class=centered>"
@@ -486,13 +474,11 @@ void Anchors::writeHtml(
                 "&strand=" << orientedReadId.getStrand() << "'>" << orientedReadId << "</a>"
                 "<td class=centered>" << orientedReadMarkers.size() <<
                 "<td class=centered>" << lengthInBases <<
-                "<td><td>"
-                "<td class=centered style='color:Red'>" << positionA0 <<
-                "<td class=centered style='color:Red'>" << positionA1 <<
-                "<td class=centered>" << ordinalB0 <<
-                "<td class=centered>" << ordinalB1 <<
-                "<td class=centered>" << positionB0 <<
-                "<td class=centered>" << positionB1 << "<td><td>"
+                "<td>"
+                "<td class=centered style='color:Red'>" << positionA <<
+                "<td class=centered>" << ordinalB <<
+                "<td class=centered>" << positionB <<
+                "<td class=centered>" << "<td>"
                 "<td class=centered>OnlyB, " << (isShort ? "short" : "missing");
 
             ++itB;
@@ -506,20 +492,16 @@ void Anchors::writeHtml(
             const int64_t lengthInBases = int64_t(reads.getReadSequenceLength(orientedReadId.getReadId()));
 
             // Get the positions of Anchor A in this oriented read.
-            const uint32_t ordinalA0 = itA->ordinal0;
-            const uint32_t ordinalA1 = ordinalA0;
-            const int64_t positionA0 = int64_t(orientedReadMarkers[ordinalA0].position);
-            const int64_t positionA1 = int64_t(orientedReadMarkers[ordinalA1].position);
+            const uint32_t ordinalA = itA->ordinal0;
+            const int64_t positionA = int64_t(orientedReadMarkers[ordinalA].position);
 
             // Get the positions of Anchor B in this oriented read.
-            const uint32_t ordinalB0 = itB->ordinal0;
-            const uint32_t ordinalB1 = ordinalB0;
-            const int64_t positionB0 = int64_t(orientedReadMarkers[ordinalB0].position);
-            const int64_t positionB1 = int64_t(orientedReadMarkers[ordinalB1].position);
+            const uint32_t ordinalB = itB->ordinal0;
+            const int64_t positionB = int64_t(orientedReadMarkers[ordinalB].position);
 
             // Compute estimated offsets.
-            const int64_t ordinalOffset = uint64_t(ordinalB1) - uint64_t(ordinalA0);
-            const int64_t baseOffset = positionB1 - positionA0;
+            const int64_t ordinalOffset = uint64_t(ordinalB) - uint64_t(ordinalA);
+            const int64_t baseOffset = positionB - positionA;
 
             html <<
                 "<tr><td class=centered>"
@@ -527,14 +509,10 @@ void Anchors::writeHtml(
                 "&strand=" << orientedReadId.getStrand() << "'>" << orientedReadId << "</a>"
                 "<td class=centered>" << orientedReadMarkers.size() <<
                 "<td class=centered>" << lengthInBases <<
-                "<td class=centered>" << ordinalA0 <<
-                "<td class=centered>" << ordinalA1 <<
-                "<td class=centered>" << positionA0 <<
-                "<td class=centered>" << positionA1 <<
-                "<td class=centered>" << ordinalB0 <<
-                "<td class=centered>" << ordinalB1 <<
-                "<td class=centered>" << positionB0 <<
-                "<td class=centered>" << positionB1 <<
+                "<td class=centered>" << ordinalA <<
+                "<td class=centered>" << positionA <<
+                "<td class=centered>" << ordinalB <<
+                "<td class=centered>" << positionB <<
                 "<td class=centered>" << ordinalOffset <<
                 "<td class=centered>" << baseOffset <<
                 "<td class=centered>Common";
