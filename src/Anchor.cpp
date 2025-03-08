@@ -32,7 +32,7 @@ Anchors::Anchors(
     SHASTA_ASSERT((k %2) == 0);
     kHalf = k / 2;
 
-    anchorMarkerIntervals.accessExistingReadOnly(largeDataName("AnchorMarkerIntervals"));
+    anchorMarkerInfos.accessExistingReadOnly(largeDataName("AnchorMarkerInfos"));
     anchorInfos.accessExistingReadWrite(largeDataName("AnchorInfos"));
     journeys.accessExistingReadOnly(largeDataName("Journeys"));
 }
@@ -41,7 +41,7 @@ Anchors::Anchors(
 
 Anchor Anchors::operator[](AnchorId anchorId) const
 {
-    return anchorMarkerIntervals[anchorId];
+    return anchorMarkerInfos[anchorId];
 }
 
 
@@ -52,11 +52,11 @@ vector<Base> Anchors::anchorKmerSequence(AnchorId anchorId) const
 {
     // Get the first AnchorMarkerInterval for this Anchor.
     const Anchor anchor = (*this)[anchorId];
-    const AnchorMarkerInterval& firstMarkerInterval = anchor.front();
+    const AnchorMarkerInfo& firstMarkerInfo = anchor.front();
 
     // Get the OrientedReadId and the ordinals.
-    const OrientedReadId orientedReadId = firstMarkerInterval.orientedReadId;
-    const uint32_t ordinal = firstMarkerInterval.ordinal;
+    const OrientedReadId orientedReadId = firstMarkerInfo.orientedReadId;
+    const uint32_t ordinal = firstMarkerInfo.ordinal;
 
     // Access the markers of this OrientedReadId.
     const auto orientedReadMarkers = markers[orientedReadId.getValue()];
@@ -78,7 +78,7 @@ vector<Base> Anchors::anchorKmerSequence(AnchorId anchorId) const
 
 uint64_t Anchors::size() const
 {
-    return anchorMarkerIntervals.size();
+    return anchorMarkerInfos.size();
 }
 
 
@@ -724,11 +724,11 @@ void Anchors::computeJourneysThreadFunction4(uint64_t /* threadId */)
             // Store journey information for this oriented read in the marker interval.
             for(uint64_t position=0; position<journey.size(); position++) {
                 const AnchorId anchorId = journey[position];
-                span<AnchorMarkerInterval> markerIntervals = anchorMarkerIntervals[anchorId];
+                span<AnchorMarkerInfo> markerInfos = anchorMarkerInfos[anchorId];
                 bool found = false;
-                for(AnchorMarkerInterval& markerInterval: markerIntervals) {
-                    if(markerInterval.orientedReadId == orientedReadId) {
-                        markerInterval.positionInJourney = uint32_t(position);
+                for(AnchorMarkerInfo& markerInfo: markerInfos) {
+                    if(markerInfo.orientedReadId == orientedReadId) {
+                        markerInfo.positionInJourney = uint32_t(position);
                         found = true;
                         break;
                     }
@@ -751,10 +751,10 @@ void Anchors::findChildren(
     uint64_t minCoverage) const
 {
     children.clear();
-    for(const auto& markerInterval: anchorMarkerIntervals[anchorId]) {
-        const OrientedReadId orientedReadId = markerInterval.orientedReadId;
+    for(const auto& markerInfo: anchorMarkerInfos[anchorId]) {
+        const OrientedReadId orientedReadId = markerInfo.orientedReadId;
         const auto journey = journeys[orientedReadId.getValue()];
-        const uint64_t position = markerInterval.positionInJourney;
+        const uint64_t position = markerInfo.positionInJourney;
         const uint64_t nextPosition = position + 1;
         if(nextPosition < journey.size()) {
             const AnchorId nextAnchorId = journey[nextPosition];
@@ -777,10 +777,10 @@ void Anchors::findParents(
     uint64_t minCoverage) const
 {
     parents.clear();
-    for(const auto& markerInterval: anchorMarkerIntervals[anchorId]) {
-        const OrientedReadId orientedReadId = markerInterval.orientedReadId;
+    for(const auto& markerInfo: anchorMarkerInfos[anchorId]) {
+        const OrientedReadId orientedReadId = markerInfo.orientedReadId;
         const auto journey = journeys[orientedReadId.getValue()];
-        const uint64_t position = markerInterval.positionInJourney;
+        const uint64_t position = markerInfo.positionInJourney;
         if(position > 0) {
             const uint64_t previousPosition = position - 1;
             const AnchorId previousAnchorId = journey[previousPosition];
@@ -793,15 +793,15 @@ void Anchors::findParents(
 
 
 
-// Get the first ordinal for the AnchorMarkerInterval corresponding to a
+// Get the ordinal for the AnchorMarkerInfo corresponding to a
 // given AnchorId and OrientedReadId.
-// This asserts if the given AnchorId does not contain an AnchorMarkerInterval
+// This asserts if the given AnchorId does not contain an AnchorMarkerInfo
 // for the requested OrientedReadId.
-uint32_t Anchors::getFirstOrdinal(AnchorId anchorId, OrientedReadId orientedReadId) const
+uint32_t Anchors::getOrdinal(AnchorId anchorId, OrientedReadId orientedReadId) const
 {
-    for(const auto& markerInterval: anchorMarkerIntervals[anchorId]) {
-        if(markerInterval.orientedReadId == orientedReadId) {
-            return markerInterval.ordinal;
+    for(const auto& markerInfo: anchorMarkerInfos[anchorId]) {
+        if(markerInfo.orientedReadId == orientedReadId) {
+            return markerInfo.ordinal;
         }
     }
 
@@ -813,8 +813,8 @@ uint32_t Anchors::getFirstOrdinal(AnchorId anchorId, OrientedReadId orientedRead
 void Anchors::writeCoverageHistogram() const
 {
     vector<uint64_t> histogram;
-    for(AnchorId anchorId=0; anchorId<anchorMarkerIntervals.size(); anchorId++) {
-        const uint64_t coverage = anchorMarkerIntervals.size(anchorId);
+    for(AnchorId anchorId=0; anchorId<anchorMarkerInfos.size(); anchorId++) {
+        const uint64_t coverage = anchorMarkerInfos.size(anchorId);
         if(coverage >= histogram.size()) {
             histogram.resize(coverage + 1, 0);
         }
@@ -845,9 +845,9 @@ void Anchors::followOrientedReads(
     // Gather all AnchorIds reached by the forward or backward portions of the
     // journeys of the oriented reads on this anchor.
     vector<AnchorId> anchorIds;
-    for(const AnchorMarkerInterval& anchorMarkerInterval: anchor0) {
-        const OrientedReadId orientedReadId = anchorMarkerInterval.orientedReadId;
-        const uint64_t position0 = anchorMarkerInterval.positionInJourney;
+    for(const AnchorMarkerInfo& anchorMarkerInfo: anchor0) {
+        const OrientedReadId orientedReadId = anchorMarkerInfo.orientedReadId;
+        const uint64_t position0 = anchorMarkerInfo.positionInJourney;
         const auto journey = journeys[orientedReadId.getValue()];
 
         // Figure out the forward or backward portion of the journey.
@@ -943,9 +943,9 @@ void Anchors::writeAnchorGapsByRead() const
             } else {
                 const AnchorId anchorId = journey[i];
                 const Anchor anchor = (*this)[anchorId];
-                for(const AnchorMarkerInterval& markerInterval: anchor) {
-                    if(markerInterval.orientedReadId == orientedReadId) {
-                        const uint32_t ordinal = markerInterval.ordinal;
+                for(const AnchorMarkerInfo& markerInfo: anchor) {
+                    if(markerInfo.orientedReadId == orientedReadId) {
+                        const uint32_t ordinal = markerInfo.ordinal;
                         const Marker& marker = orientedReadMarkers[ordinal];
                         position = marker.position;
                         break;
@@ -1001,8 +1001,8 @@ Anchors::Anchors(
 
     // Gather the anchors found by all threads.
     performanceLog << timestamp << "Gathering the anchors found by all threads." << endl;
-    anchorMarkerIntervals.createNew(
-            largeDataName("AnchorMarkerIntervals"),
+    anchorMarkerInfos.createNew(
+            largeDataName("AnchorMarkerInfos"),
             largeDataPageSize);
     anchorInfos.createNew(largeDataName("AnchorInfos"), largeDataPageSize);
     for(uint64_t threadId=0; threadId<threadCount; threadId++) {
@@ -1012,16 +1012,16 @@ Anchors::Anchors(
         // Loop over the anchors found by this thread.
         for(uint64_t i=0; i<threadAnchors.size(); i++) {
             const auto threadAnchor = threadAnchors[i];
-            anchorMarkerIntervals.appendVector();
+            anchorMarkerInfos.appendVector();
             for(const auto& markerInfo: threadAnchor) {
-                anchorMarkerIntervals.append(AnchorMarkerInterval(markerInfo.orientedReadId, markerInfo.ordinal));
+                anchorMarkerInfos.append(AnchorMarkerInfo(markerInfo.orientedReadId, markerInfo.ordinal));
             }
         }
         threadAnchors.remove();
         threadAnchorsPointer = 0;
     }
 
-    const uint64_t anchorCount = anchorMarkerIntervals.size();
+    const uint64_t anchorCount = anchorMarkerInfos.size();
     anchorInfos.resize(anchorCount);
 
     cout << "Number of anchors per strand: " << anchorCount / 2 << endl;

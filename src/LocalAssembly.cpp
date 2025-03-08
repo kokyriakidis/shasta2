@@ -190,9 +190,9 @@ void LocalAssembly::gatherOrientedReads(bool useA, bool useB)
         if((itB == endB) or (itA != endA and itA->orientedReadId < itB->orientedReadId)) {
 
             if(useA) {
-                const AnchorMarkerInterval& markerIntervalA = *itA;
-                const OrientedReadId orientedReadIdA = markerIntervalA.orientedReadId;
-                const uint32_t ordinalA = markerIntervalA.ordinal;
+                const AnchorMarkerInfo& markerInfoA = *itA;
+                const OrientedReadId orientedReadIdA = markerInfoA.orientedReadId;
+                const uint32_t ordinalA = markerInfoA.ordinal;
 
                 OrientedReadInfo info(orientedReadIdA);
                 info.ordinalA = ordinalA;
@@ -208,9 +208,9 @@ void LocalAssembly::gatherOrientedReads(bool useA, bool useB)
         else if((itA == endA) or (itB != endB and itB->orientedReadId < itA->orientedReadId)) {
 
             if(useB) {
-                const AnchorMarkerInterval& markerIntervalB = *itB;
-                const OrientedReadId orientedReadIdB = markerIntervalB.orientedReadId;
-                const uint32_t ordinalB = markerIntervalB.ordinal;
+                const AnchorMarkerInfo& markerInfoB = *itB;
+                const OrientedReadId orientedReadIdB = markerInfoB.orientedReadId;
+                const uint32_t ordinalB = markerInfoB.ordinal;
 
                 OrientedReadInfo info(orientedReadIdB);
                 info.ordinalB = ordinalB;
@@ -228,17 +228,17 @@ void LocalAssembly::gatherOrientedReads(bool useA, bool useB)
             SHASTA_ASSERT(itA != endA);
             SHASTA_ASSERT(itB != endB);
 
-            const AnchorMarkerInterval& markerIntervalA = *itA;
-            const OrientedReadId orientedReadIdA = markerIntervalA.orientedReadId;
+            const AnchorMarkerInfo& markerInfoA = *itA;
+            const OrientedReadId orientedReadIdA = markerInfoA.orientedReadId;
 
-            const AnchorMarkerInterval& markerIntervalB = *itB;
-            const OrientedReadId orientedReadIdB = markerIntervalB.orientedReadId;
+            const AnchorMarkerInfo& markerInfoB = *itB;
+            const OrientedReadId orientedReadIdB = markerInfoB.orientedReadId;
 
             SHASTA_ASSERT(orientedReadIdA == orientedReadIdB);
             const OrientedReadId orientedReadId = orientedReadIdA;
 
-            const uint32_t ordinalA = markerIntervalA.ordinal;
-            const uint32_t ordinalB = markerIntervalB.ordinal;
+            const uint32_t ordinalA = markerInfoA.ordinal;
+            const uint32_t ordinalB = markerInfoB.ordinal;
 
             // Only use it if the ordinal offset is not negative.
             if(ordinalB >= ordinalA) {

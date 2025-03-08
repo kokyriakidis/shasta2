@@ -62,8 +62,8 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
 
     html << "<h1>Anchor " << anchorIdString << "</h1>";
 
-    const auto markerIntervals = anchors()[anchorId];
-    const uint64_t coverage = markerIntervals.size();
+    const auto markerInfos = anchors()[anchorId];
+    const uint64_t coverage = markerInfos.size();
     const vector<Base> kmerSequence = anchors().anchorKmerSequence(anchorId);
 
 
@@ -132,22 +132,22 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
 
     // Loop over the marker intervals.
     for(uint64_t i=0; i<coverage; i++) {
-        const AnchorMarkerInterval& markerInterval = markerIntervals[i];
-        const OrientedReadId orientedReadId = markerInterval.orientedReadId;
+        const AnchorMarkerInfo& markerInfo = markerInfos[i];
+        const OrientedReadId orientedReadId = markerInfo.orientedReadId;
         const auto journey = anchors().journeys[orientedReadId.getValue()];
 
-        const uint32_t ordinal = markerInterval.ordinal;
+        const uint32_t ordinal = markerInfo.ordinal;
 
         const auto orientedReadMarkers = markers()[orientedReadId.getValue()];
         const uint32_t position = orientedReadMarkers[ordinal].position;
 
         AnchorId previousAnchorInJourney = invalid<AnchorId>;
-        if(markerInterval.positionInJourney > 0) {
-            previousAnchorInJourney = journey[markerInterval.positionInJourney - 1];
+        if(markerInfo.positionInJourney > 0) {
+            previousAnchorInJourney = journey[markerInfo.positionInJourney - 1];
         }
         AnchorId nextAnchorInJourney = invalid<AnchorId>;
-        if(markerInterval.positionInJourney < journey.size() - 1) {
-            nextAnchorInJourney = journey[markerInterval.positionInJourney + 1];
+        if(markerInfo.positionInJourney < journey.size() - 1) {
+            nextAnchorInJourney = journey[markerInfo.positionInJourney + 1];
         }
 
         html <<
@@ -168,7 +168,7 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
             orientedReadId << "</a>";
 
        html <<
-            "<td class=centered>" << markerInterval.positionInJourney <<
+            "<td class=centered>" << markerInfo.positionInJourney <<
             "<td class=centered>" << ordinal <<
             "<td class=centered>" << position;
 
@@ -416,7 +416,7 @@ void Assembler::exploreJourney(const vector<string>& request, ostream& html)
         const uint64_t anchorCoverage = anchors()[anchorId].coverage();
         const string anchorIdString = anchorIdToString(anchorId);
 
-        const uint64_t ordinal = anchors().getFirstOrdinal(anchorId, orientedReadId);
+        const uint64_t ordinal = anchors().getOrdinal(anchorId, orientedReadId);
 
         const auto orientedReadMarkers = markers()[orientedReadId.getValue()];
         const uint32_t position = orientedReadMarkers[ordinal].position;

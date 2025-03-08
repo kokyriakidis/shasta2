@@ -24,12 +24,12 @@ namespace shasta {
 
     using AnchorId = uint64_t;
     class Anchor;
-    class AnchorMarkerInterval;
+    class AnchorMarkerInfo;
     class Anchors;
     class AnchorInfo;
     class AnchorPairInfo;
 
-    using AnchorBaseClass = span<const AnchorMarkerInterval>;
+    using AnchorBaseClass = span<const AnchorMarkerInfo>;
 
     string anchorIdToString(AnchorId);
     AnchorId anchorIdFromString(const string&);
@@ -37,15 +37,15 @@ namespace shasta {
 
 
 
-class shasta::AnchorMarkerInterval {
+class shasta::AnchorMarkerInfo {
 public:
     OrientedReadId orientedReadId;
     uint32_t ordinal;
     uint32_t positionInJourney = invalid<uint32_t>;
 
-    AnchorMarkerInterval() {}
+    AnchorMarkerInfo() {}
 
-    AnchorMarkerInterval(
+    AnchorMarkerInfo(
         OrientedReadId orientedReadId,
         uint32_t ordinal) :
         orientedReadId(orientedReadId),
@@ -122,15 +122,15 @@ public:
     void writeCoverageHistogram() const;
 
 private:
-    MemoryMapped::VectorOfVectors<AnchorMarkerInterval, uint64_t> anchorMarkerIntervals;
+    MemoryMapped::VectorOfVectors<AnchorMarkerInfo, uint64_t> anchorMarkerInfos;
 
 public:
 
-    // Get the first ordinal for the AnchorMarkerInterval corresponding to a
+    // Get the ordinal for the AnchorMarkerInfo corresponding to a
     // given AnchorId and OrientedReadId.
-    // This asserts if the given AnchorId does not contain an AnchorMarkerInterval
+    // This asserts if the given AnchorId does not contain an AnchorMarkerInfo
     // for the requested OrientedReadId.
-    uint32_t getFirstOrdinal(AnchorId, OrientedReadId) const;
+    uint32_t getOrdinal(AnchorId, OrientedReadId) const;
 
     const Reads& reads;
     uint64_t k;
