@@ -183,32 +183,26 @@ public:
 
     // In addition to the marker intervals, we also store an AnchorInfo for each Anchor.
     MemoryMapped::Vector<AnchorInfo> anchorInfos;
-public:
-        void storeAnchorInfo(AnchorId)
-        {
-            // For now there is nothing to store.
-            // AnchorInfo& anchorInfo = anchorInfos[anchorId];
-        }
+    void storeAnchorInfo(AnchorId)
+    {
+        // For now there is nothing to store.
+        // AnchorInfo& anchorInfo = anchorInfos[anchorId];
+    }
 
-
-        // Read following.
-        void followOrientedReads(
-            AnchorId,
-            uint64_t direction,                         // 0 = forward, 1 = backward
-            uint64_t minCommonCount,
-            double minJaccard,
-            double minCorrectedJaccard,
-            vector< pair<AnchorId, AnchorPairInfo> >&
-            ) const;
+    // Read following.
+    void followOrientedReads(
+        AnchorId,
+        uint64_t direction,                         // 0 = forward, 1 = backward
+        uint64_t minCommonCount,
+        double minJaccard,
+        double minCorrectedJaccard,
+        vector< pair<AnchorId, AnchorPairInfo> >&
+        ) const;
 
 private:
 
-
-
-
-
     // Data and functions used when constructing the Anchors.
-    class ConstructFromMarkerKmersData {
+    class ConstructData {
     public:
         uint64_t minAnchorCoverage;
         uint64_t maxAnchorCoverage;
@@ -218,8 +212,8 @@ private:
         // The MarkerInfo objects for the candidate anchors found by each thread.
         vector< shared_ptr<MemoryMapped::VectorOfVectors<MarkerInfo, uint64_t> > > threadAnchors;
     };
-    ConstructFromMarkerKmersData constructFromMarkerKmersData;
-    void constructFromMarkerKmersThreadFunction(uint64_t threadId);
+    ConstructData constructData;
+    void constructThreadFunction(uint64_t threadId);
 
 };
 

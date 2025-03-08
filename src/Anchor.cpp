@@ -987,7 +987,7 @@ Anchors::Anchors(
     performanceLog << timestamp << "Anchor creation begins." << endl;
 
     // Store arguments so all threads can see them.
-    ConstructFromMarkerKmersData& data = constructFromMarkerKmersData;
+    ConstructData& data = constructData;
     data.minAnchorCoverage = minAnchorCoverage;
     data.maxAnchorCoverage = maxAnchorCoverage;
     data.markerKmers = markerKmers;
@@ -998,7 +998,7 @@ Anchors::Anchors(
     data.threadAnchors.resize(threadCount);
     const uint64_t batchSize = 1000;
     setupLoadBalancing(markerKmers->size(), batchSize);
-    runThreads(&Anchors::constructFromMarkerKmersThreadFunction, threadCount);
+    runThreads(&Anchors::constructThreadFunction, threadCount);
 
     // Gather the anchors found by all threads.
     performanceLog << timestamp << "Gathering the anchors found by all threads." << endl;
@@ -1031,10 +1031,10 @@ Anchors::Anchors(
 
 
 
-void Anchors::constructFromMarkerKmersThreadFunction(uint64_t threadId)
+void Anchors::constructThreadFunction(uint64_t threadId)
 {
 
-    ConstructFromMarkerKmersData& data = constructFromMarkerKmersData;
+    ConstructData& data = constructData;
     const uint64_t minAnchorCoverage = data.minAnchorCoverage;
     const uint64_t maxAnchorCoverage = data.maxAnchorCoverage;
     const MarkerKmers& markerKmers = *data.markerKmers;
