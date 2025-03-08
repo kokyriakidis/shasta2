@@ -20,19 +20,8 @@ namespace shasta {
 
     class Base;
     class Marker;
-    class MarkerGraph;
     class MarkerInterval;
     class Reads;
-
-
-    // The main input to mode 3 assembly is a set of anchors.
-    // Each anchor consists of a span of AnchorMarkerInterval, with the following requirements:
-    // - All AnchorMarkerInterval correspond to exactly the same sequence in the corresponding oriented reads, and:
-    //      * Those portions of the oriented reads are believed to be aligned.
-    //      * They appear in a low number of copies in the genome being sequenced.
-    // - There are no duplicate oriented reads in an anchor.
-    // - The anchor coverage (number of oriented reads) is in [minPrimaryCoverage, maxPrimaryCoverage].
-
 
     using AnchorId = uint64_t;
     class Anchor;
@@ -131,10 +120,6 @@ public:
     void analyzeAnchorPair(AnchorId, AnchorId, AnchorPairInfo&) const;
     void writeHtml(AnchorId, AnchorId, AnchorPairInfo&, ostream&) const;
 
-    // Return true if the second Anchor is adjacent to the first one.
-    // For precise definition see the code.
-    bool areAdjacentAnchors(AnchorId, AnchorId) const;
-
     void writeCoverageHistogram() const;
 
 private:
@@ -212,31 +197,9 @@ private:
 
 
 
-    // Data and functions used when constructing the Anchors from the MarkerGraph.
-    class ConstructFromMarkerGraphData {
-    public:
-        uint64_t minPrimaryCoverage;
-        uint64_t maxPrimaryCoverage;
-
-        const MarkerGraph* markerGraphPointer;
-
-        // The marker intervals of the anchors found by each thread.
-        class ThreadMarkerInterval {
-        public:
-            OrientedReadId orientedReadId;
-            uint32_t ordinal0;
-        };
-        vector< shared_ptr< MemoryMapped::VectorOfVectors<ThreadMarkerInterval, uint64_t> > > threadMarkerIntervals;
-
-        // The corresponding sequences
-        vector< shared_ptr< MemoryMapped::VectorOfVectors<Base, uint64_t> > > threadSequences;
-    };
-    ConstructFromMarkerGraphData constructFromMarkerGraphData;
-    void constructFromMarkerGraphThreadFunction(uint64_t threadId);
 
 
-    // Data and functions used when constructing the Anchors from marker k-mers.
-    // New code that gets the Kmers from MarkerKmers.
+    // Data and functions used when constructing the Anchors.
     class ConstructFromMarkerKmersData {
     public:
         uint64_t minAnchorCoverage;

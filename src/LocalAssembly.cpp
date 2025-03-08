@@ -65,16 +65,6 @@ LocalAssembly::LocalAssembly(
     SHASTA_ASSERT((k % 2) == 0);
     kHalf = k / 2;
 
-
-    // If the edges are adjacent, stop here, leaving the AssemblyPath empty.
-    // This results in empty secondary sequence.
-    if(anchors.areAdjacentAnchors(anchorIdA, anchorIdB)) {
-        if(html) {
-            html << "<br>The two anchors are adjacent. Intervening sequence is empty.";
-        }
-        return;
-    }
-
     // Check assumptions here as this used vertexIdA and vertexIdB.
     checkAssumptions();
 
