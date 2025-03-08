@@ -284,7 +284,7 @@ private:
     // This stores the markers in each disjoint set.
     // Each marker is stored as pair(i, j)
     // where i is the index of the OrientedReadInfo in orientedReadInfos
-    // and j is the index of the MarkerInfo in orientedReadInfo.markerInfos.
+    // and j is the index of the MarkerData in orientedReadInfo.markerInfos.
     // Keyed by the disjoint set id (the same also stored in each marker).
     std::map<uint64_t, vector<LocalAssemblyMarkerIndexes> > disjointSetsMap;
 
