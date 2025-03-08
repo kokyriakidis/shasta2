@@ -125,10 +125,8 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
         "<th>Index"
         "<th>Oriented<br>read<br>id"
         "<th>Position<br>in<br>journey"
-        "<th>Ordinal0"
-        "<th>Ordinal1"
-        "<th>Position0"
-        "<th>Position1"
+        "<th>Ordinal"
+        "<th>Position"
         "<th>Previous<br>anchor<br>in journey"
         "<th>Next<br>anchor<br>in journey";
 
@@ -138,12 +136,10 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
         const OrientedReadId orientedReadId = markerInterval.orientedReadId;
         const auto journey = anchors().journeys[orientedReadId.getValue()];
 
-        const uint32_t ordinal0 = markerInterval.ordinal0;
-        const uint32_t ordinal1 = ordinal0 + anchors().ordinalOffset(anchorId);
+        const uint32_t ordinal = markerInterval.ordinal0;
 
         const auto orientedReadMarkers = markers()[orientedReadId.getValue()];
-        const uint32_t position0 = orientedReadMarkers[ordinal0].position;
-        const uint32_t position1 = orientedReadMarkers[ordinal1].position;
+        const uint32_t position = orientedReadMarkers[ordinal].position;
 
         AnchorId previousAnchorInJourney = invalid<AnchorId>;
         if(markerInterval.positionInJourney > 0) {
@@ -164,8 +160,8 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
             "exploreReadSequence?"
             "readId=" + to_string(orientedReadId.getReadId()) +
             "&strand=" + to_string(orientedReadId.getStrand()) +
-            "&beginPosition=" + to_string((position0 > 2 * k) ? (position0 - 2 * k) : 0) +
-            "&endPosition=" + to_string(position1 + 3 * k - 1);
+            "&beginPosition=" + to_string((position > 2 * k) ? (position - 2 * k) : 0) +
+            "&endPosition=" + to_string(position + 3 * k - 1);
         html <<
             "<td class=centered>" <<
             "<a href='" << url << "'>" <<
@@ -173,10 +169,8 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
 
        html <<
             "<td class=centered>" << markerInterval.positionInJourney <<
-            "<td class=centered>" << ordinal0 <<
-            "<td class=centered>" << ordinal1 <<
-            "<td class=centered>" << position0 <<
-            "<td class=centered>" << position1;
+            "<td class=centered>" << ordinal <<
+            "<td class=centered>" << position;
 
        // Previous anchor in journey.
        html << "<td class=centered>";
