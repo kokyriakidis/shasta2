@@ -56,7 +56,7 @@ vector<Base> Anchors::anchorKmerSequence(AnchorId anchorId) const
 
     // Get the OrientedReadId and the ordinals.
     const OrientedReadId orientedReadId = firstMarkerInterval.orientedReadId;
-    const uint32_t ordinal = firstMarkerInterval.ordinal0;
+    const uint32_t ordinal = firstMarkerInterval.ordinal;
 
     // Access the markers of this OrientedReadId.
     const auto orientedReadMarkers = markers[orientedReadId.getValue()];
@@ -144,7 +144,7 @@ uint64_t Anchor::countCommon(const Anchor& that, bool ignoreNegativeOffsets) con
             ++it1;
         } else {
             if(ignoreNegativeOffsets){
-                if(it0->ordinal0 < it1->ordinal0) {
+                if(it0->ordinal < it1->ordinal) {
                     ++count;
                 }
             } else {
@@ -206,8 +206,8 @@ void Anchors::analyzeAnchorPair(
         const auto orientedReadMarkers = markers[orientedReadId.getValue()];
 
         // Compute the offset in markers.
-        const uint32_t ordinalA = itA->ordinal0;
-        const uint32_t ordinalB = itB->ordinal0;
+        const uint32_t ordinalA = itA->ordinal;
+        const uint32_t ordinalB = itB->ordinal;
         sumMarkerOffsets += int64_t(ordinalB) - int64_t(ordinalA);
 
         // Compute the offset in bases.
@@ -258,7 +258,7 @@ void Anchors::analyzeAnchorPair(
             const auto orientedReadMarkers = markers[orientedReadId.getValue()];
             const int64_t lengthInBases = int64_t(reads.getReadSequenceLength(orientedReadId.getReadId()));
 
-            const uint32_t ordinalA = itA->ordinal0;
+            const uint32_t ordinalA = itA->ordinal;
             const int64_t positionA = int64_t(orientedReadMarkers[ordinalA].position);
 
             // Find the hypothetical positions of anchor B, assuming the estimated base offset.
@@ -281,7 +281,7 @@ void Anchors::analyzeAnchorPair(
             const int64_t lengthInBases = int64_t(reads.getReadSequenceLength(orientedReadId.getReadId()));
 
             // Get the positions of edge B in this oriented read.
-            const uint32_t ordinalB = itB->ordinal0;
+            const uint32_t ordinalB = itB->ordinal;
             const int64_t positionB = int64_t(orientedReadMarkers[ordinalB].position);
 
             // Find the hypothetical positions of anchor A, assuming the estimated base offset.
@@ -431,7 +431,7 @@ void Anchors::writeHtml(
             const int64_t lengthInBases = int64_t(reads.getReadSequenceLength(orientedReadId.getReadId()));
 
             // Get the positions of Anchor A in this oriented read.
-            const uint32_t ordinalA = itA->ordinal0;
+            const uint32_t ordinalA = itA->ordinal;
             const int64_t positionA = int64_t(orientedReadMarkers[ordinalA].position);
 
             // Find the hypothetical positions of Anchor B, assuming the estimated base offset.
@@ -462,7 +462,7 @@ void Anchors::writeHtml(
             const int64_t lengthInBases = int64_t(reads.getReadSequenceLength(orientedReadId.getReadId()));
 
             // Get the positions of Anchor B in this oriented read.
-            const uint32_t ordinalB = itB->ordinal0;
+            const uint32_t ordinalB = itB->ordinal;
             const int64_t positionB = int64_t(orientedReadMarkers[ordinalB].position);
 
             // Find the hypothetical positions of edge A, assuming the estimated base offset.
@@ -493,11 +493,11 @@ void Anchors::writeHtml(
             const int64_t lengthInBases = int64_t(reads.getReadSequenceLength(orientedReadId.getReadId()));
 
             // Get the positions of Anchor A in this oriented read.
-            const uint32_t ordinalA = itA->ordinal0;
+            const uint32_t ordinalA = itA->ordinal;
             const int64_t positionA = int64_t(orientedReadMarkers[ordinalA].position);
 
             // Get the positions of Anchor B in this oriented read.
-            const uint32_t ordinalB = itB->ordinal0;
+            const uint32_t ordinalB = itB->ordinal;
             const int64_t positionB = int64_t(orientedReadMarkers[ordinalB].position);
 
             // Compute estimated offsets.
@@ -674,7 +674,7 @@ void Anchors::computeJourneysThreadFunction12(uint64_t pass)
                     journeysWithOrdinals.incrementCountMultithreaded(orientedReadIdValue);
                 } else {
                     journeysWithOrdinals.storeMultithreaded(
-                        orientedReadIdValue, {anchorId, anchorMarkerInterval.ordinal0});
+                        orientedReadIdValue, {anchorId, anchorMarkerInterval.ordinal});
                 }
 
             }
@@ -801,7 +801,7 @@ uint32_t Anchors::getFirstOrdinal(AnchorId anchorId, OrientedReadId orientedRead
 {
     for(const auto& markerInterval: anchorMarkerIntervals[anchorId]) {
         if(markerInterval.orientedReadId == orientedReadId) {
-            return markerInterval.ordinal0;
+            return markerInterval.ordinal;
         }
     }
 
@@ -945,7 +945,7 @@ void Anchors::writeAnchorGapsByRead() const
                 const Anchor anchor = (*this)[anchorId];
                 for(const AnchorMarkerInterval& markerInterval: anchor) {
                     if(markerInterval.orientedReadId == orientedReadId) {
-                        const uint32_t ordinal = markerInterval.ordinal0;
+                        const uint32_t ordinal = markerInterval.ordinal;
                         const Marker& marker = orientedReadMarkers[ordinal];
                         position = marker.position;
                         break;

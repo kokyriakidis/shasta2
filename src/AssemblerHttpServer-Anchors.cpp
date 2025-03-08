@@ -136,7 +136,7 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
         const OrientedReadId orientedReadId = markerInterval.orientedReadId;
         const auto journey = anchors().journeys[orientedReadId.getValue()];
 
-        const uint32_t ordinal = markerInterval.ordinal0;
+        const uint32_t ordinal = markerInterval.ordinal;
 
         const auto orientedReadMarkers = markers()[orientedReadId.getValue()];
         const uint32_t position = orientedReadMarkers[ordinal].position;

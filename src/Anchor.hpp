@@ -40,16 +40,16 @@ namespace shasta {
 class shasta::AnchorMarkerInterval {
 public:
     OrientedReadId orientedReadId;
-    uint32_t ordinal0;
+    uint32_t ordinal;
     uint32_t positionInJourney = invalid<uint32_t>;
 
     AnchorMarkerInterval() {}
 
     AnchorMarkerInterval(
         OrientedReadId orientedReadId,
-        uint32_t ordinal0) :
+        uint32_t ordinal) :
         orientedReadId(orientedReadId),
-        ordinal0(ordinal0)
+        ordinal(ordinal)
     {}
 };
 
