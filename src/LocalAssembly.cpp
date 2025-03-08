@@ -327,14 +327,14 @@ void LocalAssembly::writeOrientedReads() const
             html << baseOffset;
         }
 
-        SHASTA_ASSERT(not info.markerInfos.empty());
-        const MarkerInfo& firstMarkerInfo = info.markerInfos.front();
-        const MarkerInfo& lastMarkerInfo = info.markerInfos.back();
+        SHASTA_ASSERT(not info.markerDatas.empty());
+        const MarkerData& firstMarkerData = info.markerDatas.front();
+        const MarkerData& lastMarkerData = info.markerDatas.back();
         html <<
-            "<td class=centered>" << firstMarkerInfo.ordinal <<
-            "<td class=centered>" << lastMarkerInfo.ordinal <<
-            "<td class=centered>" << firstMarkerInfo.position <<
-            "<td class=centered>" << lastMarkerInfo.position;
+            "<td class=centered>" << firstMarkerData.ordinal <<
+            "<td class=centered>" << lastMarkerData.ordinal <<
+            "<td class=centered>" << firstMarkerData.position <<
+            "<td class=centered>" << lastMarkerData.position;
      }
 
     html << "</table>";
@@ -429,13 +429,13 @@ void LocalAssembly::gatherMarkers(double estimatedOffsetRatio)
     for(uint64_t i=0; i<orientedReadInfos.size(); i++) {
         OrientedReadInfo& info = orientedReadInfos[i];
         const OrientedReadId orientedReadId = info.orientedReadId;
-        info.markerInfos.clear();
+        info.markerDatas.clear();
 
         // Oriented reads that appear on both edgeIdA and edgeIdB.
         if(info.isOnA() and info.isOnB()) {
             for(int64_t ordinal=info.ordinalA;
                 ordinal<=info.ordinalB; ordinal++) {
-                addMarkerInfo(i, ordinal);
+                addMarkerData(i, ordinal);
             }
         }
 
@@ -450,7 +450,7 @@ void LocalAssembly::gatherMarkers(double estimatedOffsetRatio)
                 if(position > maxPosition) {
                     break;
                 }
-                addMarkerInfo(i, ordinal);
+                addMarkerData(i, ordinal);
             }
         }
 
@@ -463,11 +463,11 @@ void LocalAssembly::gatherMarkers(double estimatedOffsetRatio)
                 if(position < minPosition) {
                     break;
                 }
-                addMarkerInfo(i, ordinal);
+                addMarkerData(i, ordinal);
             }
 
-            // We added the MarkerInfos in reverse order, so we have to reverse them.
-            reverse(info.markerInfos.begin(), info.markerInfos.end());
+            // We added the MarkerDatas in reverse order, so we have to reverse them.
+            reverse(info.markerDatas.begin(), info.markerDatas.end());
         }
 
         else {
@@ -480,18 +480,18 @@ void LocalAssembly::gatherMarkers(double estimatedOffsetRatio)
 
 
 // Add the marker at given ordinal to the i-th oriented read.
-void LocalAssembly::addMarkerInfo(uint64_t i, int64_t ordinal)
+void LocalAssembly::addMarkerData(uint64_t i, int64_t ordinal)
 {
     OrientedReadInfo& info = orientedReadInfos[i];
 
-    MarkerInfo markerInfo;
-    markerInfo.ordinal = ordinal;
-    markerInfo.position = basePosition(info.orientedReadId, ordinal);
-    markerInfo.kmerId = markers.getKmerId(
+    MarkerData markerData;
+    markerData.ordinal = ordinal;
+    markerData.position = basePosition(info.orientedReadId, ordinal);
+    markerData.kmerId = markers.getKmerId(
         info.orientedReadId,
         uint32_t(ordinal));
 
-    info.markerInfos.push_back(markerInfo);
+    info.markerDatas.push_back(markerData);
 }
 
 
@@ -519,35 +519,35 @@ void LocalAssembly::writeMarkers()
 
     for(uint64_t i=0; i<orientedReadInfos.size(); i++) {
         const OrientedReadInfo& info = orientedReadInfos[i];
-        for(const MarkerInfo& markerInfo: info.markerInfos) {
-            const Kmer kmer(markerInfo.kmerId, k);
+        for(const MarkerData& markerData: info.markerDatas) {
+            const Kmer kmer(markerData.kmerId, k);
 
             html <<
                 "<tr>"
                 "<td class=centered>" << i <<
                 "<td class=centered>" << info.orientedReadId <<
-                "<td class=centered>" << markerInfo.ordinal;
+                "<td class=centered>" << markerData.ordinal;
 
             // Ordinal offset from A.
             html << "<td class=centered>";
             if(info.isOnA()) {
-                html << markerInfo.ordinal - info.markerInfos.front().ordinal;
+                html << markerData.ordinal - info.markerDatas.front().ordinal;
             }
 
             // Ordinal offset to B.
             html << "<td class=centered>";
             if(info.isOnB()) {
-                html << info.markerInfos.back().ordinal - markerInfo.ordinal;
+                html << info.markerDatas.back().ordinal - markerData.ordinal;
             }
 
             html <<
-                "<td class=centered>" << markerInfo.position <<
-                "<td class=centered>" << markerInfo.kmerId <<
+                "<td class=centered>" << markerData.position <<
+                "<td class=centered>" << markerData.kmerId <<
                 "<td class=centered style='font-family:monospace'>";
             kmer.write(html, k);
             html <<
-                "<td class=centered>" << markerInfo.disjointSetId <<
-                "<td class=centered>" << disjointSetsMap[markerInfo.disjointSetId].size();
+                "<td class=centered>" << markerData.disjointSetId <<
+                "<td class=centered>" << disjointSetsMap[markerData.disjointSetId].size();
         }
     }
 
@@ -590,8 +590,8 @@ void LocalAssembly::alignAndDisjointSets(
     // Assign ids to markers.
     uint64_t markerId = 0;
     for(OrientedReadInfo& info: orientedReadInfos) {
-        for(MarkerInfo& markerInfo: info.markerInfos) {
-            markerInfo.id = markerId++;
+        for(MarkerData& markerData: info.markerDatas) {
+            markerData.id = markerId++;
         }
     }
 
@@ -610,8 +610,8 @@ void LocalAssembly::alignAndDisjointSets(
     for(uint64_t i=0; i<orientedReadInfos.size(); i++) {
         const OrientedReadInfo& info = orientedReadInfos[i];
         TSequence& seqanSequence = seqanSequences[i];
-        for(const MarkerInfo& markerInfo: info.markerInfos) {
-            seqan::appendValue(seqanSequence, markerInfo.kmerId + 100);
+        for(const MarkerData& markerData: info.markerDatas) {
+            seqan::appendValue(seqanSequence, markerData.kmerId + 100);
         }
     }
 
@@ -620,12 +620,12 @@ void LocalAssembly::alignAndDisjointSets(
     // Loop over pairs of reads.
     for(uint64_t i0=0; i0<orientedReadInfos.size()-1; i0++) {
         const OrientedReadInfo& info0 = orientedReadInfos[i0];
-        const uint64_t length0 = info0.markerInfos.size();
+        const uint64_t length0 = info0.markerDatas.size();
         const TSequence& seqanSequence0 = seqanSequences[i0];
         for(uint64_t i1=i0+1; i1<orientedReadInfos.size(); i1++) {
             const OrientedReadInfo& info1 = orientedReadInfos[i1];
             // cout << "*** " << info0.orientedReadId << " " << info1.orientedReadId << endl;
-            const uint64_t length1 = info1.markerInfos.size();
+            const uint64_t length1 = info1.markerDatas.size();
             const TSequence& seqanSequence1 = seqanSequences[i1];
 
             // Figure the constraints for this alignment.
@@ -637,10 +637,10 @@ void LocalAssembly::alignAndDisjointSets(
             // If constrained on B, merge the last markers of the two reads,
             // as the alignment does not guarantee that.
             if(constrainedA) {
-                disjointSets.union_set(info0.markerInfos.front().id, info1.markerInfos.front().id);
+                disjointSets.union_set(info0.markerDatas.front().id, info1.markerDatas.front().id);
             }
             if(constrainedB) {
-                disjointSets.union_set(info0.markerInfos.back().id, info1.markerInfos.back().id);
+                disjointSets.union_set(info0.markerDatas.back().id, info1.markerDatas.back().id);
             }
 
             // Only do alignments that are constrained on at least one side.
@@ -852,17 +852,17 @@ void LocalAssembly::alignAndDisjointSets(
                         // Neither 0 nor 1 is a gap.
                         if(kmerId0 == kmerId1) {
                             // If a match, merge the disjoint sets containing these two markers.
-                            disjointSets.union_set(info0.markerInfos[j0].id, info1.markerInfos[j1].id);
+                            disjointSets.union_set(info0.markerDatas[j0].id, info1.markerDatas[j1].id);
                             if(detailedDebugOutput) {
                                 dot << "\"" << info0.orientedReadId << "-";
-                                dot << info0.markerInfos[j0].ordinal << "\"--\"";
+                                dot << info0.markerDatas[j0].ordinal << "\"--\"";
                                 dot << info1.orientedReadId << "-";
-                                dot << info1.markerInfos[j1].ordinal << "\";\n";
+                                dot << info1.markerDatas[j1].ordinal << "\";\n";
                                 csv <<
                                     info0.orientedReadId << "," <<
-                                    info0.markerInfos[j0].ordinal << "," <<
+                                    info0.markerDatas[j0].ordinal << "," <<
                                     info1.orientedReadId << "," <<
-                                    info1.markerInfos[j1].ordinal << "\n";
+                                    info1.markerDatas[j1].ordinal << "\n";
                             }
                         }
                         ++j0;
@@ -879,8 +879,8 @@ void LocalAssembly::alignAndDisjointSets(
     // Store in each MarkerInfo the id of the disjoint set it belongs to.
     for(uint64_t i=0; i<orientedReadInfos.size(); i++) {
         OrientedReadInfo& info = orientedReadInfos[i];
-        for(MarkerInfo& markerInfo: info.markerInfos) {
-            markerInfo.disjointSetId = disjointSets.find_set(markerInfo.id);
+        for(MarkerData& markerData: info.markerDatas) {
+            markerData.disjointSetId = disjointSets.find_set(markerData.id);
         }
     }
 
@@ -888,9 +888,9 @@ void LocalAssembly::alignAndDisjointSets(
     disjointSetsMap.clear();
     for(uint64_t i=0; i<orientedReadInfos.size(); i++) {
         const OrientedReadInfo& info = orientedReadInfos[i];
-        for(uint64_t j=0; j<info.markerInfos.size(); j++) {
-            const MarkerInfo& markerInfo = info.markerInfos[j];
-            disjointSetsMap[markerInfo.disjointSetId].push_back({i, j});
+        for(uint64_t j=0; j<info.markerDatas.size(); j++) {
+            const MarkerData& markerData = info.markerDatas[j];
+            disjointSetsMap[markerData.disjointSetId].push_back({i, j});
         }
     }
 
@@ -955,19 +955,19 @@ uint64_t LocalAssembly::createVertices(
     disjointSetIdB = invalid<uint64_t>;
     for(const OrientedReadInfo& info: orientedReadInfos) {
         if(info.isOnA()) {
-            const MarkerInfo& markerInfoA = info.markerInfos.front();
+            const MarkerData& markerDataA = info.markerDatas.front();
             if(disjointSetIdA == invalid<uint64_t>) {
-                disjointSetIdA = markerInfoA.disjointSetId;
+                disjointSetIdA = markerDataA.disjointSetId;
             } else {
-                SHASTA_ASSERT(disjointSetIdA == markerInfoA.disjointSetId);
+                SHASTA_ASSERT(disjointSetIdA == markerDataA.disjointSetId);
             }
         }
         if(info.isOnB()) {
-            const MarkerInfo& markerInfoB = info.markerInfos.back();
+            const MarkerData& markerDataB = info.markerDatas.back();
             if(disjointSetIdB == invalid<uint64_t>) {
-                disjointSetIdB = markerInfoB.disjointSetId;
+                disjointSetIdB = markerDataB.disjointSetId;
             } else {
-                SHASTA_ASSERT(disjointSetIdB == markerInfoB.disjointSetId);
+                SHASTA_ASSERT(disjointSetIdB == markerDataB.disjointSetId);
             }
         }
     }
@@ -1055,9 +1055,9 @@ void LocalAssembly::createEdges()
         // Follow this read, finding the vertices it reaches.
         vertex_descriptor v0 = null_vertex();
         LocalAssemblyMarkerIndexes indexes0;
-        for(uint64_t j=0; j<info.markerInfos.size(); j++) {
-            const MarkerInfo& markerInfo = info.markerInfos[j];
-            const uint64_t disjointSetId = markerInfo.disjointSetId;
+        for(uint64_t j=0; j<info.markerDatas.size(); j++) {
+            const MarkerData& markerData = info.markerDatas[j];
+            const uint64_t disjointSetId = markerData.disjointSetId;
             const auto it = vertexMap.find(disjointSetId);
 
             if(it != vertexMap.end()) {
@@ -1523,12 +1523,12 @@ void LocalAssembly::assembleEdge(
         const OrientedReadInfo& info = orientedReadInfos[i];
         const OrientedReadId orientedReadId = info.orientedReadId;
 
-        const MarkerInfo& markerInfo0 = info.markerInfos[j0];
-        const MarkerInfo& markerInfo1 = info.markerInfos[j1];
+        const MarkerData& markerData0 = info.markerDatas[j0];
+        const MarkerData& markerData1 = info.markerDatas[j1];
 
         // Now we can get the contributing sequence.
-        const uint64_t position0 = markerInfo0.position + kHalf;
-        const uint64_t position1 = markerInfo1.position + kHalf;
+        const uint64_t position0 = markerData0.position + kHalf;
+        const uint64_t position1 = markerData1.position + kHalf;
 
         // Now we can get the sequence contributed by this oriented read.
         orientedReadSequence.clear();
@@ -1906,9 +1906,9 @@ void LocalAssembly::writeOrientedReadsSequences() const
 
     for(const OrientedReadInfo& info: orientedReadInfos) {
 
-        SHASTA_ASSERT(not info.markerInfos.empty());
-        const uint64_t position0 = uint64_t(info.markerInfos.front().position) + kHalf;
-        const uint64_t position1 = uint64_t(info.markerInfos.back().position) + kHalf;
+        SHASTA_ASSERT(not info.markerDatas.empty());
+        const uint64_t position0 = uint64_t(info.markerDatas.front().position) + kHalf;
+        const uint64_t position1 = uint64_t(info.markerDatas.back().position) + kHalf;
 
         fasta <<
             ">" << info.orientedReadId << " " <<

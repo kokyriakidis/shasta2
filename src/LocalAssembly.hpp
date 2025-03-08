@@ -158,7 +158,7 @@ private:
     // an oriented read used in this assembly.
     // The ordinal and position are stored signed to facilitate manipulations
     // that involve subtractions.
-    class MarkerInfo {
+    class MarkerData {
     public:
         int64_t ordinal;
         int64_t position;
@@ -168,7 +168,7 @@ private:
         // This is the index of this marker in the disjoint sets data structure.
         uint64_t id;
 
-        // The id of the disjoint set this MarkerInfo belongs to.
+        // The id of the disjoint set this MarkerData belongs to.
         uint64_t disjointSetId;
 
     };
@@ -219,20 +219,20 @@ private:
         // Information about the markers of this read we will use in this assembly.
         // The first one is at ordinal firstOrdinal.
         // The last one is a ordinal lastOrdinal.
-        vector<MarkerInfo> markerInfos;
+        vector<MarkerData> markerDatas;
 
         // The first and last ordinals of this oriented read used for this assembly.
-        // For reads on edgeIdA, firstOrdinal equals ordinalA.
-        // For reads on edgeIdB, lastOrdinal  equals ordinalB.
+        // For reads on anchorIdA, firstOrdinal equals ordinalA.
+        // For reads on anchorIdB, lastOrdinal  equals ordinalB.
         int64_t firstOrdinal()
         {
-            SHASTA_ASSERT(not markerInfos.empty());
-            return markerInfos.front().ordinal;
+            SHASTA_ASSERT(not markerDatas.empty());
+            return markerDatas.front().ordinal;
         }
         int64_t lastOrdinal()
         {
-            SHASTA_ASSERT(not markerInfos.empty());
-            return markerInfos.back().ordinal;
+            SHASTA_ASSERT(not markerDatas.empty());
+            return markerDatas.back().ordinal;
         }
 
     };
@@ -265,7 +265,7 @@ private:
     void writeMarkers();
 
     // Add the marker at given ordinal to the i-th oriented read.
-    void addMarkerInfo(uint64_t i, int64_t ordinal);
+    void addMarkerData(uint64_t i, int64_t ordinal);
 
     // Compute alignments and use them to create the disjoint set data structure,
     // from which the marker graph will be created.
