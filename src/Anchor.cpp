@@ -183,8 +183,8 @@ void Anchors::analyzeAnchorPair(
     // Joint loop over the MarkerIntervals of the two Anchors,
     // to count the common oreiented reads and compute average offsets.
     info.common = 0;
-    int64_t sumTwiceMarkerOffsets = 0;
-    int64_t sumTwiceBaseOffsets = 0;
+    int64_t sumMarkerOffsets = 0;
+    int64_t sumBaseOffsets = 0;
     auto itA = beginA;
     auto itB = beginB;
     while(itA != endA and itB != endB) {
@@ -205,26 +205,14 @@ void Anchors::analyzeAnchorPair(
         const auto orientedReadMarkers = markers[orientedReadId.getValue()];
 
         // Compute the offset in markers.
-        // This assumes an ordinal offset of 1.
-        // If this changes, this code will need some changes.
-        const uint32_t ordinalOffsetA = ordinalOffset(anchorIdA);
-        const uint32_t ordinalOffsetB = ordinalOffset(anchorIdB);
-        const uint32_t ordinalA0 = itA->ordinal0;
-        const uint32_t ordinalA1 = ordinalA0 + ordinalOffsetA;
-        const uint32_t ordinalB0 = itB->ordinal0;
-        const uint32_t ordinalB1 = ordinalB0 + ordinalOffsetB;
-        sumTwiceMarkerOffsets += int64_t(ordinalB0) - int64_t(ordinalA0);
-        sumTwiceMarkerOffsets += int64_t(ordinalB1) - int64_t(ordinalA1);
+        const uint32_t ordinalA = itA->ordinal0;
+        const uint32_t ordinalB = itB->ordinal0;
+        sumMarkerOffsets += int64_t(ordinalB) - int64_t(ordinalA);
 
         // Compute the offset in bases.
-        const int64_t positionA0 = int64_t(orientedReadMarkers[ordinalA0].position);
-        const int64_t positionA1 = int64_t(orientedReadMarkers[ordinalA1].position);
-        const int64_t positionB0 = int64_t(orientedReadMarkers[ordinalB0].position);
-        const int64_t positionB1 = int64_t(orientedReadMarkers[ordinalB1].position);
-        sumTwiceBaseOffsets -= positionA0;
-        sumTwiceBaseOffsets -= positionA1;
-        sumTwiceBaseOffsets += positionB0;
-        sumTwiceBaseOffsets += positionB1;
+        const int64_t positionA = int64_t(orientedReadMarkers[ordinalA].position);
+        const int64_t positionB = int64_t(orientedReadMarkers[ordinalB].position);
+        sumBaseOffsets += positionB - positionA;
 
         // Continue the joint loop.
         ++itA;
@@ -244,8 +232,8 @@ void Anchors::analyzeAnchorPair(
     }
 
     // Compute the estimated offsets.
-    info.offsetInMarkers = int64_t(0.5 * std::round(double(sumTwiceMarkerOffsets) / double(info.common)));
-    info.offsetInBases = int64_t(0.5 * std::round(double(sumTwiceBaseOffsets) / double(info.common)));
+    info.offsetInMarkers = int64_t(std::round(double(sumMarkerOffsets) / double(info.common)));
+    info.offsetInBases = int64_t(std::round(double(sumBaseOffsets) / double(info.common)));
 
 
 
@@ -269,18 +257,14 @@ void Anchors::analyzeAnchorPair(
             const auto orientedReadMarkers = markers[orientedReadId.getValue()];
             const int64_t lengthInBases = int64_t(reads.getReadSequenceLength(orientedReadId.getReadId()));
 
-            // Get the positions of edge A in this oriented read.
-            const uint32_t ordinalA0 = itA->ordinal0;
-            const uint32_t ordinalA1 = ordinalA0 + ordinalOffset(anchorIdA);
-            const int64_t positionA0 = int64_t(orientedReadMarkers[ordinalA0].position);
-            const int64_t positionA1 = int64_t(orientedReadMarkers[ordinalA1].position);
+            const uint32_t ordinalA = itA->ordinal0;
+            const int64_t positionA = int64_t(orientedReadMarkers[ordinalA].position);
 
-            // Find the hypothetical positions of edge B, assuming the estimated base offset.
-            const int64_t positionB0 = positionA0 + info.offsetInBases;
-            const int64_t positionB1 = positionA1 + info.offsetInBases;
+            // Find the hypothetical positions of anchor B, assuming the estimated base offset.
+            const int64_t positionB = positionA + info.offsetInBases;
 
             // If this ends up outside the read, this counts as onlyAShort.
-            if(positionB0 < 0 or positionB1 >= lengthInBases) {
+            if(positionB < 0 or positionB >= lengthInBases) {
                 ++info.onlyAShort;
             }
 
@@ -296,17 +280,14 @@ void Anchors::analyzeAnchorPair(
             const int64_t lengthInBases = int64_t(reads.getReadSequenceLength(orientedReadId.getReadId()));
 
             // Get the positions of edge B in this oriented read.
-            const uint32_t ordinalB0 = itB->ordinal0;
-            const uint32_t ordinalB1 = ordinalB0 + ordinalOffset(anchorIdB);
-            const int64_t positionB0 = int64_t(orientedReadMarkers[ordinalB0].position);
-            const int64_t positionB1 = int64_t(orientedReadMarkers[ordinalB1].position);
+            const uint32_t ordinalB = itB->ordinal0;
+            const int64_t positionB = int64_t(orientedReadMarkers[ordinalB].position);
 
-            // Find the hypothetical positions of edge A, assuming the estimated base offset.
-            const int64_t positionA0 = positionB0 - info.offsetInBases;
-            const int64_t positionA1 = positionB1 - info.offsetInBases;
+            // Find the hypothetical positions of anchor A, assuming the estimated base offset.
+            const int64_t positionA = positionB - info.offsetInBases;
 
             // If this ends up outside the read, this counts as onlyBShort.
-            if(positionA0 < 0 or positionA1 >= lengthInBases) {
+            if(positionA < 0 or positionA >= lengthInBases) {
                 ++info.onlyBShort;
             }
 
