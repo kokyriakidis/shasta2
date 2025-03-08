@@ -3,6 +3,7 @@
 #include "MemoryMappedVectorOfVectors.hpp"
 #include "Kmer.hpp"
 #include "MappedMemoryOwner.hpp"
+#include "MarkerInfo.hpp"
 #include "MultithreadedObject.hpp"
 #include "MurmurHash2.hpp"
 #include "ReadId.hpp"
@@ -48,16 +49,6 @@ public:
     }
 
     uint64_t getFrequency(const Kmer&) const;
-
-    // Class to describe a single marker of an oriented read.
-    class MarkerInfo {
-    public:
-        OrientedReadId orientedReadId;
-        uint32_t ordinal;
-        MarkerInfo() {}
-        MarkerInfo(OrientedReadId orientedReadId, uint32_t ordinal) :
-            orientedReadId(orientedReadId), ordinal(ordinal) {}
-    };
 
     // Get MarkerInfo objects for a given Kmer.
     void get(const Kmer&, vector<MarkerInfo>&) const;

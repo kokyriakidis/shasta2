@@ -474,7 +474,7 @@ uint64_t MarkerKmers::getFrequency(const Kmer& kmer) const
 
 // Return a span of the MarkerInfos for a given canonical k-mer.
 // If this is called for a non-canonical k-mer, it returns an empty span.
-span<const MarkerKmers::MarkerInfo> MarkerKmers::getMarkerInfos(const Kmer& kmer) const
+span<const MarkerInfo> MarkerKmers::getMarkerInfos(const Kmer& kmer) const
 {
     if(not kmer.isCanonical(k)) {
         return span<const MarkerInfo>();
@@ -525,7 +525,7 @@ void MarkerKmers::get(
 
 
 // Construct the reverse complement of a MarkerInfo.
-MarkerKmers::MarkerInfo MarkerKmers::reverseComplement(const MarkerInfo& markerInfo) const
+MarkerInfo MarkerKmers::reverseComplement(const MarkerInfo& markerInfo) const
 {
     MarkerInfo markerInfoRc = markerInfo;
     const uint32_t orientedReadMarkerCount = uint32_t(markers[markerInfo.orientedReadId.getValue()].size());

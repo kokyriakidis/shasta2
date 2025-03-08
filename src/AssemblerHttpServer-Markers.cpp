@@ -230,14 +230,14 @@ void Assembler::exploreMarkerKmers(const vector<string>& request, ostream& html)
 
 
     // Details table.
-    vector<MarkerKmers::MarkerInfo> markerInfos;
+    vector<MarkerInfo> markerInfos;
     markerKmers->get(kmer, markerInfos);
 
     html <<
         "<p>"
         "<table>"
         "<tr><th>Oriented<br>read<th>Ordinal<th>Position";
-    for(const MarkerKmers::MarkerInfo& markerInfo: markerInfos) {
+    for(const MarkerInfo& markerInfo: markerInfos) {
         const OrientedReadId orientedReadId = markerInfo.orientedReadId;
         const uint32_t ordinal = markerInfo.ordinal;
         const Marker& marker = markers()[orientedReadId.getValue()][ordinal];

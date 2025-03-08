@@ -19,6 +19,7 @@ namespace shasta {
 
     class Base;
     class Marker;
+    class MarkerInfo;
     class Reads;
 
     using AnchorId = uint64_t;
@@ -206,7 +207,6 @@ private:
         shared_ptr<MarkerKmers> markerKmers;
 
         // The MarkerInfo objects for the candidate anchors found by each thread.
-        using MarkerInfo = MarkerKmers::MarkerInfo;
         vector< shared_ptr<MemoryMapped::VectorOfVectors<MarkerInfo, uint64_t> > > threadAnchors;
     };
     ConstructFromMarkerKmersData constructFromMarkerKmersData;

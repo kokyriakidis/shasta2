@@ -1,6 +1,7 @@
 #include "Anchor.hpp"
 #include "deduplicate.hpp"
 #include "html.hpp"
+#include "MarkerInfo.hpp"
 #include "Markers.hpp"
 #include "orderPairs.hpp"
 #include "performanceLog.hpp"
@@ -1031,7 +1032,6 @@ Anchors::Anchors(
 
 void Anchors::constructFromMarkerKmersThreadFunction(uint64_t threadId)
 {
-    using MarkerInfo = MarkerKmers::MarkerInfo;
 
     ConstructFromMarkerKmersData& data = constructFromMarkerKmersData;
     const uint64_t minAnchorCoverage = data.minAnchorCoverage;
@@ -1040,7 +1040,7 @@ void Anchors::constructFromMarkerKmersThreadFunction(uint64_t threadId)
 
     // Initialize the anchors that will be found by this thread.
     auto& threadAnchorsPointer = data.threadAnchors[threadId];
-    threadAnchorsPointer = make_shared<MemoryMapped::VectorOfVectors<ConstructFromMarkerKmersData::MarkerInfo, uint64_t> >();
+    threadAnchorsPointer = make_shared<MemoryMapped::VectorOfVectors<MarkerInfo, uint64_t> >();
     auto& threadAnchors = *threadAnchorsPointer;
     threadAnchors.createNew(largeDataName("tmp-threadAnchors-" + to_string(threadId)), largeDataPageSize);
 
