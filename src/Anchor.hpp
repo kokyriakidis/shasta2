@@ -3,7 +3,6 @@
 // Shasta.
 #include "Kmer.hpp"
 #include "invalid.hpp"
-#include "MarkerInterval.hpp"
 #include "MarkerKmers.hpp"
 #include "MappedMemoryOwner.hpp"
 #include "MemoryMappedVectorOfVectors.hpp"
@@ -20,7 +19,6 @@ namespace shasta {
 
     class Base;
     class Marker;
-    class MarkerInterval;
     class Reads;
 
     using AnchorId = uint64_t;
