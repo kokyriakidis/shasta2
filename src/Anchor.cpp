@@ -2,6 +2,7 @@
 #include "deduplicate.hpp"
 #include "html.hpp"
 #include "MarkerInfo.hpp"
+#include "MarkerKmers.hpp"
 #include "Markers.hpp"
 #include "orderPairs.hpp"
 #include "performanceLog.hpp"

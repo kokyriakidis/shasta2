@@ -3,10 +3,10 @@
 // Shasta.
 #include "Kmer.hpp"
 #include "invalid.hpp"
-#include "MarkerKmers.hpp"
 #include "MappedMemoryOwner.hpp"
 #include "MemoryMappedVectorOfVectors.hpp"
 #include "MultithreadedObject.hpp"
+#include "ReadId.hpp"
 
 // Standard library.
 #include "cstdint.hpp"
@@ -19,6 +19,8 @@ namespace shasta {
 
     class Base;
     class Marker;
+    class MarkerKmers;
+    class Markers;
     class MarkerInfo;
     class Reads;
 
