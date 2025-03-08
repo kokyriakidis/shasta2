@@ -435,7 +435,7 @@ void Anchors::writeHtml(
 
             // Get the positions of Anchor A in this oriented read.
             const uint32_t ordinalA0 = itA->ordinal0;
-            const uint32_t ordinalA1 = ordinalA0 + ordinalOffset(anchorIdA);
+            const uint32_t ordinalA1 = ordinalA0;
             const int64_t positionA0 = int64_t(orientedReadMarkers[ordinalA0].position);
             const int64_t positionA1 = int64_t(orientedReadMarkers[ordinalA1].position);
 
@@ -471,7 +471,7 @@ void Anchors::writeHtml(
 
             // Get the positions of Anchor B in this oriented read.
             const uint32_t ordinalB0 = itB->ordinal0;
-            const uint32_t ordinalB1 = ordinalB0 + ordinalOffset(anchorIdB);
+            const uint32_t ordinalB1 = ordinalB0;
             const int64_t positionB0 = int64_t(orientedReadMarkers[ordinalB0].position);
             const int64_t positionB1 = int64_t(orientedReadMarkers[ordinalB1].position);
 
@@ -507,13 +507,13 @@ void Anchors::writeHtml(
 
             // Get the positions of Anchor A in this oriented read.
             const uint32_t ordinalA0 = itA->ordinal0;
-            const uint32_t ordinalA1 = ordinalA0 + ordinalOffset(anchorIdA);
+            const uint32_t ordinalA1 = ordinalA0;
             const int64_t positionA0 = int64_t(orientedReadMarkers[ordinalA0].position);
             const int64_t positionA1 = int64_t(orientedReadMarkers[ordinalA1].position);
 
             // Get the positions of Anchor B in this oriented read.
             const uint32_t ordinalB0 = itB->ordinal0;
-            const uint32_t ordinalB1 = ordinalB0 + ordinalOffset(anchorIdB);
+            const uint32_t ordinalB1 = ordinalB0;
             const int64_t positionB0 = int64_t(orientedReadMarkers[ordinalB0].position);
             const int64_t positionB1 = int64_t(orientedReadMarkers[ordinalB1].position);
 
@@ -573,7 +573,7 @@ bool Anchors::areAdjacentAnchors(AnchorId anchorId0, AnchorId anchorId1) const
         } else if(orientedReadId1 < orientedReadId0) {
             ++it1;
         } else {
-            if(it0->ordinal0 + ordinalOffset(anchorId0) == it1->ordinal0) {
+            if(it0->ordinal0 == it1->ordinal0) {
                 return true;
             }
             ++it0;
