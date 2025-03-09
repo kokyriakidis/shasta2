@@ -2,6 +2,7 @@
 
 // Shasta.
 #include "Assembler.hpp"
+#include "AssemblerOptions.hpp"
 #include "Base.hpp"
 #include "deduplicate.hpp"
 #include "diploidBayesianPhase.hpp"
@@ -26,6 +27,15 @@ using namespace pybind11;
 
 PYBIND11_MODULE(shasta2, shasta2Module)
 {
+    // Expose class AssemblerOptions to Python.
+    class_<AssemblerOptions>(shasta2Module, "AssemblerOptions")
+
+        // Constructor from the name of a configuration file.
+        .def(pybind11::init<const string&>(),
+            arg("configurationFileName") = "shasta2.conf")
+         ;
+
+
 
     // Expose class Assembler to Python.
     class_<Assembler>(shasta2Module, "Assembler")

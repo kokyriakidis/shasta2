@@ -3,6 +3,7 @@
 using namespace shasta;
 
 // Standard library.
+#include <array.hpp>
 #include "stdexcept.hpp"
 
 
@@ -128,6 +129,35 @@ void AssemblerOptions::addOptions()
         "Maximum length of a multiple sequence alignment\n"
         "for local assembly."
         )->capture_default_str();
+}
+
+
+
+// Constructor from a configuration file.
+AssemblerOptions::AssemblerOptions(const string& fileName)
+{
+
+    allow_config_extras(false);
+    set_config("--config", "", "Configuration file.");
+    get_formatter()->column_width(20);
+
+    addOptions();
+
+    // Construct arguments "--config fileName".
+    int argc = 3;
+    const string name = "shasta2";
+    const string keyword = "--config";
+    char* arg0 = const_cast<char*>(name.c_str());
+    char* arg1 = const_cast<char*>(keyword.c_str());
+    char* arg2 = const_cast<char*>(fileName.c_str());
+    const array<char*, 3> argv = {arg0, arg1, arg2};
+
+    try {
+        parse(argc, &argv.front());
+    } catch(const CLI::ParseError& e) {
+         exit(e);
+         throw runtime_error("Error parsing options.");
+    }
 }
 
 
