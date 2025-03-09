@@ -15,7 +15,24 @@ shasta::AssemblerOptions::AssemblerOptions(int argc, char** argv) :
 
     get_formatter()->column_width(20);
 
+    addOptions();
 
+    try {
+        parse(argc, argv);
+    } catch(const CLI::ParseError& e) {
+         exit(e);
+         if(e.get_name() == "CallForHelp") {
+             isHelp = true;
+         } else {
+             throw runtime_error("Error parsing options.");
+         }
+    }
+}
+
+
+
+void AssemblerOptions::addOptions()
+{
     add_option("--input", inputFileNames,
         "Input fasta or fastq files (uncompressed)."
         )->capture_default_str();
@@ -111,19 +128,6 @@ shasta::AssemblerOptions::AssemblerOptions(int argc, char** argv) :
         "Maximum length of a multiple sequence alignment\n"
         "for local assembly."
         )->capture_default_str();
-
-
-
-    try {
-        parse(argc, argv);
-    } catch(const CLI::ParseError& e) {
-         exit(e);
-         if(e.get_name() == "CallForHelp") {
-             isHelp = true;
-         } else {
-             throw runtime_error("Error parsing options.");
-         }
-    }
 }
 
 

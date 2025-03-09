@@ -17,7 +17,10 @@ namespace shasta {
 class shasta::AssemblerOptions : public CLI::App {
 public:
 
+    // Construct from command line options.
     AssemblerOptions(int argumentCount, char** arguments);
+
+    // Write a configuration file.
     void write(ostream&) const;
 
     bool isHelp = false;
@@ -76,6 +79,9 @@ public:
 
     };
     LocalAssemblyOptions localAssemblyOptions;
+
+private:
+    void addOptions();
 };
 
 
