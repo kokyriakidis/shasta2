@@ -1,6 +1,7 @@
 #include "Anchor.hpp"
 #include "deduplicate.hpp"
 #include "html.hpp"
+#include "invalid.hpp"
 #include "MarkerInfo.hpp"
 #include "MarkerKmers.hpp"
 #include "Markers.hpp"
@@ -34,7 +35,8 @@ Anchors::Anchors(
     kHalf = k / 2;
 
     anchorMarkerInfos.accessExistingReadOnly(largeDataName("AnchorMarkerInfos"));
-    anchorInfos.accessExistingReadWrite(largeDataName("AnchorInfos"));
+    anchorInfos.accessExistingReadOnly(largeDataName("AnchorInfos"));
+    kmerToAnchorTable.accessExistingReadOnly(largeDataName("KmerToAnchorTable"));
     journeys.accessExistingReadOnly(largeDataName("Journeys"));
 }
 
@@ -992,46 +994,68 @@ Anchors::Anchors(
     data.maxAnchorCoverage = maxAnchorCoverage;
     data.markerKmers = markerKmers;
 
-    // Use the MarkerKmers to construct anchors.
-    // Each thread stores the anchors it finds in a separate vector.
-    data.threadAnchors.clear(); // Just in case
-    data.threadAnchors.resize(threadCount);
+    // During multithreaded pass 1 we loop over all marker k-mers
+    // and for each one we find out if it can be used to generate
+    // a pair of anchors or not. If it can be used,
+    // we also fill in the coverage - that is,
+    // the number of usable MarkerInfos that will go in each of the
+    // two anchors.
+    const uint64_t markerKmerCount = markerKmers->size();
+    data.coverage.createNew(largeDataName("tmp-kmerToAnchorInfos"), largeDataPageSize);
+    data.coverage.resize(markerKmerCount);
     const uint64_t batchSize = 1000;
-    setupLoadBalancing(markerKmers->size(), batchSize);
-    runThreads(&Anchors::constructThreadFunction, threadCount);
+    setupLoadBalancing(markerKmerCount, batchSize);
+    runThreads(&Anchors::constructThreadFunctionPass1, threadCount);
 
-    // Gather the anchors found by all threads.
-    performanceLog << timestamp << "Gathering the anchors found by all threads." << endl;
+
+
+    // Assign AnchorIds to marker k-mers and allocate space for
+    // each anchor.
     anchorMarkerInfos.createNew(
             largeDataName("AnchorMarkerInfos"),
             largeDataPageSize);
     anchorInfos.createNew(largeDataName("AnchorInfos"), largeDataPageSize);
-    for(uint64_t threadId=0; threadId<threadCount; threadId++) {
-        auto& threadAnchorsPointer = data.threadAnchors[threadId];
-        auto& threadAnchors = *threadAnchorsPointer;
-
-        // Loop over the anchors found by this thread.
-        for(uint64_t i=0; i<threadAnchors.size(); i++) {
-            const auto threadAnchor = threadAnchors[i];
-            anchorMarkerInfos.appendVector();
-            for(const auto& markerInfo: threadAnchor) {
-                anchorMarkerInfos.append(AnchorMarkerInfo(markerInfo.orientedReadId, markerInfo.ordinal));
-            }
+    kmerToAnchorTable.createNew(largeDataName("KmerToAnchorTable"), largeDataPageSize);
+    kmerToAnchorTable.resize(markerKmerCount);
+    AnchorId anchorId = 0;
+    for(uint64_t kmerIndex=0; kmerIndex<markerKmerCount; kmerIndex++) {
+        const uint64_t coverage = data.coverage[kmerIndex];
+        if(coverage == 0) {
+            // This k-mer does not generate any anchors.
+            kmerToAnchorTable[kmerIndex] = invalid<AnchorId>;
+        } else {
+            // This k-mer generates two anchors.
+            anchorMarkerInfos.appendVector(coverage);
+            anchorMarkerInfos.appendVector(coverage);
+            kmerToAnchorTable[kmerIndex] = anchorId;
+            anchorInfos.push_back(AnchorInfo(kmerIndex));
+            anchorInfos.push_back(AnchorInfo(kmerIndex));
+            anchorId += 2;
         }
-        threadAnchors.remove();
-        threadAnchorsPointer = 0;
     }
-
+    data.coverage.remove();
     const uint64_t anchorCount = anchorMarkerInfos.size();
-    anchorInfos.resize(anchorCount);
+    SHASTA_ASSERT(anchorId == anchorCount);
+    SHASTA_ASSERT(anchorInfos.size() == anchorCount);
+
+
+
+    // In pass 2 we fill in the AnchorMarkerInfos for each anchor.
+    SHASTA_ASSERT((batchSize % 2) == 0);
+    setupLoadBalancing(anchorCount, batchSize);
+    runThreads(&Anchors::constructThreadFunctionPass2, threadCount);
+
+
 
     cout << "Number of anchors per strand: " << anchorCount / 2 << endl;
     performanceLog << timestamp << "Anchor creation from marker kmers ends." << endl;
+
 }
 
 
 
-void Anchors::constructThreadFunction(uint64_t threadId)
+
+void Anchors::constructThreadFunctionPass1(uint64_t /* threadId */)
 {
 
     ConstructData& data = constructData;
@@ -1039,34 +1063,89 @@ void Anchors::constructThreadFunction(uint64_t threadId)
     const uint64_t maxAnchorCoverage = data.maxAnchorCoverage;
     const MarkerKmers& markerKmers = *data.markerKmers;
 
-    // Initialize the anchors that will be found by this thread.
-    auto& threadAnchorsPointer = data.threadAnchors[threadId];
-    threadAnchorsPointer = make_shared<MemoryMapped::VectorOfVectors<MarkerInfo, uint64_t> >();
-    auto& threadAnchors = *threadAnchorsPointer;
-    threadAnchors.createNew(largeDataName("tmp-threadAnchors-" + to_string(threadId)), largeDataPageSize);
-
-    // A vector used below and defined here to reduce memory allocation activity.
-    // It will contain the MarkerInfos for a marker Kmer, ecluding
-    // the ones for which the same ReadId appears more than once in the same Kmer.
-    // There are the ones that will be used to generate anchors.
-    vector<MarkerInfo> usableMarkerInfos;
-
     // Loop over batches of marker Kmers assigned to this thread.
     uint64_t begin, end;
     while(getNextBatch(begin, end)) {
 
-        // Loop over marker Kmers assigned to this batch.
-        for(uint64_t i=begin; i!=end; i++) {
+        // Loop over marker k-mers assigned to this batch.
+        for(uint64_t kmerIndex=begin; kmerIndex!=end; kmerIndex++) {
+
+            SHASTA_ASSERT(data.coverage[kmerIndex] == 0);
 
             // Get the MarkerInfos for this marker Kmer.
-            const span<const MarkerInfo> markerInfos = markerKmers[i];
+            const span<const MarkerInfo> markerInfos = markerKmers[kmerIndex];
 
             // Check for high coverage using all of the marker infos.
             if(markerInfos.size() > maxAnchorCoverage) {
                 continue;
             }
 
+            // Count the usable MarkerInfos.
+            // These are the ones for which the ReadId is different from the ReadId
+            // of the previous and next MarkerInfo.
+            uint64_t  usableMarkerInfosCount = 0;
+            for(uint64_t i=0; i<markerInfos.size(); i++) {
+                const MarkerInfo& markerInfo = markerInfos[i];
+                bool isUsable = true;
 
+                // Check if same ReadId of previous MarkerInfo.
+                if(i != 0) {
+                    isUsable =
+                        isUsable and
+                        (markerInfo.orientedReadId.getReadId() != markerInfos[i-1].orientedReadId.getReadId());
+                }
+
+                // Check if same ReadId of next MarkerInfo.
+                if(i != markerInfos.size() - 1) {
+                    isUsable =
+                        isUsable and
+                        (markerInfo.orientedReadId.getReadId() != markerInfos[i+1].orientedReadId.getReadId());
+                }
+
+                if(isUsable) {
+                    ++usableMarkerInfosCount;
+                }
+            }
+
+            // Check for low coverage using the usable marker infos.
+            if(usableMarkerInfosCount >= minAnchorCoverage) {
+                // If getting here, we will generate a pair of Anchors corresponding to this Kmer.
+                data.coverage[kmerIndex] = usableMarkerInfosCount;
+            }
+        }
+    }
+}
+
+
+
+void Anchors::constructThreadFunctionPass2(uint64_t /* threadId */)
+{
+
+    ConstructData& data = constructData;
+    const uint64_t minAnchorCoverage = data.minAnchorCoverage;
+    const uint64_t maxAnchorCoverage = data.maxAnchorCoverage;
+    const MarkerKmers& markerKmers = *data.markerKmers;
+
+
+    // A vector used below and defined here to reduce memory allocation activity.
+    // It will contain the MarkerInfos for a marker Kmer, excluding
+    // the ones for which the same ReadId appears more than once in the same Kmer.
+    // There are the ones that will be used to generate anchors.
+    vector<MarkerInfo> usableMarkerInfos;
+
+    // Loop over batches of AnchorIds assigned to this thread.
+    uint64_t begin, end;
+    while(getNextBatch(begin, end)) {
+
+        // Loop over marker k-mers assigned to this batch.
+        for(AnchorId anchorId=0; anchorId!=end; anchorId+=2) {
+            const uint64_t kmerIndex = anchorInfos[anchorId].kmerIndex;
+
+            // Get the MarkerInfos for this marker Kmer.
+            const span<const MarkerInfo> markerInfos = markerKmers[kmerIndex];
+
+            // We already checked for high coverage during pass 1.
+            SHASTA_ASSERT(markerInfos.size() <= maxAnchorCoverage);
 
             // Gather the usable MarkerInfos.
             // These are the ones for which the ReadId is different from the ReadId
@@ -1095,31 +1174,23 @@ void Anchors::constructThreadFunction(uint64_t threadId)
                 }
             }
 
+            // We already checked for low coverage durign pass1.
+            SHASTA_ASSERT(usableMarkerInfos.size() >= minAnchorCoverage);
 
-
-            // Check for low coverage using the usable marker infos.
-            if(usableMarkerInfos.size() < minAnchorCoverage) {
-                continue;
-            }
-
-
-
-            // If getting here, we will generate a pair of Anchors corresponding
-            // to this Kmer.
-
-
-            // Generate the first anchor of the pair (no reverse complementing).
-            threadAnchors.appendVector(usableMarkerInfos);
-
+            // Fill in the AnchorMarkerInfos for this anchor.
+            const auto& anchorMarkerInfos0 = anchorMarkerInfos[anchorId];
+            SHASTA_ASSERT(anchorMarkerInfos0.size() == usableMarkerInfos.size());
+            copy(usableMarkerInfos.begin(), usableMarkerInfos.end(), anchorMarkerInfos0.begin());
 
             // Reverse complement the usableMarkerInfos, then
             // generate the second anchor in the pair.
             for(MarkerInfo& markerInfo: usableMarkerInfos) {
                 markerInfo = markerInfo.reverseComplement(markers);
             }
-            threadAnchors.appendVector(usableMarkerInfos);
+            const auto& anchorMarkerInfos1 = anchorMarkerInfos[anchorId + 1];
+            SHASTA_ASSERT(anchorMarkerInfos1.size() == usableMarkerInfos.size());
+            copy(usableMarkerInfos.begin(), usableMarkerInfos.end(), anchorMarkerInfos1.begin());
         }
     }
-
 }
 
