@@ -230,6 +230,12 @@ void shasta::main::assemble(
     // Make the assembly directory current.
     std::filesystem::current_path(assemblerOptions.assemblyDirectory);
 
+    // Write a configuration to the assembly directory.
+    {
+        ofstream configurationFile("shasta2.conf");
+        assemblerOptions.write(configurationFile);
+    }
+
     // Open the performance log.
     openPerformanceLog("performance.log");
     performanceLog << timestamp << "Assembly begins." << endl;

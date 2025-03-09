@@ -2,6 +2,7 @@
 
 // Shasta.
 #include <cstdint.hpp>
+#include <iosfwd.hpp>
 #include <string.hpp>
 #include <vector.hpp>
 
@@ -17,6 +18,8 @@ class shasta::AssemblerOptions : public CLI::App {
 public:
 
     AssemblerOptions(int argumentCount, char** arguments);
+    void write(ostream&) const;
+
     bool isHelp = false;
 
     string configName;

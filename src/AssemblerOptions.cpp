@@ -125,3 +125,10 @@ shasta::AssemblerOptions::AssemblerOptions(int argc, char** argv) :
          }
     }
 }
+
+
+
+void AssemblerOptions::write(ostream& s) const
+{
+    s << config_to_str(true,true);
+}
