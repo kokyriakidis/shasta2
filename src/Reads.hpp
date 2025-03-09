@@ -21,7 +21,7 @@ class shasta::Reads {
 public:
   
     // Default Constructor
-    Reads(): totalBaseCount(0), n50(0) {};
+    Reads(): n50(0) {};
 
     void createNew(
         const string& readsDataName,
@@ -93,7 +93,7 @@ public:
     void writeReadLengthHistogram(const string& fileName);
     
     inline uint64_t getTotalBaseCount() const {
-        return totalBaseCount;
+        return reads.totalBaseCount();
     }
     inline uint64_t getN50() const {
         return n50;

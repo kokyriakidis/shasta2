@@ -1,8 +1,11 @@
+// Shasta.
 #include "LongBaseSequence.hpp"
 #include "extractKmer.hpp"
 #include "ShortBaseSequence.hpp"
 using namespace shasta;
 
+// Standard library.
+#include <numeric>
 #include "vector.hpp"
 
 
@@ -202,4 +205,11 @@ void shasta::testLongBaseSequence()
     cout << s16 << endl;
     extractKmer(view, 72, 8, s16);
     cout << s16 << endl;
+}
+
+
+
+uint64_t LongBaseSequences::totalBaseCount() const
+{
+    return std::accumulate(baseCount.begin(), baseCount.end(), 0);
 }

@@ -297,6 +297,9 @@ public:
     void append(const vector<Base>&);
     void append(size_t baseCount);
 
+    uint64_t totalBaseCount() const;
+
+
 private:
 
     // The number of bases of each of the sequences.

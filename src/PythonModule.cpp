@@ -33,7 +33,9 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         // Constructor from the name of a configuration file.
         .def(pybind11::init<const string&>(),
             arg("configurationFileName") = "shasta2.conf")
-         ;
+        .def_readonly("k", &AssemblerOptions::k)
+        .def_readonly("markerDensity", &AssemblerOptions::markerDensity)
+        ;
 
 
 
@@ -51,7 +53,12 @@ PYBIND11_MODULE(shasta2, shasta2Module)
             "Create a histogram of read length and write it to a csv file.",
             arg("fileName") = "ReadLengthHistogram.csv")
 
-        // K-mers.
+        // Marker K-mers.
+        .def("createKmerChecker",
+            &Assembler::createKmerChecker,
+            arg("k"),
+            arg("markerDensity"),
+            arg("threadCount") = 0)
         .def("accessKmerChecker",
             &Assembler::accessKmerChecker)
 
@@ -60,7 +67,6 @@ PYBIND11_MODULE(shasta2, shasta2Module)
             &Assembler::accessMarkers)
         .def("createMarkers",
             &Assembler::createMarkers,
-            "Find markers in reads.",
             arg("threadCount") = 0)
         .def("createMarkerKmers",
             &Assembler::createMarkerKmers,
