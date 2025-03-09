@@ -65,7 +65,7 @@ public:
     The constructors specify the file name prefix for binary data files.
     If this is a directory name, it must include the final "/".
 
-    The constructor also specifies the page size for binary data files.
+    The constructor for a new assembler also specifies the page size for binary data files.
     Typically, for a large run binary data files will reside in a huge page
     file system backed by 2MB pages.
     The page sizes specified here must be equal to, or be an exact multiple of,
@@ -73,11 +73,13 @@ public:
 
     ***************************************************************************/
 
-    // Constructor.
+    // Construct a new Assembler.
     Assembler(
         const string& largeDataFileNamePrefix,
-        bool createNew,
         size_t largeDataPageSize);
+
+    // Construct an Assembler from binary data. This accesses the AssemblerInfo and the Reads.
+    Assembler(const string& largeDataFileNamePrefix);
 
 
 

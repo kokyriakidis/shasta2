@@ -25,9 +25,9 @@ void Reads::access(
     const string& readNamesDataName,
     const string& readIdsSortedByNameDataName)
 {
-    reads.accessExistingReadWrite(readsDataName);
-    readNames.accessExistingReadWrite(readNamesDataName);
-    readIdsSortedByName.accessExistingReadWrite(readIdsSortedByNameDataName);
+    reads.accessExistingReadOnly(readsDataName);
+    readNames.accessExistingReadOnly(readNamesDataName);
+    readIdsSortedByName.accessExistingReadOnly(readIdsSortedByNameDataName);
 }
 
 

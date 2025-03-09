@@ -31,6 +31,13 @@ public:
     MappedMemoryOwner() {}
     MappedMemoryOwner(const MappedMemoryOwner&) = default;
 
+    MappedMemoryOwner(
+        const string& largeDataFileNamePrefix,
+        uint64_t largeDataPageSize) :
+        largeDataFileNamePrefix(largeDataFileNamePrefix),
+        largeDataPageSize(largeDataPageSize)
+    {}
+
     template<class T> void createNew(T& t, const string& name)
     {
         t.createNew(largeDataName(name), largeDataPageSize);

@@ -255,7 +255,7 @@ void shasta::main::assemble(
         dataDirectory);
 
     // Create the Assembler.
-    Assembler assembler(dataDirectory, true, pageSize);
+    Assembler assembler(dataDirectory, pageSize);
 
     // Run the assembly.
     assembler.assemble(assemblerOptions, inputFileAbsolutePaths);
@@ -503,7 +503,9 @@ void shasta::main::explore(
     }
 
     // Create the Assembler.
-    Assembler assembler("Data/", false, 0);
+    Assembler assembler("Data/");
+    assembler.fillServerFunctionTable();
+
 
     // Access all available binary data.
     assembler.httpServerData.assemblerOptions = &assemblerOptions;

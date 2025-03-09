@@ -31,11 +31,9 @@ PYBIND11_MODULE(shasta2, shasta2Module)
     class_<Assembler>(shasta2Module, "Assembler")
 
         // Constructor.
-        .def(pybind11::init<const string&, bool, size_t>(),
+        .def(pybind11::init<const string&>(),
             "Assembler constructor.",
-            arg("largeDataFileNamePrefix") = "Data/",
-            arg("createNew") = false,
-            arg("largeDataPageSize") = 2*1024*1024)
+            arg("largeDataFileNamePrefix") = "Data/")
 
         // Reads
         .def("histogramReadLength",

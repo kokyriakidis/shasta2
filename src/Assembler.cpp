@@ -10,52 +10,46 @@ using namespace shasta;
 template class MultithreadedObject<Assembler>;
 
 
-// Constructor to be called one to create a new run.
+// Construct a new Assembler.
 Assembler::Assembler(
-    const string& largeDataFileNamePrefixArgument,
-    bool createNew,
-    size_t largeDataPageSizeArgument) :
-    MultithreadedObject(*this)
+    const string& largeDataFileNamePrefix,
+    size_t largeDataPageSize) :
+    MultithreadedObject(*this),
+    MappedMemoryOwner(largeDataFileNamePrefix, largeDataPageSize)
 {
-    largeDataFileNamePrefix = largeDataFileNamePrefixArgument;
 
-    if(createNew) {
 
-        // Create a new assembly.
-        assemblerInfo.createNew(largeDataName("Info"), largeDataPageSizeArgument);
-        assemblerInfo->largeDataPageSize = largeDataPageSizeArgument;
-        largeDataPageSize = largeDataPageSizeArgument;
+    assemblerInfo.createNew(largeDataName("Info"), largeDataPageSize);
+    assemblerInfo->largeDataPageSize = largeDataPageSize;
 
-        readsPointer = make_shared<Reads>();
-        readsPointer->createNew(
-            largeDataName("Reads"),
-            largeDataName("ReadNames"),
-            largeDataName("ReadIdsSortedByName"),
-            largeDataPageSize
-        );
-        // cout << "Created a new assembly with page size " << largeDataPageSize << endl;
-
-    } else {
-
-        // Access an existing assembly.
-        assemblerInfo.accessExistingReadWrite(largeDataName("Info"));
-        largeDataPageSize = assemblerInfo->largeDataPageSize;
-
-        readsPointer = make_shared<Reads>();
-        readsPointer->access(
-            largeDataName("Reads"),
-            largeDataName("ReadNames"),
-            largeDataName("ReadIdsSortedByName")
-        );
-
-    }
-    SHASTA_ASSERT(largeDataPageSize == assemblerInfo->largeDataPageSize);
-
-    // In both cases, assemblerInfo, reads, readNames, readRepeatCounts are all open for write.
-
-    fillServerFunctionTable();
+    readsPointer = make_shared<Reads>();
+    readsPointer->createNew(
+        largeDataName("Reads"),
+        largeDataName("ReadNames"),
+        largeDataName("ReadIdsSortedByName"),
+        largeDataPageSize
+    );
 }
 
+
+
+// Construct an Assembler from binary data. This accesses the AssemblerInfo and the Reads.
+Assembler::Assembler(const string& largeDataFileNamePrefix) :
+    MultithreadedObject(*this),
+    MappedMemoryOwner(largeDataFileNamePrefix, 0)
+{
+
+    assemblerInfo.accessExistingReadWrite(largeDataName("Info"));
+    largeDataPageSize = assemblerInfo->largeDataPageSize;
+
+    readsPointer = make_shared<Reads>();
+    readsPointer->access(
+        largeDataName("Reads"),
+        largeDataName("ReadNames"),
+        largeDataName("ReadIdsSortedByName")
+    );
+
+}
 
 
 
