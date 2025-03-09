@@ -53,7 +53,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
             "Create a histogram of read length and write it to a csv file.",
             arg("fileName") = "ReadLengthHistogram.csv")
 
-        // Marker K-mers.
+        // K-mer checker.
         .def("createKmerChecker",
             &Assembler::createKmerChecker,
             arg("k"),
@@ -68,6 +68,8 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def("createMarkers",
             &Assembler::createMarkers,
             arg("threadCount") = 0)
+
+         // Marker k-mers.
         .def("createMarkerKmers",
             &Assembler::createMarkerKmers,
             arg("threadCount") = 0)
