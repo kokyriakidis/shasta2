@@ -126,7 +126,7 @@ public:
     ShortBaseSequence<Int> reverseComplement(uint64_t n) const
     {
         const Int shift = Int(capacity - n);
-        const Int mask = Int(1ULL << n) - Int(1);
+        const Int mask = (Int(1ULL) << n) - Int(1);
         ShortBaseSequence<Int> reverseComplementedSequence;
         reverseComplementedSequence.data[0] = Int(((~bitReversal(data[0])) & mask) << shift);
         reverseComplementedSequence.data[1] = Int(((~bitReversal(data[1])) & mask) << shift);
