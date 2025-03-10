@@ -8,10 +8,10 @@
 // std::numeric_limits::digits only works for built-in types
 // and cannot be extended.
 
-#ifdef SHASTA_LONG_MARKERS
+// Boost libraries.
 #include <boost/multiprecision/cpp_int.hpp>
-#endif
 
+// Standard library.
 #include <cstdint.hpp>
 
 namespace shasta {
@@ -49,16 +49,12 @@ namespace shasta {
     template<> class BitCounter<__uint128_t> {
     public:
         static constexpr int numberOfBits = 128;
-#ifdef SHASTA_LONG_MARKERS
         using doubleSizeType = boost::multiprecision::uint256_t;
-#endif
     };
 
-#ifdef SHASTA_LONG_MARKERS
     template<> class BitCounter<boost::multiprecision::uint256_t> {
     public:
         static constexpr int numberOfBits = 256;
         using doubleSizeType = boost::multiprecision::uint512_t;
     };
-#endif
 }

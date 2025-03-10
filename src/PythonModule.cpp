@@ -6,6 +6,7 @@
 #include "Base.hpp"
 #include "deduplicate.hpp"
 #include "diploidBayesianPhase.hpp"
+#include "extractKmer128.hpp"
 #include "globalMsa.hpp"
 #include "LongBaseSequence.hpp"
 #include "mappedCopy.hpp"
@@ -108,6 +109,9 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         );
     shasta2Module.def("testLongBaseSequence",
         testLongBaseSequence
+        );
+    shasta2Module.def("testExtractKmer128",
+        testExtractKmer128
         );
     shasta2Module.def("testSplitRange",
         testSplitRange

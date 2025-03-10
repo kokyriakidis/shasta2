@@ -1,5 +1,4 @@
-#ifndef SHASTA_EXTRACT_KMER_HPP
-#define SHASTA_EXTRACT_KMER_HPP
+#pragma once
 
 // Extract the kmer at a given position in a LongBaseSequenceView.
 // Uses bit operations for speed, so it can be used in
@@ -63,9 +62,3 @@ namespace shasta {
         ShortBaseSequence<uint64_t>&);
 
 }
-
-
-
-
-#endif
-
