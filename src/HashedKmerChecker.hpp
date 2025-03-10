@@ -17,7 +17,7 @@ class shasta::HashedKmerChecker :
     public KmerChecker,
     public MappedMemoryOwner {
 public:
-    bool isMarker(KmerId) const;
+    bool isMarker(const Kmer&) const;
 
     // Initial creation.
     HashedKmerChecker(uint64_t k, double markerDensity, const MappedMemoryOwner&);

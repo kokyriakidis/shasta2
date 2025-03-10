@@ -93,8 +93,7 @@ void Markers::threadFunction(uint64_t)
                     kmer.set(position, read[position]);
                 }
                 for(uint32_t position=0; /*The check is done later */; position++) {
-                    const KmerId kmerId = KmerId(kmer.id(k));
-                    if(kmerChecker->isMarker(kmerId)) {
+                    if(kmerChecker->isMarker(kmer)) {
                         // This k-mer is a marker.
 
                         if(pass == 1) {

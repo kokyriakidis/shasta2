@@ -208,8 +208,7 @@ void Assembler::exploreMarkerKmers(const vector<string>& request, ostream& html)
 
     // Check if it is a marker.
     SHASTA_ASSERT(kmerChecker);
-    const KmerId kmerId = KmerId(kmer.id(k));
-    if(not kmerChecker->isMarker(kmerId)) {
+    if(not kmerChecker->isMarker(kmer)) {
         throw runtime_error("This assembly does not use this as a marker.");
     }
 

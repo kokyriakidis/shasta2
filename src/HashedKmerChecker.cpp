@@ -18,18 +18,16 @@ using namespace shasta;
 // This will usually require two calls to MurmurHash2,
 // but this is probably still faster than two cache misses
 // in the old k-mer table.
-bool HashedKmerChecker::isMarker(KmerId kmerId) const
+bool HashedKmerChecker::isMarker(const Kmer& kmer) const
 {
     // Check the KmerId.
-    if(MurmurHash2(&kmerId, sizeof(kmerId), 267457831) < hashThreshold) {
+    if(MurmurHash2(&kmer, sizeof(Kmer), 267457831) < hashThreshold) {
         return true;
     }
 
     // Check its reverse complement.
-    const Kmer kmer(kmerId, k);
     const Kmer kmerRc = kmer.reverseComplement(k);
-    const KmerId kmerIdRc = KmerId(kmerRc.id(k));
-    return MurmurHash2(&kmerIdRc, sizeof(kmerId), 267457831) < hashThreshold;
+    return MurmurHash2(&kmerRc, sizeof(Kmer), 267457831) < hashThreshold;
 }
 
 
