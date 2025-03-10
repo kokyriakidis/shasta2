@@ -14,7 +14,9 @@ namespace shasta {
     using Kmer32 = ShortBaseSequence32;
     using Kmer64 = ShortBaseSequence64;
 
-#ifdef SHASTA_LONG_MARKERS
+#if 1
+
+    // 128-base markers.
     using Kmer128 = ShortBaseSequence128;
     using Kmer = Kmer128;
     static_assert(
@@ -23,7 +25,10 @@ namespace shasta {
     static_assert(
         Kmer::capacity == 128,
         "Unexpected Kmer capacity.");
+
 #else
+
+    // 64-base markers.
     using Kmer = Kmer64;
     static_assert(
         BitCounter<KmerId>::numberOfBits == 128,

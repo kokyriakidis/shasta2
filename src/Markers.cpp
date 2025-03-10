@@ -1,5 +1,5 @@
 #include "Markers.hpp"
-#include "extractKmer.hpp"
+#include "extractKmer128.hpp"
 #include "Kmer.hpp"
 #include "KmerChecker.hpp"
 #include "performanceLog.hpp"
@@ -179,7 +179,7 @@ Kmer Markers::getKmerStrand0(
     const auto orientedReadMarkers0 = markers[orientedReadId0.getValue()];
 
     Kmer kmer0;
-    extractKmer(read, uint64_t(orientedReadMarkers0[ordinal0].position), k, kmer0);
+    extractKmer128(read, uint64_t(orientedReadMarkers0[ordinal0].position), k, kmer0);
 
     return kmer0;
 }
@@ -199,7 +199,7 @@ Kmer Markers::getKmerStrand1(
     const uint64_t readMarkerCount = orientedReadMarkers0.size();
     const uint64_t ordinal0 = readMarkerCount - 1 - ordinal1;
     Kmer kmer0;
-    extractKmer(read, uint64_t(orientedReadMarkers0[ordinal0].position), k, kmer0);
+    extractKmer128(read, uint64_t(orientedReadMarkers0[ordinal0].position), k, kmer0);
 
     // Now do the reverse complement.
     const Kmer kmer1 = kmer0.reverseComplement(k);

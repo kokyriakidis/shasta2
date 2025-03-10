@@ -1,6 +1,5 @@
 // Shasta.
 #include "Assembler.hpp"
-#include "extractKmer.hpp"
 #include "Markers.hpp"
 #include "MarkerKmers.hpp"
 #include "performanceLog.hpp"

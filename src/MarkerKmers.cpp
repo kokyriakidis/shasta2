@@ -1,5 +1,5 @@
 #include "MarkerKmers.hpp"
-#include "extractKmer.hpp"
+#include "extractKmer128.hpp"
 #include "Markers.hpp"
 #include "Reads.hpp"
 using namespace shasta;
@@ -130,7 +130,7 @@ void MarkerKmers::gatherMarkersPass12(uint64_t pass)
 
                 // Extract the Kmer at this position and its reverse complement.
                 Kmer kmer;
-                extractKmer(readSequence, position, k, kmer);
+                extractKmer128(readSequence, position, k, kmer);
                 const Kmer kmerRc = kmer.reverseComplement(k);
 
                 // Only store the lowest of the two, the canonical one.
@@ -179,7 +179,7 @@ Kmer MarkerKmers::getKmer(const MarkerInfo& markerInfo) const
         const Marker& marker = orientedReadMarkers[ordinal];
         const uint32_t position = marker.position;
         Kmer kmer;
-        extractKmer(readSequence, position, k, kmer);
+        extractKmer128(readSequence, position, k, kmer);
         return kmer;
     } else {
 
@@ -191,7 +191,7 @@ Kmer MarkerKmers::getKmer(const MarkerInfo& markerInfo) const
         const Marker& marker0 = orientedRead0Markers[ordinal0];
         const uint32_t position0 = marker0.position;
         Kmer kmer0;
-        extractKmer(readSequence, position0, k, kmer0);
+        extractKmer128(readSequence, position0, k, kmer0);
         return kmer0.reverseComplement(k);
     }
 }

@@ -184,9 +184,9 @@ void shasta::main::assemble(
     // Various checks for option validity.
 
     // Check --k.
-    if(assemblerOptions.k > 62) {
+    if(assemblerOptions.k > 126) {
         throw runtime_error("Invalid value specified for --k. "
-            "Must be no more than 62");
+            "Must be no more than 126");
     }
     if((assemblerOptions.k % 2) == 1) {
         throw runtime_error("Invalid value specified for --k. Must be even.");

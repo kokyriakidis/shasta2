@@ -1,6 +1,7 @@
 #pragma once
 
-#ifdef SHASTA_LONG_MARKERS
+#if 1
+// For 128-base markers (the KmerId is 256 bits).
 #include <boost/multiprecision/cpp_int.hpp>
 #endif
 
@@ -14,10 +15,14 @@ namespace shasta {
     using KmerId32 = uint64_t;
     using KmerId64 = __uint128_t;
 
-#ifdef SHASTA_LONG_MARKERS
+#if 1
+
+    // 128-base markers.
     using KmerId128 = boost::multiprecision::uint256_t;
     using KmerId = KmerId128;
 #else
+
+    // 64-base markers.
     using KmerId = KmerId64;
 #endif
 
