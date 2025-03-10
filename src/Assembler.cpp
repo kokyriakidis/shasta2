@@ -128,6 +128,11 @@ void Assembler::createAnchors(
     uint64_t maxAnchorCoverage,
     uint64_t threadCount)
 {
+    // Adjust the numbers of threads, if necessary.
+    if(threadCount == 0) {
+        threadCount = std::thread::hardware_concurrency();
+    }
+
     anchorsPointer = make_shared<Anchors>(
         MappedMemoryOwner(*this),
         reads(),

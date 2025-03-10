@@ -35,6 +35,8 @@ PYBIND11_MODULE(shasta2, shasta2Module)
             arg("configurationFileName") = "shasta2.conf")
         .def_readonly("k", &AssemblerOptions::k)
         .def_readonly("markerDensity", &AssemblerOptions::markerDensity)
+        .def_readonly("minAnchorCoverage", &AssemblerOptions::minAnchorCoverage)
+        .def_readonly("maxAnchorCoverage", &AssemblerOptions::maxAnchorCoverage)
         ;
 
 
@@ -75,6 +77,15 @@ PYBIND11_MODULE(shasta2, shasta2Module)
             arg("threadCount") = 0)
         .def("accessMarkerKmers",
             &Assembler::accessMarkerKmers)
+
+         // Anchors.
+        .def("createAnchors",
+            &Assembler::createAnchors,
+            arg("minAnchorCoverage"),
+            arg("maxAnchorCoverage"),
+            arg("threadCount") = 0)
+        .def("accessAnchors",
+            &Assembler::accessAnchors)
     ;
 
 
