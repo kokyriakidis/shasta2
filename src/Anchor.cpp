@@ -317,6 +317,7 @@ void Anchors::writeHtml(
     AnchorId anchorIdA,
     AnchorId anchorIdB,
     AnchorPairInfo& info,
+    const Journeys& journeys,
     ostream& html) const
 {
     const Anchors& anchors = *this;
@@ -398,19 +399,24 @@ void Anchors::writeHtml(
     html <<
         "<tr>"
         "<th class=centered rowspan=2>Oriented<br>read id"
-        "<th class=centered colspan=2>Length"
-        "<th colspan=2>Anchor A"
-        "<th colspan=2>Anchor B"
-        "<th rowspan=2>Ordinal offset"
-        "<th rowspan=2>Base offset"
+        "<th class=centered colspan=3>Length"
+        "<th colspan=3>Anchor A"
+        "<th colspan=3>Anchor B"
+        "<th colspan=3>Offset"
         "<th rowspan=2>Classification"
         "<tr>"
-        "<th>Markers"
         "<th>Bases"
-        "<th>Ordinal"
-        "<th>Position"
-        "<th>Ordinal"
-        "<th>Position";
+        "<th>Markers"
+        "<th>Anchors"
+        "<th>Base<br>Position"
+        "<th>Marker<br>ordinal"
+        "<th>Position<br>in journey"
+        "<th>Base<br>Position"
+        "<th>Marker<br>ordinal"
+        "<th>Position<br>in journey"
+        "<th>Base<br>Position"
+        "<th>Marker<br>ordinal"
+        "<th>Position<br>in journey";
 
     // Prepare for the joint loop over OrientedReadIds of the two anchors.
     const auto markerIntervalsA = anchors[anchorIdA];
@@ -433,6 +439,7 @@ void Anchors::writeHtml(
             const OrientedReadId orientedReadId = itA->orientedReadId;
             const auto orientedReadMarkers = markers[orientedReadId.getValue()];
             const int64_t lengthInBases = int64_t(reads.getReadSequenceLength(orientedReadId.getReadId()));
+            const auto journey = journeys[orientedReadId];
 
             // Get the positions of Anchor A in this oriented read.
             const uint32_t ordinalA = itA->ordinal;
@@ -446,13 +453,15 @@ void Anchors::writeHtml(
                 "<tr><td class=centered>"
                 "<a href='exploreRead?readId=" << orientedReadId.getReadId() <<
                 "&strand=" << orientedReadId.getStrand() << "'>" << orientedReadId << "</a>"
-                "<td class=centered>" << orientedReadMarkers.size() <<
                 "<td class=centered>" << lengthInBases <<
+                "<td class=centered>" << orientedReadMarkers.size() <<
+                "<td class=centered>" << journey.size() <<
+                "<td class=centered>" << positionA <<
                 "<td class=centered>" << ordinalA <<
-                 "<td class=centered>" << positionA <<
-                "<td>"
+                "<td class=centered>" << itA->positionInJourney <<
                 "<td class=centered style='color:Red'>" << positionB <<
-                "<td class=centered style='color:Red'>" << "<td>"
+                "<td>"
+                "<td class=centered style='color:Red'>" << "<td><td><td>"
                 "<td class=centered>OnlyA, " << (isShort ? "short" : "missing");
 
             ++itA;
@@ -464,6 +473,7 @@ void Anchors::writeHtml(
             const OrientedReadId orientedReadId = itB->orientedReadId;
             const auto orientedReadMarkers = markers[orientedReadId.getValue()];
             const int64_t lengthInBases = int64_t(reads.getReadSequenceLength(orientedReadId.getReadId()));
+            const auto journey = journeys[orientedReadId];
 
             // Get the positions of Anchor B in this oriented read.
             const uint32_t ordinalB = itB->ordinal;
@@ -477,13 +487,15 @@ void Anchors::writeHtml(
                 "<tr><td class=centered>"
                 "<a href='exploreRead?readId=" << orientedReadId.getReadId() <<
                 "&strand=" << orientedReadId.getStrand() << "'>" << orientedReadId << "</a>"
-                "<td class=centered>" << orientedReadMarkers.size() <<
                 "<td class=centered>" << lengthInBases <<
-                "<td>"
+                "<td class=centered>" << orientedReadMarkers.size() <<
+                "<td class=centered>" << journey.size() <<
                 "<td class=centered style='color:Red'>" << positionA <<
-                "<td class=centered>" << ordinalB <<
+                "<td><td>"
                 "<td class=centered>" << positionB <<
-                "<td class=centered>" << "<td>"
+                "<td class=centered>" << ordinalB <<
+                "<td class=centered>" << itB->positionInJourney <<
+                "<td class=centered>" << "<td><td>"
                 "<td class=centered>OnlyB, " << (isShort ? "short" : "missing");
 
             ++itB;
@@ -495,6 +507,7 @@ void Anchors::writeHtml(
             const OrientedReadId orientedReadId = itA->orientedReadId;
             const auto orientedReadMarkers = markers[orientedReadId.getValue()];
             const int64_t lengthInBases = int64_t(reads.getReadSequenceLength(orientedReadId.getReadId()));
+            const auto journey = journeys[orientedReadId];
 
             // Get the positions of Anchor A in this oriented read.
             const uint32_t ordinalA = itA->ordinal;
@@ -512,14 +525,18 @@ void Anchors::writeHtml(
                 "<tr><td class=centered>"
                 "<a href='exploreRead?readId=" << orientedReadId.getReadId() <<
                 "&strand=" << orientedReadId.getStrand() << "'>" << orientedReadId << "</a>"
-                "<td class=centered>" << orientedReadMarkers.size() <<
                 "<td class=centered>" << lengthInBases <<
-                "<td class=centered>" << ordinalA <<
+                "<td class=centered>" << orientedReadMarkers.size() <<
+                "<td class=centered>" << journey.size() <<
                 "<td class=centered>" << positionA <<
-                "<td class=centered>" << ordinalB <<
+                "<td class=centered>" << ordinalA <<
+                "<td class=centered>" << itA->positionInJourney <<
                 "<td class=centered>" << positionB <<
-                "<td class=centered>" << ordinalOffset <<
+                "<td class=centered>" << ordinalB <<
+                "<td class=centered>" << itB->positionInJourney <<
                 "<td class=centered>" << baseOffset <<
+                "<td class=centered>" << ordinalOffset <<
+                "<td class=centered>" << int64_t(itB->positionInJourney) - int64_t(itA->positionInJourney) <<
                 "<td class=centered>Common";
 
             ++itA;

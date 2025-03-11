@@ -131,7 +131,8 @@ public:
 
     // Analyze the oriented read composition of two anchors.
     void analyzeAnchorPair(AnchorId, AnchorId, AnchorPairInfo&) const;
-    void writeHtml(AnchorId, AnchorId, AnchorPairInfo&, ostream&) const;
+    void writeHtml(AnchorId, AnchorId, AnchorPairInfo&, const Journeys&
+        , ostream&) const;
 
     void writeCoverageHistogram() const;
 

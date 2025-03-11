@@ -293,7 +293,7 @@ void Assembler::exploreAnchorPair(const vector<string>& request, ostream& html)
     // Analyze this anchor pair and write the result to html.
     AnchorPairInfo info;
     anchors().analyzeAnchorPair(anchorIdA, anchorIdB, info);
-    anchors().writeHtml(anchorIdA, anchorIdB, info, html);
+    anchors().writeHtml(anchorIdA, anchorIdB, info, journeys(), html);
 }
 
 
