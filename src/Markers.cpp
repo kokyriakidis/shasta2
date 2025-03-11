@@ -32,7 +32,6 @@ Markers::Markers(
     // Initial message.
     const uint64_t readCount = reads->readCount();
     performanceLog << timestamp << "Finding markers begins." << endl;
-    const auto tBegin = std::chrono::steady_clock::now();
 
     // Adjust the numbers of threads, if necessary.
     if(threadCount == 0) {
