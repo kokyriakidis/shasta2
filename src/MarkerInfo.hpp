@@ -8,6 +8,7 @@
 
 namespace shasta {
     class MarkerInfo;
+    class MarkerInterval;
     class Markers;
 }
 
@@ -24,4 +25,23 @@ public:
 
     // Construct the reverse complement of a MarkerInfo.
     MarkerInfo reverseComplement(const Markers&) const;
+};
+
+
+
+class shasta::MarkerInterval {
+public:
+    OrientedReadId orientedReadId;
+    uint32_t ordinalA;
+    uint32_t ordinalB;
+
+    MarkerInterval(
+        OrientedReadId orientedReadId,
+        uint32_t ordinalA,
+        uint32_t ordinalB) :
+        orientedReadId(orientedReadId),
+        ordinalA(ordinalA),
+        ordinalB(ordinalB)
+    {}
+
 };

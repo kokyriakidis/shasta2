@@ -6,7 +6,9 @@
 #include "Journeys.hpp"
 #include "LocalAnchorGraph.hpp"
 #include "Markers.hpp"
+#include "orderPairs.hpp"
 #include "Reads.hpp"
+#include "Transition.hpp"
 using namespace shasta;
 
 // Boost libraries.
@@ -294,7 +296,78 @@ void Assembler::exploreAnchorPair(const vector<string>& request, ostream& html)
     AnchorPairInfo info;
     anchors().analyzeAnchorPair(anchorIdA, anchorIdB, info);
     anchors().writeHtml(anchorIdA, anchorIdB, info, journeys(), html);
+
+
+
+    // Also create a Transition from these two anchors.
+    const Transition transition(anchors(), anchorIdA, anchorIdB);
+    html << "<h1>Journey transition for anchors " << anchorIdToString(anchorIdA) <<
+        " and " << anchorIdToString(anchorIdB) << "</h1>";
+    html << "<p>The journey transition is the set of " << transition.markerIntervals.size() <<
+        " oriented reads that visit " <<
+        anchorIdToString(anchorIdB) <<
+        " immediately after " << anchorIdToString(anchorIdA);
+
+    html <<
+        "<table>"
+        "<tr><th>Oriented<br>read id<th>OrdinalA<th>OrdinalB<th>Ordinal<br>offset"
+        "<th>A middle<br>position"
+        "<th>B middle<br>position"
+        "<th>Sequence<br>length"
+        "<th>Sequence";
+        const uint64_t k = assemblerInfo->k;
+    std::map< vector<Base>, uint64_t> sequenceCoverageMap;
+    for(const MarkerInterval& markerInterval: transition.markerIntervals) {
+        const OrientedReadId orientedReadId = markerInterval.orientedReadId;
+        const auto orientedReadMarkers = markers()[orientedReadId.getValue()];
+        const uint32_t positionA = orientedReadMarkers[markerInterval.ordinalA].position;
+        const uint32_t positionB = orientedReadMarkers[markerInterval.ordinalB].position;
+
+        vector<Base> sequence;
+        for(uint32_t position=positionA; position!=positionB; position++) {
+            sequence.push_back(reads().getOrientedReadBase(orientedReadId, position));
+        }
+        auto it = sequenceCoverageMap.find(sequence);
+        if(it == sequenceCoverageMap.end()) {
+            sequenceCoverageMap.insert(make_pair(sequence, 1));
+        } else {
+            ++(it->second);
+        }
+
+        html <<
+            "<tr>"
+            "<td class=centered>" << orientedReadId <<
+            "<td class=centered>" << markerInterval.ordinalA <<
+            "<td class=centered>" << markerInterval.ordinalB <<
+            "<td class=centered>" << markerInterval.ordinalB - markerInterval.ordinalA <<
+            "<td class=centered>" << positionA + k / 2 <<
+            "<td class=centered>" << positionB + k / 2 <<
+            "<td class=centered>" << positionB - positionA <<
+            "<td class=centered style='font-family:monospace'>";
+        copy(sequence.begin(), sequence.end(), ostream_iterator<Base>(html));
+    }
+    html << "</table>";
+
+    html << "<p>Found " << sequenceCoverageMap.size() << " distinct sequences.";
+    vector< pair<vector<Base>, uint64_t> > sequenceCoverageVector;
+    copy(sequenceCoverageMap.begin(), sequenceCoverageMap.end(), back_inserter(sequenceCoverageVector));
+    sort(sequenceCoverageVector.begin(), sequenceCoverageVector.end(),
+        OrderPairsBySecondOnlyGreater<vector<Base>, uint64_t>());
+    html << "<table><th>Coverage<th>Length<th>Sequence";
+    for(const auto& p: sequenceCoverageVector) {
+        const vector<Base>& sequence = p.first;
+        const uint64_t coverage = p.second;
+        html <<
+            "<tr>"
+            "<td class=centered>" << coverage <<
+            "<td class=centered>" << sequence.size() <<
+            "<td class=centered style='font-family:monospace'>";
+        copy(sequence.begin(), sequence.end(), ostream_iterator<Base>(html));
+    }
+    html << "</table>";
+
 }
+
 
 
 
