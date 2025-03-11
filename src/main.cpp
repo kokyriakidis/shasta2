@@ -267,6 +267,7 @@ void shasta::main::assemble(
     assembler.assemble(assemblerOptions, inputFileAbsolutePaths);
 
     cout << timestamp << "Assembly ends." << endl;
+    performanceLog << timestamp << "Assembly ends." << endl;
 }
 
 

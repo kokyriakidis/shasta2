@@ -1,6 +1,7 @@
 #include "MarkerKmers.hpp"
 #include "extractKmer128.hpp"
 #include "Markers.hpp"
+#include "performanceLog.hpp"
 #include "Reads.hpp"
 using namespace shasta;
 
@@ -25,6 +26,8 @@ MarkerKmers::MarkerKmers(
     reads(reads),
     markers(markers)
 {
+    performanceLog << timestamp << "Marker k-mer creation begins." << endl;
+
     // Adjust the numbers of threads, if necessary.
     if(threadCount == 0) {
         threadCount = std::thread::hardware_concurrency();
@@ -67,6 +70,7 @@ MarkerKmers::MarkerKmers(
     SHASTA_ASSERT(2 * markerInfos.totalSize() == markers.totalSize());
 
     writeFrequencyHistogram();
+    performanceLog << timestamp << "Marker k-mer creation ends." << endl;
 }
 
 

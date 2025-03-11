@@ -31,7 +31,7 @@ Markers::Markers(
 
     // Initial message.
     const uint64_t readCount = reads->readCount();
-    performanceLog << timestamp << "Finding markers in " << readCount << " reads." << endl;
+    performanceLog << timestamp << "Finding markers begins." << endl;
     const auto tBegin = std::chrono::steady_clock::now();
 
     // Adjust the numbers of threads, if necessary.
@@ -56,9 +56,7 @@ Markers::Markers(
 
 
     // Final message.
-    const auto tEnd = std::chrono::steady_clock::now();
-    const double tTotal = 1.e-9 * double((std::chrono::duration_cast<std::chrono::nanoseconds>(tEnd - tBegin)).count());
-    performanceLog << timestamp << "Finding markers completed in " << tTotal << " s." << endl;
+    performanceLog << timestamp << "Finding markers completed." << endl;
     cout << "Number of markers per strand: " << totalSize() / 2 << endl;
     cout << "Marker density: " << double(totalSize()) / double((2 * reads->getTotalBaseCount())) << endl;
 

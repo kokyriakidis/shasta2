@@ -619,7 +619,6 @@ void Anchors::computeJourneys(uint64_t threadCount)
 
     performanceLog << timestamp << "Anchors::computeJourneys ends." << endl;
 
-    writeJourneys();
 }
 
 
@@ -922,7 +921,7 @@ void Anchors::writeAnchorGapsByRead() const
 
     // Open the output csv file and write a header.
     ofstream csv("AnchorGaps.csv");
-    csv << "ReadId,Gap\n";
+    csv << "ReadId,Length,Gap\n";
 
     // Loop over all reads.
     for(ReadId readId=0; readId<reads.readCount(); readId++) {
@@ -963,7 +962,7 @@ void Anchors::writeAnchorGapsByRead() const
 
             previousPosition = position;
         }
-        csv << readId << "," << maxGap << "\n";
+        csv << readId << "," << readLength << "," << maxGap << "\n";
     }
 }
 

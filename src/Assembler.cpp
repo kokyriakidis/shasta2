@@ -3,6 +3,7 @@
 #include "KmerCheckerFactory.hpp"
 #include "Anchor.hpp"
 #include "MurmurHash2.hpp"
+#include "performanceLog.hpp"
 #include "Reads.hpp"
 using namespace shasta;
 
@@ -144,6 +145,10 @@ void Assembler::createAnchors(
         threadCount);
 
     anchorsPointer->computeJourneys(threadCount);
+
+    performanceLog << timestamp <<"Begin writeAnchorGapsByRead." << endl;
+    anchors().writeAnchorGapsByRead();
+    performanceLog << timestamp << "End writeAnchorGapsByRead." << endl;
 }
 
 
