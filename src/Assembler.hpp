@@ -18,6 +18,7 @@ namespace shasta {
     class Anchors;
     class AssemblerInfo;
     class AssemblerOptions;
+    class Journeys;
     class KmerChecker;
     class KmersOptions;
     class LongBaseSequences;
@@ -99,6 +100,7 @@ public:
     // Reads.
     shared_ptr<Reads> readsPointer;
     const Reads& reads() const {
+        SHASTA_ASSERT(readsPointer);
         return *readsPointer;
     }
     void computeReadIdsSortedByName();
@@ -129,11 +131,14 @@ public:
     shared_ptr<Markers> markersPointer;
     const Markers& markers() const
     {
+        SHASTA_ASSERT(markersPointer);
         return *markersPointer;
     }
     void checkMarkersAreOpen() const;
     void createMarkers(size_t threadCount);
     void accessMarkers();
+
+
 
     // The MarkerKmers keep track of the locations in the oriented reads
     // where each marker k-mer appears.
@@ -142,17 +147,33 @@ public:
     void accessMarkerKmers();
 
 
+
     // Anchors.
     shared_ptr<Anchors> anchorsPointer;
     const Anchors& anchors() const
     {
+        SHASTA_ASSERT(anchorsPointer);
         return *anchorsPointer;
     }
     void createAnchors(
         uint64_t minAnchorCoverage,
         uint64_t maxAnchorCoverage,
         uint64_t threadCount);
-    void accessAnchors();
+    void accessAnchors(bool writeAccess);
+
+
+
+    // Journeys.
+    shared_ptr<Journeys> journeysPointer;
+    const Journeys& journeys() const
+    {
+        SHASTA_ASSERT(journeysPointer);
+        return *journeysPointer;
+    }
+    void createJourneys(uint64_t threadCount);
+    void accessJourneys();
+
+
 
     // Data and functions used for the http server.
     // This function puts the server into an endless loop

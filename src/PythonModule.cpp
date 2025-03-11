@@ -79,14 +79,21 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def("accessMarkerKmers",
             &Assembler::accessMarkerKmers)
 
-         // Anchors.
-        .def("createAnchors",
-            &Assembler::createAnchors,
-            arg("minAnchorCoverage"),
-            arg("maxAnchorCoverage"),
-            arg("threadCount") = 0)
-        .def("accessAnchors",
-            &Assembler::accessAnchors)
+        // Anchors.
+       .def("createAnchors",
+           &Assembler::createAnchors,
+           arg("minAnchorCoverage"),
+           arg("maxAnchorCoverage"),
+           arg("threadCount") = 0)
+       .def("accessAnchors",
+           &Assembler::accessAnchors)
+
+       // Journeys.
+      .def("createJourneys",
+          &Assembler::createJourneys,
+          arg("threadCount") = 0)
+      .def("accessJourneys",
+          &Assembler::accessJourneys)
     ;
 
 

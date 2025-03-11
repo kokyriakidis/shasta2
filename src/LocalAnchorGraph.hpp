@@ -83,6 +83,7 @@ class shasta::LocalAnchorGraph : public LocalAnchorGraphAssemblyGraphBaseClass {
 public:
     LocalAnchorGraph(
         const Anchors&,
+        const Journeys&,
         const vector<AnchorId>&,
         uint64_t maxDistance,
         uint64_t minCoverage);

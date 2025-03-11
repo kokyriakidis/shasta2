@@ -1,10 +1,11 @@
 // Shasta.
+#include "Anchor.hpp"
 #include "Assembler.hpp"
 #include "AssemblerOptions.hpp"
 #include "deduplicate.hpp"
-#include "Markers.hpp"
-#include "Anchor.hpp"
+#include "Journeys.hpp"
 #include "LocalAnchorGraph.hpp"
+#include "Markers.hpp"
 #include "Reads.hpp"
 using namespace shasta;
 
@@ -69,11 +70,11 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
 
     vector<AnchorId> parents;
     vector<uint64_t> parentsCoverage;
-    anchors().findParents(anchorId, parents, parentsCoverage);
+    anchors().findParents(journeys(), anchorId, parents, parentsCoverage);
 
     vector<AnchorId> children;
     vector<uint64_t> childrenCoverage;
-    anchors().findChildren(anchorId, children, childrenCoverage);
+    anchors().findChildren(journeys(), anchorId, children, childrenCoverage);
 
     // Write a summary table.
     html <<
@@ -134,7 +135,7 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
     for(uint64_t i=0; i<coverage; i++) {
         const AnchorMarkerInfo& markerInfo = markerInfos[i];
         const OrientedReadId orientedReadId = markerInfo.orientedReadId;
-        const auto journey = anchors().journeys[orientedReadId.getValue()];
+        const auto journey = journeys()[orientedReadId];
 
         const uint32_t ordinal = markerInfo.ordinal;
 
@@ -393,10 +394,9 @@ void Assembler::exploreJourney(const vector<string>& request, ostream& html)
     // Access the information we need.
     const OrientedReadId orientedReadId(readId, strand);
     const span<const Marker> orientedReadMarkers = markers()[orientedReadId.getValue()];
-    const auto& journeys = anchors().journeys;
-    SHASTA_ASSERT(journeys.isOpen());
-    SHASTA_ASSERT(journeys.size() == 2 * reads().readCount());
-    const span<const AnchorId> journey = journeys[orientedReadId.getValue()];
+    SHASTA_ASSERT(journeys().isOpen());
+    SHASTA_ASSERT(journeys().size() == 2 * reads().readCount());
+    const span<const AnchorId> journey = journeys()[orientedReadId];
 
     // Page title.
     html << "<h2>Journey of oriented read " << orientedReadId << "</h2>";
@@ -520,6 +520,7 @@ void Assembler::exploreReadFollowing(const vector<string>& request, ostream& htm
     // Do the read following.
     vector< pair<AnchorId, AnchorPairInfo> > anchorInfos;
     anchors().followOrientedReads(
+        journeys(),
         anchorId0,
         direction,
         minCommon,
@@ -647,6 +648,7 @@ void Assembler::exploreLocalAnchorGraph(
     // away up to the specified distance.
     LocalAnchorGraph graph(
         anchors(),
+        journeys(),
         anchorIds,
         distance,
         minCoverage

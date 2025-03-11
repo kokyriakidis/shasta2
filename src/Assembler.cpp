@@ -1,7 +1,8 @@
 #include "Assembler.hpp"
-#include "AssemblerOptions.hpp"
-#include "KmerCheckerFactory.hpp"
 #include "Anchor.hpp"
+#include "AssemblerOptions.hpp"
+#include "Journeys.hpp"
+#include "KmerCheckerFactory.hpp"
 #include "MurmurHash2.hpp"
 #include "performanceLog.hpp"
 #include "Reads.hpp"
@@ -70,28 +71,21 @@ void Assembler::assemble(
     }
     cout << "Number of threads: " << threadCount << endl;
 
-    // Add reads from the specified input files.
     addReads(
         inputFileNames,
         assemblerOptions.minReadLength,
         threadCount);
 
-    // Initialize the KmerChecker, which has the information needed
-    // to decide if a k-mer is a marker.
     createKmerChecker(assemblerOptions.k, assemblerOptions.markerDensity, threadCount);
-
-    // Create the markers.
     createMarkers(threadCount);
-
-    // Create MarkerKmers.
     createMarkerKmers(threadCount);
-
-    // Create Anchors.
     createAnchors(
         assemblerOptions.minAnchorCoverage,
         assemblerOptions.maxAnchorCoverage,
         threadCount);
 
+    createJourneys(threadCount);
+    journeys().writeAnchorGapsByRead(reads(), markers(), anchors());
 }
 
 
@@ -143,19 +137,39 @@ void Assembler::createAnchors(
         minAnchorCoverage,
         maxAnchorCoverage,
         threadCount);
-
-    anchorsPointer->computeJourneys(threadCount);
-
-    performanceLog << timestamp <<"Begin writeAnchorGapsByRead." << endl;
-    anchors().writeAnchorGapsByRead();
-    performanceLog << timestamp << "End writeAnchorGapsByRead." << endl;
 }
 
 
 
-void Assembler::accessAnchors()
+void Assembler::accessAnchors(bool writeAccess)
 {
      anchorsPointer = make_shared<Anchors>(
-         MappedMemoryOwner(*this), reads(), assemblerInfo->k, markers());
+         MappedMemoryOwner(*this), reads(), assemblerInfo->k, markers(), writeAccess);
+}
+
+
+
+void Assembler::createJourneys(uint64_t threadCount)
+{
+    const MappedMemoryOwner& mappedMemoryOwner = *this;
+
+    // Adjust the numbers of threads, if necessary.
+    if(threadCount == 0) {
+        threadCount = std::thread::hardware_concurrency();
+    }
+
+    journeysPointer = make_shared<Journeys>(
+        2 * reads().readCount(),
+        anchorsPointer,
+        threadCount,
+        mappedMemoryOwner);
+
+}
+
+
+
+void Assembler::accessJourneys()
+{
+    journeysPointer = make_shared<Journeys>(*this);
 }
 

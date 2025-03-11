@@ -22,6 +22,7 @@ using namespace shasta;
 
 LocalAnchorGraph::LocalAnchorGraph(
     const Anchors& anchors,
+    const Journeys& journeys,
     const vector<AnchorId>& anchorIds,
     uint64_t maxDistance,
     uint64_t minCoverage) :
@@ -51,7 +52,7 @@ LocalAnchorGraph::LocalAnchorGraph(
         const uint64_t distance0 = vertex0.distance;
         const uint64_t distance1 = distance0 + 1;
 
-        anchors.findChildren(anchorId0, neighbors, coverage, minCoverage);
+        anchors.findChildren(journeys, anchorId0, neighbors, coverage, minCoverage);
         for(uint64_t i=0; i<neighbors.size(); i++) {
             const AnchorId anchorId1 = neighbors[i];
             auto it1 = vertexMap.find(anchorId1);
@@ -66,7 +67,7 @@ LocalAnchorGraph::LocalAnchorGraph(
             }
         }
 
-        anchors.findParents(anchorId0, neighbors, coverage, minCoverage);
+        anchors.findParents(journeys, anchorId0, neighbors, coverage, minCoverage);
         for(uint64_t i=0; i<neighbors.size(); i++) {
             const AnchorId anchorId1 = neighbors[i];
             auto it1 = vertexMap.find(anchorId1);
@@ -87,7 +88,7 @@ LocalAnchorGraph::LocalAnchorGraph(
     // Now add the edges.
     BGL_FORALL_VERTICES(v0, graph, LocalAnchorGraph) {
         const AnchorId anchorId0 = graph[v0].anchorId;
-        anchors.findChildren(anchorId0, neighbors, coverage);
+        anchors.findChildren(journeys, anchorId0, neighbors, coverage);
         for(uint64_t i=0; i<neighbors.size(); i++) {
             if(coverage[i] < minCoverage) {
                 continue;

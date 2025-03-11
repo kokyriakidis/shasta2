@@ -351,9 +351,16 @@ void Assembler::accessAllSoft()
     }
 
     try {
-        accessAnchors();
+        accessAnchors(false);
     } catch(const exception& e) {
         cout << "The anchors are not accessible." << endl;
+        allDataAreAvailable = false;
+    }
+
+    try {
+        accessJourneys();
+    } catch(const exception& e) {
+        cout << "The journeys are not accessible." << endl;
         allDataAreAvailable = false;
     }
 

@@ -2,6 +2,7 @@
 #include "deduplicate.hpp"
 #include "html.hpp"
 #include "invalid.hpp"
+#include "Journeys.hpp"
 #include "MarkerInfo.hpp"
 #include "MarkerKmers.hpp"
 #include "Markers.hpp"
@@ -24,7 +25,8 @@ Anchors::Anchors(
     const MappedMemoryOwner& mappedMemoryOwner,
     const Reads& reads,
     uint64_t k,
-    const Markers& markers) :
+    const Markers& markers,
+    bool writeAccess) :
     MultithreadedObject<Anchors>(*this),
     MappedMemoryOwner(mappedMemoryOwner),
     reads(reads),
@@ -34,10 +36,9 @@ Anchors::Anchors(
     SHASTA_ASSERT((k %2) == 0);
     kHalf = k / 2;
 
-    anchorMarkerInfos.accessExistingReadOnly(largeDataName("AnchorMarkerInfos"));
+    anchorMarkerInfos.accessExisting(largeDataName("AnchorMarkerInfos"), writeAccess);
     anchorInfos.accessExistingReadOnly(largeDataName("AnchorInfos"));
     kmerToAnchorTable.accessExistingReadOnly(largeDataName("KmerToAnchorTable"));
-    journeys.accessExistingReadOnly(largeDataName("Journeys"));
 }
 
 
@@ -583,170 +584,11 @@ AnchorId shasta::anchorIdFromString(const string& s)
 
 
 
-void Anchors::computeJourneys(uint64_t threadCount)
-{
-    performanceLog << timestamp << "Anchors::computeJourneys begins." << endl;
-
-    const uint64_t orientedReadCount = 2 * reads.readCount();
-
-    // Pass1: make space for the journeysWithOrdinals.
-    journeysWithOrdinals.createNew(largeDataName("tmp-JourneysWithOrdinals"), largeDataPageSize);
-    journeysWithOrdinals.beginPass1(orientedReadCount);
-    const uint64_t anchorBatchCount = 1000;
-    setupLoadBalancing(size(), anchorBatchCount);
-    runThreads(&Anchors::computeJourneysThreadFunction1, threadCount);
-
-    // Pass2: store the unsorted journeysWithOrdinals.
-    journeysWithOrdinals.beginPass2();
-    setupLoadBalancing(size(), anchorBatchCount);
-    runThreads(&Anchors::computeJourneysThreadFunction2, threadCount);
-    journeysWithOrdinals.endPass2();
-
-    // Pass 3:sort the journeysWithOrdinals and make space for the journeys
-    journeys.createNew(largeDataName("Journeys"), largeDataPageSize);
-    journeys.beginPass1(orientedReadCount);
-    const uint64_t orientedReadBatchCount = 1000;
-    setupLoadBalancing(orientedReadCount, orientedReadBatchCount);
-    runThreads(&Anchors::computeJourneysThreadFunction3, threadCount);
-
-    // Pass 4: copy the sorted journeysWithOrdinals to the journeys.
-    journeys.beginPass2();
-    setupLoadBalancing(orientedReadCount, orientedReadBatchCount);
-    runThreads(&Anchors::computeJourneysThreadFunction4, threadCount);
-    journeys.endPass2(false, true);
-
-    journeysWithOrdinals.remove();
-
-    performanceLog << timestamp << "Anchors::computeJourneys ends." << endl;
-
-}
-
-
-
-void Anchors::computeJourneysThreadFunction1(uint64_t /* threadId */)
-{
-    computeJourneysThreadFunction12(1);
-}
-
-
-void Anchors::writeJourneys() const
-{
-    const ReadId readCount = reads.readCount();
-
-    ofstream csv("Journeys.csv");
-    for(ReadId readId=0; readId<readCount; readId++) {
-        for(Strand strand=0; strand<2; strand++) {
-            const OrientedReadId orientedReadId(readId, strand);
-            csv << orientedReadId << ",";
-            const auto journey = journeys[orientedReadId.getValue()];
-            for(const AnchorId anchorId: journey) {
-                csv << anchorIdToString(anchorId) << ",";
-            }
-            csv << "\n";
-        }
-    }
-}
-
-
-
-void Anchors::computeJourneysThreadFunction2(uint64_t /* threadId */)
-{
-    computeJourneysThreadFunction12(2);
-}
-
-
-
-void Anchors::computeJourneysThreadFunction12(uint64_t pass)
-{
-    Anchors& anchors = *this;
-
-    // Loop over all batches assigned to this thread.
-    uint64_t begin, end;
-    while(getNextBatch(begin, end)) {
-
-        // Loop over all AnchorIds in this batch.
-        for(AnchorId anchorId=begin; anchorId!=end; anchorId++) {
-            Anchor anchor = anchors[anchorId];
-
-            // Loop over the marker intervals of this Anchor.
-            for(const auto& anchorMarkerInterval: anchor) {
-                const auto orientedReadIdValue = anchorMarkerInterval.orientedReadId.getValue();
-
-                if(pass == 1) {
-                    journeysWithOrdinals.incrementCountMultithreaded(orientedReadIdValue);
-                } else {
-                    journeysWithOrdinals.storeMultithreaded(
-                        orientedReadIdValue, {anchorId, anchorMarkerInterval.ordinal});
-                }
-
-            }
-        }
-
-    }
-}
-
-
-
-
-void Anchors::computeJourneysThreadFunction3(uint64_t /* threadId */)
-{
-    // Loop over all batches assigned to this thread.
-    uint64_t begin, end;
-    while(getNextBatch(begin, end)) {
-
-        // Loop over all oriented reads assigned to this thread.
-        for(uint64_t orientedReadValue=begin; orientedReadValue!=end; orientedReadValue++) {
-            auto v = journeysWithOrdinals[orientedReadValue];
-            sort(v.begin(), v.end(), OrderPairsBySecondOnly<uint64_t, uint32_t>());
-            journeys.incrementCountMultithreaded(orientedReadValue, v.size());
-        }
-    }
-}
-
-
-
-void Anchors::computeJourneysThreadFunction4(uint64_t /* threadId */)
-{
-    // Loop over all batches assigned to this thread.
-    uint64_t begin, end;
-    while(getNextBatch(begin, end)) {
-
-        // Loop over all oriented reads assigned to this thread.
-        for(uint64_t orientedReadValue=begin; orientedReadValue!=end; orientedReadValue++) {
-            const OrientedReadId orientedReadId = OrientedReadId::fromValue(ReadId(orientedReadValue));
-
-            // Copy the journeysWithOrdinals to the journeys.
-            const auto v = journeysWithOrdinals[orientedReadValue];
-            const auto journey = journeys[orientedReadValue];
-            SHASTA_ASSERT(journey.size() == v.size());
-            for(uint64_t i=0; i<v.size(); i++) {
-                journey[i] = v[i].first;
-            }
-
-            // Store journey information for this oriented read in the marker interval.
-            for(uint64_t position=0; position<journey.size(); position++) {
-                const AnchorId anchorId = journey[position];
-                span<AnchorMarkerInfo> markerInfos = anchorMarkerInfos[anchorId];
-                bool found = false;
-                for(AnchorMarkerInfo& markerInfo: markerInfos) {
-                    if(markerInfo.orientedReadId == orientedReadId) {
-                        markerInfo.positionInJourney = uint32_t(position);
-                        found = true;
-                        break;
-                    }
-                }
-                SHASTA_ASSERT(found);
-            }
-        }
-    }
-}
-
-
-
 // For a given AnchorId, follow the read journeys forward by one step.
 // Return a vector of the AnchorIds reached in this way.
 // The count vector is the number of oriented reads each of the AnchorIds.
 void Anchors::findChildren(
+    const Journeys& journeys,
     AnchorId anchorId,
     vector<AnchorId>& children,
     vector<uint64_t>& count,
@@ -755,7 +597,7 @@ void Anchors::findChildren(
     children.clear();
     for(const auto& markerInfo: anchorMarkerInfos[anchorId]) {
         const OrientedReadId orientedReadId = markerInfo.orientedReadId;
-        const auto journey = journeys[orientedReadId.getValue()];
+        const auto journey = journeys[orientedReadId];
         const uint64_t position = markerInfo.positionInJourney;
         const uint64_t nextPosition = position + 1;
         if(nextPosition < journey.size()) {
@@ -773,6 +615,7 @@ void Anchors::findChildren(
 // Return a vector of the AnchorIds reached in this way.
 // The count vector is the number of oriented reads each of the AnchorIds.
 void Anchors::findParents(
+    const Journeys& journeys,
     AnchorId anchorId,
     vector<AnchorId>& parents,
     vector<uint64_t>& count,
@@ -781,7 +624,7 @@ void Anchors::findParents(
     parents.clear();
     for(const auto& markerInfo: anchorMarkerInfos[anchorId]) {
         const OrientedReadId orientedReadId = markerInfo.orientedReadId;
-        const auto journey = journeys[orientedReadId.getValue()];
+        const auto journey = journeys[orientedReadId];
         const uint64_t position = markerInfo.positionInJourney;
         if(position > 0) {
             const uint64_t previousPosition = position - 1;
@@ -834,6 +677,7 @@ void Anchors::writeCoverageHistogram() const
 
 // Read following.
 void Anchors::followOrientedReads(
+    const Journeys& journeys,
     AnchorId anchorId0,
     uint64_t direction,                         // 0 = forward, 1 = backward
     uint64_t minCommonCount,
@@ -850,7 +694,7 @@ void Anchors::followOrientedReads(
     for(const AnchorMarkerInfo& anchorMarkerInfo: anchor0) {
         const OrientedReadId orientedReadId = anchorMarkerInfo.orientedReadId;
         const uint64_t position0 = anchorMarkerInfo.positionInJourney;
-        const auto journey = journeys[orientedReadId.getValue()];
+        const auto journey = journeys[orientedReadId];
 
         // Figure out the forward or backward portion of the journey.
         uint64_t begin;
@@ -910,60 +754,6 @@ void Anchors::followOrientedReads(
         }
     };
     sort(anchorInfos.begin(), anchorInfos.end(), SortHelper());
-}
-
-
-
-// For each read, write out the largest gap between adjacent anchors.
-// The two oriented reads for a read have the same gaps.
-void Anchors::writeAnchorGapsByRead() const
-{
-
-    // Open the output csv file and write a header.
-    ofstream csv("AnchorGaps.csv");
-    csv << "ReadId,Length,Gap\n";
-
-    // Loop over all reads.
-    for(ReadId readId=0; readId<reads.readCount(); readId++) {
-        const uint64_t readLength = reads.getRead(readId).baseCount;
-
-        // Put in on strand 0. It would have the same gap on strand 1.
-        const OrientedReadId orientedReadId(readId, 0);
-
-        // Get the markers and the journey.
-        const auto orientedReadMarkers = markers[orientedReadId.getValue()];
-        const auto journey = journeys[orientedReadId.getValue()];
-
-        // Loop over adjacent positions in journey.
-        uint64_t previousPosition = 0;
-        uint64_t maxGap = 0;
-        for(uint64_t i=0; i<=journey.size(); i++) {
-
-            uint64_t position = invalid<uint64_t>;
-            if(i == journey.size()) {
-                position = readLength;
-            } else {
-                const AnchorId anchorId = journey[i];
-                const Anchor anchor = (*this)[anchorId];
-                for(const AnchorMarkerInfo& markerInfo: anchor) {
-                    if(markerInfo.orientedReadId == orientedReadId) {
-                        const uint32_t ordinal = markerInfo.ordinal;
-                        const Marker& marker = orientedReadMarkers[ordinal];
-                        position = marker.position;
-                        break;
-                    }
-                }
-            }
-            SHASTA_ASSERT(position != invalid<uint64_t>);
-            SHASTA_ASSERT(position >= previousPosition);
-
-            const uint64_t gap = position - previousPosition;
-            maxGap = max(maxGap, gap);
-
-            previousPosition = position;
-        }
-        csv << readId << "," << readLength << "," << maxGap << "\n";
-    }
 }
 
 
