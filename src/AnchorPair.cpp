@@ -1,7 +1,9 @@
 #include "AnchorPair.hpp"
+#include "Anchor.hpp"
 #include "Markers.hpp"
 #include "Reads.hpp"
 using namespace shasta;
+
 
 
 AnchorPair::AnchorPair(

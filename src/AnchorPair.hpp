@@ -1,11 +1,18 @@
 #pragma once
 
 // Shasta.
-#include "Anchor.hpp"
 #include "MarkerInfo.hpp"
+#include "shastaTypes.hpp"
+
+// Standard library.
+#include <cstdint.hpp>
+#include <utility.hpp>
+#include <vector.hpp>
 
 namespace shasta {
     class AnchorPair;
+    class Anchors;
+    class Base;
 }
 
 
