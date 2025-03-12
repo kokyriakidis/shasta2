@@ -40,12 +40,19 @@ public:
 class shasta::AssemblyGraphStep {
 public:
     AnchorPair anchorPair;
+    uint32_t averageOffset;
+    uint32_t minOffset;
+    uint32_t maxOffset;
 };
 
 
 
 class shasta::AssemblyGraphEdge : public vector<AssemblyGraphStep> {
 public:
+    uint32_t averageOffset = invalid<uint32_t>;
+    uint32_t minOffset = invalid<uint32_t>;
+    uint32_t maxOffset = invalid<uint32_t>;
+    void computeOffsets();
 };
 
 
@@ -53,5 +60,7 @@ public:
 class shasta::AssemblyGraph: public AssemblyGraphBaseClass {
 public:
 
-    AssemblyGraph(const AnchorGraph&);
+    AssemblyGraph(
+        const Anchors&,
+        const AnchorGraph&);
 };

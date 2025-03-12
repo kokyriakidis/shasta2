@@ -1,7 +1,8 @@
 #pragma once
 
 // Shasta.
-#include "MarkerInfo.hpp"
+#include "invalid.hpp"
+#include "ReadId.hpp"
 #include "shastaTypes.hpp"
 
 // Standard library.
@@ -33,6 +34,8 @@ public:
         AnchorId anchorIdA,
         AnchorId anchorIdB);
 
+    AnchorPair() {}
+
     // This finds AnchorPairs as follows:
     // - anchorIdA is as specified.
     // - Coverage is at least minCoverage.
@@ -46,14 +49,20 @@ public:
         );
 
 
-    AnchorId anchorIdA;
-    AnchorId anchorIdB;
+    AnchorId anchorIdA = invalid<AnchorId>;
+    AnchorId anchorIdB = invalid<AnchorId>;
 
     vector<OrientedReadId> orientedReadIds;
     uint64_t size() const
     {
         return orientedReadIds.size();
     }
+
+    void getOffsetStatistics(
+        const Anchors&,
+        uint32_t& averageBaseOffset,
+        uint32_t& minBaseOffset,
+        uint32_t& maxBaseOffset) const;
 
     // Get positions in journey, ordinals, base positions
     // for each of the two reads and for each of the two anchors.

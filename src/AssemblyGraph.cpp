@@ -4,9 +4,13 @@
 #include "findLinearChains.hpp"
 using namespace shasta;
 
+#include <tuple.hpp>
 
 
-AssemblyGraph::AssemblyGraph(const AnchorGraph& anchorGraph)
+
+AssemblyGraph::AssemblyGraph(
+    const Anchors& anchors,
+    const AnchorGraph& anchorGraph)
 {
     AssemblyGraph& assemblyGraph = *this;
 
@@ -49,8 +53,34 @@ AssemblyGraph::AssemblyGraph(const AnchorGraph& anchorGraph)
         edge_descriptor e;
         tie(e, ignore) = add_edge(vA, vB, assemblyGraph);
         AssemblyGraphEdge& edge = assemblyGraph[e];
+
+        for(const AnchorGraph::edge_descriptor e: chain) {
+            edge.resize(edge.size() + 1);
+            AssemblyGraphStep& assemblyGraphStep = edge.back();
+            assemblyGraphStep.anchorPair = anchorGraph[e];
+            assemblyGraphStep.anchorPair.getOffsetStatistics(
+                anchors,
+                assemblyGraphStep.averageOffset,
+                assemblyGraphStep.minOffset,
+                assemblyGraphStep.maxOffset);
+        }
+        edge.computeOffsets();
     }
 
     cout << "The initial assembly graph has " << num_vertices(*this) <<
         " vertices and " << num_edges(*this) << " edges." << endl;
+}
+
+
+
+void AssemblyGraphEdge::computeOffsets()
+{
+    averageOffset = 0;
+    minOffset = 0;
+    maxOffset = 0;
+    for(const AssemblyGraphStep& step: *this) {
+        averageOffset += step.averageOffset;
+        minOffset += step.minOffset;
+        maxOffset += step.maxOffset;
+    }
 }

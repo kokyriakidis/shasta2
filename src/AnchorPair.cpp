@@ -171,3 +171,73 @@ void AnchorPair::createChildren(
         anchorPairs.emplace_back(anchors, anchorIdA, anchorIdB);
     }
 }
+
+
+
+void AnchorPair::getOffsetStatistics(
+    const Anchors& anchors,
+    uint32_t& averageBaseOffset,
+    uint32_t& minBaseOffset,
+    uint32_t& maxBaseOffset) const
+{
+    const uint32_t kHalf = uint32_t(anchors.markers.k / 2);
+
+    uint64_t sumBaseOffset = 0;
+    minBaseOffset = std::numeric_limits<uint32_t>::max();
+    maxBaseOffset = 0;
+
+    const Anchor anchorA = anchors[anchorIdA];
+    const Anchor anchorB = anchors[anchorIdB];
+
+    const auto beginA = anchorA.begin();
+    const auto beginB = anchorB.begin();
+    const auto endA = anchorA.end();
+    const auto endB = anchorB.end();
+
+    auto itA = beginA;
+    auto itB = beginB;
+    auto it = orientedReadIds.begin();
+    const auto itEnd = orientedReadIds.end();
+    while(itA != endA and itB != endB and it != itEnd) {
+
+        if(itA->orientedReadId < itB->orientedReadId) {
+            ++itA;
+            continue;
+        }
+
+        if(itB->orientedReadId < itA->orientedReadId) {
+            ++itB;
+            continue;
+        }
+
+        // We found a common OrientedReadId.
+        const OrientedReadId orientedReadId = itA->orientedReadId;
+        SHASTA_ASSERT(orientedReadId == itB->orientedReadId);
+
+        // Only process is this is one of our OrientedReadIds;
+        if(orientedReadId == *it) {
+            ++it;
+
+            const auto orientedReadMarkers = anchors.markers[orientedReadId.getValue()];
+
+            const uint32_t ordinalA = itA->ordinal;
+            const uint32_t ordinalB = itB->ordinal;
+            SHASTA_ASSERT(ordinalB > ordinalA);
+            const uint32_t positionA = orientedReadMarkers[ordinalA].position + kHalf;
+            const uint32_t positionB = orientedReadMarkers[ordinalB].position + kHalf;
+            SHASTA_ASSERT(positionB > positionA);
+
+            const uint32_t offset = positionB - positionA;
+            sumBaseOffset += offset;
+            minBaseOffset = min(minBaseOffset, offset);
+            maxBaseOffset = max(maxBaseOffset, offset);
+        }
+
+        ++itA;
+        ++itB;
+    }
+
+    SHASTA_ASSERT(it == orientedReadIds.end());
+
+    averageBaseOffset = uint32_t(std::round(double(sumBaseOffset) / double(size())));
+}

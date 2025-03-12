@@ -195,6 +195,6 @@ void Assembler::createAssemblyGraph(
     performanceLog << timestamp << "AnchorGraph creation ends." << endl;
 
     performanceLog << timestamp << "AssemblyGraph creation begins." << endl;
-    const AssemblyGraph assemblyGraph(anchorGraph);
+    const AssemblyGraph assemblyGraph(anchors(), anchorGraph);
     performanceLog << timestamp << "AssemblyGraph creation ends." << endl;
 }
