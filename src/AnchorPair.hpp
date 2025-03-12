@@ -19,9 +19,14 @@ namespace shasta {
 
 // An AnchorPair is a set of OrientedReadIds that visit AnchorIdA
 // and then later in their Journey, AnchorIdB.
+// That is, each of the OrientedReadIds appear both anchorIdA and anchorIdB,
+// and the position at anchorIdB is greater than the position at anchorIdA.
 class shasta::AnchorPair {
 public:
 
+    // The constructor creates an AnchorPair that includes common
+    // oriented reads between anchorIdA and anchorIdB that visit
+    // anchorIdB immediately after anchorIdA.
     AnchorPair(
         const Anchors&,
         AnchorId,
@@ -30,27 +35,37 @@ public:
     AnchorId anchorIdA;
     AnchorId anchorIdB;
 
-    vector<MarkerInterval> markerIntervals;
+    vector<OrientedReadId> orientedReadIds;
+    uint64_t size() const
+    {
+        return orientedReadIds.size();
+    }
 
-    // Get a vector of pairs(positionA, positionB), each corresponding
-    // to one of the MarkerIntervals.
+    // Get positions in journey, ordinals, base positions
+    // for each of the two reads and for each of the two anchors.
     // The positions returned are the midpoint of the markers
     // corresponding to anchorIdA and anchorIdB.
-    void getPositions(
-        const Markers&,
-        vector< pair<uint32_t, uint32_t> >& positions) const;
+    class Positions {
+    public:
+        uint32_t positionInJourney;
+        uint32_t ordinal;
+        uint32_t basePosition;
+        Positions(
+            uint32_t positionInJourney,
+            uint32_t ordinal,
+            uint32_t basePosition) :
+            positionInJourney(positionInJourney),
+            ordinal(ordinal),
+            basePosition(basePosition)
+        {}
+    };
+    void get(
+        const Anchors&,
+        vector< pair<Positions, Positions> >& positions) const;
 
-    // Get a vector of base sequences, each corresponding
-    // to one of the MarkerIntervals.
-    // The sequeences returned are between the midpoint of the markers
-    // corresponding to anchorIdA and anchorIdB.
-    void getSequences(
-        const Markers&,
-        vector< vector<Base> >&) const;
-
-    // Combine the two above in a single call.
-    void getPositionsAndSequences(
-        const Markers&,
-        vector< pair<uint32_t, uint32_t> >& positions,
+    // Same as the above, but also returns compute the sequences.
+    void get(
+        const Anchors&,
+        vector< pair<Positions, Positions> >& positions,
         vector< vector<Base> >&) const;
 };

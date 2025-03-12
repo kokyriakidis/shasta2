@@ -301,48 +301,57 @@ void Assembler::exploreAnchorPair(const vector<string>& request, ostream& html)
 
     // Also create a AnchorPair from these two anchors.
     const AnchorPair anchorPair(anchors(), anchorIdA, anchorIdB);
-    html << "<h1>Anchor pair " << anchorIdToString(anchorIdA) <<
-        " " << anchorIdToString(anchorIdB) << "</h1>";
-    html << "<p>AnchorPair information using the " << anchorPair.markerIntervals.size() <<
-        " oriented reads that visit " <<
-        anchorIdToString(anchorIdB) <<
-        " immediately after " << anchorIdToString(anchorIdA);
+    vector< pair<AnchorPair::Positions, AnchorPair::Positions> > positions;
+    vector< vector<Base> > sequences;
+    anchorPair.get(anchors(), positions, sequences);
 
-    html <<
-        "<table>"
-        "<tr><th>Oriented<br>read id<th>OrdinalA<th>OrdinalB<th>Ordinal<br>offset"
-        "<th>A middle<br>position"
-        "<th>B middle<br>position"
-        "<th>Sequence<br>length"
-        "<th>Sequence";
-        const uint64_t k = assemblerInfo->k;
+    // Create a sequence coverage map.
     std::map< vector<Base>, uint64_t> sequenceCoverageMap;
-    for(const MarkerInterval& markerInterval: anchorPair.markerIntervals) {
-        const OrientedReadId orientedReadId = markerInterval.orientedReadId;
-        const auto orientedReadMarkers = markers()[orientedReadId.getValue()];
-        const uint32_t positionA = orientedReadMarkers[markerInterval.ordinalA].position;
-        const uint32_t positionB = orientedReadMarkers[markerInterval.ordinalB].position;
-
-        vector<Base> sequence;
-        for(uint32_t position=positionA; position!=positionB; position++) {
-            sequence.push_back(reads().getOrientedReadBase(orientedReadId, position));
-        }
+    for(const vector<Base>& sequence: sequences) {
         auto it = sequenceCoverageMap.find(sequence);
         if(it == sequenceCoverageMap.end()) {
             sequenceCoverageMap.insert(make_pair(sequence, 1));
         } else {
             ++(it->second);
         }
+    }
+
+    html << "<h1>Anchor pair " << anchorIdToString(anchorIdA) <<
+        " " << anchorIdToString(anchorIdB) << "</h1>";
+    html << "<p>AnchorPair information using the " << anchorPair.size() <<
+        " oriented reads that visit " <<
+        anchorIdToString(anchorIdB) <<
+        " immediately after " << anchorIdToString(anchorIdA);
+
+    html <<
+        "<table>"
+        "<tr><th>Oriented<br>read id"
+        "<th>Position<br>in journey<br>A<th>Position<br>in journey<br>B<th>Journey<br>offset"
+        "<th>OrdinalA<th>OrdinalB<th>Ordinal<br>offset"
+        "<th>A middle<br>position"
+        "<th>B middle<br>position"
+        "<th>Sequence<br>length"
+        "<th>Sequence";
+    for(uint64_t i=0; i<anchorPair.size(); i++) {
+        const OrientedReadId orientedReadId = anchorPair.orientedReadIds[i];
+        const auto& positionsAB = positions[i];
+        const vector<Base>& sequence = sequences[i];
+
+        const auto& positionsA = positionsAB.first;
+        const auto& positionsB = positionsAB.second;
 
         html <<
             "<tr>"
             "<td class=centered>" << orientedReadId <<
-            "<td class=centered>" << markerInterval.ordinalA <<
-            "<td class=centered>" << markerInterval.ordinalB <<
-            "<td class=centered>" << markerInterval.ordinalB - markerInterval.ordinalA <<
-            "<td class=centered>" << positionA + k / 2 <<
-            "<td class=centered>" << positionB + k / 2 <<
-            "<td class=centered>" << positionB - positionA <<
+            "<td class=centered>" << positionsA.positionInJourney <<
+            "<td class=centered>" << positionsB.positionInJourney <<
+            "<td class=centered>" << positionsB.positionInJourney - positionsA.positionInJourney <<
+            "<td class=centered>" << positionsA.ordinal <<
+            "<td class=centered>" << positionsB.ordinal <<
+            "<td class=centered>" << positionsB.ordinal - positionsA.ordinal <<
+            "<td class=centered>" << positionsA.basePosition <<
+            "<td class=centered>" << positionsB.basePosition <<
+            "<td class=centered>" << positionsB.basePosition - positionsA.basePosition <<
             "<td class=centered style='font-family:monospace'>";
         copy(sequence.begin(), sequence.end(), ostream_iterator<Base>(html));
     }
