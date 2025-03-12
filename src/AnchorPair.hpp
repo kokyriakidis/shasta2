@@ -13,6 +13,7 @@ namespace shasta {
     class AnchorPair;
     class Anchors;
     class Base;
+    class Journeys;
 }
 
 
@@ -24,13 +25,26 @@ namespace shasta {
 class shasta::AnchorPair {
 public:
 
-    // The constructor creates an AnchorPair that includes common
-    // oriented reads between anchorIdA and anchorIdB that visit
-    // anchorIdB immediately after anchorIdA.
+    // The constructor creates an AnchorPair such that:
+    // - anchorIdA and anchorIdB are as specified.
+    // - All oriented reads have a journey offset equal to 1.
     AnchorPair(
         const Anchors&,
-        AnchorId,
-        AnchorId);
+        AnchorId anchorIdA,
+        AnchorId anchorIdB);
+
+    // This finds AnchorPairs as follows:
+    // - anchorIdA is as specified.
+    // - Coverage is at least minCoverage.
+    // - All oriented reads have a journey offset equal to 1.
+    static void createChildren(
+        const Anchors&,
+        const Journeys&,
+        AnchorId anchorIdA,
+        uint64_t minCoverage,
+        vector<AnchorPair>&
+        );
+
 
     AnchorId anchorIdA;
     AnchorId anchorIdB;

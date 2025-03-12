@@ -147,3 +147,27 @@ void AnchorPair::get(
     }
 }
 
+
+
+// This finds AnchorPairs as follows:
+// - anchorIdA is as specified.
+// - Coverage is at least minCoverage.
+// - All oriented reads have a journey offset equal to 1.
+void AnchorPair::createChildren(
+    const Anchors& anchors,
+    const Journeys& journeys,
+    AnchorId anchorIdA,
+    uint64_t minCoverage,
+    vector<AnchorPair>& anchorPairs
+    )
+{
+    // Find possible choices for anchorIdB.
+    vector<AnchorId> anchorIdsB;
+    vector<uint64_t> coverage;
+    anchors.findChildren(journeys, anchorIdA, anchorIdsB, coverage, minCoverage);
+
+    anchorPairs.clear();
+    for(const AnchorId anchorIdB: anchorIdsB) {
+        anchorPairs.emplace_back(anchors, anchorIdA, anchorIdB);
+    }
+}
