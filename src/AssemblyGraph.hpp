@@ -54,6 +54,15 @@ public:
     uint32_t minOffset = invalid<uint32_t>;
     uint32_t maxOffset = invalid<uint32_t>;
     void computeOffsets();
+
+    AnchorId anchorIdA() const
+    {
+        return (*this).front().anchorPair.anchorIdA;
+    }
+    AnchorId anchorIdB() const
+    {
+        return (*this).back().anchorPair.anchorIdB;
+    }
 };
 
 
@@ -65,7 +74,10 @@ public:
         const Anchors&,
         const AnchorGraph&);
 
+    void write(const string& name) const;
     void writeGfa(const string& fileName) const;
+    void writeSegments(const string& fileName) const;
+    void writeSegmentDetails(const string& fileName) const;
 
 private:
     uint64_t nextEdgeId = 0;

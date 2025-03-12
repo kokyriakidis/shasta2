@@ -1,5 +1,6 @@
 // Shasta.
 #include "AssemblyGraph.hpp"
+#include "Anchor.hpp"
 #include "AnchorGraph.hpp"
 #include "deduplicate.hpp"
 #include "findLinearChains.hpp"
@@ -130,4 +131,65 @@ void AssemblyGraph::writeGfa(const string& fileName) const
             }
         }
     }
+}
+
+
+
+void AssemblyGraph::write(const string& name) const
+{
+    writeGfa("AssemblyGraph-" + name + ".gfa");
+    writeSegments("AssemblyGraphSegments-" + name + ".csv");
+    writeSegmentDetails("AssemblyGraphSegmentsDetails-" + name + ".csv");
+}
+
+
+
+void AssemblyGraph::writeSegments(const string& fileName) const
+{
+    const AssemblyGraph& assemblyGraph = *this;
+
+    ofstream csv(fileName);
+    csv << "Id,AnchorIdA,AnchorIdB,StepCount,AverageOffset,MinOffset,MaxOffset\n";
+
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        const AssemblyGraphEdge& edge = assemblyGraph[e];
+
+        csv <<
+            edge.id << "," <<
+            anchorIdToString(edge.anchorIdA()) << "," <<
+            anchorIdToString(edge.anchorIdB()) << "," <<
+            edge.size() << "," <<
+            edge.averageOffset << "," <<
+            edge.minOffset << "," <<
+            edge.maxOffset << "\n";
+    }
+
+}
+
+
+
+void AssemblyGraph::writeSegmentDetails(const string& fileName) const
+{
+    const AssemblyGraph& assemblyGraph = *this;
+
+    ofstream csv(fileName);
+    csv << "Id,Position,AnchorIdA,AnchorIdB,AverageOffset,MinOffset,MaxOffset\n";
+
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        const AssemblyGraphEdge& edge = assemblyGraph[e];
+
+        for(uint64_t i=0; i<edge.size(); i++) {
+            const AssemblyGraphStep& step = edge[i];
+
+            csv <<
+                edge.id << "," <<
+                i << "," <<
+                anchorIdToString(step.anchorPair.anchorIdA) << "," <<
+                anchorIdToString(step.anchorPair.anchorIdB) << "," <<
+                step.averageOffset << "," <<
+                step.minOffset << "," <<
+                step.maxOffset << "\n";
+        }
+    }
+
 }
