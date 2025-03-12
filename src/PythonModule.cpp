@@ -38,6 +38,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def_readonly("markerDensity", &AssemblerOptions::markerDensity)
         .def_readonly("minAnchorCoverage", &AssemblerOptions::minAnchorCoverage)
         .def_readonly("maxAnchorCoverage", &AssemblerOptions::maxAnchorCoverage)
+        .def_readonly("minAnchorGraphEdgeCoverage", &AssemblerOptions::minAnchorGraphEdgeCoverage)
         ;
 
 
@@ -86,7 +87,8 @@ PYBIND11_MODULE(shasta2, shasta2Module)
            arg("maxAnchorCoverage"),
            arg("threadCount") = 0)
        .def("accessAnchors",
-           &Assembler::accessAnchors)
+           &Assembler::accessAnchors,
+           arg("writeAccess") = false)
 
        // Journeys.
       .def("createJourneys",
@@ -94,6 +96,12 @@ PYBIND11_MODULE(shasta2, shasta2Module)
           arg("threadCount") = 0)
       .def("accessJourneys",
           &Assembler::accessJourneys)
+
+      // AssemblyGraph.
+     .def("createAssemblyGraph",
+         &Assembler::createAssemblyGraph,
+         arg("minAnchorGraphEdgeCoverage"),
+         arg("threadCount") = 0)
     ;
 
 

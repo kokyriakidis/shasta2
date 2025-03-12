@@ -87,6 +87,10 @@ void AssemblerOptions::addOptions()
         "Maximum anchor coverage"
         )->capture_default_str();
 
+    add_option("--min-anchor-graph-edge-coverage", minAnchorGraphEdgeCoverage,
+        "Minimum anchor graph edge coverage."
+        )->capture_default_str();
+
     add_option("--local-assembly-estimated-offset-ratio",
         localAssemblyOptions.estimatedOffsetRatio,
         "Estimated offset ratio for local assembly."

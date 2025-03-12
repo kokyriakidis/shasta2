@@ -1,5 +1,6 @@
 #include "Assembler.hpp"
 #include "Anchor.hpp"
+#include "AnchorGraph.hpp"
 #include "AssemblerOptions.hpp"
 #include "Journeys.hpp"
 #include "KmerCheckerFactory.hpp"
@@ -86,6 +87,8 @@ void Assembler::assemble(
 
     createJourneys(threadCount);
     journeys().writeAnchorGapsByRead(reads(), markers(), anchors());
+
+    createAssemblyGraph(assemblerOptions.minAnchorGraphEdgeCoverage, threadCount);
 }
 
 
@@ -173,3 +176,20 @@ void Assembler::accessJourneys()
     journeysPointer = make_shared<Journeys>(*this);
 }
 
+
+
+
+void Assembler::createAssemblyGraph(
+    uint64_t minAnchorGraphEdgeCoverage,
+    uint64_t threadCount)
+{
+
+    // Adjust the numbers of threads, if necessary.
+    if(threadCount == 0) {
+        threadCount = std::thread::hardware_concurrency();
+    }
+
+    performanceLog << timestamp << "AnchorGraph creation begins." << endl;
+    const AnchorGraph anchorGraph(anchors(), journeys(), minAnchorGraphEdgeCoverage);
+    performanceLog << timestamp << "AnchorGraph creation ends." << endl;
+}

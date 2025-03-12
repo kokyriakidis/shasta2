@@ -174,6 +174,12 @@ public:
     void accessJourneys();
 
 
+    // AssemblyGraph.
+    void createAssemblyGraph(
+        uint64_t minAnchorGraphEdgeCoverage,
+        uint64_t threadCount);
+
+
 
     // Data and functions used for the http server.
     // This function puts the server into an endless loop
