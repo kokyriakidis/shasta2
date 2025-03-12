@@ -71,11 +71,12 @@ public:
         OrientedReadId,
         uint32_t ordinal) const;
 
-private:
 
     // These are filled in by all constructors.
     size_t k;
     const Reads& reads;
+
+private:
 
     // The remaining arguments are only filled in by the first constructor,
     // which constructs the Markers from scratch.

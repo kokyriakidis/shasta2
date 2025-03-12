@@ -8,7 +8,7 @@
 #include "Markers.hpp"
 #include "orderPairs.hpp"
 #include "Reads.hpp"
-#include "Transition.hpp"
+#include "AnchorPair.hpp"
 using namespace shasta;
 
 // Boost libraries.
@@ -299,11 +299,11 @@ void Assembler::exploreAnchorPair(const vector<string>& request, ostream& html)
 
 
 
-    // Also create a Transition from these two anchors.
-    const Transition transition(anchors(), anchorIdA, anchorIdB);
-    html << "<h1>Journey transition for anchors " << anchorIdToString(anchorIdA) <<
-        " and " << anchorIdToString(anchorIdB) << "</h1>";
-    html << "<p>The journey transition is the set of " << transition.markerIntervals.size() <<
+    // Also create a AnchorPair from these two anchors.
+    const AnchorPair anchorPair(anchors(), anchorIdA, anchorIdB);
+    html << "<h1>Anchor pair " << anchorIdToString(anchorIdA) <<
+        " " << anchorIdToString(anchorIdB) << "</h1>";
+    html << "<p>AnchorPair information using the " << anchorPair.markerIntervals.size() <<
         " oriented reads that visit " <<
         anchorIdToString(anchorIdB) <<
         " immediately after " << anchorIdToString(anchorIdA);
@@ -317,7 +317,7 @@ void Assembler::exploreAnchorPair(const vector<string>& request, ostream& html)
         "<th>Sequence";
         const uint64_t k = assemblerInfo->k;
     std::map< vector<Base>, uint64_t> sequenceCoverageMap;
-    for(const MarkerInterval& markerInterval: transition.markerIntervals) {
+    for(const MarkerInterval& markerInterval: anchorPair.markerIntervals) {
         const OrientedReadId orientedReadId = markerInterval.orientedReadId;
         const auto orientedReadMarkers = markers()[orientedReadId.getValue()];
         const uint32_t positionA = orientedReadMarkers[markerInterval.ordinalA].position;
