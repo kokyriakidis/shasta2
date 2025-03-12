@@ -2,6 +2,7 @@
 #include "Anchor.hpp"
 #include "AnchorGraph.hpp"
 #include "AssemblerOptions.hpp"
+#include "AssemblyGraph.hpp"
 #include "Journeys.hpp"
 #include "KmerCheckerFactory.hpp"
 #include "MurmurHash2.hpp"
@@ -192,4 +193,8 @@ void Assembler::createAssemblyGraph(
     performanceLog << timestamp << "AnchorGraph creation begins." << endl;
     const AnchorGraph anchorGraph(anchors(), journeys(), minAnchorGraphEdgeCoverage);
     performanceLog << timestamp << "AnchorGraph creation ends." << endl;
+
+    performanceLog << timestamp << "AssemblyGraph creation begins." << endl;
+    const AssemblyGraph assemblyGraph(anchorGraph);
+    performanceLog << timestamp << "AssemblyGraph creation ends." << endl;
 }
