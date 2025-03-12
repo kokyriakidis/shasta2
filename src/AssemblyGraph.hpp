@@ -49,6 +49,7 @@ public:
 
 class shasta::AssemblyGraphEdge : public vector<AssemblyGraphStep> {
 public:
+    uint64_t id = invalid<uint64_t>;
     uint32_t averageOffset = invalid<uint32_t>;
     uint32_t minOffset = invalid<uint32_t>;
     uint32_t maxOffset = invalid<uint32_t>;
@@ -63,4 +64,9 @@ public:
     AssemblyGraph(
         const Anchors&,
         const AnchorGraph&);
+
+    void writeGfa(const string& fileName) const;
+
+private:
+    uint64_t nextEdgeId = 0;
 };

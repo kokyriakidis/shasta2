@@ -1,9 +1,12 @@
+// Shasta.
 #include "AssemblyGraph.hpp"
 #include "AnchorGraph.hpp"
 #include "deduplicate.hpp"
 #include "findLinearChains.hpp"
 using namespace shasta;
 
+// Standard library.
+#include <fstream.hpp>
 #include <tuple.hpp>
 
 
@@ -53,6 +56,7 @@ AssemblyGraph::AssemblyGraph(
         edge_descriptor e;
         tie(e, ignore) = add_edge(vA, vB, assemblyGraph);
         AssemblyGraphEdge& edge = assemblyGraph[e];
+        edge.id = nextEdgeId++;
 
         for(const AnchorGraph::edge_descriptor e: chain) {
             edge.resize(edge.size() + 1);
@@ -82,5 +86,48 @@ void AssemblyGraphEdge::computeOffsets()
         averageOffset += step.averageOffset;
         minOffset += step.minOffset;
         maxOffset += step.maxOffset;
+    }
+}
+
+
+
+void AssemblyGraph::writeGfa(const string& fileName) const
+{
+    const AssemblyGraph& assemblyGraph = *this;
+
+    ofstream gfa(fileName);
+
+    // Write the header line.
+    gfa << "H\tVN:Z:1.0\n";
+
+    // Write a segment for each edge.
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        const AssemblyGraphEdge& edge = assemblyGraph[e];
+
+        // Record type.
+        gfa << "S\t";
+
+        // Name.
+        gfa << edge.id << "\t";
+
+        // Sequence.
+        gfa << "*\t";
+
+        // Sequence length in bases.
+        gfa << "LN:i:" << edge.averageOffset << "\n";
+    }
+
+    // For each vertex, write links between each pair of incoming/outgoing edges.
+    BGL_FORALL_VERTICES(v, assemblyGraph, AssemblyGraph) {
+        BGL_FORALL_INEDGES(v, e0, assemblyGraph, AssemblyGraph) {
+            const uint64_t id0 = assemblyGraph[e0].id;
+            BGL_FORALL_OUTEDGES(v, e1, assemblyGraph, AssemblyGraph) {
+                const uint64_t id1 = assemblyGraph[e1].id;
+                gfa <<
+                    "L\t" <<
+                    id0 << "\t+\t" <<
+                    id1 << "\t+\t*\n";
+            }
+        }
     }
 }

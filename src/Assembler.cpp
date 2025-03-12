@@ -197,4 +197,6 @@ void Assembler::createAssemblyGraph(
     performanceLog << timestamp << "AssemblyGraph creation begins." << endl;
     const AssemblyGraph assemblyGraph(anchors(), anchorGraph);
     performanceLog << timestamp << "AssemblyGraph creation ends." << endl;
+
+    assemblyGraph.writeGfa("AssemblyGraph-Initial.gfa");
 }
