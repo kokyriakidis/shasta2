@@ -28,7 +28,12 @@ using namespace pybind11;
 
 PYBIND11_MODULE(shasta2, shasta2Module)
 {
-    // Expose class AssemblerOptions to Python.
+    // Class AssemblerOptions::AssemblyGraphOptions.
+    class_<AssemblerOptions::AssemblyGraphOptions>(shasta2Module, "AssemblyGraphOptions")
+        ;
+
+
+        // Class AssemblerOptions.
     class_<AssemblerOptions>(shasta2Module, "AssemblerOptions")
 
         // Constructor from the name of a configuration file.
@@ -39,11 +44,12 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def_readonly("minAnchorCoverage", &AssemblerOptions::minAnchorCoverage)
         .def_readonly("maxAnchorCoverage", &AssemblerOptions::maxAnchorCoverage)
         .def_readonly("minAnchorGraphEdgeCoverage", &AssemblerOptions::minAnchorGraphEdgeCoverage)
+        .def_readonly("assemblyGraphOptions", &AssemblerOptions::assemblyGraphOptions)
         ;
 
 
 
-    // Expose class Assembler to Python.
+    // Class Assembler.
     class_<Assembler>(shasta2Module, "Assembler")
 
         // Constructor.
@@ -101,6 +107,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
      .def("createAssemblyGraph",
          &Assembler::createAssemblyGraph,
          arg("minAnchorGraphEdgeCoverage"),
+         arg("assemblyGraphOptions"),
          arg("threadCount") = 0)
     ;
 

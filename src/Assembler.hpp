@@ -1,6 +1,7 @@
 #pragma once
 
 // Shasta.
+#include "AssemblerOptions.hpp"
 #include "HttpServer.hpp"
 #include "MappedMemoryOwner.hpp"
 #include "MemoryMappedObject.hpp"
@@ -17,7 +18,6 @@ namespace shasta {
     class Assembler;
     class Anchors;
     class AssemblerInfo;
-    class AssemblerOptions;
     class Journeys;
     class KmerChecker;
     class KmersOptions;
@@ -177,6 +177,7 @@ public:
     // AssemblyGraph.
     void createAssemblyGraph(
         uint64_t minAnchorGraphEdgeCoverage,
+        const AssemblerOptions::AssemblyGraphOptions&,
         uint64_t threadCount);
 
 

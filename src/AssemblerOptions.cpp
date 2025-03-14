@@ -91,6 +91,21 @@ void AssemblerOptions::addOptions()
         "Minimum anchor graph edge coverage."
         )->capture_default_str();
 
+    add_option("--assembly-graph-transitive-reduction-threshold",
+        assemblyGraphOptions.transitiveReductionThreshold,
+        "Length threshold for transitive reduction of the assembly graph."
+        )->capture_default_str();
+
+    add_option("--assembly-graph-transitive-reduction-a",
+        assemblyGraphOptions.transitiveReductionA,
+        "a-value for transitive reduction of the assembly graph."
+        )->capture_default_str();
+
+    add_option("--assembly-graph-transitive-reduction-b",
+        assemblyGraphOptions.transitiveReductionB,
+        "b-value for transitive reduction of the assembly graph."
+        )->capture_default_str();
+
     add_option("--local-assembly-estimated-offset-ratio",
         localAssemblyOptions.estimatedOffsetRatio,
         "Estimated offset ratio for local assembly."

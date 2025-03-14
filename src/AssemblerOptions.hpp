@@ -47,6 +47,14 @@ public:
     uint64_t maxAnchorCoverage = 60;
     uint64_t minAnchorGraphEdgeCoverage = 3;
 
+    class AssemblyGraphOptions {
+    public:
+        uint64_t transitiveReductionThreshold = 10000;
+        uint64_t transitiveReductionA = 200;
+        uint64_t transitiveReductionB = 2;
+    };
+    AssemblyGraphOptions assemblyGraphOptions;
+
     class LocalAssemblyOptions {
     public:
 

@@ -3,6 +3,7 @@
 
 // Shasta.
 #include "AnchorPair.hpp"
+#include "AssemblerOptions.hpp"
 #include "shastaTypes.hpp"
 
 // Boost libraries.
@@ -83,13 +84,17 @@ public:
 
     AssemblyGraph(
         const Anchors&,
-        const AnchorGraph&);
+        const AnchorGraph&,
+        const AssemblerOptions::AssemblyGraphOptions&);
 
 
 private:
     uint64_t nextEdgeId = 0;
 
-    void transitiveReduction();
+    void transitiveReduction(
+        uint64_t threshold,
+        uint64_t a,
+        uint64_t b);
     void compress();
 
     void write(const string& name) const;

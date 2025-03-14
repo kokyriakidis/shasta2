@@ -15,7 +15,8 @@ using namespace shasta;
 
 AssemblyGraph::AssemblyGraph(
     const Anchors& anchors,
-    const AnchorGraph& anchorGraph)
+    const AnchorGraph& anchorGraph,
+    const AssemblerOptions::AssemblyGraphOptions& options)
 {
     AssemblyGraph& assemblyGraph = *this;
 
@@ -77,7 +78,10 @@ AssemblyGraph::AssemblyGraph(
         " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
     write("A");
 
-    transitiveReduction();
+    transitiveReduction(
+        options.transitiveReductionThreshold,
+        options.transitiveReductionA,
+        options.transitiveReductionB);
     compress();
 
     cout << "After transitive reduction, the assembly graph has " << num_vertices(assemblyGraph) <<
@@ -246,14 +250,12 @@ void AssemblyGraph::writeSegmentDetails(const string& fileName) const
 // Even if a correct one is removed at this edge, it can still
 // be assembled correctly by the LocalAssembly, is phasing is
 // successful in this region.
-void AssemblyGraph::transitiveReduction()
+void AssemblyGraph::transitiveReduction(
+    uint64_t threshold,
+    uint64_t a,
+    uint64_t b)
 {
     AssemblyGraph& assemblyGraph = *this;
-
-    // EXPOSE WHEN CODE STABILIZES.
-    const uint64_t threshold1 = 10000;
-    const uint64_t a = 200;
-    const uint64_t b = 2;
 
     // Work areas for the BFS are defined here to reduce nemory allocation activity.
     std::queue<vertex_descriptor> q;
@@ -270,7 +272,7 @@ void AssemblyGraph::transitiveReduction()
         // Increment the iterator here, before possibly removing this edge.
         ++it;
 
-        if(edge.length() > threshold1) {
+        if(edge.length() > threshold) {
             continue;
         }
 
