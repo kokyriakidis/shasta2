@@ -653,7 +653,7 @@ void Assembler::exploreLocalAnchorGraph(
     uint64_t distance = 10;
     HttpServer::getParameterValue(request, "distance", distance);
 
-    uint64_t minCoverage = 0;
+    uint64_t minCoverage = httpServerData.assemblerOptions->minAnchorGraphEdgeCoverage;
     HttpServer::getParameterValue(request, "minCoverage", minCoverage);
 
     // Get the options that control graph display.
