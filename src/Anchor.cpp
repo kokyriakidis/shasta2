@@ -783,6 +783,7 @@ Anchors::Anchors(
     shared_ptr<MarkerKmers> markerKmers,
     uint64_t minAnchorCoverage,
     uint64_t maxAnchorCoverage,
+    uint64_t maxHomopolymerLength,
     uint64_t threadCount) :
     MultithreadedObject<Anchors>(*this),
     MappedMemoryOwner(mappedMemoryOwner),
@@ -798,6 +799,7 @@ Anchors::Anchors(
     ConstructData& data = constructData;
     data.minAnchorCoverage = minAnchorCoverage;
     data.maxAnchorCoverage = maxAnchorCoverage;
+    data.maxHomopolymerLength = maxHomopolymerLength;
     data.markerKmers = markerKmers;
 
     // During multithreaded pass 1 we loop over all marker k-mers
@@ -867,6 +869,7 @@ void Anchors::constructThreadFunctionPass1(uint64_t /* threadId */)
     ConstructData& data = constructData;
     const uint64_t minAnchorCoverage = data.minAnchorCoverage;
     const uint64_t maxAnchorCoverage = data.maxAnchorCoverage;
+    const uint64_t maxHomopolymerLength = data.maxHomopolymerLength;
     const MarkerKmers& markerKmers = *data.markerKmers;
 
     // Loop over batches of marker Kmers assigned to this thread.
@@ -880,6 +883,12 @@ void Anchors::constructThreadFunctionPass1(uint64_t /* threadId */)
 
             // Get the MarkerInfos for this marker Kmer.
             const span<const MarkerInfo> markerInfos = markerKmers[kmerIndex];
+
+            // If the Kmer as a long homopolymer run, don't generate an anchor.
+            const Kmer kmer = markerKmers.getKmer(markerInfos.front());
+            if(kmer.maxHomopolymerLength(k) > maxHomopolymerLength) {
+                continue;
+            }
 
             // Check for high coverage using all of the marker infos.
             if(markerInfos.size() > maxAnchorCoverage) {

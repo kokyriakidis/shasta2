@@ -80,11 +80,15 @@ void AssemblerOptions::addOptions()
         )->capture_default_str();
 
     add_option("--min-anchor-coverage", minAnchorCoverage,
-        "Minimum anchor coverage"
+        "Minimum anchor coverage."
         )->capture_default_str();
 
     add_option("--max-anchor-coverage", maxAnchorCoverage,
-        "Maximum anchor coverage"
+        "Maximum anchor coverage."
+        )->capture_default_str();
+
+    add_option("--max-anchor-homopolymer-length", maxAnchorHomopolymerLength,
+        "Maximum homopolymer length allowed on an anchor."
         )->capture_default_str();
 
     add_option("--min-anchor-graph-edge-coverage", minAnchorGraphEdgeCoverage,

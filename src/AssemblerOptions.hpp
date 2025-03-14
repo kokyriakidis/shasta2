@@ -45,6 +45,7 @@ public:
 
     uint64_t minAnchorCoverage = 10;
     uint64_t maxAnchorCoverage = 60;
+    uint64_t maxAnchorHomopolymerLength = 10;
     uint64_t minAnchorGraphEdgeCoverage = 3;
 
     class AssemblyGraphOptions {

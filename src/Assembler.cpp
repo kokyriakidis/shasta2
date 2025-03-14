@@ -84,6 +84,7 @@ void Assembler::assemble(
     createAnchors(
         assemblerOptions.minAnchorCoverage,
         assemblerOptions.maxAnchorCoverage,
+        assemblerOptions.maxAnchorHomopolymerLength,
         threadCount);
 
     createJourneys(threadCount);
@@ -128,6 +129,7 @@ void Assembler::accessKmerChecker()
 void Assembler::createAnchors(
     uint64_t minAnchorCoverage,
     uint64_t maxAnchorCoverage,
+    uint64_t maxHomopolymerLength,
     uint64_t threadCount)
 {
     // Adjust the numbers of threads, if necessary.
@@ -143,6 +145,7 @@ void Assembler::createAnchors(
         markerKmers,
         minAnchorCoverage,
         maxAnchorCoverage,
+        maxHomopolymerLength,
         threadCount);
 }
 

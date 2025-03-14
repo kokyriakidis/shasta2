@@ -109,6 +109,7 @@ public:
         shared_ptr<MarkerKmers>,
         uint64_t minAnchorCoverage,
         uint64_t maxAnchorCoverage,
+        uint64_t maxHomopolymerLength,
         uint64_t threadCount);
 
     // This constructor accesses existing Anchors.
@@ -206,6 +207,7 @@ private:
     public:
         uint64_t minAnchorCoverage;
         uint64_t maxAnchorCoverage;
+        uint64_t maxHomopolymerLength;
 
         shared_ptr<MarkerKmers> markerKmers;
 

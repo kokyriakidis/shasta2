@@ -91,6 +91,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
            &Assembler::createAnchors,
            arg("minAnchorCoverage"),
            arg("maxAnchorCoverage"),
+           arg("maxHomopolymerLength"),
            arg("threadCount") = 0)
        .def("accessAnchors",
            &Assembler::accessAnchors,

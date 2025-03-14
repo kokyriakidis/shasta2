@@ -158,6 +158,7 @@ public:
     void createAnchors(
         uint64_t minAnchorCoverage,
         uint64_t maxAnchorCoverage,
+        uint64_t maxHomopolymerLength,
         uint64_t threadCount);
     void accessAnchors(bool writeAccess);
 

@@ -68,17 +68,15 @@ public:
             markerInfos.begin() + kmerInfo.end);
     }
 
+    // Get the Kmer corresponding to a given MarkerInfo.
+    Kmer getKmer(const MarkerInfo&) const;
+
 private:
 
     // Constructor arguments.
     uint64_t k;
     const Reads& reads;
     const Markers& markers;
-
-    // Get the Kmer corresponding to a given MarkerInfo.
-    Kmer getKmer(const MarkerInfo&) const;
-
-
 
     // A function object class that sorts MarkerInfo objects by Kmer.
     class MarkerInfoSorter {
