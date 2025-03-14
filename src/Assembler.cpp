@@ -191,7 +191,6 @@ void Assembler::createAssemblyGraph(
     const AssemblerOptions::AssemblyGraphOptions& options,
     uint64_t threadCount)
 {
-
     // Adjust the numbers of threads, if necessary.
     if(threadCount == 0) {
         threadCount = std::thread::hardware_concurrency();

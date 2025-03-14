@@ -6,6 +6,11 @@
 #include "findLinearChains.hpp"
 using namespace shasta;
 
+// Boost libraries.
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/graph/adj_list_serialize.hpp>
+
 // Standard library.
 #include <fstream.hpp>
 #include <queue>
@@ -16,7 +21,8 @@ using namespace shasta;
 AssemblyGraph::AssemblyGraph(
     const Anchors& anchors,
     const AnchorGraph& anchorGraph,
-    const AssemblerOptions::AssemblyGraphOptions& options)
+    const AssemblerOptions::AssemblyGraphOptions& options) :
+    MappedMemoryOwner(anchors)
 {
     AssemblyGraph& assemblyGraph = *this;
 
@@ -150,6 +156,7 @@ void AssemblyGraph::writeGfa(const string& fileName) const
 
 void AssemblyGraph::write(const string& name) const
 {
+    save(name);
     writeGfa("AssemblyGraph-" + name + ".gfa");
     writeGraphviz("AssemblyGraph-" + name + ".dot");
     writeSegments("AssemblyGraphSegments-" + name + ".csv");
@@ -393,5 +400,70 @@ void AssemblyGraph::compress()
             const vertex_descriptor v = source(linearChain[i], assemblyGraph);
             remove_vertex(v, assemblyGraph);
         }
+    }
+}
+
+
+
+void AssemblyGraph::save(ostream& s) const
+{
+    boost::archive::binary_oarchive archive(s);
+    archive << *this;
+}
+
+
+
+void AssemblyGraph::load(istream& s)
+{
+    boost::archive::binary_iarchive archive(s);
+    archive >> *this;
+}
+
+
+
+void AssemblyGraph::save(const string& stage) const
+{
+    // If not using persistent binary data, do nothing.
+    if(largeDataFileNamePrefix.empty()) {
+        return;
+    }
+
+    // First save to a string.
+    std::ostringstream s;
+    save(s);
+    const string dataString = s.str();
+
+    // Now save the string to binary data.
+    const string name = largeDataName("AssemblyGraph-" + stage);
+    MemoryMapped::Vector<char> data;
+    data.createNew(name, largeDataPageSize);
+    data.resize(dataString.size());
+    const char* begin = dataString.data();
+    const char* end = begin + dataString.size();
+    copy(begin, end, data.begin());
+}
+
+
+
+void AssemblyGraph::load(const string& assemblyStage)
+{
+    // Access the binary data.
+    MemoryMapped::Vector<char> data;
+    try {
+        const string name = largeDataName("AssemblyGraph-" + assemblyStage);
+        data.accessExistingReadOnly(name);
+    } catch (std::exception&) {
+        throw runtime_error("Assembly graph at stage " + assemblyStage +
+            " is not available.");
+    }
+    const string dataString(data.begin(), data.size());
+
+    // Load it from here.
+    std::istringstream s(dataString);
+    try {
+        load(s);
+    } catch(std::exception& e) {
+        throw runtime_error("Error reading assembly graph at stage " + assemblyStage +
+            ": " + e.what());
     }
 }

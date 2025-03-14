@@ -81,6 +81,13 @@ public:
             ordinal(ordinal),
             basePosition(basePosition)
         {}
+
+        template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
+        {
+            ar & positionInJourney;
+            ar & ordinal;
+            ar & basePosition;
+        }
     };
     void get(
         const Anchors&,
@@ -91,4 +98,11 @@ public:
         const Anchors&,
         vector< pair<Positions, Positions> >& positions,
         vector< vector<Base> >&) const;
+
+    template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
+    {
+        ar & anchorIdA;
+        ar & anchorIdB;
+        ar & orientedReadIds;
+    }
 };

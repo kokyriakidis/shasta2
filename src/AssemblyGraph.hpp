@@ -4,10 +4,12 @@
 // Shasta.
 #include "AnchorPair.hpp"
 #include "AssemblerOptions.hpp"
+#include "MappedMemoryOwner.hpp"
 #include "shastaTypes.hpp"
 
 // Boost libraries.
 #include <boost/graph/adjacency_list.hpp>
+#include <boost/serialization/vector.hpp>
 
 namespace shasta {
 
@@ -33,10 +35,15 @@ class shasta::AssemblyGraphVertex {
 public:
     AnchorId anchorId;
 
-    AssemblyGraphVertex(AnchorId anchorId) : anchorId(anchorId) {}
+    AssemblyGraphVertex(AnchorId anchorId = invalid<AnchorId>) : anchorId(anchorId) {}
 
     // This is used for the BFS in AssemblyGraph::transitiveReduction.
     uint64_t bfsDistance = invalid<uint64_t>;
+
+    template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
+    {
+        ar & anchorId;
+    }
 };
 
 
@@ -47,6 +54,14 @@ public:
     uint32_t averageOffset;
     uint32_t minOffset;
     uint32_t maxOffset;
+
+    template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
+    {
+        ar & anchorPair;
+        ar & averageOffset;
+        ar & minOffset;
+        ar & maxOffset;
+    }
 };
 
 
@@ -75,11 +90,22 @@ public:
     {
         return (*this).back().anchorPair.anchorIdB;
     }
+
+    template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
+    {
+        ar & boost::serialization::base_object< vector<AssemblyGraphStep> >(*this);
+        ar & id;
+        ar & averageOffset;
+        ar & minOffset;
+        ar & maxOffset;
+    }
 };
 
 
 
-class shasta::AssemblyGraph: public AssemblyGraphBaseClass {
+class shasta::AssemblyGraph:
+    public AssemblyGraphBaseClass,
+    public MappedMemoryOwner {
 public:
 
     AssemblyGraph(
@@ -102,4 +128,21 @@ private:
     void writeGraphviz(const string& fileName) const;
     void writeSegments(const string& fileName) const;
     void writeSegmentDetails(const string& fileName) const;
+
+
+
+    // Serialization.
+    friend class boost::serialization::access;
+    template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
+    {
+        ar & boost::serialization::base_object<AssemblyGraphBaseClass>(*this);
+        ar & nextEdgeId;
+    }
+    void save(ostream&) const;
+    void load(istream&);
+
+    // These do save/load to/from mapped memory.
+    // The file name is AssemblyGraph-Stage.
+    void save(const string& stage) const;
+    void load(const string& stage);
 };
