@@ -147,6 +147,7 @@ void AssemblyGraph::writeGfa(const string& fileName) const
 void AssemblyGraph::write(const string& name) const
 {
     writeGfa("AssemblyGraph-" + name + ".gfa");
+    writeGraphviz("AssemblyGraph-" + name + ".dot");
     writeSegments("AssemblyGraphSegments-" + name + ".csv");
     writeSegmentDetails("AssemblyGraphSegmentsDetails-" + name + ".csv");
 }
@@ -173,6 +174,38 @@ void AssemblyGraph::writeSegments(const string& fileName) const
             edge.maxOffset << "\n";
     }
 
+}
+
+
+void AssemblyGraph::writeGraphviz(const string& fileName) const
+{
+    const AssemblyGraph& assemblyGraph = *this;
+
+    ofstream dot(fileName);
+    dot << "digraph AssemblyGraph {\n";
+
+    BGL_FORALL_VERTICES(v, assemblyGraph, AssemblyGraph) {
+        const AssemblyGraphVertex& vertex = assemblyGraph[v];
+        dot << "\"" << anchorIdToString(vertex.anchorId) << "\";\n";
+    }
+
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        const AssemblyGraphEdge& edge = assemblyGraph[e];
+        const vertex_descriptor v0 = source(e, assemblyGraph);
+        const vertex_descriptor v1 = target(e, assemblyGraph);
+        const AssemblyGraphVertex& vertex0 = assemblyGraph[v0];
+        const AssemblyGraphVertex& vertex1 = assemblyGraph[v1];
+
+        dot <<
+            "\"" << anchorIdToString(vertex0.anchorId) << "\""
+            "->"
+            "\"" << anchorIdToString(vertex1.anchorId) << "\""
+            " [label=\"" << edge.id << "\"]"
+            ";\n";
+
+    }
+
+    dot << "}\n";
 }
 
 
