@@ -467,3 +467,13 @@ void AssemblyGraph::load(const string& assemblyStage)
             ": " + e.what());
     }
 }
+
+
+
+// Deserialize.
+AssemblyGraph::AssemblyGraph(
+    const string& assemblyStage, const Anchors& anchors) :
+    MappedMemoryOwner(anchors)
+{
+    load(assemblyStage);
+}

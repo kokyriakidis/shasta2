@@ -108,11 +108,14 @@ class shasta::AssemblyGraph:
     public MappedMemoryOwner {
 public:
 
+    // Initial construction from the AnchorGraph.
     AssemblyGraph(
         const Anchors&,
         const AnchorGraph&,
         const AssemblerOptions::AssemblyGraphOptions&);
 
+    // Deserialize.
+    AssemblyGraph(const string& assemblyStage, const Anchors&);
 
 private:
     uint64_t nextEdgeId = 0;
