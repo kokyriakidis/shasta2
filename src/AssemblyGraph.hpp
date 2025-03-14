@@ -33,6 +33,9 @@ public:
     AnchorId anchorId;
 
     AssemblyGraphVertex(AnchorId anchorId) : anchorId(anchorId) {}
+
+    // This is used for the BFS in AssemblyGraph::transitiveReduction.
+    uint64_t bfsDistance = invalid<uint64_t>;
 };
 
 
@@ -55,6 +58,14 @@ public:
     uint32_t maxOffset = invalid<uint32_t>;
     void computeOffsets();
 
+    // The length of an AssemblyGraphEdge is the estimated length of its sequence,
+    // equal to averageOffset, which is the sum of the averageOffsets
+    // of all the AssemblyGraphSteps of this edge.
+    uint64_t length() const
+    {
+        return averageOffset;
+    }
+
     AnchorId anchorIdA() const
     {
         return (*this).front().anchorPair.anchorIdA;
@@ -74,11 +85,15 @@ public:
         const Anchors&,
         const AnchorGraph&);
 
+
+private:
+    uint64_t nextEdgeId = 0;
+
+    void transitiveReduction();
+    void compress();
+
     void write(const string& name) const;
     void writeGfa(const string& fileName) const;
     void writeSegments(const string& fileName) const;
     void writeSegmentDetails(const string& fileName) const;
-
-private:
-    uint64_t nextEdgeId = 0;
 };
