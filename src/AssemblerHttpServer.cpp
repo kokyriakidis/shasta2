@@ -43,6 +43,7 @@ void Assembler::fillServerFunctionTable()
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreLocalAssembly);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreLocalAnchorGraph);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreSegment);
+    SHASTA_ADD_TO_FUNCTION_TABLE(exploreSegmentStep);
 }
 #undef SHASTA_ADD_TO_FUNCTION_TABLE
 

@@ -286,7 +286,7 @@ void Assembler::exploreSegment(
         return;
     }
 
-    // Get the AssemblyGraph for this assembly stage..
+    // Get the AssemblyGraph for this assembly stage.
     const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(assemblyStage);
 
     // Find the AssemblyGraphEdge corresponding to the requested segment.
@@ -387,10 +387,16 @@ void Assembler::exploreSegment(
 
     for(uint64_t i=begin; i!=end; i++) {
         const AssemblyGraphStep& step = edge[i];
+        const string url =
+            "exploreSegmentStep?"
+            "assemblyStage=" + assemblyStage +
+            "&segmentName=" + segmentName +
+            "&positionInSegment=" + to_string(i);
 
         html <<
             "<tr>"
-            "<td class=centered>" << i <<
+            "<td class=centered>" <<
+            "<a href='" << url << "'>" << i << "</a>" <<
             "<td class=centered>" << anchorIdToString(step.anchorPair.anchorIdA) <<
             "<td class=centered>" << anchorIdToString(step.anchorPair.anchorIdB) <<
             "<td class=centered>" << step.anchorPair.orientedReadIds.size() <<
@@ -412,6 +418,105 @@ const AssemblyGraphPostprocessor& Assembler::getAssemblyGraph(const string& asse
         tie(it, ignore) = assemblyGraphTable.insert(make_pair(assemblyStage, p));
     }
     return *(it->second);
+}
+
+
+
+void Assembler::exploreSegmentStep(const vector<string>& request, ostream& html)
+{
+    // Get the options from the request.
+    string assemblyStage;
+    HttpServer::getParameterValue(request, "assemblyStage", assemblyStage);
+
+    string segmentName;;
+    HttpServer::getParameterValue(request, "segmentName", segmentName);
+
+    uint64_t positionInSegment;
+    HttpServer::getParameterValue(request, "positionInSegment", positionInSegment);
+
+    uint64_t segmentId = invalid<uint64_t>;
+    try {
+        segmentId = std::stol(segmentName);
+    } catch(exception&) {
+    }
+    if(segmentId == invalid<uint64_t>) {
+        html << "Segment name must be a number.";
+        return;
+    }
+
+    // Get the AssemblyGraph for this assembly stage.
+    const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(assemblyStage);
+
+    // Find the AssemblyGraphEdge corresponding to the requested segment.
+    auto it = assemblyGraph.segmentMap.find(segmentId);
+    if(it == assemblyGraph.segmentMap.end()) {
+        html << "<p>Assembly graph at stage " << assemblyStage <<
+            " does not have segment " << segmentId;
+        return;
+    }
+    const AssemblyGraph::edge_descriptor e = it->second;
+    const AssemblyGraphEdge& edge = assemblyGraph[e];
+
+    if(positionInSegment >= edge.size()) {
+        html << "<p>Invalid position in segment.";
+        return;
+    }
+
+    const AssemblyGraphStep& step = edge[positionInSegment];
+
+    html << "<h2>Step " << positionInSegment << " for segment " << segmentId <<
+        " at assembly stage " << assemblyStage << "</h2>";
+
+    // Summary table.
+    html <<
+        "<p><table>"
+        "<tr><th class=left>AnchorIdA<td class=centered>" << anchorIdToString(step.anchorPair.anchorIdA) <<
+        "<tr><th class=left>AnchorIdB<td class=centered>" << anchorIdToString(step.anchorPair.anchorIdB) <<
+        "<tr><th class=left>Coverage<td class=centered>" << step.anchorPair.orientedReadIds.size() <<
+        "<tr><th class=left>Average offset<td class=centered>" << step.averageOffset <<
+        "<tr><th class=left>Min offset<td class=centered>" << step.minOffset <<
+        "<tr><th class=left>max offset<td class=centered>" << step.maxOffset <<
+        "</table>";
+
+
+
+    // Details table.
+    using Positions = AnchorPair::Positions;
+    vector< pair<Positions, Positions> > positions;
+    step.anchorPair.get(anchors(), positions);
+    html <<
+        "<p><table><tr>"
+        "<th class=centered>Oriented<br>read id"
+        "<th class=centered>Position<br>in<br>journey<br>A"
+        "<th class=centered>Position<br>in<br>journey<br>B"
+        "<th class=centered>Journey<br>offset"
+        "<th class=centered>OrdinalA"
+        "<th class=centered>OrdinalB"
+        "<th class=centered>Ordinal<br>offset"
+        "<th class=centered>A<br>middle<br>position"
+        "<th class=centered>B<br>middle<br>position"
+        "<th class=centered>Sequence<br>length"
+        ;
+    for(uint64_t i=0; i<step.anchorPair.orientedReadIds.size(); i++) {
+        const OrientedReadId orientedReadId = step.anchorPair.orientedReadIds[i];
+        const auto& p = positions[i];
+        const Positions& positionsA = p.first;
+        const Positions& positionsB = p.second;
+        html <<
+            "<tr>"
+            "<td class=centered>" << orientedReadId <<
+            "<td class=centered>" << positionsA.positionInJourney <<
+            "<td class=centered>" << positionsB.positionInJourney <<
+            "<td class=centered>" << positionsB.positionInJourney - positionsA.positionInJourney <<
+            "<td class=centered>" << positionsA.ordinal <<
+            "<td class=centered>" << positionsB.ordinal <<
+            "<td class=centered>" << positionsB.ordinal - positionsA.ordinal <<
+            "<td class=centered>" << positionsA.basePosition <<
+            "<td class=centered>" << positionsB.basePosition <<
+            "<td class=centered>" << positionsB.basePosition - positionsA.basePosition;
+
+    }
+    html << "</table>";
 }
 
 

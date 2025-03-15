@@ -250,6 +250,7 @@ public:
     void exploreJourney(const vector<string>&, ostream&);
     void exploreReadFollowing(const vector<string>&, ostream&);
     void exploreSegment(const vector<string>&, ostream&);
+    void exploreSegmentStep(const vector<string>&, ostream&);
     void exploreLocalAssembly(const vector<string>&, ostream&);
     void exploreLocalAnchorGraph(const vector<string>&, ostream&);
 
