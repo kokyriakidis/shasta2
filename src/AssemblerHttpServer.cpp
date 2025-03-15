@@ -42,6 +42,7 @@ void Assembler::fillServerFunctionTable()
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreReadFollowing);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreLocalAssembly);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreLocalAnchorGraph);
+    SHASTA_ADD_TO_FUNCTION_TABLE(exploreSegment);
 }
 #undef SHASTA_ADD_TO_FUNCTION_TABLE
 
@@ -215,6 +216,7 @@ void Assembler::writeNavigation(ostream& html) const
 
     // Assembly menu.
     writeNavigation(html, "Assembly", {
+        {"Segment", "exploreSegment"},
         {"Local assembly", "exploreLocalAssembly"},
         });
 

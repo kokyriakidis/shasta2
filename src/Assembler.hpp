@@ -16,6 +16,7 @@
 namespace shasta {
 
     class Assembler;
+    class AssemblyGraphPostprocessor;
     class Anchors;
     class AssemblerInfo;
     class Journeys;
@@ -248,8 +249,13 @@ public:
     void exploreAnchorPair(const vector<string>&, ostream&);
     void exploreJourney(const vector<string>&, ostream&);
     void exploreReadFollowing(const vector<string>&, ostream&);
+    void exploreSegment(const vector<string>&, ostream&);
     void exploreLocalAssembly(const vector<string>&, ostream&);
     void exploreLocalAnchorGraph(const vector<string>&, ostream&);
+
+    // Get the AssemblyGraph for a given assembly stage.
+    const AssemblyGraphPostprocessor& getAssemblyGraph(const string& assemblyStage);
+    std::map<string, shared_ptr<AssemblyGraphPostprocessor> > assemblyGraphTable;
 
 };
 

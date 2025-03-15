@@ -1,11 +1,15 @@
 // Shasta.
 #include "Assembler.hpp"
+#include "AssemblyGraphPostprocessor.hpp"
 #include "Anchor.hpp"
 #include "LocalAssembly.hpp"
 using namespace shasta;
 
 // Boost libraries.
 #include <boost/algorithm/string.hpp>
+
+// Standard library.
+#include <tuple.hpp>
 
 
 
@@ -181,3 +185,233 @@ void Assembler::exploreLocalAssembly(
         localAssemblyOptions,
         useA, useB);
 }
+
+
+
+void Assembler::exploreSegment(
+    const vector<string>& request,
+    ostream& html)
+{
+    // Get the options from the request.
+    string assemblyStage;
+    HttpServer::getParameterValue(request, "assemblyStage", assemblyStage);
+
+    string segmentName;;
+    HttpServer::getParameterValue(request, "segmentName", segmentName);
+
+    string displaySteps = "none";
+    HttpServer::getParameterValue(request, "displaySteps", displaySteps);
+
+    string beginString;
+    HttpServer::getParameterValue(request, "begin", beginString);
+
+    string endString;
+    HttpServer::getParameterValue(request, "end", endString);
+
+    string firstStepsCountString = "5";
+    HttpServer::getParameterValue(request, "firstStepsCountString", firstStepsCountString);
+
+    string lastStepsCountString = "5";
+    HttpServer::getParameterValue(request, "lastStepsCount", lastStepsCountString);
+
+
+    // Start the form.
+    html << "<h2>Assembly graph segment</h2><form><table>";
+
+    html <<
+        "<tr>"
+        "<th class=left>Assembly stage"
+        "<td class=centered><input type=text name=assemblyStage style='text-align:center' required";
+    if(not assemblyStage.empty()) {
+        html << " value='" << assemblyStage + "'";
+    }
+    html << " size=30>";
+
+    html <<
+        "<tr>"
+        "<th class=left>Segment name"
+        "<td class=centered><input type=text name=segmentName style='text-align:center' required";
+    if(not segmentName.empty()) {
+        html << " value='" << segmentName + "'";
+    }
+    html << ">";
+
+
+
+    // Options to control which segment steps are shown.
+    html <<
+        "<tr>"
+        "<th class=left>Show segment steps"
+        "<td class=left>"
+
+        "<input type=radio required name=displaySteps value='none'" <<
+        (displaySteps == "none" ? " checked=on" : "") << "> None"
+
+        "<br><input type=radio required name=displaySteps value='all'" <<
+        (displaySteps == "all" ? " checked=on" : "") << "> All"
+
+        "<br><input type=radio required name=displaySteps value='range'" <<
+        (displaySteps == "range" ? " checked=on" : "") << "> Steps in position range "
+        "<input type=text name=begin size=8 style='text-align:center' value='" << beginString << "'> to "
+        "<input type=text name=end size=8 style='text-align:center' value='" << endString << "'>"
+
+        "<br><input type=radio required name=displaySteps value='first'" <<
+        (displaySteps == "first" ? " checked=on" : "") << "> First "
+        "<input type=text name=firstStepsCount size=8 style='text-align:center' value='" << firstStepsCountString << "'>"
+        " steps"
+
+        "<br><input type=radio required name=displaySteps value='last'" <<
+        (displaySteps == "last" ? " checked=on" : "") << "> Last "
+        "<input type=text name=lastStepsCount size=8 style='text-align:center' value='" << lastStepsCountString << "'>"
+        " steps"
+        ;
+
+    // End the form.
+    html <<
+        "</table>"
+        "<input type=submit value='Get segment information'>"
+        "</form>";
+
+    if(segmentName.empty()) {
+        return;
+    }
+
+    uint64_t segmentId = invalid<uint64_t>;
+    try {
+        segmentId = std::stol(segmentName);
+    } catch(exception&) {
+    }
+    if(segmentId == invalid<uint64_t>) {
+        html << "Segment name must be a number.";
+        return;
+    }
+
+    // Get the AssemblyGraph for this assembly stage..
+    const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(assemblyStage);
+
+    // Find the AssemblyGraphEdge corresponding to the requested segment.
+    auto it = assemblyGraph.segmentMap.find(segmentId);
+    if(it == assemblyGraph.segmentMap.end()) {
+        html << "<p>Assembly graph at stage " << assemblyStage <<
+            " does not have segment " << segmentId;
+        return;
+    }
+    const AssemblyGraph::edge_descriptor e = it->second;
+    const AssemblyGraphEdge& edge = assemblyGraph[e];
+
+    const AnchorId anchorIdA = edge.front().anchorPair.anchorIdA;
+    const AnchorId anchorIdB = edge.back().anchorPair.anchorIdB;
+    SHASTA_ASSERT(anchorIdA == assemblyGraph[source(e, assemblyGraph)].anchorId);
+    SHASTA_ASSERT(anchorIdB == assemblyGraph[target(e, assemblyGraph)].anchorId);
+
+    html << "<h2>Segment " << segmentId << " at assembly stage " << assemblyStage << "</h2>";
+
+    // Summary table.
+    html <<
+        "<table>"
+        "<tr><th class=left>First anchor<td class = centered>" << anchorIdToString(anchorIdA) <<
+        "<tr><th class=left>Last anchor<td class = centered>" << anchorIdToString(anchorIdB) <<
+        "<tr><th class=left>Number of steps<td class = centered>" << edge.size() <<
+        "<tr><th class=left>Estimated length<td class = centered>" << edge.length() <<
+        "<tr><th class=left>Lower limit on estimated length<td class = centered>" << edge.minOffset <<
+        "<tr><th class=left>Upper limit on estimated length<td class = centered>" << edge.maxOffset <<
+        "</table>";
+
+    // Details table showing the requested steps.
+    if(displaySteps == "none") {
+        return;
+    }
+
+
+
+    // Figure out the step position range to use.
+    uint64_t begin = invalid<uint64_t>;
+    uint64_t end = invalid<uint64_t>;
+    if(displaySteps == "all") {
+        begin = 0;
+        end = edge.size();
+    } else if(displaySteps == "range") {
+        try {
+            begin = atoul(beginString);
+        } catch(std::exception& e) {
+            throw runtime_error("Begin " + beginString + " is not valid. Must be a number.");
+        }
+        try {
+            end = atoul(endString);
+        } catch(std::exception& e) {
+            throw runtime_error("End " + endString + " is not valid. Must be a number.");
+        }
+        if(begin >= edge.size()) {
+            begin = edge.size() - 1;
+        }
+        if(end > edge.size()) {
+            end = edge.size();
+        }
+        if(end < begin) {
+            end = begin + 1;
+        }
+    } else if(displaySteps == "first") {
+        begin = 0;
+        try {
+            end = atoul(firstStepsCountString);
+        } catch(std::exception& e) {
+            throw runtime_error("First steps count " + firstStepsCountString + " is not valid. Must be a number.");
+        }
+        if(end > edge.size()) {
+            end = edge.size();
+        }
+    } else if(displaySteps == "last") {
+        end = edge.size();
+        uint64_t count = invalid<uint64_t>;
+        try {
+            count = atoul(lastStepsCountString);
+        } catch(std::exception& e) {
+            throw runtime_error("Last steps count " + lastStepsCountString + " is not valid. Must be a number.");
+        }
+        if(count > edge.size()) {
+            begin = 0;
+        } else {
+            begin = end - count;
+        }
+    } else {
+        SHASTA_ASSERT(0);
+    }
+    SHASTA_ASSERT(end > begin);
+
+
+    html << "<p><table>"
+        "<tr><th>Position<th>AnchorIdA<th>AnchorIdB<th>Coverage"
+        "<th>Average<br>offset"
+        "<th>Min<br>offset"
+        "<th>Max<br>offset";
+
+    for(uint64_t i=begin; i!=end; i++) {
+        const AssemblyGraphStep& step = edge[i];
+
+        html <<
+            "<tr>"
+            "<td class=centered>" << i <<
+            "<td class=centered>" << anchorIdToString(step.anchorPair.anchorIdA) <<
+            "<td class=centered>" << anchorIdToString(step.anchorPair.anchorIdB) <<
+            "<td class=centered>" << step.anchorPair.orientedReadIds.size() <<
+            "<td class=centered>" << step.averageOffset <<
+            "<td class=centered>" << step.minOffset <<
+            "<td class=centered>" << step.maxOffset;
+    }
+
+    html << "</table>";
+}
+
+
+const AssemblyGraphPostprocessor& Assembler::getAssemblyGraph(const string& assemblyStage)
+{
+    auto it = assemblyGraphTable.find(assemblyStage);
+    if(it == assemblyGraphTable.end()) {
+        shared_ptr<AssemblyGraphPostprocessor> p =
+            make_shared<AssemblyGraphPostprocessor>(assemblyStage, anchors());
+        tie(it, ignore) = assemblyGraphTable.insert(make_pair(assemblyStage, p));
+    }
+    return *(it->second);
+}
+
+
