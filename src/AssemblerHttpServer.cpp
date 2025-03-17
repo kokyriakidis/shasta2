@@ -44,6 +44,7 @@ void Assembler::fillServerFunctionTable()
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreLocalAnchorGraph);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreSegment);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreSegmentStep);
+    SHASTA_ADD_TO_FUNCTION_TABLE(exploreTangleMatrix);
 }
 #undef SHASTA_ADD_TO_FUNCTION_TABLE
 
@@ -218,6 +219,7 @@ void Assembler::writeNavigation(ostream& html) const
     // Assembly menu.
     writeNavigation(html, "Assembly", {
         {"Segment", "exploreSegment"},
+        {"Tangle matrix", "exploreTangleMatrix"},
         {"Local assembly", "exploreLocalAssembly"},
         });
 

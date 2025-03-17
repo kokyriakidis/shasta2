@@ -3,10 +3,12 @@
 #include "AssemblyGraphPostprocessor.hpp"
 #include "Anchor.hpp"
 #include "LocalAssembly.hpp"
+#include "TangleMatrix.hpp"
 using namespace shasta;
 
 // Boost libraries.
 #include <boost/algorithm/string.hpp>
+#include <boost/tokenizer.hpp>
 
 // Standard library.
 #include <tuple.hpp>
@@ -519,4 +521,133 @@ void Assembler::exploreSegmentStep(const vector<string>& request, ostream& html)
     html << "</table>";
 }
 
+
+
+void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html)
+{
+    // Get the options from the request.
+    string assemblyStage;
+    HttpServer::getParameterValue(request, "assemblyStage", assemblyStage);
+    boost::trim(assemblyStage);
+
+    string entrancesString;
+    HttpServer::getParameterValue(request, "entrances", entrancesString);
+    boost::trim(entrancesString);
+
+    string exitsString;
+    HttpServer::getParameterValue(request, "exits", exitsString);
+    boost::trim(exitsString);
+
+
+
+    // Start the form.
+    html << "<h2>Assembly graph tangle matrix</h2><form>";
+
+    html <<
+        "<table>"
+        "<tr>"
+        "<th class=left>Assembly stage"
+        "<td class=centered><input type=text name=assemblyStage style='text-align:center' required";
+    if(not assemblyStage.empty()) {
+        html << " value='" << assemblyStage + "'";
+    }
+    html << " size=30>";
+
+    html <<
+        "<tr title='Enter assembly segment names separated by commas or spaces.'>"
+        "<th class=left>Entrances"
+        "<td class=centered>"
+        "<input type=text name=entrances style='text-align:center'";
+    if(not entrancesString.empty()) {
+        html << " value='" << entrancesString << "'";
+    }
+    html << " size=30>";
+
+    html <<
+        "<tr title='Enter assembly segment names separated by commas or spaces.'>"
+        "<th class=left>Exits"
+        "<td class=centered>"
+        "<input type=text name=exits style='text-align:center'";
+    if(not exitsString.empty()) {
+        html << " value='" << exitsString << "'";
+    }
+    html << " size=30>";
+
+    // End the form.
+    html <<
+        "</table>"
+        "<input type=submit value='Compute tangle matrix'>"
+        "</form>";
+
+    if(entrancesString.empty() or exitsString.empty()) {
+        return;
+    }
+
+    // Get the AssemblyGraph for this assembly stage.
+    const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(assemblyStage);
+
+
+
+    // Find AssemblyGraph edges corresponding to the entrances.
+    vector<AssemblyGraph::edge_descriptor> entrances;
+    {
+        boost::tokenizer< boost::char_separator<char> > tokenizer(entrancesString, boost::char_separator<char>(", "));
+        for(const string& edgeIdString: tokenizer) {
+            uint64_t segmentId = invalid<uint64_t>;
+            try {
+                segmentId = std::stol(edgeIdString);
+            } catch(exception&) {
+            }
+            if(segmentId == invalid<uint64_t>) {
+                html << "Invalid segment " << edgeIdString << ". Must be a number.";
+                return;
+            }
+
+            // Find the AssemblyGraphEdge corresponding to the requested segment.
+            auto it = assemblyGraph.segmentMap.find(segmentId);
+            if(it == assemblyGraph.segmentMap.end()) {
+                html << "<p>Assembly graph at stage " << assemblyStage <<
+                    " does not have segment " << segmentId;
+                return;
+            }
+
+            entrances.push_back(it->second);
+        }
+
+    }
+
+
+
+    // Find AssemblyGraph edges corresponding to the exits.
+    vector<AssemblyGraph::edge_descriptor> exits;
+    {
+        boost::tokenizer< boost::char_separator<char> > tokenizer(exitsString, boost::char_separator<char>(", "));
+        for(const string& edgeIdString: tokenizer) {
+            uint64_t segmentId = invalid<uint64_t>;
+            try {
+                segmentId = std::stol(edgeIdString);
+            } catch(exception&) {
+            }
+            if(segmentId == invalid<uint64_t>) {
+                html << "Invalid segment " << edgeIdString << ". Must be a number.";
+                return;
+            }
+
+            // Find the AssemblyGraphEdge corresponding to the requested segment.
+            auto it = assemblyGraph.segmentMap.find(segmentId);
+            if(it == assemblyGraph.segmentMap.end()) {
+                html << "<p>Assembly graph at stage " << assemblyStage <<
+                    " does not have segment " << segmentId;
+                return;
+            }
+
+            exits.push_back(it->second);
+        }
+    }
+
+
+    // Create the TangleMatrix.
+    const TangleMatrix tangleMatrix(assemblyGraph, entrances, exits);
+    tangleMatrix.writeHtml(assemblyGraph, html);
+}
 

@@ -16,6 +16,8 @@ namespace shasta {
     class AssemblyGraph;
     class AssemblyGraphVertex;
     class AssemblyGraphEdge;
+    class AssemblyGraphEdgeOrderById;
+    class AssemblyGraphEdgeCompareEqualById;
     class AssemblyGraphStep;
 
     using AssemblyGraphBaseClass = boost::adjacency_list<
@@ -148,4 +150,39 @@ private:
     // The file name is AssemblyGraph-Stage.
     void save(const string& stage) const;
     void load(const string& stage);
+};
+
+
+
+// A function object class that orders AssemblyGraph::edge_descriptors
+// considering only their id.
+class shasta::AssemblyGraphEdgeOrderById {
+public:
+    AssemblyGraphEdgeOrderById(const AssemblyGraph& assemblyGraph) : assemblyGraph(assemblyGraph) {}
+    using edge_descriptor = AssemblyGraph::edge_descriptor;
+    bool operator()(const edge_descriptor& x, const edge_descriptor& y) const
+    {
+        const uint64_t xId = assemblyGraph[x].id;
+        const uint64_t yId = assemblyGraph[y].id;
+        return xId < yId;
+    }
+private:
+    const AssemblyGraph& assemblyGraph;
+};
+
+
+
+
+class shasta::AssemblyGraphEdgeCompareEqualById {
+public:
+    AssemblyGraphEdgeCompareEqualById(const AssemblyGraph& assemblyGraph) : assemblyGraph(assemblyGraph) {}
+    using edge_descriptor = AssemblyGraph::edge_descriptor;
+    bool operator()(const edge_descriptor& x, const edge_descriptor& y) const
+    {
+        const uint64_t xId = assemblyGraph[x].id;
+        const uint64_t yId = assemblyGraph[y].id;
+        return xId == yId;
+    }
+private:
+    const AssemblyGraph& assemblyGraph;
 };
