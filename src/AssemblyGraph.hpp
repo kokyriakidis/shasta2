@@ -16,6 +16,8 @@ namespace shasta {
     class AssemblyGraph;
     class AssemblyGraphVertex;
     class AssemblyGraphEdge;
+    class AssemblyGraphVertexOrderByAnchorId;
+    class AssemblyGraphVertexCompareEqualByAnchorId;
     class AssemblyGraphEdgeOrderById;
     class AssemblyGraphEdgeCompareEqualById;
     class AssemblyGraphStep;
@@ -150,6 +152,42 @@ private:
     // The file name is AssemblyGraph-Stage.
     void save(const string& stage) const;
     void load(const string& stage);
+};
+
+
+
+// A function object class that orders AssemblyGraph::vertex_descriptors
+// considering only their AnchorId.
+class shasta::AssemblyGraphVertexOrderByAnchorId {
+public:
+    AssemblyGraphVertexOrderByAnchorId(const AssemblyGraph& assemblyGraph) : assemblyGraph(assemblyGraph) {}
+    using vertex_descriptor = AssemblyGraph::vertex_descriptor;
+    bool operator()(const vertex_descriptor& x, const vertex_descriptor& y) const
+    {
+        const uint64_t xAnchorId = assemblyGraph[x].anchorId;
+        const uint64_t yAnchorId = assemblyGraph[y].anchorId;
+        return xAnchorId < yAnchorId;
+    }
+private:
+    const AssemblyGraph& assemblyGraph;
+};
+
+
+
+// A function object class that orders AssemblyGraph::vertex_descriptors
+// considering only their AnchorId.
+class shasta::AssemblyGraphVertexCompareEqualByAnchorId {
+public:
+    AssemblyGraphVertexCompareEqualByAnchorId(const AssemblyGraph& assemblyGraph) : assemblyGraph(assemblyGraph) {}
+    using vertex_descriptor = AssemblyGraph::vertex_descriptor;
+    bool operator()(const vertex_descriptor& x, const vertex_descriptor& y) const
+    {
+        const uint64_t xAnchorId = assemblyGraph[x].anchorId;
+        const uint64_t yAnchorId = assemblyGraph[y].anchorId;
+        return xAnchorId == yAnchorId;
+    }
+private:
+    const AssemblyGraph& assemblyGraph;
 };
 
 

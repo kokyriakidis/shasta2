@@ -35,6 +35,13 @@ public:
         vector<edge_descriptor> entranceEdges,
         vector<edge_descriptor> exitEdges);
 
+    TangleMatrix() {}
+
+    void construct(
+        const AssemblyGraph&,
+        vector<edge_descriptor> entranceEdges,
+        vector<edge_descriptor> exitEdges);
+
     void writeHtml(
         const AssemblyGraph&,
         ostream&) const;

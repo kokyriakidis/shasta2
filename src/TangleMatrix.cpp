@@ -3,7 +3,18 @@
 using namespace shasta;
 
 
+
 TangleMatrix::TangleMatrix(
+    const AssemblyGraph& assemblyGraph,
+    vector<edge_descriptor> entranceEdges,
+    vector<edge_descriptor> exitEdges)
+{
+    construct(assemblyGraph, entranceEdges, exitEdges);
+}
+
+
+
+void TangleMatrix::construct(
     const AssemblyGraph& assemblyGraph,
     vector<edge_descriptor> entranceEdges,
     vector<edge_descriptor> exitEdges)

@@ -3,6 +3,7 @@
 #include "AssemblyGraphPostprocessor.hpp"
 #include "Anchor.hpp"
 #include "LocalAssembly.hpp"
+#include "Tangle.hpp"
 #include "TangleMatrix.hpp"
 using namespace shasta;
 
@@ -651,3 +652,154 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
     tangleMatrix.writeHtml(assemblyGraph, html);
 }
 
+
+
+// The vertex is specified using one of the segments that have the vertex as their target.
+void Assembler::exploreVertexTangle(const vector<string>& request, ostream& html)
+{
+    // Get the options from the request.
+    string assemblyStage;
+    HttpServer::getParameterValue(request, "assemblyStage", assemblyStage);
+
+    string segmentName;;
+    HttpServer::getParameterValue(request, "segmentName", segmentName);
+
+    // Start the form.
+    html << "<h2>Assembly graph vertex tangle</h2><form><table>";
+
+    html <<
+        "<tr>"
+        "<th class=left>Assembly stage"
+        "<td class=centered><input type=text name=assemblyStage style='text-align:center' required";
+    if(not assemblyStage.empty()) {
+        html << " value='" << assemblyStage + "'";
+    }
+    html << " size=30>";
+
+    html <<
+        "<tr>"
+        "<th class=left>Name of a segment with target<br>at the desired vertex"
+        "<td class=centered><input type=text name=segmentName style='text-align:center' required";
+    if(not segmentName.empty()) {
+        html << " value='" << segmentName + "'";
+    }
+    html << ">";
+
+
+
+   // End the form.
+    html <<
+        "</table>"
+        "<input type=submit value='Get tangle information'>"
+        "</form>";
+
+    if(segmentName.empty()) {
+        return;
+    }
+
+    uint64_t segmentId = invalid<uint64_t>;
+    try {
+        segmentId = std::stol(segmentName);
+    } catch(exception&) {
+    }
+    if(segmentId == invalid<uint64_t>) {
+        html << "Segment name must be a number.";
+        return;
+    }
+
+    // Get the AssemblyGraph for this assembly stage.
+    const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(assemblyStage);
+
+    // Find the AssemblyGraphEdge corresponding to the requested segment.
+    auto it = assemblyGraph.segmentMap.find(segmentId);
+    if(it == assemblyGraph.segmentMap.end()) {
+        html << "<p>Assembly graph at stage " << assemblyStage <<
+            " does not have segment " << segmentId;
+        return;
+    }
+    const AssemblyGraph::edge_descriptor e = it->second;
+
+
+
+    // Create a Tangle at the target of this edge.
+    const AssemblyGraph::vertex_descriptor v = target(e, assemblyGraph);
+    const Tangle tangle(assemblyGraph, v);
+
+    // Write out the TangleMatrix.
+    tangle.tangleMatrix.writeHtml(assemblyGraph, html);
+}
+
+
+
+void Assembler::exploreEdgeTangle(const vector<string>& request, ostream& html)
+{
+    // Get the options from the request.
+    string assemblyStage;
+    HttpServer::getParameterValue(request, "assemblyStage", assemblyStage);
+
+    string segmentName;;
+    HttpServer::getParameterValue(request, "segmentName", segmentName);
+
+    // Start the form.
+    html << "<h2>Assembly graph edge tangle</h2><form><table>";
+
+    html <<
+        "<tr>"
+        "<th class=left>Assembly stage"
+        "<td class=centered><input type=text name=assemblyStage style='text-align:center' required";
+    if(not assemblyStage.empty()) {
+        html << " value='" << assemblyStage + "'";
+    }
+    html << " size=30>";
+
+    html <<
+        "<tr>"
+        "<th class=left>Segment name"
+        "<td class=centered><input type=text name=segmentName style='text-align:center' required";
+    if(not segmentName.empty()) {
+        html << " value='" << segmentName + "'";
+    }
+    html << ">";
+
+
+
+   // End the form.
+    html <<
+        "</table>"
+        "<input type=submit value='Get tangle information'>"
+        "</form>";
+
+    if(segmentName.empty()) {
+        return;
+    }
+
+    uint64_t segmentId = invalid<uint64_t>;
+    try {
+        segmentId = std::stol(segmentName);
+    } catch(exception&) {
+    }
+    if(segmentId == invalid<uint64_t>) {
+        html << "Segment name must be a number.";
+        return;
+    }
+
+    // Get the AssemblyGraph for this assembly stage.
+    const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(assemblyStage);
+
+    // Find the AssemblyGraphEdge corresponding to the requested segment.
+    auto it = assemblyGraph.segmentMap.find(segmentId);
+    if(it == assemblyGraph.segmentMap.end()) {
+        html << "<p>Assembly graph at stage " << assemblyStage <<
+            " does not have segment " << segmentId;
+        return;
+    }
+    const AssemblyGraph::edge_descriptor e = it->second;
+
+
+
+    // Create a Tangle at this edge.
+    const Tangle tangle(assemblyGraph, e);
+
+    // Write out the TangleMatrix.
+    tangle.tangleMatrix.writeHtml(assemblyGraph, html);
+}
