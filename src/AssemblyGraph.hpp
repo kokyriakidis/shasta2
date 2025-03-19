@@ -11,6 +11,9 @@
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/serialization/vector.hpp>
 
+// Standard library.
+#include <tuple.hpp>
+
 namespace shasta {
 
     class AssemblyGraph;
@@ -30,6 +33,7 @@ namespace shasta {
         AssemblyGraphEdge>;
 
     class AnchorGraph;
+    class Detangler;
 
 }
 
@@ -121,6 +125,15 @@ public:
     // Deserialize.
     AssemblyGraph(const string& assemblyStage, const Anchors&);
 
+
+    edge_descriptor addEdge(vertex_descriptor v0, vertex_descriptor v1)
+    {
+        edge_descriptor e;
+        tie(e, ignore) = boost::add_edge(v0, v1, *this);
+        (*this)[e].id = nextEdgeId++;
+        return e;
+    }
+
 private:
     uint64_t nextEdgeId = 0;
 
@@ -129,6 +142,8 @@ private:
         uint64_t a,
         uint64_t b);
     void compress();
+
+    void detangleVertices(const Anchors&, Detangler&);
 
     void write(const string& name) const;
     void writeGfa(const string& fileName) const;

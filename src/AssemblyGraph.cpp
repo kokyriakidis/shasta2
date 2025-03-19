@@ -3,7 +3,9 @@
 #include "Anchor.hpp"
 #include "AnchorGraph.hpp"
 #include "deduplicate.hpp"
+#include "Detangler.hpp"
 #include "findLinearChains.hpp"
+#include "Tangle.hpp"
 using namespace shasta;
 
 // Boost libraries.
@@ -14,7 +16,6 @@ using namespace shasta;
 // Standard library.
 #include <fstream.hpp>
 #include <queue>
-#include <tuple.hpp>
 
 
 
@@ -93,6 +94,14 @@ AssemblyGraph::AssemblyGraph(
     cout << "After transitive reduction, the assembly graph has " << num_vertices(assemblyGraph) <<
         " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
     write("B");
+
+    TrivialDetangler detangler;
+    detangleVertices(anchors, detangler);
+    compress();
+
+    cout << "After trivial vertex detangling, the assembly graph has " << num_vertices(assemblyGraph) <<
+        " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
+    write("C");
 }
 
 
@@ -476,4 +485,33 @@ AssemblyGraph::AssemblyGraph(
     MappedMemoryOwner(anchors)
 {
     load(assemblyStage);
+}
+
+
+
+void AssemblyGraph::detangleVertices(const Anchors& anchors, Detangler& detangler)
+{
+    AssemblyGraph& assemblyGraph = *this;
+
+    // Gather all the vertices with in_degree and out_degree greater than 1.
+    vector<vertex_descriptor> detanglingCandidates;
+    BGL_FORALL_VERTICES(v, assemblyGraph, AssemblyGraph) {
+        if(
+            (in_degree(v, assemblyGraph) > 1) and
+            (out_degree(v, assemblyGraph) > 1)) {
+            detanglingCandidates.push_back(v);
+        }
+    }
+    cout << "Found " << detanglingCandidates.size() <<
+        " tangle vertices." << endl;
+
+    uint64_t successCount = 0;
+    for(const vertex_descriptor v: detanglingCandidates) {
+        Tangle tangle(assemblyGraph, v);
+        const bool success = detangler(anchors, assemblyGraph, tangle);
+        if(success) {
+            ++successCount;
+        }
+    }
+    cout << "Detangling successful for " << successCount << " tangle vertices." << endl;
 }

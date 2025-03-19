@@ -46,8 +46,6 @@ public:
         const AssemblyGraph&,
         ostream&) const;
 
-private:
-
     class Entrance {
         public:
         edge_descriptor e;

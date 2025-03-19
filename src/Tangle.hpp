@@ -72,14 +72,23 @@ public:
 
     TangleMatrix tangleMatrix;
 
+    // Detangling instructions.
+    // Each pair is (entranceIndex, exitIndex) that are to be connected
+    // when detangling.
+    vector< pair<uint64_t, uint64_t> > connectList;
+    void connect(uint64_t iEntrance, uint64_t iExit) {
+        SHASTA_ASSERT(iEntrance < tangleMatrix.entrances.size());
+        SHASTA_ASSERT(iExit < tangleMatrix.exits.size());
+        connectList.push_back({iEntrance, iExit});
+    }
+    void detangle(const Anchors&, AssemblyGraph&);
+
 private:
-    void construct(
-        const AssemblyGraph&,
-        const vector<vertex_descriptor>&);
+    void construct(const AssemblyGraph&);
 
     // The Tangle vertices, sorted using AssemblyGraphVertexOrderByAnchorId.
-    vector<vertex_descriptor> tangleVertices;
     AssemblyGraphVertexOrderByAnchorId sorter;
+    vector<vertex_descriptor> tangleVertices;
     bool isTangleVertex(vertex_descriptor v) const
     {
         return std::binary_search(tangleVertices.begin(), tangleVertices.end(), v, sorter);
