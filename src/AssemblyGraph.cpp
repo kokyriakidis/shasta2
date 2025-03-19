@@ -23,7 +23,8 @@ AssemblyGraph::AssemblyGraph(
     const Anchors& anchors,
     const AnchorGraph& anchorGraph,
     const AssemblerOptions::AssemblyGraphOptions& options) :
-    MappedMemoryOwner(anchors)
+    MappedMemoryOwner(anchors),
+    anchors(anchors)
 {
     AssemblyGraph& assemblyGraph = *this;
 
@@ -96,7 +97,7 @@ AssemblyGraph::AssemblyGraph(
     write("B");
 
     TrivialDetangler detangler;
-    detangleVertices(anchors, detangler);
+    detangleVertices(detangler);
     compress();
 
     cout << "After trivial vertex detangling, the assembly graph has " << num_vertices(assemblyGraph) <<
@@ -481,15 +482,17 @@ void AssemblyGraph::load(const string& assemblyStage)
 
 // Deserialize.
 AssemblyGraph::AssemblyGraph(
-    const string& assemblyStage, const Anchors& anchors) :
-    MappedMemoryOwner(anchors)
+    const Anchors& anchors,
+    const string& assemblyStage) :
+    MappedMemoryOwner(anchors),
+    anchors(anchors)
 {
     load(assemblyStage);
 }
 
 
 
-void AssemblyGraph::detangleVertices(const Anchors& anchors, Detangler& detangler)
+void AssemblyGraph::detangleVertices(Detangler& detangler)
 {
     AssemblyGraph& assemblyGraph = *this;
 

@@ -417,7 +417,7 @@ const AssemblyGraphPostprocessor& Assembler::getAssemblyGraph(const string& asse
     auto it = assemblyGraphTable.find(assemblyStage);
     if(it == assemblyGraphTable.end()) {
         shared_ptr<AssemblyGraphPostprocessor> p =
-            make_shared<AssemblyGraphPostprocessor>(assemblyStage, anchors());
+            make_shared<AssemblyGraphPostprocessor>(anchors(), assemblyStage);
         tie(it, ignore) = assemblyGraphTable.insert(make_pair(assemblyStage, p));
     }
     return *(it->second);

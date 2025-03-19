@@ -32,6 +32,7 @@ namespace shasta {
         AssemblyGraphVertex,
         AssemblyGraphEdge>;
 
+    class Anchor;
     class AnchorGraph;
     class Detangler;
 
@@ -123,7 +124,9 @@ public:
         const AssemblerOptions::AssemblyGraphOptions&);
 
     // Deserialize.
-    AssemblyGraph(const string& assemblyStage, const Anchors&);
+    AssemblyGraph(
+        const Anchors&,
+        const string& assemblyStage);
 
 
     edge_descriptor addEdge(vertex_descriptor v0, vertex_descriptor v1)
@@ -135,6 +138,7 @@ public:
     }
 
 private:
+    const Anchors& anchors;
     uint64_t nextEdgeId = 0;
 
     void transitiveReduction(
@@ -143,7 +147,7 @@ private:
         uint64_t b);
     void compress();
 
-    void detangleVertices(const Anchors&, Detangler&);
+    void detangleVertices(Detangler&);
 
     void write(const string& name) const;
     void writeGfa(const string& fileName) const;
