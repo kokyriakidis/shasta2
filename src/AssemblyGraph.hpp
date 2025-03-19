@@ -138,6 +138,9 @@ public:
     }
 
     const Anchors& anchors;
+
+    void detangleVertices(Detangler&);
+
 private:
     uint64_t nextEdgeId = 0;
 
@@ -146,8 +149,6 @@ private:
         uint64_t a,
         uint64_t b);
     void compress();
-
-    void detangleVertices(Detangler&);
 
     void write(const string& name) const;
     void writeGfa(const string& fileName) const;

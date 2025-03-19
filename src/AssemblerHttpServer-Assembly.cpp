@@ -293,8 +293,8 @@ void Assembler::exploreSegment(
     const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(assemblyStage);
 
     // Find the AssemblyGraphEdge corresponding to the requested segment.
-    auto it = assemblyGraph.segmentMap.find(segmentId);
-    if(it == assemblyGraph.segmentMap.end()) {
+    auto it = assemblyGraph.edgeMap.find(segmentId);
+    if(it == assemblyGraph.edgeMap.end()) {
         html << "<p>Assembly graph at stage " << assemblyStage <<
             " does not have segment " << segmentId;
         return;
@@ -451,8 +451,8 @@ void Assembler::exploreSegmentStep(const vector<string>& request, ostream& html)
     const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(assemblyStage);
 
     // Find the AssemblyGraphEdge corresponding to the requested segment.
-    auto it = assemblyGraph.segmentMap.find(segmentId);
-    if(it == assemblyGraph.segmentMap.end()) {
+    auto it = assemblyGraph.edgeMap.find(segmentId);
+    if(it == assemblyGraph.edgeMap.end()) {
         html << "<p>Assembly graph at stage " << assemblyStage <<
             " does not have segment " << segmentId;
         return;
@@ -605,8 +605,8 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
             }
 
             // Find the AssemblyGraphEdge corresponding to the requested segment.
-            auto it = assemblyGraph.segmentMap.find(segmentId);
-            if(it == assemblyGraph.segmentMap.end()) {
+            auto it = assemblyGraph.edgeMap.find(segmentId);
+            if(it == assemblyGraph.edgeMap.end()) {
                 html << "<p>Assembly graph at stage " << assemblyStage <<
                     " does not have segment " << segmentId;
                 return;
@@ -635,8 +635,8 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
             }
 
             // Find the AssemblyGraphEdge corresponding to the requested segment.
-            auto it = assemblyGraph.segmentMap.find(segmentId);
-            if(it == assemblyGraph.segmentMap.end()) {
+            auto it = assemblyGraph.edgeMap.find(segmentId);
+            if(it == assemblyGraph.edgeMap.end()) {
                 html << "<p>Assembly graph at stage " << assemblyStage <<
                     " does not have segment " << segmentId;
                 return;
@@ -711,8 +711,8 @@ void Assembler::exploreVertexTangle(const vector<string>& request, ostream& html
     AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(assemblyStage);
 
     // Find the AssemblyGraphEdge corresponding to the requested segment.
-    auto it = assemblyGraph.segmentMap.find(segmentId);
-    if(it == assemblyGraph.segmentMap.end()) {
+    auto it = assemblyGraph.edgeMap.find(segmentId);
+    if(it == assemblyGraph.edgeMap.end()) {
         html << "<p>Assembly graph at stage " << assemblyStage <<
             " does not have segment " << segmentId;
         return;
@@ -787,8 +787,8 @@ void Assembler::exploreEdgeTangle(const vector<string>& request, ostream& html)
     AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(assemblyStage);
 
     // Find the AssemblyGraphEdge corresponding to the requested segment.
-    auto it = assemblyGraph.segmentMap.find(segmentId);
-    if(it == assemblyGraph.segmentMap.end()) {
+    auto it = assemblyGraph.edgeMap.find(segmentId);
+    if(it == assemblyGraph.edgeMap.end()) {
         html << "<p>Assembly graph at stage " << assemblyStage <<
             " does not have segment " << segmentId;
         return;

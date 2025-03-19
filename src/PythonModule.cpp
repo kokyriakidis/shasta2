@@ -3,8 +3,10 @@
 // Shasta.
 #include "Assembler.hpp"
 #include "AssemblerOptions.hpp"
+#include "AssemblyGraphPostprocessor.hpp"
 #include "Base.hpp"
 #include "deduplicate.hpp"
+#include "Detangler.hpp"
 #include "diploidBayesianPhase.hpp"
 #include "extractKmer128.hpp"
 #include "globalMsa.hpp"
@@ -110,7 +112,33 @@ PYBIND11_MODULE(shasta2, shasta2Module)
          arg("minAnchorGraphEdgeCoverage"),
          arg("assemblyGraphOptions"),
          arg("threadCount") = 0)
+     .def("getAssemblyGraph",
+         &Assembler::getAssemblyGraph)
     ;
+
+
+
+    // AssemblyGraph and related access functions.
+    class_<AssemblyGraph::vertex_descriptor>(shasta2Module, "AssemblyGraphVertexDescriptor")
+        ;
+    class_<AssemblyGraph::edge_descriptor>(shasta2Module, "AssemblyGraphEdgeDescriptor")
+        ;
+    class_<AssemblyGraphVertex>(shasta2Module, "AssemblyGraphVertex")
+        .def_readwrite("anchorId", &AssemblyGraphVertex::anchorId)
+        ;
+    class_<AssemblyGraphEdge>(shasta2Module, "AssemblyGraphEdge")
+        .def_readwrite("id", &AssemblyGraphEdge::id)
+        ;
+    class_<AssemblyGraphPostprocessor>(shasta2Module, "AssemblyGraph")
+        .def("getVertexDescriptor", &AssemblyGraphPostprocessor::getVertexDescriptor)
+        .def("getVertex", &AssemblyGraphPostprocessor::getVertex, return_value_policy::reference)
+        .def("getEdgeDescriptor", &AssemblyGraphPostprocessor::getEdgeDescriptor)
+        .def("getEdge", &AssemblyGraphPostprocessor::getEdge, return_value_policy::reference)
+        .def("detangleVertices", &AssemblyGraphPostprocessor::detangleVertices)
+        ;
+    class_<TrivialDetangler>(shasta2Module, "TrivialDetangler")
+        .def(init<>())
+        ;
 
 
 

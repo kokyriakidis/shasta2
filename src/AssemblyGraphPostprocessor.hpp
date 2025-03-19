@@ -5,18 +5,45 @@
 
 namespace shasta {
     class AssemblyGraphPostprocessor;
+    class TrivialDetangler;
 }
 
 
 
 // AssemblyGraph functionality needed only during postprocessing.
+// It is used in the http server and in the Python API.
 class shasta::AssemblyGraphPostprocessor : public AssemblyGraph {
 public:
     AssemblyGraphPostprocessor(
         const Anchors&,
         const string& assemblyStage);
 
-    // Map a segment id to an edge decriptor.
-    std::map<uint64_t, edge_descriptor> segmentMap;
+
+
+    // Some accessors used in the Python API.
+
+    // Get the vertex_descriptor corresponding to an AnchorId.
+    vertex_descriptor getVertexDescriptor(AnchorId) const;
+
+    // Get the vertex corresponding to a vertex_descriptor.
+    AssemblyGraphVertex& getVertex(vertex_descriptor);
+
+    // Get the edge_descriptor corresponding to a segmentId.
+    edge_descriptor getEdgeDescriptor(uint64_t segmentId) const;
+
+    // Get the edge corresponding to an edge_descriptor.
+    AssemblyGraphEdge& getEdge(edge_descriptor);
+
+
+
+    // This is needed to simplify the Python API.
+    void detangleVertices(TrivialDetangler&);
+
+    // Map from AnchorId to vertex_descriptor.
+    std::map<AnchorId, vertex_descriptor> vertexMap;
+
+    // Map from edge id toedge_descriptor.
+    std::map<uint64_t, edge_descriptor> edgeMap;
+
 };
 
