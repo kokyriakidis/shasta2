@@ -511,7 +511,7 @@ void AssemblyGraph::detangleVertices(Detangler& detangler)
     uint64_t successCount = 0;
     for(const vertex_descriptor v: detanglingCandidates) {
         Tangle tangle(assemblyGraph, v);
-        const bool success = detangler(anchors, assemblyGraph, tangle);
+        const bool success = detangler(tangle);
         if(success) {
             ++successCount;
         }

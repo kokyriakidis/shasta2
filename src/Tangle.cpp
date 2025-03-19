@@ -11,42 +11,45 @@ using namespace shasta;
 
 // Constructor from a set of AssemblyGraph vertices.
 Tangle::Tangle(
-    const AssemblyGraph& assemblyGraph,
+    AssemblyGraph& assemblyGraph,
     const vector<vertex_descriptor>& tangleVertices) :
+    assemblyGraph(assemblyGraph),
     sorter(assemblyGraph),
     tangleVertices(tangleVertices)
 {
-    construct(assemblyGraph);
+    construct();
 }
 
 
 
 // Constructor from a single AssemblyGraph vertex.
 Tangle::Tangle(
-    const AssemblyGraph& assemblyGraph,
+    AssemblyGraph& assemblyGraph,
     vertex_descriptor v) :
+    assemblyGraph(assemblyGraph),
     sorter(assemblyGraph)
 {
     tangleVertices.push_back(v);
-    construct(assemblyGraph);
+    construct();
 }
 
 
 
 // Constructor from a single AssemblyGraph edge.
 Tangle::Tangle(
-    const AssemblyGraph& assemblyGraph,
+    AssemblyGraph& assemblyGraph,
     edge_descriptor e) :
+    assemblyGraph(assemblyGraph),
     sorter(assemblyGraph)
 {
     tangleVertices.push_back(source(e, assemblyGraph));
     tangleVertices.push_back(target(e, assemblyGraph));
-    construct(assemblyGraph);
+    construct();
 }
 
 
 
-void Tangle::construct(const AssemblyGraph& assemblyGraph)
+void Tangle::construct()
 {
     sort(tangleVertices.begin(), tangleVertices.end(), sorter);
 
@@ -78,9 +81,7 @@ void Tangle::construct(const AssemblyGraph& assemblyGraph)
 
 
 
-void Tangle::detangle(
-    const Anchors& anchors,
-    AssemblyGraph& assemblyGraph)
+void Tangle::detangle()
 {
 
     // For each Entrance we create a new edge with the last AssembyGraphStep removed
@@ -169,7 +170,7 @@ void Tangle::detangle(
         // Compute the offsets for the new AssemblyGraphStep and the new AssemblyGraphEdge.
         // They are the same because the edge consists of a single step.
         newStep.anchorPair.getOffsetStatistics(
-            anchors,
+            assemblyGraph.anchors,
             newStep.averageOffset,
             newStep.minOffset,
             newStep.maxOffset);

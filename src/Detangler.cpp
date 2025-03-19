@@ -5,8 +5,6 @@ using namespace shasta;
 
 
 bool TrivialDetangler::operator()(
-    const Anchors& anchors,
-    AssemblyGraph& assemblyGraph,
     Tangle& tangle)
 {
     const TangleMatrix& tangleMatrix = tangle.tangleMatrix;
@@ -40,8 +38,7 @@ bool TrivialDetangler::operator()(
         tangle.connect(0, 1);
         tangle.connect(1, 0);
     }
-    tangle.detangle(anchors, assemblyGraph);
-
+    tangle.detangle();
 
     return true;
 

@@ -6,8 +6,6 @@ namespace shasta {
     class Detangler;
     class TrivialDetangler;
 
-    class Anchors;
-    class AssemblyGraph;
     class Tangle;
 }
 
@@ -15,12 +13,12 @@ namespace shasta {
 
 class shasta::Detangler {
 public:
-    virtual bool operator()(const Anchors&, AssemblyGraph&, Tangle&) = 0;
+    virtual bool operator()(Tangle&) = 0;
 };
 
 
 
 class shasta::TrivialDetangler : public Detangler {
 public:
-    bool operator()(const Anchors&, AssemblyGraph&, Tangle&);
+    bool operator()(Tangle&);
 };

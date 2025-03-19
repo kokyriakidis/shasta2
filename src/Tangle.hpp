@@ -57,17 +57,17 @@ public:
 
     // Constructor from a set of AssemblyGraph vertices.
     Tangle(
-        const AssemblyGraph&,
+        AssemblyGraph&,
         const vector<vertex_descriptor>&);
 
     // Constructor from a single AssemblyGraph vertex.
     Tangle(
-        const AssemblyGraph&,
+        AssemblyGraph&,
         vertex_descriptor);
 
     // Constructor from a single AssemblyGraph edge.
     Tangle(
-        const AssemblyGraph&,
+        AssemblyGraph&,
         edge_descriptor);
 
     TangleMatrix tangleMatrix;
@@ -81,10 +81,11 @@ public:
         SHASTA_ASSERT(iExit < tangleMatrix.exits.size());
         connectList.push_back({iEntrance, iExit});
     }
-    void detangle(const Anchors&, AssemblyGraph&);
+    void detangle();
 
 private:
-    void construct(const AssemblyGraph&);
+    AssemblyGraph& assemblyGraph;
+    void construct();
 
     // The Tangle vertices, sorted using AssemblyGraphVertexOrderByAnchorId.
     AssemblyGraphVertexOrderByAnchorId sorter;

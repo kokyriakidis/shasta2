@@ -258,7 +258,7 @@ public:
     void exploreLocalAssembly(const vector<string>&, ostream&);
 
     // Get the AssemblyGraph for a given assembly stage.
-    const AssemblyGraphPostprocessor& getAssemblyGraph(const string& assemblyStage);
+    AssemblyGraphPostprocessor& getAssemblyGraph(const string& assemblyStage);
     std::map<string, shared_ptr<AssemblyGraphPostprocessor> > assemblyGraphTable;
 
 };

@@ -412,7 +412,7 @@ void Assembler::exploreSegment(
 }
 
 
-const AssemblyGraphPostprocessor& Assembler::getAssemblyGraph(const string& assemblyStage)
+AssemblyGraphPostprocessor& Assembler::getAssemblyGraph(const string& assemblyStage)
 {
     auto it = assemblyGraphTable.find(assemblyStage);
     if(it == assemblyGraphTable.end()) {
@@ -708,7 +708,7 @@ void Assembler::exploreVertexTangle(const vector<string>& request, ostream& html
     }
 
     // Get the AssemblyGraph for this assembly stage.
-    const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(assemblyStage);
+    AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(assemblyStage);
 
     // Find the AssemblyGraphEdge corresponding to the requested segment.
     auto it = assemblyGraph.segmentMap.find(segmentId);
@@ -784,7 +784,7 @@ void Assembler::exploreEdgeTangle(const vector<string>& request, ostream& html)
     }
 
     // Get the AssemblyGraph for this assembly stage.
-    const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(assemblyStage);
+    AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(assemblyStage);
 
     // Find the AssemblyGraphEdge corresponding to the requested segment.
     auto it = assemblyGraph.segmentMap.find(segmentId);

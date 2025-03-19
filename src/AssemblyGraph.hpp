@@ -137,8 +137,8 @@ public:
         return e;
     }
 
-private:
     const Anchors& anchors;
+private:
     uint64_t nextEdgeId = 0;
 
     void transitiveReduction(
