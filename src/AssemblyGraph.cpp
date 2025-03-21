@@ -74,7 +74,7 @@ AssemblyGraph::AssemblyGraph(
             edge.resize(edge.size() + 1);
             AssemblyGraphStep& assemblyGraphStep = edge.back();
             assemblyGraphStep.anchorPair = anchorGraph[e];
-            assemblyGraphStep.anchorPair.getOffsetStatistics(
+            assemblyGraphStep.anchorPair.getOffsets(
                 anchors,
                 assemblyGraphStep.averageOffset,
                 assemblyGraphStep.minOffset,

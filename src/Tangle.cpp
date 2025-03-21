@@ -175,7 +175,7 @@ void Tangle::detangle()
 
         // Compute the offsets for the new AssemblyGraphStep and the new AssemblyGraphEdge.
         // They are the same because the edge consists of a single step.
-        newStep.anchorPair.getOffsetStatistics(
+        newStep.anchorPair.getOffsets(
             assemblyGraph.anchors,
             newStep.averageOffset,
             newStep.minOffset,

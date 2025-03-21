@@ -243,7 +243,7 @@ AnchorPair::AnchorPair(
 
 
 
-void AnchorPair::getOffsetStatistics(
+void AnchorPair::getOffsets(
     const Anchors& anchors,
     uint32_t& averageBaseOffset,
     uint32_t& minBaseOffset,
