@@ -80,6 +80,7 @@ public:
         return orientedReadIds.size();
     }
 
+    uint32_t getAverageOffset(const Anchors&) const;
     void getOffsets(
         const Anchors&,
         uint32_t& averageBaseOffset,

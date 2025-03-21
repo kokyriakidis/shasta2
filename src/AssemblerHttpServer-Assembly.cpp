@@ -309,15 +309,20 @@ void Assembler::exploreSegment(
 
     html << "<h2>Segment " << segmentId << " at assembly stage " << assemblyStage << "</h2>";
 
+    uint32_t averageOffset;
+    uint32_t minOffset;
+    uint32_t maxOffset;
+    edge.getOffsets(anchors(), averageOffset, minOffset, maxOffset);
+
     // Summary table.
     html <<
         "<table>"
         "<tr><th class=left>First anchor<td class = centered>" << anchorIdToString(anchorIdA) <<
         "<tr><th class=left>Last anchor<td class = centered>" << anchorIdToString(anchorIdB) <<
         "<tr><th class=left>Number of steps<td class = centered>" << edge.size() <<
-        "<tr><th class=left>Estimated length<td class = centered>" << edge.length() <<
-        "<tr><th class=left>Lower limit on estimated length<td class = centered>" << edge.minOffset <<
-        "<tr><th class=left>Upper limit on estimated length<td class = centered>" << edge.maxOffset <<
+        "<tr><th class=left>Estimated length<td class = centered>" << averageOffset <<
+        "<tr><th class=left>Lower limit on estimated length<td class = centered>" << minOffset <<
+        "<tr><th class=left>Upper limit on estimated length<td class = centered>" << maxOffset <<
         "</table>";
 
     // Details table showing the requested steps.
@@ -396,6 +401,12 @@ void Assembler::exploreSegment(
             "&segmentName=" + segmentName +
             "&positionInSegment=" + to_string(i);
 
+        // Compute offsets.
+        uint32_t averageOffset;
+        uint32_t minOffset;
+        uint32_t maxOffset;
+        step.getOffsets(anchors(), averageOffset, minOffset, maxOffset);
+
         html <<
             "<tr>"
             "<td class=centered>" <<
@@ -403,9 +414,9 @@ void Assembler::exploreSegment(
             "<td class=centered>" << anchorIdToString(step.anchorPair.anchorIdA) <<
             "<td class=centered>" << anchorIdToString(step.anchorPair.anchorIdB) <<
             "<td class=centered>" << step.anchorPair.orientedReadIds.size() <<
-            "<td class=centered>" << step.averageOffset <<
-            "<td class=centered>" << step.minOffset <<
-            "<td class=centered>" << step.maxOffset;
+            "<td class=centered>" << averageOffset <<
+            "<td class=centered>" << minOffset <<
+            "<td class=centered>" << maxOffset;
     }
 
     html << "</table>";
@@ -467,6 +478,11 @@ void Assembler::exploreSegmentStep(const vector<string>& request, ostream& html)
 
     const AssemblyGraphStep& step = edge[positionInSegment];
 
+    uint32_t averageOffset;
+    uint32_t minOffset;
+    uint32_t maxOffset;
+    step.getOffsets(anchors(), averageOffset, minOffset, maxOffset);
+
     html << "<h2>Step " << positionInSegment << " for segment " << segmentId <<
         " at assembly stage " << assemblyStage << "</h2>";
 
@@ -476,9 +492,9 @@ void Assembler::exploreSegmentStep(const vector<string>& request, ostream& html)
         "<tr><th class=left>AnchorIdA<td class=centered>" << anchorIdToString(step.anchorPair.anchorIdA) <<
         "<tr><th class=left>AnchorIdB<td class=centered>" << anchorIdToString(step.anchorPair.anchorIdB) <<
         "<tr><th class=left>Coverage<td class=centered>" << step.anchorPair.orientedReadIds.size() <<
-        "<tr><th class=left>Average offset<td class=centered>" << step.averageOffset <<
-        "<tr><th class=left>Min offset<td class=centered>" << step.minOffset <<
-        "<tr><th class=left>max offset<td class=centered>" << step.maxOffset <<
+        "<tr><th class=left>Average offset<td class=centered>" << averageOffset <<
+        "<tr><th class=left>Min offset<td class=centered>" << minOffset <<
+        "<tr><th class=left>max offset<td class=centered>" << maxOffset <<
         "</table>";
 
 

@@ -74,13 +74,7 @@ AssemblyGraph::AssemblyGraph(
             edge.resize(edge.size() + 1);
             AssemblyGraphStep& assemblyGraphStep = edge.back();
             assemblyGraphStep.anchorPair = anchorGraph[e];
-            assemblyGraphStep.anchorPair.getOffsets(
-                anchors,
-                assemblyGraphStep.averageOffset,
-                assemblyGraphStep.minOffset,
-                assemblyGraphStep.maxOffset);
         }
-        edge.computeOffsets();
     }
 
     cout << "The initial assembly graph has " << num_vertices(assemblyGraph) <<
@@ -108,16 +102,36 @@ AssemblyGraph::AssemblyGraph(
 
 
 
-void AssemblyGraphEdge::computeOffsets()
+// Compute the sum of offsets of all the AssemblyGraphSteps of an AssemblyGraphEdge.
+void AssemblyGraphEdge::getOffsets(
+    const Anchors& anchors,
+    uint32_t& averageOffset,
+    uint32_t& minOffset,
+    uint32_t& maxOffset) const
 {
     averageOffset = 0;
     minOffset = 0;
     maxOffset = 0;
     for(const AssemblyGraphStep& step: *this) {
-        averageOffset += step.averageOffset;
-        minOffset += step.minOffset;
-        maxOffset += step.maxOffset;
+        uint32_t stepAverageOffset;
+        uint32_t stepMinOffset;
+        uint32_t stepMaxOffset;
+        step.getOffsets(anchors, stepAverageOffset, stepMinOffset, stepMaxOffset);
+        averageOffset += stepAverageOffset;
+        minOffset += stepMinOffset;
+        maxOffset += stepMaxOffset;
     }
+}
+
+
+
+uint32_t AssemblyGraphEdge::getAverageOffset(const Anchors& anchors) const
+{
+    uint32_t averageOffset = 0;
+    for(const AssemblyGraphStep& step: *this) {
+        averageOffset += step.getAverageOffset(anchors);
+    }
+    return averageOffset;
 }
 
 
@@ -145,7 +159,7 @@ void AssemblyGraph::writeGfa(const string& fileName) const
         gfa << "*\t";
 
         // Sequence length in bases.
-        gfa << "LN:i:" << edge.averageOffset << "\n";
+        gfa << "LN:i:" << edge.getAverageOffset(anchors) << "\n";
     }
 
     // For each vertex, write links between each pair of incoming/outgoing edges.
@@ -186,14 +200,19 @@ void AssemblyGraph::writeSegments(const string& fileName) const
     BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
         const AssemblyGraphEdge& edge = assemblyGraph[e];
 
+        uint32_t averageOffset;
+        uint32_t minOffset;
+        uint32_t maxOffset;
+        edge.getOffsets(anchors, averageOffset, minOffset, maxOffset);
+
         csv <<
             edge.id << "," <<
             anchorIdToString(edge.anchorIdA()) << "," <<
             anchorIdToString(edge.anchorIdB()) << "," <<
             edge.size() << "," <<
-            edge.averageOffset << "," <<
-            edge.minOffset << "," <<
-            edge.maxOffset << "\n";
+            averageOffset << "," <<
+            minOffset << "," <<
+            maxOffset << "\n";
     }
 
 }
@@ -245,14 +264,19 @@ void AssemblyGraph::writeSegmentDetails(const string& fileName) const
         for(uint64_t i=0; i<edge.size(); i++) {
             const AssemblyGraphStep& step = edge[i];
 
+            uint32_t averageOffset;
+            uint32_t minOffset;
+            uint32_t maxOffset;
+            step.getOffsets(anchors, averageOffset, minOffset, maxOffset);
+
             csv <<
                 edge.id << "," <<
                 i << "," <<
                 anchorIdToString(step.anchorPair.anchorIdA) << "," <<
                 anchorIdToString(step.anchorPair.anchorIdB) << "," <<
-                step.averageOffset << "," <<
-                step.minOffset << "," <<
-                step.maxOffset << "\n";
+                averageOffset << "," <<
+                minOffset << "," <<
+                maxOffset << "\n";
         }
     }
 
@@ -290,7 +314,7 @@ void AssemblyGraph::transitiveReduction(
         // Increment the iterator here, before possibly removing this edge.
         ++it;
 
-        if(edge.length() > threshold) {
+        if(edge.length(anchors) > threshold) {
             continue;
         }
 
@@ -303,7 +327,7 @@ void AssemblyGraph::transitiveReduction(
         q.push(v0);
         verticesEncountered.push_back(v0);
         assemblyGraph[v0].bfsDistance = 0;
-        const uint64_t threshold2 = a + b * edge.length();
+        const uint64_t threshold2 = a + b * edge.length(anchors);
 
         // Main BFS loop.
         bool removeEdge = false;
@@ -328,7 +352,7 @@ void AssemblyGraph::transitiveReduction(
                 }
 
                 // If we got too far, don't use this in the BFS.
-                const uint64_t distanceB = distanceA + assemblyGraph[eAB].length();
+                const uint64_t distanceB = distanceA + assemblyGraph[eAB].length(anchors);
                 if(distanceB > threshold2) {
                     continue;
                 }
@@ -394,14 +418,8 @@ void AssemblyGraph::compress()
 
         // Concatenate the old edges to create the new one,
         // then remove the old edges.
-        newEdge.averageOffset = 0;
-        newEdge.minOffset = 0;
-        newEdge.maxOffset = 0;
         for(const edge_descriptor eOld: linearChain) {
             AssemblyGraphEdge& oldEdge = assemblyGraph[eOld];
-            newEdge.averageOffset += oldEdge.averageOffset;
-            newEdge.minOffset += oldEdge.minOffset;
-            newEdge.maxOffset += oldEdge.maxOffset;
             copy(oldEdge.begin(), oldEdge.end(), back_inserter(newEdge));
             boost::remove_edge(eOld, assemblyGraph);
         }
@@ -566,4 +584,21 @@ void AssemblyGraph::detangleEdges(Detangler& detangler)
     cout << "Attempted detangling for " << attemptCount << " tangle edges." << endl;
     cout << "Detangling was successful for " << successCount << " tangle edges." << endl;
 
+}
+
+
+uint32_t AssemblyGraphStep::getAverageOffset(const Anchors& anchors) const
+{
+    return anchorPair.getAverageOffset(anchors);
+}
+
+
+
+void AssemblyGraphStep::getOffsets(
+    const Anchors& anchors,
+    uint32_t& averageOffset,
+    uint32_t& minOffset,
+    uint32_t& maxOffset) const
+{
+    anchorPair.getOffsets(anchors, averageOffset, minOffset, maxOffset);
 }

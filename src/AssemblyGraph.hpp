@@ -60,16 +60,17 @@ public:
 class shasta::AssemblyGraphStep {
 public:
     AnchorPair anchorPair;
-    uint32_t averageOffset;
-    uint32_t minOffset;
-    uint32_t maxOffset;
+
+    uint32_t getAverageOffset(const Anchors&) const;
+    void getOffsets(
+        const Anchors&,
+        uint32_t& averageOffset,
+        uint32_t& minOffset,
+        uint32_t& maxOffset) const;
 
     template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
     {
         ar & anchorPair;
-        ar & averageOffset;
-        ar & minOffset;
-        ar & maxOffset;
     }
 };
 
@@ -78,16 +79,24 @@ public:
 class shasta::AssemblyGraphEdge : public vector<AssemblyGraphStep> {
 public:
     uint64_t id = invalid<uint64_t>;
-    uint32_t averageOffset = invalid<uint32_t>;
-    uint32_t minOffset = invalid<uint32_t>;
-    uint32_t maxOffset = invalid<uint32_t>;
-    void computeOffsets();
+
+    // Compute the sum of offsets of all the AssemblyGraphSteps.
+    uint32_t getAverageOffset(const Anchors&) const;
+    void getOffsets(
+        const Anchors&,
+        uint32_t& averageOffset,
+        uint32_t& minOffset,
+        uint32_t& maxOffset) const;
 
     // The length of an AssemblyGraphEdge is the estimated length of its sequence,
     // equal to averageOffset, which is the sum of the averageOffsets
     // of all the AssemblyGraphSteps of this edge.
-    uint64_t length() const
+    uint64_t length(const Anchors& anchors) const
     {
+        uint32_t averageOffset;
+        uint32_t minOffset;
+        uint32_t maxOffset;
+        getOffsets(anchors, averageOffset, minOffset, maxOffset);
         return averageOffset;
     }
 
@@ -104,9 +113,6 @@ public:
     {
         ar & boost::serialization::base_object< vector<AssemblyGraphStep> >(*this);
         ar & id;
-        ar & averageOffset;
-        ar & minOffset;
-        ar & maxOffset;
     }
 };
 

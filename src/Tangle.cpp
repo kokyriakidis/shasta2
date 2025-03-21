@@ -109,10 +109,6 @@ void Tangle::detangle()
             const edge_descriptor eNew = assemblyGraph.addEdge(v0, v1);
             AssemblyGraphEdge& newEdge = assemblyGraph[eNew];
             copy(oldEdge.begin(), oldEdge.end()-1, back_inserter(newEdge));
-            const AssemblyGraphStep& lastOldStep = oldEdge.back();
-            newEdge.averageOffset = oldEdge.averageOffset - lastOldStep.averageOffset;
-            newEdge.minOffset = oldEdge.minOffset - lastOldStep.minOffset;
-            newEdge.maxOffset = oldEdge.maxOffset - lastOldStep.maxOffset;
         }
     }
 
@@ -133,10 +129,6 @@ void Tangle::detangle()
             const edge_descriptor eNew = assemblyGraph.addEdge(v1, v0);
             AssemblyGraphEdge& newEdge = assemblyGraph[eNew];
             copy(oldEdge.begin()+1, oldEdge.end(), back_inserter(newEdge));
-            const AssemblyGraphStep& firstOldStep = oldEdge.front();
-            newEdge.averageOffset = oldEdge.averageOffset - firstOldStep.averageOffset;
-            newEdge.minOffset = oldEdge.minOffset - firstOldStep.minOffset;
-            newEdge.maxOffset = oldEdge.maxOffset - firstOldStep.maxOffset;
         }
     }
 
@@ -172,17 +164,6 @@ void Tangle::detangle()
             oldStepExit.anchorPair.orientedReadIds.begin(), oldStepExit.anchorPair.orientedReadIds.end(),
             back_inserter(newStep.anchorPair.orientedReadIds));
         SHASTA_ASSERT(not newStep.anchorPair.orientedReadIds.empty());
-
-        // Compute the offsets for the new AssemblyGraphStep and the new AssemblyGraphEdge.
-        // They are the same because the edge consists of a single step.
-        newStep.anchorPair.getOffsets(
-            assemblyGraph.anchors,
-            newStep.averageOffset,
-            newStep.minOffset,
-            newStep.maxOffset);
-        newEdge.averageOffset = newStep.averageOffset;
-        newEdge.minOffset = newStep.minOffset;
-        newEdge.maxOffset = newStep.maxOffset;
     }
 
     // Now we can remove the tangle vertices. This also removes all edges internal
