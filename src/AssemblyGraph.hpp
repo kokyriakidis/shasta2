@@ -140,6 +140,7 @@ public:
     const Anchors& anchors;
 
     void detangleVertices(Detangler&);
+    void detangleEdges(Detangler&);
 
 private:
     uint64_t nextEdgeId = 0;

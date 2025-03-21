@@ -66,7 +66,10 @@ AssemblyGraphEdge& AssemblyGraphPostprocessor::getEdge(edge_descriptor e)
 
 
 
-// This is needed to simplify the Python API.
+// These are needed to simplify the Python API.
 void AssemblyGraphPostprocessor::detangleVertices(TrivialDetangler& detangler) {
     AssemblyGraph::detangleVertices(detangler);
+}
+void AssemblyGraphPostprocessor::detangleEdges(TrivialDetangler& detangler) {
+    AssemblyGraph::detangleEdges(detangler);
 }

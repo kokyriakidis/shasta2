@@ -36,8 +36,9 @@ public:
 
 
 
-    // This is needed to simplify the Python API.
+    // These are needed to simplify the Python API.
     void detangleVertices(TrivialDetangler&);
+    void detangleEdges(TrivialDetangler&);
 
     // Map from AnchorId to vertex_descriptor.
     std::map<AnchorId, vertex_descriptor> vertexMap;

@@ -11,6 +11,6 @@ assembler.accessAnchors()
 assembler.accessJourneys()
 
 # Get the AssemblyGraph at a chosen assembly stage and do something with it.
-assemblyGraph = assembler.getAssemblyGraph("B");
+assemblyGraph = assembler.getAssemblyGraph("C");
 detangler = TrivialDetangler()
-assemblyGraph.detangleVertices(detangler)
+assemblyGraph.detangleEdges(detangler)

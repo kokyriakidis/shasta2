@@ -16,6 +16,7 @@ using namespace shasta;
 // Standard library.
 #include <fstream.hpp>
 #include <queue>
+#include <set>
 
 
 
@@ -517,4 +518,52 @@ void AssemblyGraph::detangleVertices(Detangler& detangler)
         }
     }
     cout << "Detangling successful for " << successCount << " tangle vertices." << endl;
+}
+
+
+
+// When detangling edges, we must be careful because successful
+// detangling operations can remove edges.
+void AssemblyGraph::detangleEdges(Detangler& detangler)
+{
+    AssemblyGraph& assemblyGraph = *this;
+
+    // Gather all the edges with in_degree and out_degree greater than 1.
+    std::set<edge_descriptor> detanglingCandidates;
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        const vertex_descriptor v0 = source(e, assemblyGraph);
+        const vertex_descriptor v1 = target(e, assemblyGraph);
+        if(
+            (in_degree(v0, assemblyGraph)  + in_degree(v1, assemblyGraph) > 1) and
+            (out_degree(v0, assemblyGraph) + out_degree(v1, assemblyGraph) > 1)) {
+            detanglingCandidates.insert(e);
+        }
+    }
+    cout << "Found " << detanglingCandidates.size() <<
+        " tangle edges out of " << num_edges(assemblyGraph) << " total edges." << endl;
+
+    uint64_t attemptCount = 0;
+    uint64_t successCount = 0;
+    for(const edge_descriptor e: detanglingCandidates) {
+        ++attemptCount;
+        const uint64_t id = assemblyGraph[e].id;
+        if(id != 107248) {
+            continue;
+        }
+        cout << "Attempting detangle for segment " << id << endl;
+        Tangle tangle(assemblyGraph, e);
+        const bool success = detangler(tangle);
+        if(success) {
+            ++successCount;
+            for(const auto& entrance: tangle.tangleMatrix.entrances) {
+                detanglingCandidates.erase(entrance.e);
+            }
+            for(const auto& exit: tangle.tangleMatrix.exits) {
+                detanglingCandidates.erase(exit.e);
+            }
+        }
+    }
+    cout << "Attempted detangling for " << attemptCount << " tangle edges." << endl;
+    cout << "Detangling was successful for " << successCount << " tangle edges." << endl;
+
 }

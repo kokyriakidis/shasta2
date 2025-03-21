@@ -135,6 +135,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def("getEdgeDescriptor", &AssemblyGraphPostprocessor::getEdgeDescriptor)
         .def("getEdge", &AssemblyGraphPostprocessor::getEdge, return_value_policy::reference)
         .def("detangleVertices", &AssemblyGraphPostprocessor::detangleVertices)
+        .def("detangleEdges", &AssemblyGraphPostprocessor::detangleEdges)
         ;
     class_<TrivialDetangler>(shasta2Module, "TrivialDetangler")
         .def(init<>())

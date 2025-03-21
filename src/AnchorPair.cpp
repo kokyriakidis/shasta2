@@ -4,6 +4,7 @@
 #include "Reads.hpp"
 using namespace shasta;
 
+#include "stdexcept.hpp"
 
 
 AnchorPair::AnchorPair(
@@ -222,7 +223,15 @@ void AnchorPair::getOffsetStatistics(
 
             const uint32_t ordinalA = itA->ordinal;
             const uint32_t ordinalB = itB->ordinal;
-            SHASTA_ASSERT(ordinalB > ordinalA);
+            if(ordinalB <= ordinalA) {
+                throw runtime_error(
+                    "Order violation at anchor pair " +
+                    anchorIdToString(anchorIdA) + " " +
+                    anchorIdToString(anchorIdB) + " " +
+                    orientedReadId.getString() + " ordinals " +
+                    to_string(ordinalA) + " " +
+                    to_string(ordinalB));
+            }
             const uint32_t positionA = orientedReadMarkers[ordinalA].position + kHalf;
             const uint32_t positionB = orientedReadMarkers[ordinalB].position + kHalf;
             SHASTA_ASSERT(positionB > positionA);
