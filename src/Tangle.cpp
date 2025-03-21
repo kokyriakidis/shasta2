@@ -42,8 +42,14 @@ Tangle::Tangle(
     assemblyGraph(assemblyGraph),
     sorter(assemblyGraph)
 {
-    tangleVertices.push_back(source(e, assemblyGraph));
-    tangleVertices.push_back(target(e, assemblyGraph));
+    const vertex_descriptor v0 = source(e, assemblyGraph);
+    const vertex_descriptor v1 = target(e, assemblyGraph);
+
+    tangleVertices.push_back(v0);
+    if(v1 != v0) {
+        tangleVertices.push_back(v1);
+    }
+
     construct();
 }
 
