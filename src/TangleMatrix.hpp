@@ -89,6 +89,13 @@ public:
     vector<OrientedReadId> duplicateOrientedReadIdsOnEntrances;
     vector<OrientedReadId> duplicateOrientedReadIdsOnExits;
 
+    // The AnchorPairs that we would get if we were to join
+    // each Entrance with each exit.
+    // Some of these will be used when detangling.
+    // Indexed by [iEntrance][iExit].
+    // The tangleMatrix is obtained from this.
+    vector< vector<AnchorPair> > joinedAnchorPairs;
+
     // The tangle matrix is indexed by [iEntrance][iExit].
     vector < vector<uint64_t> > tangleMatrix;
 };

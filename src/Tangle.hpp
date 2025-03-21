@@ -83,6 +83,9 @@ public:
     }
     void detangle();
 
+    // If the Tangle is detangled successfully, we store the edges that were removed.
+    vector<edge_descriptor> removedEdges;
+
 private:
     AssemblyGraph& assemblyGraph;
     void construct();

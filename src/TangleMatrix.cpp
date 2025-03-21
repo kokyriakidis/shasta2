@@ -72,19 +72,25 @@ void TangleMatrix::construct(
         exits.emplace_back(e, edge.front(), duplicateOrientedReadIdsOnExits);
     }
 
+    // Create the AnchorPairs that we would get if we were to join
+    // each Entrance with each exit.
+    // Some of these will be used when detangling.
+    joinedAnchorPairs.resize(entrances.size(), vector<AnchorPair>(exits.size()));
+    for(uint64_t iEntrance=0; iEntrance<entrances.size(); iEntrance++) {
+        const AnchorPair& entranceAnchorPair = entrances[iEntrance].step;
+        for(uint64_t iExit=0; iExit<exits.size(); iExit++) {
+            const AnchorPair& exitAnchorPair = exits[iExit].step;
+            joinedAnchorPairs[iEntrance][iExit] = AnchorPair(assemblyGraph.anchors,
+                entranceAnchorPair, exitAnchorPair);
+        }
+    }
+
     // Now we can compute the tangle matrix.
     vector<OrientedReadId> commonOrientedReadIds;
     tangleMatrix.resize(entrances.size(), vector<uint64_t>(exits.size(), 0));
     for(uint64_t iEntrance=0; iEntrance<entrances.size(); iEntrance++) {
-        const vector<OrientedReadId>& entranceOrientedReadIds = entrances[iEntrance].step.orientedReadIds;
         for(uint64_t iExit=0; iExit<exits.size(); iExit++) {
-            const vector<OrientedReadId>& exitOrientedReadIds = exits[iExit].step.orientedReadIds;
-            commonOrientedReadIds.clear();
-            std::set_intersection(
-                entranceOrientedReadIds.begin(), entranceOrientedReadIds.end(),
-                exitOrientedReadIds.begin(), exitOrientedReadIds.end(),
-                back_inserter(commonOrientedReadIds));
-            tangleMatrix[iEntrance][iExit] = commonOrientedReadIds.size();
+            tangleMatrix[iEntrance][iExit] = joinedAnchorPairs[iEntrance][iExit].size();
         }
     }
 }

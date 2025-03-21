@@ -90,12 +90,20 @@ AssemblyGraph::AssemblyGraph(
     write("B");
 
     TrivialDetangler detangler;
+
     detangleVertices(detangler);
     compress();
 
     cout << "After trivial vertex detangling, the assembly graph has " << num_vertices(assemblyGraph) <<
         " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
     write("C");
+
+    detangleEdges(detangler);
+    compress();
+
+    cout << "After trivial edge detangling, the assembly graph has " << num_vertices(assemblyGraph) <<
+        " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
+    write("D");
 }
 
 
@@ -560,22 +568,18 @@ void AssemblyGraph::detangleEdges(Detangler& detangler)
 
     uint64_t attemptCount = 0;
     uint64_t successCount = 0;
-    for(const edge_descriptor e: detanglingCandidates) {
+    while(not detanglingCandidates.empty()) {
+        auto it = detanglingCandidates.begin();
+        const edge_descriptor e = *it;
+        detanglingCandidates.erase(it);
+
         ++attemptCount;
-        const uint64_t id = assemblyGraph[e].id;
-        if(id != 107248) {
-            continue;
-        }
-        cout << "Attempting detangle for segment " << id << endl;
         Tangle tangle(assemblyGraph, e);
         const bool success = detangler(tangle);
         if(success) {
             ++successCount;
-            for(const auto& entrance: tangle.tangleMatrix.entrances) {
-                detanglingCandidates.erase(entrance.e);
-            }
-            for(const auto& exit: tangle.tangleMatrix.exits) {
-                detanglingCandidates.erase(exit.e);
+            for(const edge_descriptor e: tangle.removedEdges) {
+                detanglingCandidates.erase(e);
             }
         }
     }

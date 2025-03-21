@@ -136,8 +136,7 @@ void Tangle::detangle()
 
     // Now for each pair to be connected we connect the above vertices.
     // The connecting edge has a single AssemblyGraphStep obtaining
-    // by "mixing" the last AssemblyGraphStep of the Entrance with the
-    // first AssemblyGraphStep of the Exit being connected.
+    // from the joinedAnchorPairs stored in the TangleMatrix.
     for(const auto& p: connectList) {
         const uint64_t iEntrance = p.first;
         const uint64_t iExit = p.second;
@@ -149,22 +148,23 @@ void Tangle::detangle()
         AssemblyGraphEdge& newEdge = assemblyGraph[eNew];
 
         // Fill in the single AssemblyGraphStep of the new edge.
-        newEdge.resize(1);
-        AssemblyGraphStep& newStep = newEdge.front();
-
-        const edge_descriptor eOldEntrance = tangleMatrix.entrances[iEntrance].e;
-        const edge_descriptor eOldExit = tangleMatrix.exits[iExit].e;
-        const AssemblyGraphStep& oldStepEntrance = assemblyGraph[eOldEntrance].back();
-        const AssemblyGraphStep& oldStepExit = assemblyGraph[eOldExit].front();
-
-        newStep.anchorIdA = oldStepEntrance.anchorIdA;
-        newStep.anchorIdB = oldStepExit.anchorIdB;
-        set_intersection(
-            oldStepEntrance.orientedReadIds.begin(), oldStepEntrance.orientedReadIds.end(),
-            oldStepExit.orientedReadIds.begin(), oldStepExit.orientedReadIds.end(),
-            back_inserter(newStep.orientedReadIds));
-        SHASTA_ASSERT(not newStep.orientedReadIds.empty());
+        newEdge.emplace_back(tangleMatrix.joinedAnchorPairs[iEntrance][iExit]);
+        SHASTA_ASSERT(not newEdge.front().orientedReadIds.empty());
     }
+
+    // Store the ids of all edges that will be removed.
+    removedEdges.clear();
+    // Edges internal to the Tangle and exit edges.
+    for(const vertex_descriptor v0: tangleVertices) {
+        BGL_FORALL_OUTEDGES(v0, e, assemblyGraph, AssemblyGraph) {
+            removedEdges.push_back(e);
+        }
+    }
+    // Entrance edges.
+    for(const TangleMatrix::Entrance& entrance: tangleMatrix.entrances) {
+        removedEdges.push_back(entrance.e);
+    }
+
 
     // Now we can remove the tangle vertices. This also removes all edges internal
     // to the tangles plus the entrances and exits.
