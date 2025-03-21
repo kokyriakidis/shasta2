@@ -10,15 +10,17 @@ using namespace shasta;
 AnchorPair::AnchorPair(
     const Anchors& anchors,
     AnchorId anchorIdA,
-    AnchorId anchorIdB) :
+    AnchorId anchorIdB,
+    bool adjacentInJourney) :
     anchorIdA(anchorIdA),
     anchorIdB(anchorIdB)
 {
     const Anchor anchorA = anchors[anchorIdA];
     const Anchor anchorB = anchors[anchorIdB];
 
-    // Loop over common oriented reads between these two anchors,
-    // for which the positions in journeys differ by 1.
+    // Loop over common oriented reads between these two anchors.
+    // If adjacentInJourney is false, the journey offset is required to be positive.
+    // If adjacentInJourney is true, the journey offset is required to be exactly 1.
 
     const auto beginA = anchorA.begin();
     const auto beginB = anchorB.begin();
@@ -42,8 +44,14 @@ AnchorPair::AnchorPair(
         const OrientedReadId orientedReadId = itA->orientedReadId;
         SHASTA_ASSERT(orientedReadId == itB->orientedReadId);
 
-        if(itB->positionInJourney == itA->positionInJourney + 1) {
-            orientedReadIds.push_back(orientedReadId);
+        if(adjacentInJourney) {
+            if(itB->positionInJourney == itA->positionInJourney + 1) {
+                orientedReadIds.push_back(orientedReadId);
+            }
+        } else {
+            if(itB->positionInJourney > itA->positionInJourney) {
+                orientedReadIds.push_back(orientedReadId);
+            }
         }
 
         ++itA;
@@ -100,6 +108,7 @@ void AnchorPair::get(
 
             const uint32_t positionInJourneyA = itA->positionInJourney;
             const uint32_t positionInJourneyB = itB->positionInJourney;
+            SHASTA_ASSERT(positionInJourneyB > positionInJourneyA);
             const uint32_t ordinalA = itA->ordinal;
             const uint32_t ordinalB = itB->ordinal;
             const uint32_t positionA = orientedReadMarkers[ordinalA].position + kHalf;
@@ -169,7 +178,7 @@ void AnchorPair::createChildren(
 
     anchorPairs.clear();
     for(const AnchorId anchorIdB: anchorIdsB) {
-        anchorPairs.emplace_back(anchors, anchorIdA, anchorIdB);
+        anchorPairs.emplace_back(anchors, anchorIdA, anchorIdB, true);
     }
 }
 

@@ -232,6 +232,14 @@ void Assembler::exploreAnchorPair(const vector<string>& request, ostream& html)
     const bool anchorIdBStringIsPresent = HttpServer::getParameterValue(request, "anchorIdBString", anchorIdBString);
     boost::trim(anchorIdBString);
 
+    string adjacentInJourneyString;
+    const bool showSequence = HttpServer::getParameterValue(request,
+        "adjacentInJourney", adjacentInJourneyString);
+
+    string showSequenceString;
+    const bool adjacentInJourney = HttpServer::getParameterValue(request,
+        "showSequence", showSequenceString);
+
     // Write the form.
     html << "<form><table>";
 
@@ -253,11 +261,20 @@ void Assembler::exploreAnchorPair(const vector<string>& request, ostream& html)
     }
     html <<
         " size=8 title='Enter an anchor id between 0 and " <<
-        anchors().size() / 2 - 1 << " followed by + or -.'><br>";
+        anchors().size() / 2 - 1 << " followed by + or -.'><br>"
 
-    html <<
+        "<tr><th>Adjacent in journey"
+        "<td class=centered><input type=checkbox name=adjacentInJourney" <<
+        (adjacentInJourney ? " checked" : "") <<
+        ">"
+
+        "<tr><th>Show sequence"
+        "<td class=centered><input type=checkbox name=showSequence" <<
+        (showSequence ? " checked" : "") <<
+        ">"
+
         "</table>"
-        "<input type=submit value='Analyze anchor pair'>"
+        "<input type=submit value='Get anchor pair information'>"
         "</form>";
 
 
@@ -289,38 +306,53 @@ void Assembler::exploreAnchorPair(const vector<string>& request, ostream& html)
 
 
     // Create a AnchorPair from these two anchors.
-    const AnchorPair anchorPair(anchors(), anchorIdA, anchorIdB);
+    const AnchorPair anchorPair(anchors(), anchorIdA, anchorIdB, adjacentInJourney);
     vector< pair<AnchorPair::Positions, AnchorPair::Positions> > positions;
-    vector< vector<Base> > sequences;
-    anchorPair.get(anchors(), positions, sequences);
 
-    // Create a sequence coverage map.
+    // If requested, also compute sequences.
+    vector< vector<Base> > sequences;
+    if(showSequence) {
+        anchorPair.get(anchors(), positions, sequences);
+    } else {
+        anchorPair.get(anchors(), positions);
+    }
+
+    // Sequence coverage map.
     std::map< vector<Base>, uint64_t> sequenceCoverageMap;
-    for(const vector<Base>& sequence: sequences) {
-        auto it = sequenceCoverageMap.find(sequence);
-        if(it == sequenceCoverageMap.end()) {
-            sequenceCoverageMap.insert(make_pair(sequence, 1));
-        } else {
-            ++(it->second);
+    if(showSequence) {
+        for(const vector<Base>& sequence: sequences) {
+            auto it = sequenceCoverageMap.find(sequence);
+            if(it == sequenceCoverageMap.end()) {
+                sequenceCoverageMap.insert(make_pair(sequence, 1));
+            } else {
+                ++(it->second);
+            }
         }
     }
 
-    html << "<h1>Anchor pair " << anchorIdToString(anchorIdA) <<
-        " " << anchorIdToString(anchorIdB) << "</h1>";
-    html << "<p>AnchorPair information using the " << anchorPair.size() <<
-        " oriented reads that visit " <<
-        anchorIdToString(anchorIdB) <<
-        " immediately after " << anchorIdToString(anchorIdA);
+
 
     html <<
+        "<h1>Anchor pair " << anchorIdToString(anchorIdA) <<
+        " " << anchorIdToString(anchorIdB) << "</h1>"
+        "<p>"
+        "<table>"
+        "<tr><th>Coverage<td class=centered>" << anchorPair.size() <<
+        "</table>";
+
+    html <<
+        "<p>"
         "<table>"
         "<tr><th>Oriented<br>read id"
         "<th>Position<br>in journey<br>A<th>Position<br>in journey<br>B<th>Journey<br>offset"
         "<th>OrdinalA<th>OrdinalB<th>Ordinal<br>offset"
         "<th>A middle<br>position"
         "<th>B middle<br>position"
-        "<th>Sequence<br>length"
-        "<th>Sequence";
+        "<th>Sequence<br>length";
+    if(showSequence) {
+        html <<
+            "<th>Sequence";
+    }
     for(uint64_t i=0; i<anchorPair.size(); i++) {
         const OrientedReadId orientedReadId = anchorPair.orientedReadIds[i];
         const auto& positionsAB = positions[i];
@@ -340,34 +372,39 @@ void Assembler::exploreAnchorPair(const vector<string>& request, ostream& html)
             "<td class=centered>" << positionsB.ordinal - positionsA.ordinal <<
             "<td class=centered>" << positionsA.basePosition <<
             "<td class=centered>" << positionsB.basePosition <<
-            "<td class=centered>" << positionsB.basePosition - positionsA.basePosition <<
-            "<td class=centered style='font-family:monospace'>";
-        copy(sequence.begin(), sequence.end(), ostream_iterator<Base>(html));
+            "<td class=centered>" << positionsB.basePosition - positionsA.basePosition;
+        if(showSequence) {
+            html <<
+                "<td class=centered style='font-family:monospace'>";
+            copy(sequence.begin(), sequence.end(), ostream_iterator<Base>(html));
+        }
     }
     html << "</table>";
 
-    html << "<p>Found " << sequenceCoverageMap.size() << " distinct sequences.";
-    vector< pair<vector<Base>, uint64_t> > sequenceCoverageVector;
-    copy(sequenceCoverageMap.begin(), sequenceCoverageMap.end(), back_inserter(sequenceCoverageVector));
-    sort(sequenceCoverageVector.begin(), sequenceCoverageVector.end(),
-        OrderPairsBySecondOnlyGreater<vector<Base>, uint64_t>());
-    html << "<table><th>Coverage<th>Length<th>Sequence";
-    for(const auto& p: sequenceCoverageVector) {
-        const vector<Base>& sequence = p.first;
-        const uint64_t coverage = p.second;
-        html <<
-            "<tr>"
-            "<td class=centered>" << coverage <<
-            "<td class=centered>" << sequence.size() <<
-            "<td class=centered style='font-family:monospace'>";
-        copy(sequence.begin(), sequence.end(), ostream_iterator<Base>(html));
+    if(showSequence) {
+        html << "<p>Found " << sequenceCoverageMap.size() << " distinct sequences.";
+        vector< pair<vector<Base>, uint64_t> > sequenceCoverageVector;
+        copy(sequenceCoverageMap.begin(), sequenceCoverageMap.end(), back_inserter(sequenceCoverageVector));
+        sort(sequenceCoverageVector.begin(), sequenceCoverageVector.end(),
+            OrderPairsBySecondOnlyGreater<vector<Base>, uint64_t>());
+        html << "<table><th>Coverage<th>Length<th>Sequence";
+        for(const auto& p: sequenceCoverageVector) {
+            const vector<Base>& sequence = p.first;
+            const uint64_t coverage = p.second;
+            html <<
+                "<tr>"
+                "<td class=centered>" << coverage <<
+                "<td class=centered>" << sequence.size() <<
+                "<td class=centered style='font-family:monospace'>";
+            copy(sequence.begin(), sequence.end(), ostream_iterator<Base>(html));
+        }
+        html << "</table>";
     }
-    html << "</table>";
 
 
 
     // Old code.
-    html << "<h1>Read composition analysis for anchors " << anchorIdToString(anchorIdA) <<
+    html << "<h1>Complete read composition analysis for anchors " << anchorIdToString(anchorIdA) <<
         " and " << anchorIdToString(anchorIdB) << "</h1>";
 
     // Analyze this anchor pair and write the result to html.

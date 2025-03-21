@@ -19,20 +19,27 @@ namespace shasta {
 
 
 
-// An AnchorPair is a set of OrientedReadIds that visit AnchorIdA
-// and then later in their Journey, AnchorIdB.
-// That is, each of the OrientedReadIds appear both anchorIdA and anchorIdB,
+// An AnchorPair is a set of OrientedReadIds that visit anchorIdA
+// and then, later in their Journey, anchorIdB.
+// That is, each of the OrientedReadIds appear both in anchorIdA and anchorIdB,
 // and the position at anchorIdB is greater than the position at anchorIdA.
+// The AnchorPair can use a subset of all possible OrientedReadIds
+// that satisfy the above.
 class shasta::AnchorPair {
 public:
 
-    // The constructor creates an AnchorPair such that:
-    // - anchorIdA and anchorIdB are as specified.
-    // - All oriented reads have a journey offset equal to 1.
+    // The constructor creates an AnchorPair between anchorIdA and anchorIdB.
+    // - If adjacentInJourney is false, it includes all OrientedReadIds
+    //  that visit anchorIdA and then, later in their Journey, anchorIdB.
+    // - If adjacentInJourney is true, only OrientedReadIds that visit anchorIdB
+    //   immediately after visiting anchorIdA are included.
+    //   That is, the journey offset between anchorIdA and anchorIdB
+    //   for OrientedReadIds that are included must be exactly 1.
     AnchorPair(
         const Anchors&,
         AnchorId anchorIdA,
-        AnchorId anchorIdB);
+        AnchorId anchorIdB,
+        bool adjacentInJourney);
 
     AnchorPair() {}
 
