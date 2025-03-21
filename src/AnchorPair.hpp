@@ -43,6 +43,17 @@ public:
 
     AnchorPair() {}
 
+    AnchorPair(const AnchorPair& that) :
+        anchorIdA(that.anchorIdA),
+        anchorIdB(that.anchorIdB),
+        orientedReadIds(that.orientedReadIds)
+    {}
+
+    // Copy from another AnchorPair, but excluding some OrientedReadIds.
+    AnchorPair(
+        const AnchorPair&,
+        const vector<OrientedReadId>& excludedOrientedReadIds);
+
     // "Join" constructor from two AnchorPairs.
     // This constructs a new AnchorPair as follows:
     // - anchorIdA is the same as anchorPair0.anchorIdA.

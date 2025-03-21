@@ -49,12 +49,17 @@ public:
     class Entrance {
         public:
         edge_descriptor e;
-        AssemblyGraphStep step;
-        Entrance(edge_descriptor e, const AssemblyGraphStep& step) :
-            e(e), step(step) {}
 
-        // The OrientedReadIds in this entrance that don't appear in other entrances.
-        vector<OrientedReadId> orientedReadIds;
+        // The last AssemblyGraphStep of this AssemblyGraphEdge,
+        // after removing OrientedReadIds that also appear in other Entrances.
+        AssemblyGraphStep step;
+
+        Entrance(
+            edge_descriptor e,
+            const AssemblyGraphStep& step,
+            const vector<OrientedReadId>& duplicateOrientedReadIdsOnEntrances) :
+            e(e), step(step, duplicateOrientedReadIdsOnEntrances) {}
+
     };
     vector<Entrance> entrances;
 
@@ -63,9 +68,16 @@ public:
     class Exit {
         public:
         edge_descriptor e;
+
+        // The first AssemblyGraphStep of this AssemblyGraphEdge,
+        // after removing OrientedReadIds that also appear in other Exits.
         AssemblyGraphStep step;
-        Exit(edge_descriptor e, const AssemblyGraphStep& step) :
-            e(e), step(step) {}
+
+        Exit(
+            edge_descriptor e,
+            const AssemblyGraphStep& step,
+            const vector<OrientedReadId>& duplicateOrientedReadIdsOnExits) :
+            e(e), step(step, duplicateOrientedReadIdsOnExits) {}
 
         // The OrientedReadIds in this exit that don't appear in other exits.
         vector<OrientedReadId> orientedReadIds;

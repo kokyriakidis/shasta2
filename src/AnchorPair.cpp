@@ -61,6 +61,20 @@ AnchorPair::AnchorPair(
 
 
 
+// Copy from another AnchorPair, but excluding some OrientedReadIds.
+AnchorPair::AnchorPair(
+    const AnchorPair& that,
+    const vector<OrientedReadId>& excludedOrientedReadIds) :
+    anchorIdA(that.anchorIdA),
+    anchorIdB(that.anchorIdB)
+{
+    std::set_difference(
+        that.orientedReadIds.begin(), that.orientedReadIds.end(),
+        excludedOrientedReadIds.begin(), excludedOrientedReadIds.end(),
+        back_inserter(orientedReadIds));
+}
+
+
 // Get positions in journey, ordinals, and base positions
 // for each of the two reads and for each of the two anchors.
 // The positions returned are the midpoint of the markers

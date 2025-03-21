@@ -61,10 +61,17 @@ public:
 class shasta::AssemblyGraphStep : public AnchorPair {
 public:
 
-    AssemblyGraphStep(const AnchorPair& anchorPair) : AnchorPair(anchorPair) {}
+    AssemblyGraphStep(const AnchorPair& anchorPair) :
+        AnchorPair(anchorPair) {}
 
-    // For now tis is used during detangling but this should go away.
-    AssemblyGraphStep() {}
+    AssemblyGraphStep(
+        const AnchorPair& anchorPair,
+        const vector<OrientedReadId>& excludedOrientedReadIds) :
+        AnchorPair(anchorPair, excludedOrientedReadIds) {}
+
+    // It would be good to remove the default constructor but it is currently
+    // used in detangling.
+    AssemblyGraphStep() = default;
 
     template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
     {

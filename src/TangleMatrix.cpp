@@ -31,12 +31,37 @@ void TangleMatrix::construct(
     SHASTA_ASSERT(std::adjacent_find(
         exitEdges.begin(), exitEdges.end(), comparator) == exitEdges.end());
 
+    // Find OrientedReadIds that appear in more than one entrance.
+    // These will be discarded when creating the Entrances.
+    vector<uint64_t> count;
+    for(const edge_descriptor e: entranceEdges) {
+        const AssemblyGraphEdge& edge = assemblyGraph[e];
+        SHASTA_ASSERT(not edge.empty());
+        const vector<OrientedReadId>& orientedReadIds = edge.back().orientedReadIds;
+        copy(orientedReadIds.begin(), orientedReadIds.end(),
+            back_inserter(duplicateOrientedReadIdsOnEntrances));
+    }
+    deduplicateAndCountWithThreshold(duplicateOrientedReadIdsOnEntrances, count, 2UL);
+
+    // Find OrientedReadIds that appear in more than one exit.
+    // These will be discarded when creating the Exits.
+    for(const edge_descriptor e: exitEdges) {
+        const AssemblyGraphEdge& edge = assemblyGraph[e];
+        SHASTA_ASSERT(not edge.empty());
+        const vector<OrientedReadId>& orientedReadIds = edge.front().orientedReadIds;
+        copy(orientedReadIds.begin(), orientedReadIds.end(),
+            back_inserter(duplicateOrientedReadIdsOnExits));
+    }
+    deduplicateAndCountWithThreshold(duplicateOrientedReadIdsOnExits, count, 2UL);
+
+
+
     // Create the entrances.
     // Store the last AssemblyGraphStep of each entrance.
     for(const edge_descriptor e: entranceEdges) {
         const AssemblyGraphEdge& edge = assemblyGraph[e];
         SHASTA_ASSERT(not edge.empty());
-        entrances.emplace_back(e, edge.back());
+        entrances.emplace_back(e, edge.back(), duplicateOrientedReadIdsOnEntrances);
     }
 
     // Create the exits.
@@ -44,53 +69,16 @@ void TangleMatrix::construct(
     for(const edge_descriptor e: exitEdges) {
         const AssemblyGraphEdge& edge = assemblyGraph[e];
         SHASTA_ASSERT(not edge.empty());
-        exits.emplace_back(e, edge.front());
-    }
-
-    // If an OrientedReadId appears in more than one Entrance,
-    // we ignore it when creating the TangleMatrix.
-    vector<uint64_t> count;
-    for(const Entrance& entrance: entrances) {
-        const vector<OrientedReadId>& orientedReadIds = entrance.step.orientedReadIds;
-        copy(orientedReadIds.begin(), orientedReadIds.end(),
-            back_inserter(duplicateOrientedReadIdsOnEntrances));
-    }
-    deduplicateAndCountWithThreshold(duplicateOrientedReadIdsOnEntrances, count, 2UL);
-    duplicateOrientedReadIdsOnEntrances.shrink_to_fit();
-
-    // If an OrientedReadId appears in more than one Exit,
-    // we ignore it when creating the TangleMatrix.
-    for(const Exit& exit: exits) {
-        const vector<OrientedReadId>& orientedReadIds = exit.step.orientedReadIds;
-        copy(orientedReadIds.begin(), orientedReadIds.end(),
-            back_inserter(duplicateOrientedReadIdsOnExits));
-    }
-    deduplicateAndCountWithThreshold(duplicateOrientedReadIdsOnExits, count, 2UL);
-    duplicateOrientedReadIdsOnExits.shrink_to_fit();
-
-    // Now we can fill in the OrientedReadIds of each Entrance and Exit.
-    for(Entrance& entrance: entrances) {
-        std::set_difference(
-            entrance.step.orientedReadIds.begin(), entrance.step.orientedReadIds.end(),
-            duplicateOrientedReadIdsOnEntrances.begin(), duplicateOrientedReadIdsOnEntrances.end(),
-            back_inserter(entrance.orientedReadIds)
-            );
-    }
-    for(Exit& exit: exits) {
-        std::set_difference(
-            exit.step.orientedReadIds.begin(), exit.step.orientedReadIds.end(),
-            duplicateOrientedReadIdsOnExits.begin(), duplicateOrientedReadIdsOnExits.end(),
-            back_inserter(exit.orientedReadIds)
-            );
+        exits.emplace_back(e, edge.front(), duplicateOrientedReadIdsOnExits);
     }
 
     // Now we can compute the tangle matrix.
     vector<OrientedReadId> commonOrientedReadIds;
     tangleMatrix.resize(entrances.size(), vector<uint64_t>(exits.size(), 0));
     for(uint64_t iEntrance=0; iEntrance<entrances.size(); iEntrance++) {
-        const vector<OrientedReadId>& entranceOrientedReadIds = entrances[iEntrance].orientedReadIds;
+        const vector<OrientedReadId>& entranceOrientedReadIds = entrances[iEntrance].step.orientedReadIds;
         for(uint64_t iExit=0; iExit<exits.size(); iExit++) {
-            const vector<OrientedReadId>& exitOrientedReadIds = exits[iExit].orientedReadIds;
+            const vector<OrientedReadId>& exitOrientedReadIds = exits[iExit].step.orientedReadIds;
             commonOrientedReadIds.clear();
             std::set_intersection(
                 entranceOrientedReadIds.begin(), entranceOrientedReadIds.end(),
@@ -118,12 +106,15 @@ void TangleMatrix::writeHtml(
         "<tr><th>Index<th>Segment<th>Coverage<th>Usable<br>coverage";
     for(uint64_t iEntrance=0; iEntrance<entrances.size(); iEntrance++) {
         const Entrance& entrance = entrances[iEntrance];
+        const edge_descriptor e = entrance.e;
+        const AssemblyGraphEdge& edge = assemblyGraph[e];
+        const AssemblyGraphStep& edgeLastStep = edge.back();
         html <<
             "<tr>"
             "<td class = centered>" << iEntrance <<
             "<td class = centered>" << assemblyGraph[entrance.e].id <<
-            "<td class = centered>" << entrance.step.size() <<
-            "<td class = centered>" << entrance.orientedReadIds.size();
+            "<td class = centered>" << edgeLastStep.orientedReadIds.size() <<
+            "<td class = centered>" << entrance.step.orientedReadIds.size();
     }
     html << "</table>";
 
@@ -136,12 +127,15 @@ void TangleMatrix::writeHtml(
         "<tr><th>Index<th>Segment<th>Coverage<th>Usable<br>coverage";
     for(uint64_t iExit=0; iExit<exits.size(); iExit++) {
         const Exit& exit = exits[iExit];
+        const edge_descriptor e = exit.e;
+        const AssemblyGraphEdge& edge = assemblyGraph[e];
+        const AssemblyGraphStep& edgeFirstStep = edge.front();
         html <<
             "<tr>"
             "<td class = centered>" << iExit <<
             "<td class = centered>" << assemblyGraph[exit.e].id <<
-            "<td class = centered>" << exit.step.size() <<
-            "<td class = centered>" << exit.orientedReadIds.size();
+            "<td class = centered>" << edgeFirstStep.orientedReadIds.size() <<
+            "<td class = centered>" << exit.step.orientedReadIds.size();
     }
     html << "</table>";
 
