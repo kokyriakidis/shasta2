@@ -57,20 +57,18 @@ public:
 
 
 
-class shasta::AssemblyGraphStep {
+// For now this is just an AnchorPair.
+class shasta::AssemblyGraphStep : public AnchorPair {
 public:
-    AnchorPair anchorPair;
 
-    uint32_t getAverageOffset(const Anchors&) const;
-    void getOffsets(
-        const Anchors&,
-        uint32_t& averageOffset,
-        uint32_t& minOffset,
-        uint32_t& maxOffset) const;
+    AssemblyGraphStep(const AnchorPair& anchorPair) : AnchorPair(anchorPair) {}
+
+    // For now tis is used during detangling but this should go away.
+    AssemblyGraphStep() {}
 
     template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
     {
-        ar & anchorPair;
+        ar & boost::serialization::base_object<AnchorPair>(*this);
     }
 };
 
@@ -102,11 +100,11 @@ public:
 
     AnchorId anchorIdA() const
     {
-        return (*this).front().anchorPair.anchorIdA;
+        return (*this).front().anchorIdA;
     }
     AnchorId anchorIdB() const
     {
-        return (*this).back().anchorPair.anchorIdB;
+        return (*this).back().anchorIdB;
     }
 
     template<class Archive> void serialize(Archive& ar, unsigned int /* version */)

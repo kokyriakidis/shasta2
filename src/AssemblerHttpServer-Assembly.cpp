@@ -302,8 +302,8 @@ void Assembler::exploreSegment(
     const AssemblyGraph::edge_descriptor e = it->second;
     const AssemblyGraphEdge& edge = assemblyGraph[e];
 
-    const AnchorId anchorIdA = edge.front().anchorPair.anchorIdA;
-    const AnchorId anchorIdB = edge.back().anchorPair.anchorIdB;
+    const AnchorId anchorIdA = edge.front().anchorIdA;
+    const AnchorId anchorIdB = edge.back().anchorIdB;
     SHASTA_ASSERT(anchorIdA == assemblyGraph[source(e, assemblyGraph)].anchorId);
     SHASTA_ASSERT(anchorIdB == assemblyGraph[target(e, assemblyGraph)].anchorId);
 
@@ -411,9 +411,9 @@ void Assembler::exploreSegment(
             "<tr>"
             "<td class=centered>" <<
             "<a href='" << url << "'>" << i << "</a>" <<
-            "<td class=centered>" << anchorIdToString(step.anchorPair.anchorIdA) <<
-            "<td class=centered>" << anchorIdToString(step.anchorPair.anchorIdB) <<
-            "<td class=centered>" << step.anchorPair.orientedReadIds.size() <<
+            "<td class=centered>" << anchorIdToString(step.anchorIdA) <<
+            "<td class=centered>" << anchorIdToString(step.anchorIdB) <<
+            "<td class=centered>" << step.orientedReadIds.size() <<
             "<td class=centered>" << averageOffset <<
             "<td class=centered>" << minOffset <<
             "<td class=centered>" << maxOffset;
@@ -489,9 +489,9 @@ void Assembler::exploreSegmentStep(const vector<string>& request, ostream& html)
     // Summary table.
     html <<
         "<p><table>"
-        "<tr><th class=left>AnchorIdA<td class=centered>" << anchorIdToString(step.anchorPair.anchorIdA) <<
-        "<tr><th class=left>AnchorIdB<td class=centered>" << anchorIdToString(step.anchorPair.anchorIdB) <<
-        "<tr><th class=left>Coverage<td class=centered>" << step.anchorPair.orientedReadIds.size() <<
+        "<tr><th class=left>AnchorIdA<td class=centered>" << anchorIdToString(step.anchorIdA) <<
+        "<tr><th class=left>AnchorIdB<td class=centered>" << anchorIdToString(step.anchorIdB) <<
+        "<tr><th class=left>Coverage<td class=centered>" << step.orientedReadIds.size() <<
         "<tr><th class=left>Average offset<td class=centered>" << averageOffset <<
         "<tr><th class=left>Min offset<td class=centered>" << minOffset <<
         "<tr><th class=left>max offset<td class=centered>" << maxOffset <<
@@ -502,7 +502,7 @@ void Assembler::exploreSegmentStep(const vector<string>& request, ostream& html)
     // Details table.
     using Positions = AnchorPair::Positions;
     vector< pair<Positions, Positions> > positions;
-    step.anchorPair.get(anchors(), positions);
+    step.get(anchors(), positions);
     html <<
         "<p><table><tr>"
         "<th class=centered>Oriented<br>read id"
@@ -516,8 +516,8 @@ void Assembler::exploreSegmentStep(const vector<string>& request, ostream& html)
         "<th class=centered>B<br>middle<br>position"
         "<th class=centered>Sequence<br>length"
         ;
-    for(uint64_t i=0; i<step.anchorPair.orientedReadIds.size(); i++) {
-        const OrientedReadId orientedReadId = step.anchorPair.orientedReadIds[i];
+    for(uint64_t i=0; i<step.orientedReadIds.size(); i++) {
+        const OrientedReadId orientedReadId = step.orientedReadIds[i];
         const auto& p = positions[i];
         const Positions& positionsA = p.first;
         const Positions& positionsB = p.second;

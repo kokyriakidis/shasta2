@@ -71,9 +71,7 @@ AssemblyGraph::AssemblyGraph(
         edge.id = nextEdgeId++;
 
         for(const AnchorGraph::edge_descriptor e: chain) {
-            edge.resize(edge.size() + 1);
-            AssemblyGraphStep& assemblyGraphStep = edge.back();
-            assemblyGraphStep.anchorPair = anchorGraph[e];
+            edge.emplace_back(anchorGraph[e]);
         }
     }
 
@@ -272,8 +270,8 @@ void AssemblyGraph::writeSegmentDetails(const string& fileName) const
             csv <<
                 edge.id << "," <<
                 i << "," <<
-                anchorIdToString(step.anchorPair.anchorIdA) << "," <<
-                anchorIdToString(step.anchorPair.anchorIdB) << "," <<
+                anchorIdToString(step.anchorIdA) << "," <<
+                anchorIdToString(step.anchorIdB) << "," <<
                 averageOffset << "," <<
                 minOffset << "," <<
                 maxOffset << "\n";
@@ -584,21 +582,4 @@ void AssemblyGraph::detangleEdges(Detangler& detangler)
     cout << "Attempted detangling for " << attemptCount << " tangle edges." << endl;
     cout << "Detangling was successful for " << successCount << " tangle edges." << endl;
 
-}
-
-
-uint32_t AssemblyGraphStep::getAverageOffset(const Anchors& anchors) const
-{
-    return anchorPair.getAverageOffset(anchors);
-}
-
-
-
-void AssemblyGraphStep::getOffsets(
-    const Anchors& anchors,
-    uint32_t& averageOffset,
-    uint32_t& minOffset,
-    uint32_t& maxOffset) const
-{
-    anchorPair.getOffsets(anchors, averageOffset, minOffset, maxOffset);
 }

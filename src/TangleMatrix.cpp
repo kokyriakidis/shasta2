@@ -51,7 +51,7 @@ void TangleMatrix::construct(
     // we ignore it when creating the TangleMatrix.
     vector<uint64_t> count;
     for(const Entrance& entrance: entrances) {
-        const vector<OrientedReadId>& orientedReadIds = entrance.step.anchorPair.orientedReadIds;
+        const vector<OrientedReadId>& orientedReadIds = entrance.step.orientedReadIds;
         copy(orientedReadIds.begin(), orientedReadIds.end(),
             back_inserter(duplicateOrientedReadIdsOnEntrances));
     }
@@ -61,7 +61,7 @@ void TangleMatrix::construct(
     // If an OrientedReadId appears in more than one Exit,
     // we ignore it when creating the TangleMatrix.
     for(const Exit& exit: exits) {
-        const vector<OrientedReadId>& orientedReadIds = exit.step.anchorPair.orientedReadIds;
+        const vector<OrientedReadId>& orientedReadIds = exit.step.orientedReadIds;
         copy(orientedReadIds.begin(), orientedReadIds.end(),
             back_inserter(duplicateOrientedReadIdsOnExits));
     }
@@ -71,14 +71,14 @@ void TangleMatrix::construct(
     // Now we can fill in the OrientedReadIds of each Entrance and Exit.
     for(Entrance& entrance: entrances) {
         std::set_difference(
-            entrance.step.anchorPair.orientedReadIds.begin(), entrance.step.anchorPair.orientedReadIds.end(),
+            entrance.step.orientedReadIds.begin(), entrance.step.orientedReadIds.end(),
             duplicateOrientedReadIdsOnEntrances.begin(), duplicateOrientedReadIdsOnEntrances.end(),
             back_inserter(entrance.orientedReadIds)
             );
     }
     for(Exit& exit: exits) {
         std::set_difference(
-            exit.step.anchorPair.orientedReadIds.begin(), exit.step.anchorPair.orientedReadIds.end(),
+            exit.step.orientedReadIds.begin(), exit.step.orientedReadIds.end(),
             duplicateOrientedReadIdsOnExits.begin(), duplicateOrientedReadIdsOnExits.end(),
             back_inserter(exit.orientedReadIds)
             );
@@ -122,7 +122,7 @@ void TangleMatrix::writeHtml(
             "<tr>"
             "<td class = centered>" << iEntrance <<
             "<td class = centered>" << assemblyGraph[entrance.e].id <<
-            "<td class = centered>" << entrance.step.anchorPair.size() <<
+            "<td class = centered>" << entrance.step.size() <<
             "<td class = centered>" << entrance.orientedReadIds.size();
     }
     html << "</table>";
@@ -140,7 +140,7 @@ void TangleMatrix::writeHtml(
             "<tr>"
             "<td class = centered>" << iExit <<
             "<td class = centered>" << assemblyGraph[exit.e].id <<
-            "<td class = centered>" << exit.step.anchorPair.size() <<
+            "<td class = centered>" << exit.step.size() <<
             "<td class = centered>" << exit.orientedReadIds.size();
     }
     html << "</table>";

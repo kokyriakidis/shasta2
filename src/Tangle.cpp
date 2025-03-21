@@ -105,7 +105,7 @@ void Tangle::detangle()
         } else {
             const vertex_descriptor v1 = add_vertex(assemblyGraph);
             entranceNewVertices[iEntrance] = v1;
-            assemblyGraph[v1].anchorId = oldEdge.back().anchorPair.anchorIdA;
+            assemblyGraph[v1].anchorId = oldEdge.back().anchorIdA;
             const edge_descriptor eNew = assemblyGraph.addEdge(v0, v1);
             AssemblyGraphEdge& newEdge = assemblyGraph[eNew];
             copy(oldEdge.begin(), oldEdge.end()-1, back_inserter(newEdge));
@@ -125,7 +125,7 @@ void Tangle::detangle()
         } else {
             const vertex_descriptor v1 = add_vertex(assemblyGraph);
             exitNewVertices[iExit] = v1;
-            assemblyGraph[v1].anchorId = oldEdge.front().anchorPair.anchorIdB;
+            assemblyGraph[v1].anchorId = oldEdge.front().anchorIdB;
             const edge_descriptor eNew = assemblyGraph.addEdge(v1, v0);
             AssemblyGraphEdge& newEdge = assemblyGraph[eNew];
             copy(oldEdge.begin()+1, oldEdge.end(), back_inserter(newEdge));
@@ -157,13 +157,13 @@ void Tangle::detangle()
         const AssemblyGraphStep& oldStepEntrance = assemblyGraph[eOldEntrance].back();
         const AssemblyGraphStep& oldStepExit = assemblyGraph[eOldExit].front();
 
-        newStep.anchorPair.anchorIdA = oldStepEntrance.anchorPair.anchorIdA;
-        newStep.anchorPair.anchorIdB = oldStepExit.anchorPair.anchorIdB;
+        newStep.anchorIdA = oldStepEntrance.anchorIdA;
+        newStep.anchorIdB = oldStepExit.anchorIdB;
         set_intersection(
-            oldStepEntrance.anchorPair.orientedReadIds.begin(), oldStepEntrance.anchorPair.orientedReadIds.end(),
-            oldStepExit.anchorPair.orientedReadIds.begin(), oldStepExit.anchorPair.orientedReadIds.end(),
-            back_inserter(newStep.anchorPair.orientedReadIds));
-        SHASTA_ASSERT(not newStep.anchorPair.orientedReadIds.empty());
+            oldStepEntrance.orientedReadIds.begin(), oldStepEntrance.orientedReadIds.end(),
+            oldStepExit.orientedReadIds.begin(), oldStepExit.orientedReadIds.end(),
+            back_inserter(newStep.orientedReadIds));
+        SHASTA_ASSERT(not newStep.orientedReadIds.empty());
     }
 
     // Now we can remove the tangle vertices. This also removes all edges internal
