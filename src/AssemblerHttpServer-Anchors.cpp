@@ -288,18 +288,7 @@ void Assembler::exploreAnchorPair(const vector<string>& request, ostream& html)
 
 
 
-    // Write a header.
-    html << "<h1>Read composition analysis for anchors " << anchorIdToString(anchorIdA) <<
-        " and " << anchorIdToString(anchorIdB) << "</h1>";
-
-    // Analyze this anchor pair and write the result to html.
-    AnchorPairInfo info;
-    anchors().analyzeAnchorPair(anchorIdA, anchorIdB, info);
-    anchors().writeHtml(anchorIdA, anchorIdB, info, journeys(), html);
-
-
-
-    // Also create a AnchorPair from these two anchors.
+    // Create a AnchorPair from these two anchors.
     const AnchorPair anchorPair(anchors(), anchorIdA, anchorIdB);
     vector< pair<AnchorPair::Positions, AnchorPair::Positions> > positions;
     vector< vector<Base> > sequences;
@@ -374,6 +363,18 @@ void Assembler::exploreAnchorPair(const vector<string>& request, ostream& html)
         copy(sequence.begin(), sequence.end(), ostream_iterator<Base>(html));
     }
     html << "</table>";
+
+
+
+    // Old code.
+    html << "<h1>Read composition analysis for anchors " << anchorIdToString(anchorIdA) <<
+        " and " << anchorIdToString(anchorIdB) << "</h1>";
+
+    // Analyze this anchor pair and write the result to html.
+    AnchorPairInfo info;
+    anchors().analyzeAnchorPair(anchorIdA, anchorIdB, info);
+    anchors().writeHtml(anchorIdA, anchorIdB, info, journeys(), html);
+
 
 }
 
