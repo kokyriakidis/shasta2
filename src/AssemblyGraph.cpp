@@ -5,7 +5,9 @@
 #include "deduplicate.hpp"
 #include "Detangler.hpp"
 #include "findLinearChains.hpp"
+#include "performanceLog.hpp"
 #include "Tangle.hpp"
+#include "timestamp.hpp"
 using namespace shasta;
 
 // Boost libraries.
@@ -23,11 +25,13 @@ using namespace shasta;
 AssemblyGraph::AssemblyGraph(
     const Anchors& anchors,
     const AnchorGraph& anchorGraph,
-    const AssemblerOptions::AssemblyGraphOptions& /* options */) :
+    const AssemblerOptions::AssemblyGraphOptions& options ) :
     MappedMemoryOwner(anchors),
     anchors(anchors)
 {
     AssemblyGraph& assemblyGraph = *this;
+    performanceLog << "AssemblyGraph creation begins." << endl;
+
 
     // Find linear chains in the AnchorGraph.
     vector< vector<AnchorGraph::edge_descriptor> > chains;
@@ -36,6 +40,7 @@ AssemblyGraph::AssemblyGraph(
 
     // Get the initial and final AnchorId of all chains.
     // These generate an AssemblyGraph vertex each, after deduplication.
+    performanceLog << timestamp << "Finding linear chains in the AnchorGraph." << endl;
     vector<AnchorId> vertexAnchorIds;
     for(const auto& chain: chains) {
         const AnchorGraph::edge_descriptor eA = chain.front();
@@ -48,6 +53,7 @@ AssemblyGraph::AssemblyGraph(
     deduplicate(vertexAnchorIds);
 
     // Create the vertices.
+    performanceLog << timestamp << "Creating AssemblyGraph vertices." << endl;
     std::map<AnchorId, vertex_descriptor> vertexMap;
     for(const AnchorId anchorId: vertexAnchorIds) {
         const vertex_descriptor v = add_vertex(AssemblyGraphVertex(anchorId), assemblyGraph);
@@ -57,6 +63,7 @@ AssemblyGraph::AssemblyGraph(
 
 
     // Create the edges.
+    performanceLog << timestamp << "Creating AssemblyGraph edges." << endl;
     for(const auto& chain: chains) {
         const AnchorGraph::edge_descriptor eA = chain.front();
         const AnchorGraph::edge_descriptor eB = chain.back();
@@ -82,7 +89,6 @@ AssemblyGraph::AssemblyGraph(
         " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
     write("A");
 
-#if 0
     transitiveReduction(
         options.transitiveReductionThreshold,
         options.transitiveReductionA,
@@ -93,6 +99,7 @@ AssemblyGraph::AssemblyGraph(
         " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
     write("B");
 
+#if 0
     TrivialDetangler detangler;
 
     detangleVertices(detangler);
@@ -109,6 +116,8 @@ AssemblyGraph::AssemblyGraph(
         " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
     write("D");
 #endif
+
+    performanceLog << timestamp << "AssemblyGraph creation ends." << endl;
 }
 
 
@@ -158,11 +167,13 @@ void AssemblyGraph::writeGfa(const string& fileName) const
 
 void AssemblyGraph::write(const string& name) const
 {
+    performanceLog << timestamp << "Begin AssemblyGraph::save " << name << endl;
     save(name);
     writeGfa("AssemblyGraph-" + name + ".gfa");
     writeGraphviz("AssemblyGraph-" + name + ".dot");
     writeSegments("AssemblyGraphSegments-" + name + ".csv");
     writeSegmentDetails("AssemblyGraphSegmentsDetails-" + name + ".csv");
+    performanceLog << timestamp << "End AssemblyGraph::save " << name << endl;
 }
 
 
@@ -266,6 +277,7 @@ void AssemblyGraph::transitiveReduction(
     uint64_t b)
 {
     AssemblyGraph& assemblyGraph = *this;
+    performanceLog << timestamp << "AssemblyGraph::transitiveReduction begins." << endl;
 
     // Work areas for the BFS are defined here to reduce nemory allocation activity.
     std::queue<vertex_descriptor> q;
@@ -356,6 +368,8 @@ void AssemblyGraph::transitiveReduction(
         }
         verticesEncountered.clear();
     }
+
+    performanceLog << timestamp << "AssemblyGraph::transitiveReduction ends." << endl;
 }
 
 
@@ -364,11 +378,12 @@ void AssemblyGraph::compress()
 {
     AssemblyGraph& assemblyGraph = *this;
 
+    performanceLog << timestamp << "AssemblyGraph::compress begins." << endl;
+
     // Find linear chains. All the edges in a linear chain of
     // more than one edge are combined into a single edge.
     vector< vector<edge_descriptor> > linearChains;
     findLinearChains(assemblyGraph, 0, linearChains);
-    cout << "Compress found " << linearChains.size() << " linear chains." << endl;
 
     for(const vector<edge_descriptor>& linearChain: linearChains) {
         if(linearChain.size() == 1) {
@@ -386,9 +401,10 @@ void AssemblyGraph::compress()
 
         // Concatenate the old edges to create the new one,
         // then remove the old edges.
+        newEdge.push_back(assemblyGraph[v0].anchorId);
         for(const edge_descriptor eOld: linearChain) {
             AssemblyGraphEdge& oldEdge = assemblyGraph[eOld];
-            copy(oldEdge.begin(), oldEdge.end(), back_inserter(newEdge));
+            copy(oldEdge.begin() + 1, oldEdge.end(), back_inserter(newEdge));
             boost::remove_edge(eOld, assemblyGraph);
         }
 
@@ -397,7 +413,12 @@ void AssemblyGraph::compress()
             const vertex_descriptor v = source(linearChain[i], assemblyGraph);
             remove_vertex(v, assemblyGraph);
         }
+
+        SHASTA_ASSERT(newEdge.front() == assemblyGraph[v0].anchorId);
+        SHASTA_ASSERT(newEdge.back() == assemblyGraph[v1].anchorId);
     }
+
+    performanceLog << timestamp << "AssemblyGraph::compress ends." << endl;
 }
 
 
