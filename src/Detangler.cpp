@@ -22,7 +22,7 @@ bool TrivialDetangler::operator()(
     const bool isPositive11 = tangleMatrix.tangleMatrix[1][1] > 0;
 
     const bool isInPhase =
-        isPositive00 and isPositive11 and (not isPositive10) and (not isPositive10);
+        isPositive00 and isPositive11 and (not isPositive01) and (not isPositive10);
     const bool isOutOfPhase =
         isPositive01 and isPositive10 and (not isPositive00) and (not isPositive11);
 

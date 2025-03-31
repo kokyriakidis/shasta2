@@ -121,7 +121,7 @@ void Tangle::detangle()
         const edge_descriptor eOld = tangleMatrix.exits[iExit].e;
         const AssemblyGraphEdge& oldEdge = assemblyGraph[eOld];
         const vertex_descriptor v0 = target(eOld, assemblyGraph);
-        if(oldEdge.size() == 1) {
+        if(oldEdge.size() == 2) {
             exitNewVertices[iExit] = v0;
         } else {
             const vertex_descriptor v1 = add_vertex(assemblyGraph);

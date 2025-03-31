@@ -536,14 +536,14 @@ void AssemblyGraph::detangleEdges(Detangler& detangler)
     AssemblyGraph& assemblyGraph = *this;
     performanceLog << timestamp << "AssemblyGraph::detangleEdges begins." << endl;
 
-    // Gather all the edges with in_degree and out_degree greater than 1.
+    // Gather all the edges with more than one entrance and exit.
     std::set<edge_descriptor> detanglingCandidates;
     BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
         const vertex_descriptor v0 = source(e, assemblyGraph);
         const vertex_descriptor v1 = target(e, assemblyGraph);
-        if(
-            (in_degree(v0, assemblyGraph)  + in_degree(v1, assemblyGraph) > 1) and
-            (out_degree(v0, assemblyGraph) + out_degree(v1, assemblyGraph) > 1)) {
+        const uint64_t entranceCount = (in_degree (v0, assemblyGraph) + in_degree (v1, assemblyGraph)) - 1;
+        const uint64_t exitCount     = (out_degree(v0, assemblyGraph) + out_degree(v1, assemblyGraph)) - 1;
+        if((entranceCount > 1) and (exitCount > 1)) {
             detanglingCandidates.insert(e);
         }
     }
