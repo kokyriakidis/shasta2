@@ -1,5 +1,5 @@
-#if 0
 #include "TangleMatrix.hpp"
+#include "Anchor.hpp"
 #include "deduplicate.hpp"
 using namespace shasta;
 
@@ -32,66 +32,29 @@ void TangleMatrix::construct(
     SHASTA_ASSERT(std::adjacent_find(
         exitEdges.begin(), exitEdges.end(), comparator) == exitEdges.end());
 
-    // Find OrientedReadIds that appear in more than one entrance.
-    // These will be discarded when creating the Entrances.
-    vector<uint64_t> count;
-    for(const edge_descriptor e: entranceEdges) {
-        const AssemblyGraphEdge& edge = assemblyGraph[e];
-        SHASTA_ASSERT(not edge.empty());
-        const vector<OrientedReadId>& orientedReadIds = edge.back().orientedReadIds;
-        copy(orientedReadIds.begin(), orientedReadIds.end(),
-            back_inserter(duplicateOrientedReadIdsOnEntrances));
-    }
-    deduplicateAndCountWithThreshold(duplicateOrientedReadIdsOnEntrances, count, 2UL);
-
-    // Find OrientedReadIds that appear in more than one exit.
-    // These will be discarded when creating the Exits.
-    for(const edge_descriptor e: exitEdges) {
-        const AssemblyGraphEdge& edge = assemblyGraph[e];
-        SHASTA_ASSERT(not edge.empty());
-        const vector<OrientedReadId>& orientedReadIds = edge.front().orientedReadIds;
-        copy(orientedReadIds.begin(), orientedReadIds.end(),
-            back_inserter(duplicateOrientedReadIdsOnExits));
-    }
-    deduplicateAndCountWithThreshold(duplicateOrientedReadIdsOnExits, count, 2UL);
-
-
-
     // Create the entrances.
-    // Store the last AssemblyGraphStep of each entrance.
+    // Store the second to last AnchorId of each entrance.
     for(const edge_descriptor e: entranceEdges) {
         const AssemblyGraphEdge& edge = assemblyGraph[e];
-        SHASTA_ASSERT(not edge.empty());
-        entrances.emplace_back(e, edge.back(), duplicateOrientedReadIdsOnEntrances);
+        entrances.emplace_back(e, edge.secondToLast());
     }
 
     // Create the exits.
-    // Store the first AssemblyGraphStep of each exit.
+    // Store the second AnchorId of each exit.
     for(const edge_descriptor e: exitEdges) {
         const AssemblyGraphEdge& edge = assemblyGraph[e];
         SHASTA_ASSERT(not edge.empty());
-        exits.emplace_back(e, edge.front(), duplicateOrientedReadIdsOnExits);
+        exits.emplace_back(e, edge.second());
     }
 
-    // Create the AnchorPairs that we would get if we were to join
-    // each Entrance with each exit.
-    // Some of these will be used when detangling.
-    joinedAnchorPairs.resize(entrances.size(), vector<AnchorPair>(exits.size()));
-    for(uint64_t iEntrance=0; iEntrance<entrances.size(); iEntrance++) {
-        const AnchorPair& entranceAnchorPair = entrances[iEntrance].step;
-        for(uint64_t iExit=0; iExit<exits.size(); iExit++) {
-            const AnchorPair& exitAnchorPair = exits[iExit].step;
-            joinedAnchorPairs[iEntrance][iExit] = AnchorPair(assemblyGraph.anchors,
-                entranceAnchorPair, exitAnchorPair);
-        }
-    }
 
     // Now we can compute the tangle matrix.
-    vector<OrientedReadId> commonOrientedReadIds;
     tangleMatrix.resize(entrances.size(), vector<uint64_t>(exits.size(), 0));
     for(uint64_t iEntrance=0; iEntrance<entrances.size(); iEntrance++) {
+        const Entrance& entrance = entrances[iEntrance];
         for(uint64_t iExit=0; iExit<exits.size(); iExit++) {
-            tangleMatrix[iEntrance][iExit] = joinedAnchorPairs[iEntrance][iExit].size();
+            const Exit& exit = exits[iExit];
+            tangleMatrix[iEntrance][iExit] = assemblyGraph.anchors.countCommon(entrance.anchorId, exit.anchorId);
         }
     }
 }
@@ -110,18 +73,18 @@ void TangleMatrix::writeHtml(
     html <<
         "<h3>Entrances</h3>"
         "<p><table>"
-        "<tr><th>Index<th>Segment<th>Coverage<th>Usable<br>coverage";
+        "<tr><th>Index<th>Segment<th>AnchorId<th>Coverage";
     for(uint64_t iEntrance=0; iEntrance<entrances.size(); iEntrance++) {
         const Entrance& entrance = entrances[iEntrance];
         const edge_descriptor e = entrance.e;
-        const AssemblyGraphEdge& edge = assemblyGraph[e];
-        const AssemblyGraphStep& edgeLastStep = edge.back();
+        const AnchorId anchorId = entrance.anchorId;
+        const uint64_t coverage = assemblyGraph.anchors[anchorId].coverage();
         html <<
             "<tr>"
             "<td class = centered>" << iEntrance <<
-            "<td class = centered>" << assemblyGraph[entrance.e].id <<
-            "<td class = centered>" << edgeLastStep.orientedReadIds.size() <<
-            "<td class = centered>" << entrance.step.orientedReadIds.size();
+            "<td class = centered>" << assemblyGraph[e].id <<
+            "<td class = centered>" << anchorIdToString(anchorId) <<
+            "<td class = centered>" << coverage;
     }
     html << "</table>";
 
@@ -131,18 +94,18 @@ void TangleMatrix::writeHtml(
     html <<
         "<h3>Exits</h3>"
         "<p><table>"
-        "<tr><th>Index<th>Segment<th>Coverage<th>Usable<br>coverage";
+        "<tr><th>Index<th>Segment<th>AnchorId<th>Coverage";
     for(uint64_t iExit=0; iExit<exits.size(); iExit++) {
         const Exit& exit = exits[iExit];
         const edge_descriptor e = exit.e;
-        const AssemblyGraphEdge& edge = assemblyGraph[e];
-        const AssemblyGraphStep& edgeFirstStep = edge.front();
+        const AnchorId anchorId = exit.anchorId;
+        const uint64_t coverage = assemblyGraph.anchors[anchorId].coverage();
         html <<
             "<tr>"
             "<td class = centered>" << iExit <<
-            "<td class = centered>" << assemblyGraph[exit.e].id <<
-            "<td class = centered>" << edgeFirstStep.orientedReadIds.size() <<
-            "<td class = centered>" << exit.step.orientedReadIds.size();
+            "<td class = centered>" << assemblyGraph[e].id <<
+            "<td class = centered>" << anchorIdToString(anchorId) <<
+            "<td class = centered>" << coverage;
     }
     html << "</table>";
 
@@ -172,6 +135,6 @@ void TangleMatrix::writeHtml(
             html << "<td class=centered>" << tangleMatrix[iEntrance][iExit];
         }
     }
-    html << "<t/able>";
+    html << "</table>";
 }
-#endif
+

@@ -64,6 +64,18 @@ public:
     // equal to the sum of the base offsets for adjacent pairs of AnchorIds in this edge.
     uint64_t length(const Anchors& anchors) const;
 
+    AnchorId second() const
+    {
+        SHASTA_ASSERT(size() > 1);
+        return (*this)[1];
+    }
+
+    AnchorId secondToLast() const
+    {
+        SHASTA_ASSERT(size() > 1);
+        return (*this)[size() - 2];
+    }
+
     template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
     {
         ar & boost::serialization::base_object< vector<AnchorId> >(*this);

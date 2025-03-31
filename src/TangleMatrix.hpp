@@ -1,6 +1,5 @@
 #pragma once
 
-#if 0
 /*******************************************************************************
 
 A TangleMatrix is defined by two sets of AssemblyGraph edges (segments):
@@ -10,8 +9,8 @@ Any two sets of edges can be used to define a TangleMatrix,
 regardless of their location and connectivity in the AssemblyGraph.
 The two sets are not required to be disjoint.
 
-We use the last AssemblyGraphStep of each entrances and the first
-AssemblyGraphStep of each exit to count common reads.
+We use the second to last AnchorId of each entrance and the second
+AnchorId of each exit to count common reads.
 
 *******************************************************************************/
 
@@ -51,16 +50,13 @@ public:
         public:
         edge_descriptor e;
 
-        // The last AssemblyGraphStep of this AssemblyGraphEdge,
-        // after removing OrientedReadIds that also appear in other Entrances.
-        AssemblyGraphStep step;
+        // The second to last AnchorId of this AssemblyGraphEdge.
+        AnchorId anchorId;
 
         Entrance(
             edge_descriptor e,
-            const AssemblyGraphStep& step,
-            const vector<OrientedReadId>& duplicateOrientedReadIdsOnEntrances) :
-            e(e), step(step, duplicateOrientedReadIdsOnEntrances) {}
-
+            AnchorId anchorId) :
+            e(e), anchorId(anchorId) {}
     };
     vector<Entrance> entrances;
 
@@ -70,34 +66,16 @@ public:
         public:
         edge_descriptor e;
 
-        // The first AssemblyGraphStep of this AssemblyGraphEdge,
-        // after removing OrientedReadIds that also appear in other Exits.
-        AssemblyGraphStep step;
+        // The second to AnchorId of this AssemblyGraphEdge.
+        AnchorId anchorId;
 
         Exit(
             edge_descriptor e,
-            const AssemblyGraphStep& step,
-            const vector<OrientedReadId>& duplicateOrientedReadIdsOnExits) :
-            e(e), step(step, duplicateOrientedReadIdsOnExits) {}
-
-        // The OrientedReadIds in this exit that don't appear in other exits.
-        vector<OrientedReadId> orientedReadIds;
+            AnchorId anchorId) :
+            e(e), anchorId(anchorId) {}
     };
     vector<Exit> exits;
-
-    // The OrientedReadIds that appear in more than one Entrance or Exit.
-    // These are not counted when constructing the TangleMatrix.
-    vector<OrientedReadId> duplicateOrientedReadIdsOnEntrances;
-    vector<OrientedReadId> duplicateOrientedReadIdsOnExits;
-
-    // The AnchorPairs that we would get if we were to join
-    // each Entrance with each exit.
-    // Some of these will be used when detangling.
-    // Indexed by [iEntrance][iExit].
-    // The tangleMatrix is obtained from this.
-    vector< vector<AnchorPair> > joinedAnchorPairs;
 
     // The tangle matrix is indexed by [iEntrance][iExit].
     vector < vector<uint64_t> > tangleMatrix;
 };
-#endif

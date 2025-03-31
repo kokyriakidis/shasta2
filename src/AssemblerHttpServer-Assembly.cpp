@@ -539,7 +539,7 @@ void Assembler::exploreSegmentStep(const vector<string>& request, ostream& html)
 #endif
 
 
-#if 0
+
 void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html)
 {
     // Get the options from the request.
@@ -670,6 +670,7 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
 
 
 
+#if 0
 // The vertex is specified using one of the segments that have the vertex as their target.
 void Assembler::exploreVertexTangle(const vector<string>& request, ostream& html)
 {

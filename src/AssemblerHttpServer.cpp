@@ -46,7 +46,7 @@ void Assembler::fillServerFunctionTable()
     // SHASTA_ADD_TO_FUNCTION_TABLE(exploreSegmentStep);
     // SHASTA_ADD_TO_FUNCTION_TABLE(exploreVertexTangle);
     // SHASTA_ADD_TO_FUNCTION_TABLE(exploreEdgeTangle);
-    // SHASTA_ADD_TO_FUNCTION_TABLE(exploreTangleMatrix);
+    SHASTA_ADD_TO_FUNCTION_TABLE(exploreTangleMatrix);
 }
 #undef SHASTA_ADD_TO_FUNCTION_TABLE
 
