@@ -378,48 +378,8 @@ void Assembler::exploreSegment(
         SHASTA_ASSERT(0);
     }
     SHASTA_ASSERT(end > begin);
-
-
-    html << "<p>The rest of the output is currently turned off.";
-    return;
-
-#if 0
-
-    html << "<p><table>"
-        "<tr><th>Position<th>AnchorIdA<th>AnchorIdB<th>Coverage"
-        "<th>Average<br>offset"
-        "<th>Min<br>offset"
-        "<th>Max<br>offset";
-
-    for(uint64_t i=begin; i!=end; i++) {
-        const AssemblyGraphStep& step = edge[i];
-        const string url =
-            "exploreSegmentStep?"
-            "assemblyStage=" + assemblyStage +
-            "&segmentName=" + segmentName +
-            "&positionInSegment=" + to_string(i);
-
-        // Compute offsets.
-        uint32_t averageOffset;
-        uint32_t minOffset;
-        uint32_t maxOffset;
-        step.getOffsets(anchors(), averageOffset, minOffset, maxOffset);
-
-        html <<
-            "<tr>"
-            "<td class=centered>" <<
-            "<a href='" << url << "'>" << i << "</a>" <<
-            "<td class=centered>" << anchorIdToString(step.anchorIdA) <<
-            "<td class=centered>" << anchorIdToString(step.anchorIdB) <<
-            "<td class=centered>" << step.orientedReadIds.size() <<
-            "<td class=centered>" << averageOffset <<
-            "<td class=centered>" << minOffset <<
-            "<td class=centered>" << maxOffset;
-    }
-
-    html << "</table>";
-#endif
 }
+
 
 
 AssemblyGraphPostprocessor& Assembler::getAssemblyGraph(const string& assemblyStage)
@@ -432,111 +392,6 @@ AssemblyGraphPostprocessor& Assembler::getAssemblyGraph(const string& assemblySt
     }
     return *(it->second);
 }
-
-
-#if 0
-void Assembler::exploreSegmentStep(const vector<string>& request, ostream& html)
-{
-    // Get the options from the request.
-    string assemblyStage;
-    HttpServer::getParameterValue(request, "assemblyStage", assemblyStage);
-
-    string segmentName;;
-    HttpServer::getParameterValue(request, "segmentName", segmentName);
-
-    uint64_t positionInSegment;
-    HttpServer::getParameterValue(request, "positionInSegment", positionInSegment);
-
-    uint64_t segmentId = invalid<uint64_t>;
-    try {
-        segmentId = std::stol(segmentName);
-    } catch(exception&) {
-    }
-    if(segmentId == invalid<uint64_t>) {
-        html << "Segment name must be a number.";
-        return;
-    }
-
-    // Get the AssemblyGraph for this assembly stage.
-    const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(assemblyStage);
-
-    // Find the AssemblyGraphEdge corresponding to the requested segment.
-    auto it = assemblyGraph.edgeMap.find(segmentId);
-    if(it == assemblyGraph.edgeMap.end()) {
-        html << "<p>Assembly graph at stage " << assemblyStage <<
-            " does not have segment " << segmentId;
-        return;
-    }
-    const AssemblyGraph::edge_descriptor e = it->second;
-    const AssemblyGraphEdge& edge = assemblyGraph[e];
-
-    if(positionInSegment >= edge.size()) {
-        html << "<p>Invalid position in segment.";
-        return;
-    }
-
-    const AssemblyGraphStep& step = edge[positionInSegment];
-
-    uint32_t averageOffset;
-    uint32_t minOffset;
-    uint32_t maxOffset;
-    step.getOffsets(anchors(), averageOffset, minOffset, maxOffset);
-
-    html << "<h2>Step " << positionInSegment << " for segment " << segmentId <<
-        " at assembly stage " << assemblyStage << "</h2>";
-
-    // Summary table.
-    html <<
-        "<p><table>"
-        "<tr><th class=left>AnchorIdA<td class=centered>" << anchorIdToString(step.anchorIdA) <<
-        "<tr><th class=left>AnchorIdB<td class=centered>" << anchorIdToString(step.anchorIdB) <<
-        "<tr><th class=left>Coverage<td class=centered>" << step.orientedReadIds.size() <<
-        "<tr><th class=left>Average offset<td class=centered>" << averageOffset <<
-        "<tr><th class=left>Min offset<td class=centered>" << minOffset <<
-        "<tr><th class=left>max offset<td class=centered>" << maxOffset <<
-        "</table>";
-
-
-
-    // Details table.
-    using Positions = AnchorPair::Positions;
-    vector< pair<Positions, Positions> > positions;
-    step.get(anchors(), positions);
-    html <<
-        "<p><table><tr>"
-        "<th class=centered>Oriented<br>read id"
-        "<th class=centered>Position<br>in<br>journey<br>A"
-        "<th class=centered>Position<br>in<br>journey<br>B"
-        "<th class=centered>Journey<br>offset"
-        "<th class=centered>OrdinalA"
-        "<th class=centered>OrdinalB"
-        "<th class=centered>Ordinal<br>offset"
-        "<th class=centered>A<br>middle<br>position"
-        "<th class=centered>B<br>middle<br>position"
-        "<th class=centered>Sequence<br>length"
-        ;
-    for(uint64_t i=0; i<step.orientedReadIds.size(); i++) {
-        const OrientedReadId orientedReadId = step.orientedReadIds[i];
-        const auto& p = positions[i];
-        const Positions& positionsA = p.first;
-        const Positions& positionsB = p.second;
-        html <<
-            "<tr>"
-            "<td class=centered>" << orientedReadId <<
-            "<td class=centered>" << positionsA.positionInJourney <<
-            "<td class=centered>" << positionsB.positionInJourney <<
-            "<td class=centered>" << positionsB.positionInJourney - positionsA.positionInJourney <<
-            "<td class=centered>" << positionsA.ordinal <<
-            "<td class=centered>" << positionsB.ordinal <<
-            "<td class=centered>" << positionsB.ordinal - positionsA.ordinal <<
-            "<td class=centered>" << positionsA.basePosition <<
-            "<td class=centered>" << positionsB.basePosition <<
-            "<td class=centered>" << positionsB.basePosition - positionsA.basePosition;
-
-    }
-    html << "</table>";
-}
-#endif
 
 
 
@@ -670,7 +525,7 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
 
 
 
-#if 0
+
 // The vertex is specified using one of the segments that have the vertex as their target.
 void Assembler::exploreVertexTangle(const vector<string>& request, ostream& html)
 {
@@ -820,4 +675,4 @@ void Assembler::exploreEdgeTangle(const vector<string>& request, ostream& html)
     // Write out the TangleMatrix.
     tangle.tangleMatrix.writeHtml(assemblyGraph, html);
 }
-#endif
+

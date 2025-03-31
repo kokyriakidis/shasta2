@@ -1,5 +1,3 @@
-#if 0
-
 // Shasta.
 #include "Tangle.hpp"
 using namespace shasta;
@@ -92,9 +90,9 @@ void Tangle::construct()
 void Tangle::detangle()
 {
 
-    // For each Entrance we create a new edge with the last AssembyGraphStep removed
+    // For each Entrance we create a new edge with the last AnchorId removed
     // and store the last vertex of that new edge. If the Entrance already has
-    // a single AssemblyGraphStep, we just store the source vertex of that Entrance.
+    // a just two AnchorIds, we just store the source vertex of that Entrance.
     // These are the vertices that will be connected to similar vertices created below
     // for each exit.
     vector<vertex_descriptor> entranceNewVertices(tangleMatrix.entrances.size());
@@ -102,12 +100,13 @@ void Tangle::detangle()
         const edge_descriptor eOld = tangleMatrix.entrances[iEntrance].e;
         const AssemblyGraphEdge& oldEdge = assemblyGraph[eOld];
         const vertex_descriptor v0 = source(eOld, assemblyGraph);
-        if(oldEdge.size() == 1) {
+        SHASTA_ASSERT(oldEdge.size() > 1);
+        if(oldEdge.size() == 2) {
             entranceNewVertices[iEntrance] = v0;
         } else {
             const vertex_descriptor v1 = add_vertex(assemblyGraph);
             entranceNewVertices[iEntrance] = v1;
-            assemblyGraph[v1].anchorId = oldEdge.back().anchorIdA;
+            assemblyGraph[v1].anchorId = oldEdge.secondToLast();
             const edge_descriptor eNew = assemblyGraph.addEdge(v0, v1);
             AssemblyGraphEdge& newEdge = assemblyGraph[eNew];
             copy(oldEdge.begin(), oldEdge.end()-1, back_inserter(newEdge));
@@ -116,7 +115,7 @@ void Tangle::detangle()
 
 
 
-    // Same as above, but for the Exits. Here we remove the first AssemblyGraphStep.
+    // Same as above, but for the Exits. Here we remove the first AnchorId.
     vector<vertex_descriptor> exitNewVertices(tangleMatrix.exits.size());
     for(uint64_t iExit=0; iExit<tangleMatrix.exits.size(); iExit++) {
         const edge_descriptor eOld = tangleMatrix.exits[iExit].e;
@@ -127,7 +126,7 @@ void Tangle::detangle()
         } else {
             const vertex_descriptor v1 = add_vertex(assemblyGraph);
             exitNewVertices[iExit] = v1;
-            assemblyGraph[v1].anchorId = oldEdge.front().anchorIdB;
+            assemblyGraph[v1].anchorId = oldEdge.second();
             const edge_descriptor eNew = assemblyGraph.addEdge(v1, v0);
             AssemblyGraphEdge& newEdge = assemblyGraph[eNew];
             copy(oldEdge.begin()+1, oldEdge.end(), back_inserter(newEdge));
@@ -137,8 +136,7 @@ void Tangle::detangle()
 
 
     // Now for each pair to be connected we connect the above vertices.
-    // The connecting edge has a single AssemblyGraphStep obtaining
-    // from the joinedAnchorPairs stored in the TangleMatrix.
+    // The connecting edge has just two AnchorIds.
     for(const auto& p: connectList) {
         const uint64_t iEntrance = p.first;
         const uint64_t iExit = p.second;
@@ -148,13 +146,11 @@ void Tangle::detangle()
         const vertex_descriptor v1 = exitNewVertices[iExit];
         const edge_descriptor eNew = assemblyGraph.addEdge(v0, v1);
         AssemblyGraphEdge& newEdge = assemblyGraph[eNew];
-
-        // Fill in the single AssemblyGraphStep of the new edge.
-        newEdge.emplace_back(tangleMatrix.joinedAnchorPairs[iEntrance][iExit]);
-        SHASTA_ASSERT(not newEdge.front().orientedReadIds.empty());
+        newEdge.push_back(assemblyGraph[v0].anchorId);
+        newEdge.push_back(assemblyGraph[v1].anchorId);
     }
 
-    // Store the ids of all edges that will be removed.
+    // Store the edges that will be removed.
     removedEdges.clear();
     // Edges internal to the Tangle and exit edges.
     for(const vertex_descriptor v0: tangleVertices) {
@@ -176,4 +172,3 @@ void Tangle::detangle()
     }
 }
 
-#endif
