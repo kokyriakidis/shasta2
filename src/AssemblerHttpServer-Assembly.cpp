@@ -202,8 +202,8 @@ void Assembler::exploreSegment(
     string segmentName;;
     HttpServer::getParameterValue(request, "segmentName", segmentName);
 
-    string displaySteps = "none";
-    HttpServer::getParameterValue(request, "displaySteps", displaySteps);
+    string displayAnchors = "none";
+    HttpServer::getParameterValue(request, "displayAnchors", displayAnchors);
 
     string beginString;
     HttpServer::getParameterValue(request, "begin", beginString);
@@ -211,11 +211,11 @@ void Assembler::exploreSegment(
     string endString;
     HttpServer::getParameterValue(request, "end", endString);
 
-    string firstStepsCountString = "5";
-    HttpServer::getParameterValue(request, "firstStepsCountString", firstStepsCountString);
+    string firstAnchorsCountString = "5";
+    HttpServer::getParameterValue(request, "firstAnchorsCountString", firstAnchorsCountString);
 
-    string lastStepsCountString = "5";
-    HttpServer::getParameterValue(request, "lastStepsCount", lastStepsCountString);
+    string lastAnchorsCountString = "5";
+    HttpServer::getParameterValue(request, "lastAnchorsCountString", lastAnchorsCountString);
 
 
     // Start the form.
@@ -228,7 +228,7 @@ void Assembler::exploreSegment(
     if(not assemblyStage.empty()) {
         html << " value='" << assemblyStage + "'";
     }
-    html << " size=30>";
+    html << " size=10>";
 
     html <<
         "<tr>"
@@ -241,32 +241,32 @@ void Assembler::exploreSegment(
 
 
 
-    // Options to control which segment steps are shown.
+    // Options to control which segment anchors are shown.
     html <<
         "<tr>"
-        "<th class=left>Show segment steps"
+        "<th class=left>Show segment anchors"
         "<td class=left>"
 
-        "<input type=radio required name=displaySteps value='none'" <<
-        (displaySteps == "none" ? " checked=on" : "") << "> None"
+        "<input type=radio required name=displayAnchors value='none'" <<
+        (displayAnchors == "none" ? " checked=on" : "") << "> None"
 
-        "<br><input type=radio required name=displaySteps value='all'" <<
-        (displaySteps == "all" ? " checked=on" : "") << "> All"
+        "<br><input type=radio required name=displayAnchors value='all'" <<
+        (displayAnchors == "all" ? " checked=on" : "") << "> All"
 
-        "<br><input type=radio required name=displaySteps value='range'" <<
-        (displaySteps == "range" ? " checked=on" : "") << "> Steps in position range "
+        "<br><input type=radio required name=displayAnchors value='range'" <<
+        (displayAnchors == "range" ? " checked=on" : "") << "> Anchors in position range "
         "<input type=text name=begin size=8 style='text-align:center' value='" << beginString << "'> to "
         "<input type=text name=end size=8 style='text-align:center' value='" << endString << "'>"
 
-        "<br><input type=radio required name=displaySteps value='first'" <<
-        (displaySteps == "first" ? " checked=on" : "") << "> First "
-        "<input type=text name=firstStepsCount size=8 style='text-align:center' value='" << firstStepsCountString << "'>"
-        " steps"
+        "<br><input type=radio required name=displayAnchors value='first'" <<
+        (displayAnchors == "first" ? " checked=on" : "") << "> First "
+        "<input type=text name=firstAnchorsCount size=8 style='text-align:center' value='" << firstAnchorsCountString << "'>"
+        " anchors"
 
-        "<br><input type=radio required name=displaySteps value='last'" <<
-        (displaySteps == "last" ? " checked=on" : "") << "> Last "
-        "<input type=text name=lastStepsCount size=8 style='text-align:center' value='" << lastStepsCountString << "'>"
-        " steps"
+        "<br><input type=radio required name=displayAnchors value='last'" <<
+        (displayAnchors == "last" ? " checked=on" : "") << "> Last "
+        "<input type=text name=lastAnchorsCount size=8 style='text-align:center' value='" << lastAnchorsCountString << "'>"
+        " anchors"
         ;
 
     // End the form.
@@ -318,20 +318,20 @@ void Assembler::exploreSegment(
         "<tr><th class=left>Estimated length<td class = centered>" << edge.length(anchors()) <<
         "</table>";
 
-    // Details table showing the requested steps.
-    if(displaySteps == "none") {
+    // Details table showing the requested anchors.
+    if(displayAnchors == "none") {
         return;
     }
 
 
 
-    // Figure out the step position range to use.
+    // Figure out the anchor position range to use.
     uint64_t begin = invalid<uint64_t>;
     uint64_t end = invalid<uint64_t>;
-    if(displaySteps == "all") {
+    if(displayAnchors == "all") {
         begin = 0;
         end = edge.size();
-    } else if(displaySteps == "range") {
+    } else if(displayAnchors == "range") {
         try {
             begin = atoul(beginString);
         } catch(std::exception& e) {
@@ -351,23 +351,23 @@ void Assembler::exploreSegment(
         if(end < begin) {
             end = begin + 1;
         }
-    } else if(displaySteps == "first") {
+    } else if(displayAnchors == "first") {
         begin = 0;
         try {
-            end = atoul(firstStepsCountString);
+            end = atoul(firstAnchorsCountString);
         } catch(std::exception& e) {
-            throw runtime_error("First steps count " + firstStepsCountString + " is not valid. Must be a number.");
+            throw runtime_error("First anchors count " + firstAnchorsCountString + " is not valid. Must be a number.");
         }
         if(end > edge.size()) {
             end = edge.size();
         }
-    } else if(displaySteps == "last") {
+    } else if(displayAnchors == "last") {
         end = edge.size();
         uint64_t count = invalid<uint64_t>;
         try {
-            count = atoul(lastStepsCountString);
+            count = atoul(lastAnchorsCountString);
         } catch(std::exception& e) {
-            throw runtime_error("Last steps count " + lastStepsCountString + " is not valid. Must be a number.");
+            throw runtime_error("Last anchors count " + lastAnchorsCountString + " is not valid. Must be a number.");
         }
         if(count > edge.size()) {
             begin = 0;
@@ -378,6 +378,39 @@ void Assembler::exploreSegment(
         SHASTA_ASSERT(0);
     }
     SHASTA_ASSERT(end > begin);
+
+
+    html <<
+        "<p>"
+        "<table>"
+        "<tr><th>Position<th>AnchorId<th>Coverage"
+        "<th>Common<br>coverage<br>with<br>next"
+        "<th>Base<br>offset<br>to<br>next";
+
+    for(uint64_t position=begin; position!=end; ++position) {
+        const AnchorId anchorId = edge[position];
+        const uint64_t coverage = anchors()[anchorId].coverage();
+
+        html <<
+            "<tr>"
+            "<td class=centered>" << position <<
+            "<td class=centered>" << anchorIdToString(anchorId) <<
+            "<td class=centered>" << coverage;
+
+        if(position < edge.size() -1) {
+            const uint64_t nextPosition = position + 1;
+            const AnchorId nextAnchorId = edge[nextPosition];
+            uint64_t baseOffset;
+            const uint64_t commonCount = anchors().countCommon(anchorId, nextAnchorId, baseOffset);
+            html <<
+                "<td class=centered>" << commonCount <<
+                "<td class=centered>" << baseOffset;
+        } else {
+            html << "<td><td>";
+        }
+    }
+
+    html << "</table>";
 }
 
 
