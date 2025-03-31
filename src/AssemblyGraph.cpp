@@ -23,7 +23,7 @@ using namespace shasta;
 AssemblyGraph::AssemblyGraph(
     const Anchors& anchors,
     const AnchorGraph& anchorGraph,
-    const AssemblerOptions::AssemblyGraphOptions& options) :
+    const AssemblerOptions::AssemblyGraphOptions& /* options */) :
     MappedMemoryOwner(anchors),
     anchors(anchors)
 {
@@ -70,8 +70,11 @@ AssemblyGraph::AssemblyGraph(
         AssemblyGraphEdge& edge = assemblyGraph[e];
         edge.id = nextEdgeId++;
 
+        edge.push_back(anchorIdA);
         for(const AnchorGraph::edge_descriptor e: chain) {
-            edge.emplace_back(anchorGraph[e]);
+            const AnchorGraph::vertex_descriptor v = target(e, anchorGraph);
+            const AnchorId anchorId = v;    // In the AnchorGraph, vertex_descriptors are AnchorIds.
+            edge.push_back(anchorId);
         }
     }
 
@@ -79,6 +82,7 @@ AssemblyGraph::AssemblyGraph(
         " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
     write("A");
 
+#if 0
     transitiveReduction(
         options.transitiveReductionThreshold,
         options.transitiveReductionA,
@@ -104,40 +108,7 @@ AssemblyGraph::AssemblyGraph(
     cout << "After trivial edge detangling, the assembly graph has " << num_vertices(assemblyGraph) <<
         " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
     write("D");
-}
-
-
-
-// Compute the sum of offsets of all the AssemblyGraphSteps of an AssemblyGraphEdge.
-void AssemblyGraphEdge::getOffsets(
-    const Anchors& anchors,
-    uint32_t& averageOffset,
-    uint32_t& minOffset,
-    uint32_t& maxOffset) const
-{
-    averageOffset = 0;
-    minOffset = 0;
-    maxOffset = 0;
-    for(const AssemblyGraphStep& step: *this) {
-        uint32_t stepAverageOffset;
-        uint32_t stepMinOffset;
-        uint32_t stepMaxOffset;
-        step.getOffsets(anchors, stepAverageOffset, stepMinOffset, stepMaxOffset);
-        averageOffset += stepAverageOffset;
-        minOffset += stepMinOffset;
-        maxOffset += stepMaxOffset;
-    }
-}
-
-
-
-uint32_t AssemblyGraphEdge::getAverageOffset(const Anchors& anchors) const
-{
-    uint32_t averageOffset = 0;
-    for(const AssemblyGraphStep& step: *this) {
-        averageOffset += step.getAverageOffset(anchors);
-    }
-    return averageOffset;
+#endif
 }
 
 
@@ -165,7 +136,7 @@ void AssemblyGraph::writeGfa(const string& fileName) const
         gfa << "*\t";
 
         // Sequence length in bases.
-        gfa << "LN:i:" << edge.getAverageOffset(anchors) << "\n";
+        gfa << "LN:i:" << edge.length(anchors) << "\n";
     }
 
     // For each vertex, write links between each pair of incoming/outgoing edges.
@@ -201,24 +172,17 @@ void AssemblyGraph::writeSegments(const string& fileName) const
     const AssemblyGraph& assemblyGraph = *this;
 
     ofstream csv(fileName);
-    csv << "Id,AnchorIdA,AnchorIdB,StepCount,AverageOffset,MinOffset,MaxOffset\n";
+    csv << "Id,AnchorIdA,AnchorIdB,AnchorCount,Length\n";
 
     BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
         const AssemblyGraphEdge& edge = assemblyGraph[e];
 
-        uint32_t averageOffset;
-        uint32_t minOffset;
-        uint32_t maxOffset;
-        edge.getOffsets(anchors, averageOffset, minOffset, maxOffset);
-
         csv <<
             edge.id << "," <<
-            anchorIdToString(edge.anchorIdA()) << "," <<
-            anchorIdToString(edge.anchorIdB()) << "," <<
+            anchorIdToString(edge.front()) << "," <<
+            anchorIdToString(edge.back()) << "," <<
             edge.size() << "," <<
-            averageOffset << "," <<
-            minOffset << "," <<
-            maxOffset << "\n";
+            edge.length(anchors) <<  "\n";
     }
 
 }
@@ -262,27 +226,25 @@ void AssemblyGraph::writeSegmentDetails(const string& fileName) const
     const AssemblyGraph& assemblyGraph = *this;
 
     ofstream csv(fileName);
-    csv << "Id,Position,AnchorIdA,AnchorIdB,AverageOffset,MinOffset,MaxOffset\n";
+    csv << "Id,Position,AnchorIdA,AnchorIdB,Common,Base offset,\n";
 
     BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
         const AssemblyGraphEdge& edge = assemblyGraph[e];
 
-        for(uint64_t i=0; i<edge.size(); i++) {
-            const AssemblyGraphStep& step = edge[i];
+        for(uint64_t i=1; i<edge.size(); i++) {
+            const AnchorId anchorIdA = edge[i - 1];
+            const AnchorId anchorIdB = edge[i];
 
-            uint32_t averageOffset;
-            uint32_t minOffset;
-            uint32_t maxOffset;
-            step.getOffsets(anchors, averageOffset, minOffset, maxOffset);
+            uint64_t baseOffset;
+            const uint64_t commonCount = anchors.countCommon(anchorIdA, anchorIdB, baseOffset);
 
             csv <<
                 edge.id << "," <<
-                i << "," <<
-                anchorIdToString(step.anchorIdA) << "," <<
-                anchorIdToString(step.anchorIdB) << "," <<
-                averageOffset << "," <<
-                minOffset << "," <<
-                maxOffset << "\n";
+                i - 1 << "," <<
+                anchorIdToString(anchorIdA) << "," <<
+                anchorIdToString(anchorIdB) << "," <<
+                commonCount << "," <<
+                baseOffset << "\n";
         }
     }
 
@@ -516,7 +478,7 @@ AssemblyGraph::AssemblyGraph(
 }
 
 
-
+#if 0
 void AssemblyGraph::detangleVertices(Detangler& detangler)
 {
     AssemblyGraph& assemblyGraph = *this;
@@ -586,4 +548,25 @@ void AssemblyGraph::detangleEdges(Detangler& detangler)
     cout << "Attempted detangling for " << attemptCount << " tangle edges." << endl;
     cout << "Detangling was successful for " << successCount << " tangle edges." << endl;
 
+}
+#endif
+
+
+
+// The length of an AssemblyGraphEdge is the estimated length of its sequence,
+// equal to the sum of the base offsets for adjacent pairs of AnchorIds in this edge.
+uint64_t AssemblyGraphEdge::length(const Anchors& anchors) const
+{
+    SHASTA_ASSERT(size() > 1);
+    const AssemblyGraphEdge& edge = *this;
+
+    uint64_t sumBaseOffset = 0;
+    for(uint64_t i=1; i<size(); i++) {
+        const AnchorId anchorIdA = edge[i - 1];
+        const AnchorId anchorIdB = edge[i];
+        uint64_t baseOffset = 0;
+        anchors.countCommon(anchorIdA, anchorIdB, baseOffset);
+        sumBaseOffset += baseOffset;
+    }
+    return sumBaseOffset;
 }

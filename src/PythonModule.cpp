@@ -134,13 +134,14 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def("getVertex", &AssemblyGraphPostprocessor::getVertex, return_value_policy::reference)
         .def("getEdgeDescriptor", &AssemblyGraphPostprocessor::getEdgeDescriptor)
         .def("getEdge", &AssemblyGraphPostprocessor::getEdge, return_value_policy::reference)
-        .def("detangleVertices", &AssemblyGraphPostprocessor::detangleVertices)
-        .def("detangleEdges", &AssemblyGraphPostprocessor::detangleEdges)
+        // .def("detangleVertices", &AssemblyGraphPostprocessor::detangleVertices)
+        // .def("detangleEdges", &AssemblyGraphPostprocessor::detangleEdges)
         ;
+#if 0
     class_<TrivialDetangler>(shasta2Module, "TrivialDetangler")
         .def(init<>())
         ;
-
+#endif
 
 
     // Non-member functions exposed to Python.

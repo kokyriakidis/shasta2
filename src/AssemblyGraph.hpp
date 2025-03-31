@@ -23,7 +23,6 @@ namespace shasta {
     class AssemblyGraphVertexCompareEqualByAnchorId;
     class AssemblyGraphEdgeOrderById;
     class AssemblyGraphEdgeCompareEqualById;
-    class AssemblyGraphStep;
 
     using AssemblyGraphBaseClass = boost::adjacency_list<
         boost::listS,
@@ -57,66 +56,17 @@ public:
 
 
 
-// For now this is just an AnchorPair.
-class shasta::AssemblyGraphStep : public AnchorPair {
-public:
-
-    AssemblyGraphStep(const AnchorPair& anchorPair) :
-        AnchorPair(anchorPair) {}
-
-    AssemblyGraphStep(
-        const AnchorPair& anchorPair,
-        const vector<OrientedReadId>& excludedOrientedReadIds) :
-        AnchorPair(anchorPair, excludedOrientedReadIds) {}
-
-    // It would be good to remove the default constructor but it is currently
-    // used in detangling.
-    AssemblyGraphStep() = default;
-
-    template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
-    {
-        ar & boost::serialization::base_object<AnchorPair>(*this);
-    }
-};
-
-
-
-class shasta::AssemblyGraphEdge : public vector<AssemblyGraphStep> {
+class shasta::AssemblyGraphEdge : public vector<AnchorId> {
 public:
     uint64_t id = invalid<uint64_t>;
 
-    // Compute the sum of offsets of all the AssemblyGraphSteps.
-    uint32_t getAverageOffset(const Anchors&) const;
-    void getOffsets(
-        const Anchors&,
-        uint32_t& averageOffset,
-        uint32_t& minOffset,
-        uint32_t& maxOffset) const;
-
     // The length of an AssemblyGraphEdge is the estimated length of its sequence,
-    // equal to averageOffset, which is the sum of the averageOffsets
-    // of all the AssemblyGraphSteps of this edge.
-    uint64_t length(const Anchors& anchors) const
-    {
-        uint32_t averageOffset;
-        uint32_t minOffset;
-        uint32_t maxOffset;
-        getOffsets(anchors, averageOffset, minOffset, maxOffset);
-        return averageOffset;
-    }
-
-    AnchorId anchorIdA() const
-    {
-        return (*this).front().anchorIdA;
-    }
-    AnchorId anchorIdB() const
-    {
-        return (*this).back().anchorIdB;
-    }
+    // equal to the sum of the base offsets for adjacent pairs of AnchorIds in this edge.
+    uint64_t length(const Anchors& anchors) const;
 
     template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
     {
-        ar & boost::serialization::base_object< vector<AssemblyGraphStep> >(*this);
+        ar & boost::serialization::base_object< vector<AnchorId> >(*this);
         ar & id;
     }
 };

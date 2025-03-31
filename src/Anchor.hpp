@@ -89,9 +89,6 @@ public:
     {
         return size();
     }
-
-    // Return the number of common oriented reads with another Anchor.
-    uint64_t countCommon(const Anchor& that, bool ignoreNegativeOffsets = false) const;
 };
 
 
@@ -127,8 +124,13 @@ public:
     // that this anchor was created from.
     vector<Base> anchorKmerSequence(AnchorId) const;
 
-    // Return the number of common oriented reads between two Anchors.
-    uint64_t countCommon(AnchorId, AnchorId, bool ignoreNegativeOffsets = false) const;
+    // Return the number of common oriented reads between two Anchors,
+    // counting only oriented reads that have a greater ordinal on anchorId1
+    // than they have on anchorId0.
+    uint64_t countCommon(AnchorId anchorId0, AnchorId anchorId1) const;
+
+    // Same as above, but also compute the average offset in bases.
+    uint64_t countCommon(AnchorId anchorId0, AnchorId anchorId1, uint64_t& baseOffset) const;
 
     // Analyze the oriented read composition of two anchors.
     void analyzeAnchorPair(AnchorId, AnchorId, AnchorPairInfo&) const;

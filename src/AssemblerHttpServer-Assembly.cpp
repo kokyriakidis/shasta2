@@ -302,27 +302,20 @@ void Assembler::exploreSegment(
     const AssemblyGraph::edge_descriptor e = it->second;
     const AssemblyGraphEdge& edge = assemblyGraph[e];
 
-    const AnchorId anchorIdA = edge.front().anchorIdA;
-    const AnchorId anchorIdB = edge.back().anchorIdB;
+    const AnchorId anchorIdA = edge.front();
+    const AnchorId anchorIdB = edge.back();
     SHASTA_ASSERT(anchorIdA == assemblyGraph[source(e, assemblyGraph)].anchorId);
     SHASTA_ASSERT(anchorIdB == assemblyGraph[target(e, assemblyGraph)].anchorId);
 
     html << "<h2>Segment " << segmentId << " at assembly stage " << assemblyStage << "</h2>";
-
-    uint32_t averageOffset;
-    uint32_t minOffset;
-    uint32_t maxOffset;
-    edge.getOffsets(anchors(), averageOffset, minOffset, maxOffset);
 
     // Summary table.
     html <<
         "<table>"
         "<tr><th class=left>First anchor<td class = centered>" << anchorIdToString(anchorIdA) <<
         "<tr><th class=left>Last anchor<td class = centered>" << anchorIdToString(anchorIdB) <<
-        "<tr><th class=left>Number of steps<td class = centered>" << edge.size() <<
-        "<tr><th class=left>Estimated length<td class = centered>" << averageOffset <<
-        "<tr><th class=left>Lower limit on estimated length<td class = centered>" << minOffset <<
-        "<tr><th class=left>Upper limit on estimated length<td class = centered>" << maxOffset <<
+        "<tr><th class=left>Number of anchors<td class = centered>" << edge.size() <<
+        "<tr><th class=left>Estimated length<td class = centered>" << edge.length(anchors()) <<
         "</table>";
 
     // Details table showing the requested steps.
@@ -387,6 +380,11 @@ void Assembler::exploreSegment(
     SHASTA_ASSERT(end > begin);
 
 
+    html << "<p>The rest of the output is currently turned off.";
+    return;
+
+#if 0
+
     html << "<p><table>"
         "<tr><th>Position<th>AnchorIdA<th>AnchorIdB<th>Coverage"
         "<th>Average<br>offset"
@@ -420,6 +418,7 @@ void Assembler::exploreSegment(
     }
 
     html << "</table>";
+#endif
 }
 
 
@@ -435,7 +434,7 @@ AssemblyGraphPostprocessor& Assembler::getAssemblyGraph(const string& assemblySt
 }
 
 
-
+#if 0
 void Assembler::exploreSegmentStep(const vector<string>& request, ostream& html)
 {
     // Get the options from the request.
@@ -537,9 +536,10 @@ void Assembler::exploreSegmentStep(const vector<string>& request, ostream& html)
     }
     html << "</table>";
 }
+#endif
 
 
-
+#if 0
 void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html)
 {
     // Get the options from the request.
@@ -819,3 +819,4 @@ void Assembler::exploreEdgeTangle(const vector<string>& request, ostream& html)
     // Write out the TangleMatrix.
     tangle.tangleMatrix.writeHtml(assemblyGraph, html);
 }
+#endif

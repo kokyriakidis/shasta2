@@ -1,3 +1,4 @@
+#if 0
 #include "TangleMatrix.hpp"
 #include "deduplicate.hpp"
 using namespace shasta;
@@ -173,3 +174,4 @@ void TangleMatrix::writeHtml(
     }
     html << "<t/able>";
 }
+#endif

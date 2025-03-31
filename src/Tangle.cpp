@@ -1,3 +1,5 @@
+#if 0
+
 // Shasta.
 #include "Tangle.hpp"
 using namespace shasta;
@@ -173,3 +175,5 @@ void Tangle::detangle()
         boost::remove_vertex(v, assemblyGraph);
     }
 }
+
+#endif

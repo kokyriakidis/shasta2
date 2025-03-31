@@ -1,5 +1,6 @@
 #pragma once
 
+#if 0
 /*******************************************************************************
 
 A TangleMatrix is defined by two sets of AssemblyGraph edges (segments):
@@ -99,3 +100,4 @@ public:
     // The tangle matrix is indexed by [iEntrance][iExit].
     vector < vector<uint64_t> > tangleMatrix;
 };
+#endif
