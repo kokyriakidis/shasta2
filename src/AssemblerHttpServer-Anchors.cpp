@@ -233,11 +233,11 @@ void Assembler::exploreAnchorPair(const vector<string>& request, ostream& html)
     boost::trim(anchorIdBString);
 
     string adjacentInJourneyString;
-    const bool showSequence = HttpServer::getParameterValue(request,
+    const bool adjacentInJourney = HttpServer::getParameterValue(request,
         "adjacentInJourney", adjacentInJourneyString);
 
     string showSequenceString;
-    const bool adjacentInJourney = HttpServer::getParameterValue(request,
+    const bool showSequence = HttpServer::getParameterValue(request,
         "showSequence", showSequenceString);
 
     // Write the form.
