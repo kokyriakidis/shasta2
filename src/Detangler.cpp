@@ -1,4 +1,3 @@
-#if 0
 #include "Detangler.hpp"
 #include "Tangle.hpp"
 using namespace shasta;
@@ -44,4 +43,3 @@ bool TrivialDetangler::operator()(
     return true;
 
 }
-#endif

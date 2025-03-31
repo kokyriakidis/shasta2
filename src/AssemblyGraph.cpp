@@ -99,7 +99,6 @@ AssemblyGraph::AssemblyGraph(
         " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
     write("B");
 
-#if 0
     TrivialDetangler detangler;
 
     detangleVertices(detangler);
@@ -115,7 +114,6 @@ AssemblyGraph::AssemblyGraph(
     cout << "After trivial edge detangling, the assembly graph has " << num_vertices(assemblyGraph) <<
         " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
     write("D");
-#endif
 
     performanceLog << timestamp << "AssemblyGraph creation ends." << endl;
 }
@@ -499,10 +497,10 @@ AssemblyGraph::AssemblyGraph(
 }
 
 
-#if 0
 void AssemblyGraph::detangleVertices(Detangler& detangler)
 {
     AssemblyGraph& assemblyGraph = *this;
+    performanceLog << timestamp << "AssemblyGraph::detangleVertices begins." << endl;
 
     // Gather all the vertices with in_degree and out_degree greater than 1.
     vector<vertex_descriptor> detanglingCandidates;
@@ -524,6 +522,8 @@ void AssemblyGraph::detangleVertices(Detangler& detangler)
             ++successCount;
         }
     }
+    performanceLog << timestamp << "AssemblyGraph::detangleVertices ends." << endl;
+
     cout << "Detangling successful for " << successCount << " tangle vertices." << endl;
 }
 
@@ -534,6 +534,7 @@ void AssemblyGraph::detangleVertices(Detangler& detangler)
 void AssemblyGraph::detangleEdges(Detangler& detangler)
 {
     AssemblyGraph& assemblyGraph = *this;
+    performanceLog << timestamp << "AssemblyGraph::detangleEdges begins." << endl;
 
     // Gather all the edges with in_degree and out_degree greater than 1.
     std::set<edge_descriptor> detanglingCandidates;
@@ -566,11 +567,13 @@ void AssemblyGraph::detangleEdges(Detangler& detangler)
             }
         }
     }
+
+    performanceLog << timestamp << "AssemblyGraph::detangleEdges ends." << endl;
+
     cout << "Attempted detangling for " << attemptCount << " tangle edges." << endl;
     cout << "Detangling was successful for " << successCount << " tangle edges." << endl;
 
 }
-#endif
 
 
 
