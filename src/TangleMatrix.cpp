@@ -36,7 +36,9 @@ void TangleMatrix::construct(
     // Store the second to last AnchorId of each entrance.
     for(const edge_descriptor e: entranceEdges) {
         const AssemblyGraphEdge& edge = assemblyGraph[e];
-        entrances.emplace_back(e, edge.secondToLast());
+        const AnchorId anchorId = edge.secondToLast();
+        const uint64_t coverage = assemblyGraph.anchors[anchorId].coverage();
+        entrances.emplace_back(e, anchorId, coverage);
     }
 
     // Create the exits.
@@ -44,19 +46,26 @@ void TangleMatrix::construct(
     for(const edge_descriptor e: exitEdges) {
         const AssemblyGraphEdge& edge = assemblyGraph[e];
         SHASTA_ASSERT(not edge.empty());
-        exits.emplace_back(e, edge.second());
+        const AnchorId anchorId = edge.second();
+        const uint64_t coverage = assemblyGraph.anchors[anchorId].coverage();
+        exits.emplace_back(e, anchorId, coverage);
     }
 
 
-    // Now we can compute the tangle matrix.
+    // Now we can compute the tangle matrix and store common coverage
+    // for each entrance and exit.
     tangleMatrix.resize(entrances.size(), vector<uint64_t>(exits.size(), 0));
     for(uint64_t iEntrance=0; iEntrance<entrances.size(); iEntrance++) {
-        const Entrance& entrance = entrances[iEntrance];
+        Entrance& entrance = entrances[iEntrance];
         for(uint64_t iExit=0; iExit<exits.size(); iExit++) {
-            const Exit& exit = exits[iExit];
-            tangleMatrix[iEntrance][iExit] = assemblyGraph.anchors.countCommon(entrance.anchorId, exit.anchorId);
+            Exit& exit = exits[iExit];
+            const uint64_t commonCount = assemblyGraph.anchors.countCommon(entrance.anchorId, exit.anchorId);
+            tangleMatrix[iEntrance][iExit] = commonCount;
+            entrance.commonCoverage += commonCount;
+            exit.commonCoverage += commonCount;
         }
     }
+
 }
 
 

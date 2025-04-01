@@ -53,10 +53,17 @@ public:
         // The second to last AnchorId of this AssemblyGraphEdge.
         AnchorId anchorId;
 
+        // Total coverage for this Anchor.
+        uint64_t coverage;
+
+        // Common coverage for this Anchor (sum of tangle matrix row).
+        uint64_t commonCoverage = 0;
+
         Entrance(
             edge_descriptor e,
-            AnchorId anchorId) :
-            e(e), anchorId(anchorId) {}
+            AnchorId anchorId,
+            uint64_t coverage) :
+            e(e), anchorId(anchorId), coverage(coverage) {}
     };
     vector<Entrance> entrances;
 
@@ -69,10 +76,17 @@ public:
         // The second to AnchorId of this AssemblyGraphEdge.
         AnchorId anchorId;
 
+        // Total coverage for this Anchor.
+        uint64_t coverage;
+
+        // Common coverage for this Anchor (sum of tangle matrix column).
+        uint64_t commonCoverage = 0;
+
         Exit(
             edge_descriptor e,
-            AnchorId anchorId) :
-            e(e), anchorId(anchorId) {}
+            AnchorId anchorId,
+            uint64_t coverage) :
+            e(e), anchorId(anchorId), coverage(coverage) {}
     };
     vector<Exit> exits;
 
