@@ -115,6 +115,12 @@ AssemblyGraph::AssemblyGraph(
         " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
     write("D");
 
+    cleanupTrivialBubbles();
+    compress();
+    cout << "After removal of trivual bubbles, the assembly graph has " << num_vertices(assemblyGraph) <<
+        " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
+    write("E");
+
     performanceLog << timestamp << "AssemblyGraph creation ends." << endl;
 }
 
@@ -598,4 +604,48 @@ uint64_t AssemblyGraphEdge::length(const Anchors& anchors) const
         sumBaseOffset += baseOffset;
     }
     return sumBaseOffset;
+}
+
+
+
+// For each set of parallel edges with identical AnchorId sequences,
+// keep only one.
+void AssemblyGraph::cleanupTrivialBubbles()
+{
+    AssemblyGraph& assemblyGraph = *this;
+
+    BGL_FORALL_VERTICES(v0, assemblyGraph, AssemblyGraph) {
+
+        while(true) {
+
+            // Look for a pair of out-edges of v0 with identical AnchorId sequences.
+            // Every time we find one, we remove one of the two and we start the iteration
+            // from scratch. This way we don't invalidate edge iterators.
+            out_edge_iterator itBegin, itEnd;
+            tie(itBegin, itEnd) = out_edges(v0, assemblyGraph);
+            bool found = false;
+            for(auto it0=itBegin; it0!=itEnd; it0++) {
+                const edge_descriptor e0 = *it0;
+                const vector<AnchorId>& anchorSequence0 = assemblyGraph[e0];
+                auto it1 = it0;
+                ++it1;
+                for(; it1!=itEnd; ++it1) {
+                    const edge_descriptor e1 = *it1;
+                    const vector<AnchorId>& anchorSequence1 = assemblyGraph[e1];
+                    if(anchorSequence1 == anchorSequence0) {
+                        boost::remove_edge(e1, assemblyGraph);
+                        found = true;
+                        break;
+                    }
+                }
+                if(found) {
+                    break;
+                }
+            }
+
+            if(not found) {
+                break;
+            }
+        }
+    }
 }

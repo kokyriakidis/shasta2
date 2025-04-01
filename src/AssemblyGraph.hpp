@@ -120,6 +120,10 @@ public:
         uint64_t a,
         uint64_t b);
 
+    // For each set of parallel edges with identical AnchorId sequences,
+    // keep only one.
+    void cleanupTrivialBubbles();
+
 private:
     uint64_t nextEdgeId = 0;
 
