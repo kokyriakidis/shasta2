@@ -32,10 +32,13 @@ PYBIND11_MODULE(shasta2, shasta2Module)
 {
     // Class AssemblerOptions::AssemblyGraphOptions.
     class_<AssemblerOptions::AssemblyGraphOptions>(shasta2Module, "AssemblyGraphOptions")
+        .def_readonly("transitiveReductionThreshold", &AssemblerOptions::AssemblyGraphOptions::transitiveReductionThreshold)
+        .def_readonly("transitiveReductionA", &AssemblerOptions::AssemblyGraphOptions::transitiveReductionA)
+        .def_readonly("transitiveReductionB", &AssemblerOptions::AssemblyGraphOptions::transitiveReductionB)
         ;
 
 
-        // Class AssemblerOptions.
+    // Class AssemblerOptions.
     class_<AssemblerOptions>(shasta2Module, "AssemblerOptions")
 
         // Constructor from the name of a configuration file.
@@ -48,8 +51,6 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def_readonly("minAnchorGraphEdgeCoverage", &AssemblerOptions::minAnchorGraphEdgeCoverage)
         .def_readonly("assemblyGraphOptions", &AssemblerOptions::assemblyGraphOptions)
         ;
-
-
 
     // Class Assembler.
     class_<Assembler>(shasta2Module, "Assembler")
@@ -134,14 +135,13 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def("getVertex", &AssemblyGraphPostprocessor::getVertex, return_value_policy::reference)
         .def("getEdgeDescriptor", &AssemblyGraphPostprocessor::getEdgeDescriptor)
         .def("getEdge", &AssemblyGraphPostprocessor::getEdge, return_value_policy::reference)
-        // .def("detangleVertices", &AssemblyGraphPostprocessor::detangleVertices)
-        // .def("detangleEdges", &AssemblyGraphPostprocessor::detangleEdges)
+        .def("transitiveReduction", &AssemblyGraphPostprocessor::transitiveReduction)
+        .def("detangleVertices", &AssemblyGraphPostprocessor::detangleVertices)
+        .def("detangleEdges", &AssemblyGraphPostprocessor::detangleEdges)
         ;
-#if 0
     class_<TrivialDetangler>(shasta2Module, "TrivialDetangler")
         .def(init<>())
         ;
-#endif
 
 
     // Non-member functions exposed to Python.

@@ -115,13 +115,14 @@ public:
     void detangleVertices(Detangler&);
     void detangleEdges(Detangler&);
 
-private:
-    uint64_t nextEdgeId = 0;
-
     void transitiveReduction(
         uint64_t threshold,
         uint64_t a,
         uint64_t b);
+
+private:
+    uint64_t nextEdgeId = 0;
+
     void compress();
 
     void write(const string& name) const;
