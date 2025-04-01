@@ -140,7 +140,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def("detangleEdges", &AssemblyGraphPostprocessor::detangleEdges)
         ;
     class_<TrivialDetangler>(shasta2Module, "TrivialDetangler")
-        .def(init<>())
+        .def(init<uint64_t>())
         ;
 
 

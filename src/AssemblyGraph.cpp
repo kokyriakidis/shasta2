@@ -99,7 +99,7 @@ AssemblyGraph::AssemblyGraph(
         " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
     write("B");
 
-    TrivialDetangler detangler;
+    TrivialDetangler detangler(options.minCommonCoverage);
 
     detangleVertices(detangler);
     compress();

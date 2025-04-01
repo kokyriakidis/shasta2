@@ -110,6 +110,11 @@ void AssemblerOptions::addOptions()
         "b-value for transitive reduction of the assembly graph."
         )->capture_default_str();
 
+    add_option("--assembly-graph-min-common-coverage",
+        assemblyGraphOptions.minCommonCoverage,
+        "Minimum common coverage for detangling."
+        )->capture_default_str();
+
     add_option("--local-assembly-estimated-offset-ratio",
         localAssemblyOptions.estimatedOffsetRatio,
         "Estimated offset ratio for local assembly."

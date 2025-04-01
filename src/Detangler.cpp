@@ -9,6 +9,19 @@ bool TrivialDetangler::operator()(
 {
     const TangleMatrix& tangleMatrix = tangle.tangleMatrix;
 
+    // Check common coverage on all entrances and exits.
+    for(const TangleMatrix::Entrance& entrance: tangleMatrix.entrances) {
+        if(entrance.commonCoverage < minCommonCoverage) {
+            return false;
+        }
+    }
+    for(const TangleMatrix::Exit& exit: tangleMatrix.exits) {
+        if(exit.commonCoverage < minCommonCoverage) {
+            return false;
+        }
+    }
+
+
     if(tangleMatrix.entrances.size() != 2) {
         return false;
     }
