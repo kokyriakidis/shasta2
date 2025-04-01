@@ -1,5 +1,6 @@
 // Shasta.
 #include "Tangle.hpp"
+#include "Anchor.hpp"
 using namespace shasta;
 
 // Boost libraries,
@@ -110,6 +111,13 @@ void Tangle::detangle()
             const edge_descriptor eNew = assemblyGraph.addEdge(v0, v1);
             AssemblyGraphEdge& newEdge = assemblyGraph[eNew];
             copy(oldEdge.begin(), oldEdge.end()-1, back_inserter(newEdge));
+            if(debug) {
+                cout << "Entrance " << iEntrance << ": edge " << oldEdge.id << " truncated as new edge" << newEdge.id << endl;
+            }
+        }
+        if(debug) {
+            cout << "Entrance " << iEntrance << ": new connect vertex " <<
+                anchorIdToString(assemblyGraph[entranceNewVertices[iEntrance]].anchorId) << endl;
         }
     }
 
@@ -130,6 +138,13 @@ void Tangle::detangle()
             const edge_descriptor eNew = assemblyGraph.addEdge(v1, v0);
             AssemblyGraphEdge& newEdge = assemblyGraph[eNew];
             copy(oldEdge.begin()+1, oldEdge.end(), back_inserter(newEdge));
+            if(debug) {
+                cout << "Exit " << iExit << ": edge " << oldEdge.id << " truncated as new edge" << newEdge.id << endl;
+            }
+        }
+        if(debug) {
+            cout << "Exit " << iExit << ": new connect vertex " <<
+                anchorIdToString(assemblyGraph[exitNewVertices[iExit]].anchorId) << endl;
         }
     }
 

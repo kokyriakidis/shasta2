@@ -559,6 +559,11 @@ void AssemblyGraph::detangleEdges(Detangler& detangler)
 
         ++attemptCount;
         Tangle tangle(assemblyGraph, e);
+        // vector<uint64_t> debugList = {110089,110193,75121,105461,105503};
+        // tangle.debug = find(debugList.begin(), debugList.end(), assemblyGraph[e].id) != debugList.end();
+        if(tangle.debug) {
+            cout << "Detangling edge " << assemblyGraph[e].id << endl;
+        }
         const bool success = detangler(tangle);
         if(success) {
             ++successCount;

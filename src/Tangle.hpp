@@ -87,6 +87,8 @@ public:
     // If the Tangle is detangled successfully, we store the edges that were removed.
     vector<edge_descriptor> removedEdges;
 
+    bool debug = false;
+
 private:
     AssemblyGraph& assemblyGraph;
     void construct();
