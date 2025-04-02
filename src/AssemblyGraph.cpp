@@ -125,10 +125,15 @@ AssemblyGraph::AssemblyGraph(
         " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
     write("E");
 
-    detangleInducedSubgraphs(inducedSubgraphTemplates[0], detangler);
-    compress();
-    cout << "After detangling induced subgraphs for template 0, the assembly graph has " << num_vertices(assemblyGraph) <<
-        " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
+    for(uint64_t i=0; i<inducedSubgraphTemplates.size(); i++) {
+        const InducedSubgraph& inducedSubgraph = inducedSubgraphTemplates[i];
+        write("X" + to_string(i));
+        detangleInducedSubgraphs(inducedSubgraph, detangler);
+        compress();
+        cout << "After detangling induced subgraphs for template " << i <<
+            ", the assembly graph has " << num_vertices(assemblyGraph) <<
+            " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
+    }
     write("F");
 
     performanceLog << timestamp << "AssemblyGraph creation ends." << endl;
@@ -664,10 +669,18 @@ void AssemblyGraph::cleanupTrivialBubbles()
 
 void AssemblyGraph::fillInducedSubgraphTemplates()
 {
-    // inducedSubgraphTemplates[0]
+    inducedSubgraphTemplates.push_back(InducedSubgraph(4));
+    {
+        InducedSubgraph& g = inducedSubgraphTemplates.back();
+        add_edge(0, 1, g);
+        add_edge(1, 2, g);
+        add_edge(1, 2, g);
+        add_edge(2, 3, g);
+    }
+
     inducedSubgraphTemplates.push_back(InducedSubgraph(6));
     {
-        InducedSubgraph& g = inducedSubgraphTemplates[0];
+        InducedSubgraph& g = inducedSubgraphTemplates.back();
         add_edge(0, 1, g);
         add_edge(1, 2, g);
         add_edge(1, 3, g);
