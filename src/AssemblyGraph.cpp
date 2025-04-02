@@ -5,6 +5,8 @@
 #include "deduplicate.hpp"
 #include "Detangler.hpp"
 #include "findLinearChains.hpp"
+#include "html.hpp"
+#include "inducedSubgraphIsomorphisms.hpp"
 #include "performanceLog.hpp"
 #include "Tangle.hpp"
 #include "timestamp.hpp"
@@ -99,6 +101,8 @@ AssemblyGraph::AssemblyGraph(
         " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
     write("B");
 
+    fillInducedSubgraphTemplates();
+
     TrivialDetangler detangler(options.minCommonCoverage);
 
     detangleVertices(detangler);
@@ -117,9 +121,15 @@ AssemblyGraph::AssemblyGraph(
 
     cleanupTrivialBubbles();
     compress();
-    cout << "After removal of trivual bubbles, the assembly graph has " << num_vertices(assemblyGraph) <<
+    cout << "After removal of trivial bubbles, the assembly graph has " << num_vertices(assemblyGraph) <<
         " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
     write("E");
+
+    detangleInducedSubgraphs(inducedSubgraphTemplates[0], detangler);
+    compress();
+    cout << "After detangling induced subgraphs for template 0, the assembly graph has " << num_vertices(assemblyGraph) <<
+        " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
+    write("F");
 
     performanceLog << timestamp << "AssemblyGraph creation ends." << endl;
 }
@@ -648,4 +658,103 @@ void AssemblyGraph::cleanupTrivialBubbles()
             }
         }
     }
+}
+
+
+
+void AssemblyGraph::fillInducedSubgraphTemplates()
+{
+    // inducedSubgraphTemplates[0]
+    inducedSubgraphTemplates.push_back(InducedSubgraph(6));
+    {
+        InducedSubgraph& g = inducedSubgraphTemplates[0];
+        add_edge(0, 1, g);
+        add_edge(1, 2, g);
+        add_edge(1, 3, g);
+        add_edge(2, 4, g);
+        add_edge(2, 5, g);
+        add_edge(3, 4, g);
+        add_edge(3, 5, g);
+    }
+
+    for(uint64_t i=0; i<inducedSubgraphTemplates.size(); i++) {
+        const InducedSubgraph& inducedSubgraph = inducedSubgraphTemplates[i];
+        ofstream dot("InducedSubgraphTemplate-" + to_string(i) + ".dot");
+        writeGraphviz(dot, inducedSubgraph);
+    }
+}
+
+
+
+void AssemblyGraph::writeGraphviz(ostream& s, const InducedSubgraph& g)
+{
+    s << "digraph InducedSubgraphTemplate {\n";
+
+    BGL_FORALL_VERTICES(v, g, InducedSubgraph) {
+        s << v << ";\n";
+    }
+
+    BGL_FORALL_EDGES(e, g, InducedSubgraph) {
+        const auto v0 = source(e, g);
+        const auto v1 = target(e, g);
+        s << v0 << "->" << v1 << ";\n";
+    }
+
+    s << "}\n";
+}
+
+
+
+void AssemblyGraph::detangleInducedSubgraphs(
+    const InducedSubgraph& inducedSubgraphTemplate,
+    Detangler& detangler)
+{
+    AssemblyGraph& assemblyGraph = *this;
+    vector< vector<vertex_descriptor> > isomorphisms;
+    inducedSubgraphIsomorphisms(assemblyGraph, inducedSubgraphTemplate, isomorphisms);
+
+    cout << "Found " << isomorphisms.size() << " induced subgraphs for the requested template." << endl;
+
+    // ofstream html("InducedSubgraphTangles.html");
+    // writeHtmlBegin(html, "InducedSubgraphTangles");
+
+    uint64_t successCount = 0;
+    std::set<vertex_descriptor> removedVertices;
+    for(const vector<vertex_descriptor>& isomorphism: isomorphisms) {
+        /*
+        cout << "Working on the following induced subgraph:";
+        for(const vertex_descriptor v: isomorphism) {
+            cout << " " << anchorIdToString(assemblyGraph[v].anchorId);
+        }
+        cout << endl;
+        */
+
+        // If this contains any vertices that were already removed, skip it.
+        bool skip = false;
+        for(const vertex_descriptor v: isomorphism) {
+            if(removedVertices.contains(v)) {
+                skip = true;
+                break;
+            }
+        }
+        if(skip) {
+            continue;
+        }
+
+
+        Tangle tangle(assemblyGraph, isomorphism);
+        // tangle.tangleMatrix.writeHtml(assemblyGraph, html);
+
+        const bool success = detangler(tangle);
+        if(success) {
+            for(const vertex_descriptor v: isomorphism) {
+                removedVertices.insert(v);
+            }
+            ++successCount;
+        }
+
+    }
+
+    // writeHtmlEnd(html);
+
 }
