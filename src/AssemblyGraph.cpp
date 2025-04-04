@@ -18,6 +18,7 @@ using namespace shasta;
 #include <boost/graph/adj_list_serialize.hpp>
 
 // Standard library.
+#include <cstdlib>
 #include <fstream.hpp>
 #include <queue>
 #include <set>
@@ -669,6 +670,7 @@ void AssemblyGraph::cleanupTrivialBubbles()
 
 void AssemblyGraph::createTangleTemplates()
 {
+    // Skip one bubble.
     tangleTemplates.emplace_back(4);
     {
         TangleTemplate& g = tangleTemplates.back();
@@ -678,6 +680,55 @@ void AssemblyGraph::createTangleTemplates()
         add_edge(2, 3, g);
     }
 
+    // Skip two bubbles.
+    tangleTemplates.emplace_back(6);
+    {
+        TangleTemplate& g = tangleTemplates.back();
+        add_edge(0, 1, g);
+        add_edge(1, 2, g);
+        add_edge(1, 2, g);
+        add_edge(2, 3, g);
+        add_edge(3, 4, g);
+        add_edge(3, 4, g);
+        add_edge(4, 5, g);
+    }
+
+    // Skip three bubbles.
+    tangleTemplates.emplace_back(8);
+    {
+        TangleTemplate& g = tangleTemplates.back();
+        add_edge(0, 1, g);
+        add_edge(1, 2, g);
+        add_edge(1, 2, g);
+        add_edge(2, 3, g);
+        add_edge(3, 4, g);
+        add_edge(3, 4, g);
+        add_edge(4, 5, g);
+        add_edge(5, 6, g);
+        add_edge(5, 6, g);
+        add_edge(6, 7, g);
+    }
+
+    // Skip four bubbles.
+    tangleTemplates.emplace_back(10);
+    {
+        TangleTemplate& g = tangleTemplates.back();
+        add_edge(0, 1, g);
+        add_edge(1, 2, g);
+        add_edge(1, 2, g);
+        add_edge(2, 3, g);
+        add_edge(3, 4, g);
+        add_edge(3, 4, g);
+        add_edge(4, 5, g);
+        add_edge(5, 6, g);
+        add_edge(5, 6, g);
+        add_edge(6, 7, g);
+        add_edge(7, 8, g);
+        add_edge(7, 8, g);
+        add_edge(8, 9, g);
+    }
+
+    // 2 by 2 switch preceded by a haploid segment.
     tangleTemplates.emplace_back(6);
     {
         TangleTemplate& g = tangleTemplates.back();
@@ -690,10 +741,43 @@ void AssemblyGraph::createTangleTemplates()
         add_edge(3, 5, g);
     }
 
+    // 2 by 2 switch followed by a haploid segment.
+    tangleTemplates.emplace_back(6);
+    {
+        TangleTemplate& g = tangleTemplates.back();
+        add_edge(0, 2, g);
+        add_edge(0, 3, g);
+        add_edge(1, 2, g);
+        add_edge(1, 3, g);
+        add_edge(2, 4, g);
+        add_edge(3, 4, g);
+        add_edge(4, 5, g);
+    }
+
+    // 2 by 2 switch preceded and followed by a haploid segment.
+    tangleTemplates.emplace_back(8);
+    {
+        TangleTemplate& g = tangleTemplates.back();
+        add_edge(0, 1, g);
+        add_edge(1, 2, g);
+        add_edge(1, 3, g);
+        add_edge(2, 4, g);
+        add_edge(2, 5, g);
+        add_edge(3, 4, g);
+        add_edge(3, 5, g);
+        add_edge(4, 6, g);
+        add_edge(5, 6, g);
+        add_edge(6, 7, g);
+    }
+
+
     for(uint64_t i=0; i<tangleTemplates.size(); i++) {
         const TangleTemplate& tangleTemplate = tangleTemplates[i];
-        ofstream dot("TanglehTemplate-" + to_string(i) + ".dot");
+        const string dotFileName = "TangleTemplate-" + to_string(i) + ".dot";
+        ofstream dot(dotFileName);
         writeGraphviz(dot, tangleTemplate);
+        dot.close();
+        std::system(("dot -O -T svg -Nshape=rectangle " + dotFileName).c_str());
     }
 }
 
