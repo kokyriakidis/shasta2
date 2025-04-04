@@ -18,6 +18,7 @@
 #include "splitRange.hpp"
 #include "testSpoa.hpp"
 #include "testSubsetGraph.hpp"
+#include "TrivialDetangler.hpp"
 using namespace shasta;
 
 // Pybind11

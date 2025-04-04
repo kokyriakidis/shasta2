@@ -1,6 +1,7 @@
 // Shasta.
 #include "AssemblyGraphPostprocessor.hpp"
 #include "Detangler.hpp"
+#include "TrivialDetangler.hpp"
 using namespace shasta;
 
 // Boost libraries.

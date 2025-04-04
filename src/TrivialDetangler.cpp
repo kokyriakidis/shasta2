@@ -1,4 +1,4 @@
-#include "Detangler.hpp"
+#include "TrivialDetangler.hpp"
 #include "Tangle.hpp"
 using namespace shasta;
 

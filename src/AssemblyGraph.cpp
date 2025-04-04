@@ -9,6 +9,7 @@
 #include "inducedSubgraphIsomorphisms.hpp"
 #include "performanceLog.hpp"
 #include "Tangle.hpp"
+#include "TrivialDetangler.hpp"
 #include "timestamp.hpp"
 using namespace shasta;
 
