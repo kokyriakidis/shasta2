@@ -13,6 +13,7 @@
 #include "LongBaseSequence.hpp"
 #include "mappedCopy.hpp"
 #include "MultithreadedObject.hpp"
+#include "PermutationDetangler.hpp"
 #include "performanceLog.hpp"
 #include "ShortBaseSequence.hpp"
 #include "splitRange.hpp"
@@ -36,6 +37,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def_readonly("transitiveReductionThreshold", &AssemblerOptions::AssemblyGraphOptions::transitiveReductionThreshold)
         .def_readonly("transitiveReductionA", &AssemblerOptions::AssemblyGraphOptions::transitiveReductionA)
         .def_readonly("transitiveReductionB", &AssemblerOptions::AssemblyGraphOptions::transitiveReductionB)
+        .def_readonly("minCommonCoverage", &AssemblerOptions::AssemblyGraphOptions::minCommonCoverage)
         ;
 
 
@@ -137,10 +139,35 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def("getEdgeDescriptor", &AssemblyGraphPostprocessor::getEdgeDescriptor)
         .def("getEdge", &AssemblyGraphPostprocessor::getEdge, return_value_policy::reference)
         .def("transitiveReduction", &AssemblyGraphPostprocessor::transitiveReduction)
-        .def("detangleVertices", &AssemblyGraphPostprocessor::detangleVertices)
-        .def("detangleEdges", &AssemblyGraphPostprocessor::detangleEdges)
+        .def("detangleVertices",
+            (
+                void (AssemblyGraphPostprocessor::*)
+                (TrivialDetangler&)
+            )
+            &AssemblyGraphPostprocessor::detangleVertices)
+        .def("detangleEdges",
+            (
+                void (AssemblyGraphPostprocessor::*)
+                (TrivialDetangler&)
+            )
+            &AssemblyGraphPostprocessor::detangleEdges)
+        .def("detangleVertices",
+            (
+                void (AssemblyGraphPostprocessor::*)
+                (PermutationDetangler&)
+            )
+            &AssemblyGraphPostprocessor::detangleVertices)
+        .def("detangleEdges",
+            (
+                void (AssemblyGraphPostprocessor::*)
+                (PermutationDetangler&)
+            )
+            &AssemblyGraphPostprocessor::detangleEdges)
         ;
     class_<TrivialDetangler>(shasta2Module, "TrivialDetangler")
+        .def(init<uint64_t>())
+        ;
+    class_<PermutationDetangler>(shasta2Module, "PermutationDetangler")
         .def(init<uint64_t>())
         ;
 

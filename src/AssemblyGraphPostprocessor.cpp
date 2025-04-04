@@ -1,6 +1,7 @@
 // Shasta.
 #include "AssemblyGraphPostprocessor.hpp"
 #include "Detangler.hpp"
+#include "PermutationDetangler.hpp"
 #include "TrivialDetangler.hpp"
 using namespace shasta;
 
@@ -72,6 +73,12 @@ void AssemblyGraphPostprocessor::detangleVertices(TrivialDetangler& detangler) {
     AssemblyGraph::detangleVertices(detangler);
 }
 void AssemblyGraphPostprocessor::detangleEdges(TrivialDetangler& detangler) {
+    AssemblyGraph::detangleEdges(detangler);
+}
+void AssemblyGraphPostprocessor::detangleVertices(PermutationDetangler& detangler) {
+    AssemblyGraph::detangleVertices(detangler);
+}
+void AssemblyGraphPostprocessor::detangleEdges(PermutationDetangler& detangler) {
     AssemblyGraph::detangleEdges(detangler);
 }
 

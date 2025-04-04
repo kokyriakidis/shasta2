@@ -8,4 +8,6 @@ namespace shasta {
 class shasta::Detangler {
 public:
     virtual bool operator()(Tangle&) = 0;
+
+    bool debug = false;
 };

@@ -5,6 +5,8 @@
 
 namespace shasta {
     class AssemblyGraphPostprocessor;
+
+    class PermutationDetangler;
     class TrivialDetangler;
 }
 
@@ -39,6 +41,8 @@ public:
     // These are needed to simplify the Python API.
     void detangleVertices(TrivialDetangler&);
     void detangleEdges(TrivialDetangler&);
+    void detangleVertices(PermutationDetangler&);
+    void detangleEdges(PermutationDetangler&);
 
     // Map from AnchorId to vertex_descriptor.
     std::map<AnchorId, vertex_descriptor> vertexMap;

@@ -8,6 +8,7 @@
 #include "html.hpp"
 #include "inducedSubgraphIsomorphisms.hpp"
 #include "performanceLog.hpp"
+#include "PermutationDetangler.hpp"
 #include "Tangle.hpp"
 #include "TrivialDetangler.hpp"
 #include "timestamp.hpp"
@@ -137,6 +138,13 @@ AssemblyGraph::AssemblyGraph(
             " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
     }
     write("F");
+
+
+    // Test the PermutationDetangler.
+    {
+        PermutationDetangler detangler(options.minCommonCoverage);
+        detangleVertices(detangler);
+    }
 
     performanceLog << timestamp << "AssemblyGraph creation ends." << endl;
 }
@@ -545,6 +553,11 @@ void AssemblyGraph::detangleVertices(Detangler& detangler)
 
     uint64_t successCount = 0;
     for(const vertex_descriptor v: detanglingCandidates) {
+        if(anchorIdToString(assemblyGraph[v].anchorId) == "262601-") {
+            detangler.debug = true;
+        } else {
+            detangler.debug = false;
+        }
         Tangle tangle(assemblyGraph, v);
         const bool success = detangler(tangle);
         if(success) {
