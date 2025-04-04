@@ -137,13 +137,11 @@ private:
 
 
 
-    // An induced subgraph of the AssemblyGraph defines a Tangle
-    // on which we can attempt detangling.
-    using InducedSubgraph = boost::adjacency_list<boost::listS, boost::vecS, boost::bidirectionalS>;
-    static void writeGraphviz(ostream&, const InducedSubgraph&);
-    vector<InducedSubgraph> inducedSubgraphTemplates;
-    void fillInducedSubgraphTemplates();
-    void detangleInducedSubgraphs(const InducedSubgraph&, Detangler&);
+    using TangleTemplate = boost::adjacency_list<boost::listS, boost::vecS, boost::bidirectionalS>;
+    static void writeGraphviz(ostream&, const TangleTemplate&);
+    vector<TangleTemplate> tangleTemplates;
+    void createTangleTemplates();
+    void detangle(const TangleTemplate&, Detangler&);
 
 
 

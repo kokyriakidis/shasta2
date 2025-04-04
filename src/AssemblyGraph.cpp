@@ -101,7 +101,7 @@ AssemblyGraph::AssemblyGraph(
         " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
     write("B");
 
-    fillInducedSubgraphTemplates();
+    createTangleTemplates();
 
     TrivialDetangler detangler(options.minCommonCoverage);
 
@@ -125,12 +125,12 @@ AssemblyGraph::AssemblyGraph(
         " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
     write("E");
 
-    for(uint64_t i=0; i<inducedSubgraphTemplates.size(); i++) {
-        const InducedSubgraph& inducedSubgraph = inducedSubgraphTemplates[i];
+    for(uint64_t i=0; i<tangleTemplates.size(); i++) {
+        const TangleTemplate& tangleTemplate = tangleTemplates[i];
         write("X" + to_string(i));
-        detangleInducedSubgraphs(inducedSubgraph, detangler);
+        detangle(tangleTemplate, detangler);
         compress();
-        cout << "After detangling induced subgraphs for template " << i <<
+        cout << "After detangling induced subgraphs for Tangle template " << i <<
             ", the assembly graph has " << num_vertices(assemblyGraph) <<
             " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
     }
@@ -667,20 +667,20 @@ void AssemblyGraph::cleanupTrivialBubbles()
 
 
 
-void AssemblyGraph::fillInducedSubgraphTemplates()
+void AssemblyGraph::createTangleTemplates()
 {
-    inducedSubgraphTemplates.push_back(InducedSubgraph(4));
+    tangleTemplates.emplace_back(4);
     {
-        InducedSubgraph& g = inducedSubgraphTemplates.back();
+        TangleTemplate& g = tangleTemplates.back();
         add_edge(0, 1, g);
         add_edge(1, 2, g);
         add_edge(1, 2, g);
         add_edge(2, 3, g);
     }
 
-    inducedSubgraphTemplates.push_back(InducedSubgraph(6));
+    tangleTemplates.emplace_back(6);
     {
-        InducedSubgraph& g = inducedSubgraphTemplates.back();
+        TangleTemplate& g = tangleTemplates.back();
         add_edge(0, 1, g);
         add_edge(1, 2, g);
         add_edge(1, 3, g);
@@ -690,24 +690,24 @@ void AssemblyGraph::fillInducedSubgraphTemplates()
         add_edge(3, 5, g);
     }
 
-    for(uint64_t i=0; i<inducedSubgraphTemplates.size(); i++) {
-        const InducedSubgraph& inducedSubgraph = inducedSubgraphTemplates[i];
-        ofstream dot("InducedSubgraphTemplate-" + to_string(i) + ".dot");
-        writeGraphviz(dot, inducedSubgraph);
+    for(uint64_t i=0; i<tangleTemplates.size(); i++) {
+        const TangleTemplate& tangleTemplate = tangleTemplates[i];
+        ofstream dot("TanglehTemplate-" + to_string(i) + ".dot");
+        writeGraphviz(dot, tangleTemplate);
     }
 }
 
 
 
-void AssemblyGraph::writeGraphviz(ostream& s, const InducedSubgraph& g)
+void AssemblyGraph::writeGraphviz(ostream& s, const TangleTemplate& g)
 {
-    s << "digraph InducedSubgraphTemplate {\n";
+    s << "digraph TangleTemplate {\n";
 
-    BGL_FORALL_VERTICES(v, g, InducedSubgraph) {
+    BGL_FORALL_VERTICES(v, g, TangleTemplate) {
         s << v << ";\n";
     }
 
-    BGL_FORALL_EDGES(e, g, InducedSubgraph) {
+    BGL_FORALL_EDGES(e, g, TangleTemplate) {
         const auto v0 = source(e, g);
         const auto v1 = target(e, g);
         s << v0 << "->" << v1 << ";\n";
@@ -718,24 +718,24 @@ void AssemblyGraph::writeGraphviz(ostream& s, const InducedSubgraph& g)
 
 
 
-void AssemblyGraph::detangleInducedSubgraphs(
-    const InducedSubgraph& inducedSubgraphTemplate,
+void AssemblyGraph::detangle(
+    const TangleTemplate& tangleTemplate,
     Detangler& detangler)
 {
     AssemblyGraph& assemblyGraph = *this;
     vector< vector<vertex_descriptor> > isomorphisms;
-    inducedSubgraphIsomorphisms(assemblyGraph, inducedSubgraphTemplate, isomorphisms);
+    inducedSubgraphIsomorphisms(assemblyGraph, tangleTemplate, isomorphisms);
 
-    cout << "Found " << isomorphisms.size() << " induced subgraphs for the requested template." << endl;
+    cout << "Found " << isomorphisms.size() << " instances for the requested Tangle template." << endl;
 
-    // ofstream html("InducedSubgraphTangles.html");
-    // writeHtmlBegin(html, "InducedSubgraphTangles");
+    // ofstream html("Tangles.html");
+    // writeHtmlBegin(html, "Tangles");
 
     uint64_t successCount = 0;
     std::set<vertex_descriptor> removedVertices;
     for(const vector<vertex_descriptor>& isomorphism: isomorphisms) {
         /*
-        cout << "Working on the following induced subgraph:";
+        cout << "Working on the following tangle:";
         for(const vertex_descriptor v: isomorphism) {
             cout << " " << anchorIdToString(assemblyGraph[v].anchorId);
         }
