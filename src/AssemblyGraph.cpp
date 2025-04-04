@@ -284,6 +284,7 @@ void AssemblyGraph::writeSegmentDetails(const string& fileName) const
 
 
 // An v0->v1 edge with length length01 is removed if:
+// - It has no internal anchors.
 // - length01 is no more than threshold1.
 // - A BFS that starts at v0 and does not use edge v0->v1
 //   reaches v1 with a BFS offset no more than a  + b * length01.
@@ -313,6 +314,11 @@ void AssemblyGraph::transitiveReduction(
 
         // Increment the iterator here, before possibly removing this edge.
         ++it;
+
+        // If the edge has internal anchors, exclude it from transitive reduction.
+        if(edge.size() > 2) {
+            continue;
+        }
 
         if(edge.length(anchors) > threshold) {
             continue;
