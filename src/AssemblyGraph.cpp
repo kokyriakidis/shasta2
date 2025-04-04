@@ -106,19 +106,19 @@ AssemblyGraph::AssemblyGraph(
 
     createTangleTemplates();
 
-    TrivialDetangler detangler(options.minCommonCoverage);
+    PermutationDetangler detangler(options.minCommonCoverage);
 
     detangleVertices(detangler);
     compress();
 
-    cout << "After trivial vertex detangling, the assembly graph has " << num_vertices(assemblyGraph) <<
+    cout << "After vertex detangling, the assembly graph has " << num_vertices(assemblyGraph) <<
         " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
     write("C");
 
     detangleEdges(detangler);
     compress();
 
-    cout << "After trivial edge detangling, the assembly graph has " << num_vertices(assemblyGraph) <<
+    cout << "After edge detangling, the assembly graph has " << num_vertices(assemblyGraph) <<
         " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
     write("D");
 
@@ -139,12 +139,6 @@ AssemblyGraph::AssemblyGraph(
     }
     write("F");
 
-
-    // Test the PermutationDetangler.
-    {
-        PermutationDetangler detangler(options.minCommonCoverage);
-        detangleVertices(detangler);
-    }
 
     performanceLog << timestamp << "AssemblyGraph creation ends." << endl;
 }
@@ -553,11 +547,6 @@ void AssemblyGraph::detangleVertices(Detangler& detangler)
 
     uint64_t successCount = 0;
     for(const vertex_descriptor v: detanglingCandidates) {
-        if(anchorIdToString(assemblyGraph[v].anchorId) == "262601-") {
-            detangler.debug = true;
-        } else {
-            detangler.debug = false;
-        }
         Tangle tangle(assemblyGraph, v);
         const bool success = detangler(tangle);
         if(success) {

@@ -1,6 +1,6 @@
-#ifndef SHASTA_ORDER_PAIRS_HPP
-#define SHASTA_ORDER_PAIRS_HPP
+#pragma once
 
+#include "utility.hpp"
 
 // Classes to sort pairs using various criteria.
 
@@ -98,8 +98,4 @@ public:
         return x.second.size() > y.second.size();
     }
 };
-
-
-
-#endif
 
