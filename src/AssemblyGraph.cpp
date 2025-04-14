@@ -131,7 +131,9 @@ AssemblyGraph::AssemblyGraph(
     for(uint64_t i=0; i<tangleTemplates.size(); i++) {
         const TangleTemplate& tangleTemplate = tangleTemplates[i];
         write("X" + to_string(i));
+        performanceLog << timestamp << "Begin detangling template " << i << endl;
         detangle(tangleTemplate, detangler);
+        performanceLog << timestamp << "End detangling template " << i << endl;
         compress();
         cout << "After detangling induced subgraphs for Tangle template " << i <<
             ", the assembly graph has " << num_vertices(assemblyGraph) <<
@@ -289,7 +291,8 @@ void AssemblyGraph::writeSegmentDetails(const string& fileName) const
 // An v0->v1 edge with length length01 is removed if:
 // - It has no internal anchors.
 // - length01 is no more than threshold1.
-// - A BFS that starts at v0 and does not use edge v0->v1
+// - A BFS that starts at v0 and only uses edges with minimum common count
+//   greater than the common count of the v0->v1 edge
 //   reaches v1 with a BFS offset no more than a  + b * length01.
 // Most of the edges removed in this way are caused by errors.
 // Even if a correct one is removed at this edge, it can still
@@ -315,22 +318,35 @@ void AssemblyGraph::transitiveReduction(
         const edge_descriptor e = *it;
         const AssemblyGraphEdge& edge = assemblyGraph[e];
 
+        const bool debug = false;
+        if(debug) cout << "Transitive reduction for " << edge.id << endl;
+
         // Increment the iterator here, before possibly removing this edge.
         ++it;
 
         // If the edge has internal anchors, exclude it from transitive reduction.
         if(edge.size() > 2) {
+            if(debug) cout << "Skipped due to internal anchors." << endl;
             continue;
         }
 
         if(edge.length(anchors) > threshold) {
+            if(debug) cout << " Skipped due to length." << endl;
             continue;
         }
 
         // This edge is a candidate for removal.
-        // Initialize the BFS.
         const vertex_descriptor v0 = source(e, assemblyGraph);
         const vertex_descriptor v1 = target(e, assemblyGraph);
+        const AnchorId anchorId0 = assemblyGraph[v0].anchorId;
+        const AnchorId anchorId1 = assemblyGraph[v1].anchorId;
+        const uint64_t edgeCommonCount = minCommonCountOnEdgeAdjacent(e);
+
+        if(debug) cout << "Edge " << edge.id << " is " <<
+            anchorIdToString(anchorId0) << "->" << anchorIdToString(anchorId1) <<
+            ", commonCount " << edgeCommonCount << endl;
+
+        // Initialize the BFS.
         SHASTA_ASSERT(q.empty());
         SHASTA_ASSERT(verticesEncountered.empty());
         q.push(v0);
@@ -345,11 +361,22 @@ void AssemblyGraph::transitiveReduction(
             q.pop();
             const uint64_t distanceA = assemblyGraph[vA].bfsDistance;
 
+            if(debug) cout << "Dequeued " << anchorIdToString(assemblyGraph[vA].anchorId) << " at distance " << distanceA <<
+                ", out=degree " << out_degree(vA, assemblyGraph) << endl;
+
             // Loop over out-edges of vA.
             BGL_FORALL_OUTEDGES(vA, eAB, assemblyGraph, AssemblyGraph) {
+                if(debug) cout << "Processing out-edge " << assemblyGraph[eAB].id << endl;
 
                 // Don't use edge e in the BFS.
                 if(eAB == e) {
+                    if(debug) cout << "Skipped because it is the edge we are currently processing." << endl;
+                    continue;
+                }
+
+                // If the min common count is too small, don't consider this edge.
+                if(minCommonCountOnEdgeAdjacent(eAB)< edgeCommonCount) {
+                    if(debug) cout << "Skipped because of minCommonCount " << minCommonCountOnEdgeAdjacent(eAB) << endl;
                     continue;
                 }
 
@@ -357,25 +384,30 @@ void AssemblyGraph::transitiveReduction(
 
                 // If we already encountered vB, do nothing.
                 if(assemblyGraph[vB].bfsDistance != invalid<uint64_t>) {
+                    if(debug) cout << "Skipped because already encountered." << endl;
                     continue;
                 }
 
                 // If we got too far, don't use this in the BFS.
                 const uint64_t distanceB = distanceA + assemblyGraph[eAB].length(anchors);
                 if(distanceB > threshold2) {
+                    if(debug) cout << "Skipped because too far." << endl;
                     continue;
                 }
 
                 // If vB is v1, edge e should be removed.
                 if(vB == v1) {
                     removeEdge = true;
+                    if(debug) cout << "Edge will be removed." << endl;
                     break;
                 }
 
                 // Update the BFS.
+                if(debug) cout << "Updating the BFS." << endl;
                 q.push(vB);
                 verticesEncountered.push_back(vB);
                 assemblyGraph[vB].bfsDistance = distanceB;
+                if(debug) cout << "Done processing out-edge " << assemblyGraph[eAB].id << endl;
 
             }
 
@@ -384,8 +416,12 @@ void AssemblyGraph::transitiveReduction(
             }
         }
 
+
         if(removeEdge) {
             boost::remove_edge(e, assemblyGraph);
+            if(debug) cout << "Removed." << endl;
+        }  else {
+            if(debug) cout << "Not removed." << endl;
         }
 
         // Cleanup the BFS.
@@ -862,5 +898,48 @@ void AssemblyGraph::detangle(
     }
 
     // writeHtmlEnd(html);
+
+}
+
+
+
+// For a given edge, this returns the minimum common count
+// for pairs of adjacent anchors in the edge.
+uint64_t AssemblyGraph::minCommonCountOnEdge(edge_descriptor e) const
+{
+    const AssemblyGraph& assemblyGraph = *this;
+    const AssemblyGraphEdge& edge = assemblyGraph[e];
+    SHASTA_ASSERT(edge.size() > 1);
+
+    uint64_t minCommonCount = std::numeric_limits<uint64_t>::max();
+    for(uint64_t i=1; i<edge.size(); i++) {
+        const AnchorId anchorId0 = edge[i-1];
+        const AnchorId anchorId1 = edge[i];
+        const uint64_t commonCount = anchors.countCommon(anchorId0, anchorId1);
+        minCommonCount = min(minCommonCount, commonCount);
+    }
+
+    return minCommonCount;
+}
+
+
+
+// Same, but only counting journey offsets equal to 1.
+uint64_t AssemblyGraph::minCommonCountOnEdgeAdjacent(edge_descriptor e) const
+{
+    const AssemblyGraph& assemblyGraph = *this;
+    const AssemblyGraphEdge& edge = assemblyGraph[e];
+    SHASTA_ASSERT(edge.size() > 1);
+
+    uint64_t minCommonCount = std::numeric_limits<uint64_t>::max();
+    for(uint64_t i=1; i<edge.size(); i++) {
+        const AnchorId anchorId0 = edge[i-1];
+        const AnchorId anchorId1 = edge[i];
+        const AnchorPair anchorPair(anchors, anchorId0, anchorId1, true);
+        const uint64_t commonCount = anchorPair.size();
+        minCommonCount = min(minCommonCount, commonCount);
+    }
+
+    return minCommonCount;
 
 }

@@ -135,6 +135,12 @@ private:
     void writeSegments(const string& fileName) const;
     void writeSegmentDetails(const string& fileName) const;
 
+    // For a given edge, this returns the minimum common count
+    // for pairs of adjacent anchors in the edge.
+    uint64_t minCommonCountOnEdge(edge_descriptor) const;
+
+    // Same, but only counting journey offsets equal to 1.
+    uint64_t minCommonCountOnEdgeAdjacent(edge_descriptor) const;
 
 
     using TangleTemplate = boost::adjacency_list<boost::listS, boost::vecS, boost::bidirectionalS>;
