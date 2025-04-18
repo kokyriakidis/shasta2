@@ -13,9 +13,9 @@ assembler.accessJourneys()
 
 
 # Get the AssemblyGraph at a chosen assembly stage and do something with it.
-assemblyGraph = assembler.getAssemblyGraph("F");
+assemblyGraph = assembler.getAssemblyGraph("Z");
 detangler = PermutationDetangler(assemblyGraphOptions.minCommonCoverage)
-assemblyGraph.detangleVertices(detangler)
+assemblyGraph.detangleEdges(detangler)
 
 
 """
