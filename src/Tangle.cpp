@@ -112,7 +112,7 @@ void Tangle::detangle()
             AssemblyGraphEdge& newEdge = assemblyGraph[eNew];
             copy(oldEdge.begin(), oldEdge.end()-1, back_inserter(newEdge));
             if(debug) {
-                cout << "Entrance " << iEntrance << ": edge " << oldEdge.id << " truncated as new edge" << newEdge.id << endl;
+                cout << "Entrance " << iEntrance << ": edge " << oldEdge.id << " truncated as new edge " << newEdge.id << endl;
             }
         }
         if(debug) {
@@ -139,7 +139,7 @@ void Tangle::detangle()
             AssemblyGraphEdge& newEdge = assemblyGraph[eNew];
             copy(oldEdge.begin()+1, oldEdge.end(), back_inserter(newEdge));
             if(debug) {
-                cout << "Exit " << iExit << ": edge " << oldEdge.id << " truncated as new edge" << newEdge.id << endl;
+                cout << "Exit " << iExit << ": edge " << oldEdge.id << " truncated as new edge " << newEdge.id << endl;
             }
         }
         if(debug) {
