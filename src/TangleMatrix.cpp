@@ -115,7 +115,7 @@ void TangleMatrix::writeHtml(
         "<th style='background-color:CornSilk'>Coverage"
         "<th style='background-color:CornSilk'>Common<br>coverage<td>";
 
-    for(uint64_t i=0; i<entrances.size(); i++) {
+    for(uint64_t i=0; i<exits.size(); i++) {
         html << "<td>";
     }
 
