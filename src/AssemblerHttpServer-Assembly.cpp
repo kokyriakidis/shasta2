@@ -12,6 +12,7 @@ using namespace shasta;
 #include <boost/tokenizer.hpp>
 
 // Standard library.
+#include <fstream.hpp>
 #include <tuple.hpp>
 
 
@@ -217,6 +218,15 @@ void Assembler::exploreSegment(
     string lastAnchorsCountString = "5";
     HttpServer::getParameterValue(request, "lastAnchorsCountString", lastAnchorsCountString);
 
+    string showSequenceString;
+    const bool showSequence = getParameterValue(request, "showSequence", showSequenceString);
+
+    uint64_t sequenceBegin = 0;
+    const bool sequenceBeginIsPresent = getParameterValue(request, "sequenceBegin", sequenceBegin);
+
+    uint64_t sequenceEnd = 0;
+    const bool sequenceEndIsPresent = getParameterValue(request, "sequenceEnd", sequenceEnd);
+
 
     // Start the form.
     html << "<h2>Assembly graph segment</h2><form><table>";
@@ -268,6 +278,27 @@ void Assembler::exploreSegment(
         "<input type=text name=lastAnchorsCount size=8 style='text-align:center' value='" << lastAnchorsCountString << "'>"
         " anchors"
         ;
+
+    // Options to control the sequence display.
+    html <<
+        "<tr>"
+        "<th class=left>Show segment anchors"
+        "<td class=left>"
+        "<input type=checkbox name=showSequence" << (showSequence ? " checked" : "") << "> Show sequence";
+
+    html << "<br><input type=text name=sequenceBegin size=8";
+    if(sequenceBeginIsPresent) {
+        html << " value=" << sequenceBegin;
+    }
+    html << "> Begin position";
+
+    html << "<br><input type=text name=sequenceEnd size=8";
+    if(sequenceEndIsPresent) {
+        html << " value=" << sequenceEnd;
+    }
+    html << "> End position";
+
+
 
     // End the form.
     html <<
@@ -325,99 +356,136 @@ void Assembler::exploreSegment(
     }
     html << "</table>";
 
+
+
     // Details table showing the requested anchors.
-    if(displayAnchors == "none") {
-        return;
-    }
+    if(displayAnchors != "none") {
 
-
-
-    // Figure out the anchor position range to use.
-    uint64_t begin = invalid<uint64_t>;
-    uint64_t end = invalid<uint64_t>;
-    if(displayAnchors == "all") {
-        begin = 0;
-        end = edge.size();
-    } else if(displayAnchors == "range") {
-        try {
-            begin = atoul(beginString);
-        } catch(std::exception& e) {
-            throw runtime_error("Begin " + beginString + " is not valid. Must be a number.");
-        }
-        try {
-            end = atoul(endString);
-        } catch(std::exception& e) {
-            throw runtime_error("End " + endString + " is not valid. Must be a number.");
-        }
-        if(begin >= edge.size()) {
-            begin = edge.size() - 1;
-        }
-        if(end > edge.size()) {
-            end = edge.size();
-        }
-        if(end < begin) {
-            end = begin + 1;
-        }
-    } else if(displayAnchors == "first") {
-        begin = 0;
-        try {
-            end = atoul(firstAnchorsCountString);
-        } catch(std::exception& e) {
-            throw runtime_error("First anchors count " + firstAnchorsCountString + " is not valid. Must be a number.");
-        }
-        if(end > edge.size()) {
-            end = edge.size();
-        }
-    } else if(displayAnchors == "last") {
-        end = edge.size();
-        uint64_t count = invalid<uint64_t>;
-        try {
-            count = atoul(lastAnchorsCountString);
-        } catch(std::exception& e) {
-            throw runtime_error("Last anchors count " + lastAnchorsCountString + " is not valid. Must be a number.");
-        }
-        if(count > edge.size()) {
+        // Figure out the anchor position range to use.
+        uint64_t begin = invalid<uint64_t>;
+        uint64_t end = invalid<uint64_t>;
+        if(displayAnchors == "all") {
             begin = 0;
+            end = edge.size();
+        } else if(displayAnchors == "range") {
+            try {
+                begin = atoul(beginString);
+            } catch(std::exception& e) {
+                throw runtime_error("Begin " + beginString + " is not valid. Must be a number.");
+            }
+            try {
+                end = atoul(endString);
+            } catch(std::exception& e) {
+                throw runtime_error("End " + endString + " is not valid. Must be a number.");
+            }
+            if(begin >= edge.size()) {
+                begin = edge.size() - 1;
+            }
+            if(end > edge.size()) {
+                end = edge.size();
+            }
+            if(end < begin) {
+                end = begin + 1;
+            }
+        } else if(displayAnchors == "first") {
+            begin = 0;
+            try {
+                end = atoul(firstAnchorsCountString);
+            } catch(std::exception& e) {
+                throw runtime_error("First anchors count " + firstAnchorsCountString + " is not valid. Must be a number.");
+            }
+            if(end > edge.size()) {
+                end = edge.size();
+            }
+        } else if(displayAnchors == "last") {
+            end = edge.size();
+            uint64_t count = invalid<uint64_t>;
+            try {
+                count = atoul(lastAnchorsCountString);
+            } catch(std::exception& e) {
+                throw runtime_error("Last anchors count " + lastAnchorsCountString + " is not valid. Must be a number.");
+            }
+            if(count > edge.size()) {
+                begin = 0;
+            } else {
+                begin = end - count;
+            }
         } else {
-            begin = end - count;
+            SHASTA_ASSERT(0);
         }
-    } else {
-        SHASTA_ASSERT(0);
-    }
-    SHASTA_ASSERT(end > begin);
+        SHASTA_ASSERT(end > begin);
 
-
-    html <<
-        "<p>"
-        "<table>"
-        "<tr><th>Position<th>AnchorId<th>Coverage"
-        "<th>Common<br>coverage<br>with<br>next"
-        "<th>Base<br>offset<br>to<br>next";
-
-    for(uint64_t position=begin; position!=end; ++position) {
-        const AnchorId anchorId = edge[position];
-        const uint64_t coverage = anchors()[anchorId].coverage();
 
         html <<
-            "<tr>"
-            "<td class=centered>" << position <<
-            "<td class=centered>" << anchorIdToString(anchorId) <<
-            "<td class=centered>" << coverage;
+            "<p>"
+            "<table>"
+            "<tr><th>Position<th>AnchorId<th>Coverage"
+            "<th>Common<br>coverage<br>with<br>next"
+            "<th>Base<br>offset<br>to<br>next";
 
-        if(position < edge.size() -1) {
-            const uint64_t nextPosition = position + 1;
-            const AnchorId nextAnchorId = edge[nextPosition];
-            uint64_t baseOffset;
-            const uint64_t commonCount = anchors().countCommon(anchorId, nextAnchorId, baseOffset);
+        for(uint64_t position=begin; position!=end; ++position) {
+            const AnchorId anchorId = edge[position];
+            const uint64_t coverage = anchors()[anchorId].coverage();
+
             html <<
-                "<td class=centered>" << commonCount <<
-                "<td class=centered>" << baseOffset;
-        } else {
-            html << "<td><td>";
+                "<tr>"
+                "<td class=centered>" << position <<
+                "<td class=centered>" << anchorIdToString(anchorId) <<
+                "<td class=centered>" << coverage;
+
+            if(position < edge.size() -1) {
+                const uint64_t nextPosition = position + 1;
+                const AnchorId nextAnchorId = edge[nextPosition];
+                uint64_t baseOffset;
+                const uint64_t commonCount = anchors().countCommon(anchorId, nextAnchorId, baseOffset);
+                html <<
+                    "<td class=centered>" << commonCount <<
+                    "<td class=centered>" << baseOffset;
+            } else {
+                html << "<td><td>";
+            }
         }
+
+        html << "</table>";
     }
 
-    html << "</table>";
+
+    // Sequence, if requested.
+    if(showSequence) {
+        html << "<h2>Assembled sequence</h2>";
+
+        vector<Base> sequence;
+        edge.getSequence(sequence);
+
+        if(not sequenceBeginIsPresent) {
+            sequenceBegin = 0;
+        }
+        if(not sequenceEndIsPresent) {
+            sequenceEnd = sequence.size();
+        }
+
+        if(sequenceBegin >= sequence.size()) {
+            sequenceBegin = sequence.size() - 1;
+        }
+        if(sequenceEnd > sequence.size()) {
+            sequenceEnd = sequence.size();
+        }
+        if(sequenceEnd < sequenceBegin) {
+            sequenceEnd = sequenceBegin;
+        }
+
+        html << ">" << segmentName << "-" << sequenceBegin << "-" << sequenceEnd << ", length " << sequenceEnd - sequenceBegin;
+        html << "<div style='font-family:monospace'>";
+        copy(sequence.begin() + sequenceBegin, sequence.begin() + sequenceEnd,
+            ostream_iterator<Base>(html));
+        html << "</div>";
+
+        // Also write the sequence to LocalAssembly.fasta.
+        ofstream fasta("LocalAssembly.fasta");
+        fasta << ">" << segmentName << "-" << sequenceBegin << "-" << sequenceEnd << " length " << sequenceEnd - sequenceBegin << endl;
+        copy(sequence.begin() + sequenceBegin, sequence.begin() + sequenceEnd,
+            ostream_iterator<Base>(fasta));
+    }
 }
 
 

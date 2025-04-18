@@ -1110,3 +1110,15 @@ uint64_t AssemblyGraphEdge::sequenceLength() const
     }
     return length;
 }
+
+
+
+void AssemblyGraphEdge::getSequence(vector<Base>& edgeSequence) const
+{
+    SHASTA_ASSERT(wasAssembled);
+    edgeSequence.clear();
+
+    for(const vector<Base>& sequence: sequences) {
+        copy(sequence.begin(), sequence.end(), back_inserter(edgeSequence));
+    }
+}
