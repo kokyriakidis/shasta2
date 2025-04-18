@@ -108,38 +108,39 @@ AssemblyGraph::AssemblyGraph(
 
     PermutationDetangler detangler(options.minCommonCoverage);
 
-    detangleVertices(detangler);
-    compress();
 
-    cout << "After vertex detangling, the assembly graph has " << num_vertices(assemblyGraph) <<
-        " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
-    write("C");
+    for(uint64_t iteration=0; iteration<3; iteration++) {
+        cout << "***** Detangle iteration " << iteration << " begins." << endl;
 
-    detangleEdges(detangler);
-    compress();
-
-    cout << "After edge detangling, the assembly graph has " << num_vertices(assemblyGraph) <<
-        " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
-    write("D");
-
-    cleanupTrivialBubbles();
-    compress();
-    cout << "After removal of trivial bubbles, the assembly graph has " << num_vertices(assemblyGraph) <<
-        " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
-    write("E");
-
-    for(uint64_t i=0; i<tangleTemplates.size(); i++) {
-        const TangleTemplate& tangleTemplate = tangleTemplates[i];
-        write("X" + to_string(i));
-        performanceLog << timestamp << "Begin detangling template " << i << endl;
-        detangle(tangleTemplate, detangler);
-        performanceLog << timestamp << "End detangling template " << i << endl;
+        detangleVertices(detangler);
         compress();
-        cout << "After detangling induced subgraphs for Tangle template " << i <<
-            ", the assembly graph has " << num_vertices(assemblyGraph) <<
+
+        cout << "After vertex detangling, the assembly graph has " << num_vertices(assemblyGraph) <<
             " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
+
+        detangleEdges(detangler);
+        compress();
+
+        cout << "After edge detangling, the assembly graph has " << num_vertices(assemblyGraph) <<
+            " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
+
+        cleanupTrivialBubbles();
+        compress();
+        cout << "After removal of trivial bubbles, the assembly graph has " << num_vertices(assemblyGraph) <<
+            " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
+
+        for(uint64_t i=0; i<tangleTemplates.size(); i++) {
+            const TangleTemplate& tangleTemplate = tangleTemplates[i];
+            performanceLog << timestamp << "Begin detangling template " << i << endl;
+            detangle(tangleTemplate, detangler);
+            performanceLog << timestamp << "End detangling template " << i << endl;
+            compress();
+            cout << "After detangling induced subgraphs for Tangle template " << i <<
+                ", the assembly graph has " << num_vertices(assemblyGraph) <<
+                " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
+        }
     }
-    write("F");
+    write("Z");
 
 
     performanceLog << timestamp << "AssemblyGraph creation ends." << endl;
@@ -626,8 +627,9 @@ void AssemblyGraph::detangleEdges(Detangler& detangler)
 
         ++attemptCount;
         Tangle tangle(assemblyGraph, e);
-        // vector<uint64_t> debugList = {110089,110193,75121,105461,105503};
-        // tangle.debug = find(debugList.begin(), debugList.end(), assemblyGraph[e].id) != debugList.end();
+        vector<uint64_t> debugList = {43951};
+        tangle.debug = find(debugList.begin(), debugList.end(), assemblyGraph[e].id) != debugList.end();
+        detangler.debug = tangle.debug;
         if(tangle.debug) {
             cout << "Detangling edge " << assemblyGraph[e].id << endl;
         }
@@ -715,7 +717,7 @@ void AssemblyGraph::cleanupTrivialBubbles()
 
 void AssemblyGraph::createTangleTemplates()
 {
-    // Skip one bubble.
+
     tangleTemplates.emplace_back(4);
     {
         TangleTemplate& g = tangleTemplates.back();
@@ -725,7 +727,15 @@ void AssemblyGraph::createTangleTemplates()
         add_edge(2, 3, g);
     }
 
-    // Skip two bubbles.
+    tangleTemplates.emplace_back(3);
+    {
+        TangleTemplate& g = tangleTemplates.back();
+        add_edge(0, 1, g);
+        add_edge(0, 1, g);
+        add_edge(1, 2, g);
+        tangleTemplates.push_back(reverse(g));
+    }
+
     tangleTemplates.emplace_back(6);
     {
         TangleTemplate& g = tangleTemplates.back();
@@ -738,7 +748,6 @@ void AssemblyGraph::createTangleTemplates()
         add_edge(4, 5, g);
     }
 
-    // Skip three bubbles.
     tangleTemplates.emplace_back(8);
     {
         TangleTemplate& g = tangleTemplates.back();
@@ -773,7 +782,6 @@ void AssemblyGraph::createTangleTemplates()
         add_edge(8, 9, g);
     }
 
-    // 2 by 2 switch preceded by a haploid segment.
     tangleTemplates.emplace_back(6);
     {
         TangleTemplate& g = tangleTemplates.back();
@@ -784,22 +792,9 @@ void AssemblyGraph::createTangleTemplates()
         add_edge(2, 5, g);
         add_edge(3, 4, g);
         add_edge(3, 5, g);
+        tangleTemplates.push_back(reverse(g));
     }
 
-    // 2 by 2 switch followed by a haploid segment.
-    tangleTemplates.emplace_back(6);
-    {
-        TangleTemplate& g = tangleTemplates.back();
-        add_edge(0, 2, g);
-        add_edge(0, 3, g);
-        add_edge(1, 2, g);
-        add_edge(1, 3, g);
-        add_edge(2, 4, g);
-        add_edge(3, 4, g);
-        add_edge(4, 5, g);
-    }
-
-    // 2 by 2 switch preceded and followed by a haploid segment.
     tangleTemplates.emplace_back(8);
     {
         TangleTemplate& g = tangleTemplates.back();
@@ -816,6 +811,30 @@ void AssemblyGraph::createTangleTemplates()
     }
 
 
+    tangleTemplates.emplace_back(5);
+    {
+        TangleTemplate& g = tangleTemplates.back();
+        add_edge(0, 1, g);
+        add_edge(1, 2, g);
+        add_edge(1, 3, g);
+        add_edge(1, 4, g);
+        add_edge(2, 3, g);
+        add_edge(2, 4, g);
+        tangleTemplates.push_back(reverse(g));
+    }
+
+    tangleTemplates.emplace_back(6);
+    {
+        TangleTemplate& g = tangleTemplates.back();
+        add_edge(0, 1, g);
+        add_edge(1, 2, g);
+        add_edge(1, 3, g);
+        add_edge(2, 3, g);
+        add_edge(2, 4, g);
+        add_edge(3, 4, g);
+        add_edge(4, 5, g);
+    }
+
     for(uint64_t i=0; i<tangleTemplates.size(); i++) {
         const TangleTemplate& tangleTemplate = tangleTemplates[i];
         const string dotFileName = "TangleTemplate-" + to_string(i) + ".dot";
@@ -824,6 +843,21 @@ void AssemblyGraph::createTangleTemplates()
         dot.close();
         std::system(("dot -O -T svg -Nshape=rectangle " + dotFileName).c_str());
     }
+}
+
+
+
+// This reverses all of the edges of the TangleTemplate.
+// We can't use boost::reverse_graph because that creates
+// a graph of a different type.
+AssemblyGraph::TangleTemplate AssemblyGraph::reverse(const TangleTemplate& x)
+{
+    TangleTemplate y(num_vertices(x));
+
+    BGL_FORALL_EDGES(e, x, TangleTemplate) {
+        add_edge(target(e, x), source(e, x), y);
+    }
+    return y;
 }
 
 

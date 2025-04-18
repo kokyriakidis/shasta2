@@ -145,6 +145,7 @@ private:
 
     using TangleTemplate = boost::adjacency_list<boost::listS, boost::vecS, boost::bidirectionalS>;
     static void writeGraphviz(ostream&, const TangleTemplate&);
+    static TangleTemplate reverse(const TangleTemplate&);
     vector<TangleTemplate> tangleTemplates;
     void createTangleTemplates();
     void detangle(const TangleTemplate&, Detangler&);
