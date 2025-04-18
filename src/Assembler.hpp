@@ -178,8 +178,7 @@ public:
 
     // AssemblyGraph.
     void createAssemblyGraph(
-        uint64_t minAnchorGraphEdgeCoverage,
-        const AssemblerOptions::AssemblyGraphOptions&,
+        const AssemblerOptions&,
         uint64_t threadCount);
 
 
@@ -257,7 +256,9 @@ public:
     void exploreLocalAssembly(const vector<string>&, ostream&);
 
     // Get the AssemblyGraph for a given assembly stage.
-    AssemblyGraphPostprocessor& getAssemblyGraph(const string& assemblyStage);
+    AssemblyGraphPostprocessor& getAssemblyGraph(
+        const string& assemblyStage,
+        const AssemblerOptions&);
     std::map<string, shared_ptr<AssemblyGraphPostprocessor> > assemblyGraphTable;
 
 };

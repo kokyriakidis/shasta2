@@ -290,7 +290,9 @@ void Assembler::exploreSegment(
     }
 
     // Get the AssemblyGraph for this assembly stage.
-    const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(assemblyStage);
+    const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
+        assemblyStage,
+        *httpServerData.assemblerOptions);
 
     // Find the AssemblyGraphEdge corresponding to the requested segment.
     auto it = assemblyGraph.edgeMap.find(segmentId);
@@ -315,8 +317,13 @@ void Assembler::exploreSegment(
         "<tr><th class=left>First anchor<td class = centered>" << anchorIdToString(anchorIdA) <<
         "<tr><th class=left>Last anchor<td class = centered>" << anchorIdToString(anchorIdB) <<
         "<tr><th class=left>Number of anchors<td class = centered>" << edge.size() <<
-        "<tr><th class=left>Estimated length<td class = centered>" << edge.length(anchors()) <<
-        "</table>";
+        "<tr><th class=left>Estimated length<td class = centered>" << edge.length(anchors());
+    if(edge.wasAssembled) {
+        html <<
+            "<tr><th class=left>Assembled length<td class = centered>" << edge.sequenceLength();
+
+    }
+    html << "</table>";
 
     // Details table showing the requested anchors.
     if(displayAnchors == "none") {
@@ -415,12 +422,14 @@ void Assembler::exploreSegment(
 
 
 
-AssemblyGraphPostprocessor& Assembler::getAssemblyGraph(const string& assemblyStage)
+AssemblyGraphPostprocessor& Assembler::getAssemblyGraph(
+    const string& assemblyStage,
+    const AssemblerOptions& assemblerOptions)
 {
     auto it = assemblyGraphTable.find(assemblyStage);
     if(it == assemblyGraphTable.end()) {
         shared_ptr<AssemblyGraphPostprocessor> p =
-            make_shared<AssemblyGraphPostprocessor>(anchors(), assemblyStage);
+            make_shared<AssemblyGraphPostprocessor>(assemblerOptions, anchors(), assemblyStage);
         tie(it, ignore) = assemblyGraphTable.insert(make_pair(assemblyStage, p));
     }
     return *(it->second);
@@ -489,7 +498,9 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
     }
 
     // Get the AssemblyGraph for this assembly stage.
-    const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(assemblyStage);
+    const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
+        assemblyStage,
+        *httpServerData.assemblerOptions);
 
 
 
@@ -613,7 +624,9 @@ void Assembler::exploreVertexTangle(const vector<string>& request, ostream& html
     }
 
     // Get the AssemblyGraph for this assembly stage.
-    AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(assemblyStage);
+    AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
+        assemblyStage,
+        *httpServerData.assemblerOptions);
 
     // Find the AssemblyGraphEdge corresponding to the requested segment.
     auto it = assemblyGraph.edgeMap.find(segmentId);
@@ -689,7 +702,9 @@ void Assembler::exploreEdgeTangle(const vector<string>& request, ostream& html)
     }
 
     // Get the AssemblyGraph for this assembly stage.
-    AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(assemblyStage);
+    AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
+        assemblyStage,
+        *httpServerData.assemblerOptions);
 
     // Find the AssemblyGraphEdge corresponding to the requested segment.
     auto it = assemblyGraph.edgeMap.find(segmentId);

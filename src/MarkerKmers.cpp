@@ -8,7 +8,7 @@ using namespace shasta;
 #include <cmath>
 #include "fstream.hpp"
 
-// Expplicit instantiationn.
+// Explicit instantiationn.
 #include "MultithreadedObject.tpp"
 template class MultithreadedObject<MarkerKmers>;
 

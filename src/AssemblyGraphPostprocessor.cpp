@@ -11,9 +11,10 @@ using namespace shasta;
 
 
 AssemblyGraphPostprocessor::AssemblyGraphPostprocessor(
+    const AssemblerOptions& assemblerOptions,
     const Anchors& anchors,
     const string& assemblyStage) :
-    AssemblyGraph(anchors, assemblyStage)
+    AssemblyGraph(assemblerOptions, anchors, assemblyStage)
 {
     const AssemblyGraph& assemblyGraph = *this;
 

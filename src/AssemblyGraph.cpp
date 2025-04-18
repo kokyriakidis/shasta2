@@ -7,6 +7,7 @@
 #include "findLinearChains.hpp"
 #include "html.hpp"
 #include "inducedSubgraphIsomorphisms.hpp"
+#include "LocalAssembly.hpp"
 #include "performanceLog.hpp"
 #include "PermutationDetangler.hpp"
 #include "Tangle.hpp"
@@ -25,16 +26,24 @@ using namespace shasta;
 #include <queue>
 #include <set>
 
+// Explicit instantiationn.
+#include "MultithreadedObject.tpp"
+template class MultithreadedObject<AssemblyGraph>;
+
 
 
 AssemblyGraph::AssemblyGraph(
+    const AssemblerOptions& assemblerOptions,
     const Anchors& anchors,
     const AnchorGraph& anchorGraph,
-    const AssemblerOptions::AssemblyGraphOptions& options ) :
+    uint64_t threadCount) :
     MappedMemoryOwner(anchors),
+    MultithreadedObject<AssemblyGraph>(*this),
+    assemblerOptions(assemblerOptions),
     anchors(anchors)
 {
     AssemblyGraph& assemblyGraph = *this;
+    const auto& assemblyGraphOptions = assemblerOptions.assemblyGraphOptions;
     performanceLog << "AssemblyGraph creation begins." << endl;
 
 
@@ -95,9 +104,9 @@ AssemblyGraph::AssemblyGraph(
     write("A");
 
     transitiveReduction(
-        options.transitiveReductionThreshold,
-        options.transitiveReductionA,
-        options.transitiveReductionB);
+        assemblyGraphOptions.transitiveReductionThreshold,
+        assemblyGraphOptions.transitiveReductionA,
+        assemblyGraphOptions.transitiveReductionB);
     compress();
 
     cout << "After transitive reduction, the assembly graph has " << num_vertices(assemblyGraph) <<
@@ -106,7 +115,7 @@ AssemblyGraph::AssemblyGraph(
 
     createTangleTemplates();
 
-    PermutationDetangler detangler(options.minCommonCoverage);
+    PermutationDetangler detangler(assemblyGraphOptions.minCommonCoverage);
 
 
     for(uint64_t iteration=0; iteration<3; iteration++) {
@@ -140,6 +149,9 @@ AssemblyGraph::AssemblyGraph(
                 " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
         }
     }
+    write("Y");
+
+    assembleAll(threadCount);
     write("Z");
 
 
@@ -556,13 +568,17 @@ void AssemblyGraph::load(const string& assemblyStage)
 
 // Deserialize.
 AssemblyGraph::AssemblyGraph(
+    const AssemblerOptions& assemblerOptions,
     const Anchors& anchors,
     const string& assemblyStage) :
     MappedMemoryOwner(anchors),
+    MultithreadedObject<AssemblyGraph>(*this),
+    assemblerOptions(assemblerOptions),
     anchors(anchors)
 {
     load(assemblyStage);
 }
+
 
 
 void AssemblyGraph::detangleVertices(Detangler& detangler)
@@ -976,4 +992,121 @@ uint64_t AssemblyGraph::minCommonCountOnEdgeAdjacent(edge_descriptor e) const
 
     return minCommonCount;
 
+}
+
+
+
+// Assemble sequence for all edges.
+void AssemblyGraph::assembleAll(uint64_t threadCount)
+{
+    const AssemblyGraph& assemblyGraph = *this;
+    edgesToBeAssembled.clear();
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        edgesToBeAssembled.push_back(e);
+    }
+    assemble(threadCount);
+}
+
+
+
+// Assemble sequence for all edges in the edgesToBeAssembled vector.
+// This fills in the edgeStepsToBeAssembled with all steps of those edges,
+// then assembles each of the steps in parallel.
+void AssemblyGraph::assemble(uint64_t threadCount)
+{
+    AssemblyGraph& assemblyGraph = *this;
+
+    edgeStepsToBeAssembled.clear();
+    for(const edge_descriptor e: edgesToBeAssembled) {
+        AssemblyGraphEdge& edge = assemblyGraph[e];
+        const uint64_t stepCount = edge.size() - 1;
+        edge.sequences.resize(stepCount);
+        for(uint64_t i=0; i<stepCount; i++) {
+            edgeStepsToBeAssembled.push_back(make_pair(e, i));
+        }
+    }
+
+    const uint64_t batchCount = 1;
+    setupLoadBalancing(edgeStepsToBeAssembled.size(), batchCount);
+    runThreads(&AssemblyGraph::assembleThreadFunction, threadCount);
+
+    // Mark them as assembled.
+    for(const edge_descriptor e: edgesToBeAssembled) {
+        assemblyGraph[e].wasAssembled = true;
+    }
+}
+
+
+void AssemblyGraph::assembleThreadFunction(uint64_t /* threadId */)
+{
+    AssemblyGraph& assemblyGraph = *this;
+
+    // Loop over all batches assigned to this thread.
+    uint64_t begin, end;
+    while(getNextBatch(begin, end)) {
+
+        // Loop over all assembly steps assigned to this batch.
+        for(uint64_t j=begin; j!=end; j++) {
+            const auto& p = edgeStepsToBeAssembled[j];
+            const edge_descriptor e = p.first;
+            const uint64_t i = p.second;
+            AssemblyGraphEdge& edge = assemblyGraph[e];
+            SHASTA_ASSERT(i < edge.sequences.size());
+            assembleStep(e, i);
+        }
+    }
+}
+
+
+
+// Assemble sequence for the specified edge.
+void AssemblyGraph::assemble(edge_descriptor e, uint64_t threadCount)
+{
+    edgesToBeAssembled.clear();
+    edgesToBeAssembled.push_back(e);
+    assemble(threadCount);
+}
+
+
+
+// Assemble sequence for step i of the specified edge.
+// The sequences vector for the edge must have already been sized to the correct length.
+// This is the lowest level sequence assembly functions and is not multithreaded.
+// It runs a LocalAssembly between the appropriate pir of adjacent anchors in the
+// AssemblyGraphEdge.
+void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
+{
+    AssemblyGraph& assemblyGraph = *this;
+    AssemblyGraphEdge& edge = assemblyGraph[e];
+
+    // Get the AnchorIds for this step.
+    SHASTA_ASSERT(i + 1 < edge.size());
+    const AnchorId anchorId0 = edge[i];
+    const AnchorId anchorId1 = edge[i+1];
+
+    // Access the vector where we want to store assembled sequence of this step.
+    SHASTA_ASSERT(i < edge.sequences.size());
+    vector<shasta::Base>& sequence = edge.sequences[i];
+
+    // Run the LocalAssembly.
+    ofstream html;  // Not open, so no html output takes place.
+    LocalAssemblyDisplayOptions localAssemblyDisplayOptions(html);
+    const LocalAssembly localAssembly(
+        anchors.k, anchors.reads, anchors.markers, anchors,
+        anchorId0, anchorId1,
+        0, localAssemblyDisplayOptions, assemblerOptions.localAssemblyOptions,
+        false, false);
+    localAssembly.getSequence(sequence);
+}
+
+
+
+uint64_t AssemblyGraphEdge::sequenceLength() const
+{
+    SHASTA_ASSERT(wasAssembled);
+    uint64_t length = 0;
+    for(const vector<Base>& sequence: sequences) {
+        length += sequence.size();
+    }
+    return length;
 }

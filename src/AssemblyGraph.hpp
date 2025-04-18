@@ -4,7 +4,9 @@
 // Shasta.
 #include "AnchorPair.hpp"
 #include "AssemblerOptions.hpp"
+#include "Base.hpp"
 #include "MappedMemoryOwner.hpp"
+#include "MultithreadedObject.hpp"
 #include "shastaTypes.hpp"
 
 // Boost libraries.
@@ -76,10 +78,21 @@ public:
         return (*this)[size() - 2];
     }
 
+    // Assembled sequence.
+    // We store the assembled sequencse between each of the size()-1 pairs
+    // of adjacent AnchorIds of this AssemblyGraphEdge.
+    // Assembled sequence for this edge is the concatenation of these sequences.
+    bool wasAssembled = false;  // Set if all steps of this edge have been assembled.
+    vector< vector<Base> > sequences;
+    uint64_t sequenceLength() const;
+    void getSequence(vector<Base>&) const;
+
     template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
     {
         ar & boost::serialization::base_object< vector<AnchorId> >(*this);
         ar & id;
+        ar & wasAssembled;
+        ar & sequences;
     }
 };
 
@@ -87,17 +100,20 @@ public:
 
 class shasta::AssemblyGraph:
     public AssemblyGraphBaseClass,
-    public MappedMemoryOwner {
+    public MappedMemoryOwner,
+    public MultithreadedObject<AssemblyGraph> {
 public:
 
     // Initial construction from the AnchorGraph.
     AssemblyGraph(
+        const AssemblerOptions&,
         const Anchors&,
         const AnchorGraph&,
-        const AssemblerOptions::AssemblyGraphOptions&);
+        uint64_t threadCount);
 
     // Deserialize.
     AssemblyGraph(
+        const AssemblerOptions&,
         const Anchors&,
         const string& assemblyStage);
 
@@ -110,6 +126,7 @@ public:
         return e;
     }
 
+    const AssemblerOptions& assemblerOptions;
     const Anchors& anchors;
 
     void detangleVertices(Detangler&);
@@ -150,6 +167,27 @@ private:
     void createTangleTemplates();
     void detangle(const TangleTemplate&, Detangler&);
 
+
+
+    // Sequence assembly.
+
+    // Assemble sequence for all edges.
+    void assembleAll(uint64_t threadCount);
+
+    // Assemble sequence for the specified edge.
+    void assemble(edge_descriptor, uint64_t threadCount);
+
+    // Assemble sequence for step i of the specified edge.
+    // The sequences vector for the edge must have already been sized to the correct length.
+    void assembleStep(edge_descriptor, uint64_t i);
+
+    // Assemble sequence for all edges in the edgesToBeAssembled vector.
+    // This fills in the edgeStepsToBeAssembled with all steps of those edges,
+    // then assembles each of the steps in parallel.
+    void assemble(uint64_t threadCount);
+    void assembleThreadFunction(uint64_t threadId);
+    vector<edge_descriptor> edgesToBeAssembled;
+    vector< pair<edge_descriptor, uint64_t> > edgeStepsToBeAssembled;
 
 
     // Serialization.

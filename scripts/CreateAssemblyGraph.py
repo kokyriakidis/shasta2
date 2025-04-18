@@ -8,6 +8,4 @@ assembler = shasta2.Assembler()
 assembler.accessMarkers()
 assembler.accessAnchors()
 assembler.accessJourneys()
-assembler.createAssemblyGraph(
-	assemblerOptions.minAnchorGraphEdgeCoverage,
-	assemblerOptions.assemblyGraphOptions)
+assembler.createAssemblyGraph(assemblerOptions)

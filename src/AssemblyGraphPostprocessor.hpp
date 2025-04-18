@@ -17,6 +17,7 @@ namespace shasta {
 class shasta::AssemblyGraphPostprocessor : public AssemblyGraph {
 public:
     AssemblyGraphPostprocessor(
+        const AssemblerOptions&,
         const Anchors&,
         const string& assemblyStage);
 

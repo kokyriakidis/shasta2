@@ -90,10 +90,7 @@ void Assembler::assemble(
     createJourneys(threadCount);
     journeys().writeAnchorGapsByRead(reads(), markers(), anchors());
 
-    createAssemblyGraph(
-        assemblerOptions.minAnchorGraphEdgeCoverage,
-        assemblerOptions.assemblyGraphOptions,
-        threadCount);
+    createAssemblyGraph(assemblerOptions, threadCount);
 }
 
 
@@ -187,8 +184,7 @@ void Assembler::accessJourneys()
 
 
 void Assembler::createAssemblyGraph(
-    uint64_t minAnchorGraphEdgeCoverage,
-    const AssemblerOptions::AssemblyGraphOptions& options,
+    const AssemblerOptions& options,
     uint64_t threadCount)
 {
     // Adjust the numbers of threads, if necessary.
@@ -197,11 +193,11 @@ void Assembler::createAssemblyGraph(
     }
 
     performanceLog << timestamp << "AnchorGraph creation begins." << endl;
-    const AnchorGraph anchorGraph(anchors(), journeys(), minAnchorGraphEdgeCoverage);
+    const AnchorGraph anchorGraph(anchors(), journeys(), options.minAnchorGraphEdgeCoverage);
     performanceLog << timestamp << "AnchorGraph creation ends." << endl;
 
     performanceLog << timestamp << "AssemblyGraph creation begins." << endl;
-    AssemblyGraph assemblyGraph(anchors(), anchorGraph, options);
+    AssemblyGraph assemblyGraph(options, anchors(), anchorGraph, threadCount);
     performanceLog << timestamp << "AssemblyGraph creation ends." << endl;
 
 }
