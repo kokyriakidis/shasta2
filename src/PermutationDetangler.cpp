@@ -17,7 +17,7 @@ bool PermutationDetangler::operator()(
     Tangle& tangle)
 {
     const double epsilon = 0.05;
-    const double maxLogP = 20.;
+    const double maxLogP = 30.;
     const double minLogPDelta = 100.;
 
     const TangleMatrix& tangleMatrix = tangle.tangleMatrix;
