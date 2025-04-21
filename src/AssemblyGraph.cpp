@@ -170,6 +170,8 @@ void AssemblyGraph::writeGfa(const string& fileName) const
     gfa << "H\tVN:Z:1.0\n";
 
     // Write a segment for each edge.
+    using shasta::Base;
+    vector<Base> sequence;
     BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
         const AssemblyGraphEdge& edge = assemblyGraph[e];
 
@@ -180,10 +182,14 @@ void AssemblyGraph::writeGfa(const string& fileName) const
         gfa << edge.id << "\t";
 
         // Sequence.
-        gfa << "*\t";
-
-        // Sequence length in bases.
-        gfa << "LN:i:" << edge.length(anchors) << "\n";
+        if(edge.wasAssembled) {
+            edge.getSequence(sequence);
+            copy(sequence.begin(), sequence.end(), ostream_iterator<Base>(gfa));
+            gfa << "\tLN:i:" << sequence.size() << "\n";
+        } else {
+            gfa << "*\t";
+            gfa << "LN:i:" << edge.length(anchors) << "\n";
+        }
     }
 
     // For each vertex, write links between each pair of incoming/outgoing edges.
