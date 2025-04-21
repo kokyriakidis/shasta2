@@ -148,6 +148,7 @@ private:
 
     void write(const string& name) const;
     void writeGfa(const string& fileName) const;
+    void writeFasta(const string& fileName) const;
     void writeGraphviz(const string& fileName) const;
     void writeSegments(const string& fileName) const;
     void writeSegmentDetails(const string& fileName) const;

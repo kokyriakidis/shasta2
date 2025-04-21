@@ -153,6 +153,7 @@ AssemblyGraph::AssemblyGraph(
 
     assembleAll(threadCount);
     write("Z");
+    writeFasta("AssemblyGraph-Z.fasta");
 
 
     performanceLog << timestamp << "AssemblyGraph creation ends." << endl;
@@ -204,6 +205,27 @@ void AssemblyGraph::writeGfa(const string& fileName) const
                     id1 << "\t+\t*\n";
             }
         }
+    }
+}
+
+
+
+void AssemblyGraph::writeFasta(const string& fileName) const
+{
+    const AssemblyGraph& assemblyGraph = *this;
+
+    ofstream fasta(fileName);
+
+    using shasta::Base;
+    vector<Base> sequence;
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        const AssemblyGraphEdge& edge = assemblyGraph[e];
+        SHASTA_ASSERT(edge.wasAssembled);
+        edge.getSequence(sequence);
+
+        fasta << ">" << edge.id << " " << sequence.size() << "\n";
+        copy(sequence.begin(), sequence.end(), ostream_iterator<Base>(fasta));
+        fasta << "\n";
     }
 }
 
