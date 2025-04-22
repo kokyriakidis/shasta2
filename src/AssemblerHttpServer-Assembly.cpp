@@ -1,8 +1,8 @@
 // Shasta.
 #include "Assembler.hpp"
 #include "AssemblyGraphPostprocessor.hpp"
-#include "Anchor.hpp"
 #include "LocalAssembly.hpp"
+#include "LocalAssembly1.hpp"
 #include "Tangle.hpp"
 #include "TangleMatrix.hpp"
 using namespace shasta;
@@ -413,10 +413,7 @@ void Assembler::exploreSegment(
         } else {
             begin = end - count;
         }
-    } else {
-        SHASTA_ASSERT(0);
     }
-    SHASTA_ASSERT(end > begin);
 
 
 
@@ -504,7 +501,7 @@ void Assembler::exploreSegment(
 
 
     // Sequence details, if requested.
-    if(showSequenceDetails) {
+    if(showSequenceDetails and (displayAnchors != "none")) {
         html <<
             "<h2>Sequence assembly details</h2>"
             "<table>"
@@ -853,3 +850,79 @@ void Assembler::exploreEdgeTangle(const vector<string>& request, ostream& html)
     tangle.tangleMatrix.writeHtml(assemblyGraph, html);
 }
 
+
+
+void Assembler::exploreLocalAssemblyAbpoa(
+    const vector<string>& request,
+    ostream& html)
+{
+    html << "<h2>Local assembly with abPOA</h2>";
+
+    // Get the parameters for the request.
+    string anchorIdAString;
+    const bool anchorIdAStringIsPresent = HttpServer::getParameterValue(request, "anchorIdAString", anchorIdAString);
+    boost::trim(anchorIdAString);
+
+    string anchorIdBString;
+    const bool anchorIdBStringIsPresent = HttpServer::getParameterValue(request, "anchorIdBString", anchorIdBString);
+    boost::trim(anchorIdBString);
+
+
+
+    // Write the form.
+    html <<
+        "<form>"
+        "<table>";
+
+    html <<
+        "<tr><th class=left>Anchor A"
+        "<td class=centered><input type=text name=anchorIdAString required";
+    if(anchorIdAStringIsPresent) {
+        html << " value='" << anchorIdAString + "'";
+    }
+    html <<
+        " size=8 title='Enter an anchor id between 0 and " <<
+        anchors().size() / 2 - 1 << " followed by + or -.'><br>";
+
+    html <<
+        "<tr><th class=left>Anchor B"
+        "<td class=centered><input type=text name=anchorIdBString required";
+    if(anchorIdBStringIsPresent) {
+        html << " value='" << anchorIdBString + "'";
+    }
+    html <<
+        " size=8 title='Enter an anchor id between 0 and " <<
+        anchors().size() / 2 - 1 << " followed by + or -.'><br>"
+        "</table>"
+        "<br><input type=submit value='Do it'>"
+        "</form>";
+
+
+
+    // Check the AnchorIds
+    if(not (anchorIdAStringIsPresent and anchorIdBStringIsPresent)) {
+        return;
+    }
+    const AnchorId anchorIdA = anchorIdFromString(anchorIdAString);
+    const AnchorId anchorIdB = anchorIdFromString(anchorIdBString);
+
+    if((anchorIdA == invalid<AnchorId>) or (anchorIdA >= anchors().size())) {
+        html << "<p>Invalid anchor id " << anchorIdAString << ". Must be a number between 0 and " <<
+            anchors().size() / 2 - 1 << " followed by + or -.";
+        return;
+    }
+
+    if((anchorIdB == invalid<AnchorId>) or (anchorIdB >= anchors().size())) {
+        html << "<p>Invalid anchor id " << anchorIdBString << " .Must be a number between 0 and " <<
+            anchors().size() / 2 - 1 << " followed by + or -.";
+        return;
+    }
+
+    if(anchorIdA == anchorIdB) {
+        html << "Specify two distinct anchors.";
+        return;
+    }
+
+
+    LocalAssembly1 localAssembly(anchors(), anchorIdA, anchorIdB, html);
+}

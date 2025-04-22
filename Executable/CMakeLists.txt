@@ -22,7 +22,7 @@ endif(BUILD_DEBUG)
 file(GLOB SOURCES ../src/*.cpp)
 
 # Include directory.
-include_directories(../src)
+include_directories(../src ~/abPOA/abPOA/include)
 
 # Define our executable.
 add_executable(shasta2Executable ${SOURCES})
@@ -38,7 +38,7 @@ if(X86_64)
     target_link_libraries(
         shasta2Executable
         atomic boost_system boost_program_options boost_chrono boost_serialization  spoa png z
-        lapack blas gfortran quadmath
+        lapack blas gfortran quadmath abpoa z m
         -Wl,--whole-archive -lpthread -Wl,--no-whole-archive)
 else(X86_64)
     target_link_libraries(
