@@ -583,7 +583,14 @@ void Assembler::exploreSegment(
 
                 html <<
                     "<tr>"
-                    "<td class=centered>" << step <<
+
+                    "<td class=centered>" <<
+
+                    "<a href='"
+                    "exploreLocalAssembly1?anchorIdAString=" << HttpServer::urlEncode(anchorIdToString(anchorIdA)) <<
+                    "&anchorIdBString=" << HttpServer::urlEncode(anchorIdToString(anchorIdB)) <<
+                    "'>" << step << "</a>"
+
                     "<td class=centered>" << anchorIdToString(anchorIdA) <<
                     "<td class=centered>" << anchorIdToString(anchorIdB) <<
                     "<td class=centered>" << coverageA <<
