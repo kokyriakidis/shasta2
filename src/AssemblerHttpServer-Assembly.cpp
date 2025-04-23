@@ -910,11 +910,11 @@ void Assembler::exploreEdgeTangle(const vector<string>& request, ostream& html)
 
 
 
-void Assembler::exploreLocalAssemblyAbpoa(
+void Assembler::exploreLocalAssembly1(
     const vector<string>& request,
     ostream& html)
 {
-    html << "<h2>Local assembly with abPOA</h2>";
+    html << "<h2>Local assembly (new)</h2>";
 
     // Get the parameters for the request.
     string anchorIdAString;
