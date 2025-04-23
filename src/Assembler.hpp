@@ -249,6 +249,7 @@ public:
     void exploreJourney(const vector<string>&, ostream&);
     void exploreReadFollowing(const vector<string>&, ostream&);
     void exploreLocalAnchorGraph(const vector<string>&, ostream&);
+    void exploreSegments(const vector<string>&, ostream&);
     void exploreSegment(const vector<string>&, ostream&);
     void exploreVertexTangle(const vector<string>&, ostream&);
     void exploreEdgeTangle(const vector<string>&, ostream&);

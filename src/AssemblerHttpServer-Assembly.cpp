@@ -9,6 +9,7 @@ using namespace shasta;
 
 // Boost libraries.
 #include <boost/algorithm/string.hpp>
+#include <boost/graph/iteration_macros.hpp>
 #include <boost/tokenizer.hpp>
 
 // Standard library.
@@ -188,6 +189,63 @@ void Assembler::exploreLocalAssembly(
         options,
         localAssemblyOptions,
         useA, useB);
+}
+
+
+
+void Assembler::exploreSegments(
+    const vector<string>& request,
+    ostream& html)
+{
+    string assemblyStage;
+    HttpServer::getParameterValue(request, "assemblyStage", assemblyStage);
+
+    html << "<h2>Assembly graph segments</h2><form><table>";
+
+    html <<
+        "<tr>"
+        "<th class=left>Assembly stage"
+        "<td class=centered><input type=text name=assemblyStage style='text-align:center' required";
+    if(not assemblyStage.empty()) {
+        html << " value='" << assemblyStage + "'";
+    }
+    html << " size=10>";
+
+    html <<
+        "</table>"
+        "<input type=submit value='Get information'>"
+        "</form>";
+
+    if(assemblyStage.empty()) {
+        return;
+    }
+
+    // Get the AssemblyGraph for this assembly stage.
+    const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
+        assemblyStage,
+        *httpServerData.assemblerOptions);
+
+    html << "<table><tr><th>Id<th>Number<br>of<br>anchors<th>Estimated<br>length<th>Actual<br>length";
+
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        const AssemblyGraphEdge& edge = assemblyGraph[e];
+        html <<
+            "<tr>"
+            "<td class=centered>" <<
+
+            "<a href='exploreSegment?assemblyStage=" << assemblyStage << "&segmentName=" << edge.id << "'>" <<
+            edge.id <<
+            "</a>"
+
+            "<td class=centered>" << edge.size() <<
+            "<td class=centered>" << edge.length(anchors()) <<
+            "<td class=centered>";
+        if(edge.wasAssembled) {
+            html << edge.sequenceLength();
+        }
+    }
+
+    html << "</table>";
 }
 
 
