@@ -867,6 +867,8 @@ void Assembler::exploreLocalAssemblyAbpoa(
     const bool anchorIdBStringIsPresent = HttpServer::getParameterValue(request, "anchorIdBString", anchorIdBString);
     boost::trim(anchorIdBString);
 
+    string showAlignmentString;
+    const bool showAlignment = getParameterValue(request, "showAlignment", showAlignmentString);
 
 
     // Write the form.
@@ -893,6 +895,10 @@ void Assembler::exploreLocalAssemblyAbpoa(
     html <<
         " size=8 title='Enter an anchor id between 0 and " <<
         anchors().size() / 2 - 1 << " followed by + or -.'><br>"
+
+        "<tr><th>Show the alignment<td class=centered><input type=checkbox name=showAlignment" << (showAlignment ? " checked" : "") <<
+        ">"
+
         "</table>"
         "<br><input type=submit value='Do it'>"
         "</form>";
@@ -924,5 +930,5 @@ void Assembler::exploreLocalAssemblyAbpoa(
     }
 
 
-    LocalAssembly1 localAssembly(anchors(), anchorIdA, anchorIdB, html);
+    LocalAssembly1 localAssembly(anchors(), anchorIdA, anchorIdB, showAlignment, html);
 }

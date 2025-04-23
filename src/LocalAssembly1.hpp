@@ -13,6 +13,7 @@ public:
         const Anchors&,
         AnchorId anchorIdA,
         AnchorId anchorIdB,
+        bool computeAlignment,
         ostream& html);
 
 private:
@@ -54,7 +55,9 @@ private:
         AnchorId anchorIdB);
     void writeOrientedReads() const;
 
-    void runAbpoa();
+    // Consensus is always computed.
+    // Alignment and alignedConsensus are only computed if computeAlignment is set to true.
+    void runAbpoa(bool computeAlignment);
     vector< pair<Base, uint64_t> > consensus;
     vector< vector<AlignedBase> > alignment;
     vector<AlignedBase> alignedConsensus;

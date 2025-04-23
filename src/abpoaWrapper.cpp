@@ -23,7 +23,11 @@ void shasta::abpoa(
     vector< vector<AlignedBase> >& alignment,
 
     // The aligned consensus.
-    vector<AlignedBase>& alignedConsensus
+    vector<AlignedBase>& alignedConsensus,
+
+    // Consensus is always computed.
+    // Alignment and alignedConsensus are only computed if this set to true.
+    bool computeAlignment
 )
 {
     // Set up abpoa.
@@ -44,7 +48,11 @@ void shasta::abpoa(
     // abpt->bf = 0.01;
 
     // output options
-    abpt->out_msa = 1; // generate Row-Column multiple sequence alignment(RC-MSA), set 0 to disable
+    if(computeAlignment) {
+        abpt->out_msa = 1; // generate Row-Column multiple sequence alignment(RC-MSA), set 0 to disable
+    } else {
+        abpt->out_msa = 0; // generate Row-Column multiple sequence alignment(RC-MSA), set 0 to disable
+    }
     abpt->out_cons = 1; // generate consensus sequence, set 0 to disable
     abpt->w = 6, abpt->k = 9; abpt->min_w = 10; // minimizer-based seeding and partition
     abpt->progressive_poa = 0;

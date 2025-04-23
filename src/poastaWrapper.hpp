@@ -9,7 +9,7 @@ namespace shasta {
     class Base;
     class AlignedBase;
 
-    void abpoa(
+    void poasta(
 
         // The input sequences to be aligned.
         // They are presented to abpoa in this order.
@@ -30,7 +30,6 @@ namespace shasta {
         // Consensus is always computed.
         // Alignment and alignedConsensus are only computed if this is set to true.
         bool computeAlignment
-
     );
 
 }

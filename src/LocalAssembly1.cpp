@@ -14,6 +14,7 @@ LocalAssembly1::LocalAssembly1(
     const Anchors& anchors,
     AnchorId anchorIdA,
     AnchorId anchorIdB,
+    bool computeAlignment,
     ostream& html) :
     anchors(anchors),
     html(html)
@@ -23,11 +24,13 @@ LocalAssembly1::LocalAssembly1(
         writeOrientedReads();
     }
 
-    runAbpoa();
+    runAbpoa(computeAlignment);
 
     if(html) {
         writeConsensus();
-        writeAlignment();
+        if(computeAlignment) {
+            writeAlignment();
+        }
     }
 
 }
@@ -207,7 +210,7 @@ void LocalAssembly1::writeSequences() const
 #endif
 
 
-void LocalAssembly1::runAbpoa()
+void LocalAssembly1::runAbpoa(bool computeAlignment)
 {
     vector< vector<Base> > inputSequences;
 
@@ -216,7 +219,7 @@ void LocalAssembly1::runAbpoa()
     }
 
     const auto t0 = steady_clock::now();
-    abpoa(inputSequences, consensus, alignment, alignedConsensus);
+    abpoa(inputSequences, consensus, alignment, alignedConsensus, computeAlignment);
     const auto t1 = steady_clock::now();
     cout << "abpoa ran in " << seconds(t1-t0) << " s." << endl;
 }
@@ -228,26 +231,44 @@ void LocalAssembly1::writeConsensus() const
     html <<
         "<h3>Consensus</h3>"
         "<table>"
+        "<tr><th class=left>Consensus sequence length<td class=left>" << consensus.size() <<
         "<tr><th class=left>Consensus sequence"
         "<td style='font-family:monospace'>";
 
-    for(const auto& p: consensus) {
-        html << p.first;
+    for(uint64_t position=0; position<consensus.size(); position++) {
+        const Base b = consensus[position].first;
+        html << "<span title='" << position << "'>" << b << "</span>";
     }
 
     html <<
-        "<tr><th class=left >Coverage (A=10)"
+        "<tr><th class=left >Coverage"
         "<td style='font-family:monospace'>";
+
+    std::map<char, uint64_t> coverageLegend;
 
     for(const auto& p: consensus) {
         const uint64_t coverage = p.second;
-        if(coverage < 10) {
-            html << coverage;
-        } else {
-            html << char(coverage - 10 + 'A');
+        const char c = (coverage < 10) ? char(coverage + '0') : char(coverage - 10 + 'A');
+        coverageLegend.insert(make_pair(c, coverage));
+
+        if(coverage < orientedReads.size()) {
+            html << "<span style='background-color:Pink'>";
+        }
+
+        html << c;
+
+        if(coverage < orientedReads.size()) {
+            html << "</span>";
         }
     }
 
+    html << "</table>";
+
+    // Write the coverage legend.
+    html << "<p><table><tr><th>Symbol<th>Coverage";
+    for(const auto& p: coverageLegend) {
+        html << "<tr><td class=centered>" << p.first << "<td class=centered>" << p.second;
+    }
     html << "</table>";
 }
 
@@ -285,7 +306,49 @@ void LocalAssembly1::writeAlignment() const
 
     html << "<tr><th>Consensus<td>"
         "<td style='font-family:monospace;background-color:LightCyan;white-space:nowrap'>";
-    copy(alignedConsensus.begin(), alignedConsensus.end(), ostream_iterator<AlignedBase>(html));
+
+    uint64_t position = 0;
+    for(uint64_t i=0; i<alignedConsensus.size(); i++) {
+        const AlignedBase b = alignedConsensus[i];
+
+        if(not b.isGap()) {
+            html << "<span title='" << position << "'>";
+        }
+
+        html << b;
+
+        if(not b.isGap()) {
+            html << "</span>";
+            ++position;
+        }
+    }
+
+    html << "<tr><th>Consensus coverage<td>"
+        "<td style='font-family:monospace;white-space:nowrap'>";
+
+    position = 0;
+    for(uint64_t i=0; i<alignedConsensus.size(); i++) {
+        const AlignedBase b = alignedConsensus[i];
+
+        if(b.isGap()) {
+            html << "-";
+        } else {
+            const uint64_t coverage = consensus[position].second;
+            const char c = (coverage < 10) ? char(coverage + '0') : char(coverage - 10 + 'A');
+
+            if(coverage < orientedReads.size()) {
+                html << "<span style='background-color:Pink'>";
+            }
+
+            html << c;
+
+            if(coverage < orientedReads.size()) {
+                html << "</span>";
+            }
+
+            ++position;
+        }
+    }
 
     html << "</table>";
 

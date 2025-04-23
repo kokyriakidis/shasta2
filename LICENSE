@@ -1,10 +1,18 @@
-This file contains licensing notices for this repository
-and its dependencies:
-* Licensing notice for github repository paoloshasta/shasta2.
-* Licensing notice for github repository aappleby/smhasher
-* Licensing notice for github repository seqan/seqan.
-* Licensing notice for github repository rvaser/spoa
-* Licensing notice for github repository yangao07/abPOA
+A shasta2 executable includes, in binary form, code compiled from source
+in the following GitHub repositories. 
+This file includes the required license notices 
+for these repositories, following the licensing notices for the shasta2
+repository itself:
+
+* aappleby/smhasher
+* seqan/seqan.
+* rvaser/spoa
+* yangao07/abPOA
+
+Shasta2 can also call various separate executables during its execution.
+This includes Graphviz and poasta, plus several standard Linux commands. 
+These executables are not redistributed by the shasta2 repository, not even in binary form,
+and therefore their licensing notices are not included here.
 
 --------
 
