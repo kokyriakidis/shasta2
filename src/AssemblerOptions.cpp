@@ -172,6 +172,10 @@ void AssemblerOptions::addOptions()
         "Maximum length of a multiple sequence alignment\n"
         "for local assembly."
         )->capture_default_str();
+
+    add_option("--local-assembly-max-abpoa-length", localAssemblyOptions.maxAbpoaLength,
+        "Maximum MSA length for abpoa (switch to poasta above that)."
+        )->capture_default_str();
 }
 
 

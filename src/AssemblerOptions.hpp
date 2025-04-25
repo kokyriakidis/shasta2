@@ -95,6 +95,9 @@ public:
         // The maximum length of an MSA alignment we are willing to compute.
         uint64_t maxMsaLength = 5000;
 
+        // Maximum MSA length for abpoa (switch to poasta above that).
+        uint64_t maxAbpoaLength = 10000;
+
     };
     LocalAssemblyOptions localAssemblyOptions;
 

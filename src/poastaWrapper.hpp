@@ -25,11 +25,7 @@ namespace shasta {
         vector< vector<AlignedBase> >& alignment,
 
         // The aligned consensus.
-        vector<AlignedBase>& alignedConsensus,
-
-        // Consensus is always computed.
-        // Alignment and alignedConsensus are only computed if this is set to true.
-        bool computeAlignment
+        vector<AlignedBase>& alignedConsensus
     );
 
 }

@@ -4,6 +4,7 @@
 #include "Markers.hpp"
 #include "orderPairs.hpp"
 #include "orderVectors.hpp"
+#include "poastaWrapper.hpp"
 #include "Reads.hpp"
 using namespace shasta;
 
@@ -15,6 +16,7 @@ LocalAssembly1::LocalAssembly1(
     AnchorId anchorIdA,
     AnchorId anchorIdB,
     bool computeAlignment,
+    uint64_t maxAbpoaLength,
     ostream& html) :
     anchors(anchors),
     html(html)
@@ -24,15 +26,32 @@ LocalAssembly1::LocalAssembly1(
         writeOrientedReads();
     }
 
-    runAbpoa(computeAlignment);
+    usePoasta = maximumLength() > maxAbpoaLength;
+    if(usePoasta) {
+        runPoasta();
+    } else {
+        runAbpoa(computeAlignment);
+    }
 
     if(html) {
+        html << "<p>MSA was computed using " << (usePoasta ? "poasta" : "abpoa");
         writeConsensus();
         if(computeAlignment) {
             writeAlignment();
         }
     }
 
+}
+
+
+
+uint64_t LocalAssembly1::maximumLength() const
+{
+    uint64_t length = 0;
+    for(const OrientedRead& orientedRead: orientedReads) {
+        length = max(length, uint64_t(orientedRead.sequenceLength()));
+    }
+    return length;
 }
 
 
@@ -222,6 +241,22 @@ void LocalAssembly1::runAbpoa(bool computeAlignment)
     abpoa(inputSequences, consensus, alignment, alignedConsensus, computeAlignment);
     const auto t1 = steady_clock::now();
     cout << "abpoa ran in " << seconds(t1-t0) << " s." << endl;
+}
+
+
+
+void LocalAssembly1::runPoasta()
+{
+    vector< vector<Base> > inputSequences;
+
+    for(const OrientedRead& orientedRead: orientedReads) {
+        inputSequences.push_back(orientedRead.sequence);
+    }
+
+    const auto t0 = steady_clock::now();
+    poasta(inputSequences, consensus, alignment, alignedConsensus);
+    const auto t1 = steady_clock::now();
+    cout << "poasta ran in " << seconds(t1-t0) << " s." << endl;
 }
 
 

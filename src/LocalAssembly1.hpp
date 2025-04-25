@@ -14,6 +14,7 @@ public:
         AnchorId anchorIdA,
         AnchorId anchorIdB,
         bool computeAlignment,
+        uint64_t maxAbpoaLength,
         ostream& html);
 
 private:
@@ -50,18 +51,24 @@ private:
         }
     };
     vector<OrientedRead> orientedReads;
+    uint64_t maximumLength() const;
     void gatherOrientedReads(
         AnchorId anchorIdA,
         AnchorId anchorIdB);
     void writeOrientedReads() const;
 
+    // Multiple sequence alignment.
     // Consensus is always computed.
-    // Alignment and alignedConsensus are only computed if computeAlignment is set to true.
-    void runAbpoa(bool computeAlignment);
+    // For abpoa, Alignment and alignedConsensus are only computed if computeAlignment is set to true.
+    // For poasta, Alignment and alignedConsensus are always computed.
     vector< pair<Base, uint64_t> > consensus;
     vector< vector<AlignedBase> > alignment;
     vector<AlignedBase> alignedConsensus;
     void writeConsensus() const;
     void writeAlignment() const;
+
+    bool usePoasta = false;
+    void runAbpoa(bool computeAlignment);
+    void runPoasta();
 
 };

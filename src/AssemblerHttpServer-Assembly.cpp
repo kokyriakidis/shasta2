@@ -935,6 +935,9 @@ void Assembler::exploreLocalAssembly1(
     string showAlignmentString;
     const bool showAlignment = getParameterValue(request, "showAlignment", showAlignmentString);
 
+    uint64_t maxAbpoaLength = httpServerData.assemblerOptions->localAssemblyOptions.maxAbpoaLength;
+    getParameterValue(request, "maxAbpoaLength", maxAbpoaLength);
+
 
     // Write the form.
     html <<
@@ -963,6 +966,9 @@ void Assembler::exploreLocalAssembly1(
 
         "<tr><th>Show the alignment<td class=centered><input type=checkbox name=showAlignment" << (showAlignment ? " checked" : "") <<
         ">"
+
+        "<tr><th>Maximum length for abpoa<br>(switch to poasta above that)"
+        "<td class=centered><input type=text name=maxAbpoaLength size=8 value=" << maxAbpoaLength << ">"
 
         "</table>"
         "<br><input type=submit value='Do it'>"
@@ -995,5 +1001,9 @@ void Assembler::exploreLocalAssembly1(
     }
 
 
-    LocalAssembly1 localAssembly(anchors(), anchorIdA, anchorIdB, showAlignment, html);
+    LocalAssembly1 localAssembly(
+        anchors(), anchorIdA, anchorIdB,
+        showAlignment,
+        maxAbpoaLength,
+        html);
 }
