@@ -54,6 +54,10 @@ public:
         uint64_t transitiveReductionA = 200;
         uint64_t transitiveReductionB = 2;
         uint64_t minCommonCoverage = 3;
+
+        double detangleEpsilon = 0.05;
+        double detangleMaxLogP = 30.;
+        double detangleMinLogPDelta = 100.;
     };
     AssemblyGraphOptions assemblyGraphOptions;
 

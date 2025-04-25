@@ -13,12 +13,23 @@ using namespace shasta;
 
 
 
-bool PermutationDetangler::operator()(
+PermutationDetangler::PermutationDetangler(
+    uint64_t minCommonCoverage,
+    const double epsilon,
+    const double maxLogP,
+    const double minLogPDelta) :
+    minCommonCoverage(minCommonCoverage),
+    epsilon(epsilon),
+    maxLogP(maxLogP),
+    minLogPDelta(minLogPDelta)
+{}
+
+
+
+bool PermutationDetangler::operator(
+    )(
     Tangle& tangle)
 {
-    const double epsilon = 0.05;
-    const double maxLogP = 30.;
-    const double minLogPDelta = 100.;
 
     const TangleMatrix& tangleMatrix = tangle.tangleMatrix;
     const vector< vector<uint64_t> >& matrix = tangleMatrix.tangleMatrix;

@@ -38,8 +38,10 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def_readonly("transitiveReductionA", &AssemblerOptions::AssemblyGraphOptions::transitiveReductionA)
         .def_readonly("transitiveReductionB", &AssemblerOptions::AssemblyGraphOptions::transitiveReductionB)
         .def_readonly("minCommonCoverage", &AssemblerOptions::AssemblyGraphOptions::minCommonCoverage)
+        .def_readonly("detangleEpsilon", &AssemblerOptions::AssemblyGraphOptions::detangleEpsilon)
+        .def_readonly("detangleMaxLogP", &AssemblerOptions::AssemblyGraphOptions::detangleMaxLogP)
+        .def_readonly("detangleMinLogPDelta", &AssemblerOptions::AssemblyGraphOptions::detangleMinLogPDelta)
         ;
-
 
     // Class AssemblerOptions.
     class_<AssemblerOptions>(shasta2Module, "AssemblerOptions")
@@ -167,7 +169,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def(init<uint64_t>())
         ;
     class_<PermutationDetangler>(shasta2Module, "PermutationDetangler")
-        .def(init<uint64_t>())
+        .def(init<uint64_t, double, double, double>())
         ;
 
 

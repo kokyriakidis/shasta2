@@ -115,6 +115,21 @@ void AssemblerOptions::addOptions()
         "Minimum common coverage for detangling."
         )->capture_default_str();
 
+    add_option("--assembly-graph-detangle-epsilon",
+        assemblyGraphOptions.detangleEpsilon,
+        "Epsilon value for chi-square detangling."
+        )->capture_default_str();
+
+    add_option("--assembly-graph-detangle-maxLogP",
+        assemblyGraphOptions.detangleMaxLogP,
+        "MaxLogP value for chi-square detangling."
+        )->capture_default_str();
+
+    add_option("--assembly-graph-detangle-minLogPDelta",
+        assemblyGraphOptions.detangleMinLogPDelta,
+        "MinLogPDelta value for chi-square detangling."
+        )->capture_default_str();
+
     add_option("--local-assembly-estimated-offset-ratio",
         localAssemblyOptions.estimatedOffsetRatio,
         "Estimated offset ratio for local assembly."
