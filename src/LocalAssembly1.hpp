@@ -17,6 +17,8 @@ public:
         uint64_t maxAbpoaLength,
         ostream& html);
 
+    void getSequence(vector<Base>&) const;
+
 private:
     const Anchors& anchors;
     ostream& html;

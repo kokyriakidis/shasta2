@@ -116,4 +116,6 @@ void shasta::abpoa(
         alignedConsensus[j] = base;
     }
 
+    abpoa_free(ab);
+    abpoa_free_para(abpt);
 }

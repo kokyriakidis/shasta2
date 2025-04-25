@@ -45,6 +45,16 @@ LocalAssembly1::LocalAssembly1(
 
 
 
+void LocalAssembly1::getSequence(vector<Base>& sequence) const
+{
+    sequence.clear();
+    for(const auto& p: consensus) {
+        sequence.push_back(p.first);
+    }
+}
+
+
+
 uint64_t LocalAssembly1::maximumLength() const
 {
     uint64_t length = 0;
@@ -237,10 +247,10 @@ void LocalAssembly1::runAbpoa(bool computeAlignment)
         inputSequences.push_back(orientedRead.sequence);
     }
 
-    const auto t0 = steady_clock::now();
+    // const auto t0 = steady_clock::now();
     abpoa(inputSequences, consensus, alignment, alignedConsensus, computeAlignment);
-    const auto t1 = steady_clock::now();
-    cout << "abpoa ran in " << seconds(t1-t0) << " s." << endl;
+    // const auto t1 = steady_clock::now();
+    // cout << "abpoa ran in " << seconds(t1-t0) << " s." << endl;
 }
 
 
@@ -253,10 +263,10 @@ void LocalAssembly1::runPoasta()
         inputSequences.push_back(orientedRead.sequence);
     }
 
-    const auto t0 = steady_clock::now();
+    // const auto t0 = steady_clock::now();
     poasta(inputSequences, consensus, alignment, alignedConsensus);
-    const auto t1 = steady_clock::now();
-    cout << "poasta ran in " << seconds(t1-t0) << " s." << endl;
+    // const auto t1 = steady_clock::now();
+    // cout << "poasta ran in " << seconds(t1-t0) << " s." << endl;
 }
 
 

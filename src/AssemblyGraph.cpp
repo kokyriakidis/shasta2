@@ -8,6 +8,7 @@
 #include "html.hpp"
 #include "inducedSubgraphIsomorphisms.hpp"
 #include "LocalAssembly.hpp"
+#include "LocalAssembly1.hpp"
 #include "performanceLog.hpp"
 #include "PermutationDetangler.hpp"
 #include "Tangle.hpp"
@@ -1079,6 +1080,11 @@ void AssemblyGraph::assembleThreadFunction(uint64_t /* threadId */)
 
         // Loop over all assembly steps assigned to this batch.
         for(uint64_t j=begin; j!=end; j++) {
+            if((j % 1000) == 0) {
+                std::lock_guard<std::mutex> lock(mutex);
+                performanceLog << timestamp << j << "/" << edgeStepsToBeAssembled.size() << endl;
+            }
+
             const auto& p = edgeStepsToBeAssembled[j];
             const edge_descriptor e = p.first;
             const uint64_t i = p.second;
@@ -1122,12 +1128,17 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
 
     // Run the LocalAssembly.
     ofstream html;  // Not open, so no html output takes place.
+#if 1
     LocalAssemblyDisplayOptions localAssemblyDisplayOptions(html);
     const LocalAssembly localAssembly(
         anchors.k, anchors.reads, anchors.markers, anchors,
         anchorId0, anchorId1,
         0, localAssemblyDisplayOptions, assemblerOptions.localAssemblyOptions,
         false, false);
+#else
+    LocalAssembly1 localAssembly(anchors, anchorId0, anchorId1, false,
+        assemblerOptions.localAssemblyOptions.maxAbpoaLength, html);
+#endif
     localAssembly.getSequence(sequence);
 }
 
