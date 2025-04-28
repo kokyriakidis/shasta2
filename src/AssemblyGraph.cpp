@@ -1074,6 +1074,8 @@ void AssemblyGraph::assembleThreadFunction(uint64_t /* threadId */)
 {
     AssemblyGraph& assemblyGraph = *this;
 
+    // ofstream out("Assemble-Thread-" + to_string(threadId) + ".txt");
+
     // Loop over all batches assigned to this thread.
     uint64_t begin, end;
     while(getNextBatch(begin, end)) {
@@ -1090,9 +1092,11 @@ void AssemblyGraph::assembleThreadFunction(uint64_t /* threadId */)
             const uint64_t i = p.second;
             AssemblyGraphEdge& edge = assemblyGraph[e];
             SHASTA_ASSERT(i < edge.sequences.size());
+            // out << "Started step " << edge.id << " " << i << endl;
             assembleStep(e, i);
         }
     }
+    // out << "Done." << endl;
 }
 
 
@@ -1128,7 +1132,7 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
 
     // Run the LocalAssembly.
     ofstream html;  // Not open, so no html output takes place.
-#if 1
+#if 0
     LocalAssemblyDisplayOptions localAssemblyDisplayOptions(html);
     const LocalAssembly localAssembly(
         anchors.k, anchors.reads, anchors.markers, anchors,
