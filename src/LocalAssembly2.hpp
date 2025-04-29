@@ -15,7 +15,8 @@ public:
         AnchorId anchorIdB,
         bool computeAlignment,
         uint64_t maxAbpoaLength,
-        ostream& html);
+        ostream& html,
+        bool debug);
 
     void getSequence(vector<Base>&) const;
 
@@ -108,8 +109,8 @@ private:
         vector<uint32_t> ordinals;
     };
     std::list<AlignedMarkers> allAlignedMarkers;
-    void alignMarkers();
-    void split(const AlignedMarkers&, const AlignedMarkers&, vector<AlignedMarkers>&);
+    void alignMarkers(bool debug);
+    void split(const AlignedMarkers&, const AlignedMarkers&, vector<AlignedMarkers>&, bool debug);
 
 
 };

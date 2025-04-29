@@ -8,6 +8,7 @@
 using namespace shasta;
 
 // Standard library.
+#include <fstream.hpp>
 #include <queue>
 
 
@@ -18,7 +19,8 @@ LocalAssembly2::LocalAssembly2(
     AnchorId anchorIdB,
     bool /* computeAlignment */,
     uint64_t /* maxAbpoaLength */,
-    ostream& html) :
+    ostream& html,
+    bool debug) :
     anchors(anchors),
     html(html)
 {
@@ -29,7 +31,7 @@ LocalAssembly2::LocalAssembly2(
         writeOrientedReads();
     }
 
-    alignMarkers();
+    alignMarkers(debug);
 
 }
 
@@ -305,7 +307,7 @@ void LocalAssembly2::gatherKmers()
 
 
 
-void LocalAssembly2::alignMarkers()
+void LocalAssembly2::alignMarkers(bool debug)
 {
     // Start with two AlignedMarkers at A and B.
     AlignedMarkers alignedMarkersA;
@@ -335,7 +337,7 @@ void LocalAssembly2::alignMarkers()
         const AlignedMarkers& alignedMarkers0 = *it0;
         const AlignedMarkers& alignedMarkers1 = *it1;
         vector<AlignedMarkers> allNewAlignedMarkers;
-        split(alignedMarkers0, alignedMarkers1, allNewAlignedMarkers);
+        split(alignedMarkers0, alignedMarkers1, allNewAlignedMarkers, debug);
         for(const AlignedMarkers& alignedMarkers: allNewAlignedMarkers) {
             const ListIterator it = allAlignedMarkers.insert(it1, alignedMarkers);
             q.push(it);
@@ -383,9 +385,9 @@ void LocalAssembly2::alignMarkers()
 void LocalAssembly2::split(
     const AlignedMarkers& alignedMarkers0,
     const AlignedMarkers& alignedMarkers1,
-    vector<AlignedMarkers>& newAlignedMarkers)
+    vector<AlignedMarkers>& newAlignedMarkers,
+    bool debug)
 {
-    const bool debug = false;
 
     if(debug and html) {
         html <<
@@ -517,6 +519,29 @@ void LocalAssembly2::split(
     // Only handle the easy case for now.
     newAlignedMarkers.clear();
     if(not isEasyCase) {
+
+        if(debug) {
+            // Gather graph edges (kmerId->kmerId transitions).
+            std::set< pair<uint64_t, uint64_t> > transitions;
+            for(const OrientedRead& orientedRead: orientedReads) {
+                for(uint64_t i1=1; i1<orientedRead.commonUniqueInternalMarkers.size(); i1++) {
+                    const uint64_t i0 = i1 - 1;
+                    const uint64_t kmerId0 = orientedRead.commonUniqueInternalMarkers[i0].first;
+                    const uint64_t kmerId1 = orientedRead.commonUniqueInternalMarkers[i1].first;
+                    transitions.insert(make_pair(kmerId0, kmerId1));
+                }
+            }
+
+
+            // Write the graph.
+            ofstream dot("split.dot");
+            dot << "digraph split {\n";
+            for(const auto& p: transitions) {
+                dot << p.first << "->" << p.second << ";\n";
+            }
+            dot << "}\n";
+        }
+
         return;
     }
 

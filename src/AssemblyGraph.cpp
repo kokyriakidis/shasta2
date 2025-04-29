@@ -22,6 +22,7 @@ using namespace shasta;
 #include <boost/graph/adj_list_serialize.hpp>
 
 // Standard library.
+#include <chrono.hpp>
 #include <cstdlib>
 #include <fstream.hpp>
 #include <queue>
@@ -1070,11 +1071,11 @@ void AssemblyGraph::assemble(uint64_t threadCount)
 }
 
 
-void AssemblyGraph::assembleThreadFunction(uint64_t /* threadId */)
+void AssemblyGraph::assembleThreadFunction(uint64_t threadId)
 {
     AssemblyGraph& assemblyGraph = *this;
 
-    // ofstream out("Assemble-Thread-" + to_string(threadId) + ".txt");
+    ofstream out("Assemble-Thread-" + to_string(threadId) + ".txt");
 
     // Loop over all batches assigned to this thread.
     uint64_t begin, end;
@@ -1092,11 +1093,12 @@ void AssemblyGraph::assembleThreadFunction(uint64_t /* threadId */)
             const uint64_t i = p.second;
             AssemblyGraphEdge& edge = assemblyGraph[e];
             SHASTA_ASSERT(i < edge.sequences.size());
-            // out << "Started step " << edge.id << " " << i << endl;
+            const auto t0 = steady_clock::now();
             assembleStep(e, i);
+            const auto t1 = steady_clock::now();
+            out << edge.id << "," << i << "," << seconds(t1-t0) << "\n";
         }
     }
-    // out << "Done." << endl;
 }
 
 
