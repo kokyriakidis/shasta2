@@ -3,6 +3,7 @@
 #include "AssemblyGraphPostprocessor.hpp"
 #include "LocalAssembly.hpp"
 #include "LocalAssembly1.hpp"
+#include "LocalAssembly2.hpp"
 #include "Tangle.hpp"
 #include "TangleMatrix.hpp"
 using namespace shasta;
@@ -22,6 +23,7 @@ void Assembler::exploreLocalAssembly(
     const vector<string>& request,
     ostream& html)
 {
+    html << "<h2>LocalAssembly</h2>";
 
     const auto& localAssemblyOptions =
         httpServerData.assemblerOptions->localAssemblyOptions;
@@ -587,7 +589,7 @@ void Assembler::exploreSegment(
                     "<td class=centered>" <<
 
                     "<a href='"
-                    "exploreLocalAssembly1?anchorIdAString=" << HttpServer::urlEncode(anchorIdToString(anchorIdA)) <<
+                    "exploreLocalAssembly2?anchorIdAString=" << HttpServer::urlEncode(anchorIdToString(anchorIdA)) <<
                     "&anchorIdBString=" << HttpServer::urlEncode(anchorIdToString(anchorIdB)) <<
                     "'>" << step << "</a>"
 
@@ -921,7 +923,7 @@ void Assembler::exploreLocalAssembly1(
     const vector<string>& request,
     ostream& html)
 {
-    html << "<h2>Local assembly (new)</h2>";
+    html << "<h2>LocalAssembly1</h2>";
 
     // Get the parameters for the request.
     string anchorIdAString;
@@ -1002,6 +1004,99 @@ void Assembler::exploreLocalAssembly1(
 
 
     LocalAssembly1 localAssembly(
+        anchors(), anchorIdA, anchorIdB,
+        showAlignment,
+        maxAbpoaLength,
+        html);
+}
+
+
+
+void Assembler::exploreLocalAssembly2(
+    const vector<string>& request,
+    ostream& html)
+{
+    html << "<h2>LocalAssembly2</h2>";
+
+    // Get the parameters for the request.
+    string anchorIdAString;
+    const bool anchorIdAStringIsPresent = HttpServer::getParameterValue(request, "anchorIdAString", anchorIdAString);
+    boost::trim(anchorIdAString);
+
+    string anchorIdBString;
+    const bool anchorIdBStringIsPresent = HttpServer::getParameterValue(request, "anchorIdBString", anchorIdBString);
+    boost::trim(anchorIdBString);
+
+    string showAlignmentString;
+    const bool showAlignment = getParameterValue(request, "showAlignment", showAlignmentString);
+
+    uint64_t maxAbpoaLength = httpServerData.assemblerOptions->localAssemblyOptions.maxAbpoaLength;
+    getParameterValue(request, "maxAbpoaLength", maxAbpoaLength);
+
+
+    // Write the form.
+    html <<
+        "<form>"
+        "<table>";
+
+    html <<
+        "<tr><th class=left>Anchor A"
+        "<td class=centered><input type=text name=anchorIdAString required";
+    if(anchorIdAStringIsPresent) {
+        html << " value='" << anchorIdAString + "'";
+    }
+    html <<
+        " size=8 title='Enter an anchor id between 0 and " <<
+        anchors().size() / 2 - 1 << " followed by + or -.'><br>";
+
+    html <<
+        "<tr><th class=left>Anchor B"
+        "<td class=centered><input type=text name=anchorIdBString required";
+    if(anchorIdBStringIsPresent) {
+        html << " value='" << anchorIdBString + "'";
+    }
+    html <<
+        " size=8 title='Enter an anchor id between 0 and " <<
+        anchors().size() / 2 - 1 << " followed by + or -.'><br>"
+
+        "<tr><th>Show the alignment<td class=centered><input type=checkbox name=showAlignment" << (showAlignment ? " checked" : "") <<
+        ">"
+
+        "<tr><th>Maximum length for abpoa<br>(switch to poasta above that)"
+        "<td class=centered><input type=text name=maxAbpoaLength size=8 value=" << maxAbpoaLength << ">"
+
+        "</table>"
+        "<br><input type=submit value='Do it'>"
+        "</form>";
+
+
+
+    // Check the AnchorIds
+    if(not (anchorIdAStringIsPresent and anchorIdBStringIsPresent)) {
+        return;
+    }
+    const AnchorId anchorIdA = anchorIdFromString(anchorIdAString);
+    const AnchorId anchorIdB = anchorIdFromString(anchorIdBString);
+
+    if((anchorIdA == invalid<AnchorId>) or (anchorIdA >= anchors().size())) {
+        html << "<p>Invalid anchor id " << anchorIdAString << ". Must be a number between 0 and " <<
+            anchors().size() / 2 - 1 << " followed by + or -.";
+        return;
+    }
+
+    if((anchorIdB == invalid<AnchorId>) or (anchorIdB >= anchors().size())) {
+        html << "<p>Invalid anchor id " << anchorIdBString << " .Must be a number between 0 and " <<
+            anchors().size() / 2 - 1 << " followed by + or -.";
+        return;
+    }
+
+    if(anchorIdA == anchorIdB) {
+        html << "Specify two distinct anchors.";
+        return;
+    }
+
+
+    LocalAssembly2 localAssembly(
         anchors(), anchorIdA, anchorIdB,
         showAlignment,
         maxAbpoaLength,

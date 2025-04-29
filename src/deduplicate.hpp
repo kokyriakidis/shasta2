@@ -162,6 +162,52 @@ namespace shasta {
 
 
 
+    // Remove duplicate elements in a vector and count occurrences of each.
+    // Keep only the ones that occur exactly once.
+    // Version that uses a custom comparator.
+    template<class T, class Comparator> void deduplicateAndCountAndKeepUnique(
+        vector<T>& v,
+        const Comparator& comparator)
+    {
+
+        // If the given vector is empty, return now.
+        if(v.empty()) {
+            return;
+        }
+
+        // Sort the vector.
+        sort(v.begin(), v.end(), comparator);
+
+        // Add elements, keeping track of the number
+        // of occurrences of each.
+        typename vector<T>::iterator output = v.begin();
+        typename vector<T>::iterator input = v.begin();
+        while(input != v.end()) {
+
+
+            // Count how many there are.
+            typename vector<T>::iterator it = input;
+            while(it!=v.end() and (not comparator(*it, *input)) and (not comparator(*input, *it))) {
+                ++it;
+            }
+            const uint64_t n = it - input;
+
+            if(n == 1) {
+
+                // Store this element.
+                *output = *input;
+                ++output;
+            }
+
+            // Update our output iterator.
+            input = it;
+
+        }
+        v.resize(output - v.begin());
+    }
+
+
+
     inline void testDeduplicateAndCount()
     {
         vector<int> v = {7, 4, 5, 7, 4, 18, 2, 4};

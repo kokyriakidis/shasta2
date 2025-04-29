@@ -256,6 +256,7 @@ public:
     void exploreTangleMatrix(const vector<string>&, ostream&);
     void exploreLocalAssembly(const vector<string>&, ostream&);
     void exploreLocalAssembly1(const vector<string>&, ostream&);
+    void exploreLocalAssembly2(const vector<string>&, ostream&);
 
     // Get the AssemblyGraph for a given assembly stage.
     AssemblyGraphPostprocessor& getAssemblyGraph(
