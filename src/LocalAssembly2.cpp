@@ -529,6 +529,12 @@ void LocalAssembly2::split(
                     const uint64_t kmerId0 = orientedRead.commonUniqueInternalMarkers[i0].first;
                     const uint64_t kmerId1 = orientedRead.commonUniqueInternalMarkers[i1].first;
                     transitions.insert(make_pair(kmerId0, kmerId1));
+                    if(i0 == 0) {
+                        transitions.insert(make_pair(1000000000, kmerId0));
+                    }
+                    if(i1 == orientedRead.commonUniqueInternalMarkers.size() - 1) {
+                        transitions.insert(make_pair(kmerId1, 1000000001));
+                    }
                 }
             }
 
@@ -536,6 +542,8 @@ void LocalAssembly2::split(
             // Write the graph.
             ofstream dot("split.dot");
             dot << "digraph split {\n";
+            dot << "1000000000 [style=filled fillcolor=pink];\n";
+            dot << "1000000001 [style=filled fillcolor=pink];\n";
             for(const auto& p: transitions) {
                 dot << p.first << "->" << p.second << ";\n";
             }
