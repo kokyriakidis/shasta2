@@ -423,6 +423,22 @@ void LocalAssembly2::split(
     vector<AlignedMarkers>& newAlignedMarkers,
     bool debug)
 {
+    newAlignedMarkers.clear();
+
+    // If all OrientedReads have no internal markers, do nothing.
+    bool internalMarkersExist = false;
+    for(uint64_t i=0; i<orientedReads.size(); i++) {
+        const uint32_t ordinal0 = alignedMarkers0.ordinals[i];
+        const uint32_t ordinal1 = alignedMarkers1.ordinals[i];
+        if(ordinal1 - ordinal0 > 1) {
+            internalMarkersExist = true;
+            break;
+        }
+    }
+    if(not internalMarkersExist) {
+        return;
+    }
+
 
     if(debug and html) {
         html <<
@@ -562,7 +578,6 @@ void LocalAssembly2::split(
 
 
     // If not in the easy case, we flag some OrientedReadsa for removal and throw a Failure.
-    newAlignedMarkers.clear();
     if(not isEasyCase) {
 
         // Group identical sequences of common unique internal markers.
@@ -605,6 +620,7 @@ void LocalAssembly2::split(
 
 
     // Each common unique internal marker generates a new AlignedMarkers.
+    newAlignedMarkers.clear();
     for(uint64_t i=0; i<commonUniqueInternalMarkersCount; i++) {
         AlignedMarkers alignedMarkers;
         for(OrientedRead& orientedRead: orientedReads) {
