@@ -112,5 +112,13 @@ private:
     void alignMarkers(bool debug);
     void split(const AlignedMarkers&, const AlignedMarkers&, vector<AlignedMarkers>&, bool debug);
 
+    // The call to alignMarkers can throw Failure, which contains a bit vector
+    // that says which OrientedReads we should keep.
+    // The remaining OrientedReads are removed and the process is restarted.
+    class Failure {
+    public:
+        vector<bool> keep;
+    };
+
 
 };

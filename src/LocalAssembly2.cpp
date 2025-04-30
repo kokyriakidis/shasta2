@@ -4,6 +4,7 @@
 #include "extractKmer128.hpp"
 #include "Markers.hpp"
 #include "orderPairs.hpp"
+#include "orderVectors.hpp"
 #include "Reads.hpp"
 using namespace shasta;
 
@@ -25,13 +26,47 @@ LocalAssembly2::LocalAssembly2(
     html(html)
 {
     gatherOrientedReads(anchorIdA, anchorIdB);
-    gatherKmers();
 
-    if(html) {
-        writeOrientedReads();
+    // Iterate until alignMarkers is successful.
+    // Each failed iteration removes one or more OrientedReads.
+    while(true) {
+        gatherKmers();
+
+        if(html) {
+            writeOrientedReads();
+        }
+
+        try {
+            alignMarkers(debug);
+        } catch(const Failure& failure) {
+
+            // We must remove some OrientedReads.
+            vector<OrientedRead> newOrientedReads;
+            uint64_t discardedCount = 0;
+            for(uint64_t i=0; i<orientedReads.size(); i++) {
+                const OrientedRead& orientedRead = orientedReads[i];
+                if(failure.keep[i]) {
+                    newOrientedReads.emplace_back(orientedRead.orientedReadId, orientedRead.ordinalA, orientedRead.ordinalB);
+                } else {
+                    if(html) {
+                        ++discardedCount;
+                        html << "<br>Discarding " << orientedRead.orientedReadId;
+                    }
+                }
+            }
+            orientedReads.swap(newOrientedReads);
+            allAlignedMarkers.clear();
+
+            // Try again.
+            if(html) {
+                html << "<br>Restarting after discarding " << discardedCount << " oriented reads.";
+            }
+            continue;
+        }
+
+        // Success.
+        break;
     }
-
-    alignMarkers(debug);
 
 }
 
@@ -485,6 +520,17 @@ void LocalAssembly2::split(
                 html << "<td class=centered>" << p.first << " " << p.second;
             }
         }
+        html << "<p></table>";
+
+        // Write the table again, without the ordinal.
+        html << "<table>";
+        for(const OrientedRead& orientedRead: orientedReads) {
+            html << "<tr><th>" << orientedRead.orientedReadId;
+            for(const auto& p: orientedRead.commonUniqueInternalMarkers)
+            {
+                html << "<td class=centered>" << p.first;
+            }
+        }
         html << "</table>";
     }
 
@@ -515,48 +561,55 @@ void LocalAssembly2::split(
     }
 
 
-
-    // Only handle the easy case for now.
+    // If not in the easy case, we flag some OrientedReadsa for removal and throw a Failure.
     newAlignedMarkers.clear();
     if(not isEasyCase) {
 
-        if(debug and html) {
-            // Gather graph edges (kmerId->kmerId transitions).
-            std::set< pair<uint64_t, uint64_t> > transitions;
-            for(const OrientedRead& orientedRead: orientedReads) {
-                for(uint64_t i1=1; i1<orientedRead.commonUniqueInternalMarkers.size(); i1++) {
-                    const uint64_t i0 = i1 - 1;
-                    const uint64_t kmerId0 = orientedRead.commonUniqueInternalMarkers[i0].first;
-                    const uint64_t kmerId1 = orientedRead.commonUniqueInternalMarkers[i1].first;
-                    transitions.insert(make_pair(kmerId0, kmerId1));
-                    if(i0 == 0) {
-                        transitions.insert(make_pair(1000000000, kmerId0));
-                    }
-                    if(i1 == orientedRead.commonUniqueInternalMarkers.size() - 1) {
-                        transitions.insert(make_pair(kmerId1, 1000000001));
-                    }
-                }
+        // Group identical sequences of common unique internal markers.
+        std::map<vector<uint64_t>, vector<uint64_t> > m;
+        for(uint64_t i=0; i<orientedReads.size(); i++) {
+            vector<uint64_t> kmerIds;
+            for(auto& p: orientedReads[i].commonUniqueInternalMarkers) {
+                const uint64_t kmerId = p.first;
+                kmerIds.push_back(kmerId);
             }
-
-
-            // Write the graph.
-            ofstream dot("split.dot");
-            dot << "digraph split {\n";
-            dot << "1000000000 [style=filled fillcolor=pink];\n";
-            dot << "1000000001 [style=filled fillcolor=pink];\n";
-            for(const auto& p: transitions) {
-                dot << p.first << "->" << p.second << ";\n";
-            }
-            dot << "}\n";
+            m[kmerIds].push_back(i);
         }
 
-        return;
+        // Gather groups of OrientedReads with identical sequences of common unique internal markers..
+        vector< vector<uint64_t> > groups;
+        for(const auto& p: m) {
+            groups.push_back(p.second);
+        }
+        sort(groups.begin(), groups.end(), OrderVectorsByDecreasingSize<uint64_t>());
+
+        if(debug and html) {
+            html << "<p>Groups of consistent oriented reads:";
+            for(const vector<uint64_t>& group: groups) {
+                html << "<br>";
+                for(const uint64_t i: group) {
+                    html << orientedReads[i].orientedReadId << " ";
+                }
+            }
+            html << "<p>Only the first and largest group will be kept.";
+        }
+
+        Failure failure;
+        failure.keep.resize(orientedReads.size(), false);
+        for(const uint64_t i: groups.front()) {
+            failure.keep[i] = true;
+        }
+        throw failure;
     }
 
-    // Each common unique internal marker generate a new AlignedMarkers.
+
+
+    // Each common unique internal marker generates a new AlignedMarkers.
     for(uint64_t i=0; i<commonUniqueInternalMarkersCount; i++) {
         AlignedMarkers alignedMarkers;
-        for(const OrientedRead& orientedRead: orientedReads) {
+        for(OrientedRead& orientedRead: orientedReads) {
+            orientedRead.internalMarkers.clear();
+            orientedRead.commonUniqueInternalMarkers.clear();
             alignedMarkers.ordinals.push_back(orientedRead.commonUniqueInternalMarkers[i].second);
         }
         newAlignedMarkers.push_back(alignedMarkers);

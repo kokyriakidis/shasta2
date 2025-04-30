@@ -1111,7 +1111,7 @@ void Assembler::exploreLocalAssembly2(
         anchorPair.get(anchors(), positions, sequences);
         ofstream fasta("LocalAssemblyInput.fasta");
         for(uint64_t i=0; i<anchorPair.orientedReadIds.size(); i++) {
-            fasta << ">" << i << " " << anchorPair.orientedReadIds[i] << " " <<
+            fasta << ">" << anchorPair.orientedReadIds[i] << " " << i << " " <<
                 positions[i].first.basePosition << "-" <<
                 positions[i].second.basePosition << " " <<
                 positions[i].second.basePosition - positions[i].first.basePosition<< "\n";
