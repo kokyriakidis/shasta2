@@ -23,6 +23,7 @@ public:
 private:
     const Anchors& anchors;
     ostream& html;
+    bool debug;
 
     // A table of the distinct marker k-mers involved in this LocalAssembly2.
     // This includes the marker k-mers between ordinalA (included) and ordinalB (included)
@@ -89,6 +90,7 @@ private:
         // Same as above, but only including marker k-mers
         // that are appear exactly once in each oriented read.
         vector< pair<uint64_t, uint32_t> > commonUniqueInternalMarkers;
+
     };
     vector<OrientedRead> orientedReads;
     // This does not fill in the markerInfos.
@@ -109,8 +111,9 @@ private:
         vector<uint32_t> ordinals;
     };
     std::list<AlignedMarkers> allAlignedMarkers;
-    void alignMarkers(bool debug);
-    void split(const AlignedMarkers&, const AlignedMarkers&, vector<AlignedMarkers>&, bool debug);
+    vector<AlignedMarkers> allAlignedMarkersVector; // For convenience during assembly.
+    void alignMarkers();
+    void split(const AlignedMarkers&, const AlignedMarkers&, vector<AlignedMarkers>&);
 
     // The call to alignMarkers can throw Failure, which contains a bit vector
     // that says which OrientedReads we should keep.
@@ -121,4 +124,16 @@ private:
     };
 
 
+    // Sequence assembly.
+    // Each assembly step does a MSA between a pair of adjacent AlignedMarkers.
+    void assemble(bool computeAlignment);                   // Assemble all steps.
+    void assemble(bool computeAlignment, uint64_t step);    // Assemble one step.
+    void writeConsensus(const vector< pair<Base, uint64_t> >& stepConsensus) const;
+    void writeAlignment(
+        const vector< vector<Base> >& inputSequences,
+        const vector< pair<Base, uint64_t> >& consensus,
+        const vector< vector<AlignedBase> >& alignment,
+        const vector<AlignedBase>& alignedConsensus) const;
+    vector< pair<Base, uint64_t> > consensus;
+    void writeConsensus() const;
 };

@@ -1128,4 +1128,11 @@ void Assembler::exploreLocalAssembly2(
         showAlignment,
         maxAbpoaLength,
         html, debug);
+
+    vector<Base> sequence;
+    localAssembly.getSequence(sequence);
+
+    ofstream fasta("LocalAssembly.fasta");
+    fasta << ">LocalAssembly " << sequence.size() << endl;
+    copy(sequence.begin(), sequence.end(), ostream_iterator<Base>(fasta));
 }

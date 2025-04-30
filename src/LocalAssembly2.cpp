@@ -1,5 +1,6 @@
 // Shasta2
 #include "LocalAssembly2.hpp"
+#include "abpoaWrapper.hpp"
 #include "deduplicate.hpp"
 #include "extractKmer128.hpp"
 #include "Markers.hpp"
@@ -9,6 +10,7 @@
 using namespace shasta;
 
 // Standard library.
+#include <chrono.hpp>
 #include <fstream.hpp>
 #include <queue>
 
@@ -18,17 +20,20 @@ LocalAssembly2::LocalAssembly2(
     const Anchors& anchors,
     AnchorId anchorIdA,
     AnchorId anchorIdB,
-    bool /* computeAlignment */,
+    bool computeAlignment,
     uint64_t /* maxAbpoaLength */,
     ostream& html,
-    bool debug) :
+    bool debugArgument) :
     anchors(anchors),
-    html(html)
+    html(html),
+    debug(debugArgument)
 {
     gatherOrientedReads(anchorIdA, anchorIdB);
 
     // Iterate until alignMarkers is successful.
     // Each failed iteration removes one or more OrientedReads.
+    const bool oldDebug = debug;
+    debug = false;
     while(true) {
         gatherKmers();
 
@@ -37,7 +42,7 @@ LocalAssembly2::LocalAssembly2(
         }
 
         try {
-            alignMarkers(debug);
+            alignMarkers();
         } catch(const Failure& failure) {
 
             // We must remove some OrientedReads.
@@ -67,6 +72,10 @@ LocalAssembly2::LocalAssembly2(
         // Success.
         break;
     }
+    debug = oldDebug;
+
+    // Assemble sequence using the AlignedMarkers we found.
+    assemble(computeAlignment);
 
 }
 
@@ -342,8 +351,9 @@ void LocalAssembly2::gatherKmers()
 
 
 
-void LocalAssembly2::alignMarkers(bool debug)
+void LocalAssembly2::alignMarkers()
 {
+
     // Start with two AlignedMarkers at A and B.
     AlignedMarkers alignedMarkersA;
     for(const OrientedRead& orientedRead: orientedReads) {
@@ -372,7 +382,7 @@ void LocalAssembly2::alignMarkers(bool debug)
         const AlignedMarkers& alignedMarkers0 = *it0;
         const AlignedMarkers& alignedMarkers1 = *it1;
         vector<AlignedMarkers> allNewAlignedMarkers;
-        split(alignedMarkers0, alignedMarkers1, allNewAlignedMarkers, debug);
+        split(alignedMarkers0, alignedMarkers1, allNewAlignedMarkers);
         for(const AlignedMarkers& alignedMarkers: allNewAlignedMarkers) {
             const ListIterator it = allAlignedMarkers.insert(it1, alignedMarkers);
             q.push(it);
@@ -392,19 +402,25 @@ void LocalAssembly2::alignMarkers(bool debug)
         }
     }
 
+    // For convenience also store the AlignedMarkers in a vector.
+    allAlignedMarkersVector.clear();;
+    copy(allAlignedMarkers.begin(), allAlignedMarkers.end(), back_inserter(allAlignedMarkersVector));
+    allAlignedMarkers.clear();
+
 
     // Write out allAlignedMarkers.
     if(html) {
         html <<
             "<h3>Aligned markers</h3>"
-            "<p>Found " << allAlignedMarkers.size() << " sets of aligned markers, "
+            "<p>Found " << allAlignedMarkersVector.size() << " sets of aligned markers, "
             "shown one per row in the following table."
-            "<table><tr>";
+            "<table><tr><th>Step";
         for(const OrientedRead& orientedRead: orientedReads) {
             html << "<th>" << orientedRead.orientedReadId;
         }
-        for(const AlignedMarkers& alignedMarkers: allAlignedMarkers) {
-            html << "<tr>";
+        for(uint64_t step=0; step<allAlignedMarkersVector.size(); step++) {
+            const AlignedMarkers& alignedMarkers = allAlignedMarkersVector[step];
+            html << "<tr><th>" << step;
             for(uint64_t i=0; i<orientedReads.size(); i++) {
                 const uint32_t ordinal = alignedMarkers.ordinals[i];
                 html << "<td class=centered>" << ordinal;
@@ -420,8 +436,7 @@ void LocalAssembly2::alignMarkers(bool debug)
 void LocalAssembly2::split(
     const AlignedMarkers& alignedMarkers0,
     const AlignedMarkers& alignedMarkers1,
-    vector<AlignedMarkers>& newAlignedMarkers,
-    bool debug)
+    vector<AlignedMarkers>& newAlignedMarkers)
 {
     newAlignedMarkers.clear();
 
@@ -648,3 +663,300 @@ void LocalAssembly2::split(
     }
 }
 
+
+
+void LocalAssembly2::assemble(bool computeAlignment)
+{
+    consensus.clear();
+    for(uint64_t step=0; step<allAlignedMarkersVector.size()-1; step++) {
+        assemble(computeAlignment, step);
+    }
+
+    if(html) {
+        writeConsensus();
+
+    }
+}
+
+
+
+void LocalAssembly2::assemble(bool computeAlignment, uint64_t step)
+{
+    const uint32_t kHalf = uint32_t(anchors.k / 2);
+
+    const AlignedMarkers& alignedMarkers0 = allAlignedMarkersVector[step];
+    const AlignedMarkers& alignedMarkers1 = allAlignedMarkersVector[step + 1];
+
+
+
+    // Gather the sequences to be used for the MSA of this step.
+    vector< vector<Base> > inputSequences(orientedReads.size());
+    for(uint64_t i=0; i<orientedReads.size(); i++) {
+        OrientedRead& orientedRead = orientedReads[i];
+        const OrientedReadId orientedReadId = orientedRead.orientedReadId;
+        const uint32_t ordinal0 = alignedMarkers0.ordinals[i];
+        const uint32_t ordinal1 = alignedMarkers1.ordinals[i];
+        const auto orientedReadMarkers = anchors.markers[orientedReadId.getValue()];
+        const uint32_t position0 = orientedReadMarkers[ordinal0].position + kHalf;
+        const uint32_t position1 = orientedReadMarkers[ordinal1].position + kHalf;
+
+         for(uint32_t position=position0; position!=position1; position++) {
+             inputSequences[i].push_back(anchors.reads.getOrientedReadBase(orientedReadId, position));
+        }
+    }
+
+    if(debug and html) {
+        html <<
+            "<h3>Assembly step " << step << "</h3>"
+            "<table><tr>"
+            "<th>OrientedReadId"
+            "<th>Ordinal0"
+            "<th>Ordinal1"
+            "<th>Position0"
+            "<th>Position1"
+            "<th>Sequence<br>length"
+            "<th class=left>Sequence";
+
+        for(uint64_t i=0; i<orientedReads.size(); i++) {
+            OrientedRead& orientedRead = orientedReads[i];
+            const OrientedReadId orientedReadId = orientedRead.orientedReadId;
+            const uint32_t ordinal0 = alignedMarkers0.ordinals[i];
+            const uint32_t ordinal1 = alignedMarkers1.ordinals[i];
+            const auto orientedReadMarkers = anchors.markers[orientedReadId.getValue()];
+            const uint32_t position0 = orientedReadMarkers[ordinal0].position + kHalf;
+            const uint32_t position1 = orientedReadMarkers[ordinal1].position + kHalf;
+
+            html <<
+                "<tr>"
+                "<td class=centered>" << orientedReadId <<
+                "<td class=centered>" << ordinal0 <<
+                "<td class=centered>" << ordinal1 <<
+                "<td class=centered>" << position0 <<
+                "<td class=centered>" << position1 <<
+                "<td class=centered>" << position1 - position0 <<
+                "<td style='font-family:monospace'>";
+            copy(inputSequences[i].begin(), inputSequences[i].end(), ostream_iterator<Base>(html));
+        }
+        html << "</table>";
+    }
+
+    // Do the MSA.
+    vector< pair<Base, uint64_t> > stepConsensus;
+    vector< vector<AlignedBase> > alignment;
+    vector<AlignedBase> alignedConsensus;
+    const auto t0 = steady_clock::now();
+    abpoa(inputSequences, stepConsensus, alignment, alignedConsensus, computeAlignment);
+    const auto t1 = steady_clock::now();
+    if(debug and html) {
+        html << "<p>Abpoa took " << seconds(t1-t0) << " s.";
+        writeConsensus(stepConsensus);
+        if(computeAlignment) {
+            writeAlignment(inputSequences, stepConsensus, alignment, alignedConsensus);
+        }
+    }
+
+    // Append the consensus for this step to the global consensus.
+    const uint64_t begin = consensus.size();
+    copy(stepConsensus.begin(), stepConsensus.end(), back_inserter(consensus));
+    const uint64_t end = consensus.size();
+    if(debug and html) {
+        html << "<p>This assembly step contributed positions " << begin << "-" << end <<
+            " of the global consensus.";
+    }
+
+
+}
+
+
+
+void LocalAssembly2::writeConsensus(const vector< pair<Base, uint64_t> >& consensus) const
+{
+    html <<
+        "<h4>Consensus</h4>"
+        "<table>"
+        "<tr><th class=left>Consensus sequence length<td class=left>" << consensus.size() <<
+        "<tr><th class=left>Consensus sequence"
+        "<td style='font-family:monospace'>";
+
+    for(uint64_t position=0; position<consensus.size(); position++) {
+        const Base b = consensus[position].first;
+        html << "<span title='" << position << "'>" << b << "</span>";
+    }
+
+    html <<
+        "<tr><th class=left >Coverage"
+        "<td style='font-family:monospace'>";
+
+    std::map<char, uint64_t> coverageLegend;
+
+    for(const auto& p: consensus) {
+        const uint64_t coverage = p.second;
+        const char c = (coverage < 10) ? char(coverage + '0') : char(coverage - 10 + 'A');
+        coverageLegend.insert(make_pair(c, coverage));
+
+        if(coverage < orientedReads.size()) {
+            html << "<span style='background-color:Pink'>";
+        }
+
+        html << c;
+
+        if(coverage < orientedReads.size()) {
+            html << "</span>";
+        }
+    }
+
+    html << "</table>";
+
+    // Write the coverage legend.
+    html << "<p><table><tr><th>Symbol<th>Coverage";
+    for(const auto& p: coverageLegend) {
+        html << "<tr><td class=centered>" << p.first << "<td class=centered>" << p.second;
+    }
+    html << "</table>";
+
+}
+
+
+
+void LocalAssembly2::writeConsensus() const
+{
+    html <<
+        "<h3>Conbined consensus for all assembly steps</h3>"
+        "<table>"
+        "<tr><th class=left>Consensus sequence length<td class=left>" << consensus.size() <<
+        "<tr><th class=left>Consensus sequence"
+        "<td style='font-family:monospace'>";
+
+    for(uint64_t position=0; position<consensus.size(); position++) {
+        const Base b = consensus[position].first;
+        html << "<span title='" << position << "'>" << b << "</span>";
+    }
+
+    html <<
+        "<tr><th class=left >Coverage"
+        "<td style='font-family:monospace'>";
+
+    std::map<char, uint64_t> coverageLegend;
+
+    for(const auto& p: consensus) {
+        const uint64_t coverage = p.second;
+        const char c = (coverage < 10) ? char(coverage + '0') : char(coverage - 10 + 'A');
+        coverageLegend.insert(make_pair(c, coverage));
+
+        if(coverage < orientedReads.size()) {
+            html << "<span style='background-color:Pink'>";
+        }
+
+        html << c;
+
+        if(coverage < orientedReads.size()) {
+            html << "</span>";
+        }
+    }
+
+    html << "</table>";
+
+    // Write the coverage legend.
+    html << "<p><table><tr><th>Symbol<th>Coverage";
+    for(const auto& p: coverageLegend) {
+        html << "<tr><td class=centered>" << p.first << "<td class=centered>" << p.second;
+    }
+    html << "</table>";
+
+}
+
+
+void LocalAssembly2::writeAlignment(
+    const vector< vector<Base> >& inputSequences,
+    const vector< pair<Base, uint64_t> >& consensus,
+    const vector< vector<AlignedBase> >& alignment,
+    const vector<AlignedBase>& alignedConsensus) const
+{
+    html <<
+        "<h4>Alignment</h4>"
+        "<table>"
+        "<tr><th class=left>OrientedReadId"
+        "<th class=left>Sequence<br>length"
+        "<th class=left>Aligned sequence";
+
+    for(uint64_t i=0; i<alignment.size(); i++) {
+        const vector<AlignedBase>& alignmentRow = alignment[i];
+
+        html << "<tr><th>" << orientedReads[i].orientedReadId <<
+            "<td class=centered>" << inputSequences[i].size() <<
+            "<td style='font-family:monospace;white-space: nowrap'>";
+
+        for(uint64_t j=0; j<alignmentRow.size(); j++) {
+            const AlignedBase b = alignmentRow[j];
+            const bool isMatch = (b == alignedConsensus[j]);
+
+            if(not isMatch) {
+                html << "<span style='background-color:Pink'>";
+            }
+            html << b;
+            if(not isMatch) {
+                html << "</span>";
+            }
+        }
+
+    }
+
+    html << "<tr><th>Consensus<td>"
+        "<td style='font-family:monospace;background-color:LightCyan;white-space:nowrap'>";
+
+    uint64_t position = 0;
+    for(uint64_t i=0; i<alignedConsensus.size(); i++) {
+        const AlignedBase b = alignedConsensus[i];
+
+        if(not b.isGap()) {
+            html << "<span title='" << position << "'>";
+        }
+
+        html << b;
+
+        if(not b.isGap()) {
+            html << "</span>";
+            ++position;
+        }
+    }
+
+    html << "<tr><th>Consensus coverage<td>"
+        "<td style='font-family:monospace;white-space:nowrap'>";
+
+    position = 0;
+    for(uint64_t i=0; i<alignedConsensus.size(); i++) {
+        const AlignedBase b = alignedConsensus[i];
+
+        if(b.isGap()) {
+            html << "-";
+        } else {
+            const uint64_t coverage = consensus[position].second;
+            const char c = (coverage < 10) ? char(coverage + '0') : char(coverage - 10 + 'A');
+
+            if(coverage < orientedReads.size()) {
+                html << "<span style='background-color:Pink'>";
+            }
+
+            html << c;
+
+            if(coverage < orientedReads.size()) {
+                html << "</span>";
+            }
+
+            ++position;
+        }
+    }
+
+    html << "</table>";
+
+}
+
+
+
+void LocalAssembly2::getSequence(vector<Base>& sequence) const
+{
+    sequence.clear();
+    for(const auto& p: consensus) {
+        sequence.push_back(p.first);
+    }
+}
