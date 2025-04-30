@@ -1102,6 +1102,27 @@ void Assembler::exploreLocalAssembly2(
     }
 
 
+
+    // Write to fasta the oriented read sequences to be used in this local Assembly.
+    {
+        const AnchorPair anchorPair(anchors(), anchorIdA, anchorIdB, false);
+        vector< pair<AnchorPair::Positions, AnchorPair::Positions> > positions;
+        vector< vector<Base> > sequences;
+        anchorPair.get(anchors(), positions, sequences);
+        ofstream fasta("LocalAssemblyInput.fasta");
+        for(uint64_t i=0; i<anchorPair.orientedReadIds.size(); i++) {
+            fasta << ">" << i << " " << anchorPair.orientedReadIds[i] << " " <<
+                positions[i].first.basePosition << "-" <<
+                positions[i].second.basePosition << " " <<
+                positions[i].second.basePosition - positions[i].first.basePosition<< "\n";
+           copy(sequences[i].begin(), sequences[i].end(), ostream_iterator<Base>(fasta));
+           fasta << "\n";
+        }
+
+    }
+
+
+
     LocalAssembly2 localAssembly(
         anchors(), anchorIdA, anchorIdB,
         showAlignment,

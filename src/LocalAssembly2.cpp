@@ -520,7 +520,7 @@ void LocalAssembly2::split(
     newAlignedMarkers.clear();
     if(not isEasyCase) {
 
-        if(debug) {
+        if(debug and html) {
             // Gather graph edges (kmerId->kmerId transitions).
             std::set< pair<uint64_t, uint64_t> > transitions;
             for(const OrientedRead& orientedRead: orientedReads) {
