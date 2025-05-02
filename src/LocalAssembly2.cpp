@@ -6,6 +6,7 @@
 #include "Markers.hpp"
 #include "orderPairs.hpp"
 #include "orderVectors.hpp"
+#include "poastaWrapper.hpp"
 #include "Reads.hpp"
 using namespace shasta;
 
@@ -21,7 +22,7 @@ LocalAssembly2::LocalAssembly2(
     AnchorId anchorIdA,
     AnchorId anchorIdB,
     bool computeAlignment,
-    uint64_t /* maxAbpoaLength */,
+    uint64_t maxAbpoaLength,
     ostream& html,
     bool debugArgument) :
     anchors(anchors),
@@ -32,8 +33,8 @@ LocalAssembly2::LocalAssembly2(
 
     // Iterate until alignMarkers is successful.
     // Each failed iteration removes one or more OrientedReads.
-    const bool oldDebug = debug;
-    debug = false;
+    // const bool oldDebug = debug;
+    // debug = false;
     while(true) {
         gatherKmers();
 
@@ -72,10 +73,10 @@ LocalAssembly2::LocalAssembly2(
         // Success.
         break;
     }
-    debug = oldDebug;
+    // debug = oldDebug;
 
     // Assemble sequence using the AlignedMarkers we found.
-    assemble(computeAlignment);
+    assemble(computeAlignment, maxAbpoaLength);
 
 }
 
@@ -665,11 +666,11 @@ void LocalAssembly2::split(
 
 
 
-void LocalAssembly2::assemble(bool computeAlignment)
+void LocalAssembly2::assemble(bool computeAlignment, uint64_t maxAbpoaLength)
 {
     consensus.clear();
     for(uint64_t step=0; step<allAlignedMarkersVector.size()-1; step++) {
-        assemble(computeAlignment, step);
+        assemble(computeAlignment, maxAbpoaLength, step);
     }
 
     if(html) {
@@ -680,7 +681,10 @@ void LocalAssembly2::assemble(bool computeAlignment)
 
 
 
-void LocalAssembly2::assemble(bool computeAlignment, uint64_t step)
+void LocalAssembly2::assemble(
+    bool computeAlignment,
+    uint64_t maxAbpoaLength,
+    uint64_t step)
 {
     const uint32_t kHalf = uint32_t(anchors.k / 2);
 
@@ -691,6 +695,7 @@ void LocalAssembly2::assemble(bool computeAlignment, uint64_t step)
 
     // Gather the sequences to be used for the MSA of this step.
     vector< vector<Base> > inputSequences(orientedReads.size());
+    uint64_t maxSequenceLength = 0;
     for(uint64_t i=0; i<orientedReads.size(); i++) {
         OrientedRead& orientedRead = orientedReads[i];
         const OrientedReadId orientedReadId = orientedRead.orientedReadId;
@@ -703,6 +708,7 @@ void LocalAssembly2::assemble(bool computeAlignment, uint64_t step)
          for(uint32_t position=position0; position!=position1; position++) {
              inputSequences[i].push_back(anchors.reads.getOrientedReadBase(orientedReadId, position));
         }
+         maxSequenceLength = max(maxSequenceLength, inputSequences[i].size());
     }
 
     if(debug and html) {
@@ -741,14 +747,19 @@ void LocalAssembly2::assemble(bool computeAlignment, uint64_t step)
     }
 
     // Do the MSA.
+    const bool usePoasta = (maxSequenceLength > maxAbpoaLength);
     vector< pair<Base, uint64_t> > stepConsensus;
     vector< vector<AlignedBase> > alignment;
     vector<AlignedBase> alignedConsensus;
     const auto t0 = steady_clock::now();
-    abpoa(inputSequences, stepConsensus, alignment, alignedConsensus, computeAlignment);
+    if(usePoasta) {
+        poasta(inputSequences, stepConsensus, alignment, alignedConsensus);
+    } else {
+        abpoa(inputSequences, stepConsensus, alignment, alignedConsensus, computeAlignment);
+    }
     const auto t1 = steady_clock::now();
     if(debug and html) {
-        html << "<p>Abpoa took " << seconds(t1-t0) << " s.";
+        html << "<p>MSA with " << (usePoasta ? "poasta" : "abpoa") << " took " << seconds(t1-t0) << " s.";
         writeConsensus(stepConsensus);
         if(computeAlignment) {
             writeAlignment(inputSequences, stepConsensus, alignment, alignedConsensus);

@@ -49,6 +49,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         // Constructor from the name of a configuration file.
         .def(pybind11::init<const string&>(),
             arg("configurationFileName") = "shasta2.conf")
+        .def_readonly("threadCount", &AssemblerOptions::threadCount)
         .def_readonly("k", &AssemblerOptions::k)
         .def_readonly("markerDensity", &AssemblerOptions::markerDensity)
         .def_readonly("minAnchorCoverage", &AssemblerOptions::minAnchorCoverage)

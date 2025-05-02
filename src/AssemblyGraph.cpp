@@ -9,6 +9,7 @@
 #include "inducedSubgraphIsomorphisms.hpp"
 #include "LocalAssembly.hpp"
 #include "LocalAssembly1.hpp"
+#include "LocalAssembly2.hpp"
 #include "performanceLog.hpp"
 #include "PermutationDetangler.hpp"
 #include "Tangle.hpp"
@@ -1033,12 +1034,14 @@ uint64_t AssemblyGraph::minCommonCountOnEdgeAdjacent(edge_descriptor e) const
 // Assemble sequence for all edges.
 void AssemblyGraph::assembleAll(uint64_t threadCount)
 {
+    cout << timestamp << "Sequence assembly begins." << endl;
     const AssemblyGraph& assemblyGraph = *this;
     edgesToBeAssembled.clear();
     BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
         edgesToBeAssembled.push_back(e);
     }
     assemble(threadCount);
+    cout << timestamp << "Sequence assembly ends." << endl;
 }
 
 
@@ -1093,10 +1096,11 @@ void AssemblyGraph::assembleThreadFunction(uint64_t threadId)
             const uint64_t i = p.second;
             AssemblyGraphEdge& edge = assemblyGraph[e];
             SHASTA_ASSERT(i < edge.sequences.size());
+            out << edge.id << "," << i << endl;
             const auto t0 = steady_clock::now();
             assembleStep(e, i);
             const auto t1 = steady_clock::now();
-            out << edge.id << "," << i << "," << seconds(t1-t0) << "\n";
+            out << edge.id << "," << i << "," << seconds(t1-t0) << endl;
         }
     }
 }
@@ -1142,8 +1146,8 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
         0, localAssemblyDisplayOptions, assemblerOptions.localAssemblyOptions,
         false, false);
 #else
-    LocalAssembly1 localAssembly(anchors, anchorId0, anchorId1, false,
-        assemblerOptions.localAssemblyOptions.maxAbpoaLength, html);
+    LocalAssembly2 localAssembly(anchors, anchorId0, anchorId1, false,
+        assemblerOptions.localAssemblyOptions.maxAbpoaLength, html, false);
 #endif
     localAssembly.getSequence(sequence);
 }

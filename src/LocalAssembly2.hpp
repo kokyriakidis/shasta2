@@ -126,8 +126,8 @@ private:
 
     // Sequence assembly.
     // Each assembly step does a MSA between a pair of adjacent AlignedMarkers.
-    void assemble(bool computeAlignment);                   // Assemble all steps.
-    void assemble(bool computeAlignment, uint64_t step);    // Assemble one step.
+    void assemble(bool computeAlignment, uint64_t maxAbpoaLength);                   // Assemble all steps.
+    void assemble(bool computeAlignment, uint64_t maxAbpoaLength, uint64_t step);    // Assemble one step.
     void writeConsensus(const vector< pair<Base, uint64_t> >& stepConsensus) const;
     void writeAlignment(
         const vector< vector<Base> >& inputSequences,
