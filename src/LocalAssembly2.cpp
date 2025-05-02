@@ -669,6 +669,11 @@ void LocalAssembly2::split(
 void LocalAssembly2::assemble(bool computeAlignment, uint64_t maxAbpoaLength)
 {
     consensus.clear();
+    if(computeAlignment) {
+        alignment.clear();
+        alignment.resize(orientedReads.size());
+        alignedConsensus.clear();
+    }
     for(uint64_t step=0; step<allAlignedMarkersVector.size()-1; step++) {
         assemble(computeAlignment, maxAbpoaLength, step);
     }
@@ -777,7 +782,9 @@ void LocalAssembly2::assemble(
             " of the global consensus.";
     }
     if(computeAlignment) {
-        copy(stepAlignment.begin(), stepAlignment.end(), back_inserter(alignment));
+        for(uint64_t i=0; i<orientedReads.size(); i++) {
+            copy(stepAlignment[i].begin(), stepAlignment[i].end(), back_inserter(alignment[i]));
+        }
         copy(stepAlignedConsensus.begin(), stepAlignedConsensus.end(), back_inserter(alignedConsensus));
     }
 }

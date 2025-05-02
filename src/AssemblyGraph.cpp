@@ -1096,11 +1096,11 @@ void AssemblyGraph::assembleThreadFunction(uint64_t threadId)
             const uint64_t i = p.second;
             AssemblyGraphEdge& edge = assemblyGraph[e];
             SHASTA_ASSERT(i < edge.sequences.size());
-            out << edge.id << "," << i << endl;
+            out << "Begin " << edge.id << "," << i << endl;
             const auto t0 = steady_clock::now();
             assembleStep(e, i);
             const auto t1 = steady_clock::now();
-            out << edge.id << "," << i << "," << seconds(t1-t0) << endl;
+            out << "End " << edge.id << "," << i << "," << seconds(t1-t0) << endl;
         }
     }
 }
