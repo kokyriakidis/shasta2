@@ -135,5 +135,8 @@ private:
         const vector< vector<AlignedBase> >& alignment,
         const vector<AlignedBase>& alignedConsensus) const;
     vector< pair<Base, uint64_t> > consensus;
+    vector< vector<AlignedBase> > alignment;
+    vector<AlignedBase> alignedConsensus;
     void writeConsensus() const;
+    void writeAlignment();
 };

@@ -675,7 +675,9 @@ void LocalAssembly2::assemble(bool computeAlignment, uint64_t maxAbpoaLength)
 
     if(html) {
         writeConsensus();
-
+        if(computeAlignment) {
+            writeAlignment();
+        }
     }
 }
 
@@ -749,24 +751,24 @@ void LocalAssembly2::assemble(
     // Do the MSA.
     const bool usePoasta = (maxSequenceLength > maxAbpoaLength);
     vector< pair<Base, uint64_t> > stepConsensus;
-    vector< vector<AlignedBase> > alignment;
-    vector<AlignedBase> alignedConsensus;
+    vector< vector<AlignedBase> > stepAlignment;
+    vector<AlignedBase> stepAlignedConsensus;
     const auto t0 = steady_clock::now();
     if(usePoasta) {
-        poasta(inputSequences, stepConsensus, alignment, alignedConsensus);
+        poasta(inputSequences, stepConsensus, stepAlignment, stepAlignedConsensus);
     } else {
-        abpoa(inputSequences, stepConsensus, alignment, alignedConsensus, computeAlignment);
+        abpoa(inputSequences, stepConsensus, stepAlignment, stepAlignedConsensus, computeAlignment);
     }
     const auto t1 = steady_clock::now();
     if(debug and html) {
         html << "<p>MSA with " << (usePoasta ? "poasta" : "abpoa") << " took " << seconds(t1-t0) << " s.";
         writeConsensus(stepConsensus);
         if(computeAlignment) {
-            writeAlignment(inputSequences, stepConsensus, alignment, alignedConsensus);
+            writeAlignment(inputSequences, stepConsensus, stepAlignment, stepAlignedConsensus);
         }
     }
 
-    // Append the consensus for this step to the global consensus.
+    // Append the consensus and the alignment for this step to the global consensus and alignment.
     const uint64_t begin = consensus.size();
     copy(stepConsensus.begin(), stepConsensus.end(), back_inserter(consensus));
     const uint64_t end = consensus.size();
@@ -774,8 +776,10 @@ void LocalAssembly2::assemble(
         html << "<p>This assembly step contributed positions " << begin << "-" << end <<
             " of the global consensus.";
     }
-
-
+    if(computeAlignment) {
+        copy(stepAlignment.begin(), stepAlignment.end(), back_inserter(alignment));
+        copy(stepAlignedConsensus.begin(), stepAlignedConsensus.end(), back_inserter(alignedConsensus));
+    }
 }
 
 
@@ -832,7 +836,7 @@ void LocalAssembly2::writeConsensus(const vector< pair<Base, uint64_t> >& consen
 void LocalAssembly2::writeConsensus() const
 {
     html <<
-        "<h3>Conbined consensus for all assembly steps</h3>"
+        "<h3>Combined consensus for all assembly steps</h3>"
         "<table>"
         "<tr><th class=left>Consensus sequence length<td class=left>" << consensus.size() <<
         "<tr><th class=left>Consensus sequence"
@@ -877,6 +881,8 @@ void LocalAssembly2::writeConsensus() const
 }
 
 
+
+// Write the alignment for one step.
 void LocalAssembly2::writeAlignment(
     const vector< vector<Base> >& inputSequences,
     const vector< pair<Base, uint64_t> >& consensus,
@@ -912,7 +918,7 @@ void LocalAssembly2::writeAlignment(
 
     }
 
-    html << "<tr><th>Consensus<td>"
+    html << "<tr><th>Consensus<td class=centered>" << consensus.size() <<
         "<td style='font-family:monospace;background-color:LightCyan;white-space:nowrap'>";
 
     uint64_t position = 0;
@@ -960,6 +966,100 @@ void LocalAssembly2::writeAlignment(
 
     html << "</table>";
 
+}
+
+
+
+// Write the global alignment (all steps).
+void LocalAssembly2::writeAlignment()
+{
+    html << "<h3>Combined alignment for all assembly steps</h3>";
+
+    // Get the input sequences for all reads.
+    vector< vector<Base> > inputSequences(orientedReads.size());
+    for(uint64_t i=0; i<orientedReads.size(); i++) {
+        const OrientedRead& orientedRead = orientedReads[i];
+        const OrientedReadId orientedReadId = orientedRead.orientedReadId;
+        for(uint32_t position=orientedRead.positionA(); position!=orientedRead.positionB(); position++) {
+            inputSequences[i].push_back(anchors.reads.getOrientedReadBase(orientedReadId, position));
+        }
+    }
+
+    html <<
+        "<table>"
+        "<tr><th class=left>OrientedReadId"
+        "<th class=left>Sequence<br>length"
+        "<th class=left>Aligned sequence";
+
+    for(uint64_t i=0; i<alignment.size(); i++) {
+        const vector<AlignedBase>& alignmentRow = alignment[i];
+
+        html << "<tr><th>" << orientedReads[i].orientedReadId <<
+            "<td class=centered>" << inputSequences[i].size() <<
+            "<td style='font-family:monospace;white-space: nowrap'>";
+
+        for(uint64_t j=0; j<alignmentRow.size(); j++) {
+            const AlignedBase b = alignmentRow[j];
+            const bool isMatch = (b == alignedConsensus[j]);
+
+            if(not isMatch) {
+                html << "<span style='background-color:Pink'>";
+            }
+            html << b;
+            if(not isMatch) {
+                html << "</span>";
+            }
+        }
+
+    }
+
+    html << "<tr><th>Consensus<td class=centered>" << consensus.size() <<
+        "<td style='font-family:monospace;background-color:LightCyan;white-space:nowrap'>";
+
+    uint64_t position = 0;
+    for(uint64_t i=0; i<alignedConsensus.size(); i++) {
+        const AlignedBase b = alignedConsensus[i];
+
+        if(not b.isGap()) {
+            html << "<span title='" << position << "'>";
+        }
+
+        html << b;
+
+        if(not b.isGap()) {
+            html << "</span>";
+            ++position;
+        }
+    }
+
+    html << "<tr><th>Consensus coverage<td>"
+        "<td style='font-family:monospace;white-space:nowrap'>";
+
+    position = 0;
+    for(uint64_t i=0; i<alignedConsensus.size(); i++) {
+        const AlignedBase b = alignedConsensus[i];
+
+        if(b.isGap()) {
+            html << "-";
+        } else {
+            const uint64_t coverage = consensus[position].second;
+            const char c = (coverage < 10) ? char(coverage + '0') : char(coverage - 10 + 'A');
+
+            if(coverage < orientedReads.size()) {
+                html << "<span style='background-color:Pink'>";
+            }
+
+            html << c;
+
+            if(coverage < orientedReads.size()) {
+                html << "</span>";
+            }
+
+            ++position;
+        }
+    }
+
+    html << "</table>";
 }
 
 
