@@ -1,6 +1,7 @@
 // Shasta2
 #include "LocalAssembly2.hpp"
 #include "abpoaWrapper.hpp"
+#include "AnchorPair.hpp"
 #include "deduplicate.hpp"
 #include "extractKmer128.hpp"
 #include "Markers.hpp"
@@ -90,39 +91,25 @@ void LocalAssembly2::gatherOrientedReads(
     AnchorId anchorIdA,
     AnchorId anchorIdB)
 {
+    // Create an AnchorPair that contains the OrientedReadIds we want.
+    // The last argument means that we just require the oriented reads
+    // to visit anchorIdB after anchorIdA, not immmediately after.
+    const AnchorPair anchorPair(anchors, anchorIdA, anchorIdB, false);
+    const uint64_t n = anchorPair.orientedReadIds.size();
+
+    // Also get the ordinals of each oriented read in anchorIdA and anchorIdB.
+    vector<pair<uint32_t, uint32_t> > ordinals;
+    anchorPair.getOrdinals(anchors, ordinals);
+    SHASTA_ASSERT(ordinals.size() == n);
+
+    // Store the OrientedReads. This does not fill in the markerInfos.
     orientedReads.clear();
-    const auto anchorA = anchors[anchorIdA];
-    const auto anchorB = anchors[anchorIdB];
-    const auto beginA = anchorA.begin();
-    const auto beginB = anchorB.begin();
-    const auto endA = anchorA.end();
-    const auto endB = anchorB.end();
-    auto itA = beginA;
-    auto itB = beginB;
-    while((itA != endA) and (itB != endB)) {
-
-        if(itA->orientedReadId < itB->orientedReadId) {
-            ++itA;
-            continue;
-        }
-
-        if(itB->orientedReadId < itA->orientedReadId) {
-            ++itB;
-            continue;
-        }
-
-        // We found a common OrientedReadId.
-        OrientedReadId orientedReadId = itA->orientedReadId;
-        SHASTA_ASSERT(orientedReadId == itB->orientedReadId);
-
-        // Only use it if the ordinal offset positive.
-        if(itB->ordinal > itA->ordinal) {
-            orientedReads.emplace_back(orientedReadId, itA->ordinal, itB->ordinal);
-        }
-
-        ++itA;
-        ++itB;
-
+    for(uint64_t i=0; i<n; i++) {
+        const OrientedReadId orientedReadId = anchorPair.orientedReadIds[i];
+        const auto& p = ordinals[i];
+        const uint32_t ordinalA = p.first;
+        const uint32_t ordinalB = p.second;
+        orientedReads.emplace_back(orientedReadId, ordinalA, ordinalB);
     }
 }
 

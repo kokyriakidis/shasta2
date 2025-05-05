@@ -133,6 +133,9 @@ public:
         vector< pair<Positions, Positions> >& positions,
         vector< vector<Base> >&) const;
 
+    // Just return the ordinals.
+    void getOrdinals(const Anchors&, vector< pair<uint32_t, uint32_t> >&) const;
+
     template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
     {
         ar & anchorIdA;
