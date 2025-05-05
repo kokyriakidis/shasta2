@@ -94,7 +94,16 @@ void LocalAssembly2::gatherOrientedReads(
     // Create an AnchorPair that contains the OrientedReadIds we want.
     // The last argument means that we just require the oriented reads
     // to visit anchorIdB after anchorIdA, not immmediately after.
-    const AnchorPair anchorPair(anchors, anchorIdA, anchorIdB, false);
+    const AnchorPair anchorPairBeforeSplitting(anchors, anchorIdA, anchorIdB, false);
+
+    // Split this AnchorPair into AnchorPairs with consistent offsets
+    // and only use the larger one.
+    vector<AnchorPair> splitAnchorPairs;
+    const double aDrift = 300.;
+    const double bDrift = 0.01;
+    anchorPairBeforeSplitting.split(anchors, aDrift, bDrift, splitAnchorPairs);
+    const AnchorPair& anchorPair = splitAnchorPairs.front();
+
     const uint64_t n = anchorPair.orientedReadIds.size();
 
     // Also get the ordinals of each oriented read in anchorIdA and anchorIdB.
