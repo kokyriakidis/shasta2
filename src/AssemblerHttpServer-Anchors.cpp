@@ -402,6 +402,59 @@ void Assembler::exploreAnchorPair(const vector<string>& request, ostream& html)
     }
 
 
+    // See if this AnchorPair can be split.
+    {
+        vector<AnchorPair> newAnchorPairs;
+        const double aDrift = 300.;
+        const double bDrift = 0.01;
+        anchorPair.split(anchors(), aDrift, bDrift, newAnchorPairs);
+
+        if(newAnchorPairs.size() > 1) {
+            html << "<h3>Splitting of this anchor pair</h3>"
+                "<p>This anchor pair contains inconsistent offsets and can be split into " <<
+                newAnchorPairs.size() << " anchor pairs with consistent offsets.";
+
+            for(const AnchorPair& newAnchorPair: newAnchorPairs) {
+
+                vector< pair<AnchorPair::Positions, AnchorPair::Positions> > positions;
+                newAnchorPair.get(anchors(), positions);
+
+                html <<
+                    "<p><table>"
+                    "<tr><th>Oriented<br>read id"
+                    "<th>Position<br>in journey<br>A<th>Position<br>in journey<br>B<th>Journey<br>offset"
+                    "<th>OrdinalA<th>OrdinalB<th>Ordinal<br>offset"
+                    "<th>A middle<br>position"
+                    "<th>B middle<br>position"
+                    "<th>Sequence<br>length";
+
+                for(uint64_t i=0; i<newAnchorPair.size(); i++) {
+                    const OrientedReadId orientedReadId = newAnchorPair.orientedReadIds[i];
+                    const auto& positionsAB = positions[i];
+
+                    const auto& positionsA = positionsAB.first;
+                    const auto& positionsB = positionsAB.second;
+
+                    html <<
+                        "<tr>"
+                        "<td class=centered>" << orientedReadId <<
+                        "<td class=centered>" << positionsA.positionInJourney <<
+                        "<td class=centered>" << positionsB.positionInJourney <<
+                        "<td class=centered>" << positionsB.positionInJourney - positionsA.positionInJourney <<
+                        "<td class=centered>" << positionsA.ordinal <<
+                        "<td class=centered>" << positionsB.ordinal <<
+                        "<td class=centered>" << positionsB.ordinal - positionsA.ordinal <<
+                        "<td class=centered>" << positionsA.basePosition <<
+                        "<td class=centered>" << positionsB.basePosition <<
+                        "<td class=centered>" << positionsB.basePosition - positionsA.basePosition;
+                }
+
+                html << "</table>";
+            }
+        }
+    }
+
+
 
     // Old code.
     html << "<h1>Complete read composition analysis for anchors " << anchorIdToString(anchorIdA) <<

@@ -1,6 +1,7 @@
 #include "AnchorPair.hpp"
 #include "Anchor.hpp"
 #include "Markers.hpp"
+#include "orderPairs.hpp"
 #include "Reads.hpp"
 using namespace shasta;
 
@@ -83,6 +84,7 @@ void AnchorPair::get(
     const Anchors& anchors,
     vector< pair<Positions, Positions> >& positions) const
 {
+
     const uint32_t kHalf = uint32_t(anchors.markers.k / 2);
     positions.clear();
 
@@ -137,8 +139,6 @@ void AnchorPair::get(
         ++itA;
         ++itB;
     }
-
-    SHASTA_ASSERT(it == orientedReadIds.end());
 }
 
 
@@ -455,4 +455,74 @@ void AnchorPair::getOffsets(
     SHASTA_ASSERT(it == orientedReadIds.end());
 
     averageBaseOffset = uint32_t(std::round(double(sumBaseOffset) / double(size())));
+}
+
+
+
+// Split the AnchorPair into one or more AnchorPairs with consistent offsets.
+// In the resulting AnchorPairs, if the position offsets are sorted in
+// increasing order, any two adjacent offsets D0 and D1
+// will satisfy D1 - D0 <= aDrift + bDrift * (D0 + D1) / 2.
+void AnchorPair::split(
+    const Anchors& anchors,
+    double aDrift,
+    double bDrift,
+    vector<AnchorPair>& newAnchorPairs) const
+{
+    vector< pair<Positions, Positions> > positions;
+    get(anchors, positions);
+    const uint64_t n = orientedReadIds.size();
+    SHASTA_ASSERT(positions.size() == n);
+
+    // Gather pairs(index, offset) where index is the index
+    // in the OrientedReadIds, vector.
+    vector< pair<uint64_t, uint64_t> > offsets;
+    for(uint64_t i=0; i<n; i++) {
+        const uint32_t positionA = positions[i].first.basePosition;
+        const uint32_t positionB = positions[i].second.basePosition;
+        SHASTA_ASSERT(positionB > positionA);
+        const uint64_t offset = positionB - positionA;
+        offsets.push_back(make_pair(i, offset));
+    }
+    sort(offsets.begin(), offsets.end(), OrderPairsBySecondOnly<uint64_t, uint64_t>());
+
+    // Find places where we have to split.
+    vector<uint64_t> splitPoints;
+    splitPoints.push_back(0);
+    for(uint64_t i1=1; i1<n; i1++) {
+        const uint64_t i0 = i1 - 1;
+        const double offset0 = double(offsets[i0].second);
+        const double offset1 = double(offsets[i1].second);
+        if(offset1 - offset0 > aDrift + .5 * bDrift  * (offset1 + offset0)) {
+            splitPoints.push_back(i1);
+        }
+    }
+    splitPoints.push_back(n);
+
+    // Each interval between split points generates a new AnchorPair.
+    newAnchorPairs.clear();
+    newAnchorPairs.resize(splitPoints.size() - 1);
+    for(uint64_t i=0; i<splitPoints.size() -1 ; i++) {
+        const uint64_t j0 = splitPoints[i];
+        const uint64_t j1 = splitPoints[i + 1];
+
+        newAnchorPairs[i].anchorIdA = anchorIdA;
+        newAnchorPairs[i].anchorIdB = anchorIdB;
+        for(uint64_t j=j0; j!=j1; j++) {
+            newAnchorPairs[i].orientedReadIds.push_back(orientedReadIds[offsets[j].first]);
+        }
+        sort(newAnchorPairs[i].orientedReadIds.begin(), newAnchorPairs[i].orientedReadIds.end());
+    }
+
+
+    // Sprt them by decreasing coverage.
+    class SortHelper {
+    public:
+        bool operator() (const AnchorPair& x, const AnchorPair& y) const
+        {
+            return x.orientedReadIds.size() > y.orientedReadIds.size();
+        }
+    };
+    sort(newAnchorPairs.begin(), newAnchorPairs.end(), SortHelper());
+
 }

@@ -136,6 +136,17 @@ public:
     // Just return the ordinals.
     void getOrdinals(const Anchors&, vector< pair<uint32_t, uint32_t> >&) const;
 
+    // Split the AnchorPair into one or more AnchorPairs with consistent offsets.
+    // In the resulting AnchorPairs, if the position offsets are sorted in
+    // increasing order, any two adjacent offsets D0 and D1
+    // will satisfy D1 - D0 <= aDrift + bDrift * (D0 + D1) / 2.
+    void split(
+        const Anchors&,
+        double aDrift,
+        double bDrift,
+        vector<AnchorPair>&
+        ) const;
+
     template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
     {
         ar & anchorIdA;
