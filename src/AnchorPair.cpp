@@ -515,7 +515,7 @@ void AnchorPair::split(
     }
 
 
-    // Sprt them by decreasing coverage.
+    // Sort them by decreasing coverage.
     class SortHelper {
     public:
         bool operator() (const AnchorPair& x, const AnchorPair& y) const
