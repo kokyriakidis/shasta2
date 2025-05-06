@@ -17,7 +17,7 @@ TransitionGraph::TransitionGraph(
     const Anchors& anchors,
     const AnchorGraph& anchorGraph)
 {
-    const uint64_t minTransitionGraphEdgeCoverage = 10;
+    const uint64_t minTransitionGraphEdgeCoverage = 6;
     TransitionGraph& transitionGraph = *this;
 
     // Create the vertices, one for each AnchorGraph edge.

@@ -3,6 +3,7 @@
 #include "AnchorGraph.hpp"
 #include "AssemblerOptions.hpp"
 #include "AssemblyGraph.hpp"
+#include "AssemblyGraph1.hpp"
 #include "Journeys.hpp"
 #include "KmerCheckerFactory.hpp"
 #include "MurmurHash2.hpp"
@@ -217,7 +218,7 @@ void Assembler::createAssemblyGraph1(
     performanceLog << timestamp << "AnchorGraph creation begins." << endl;
     const AnchorGraph anchorGraph(
         anchors(), journeys(),
-        10 /*options.minAnchorGraphEdgeCoverage */,
+        6 /*options.minAnchorGraphEdgeCoverage */,
         options.aDrift,
         options.bDrift);
     performanceLog << timestamp << "AnchorGraph creation ends." << endl;
@@ -227,6 +228,12 @@ void Assembler::createAssemblyGraph1(
     const TransitionGraph transitionGraph(anchors(), anchorGraph);
     performanceLog << timestamp << "TransitionGraph creation ends." << endl;
     transitionGraph.writeGraphviz("TransitionGraph.dot");
+
+    // Create the AssemblyGraph1.
+    performanceLog << timestamp << "AssemblyGraph1 creation begins." << endl;
+    const AssemblyGraph1 assemblyGraph1(anchorGraph, transitionGraph);
+    performanceLog << timestamp << "AssemblyGraph1 creation ends." << endl;
+    assemblyGraph1.writeGfa("AssemblyGraph1.gfa");
 
 }
 
