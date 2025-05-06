@@ -22,24 +22,11 @@ AnchorGraph::AnchorGraph(
         AnchorPair::createChildren(anchors, journeys, anchorIdA, minEdgeCoverage, anchorPairs);
 
         for(const AnchorPair& anchorPair: anchorPairs) {
-            add_edge(anchorIdA, anchorPair.anchorIdB, anchorPair, *this);
+            add_edge(anchorIdA, anchorPair.anchorIdB, anchorPair, anchorGraph);
         }
     }
 
     cout << "The anchor graph has " << num_vertices(*this) <<
         " vertices and " << num_edges(*this) << " edges." << endl;
 
-    // Write out the isolated anchors.
-    uint64_t isolatedAnchorCount = 0;
-    ofstream csv("IsolatedAnchors.csv");
-    for(AnchorId anchorId=0; anchorId<anchorCount; anchorId++) {
-        if(
-            (in_degree (anchorId, anchorGraph) == 0) and
-            (out_degree(anchorId, anchorGraph) == 0)
-            ) {
-            ++ isolatedAnchorCount;
-            csv << anchorIdToString(anchorId) << "\n";
-        }
-    }
-    cout << "The anchor graph has " << isolatedAnchorCount << " isolated vertices." << endl;
 }
