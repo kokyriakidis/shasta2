@@ -15,6 +15,8 @@ public:
         AnchorId anchorIdB,
         bool computeAlignment,
         uint64_t maxAbpoaLength,
+        double aDrift,
+        double bDrift,
         ostream& html,
         bool debug);
 
@@ -96,7 +98,9 @@ private:
     // This does not fill in the markerInfos.
     void gatherOrientedReads(
         AnchorId anchorIdA,
-        AnchorId anchorIdB);
+        AnchorId anchorIdB,
+        double aDrift,
+        double bDrift);
 
     // This assumes that gatherKmers has already been called.
     void writeOrientedReads();

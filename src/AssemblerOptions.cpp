@@ -95,6 +95,14 @@ void AssemblerOptions::addOptions()
         "Minimum anchor graph edge coverage."
         )->capture_default_str();
 
+    add_option("--a-drift", aDrift,
+        "Constant allowed offset for offset consistency."
+        )->capture_default_str();
+
+    add_option("--b-drift", bDrift,
+        "Constant factor for offset consistency."
+        )->capture_default_str();
+
     add_option("--assembly-graph-transitive-reduction-threshold",
         assemblyGraphOptions.transitiveReductionThreshold,
         "Length threshold for transitive reduction of the assembly graph."

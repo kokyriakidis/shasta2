@@ -24,18 +24,18 @@ LocalAssembly2::LocalAssembly2(
     AnchorId anchorIdB,
     bool computeAlignment,
     uint64_t maxAbpoaLength,
+    double aDrift,
+    double bDrift,
     ostream& html,
     bool debugArgument) :
     anchors(anchors),
     html(html),
     debug(debugArgument)
 {
-    gatherOrientedReads(anchorIdA, anchorIdB);
+    gatherOrientedReads(anchorIdA, anchorIdB, aDrift, bDrift);
 
     // Iterate until alignMarkers is successful.
     // Each failed iteration removes one or more OrientedReads.
-    // const bool oldDebug = debug;
-    // debug = false;
     while(true) {
         gatherKmers();
 
@@ -74,7 +74,6 @@ LocalAssembly2::LocalAssembly2(
         // Success.
         break;
     }
-    // debug = oldDebug;
 
     // Assemble sequence using the AlignedMarkers we found.
     assemble(computeAlignment, maxAbpoaLength);
@@ -89,7 +88,9 @@ LocalAssembly2::LocalAssembly2(
 // This does not fill in the markerInfos.
 void LocalAssembly2::gatherOrientedReads(
     AnchorId anchorIdA,
-    AnchorId anchorIdB)
+    AnchorId anchorIdB,
+    double aDrift,
+    double bDrift)
 {
     // Create an AnchorPair that contains the OrientedReadIds we want.
     // The last argument means that we just require the oriented reads
@@ -99,8 +100,6 @@ void LocalAssembly2::gatherOrientedReads(
     // Split this AnchorPair into AnchorPairs with consistent offsets
     // and only use the larger one.
     vector<AnchorPair> splitAnchorPairs;
-    const double aDrift = 300.;
-    const double bDrift = 0.01;
     anchorPairBeforeSplitting.split(anchors, aDrift, bDrift, splitAnchorPairs);
     const AnchorPair& anchorPair = splitAnchorPairs.front();
 

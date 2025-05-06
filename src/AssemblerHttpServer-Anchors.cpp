@@ -405,9 +405,10 @@ void Assembler::exploreAnchorPair(const vector<string>& request, ostream& html)
     // See if this AnchorPair can be split.
     {
         vector<AnchorPair> newAnchorPairs;
-        const double aDrift = 300.;
-        const double bDrift = 0.01;
-        anchorPair.split(anchors(), aDrift, bDrift, newAnchorPairs);
+        anchorPair.split(anchors(),
+            httpServerData.assemblerOptions->aDrift,
+            httpServerData.assemblerOptions->bDrift,
+            newAnchorPairs);
 
         if(newAnchorPairs.size() > 1) {
             html << "<h3>Splitting of this anchor pair</h3>"

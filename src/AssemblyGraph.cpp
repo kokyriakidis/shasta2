@@ -1147,7 +1147,10 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
         false, false);
 #else
     LocalAssembly2 localAssembly(anchors, anchorId0, anchorId1, false,
-        assemblerOptions.localAssemblyOptions.maxAbpoaLength, html, false);
+        assemblerOptions.localAssemblyOptions.maxAbpoaLength,
+        assemblerOptions.aDrift,
+        assemblerOptions.bDrift,
+        html, false);
 #endif
     localAssembly.getSequence(sequence);
 }

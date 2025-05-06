@@ -48,6 +48,9 @@ public:
     uint64_t maxAnchorHomopolymerLength = 10;
     uint64_t minAnchorGraphEdgeCoverage = 3;
 
+    double aDrift = 300.;
+    double bDrift = 0.01;
+
     class AssemblyGraphOptions {
     public:
         uint64_t transitiveReductionThreshold = 10000;

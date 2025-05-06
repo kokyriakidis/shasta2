@@ -1127,6 +1127,8 @@ void Assembler::exploreLocalAssembly2(
         anchors(), anchorIdA, anchorIdB,
         showAlignment,
         maxAbpoaLength,
+        httpServerData.assemblerOptions->aDrift,
+        httpServerData.assemblerOptions->bDrift,
         html, debug);
 
     vector<Base> sequence;
