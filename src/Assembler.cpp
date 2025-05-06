@@ -212,6 +212,7 @@ void Assembler::createAssemblyGraph1(
         threadCount = std::thread::hardware_concurrency();
     }
 
+    // Generate an AnchorGraph in which all edges have consistent offsets.
     performanceLog << timestamp << "AnchorGraph creation begins." << endl;
     const AnchorGraph anchorGraph(
         anchors(), journeys(),
@@ -220,7 +221,13 @@ void Assembler::createAssemblyGraph1(
         options.bDrift);
     performanceLog << timestamp << "AnchorGraph creation ends." << endl;
 
+    // Compute edge journeys.
+    // The edge journey of an OrientedReadId is the sequence of
+    // AnchorGraph edges visited by the OrientedReadId.
+    vector< vector<AnchorGraph::edge_descriptor> > edgeJourneys;
+    performanceLog << timestamp << "AnchorGraph edge journey creation begins." << endl;
+    anchorGraph.computeEdgeJourneys(anchors(), edgeJourneys);
+    performanceLog << timestamp << "AnchorGraph edge journey creation ends." << endl;
 }
-
 
 

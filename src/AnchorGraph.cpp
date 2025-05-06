@@ -1,6 +1,8 @@
 // Shasta.
 #include "AnchorGraph.hpp"
 #include "Anchor.hpp"
+#include "Markers.hpp"
+#include "orderPairs.hpp"
 using namespace shasta;
 
 // Boost libraries.
@@ -90,4 +92,51 @@ AnchorGraph::AnchorGraph(
     }
 
 }
+
+
+
+// Compute the edge journeys.
+// The edge journey of an OrientedReadId is the sequence of
+// AnchorGraph edges visited by the OrientedReadId.
+// An OrientedReadId visits an AnchorGraph edges if it
+// appears in the AnchorPairt for the edge.
+// Edge journeys are indexed by OrientedReadId::getValue().
+void AnchorGraph::computeEdgeJourneys(
+    const Anchors& anchors,
+    vector< vector<edge_descriptor> >& edgeJourneys
+) const
+{
+    const AnchorGraph& anchorGraph = *this;
+    const uint64_t orientedReadCount = anchors.markers.size();
+
+    // Construct a vector of pairs (ordinal, edge_descriptor) for each OrientedReadId;
+    vector< vector< pair<uint32_t, edge_descriptor> > > v(orientedReadCount);
+    vector< pair<uint32_t, uint32_t> > ordinals;
+    BGL_FORALL_EDGES(e, anchorGraph, AnchorGraph) {
+        const AnchorPair& anchorPair = anchorGraph[e];
+        anchorPair.getOrdinals(anchors, ordinals);
+        SHASTA_ASSERT(ordinals.size() == anchorPair.orientedReadIds.size());
+        for(uint64_t i=0; i<anchorPair.orientedReadIds.size(); i++) {
+            const OrientedReadId orientedReadId = anchorPair.orientedReadIds[i];
+            const uint32_t ordinal0 = ordinals[i].first;
+            v[orientedReadId.getValue()].push_back(make_pair(ordinal0, e));
+        }
+    }
+
+    // Sort them by ordinals.
+    for(vector< pair<uint32_t, edge_descriptor> >& u: v) {
+        sort(u.begin(), u.end(), OrderPairsByFirstOnly<uint32_t, edge_descriptor>());
+    }
+
+    // Now we can create the edge journeys.
+    edgeJourneys.clear();
+    edgeJourneys.resize(orientedReadCount);
+    for(uint64_t i=0; i<orientedReadCount; i++) {
+        vector<edge_descriptor> edgeJourney = edgeJourneys[i];
+        const vector< pair<uint32_t, edge_descriptor> >& u = v[i];
+        for(const auto& p: u) {
+            edgeJourney.push_back(p.second);
+        }
+    }
+ }
 

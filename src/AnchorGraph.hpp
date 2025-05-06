@@ -44,5 +44,16 @@ public:
         uint64_t minEdgeCoverage,
         double aDrift,
         double bDrift);
+
+    // Compute the edge journeys.
+    // The edge journey of an OrientedReadId is the sequence of
+    // AnchorGraph edges visited by the OrientedReadId.
+    // An OrientedReadId visits an AnchorGraph edges if it
+    // appears in the AnchorPairt for the edge.
+    // Edge journeys are indexed by OrientedReadId::getValue().
+    void computeEdgeJourneys(
+        const Anchors&,
+        vector< vector<edge_descriptor> >&
+    ) const;
 };
 
