@@ -526,3 +526,43 @@ void AnchorPair::split(
     sort(newAnchorPairs.begin(), newAnchorPairs.end(), SortHelper());
 
 }
+
+
+
+// This returns true if a call to split with the same arguments would not split this Anchor.
+// The second and third areguments are work vectors added as arguments for performancew,
+bool AnchorPair::isConsistent(
+    const Anchors& anchors,
+    double aDrift,
+    double bDrift,
+    vector< pair<Positions, Positions> >& positions,
+    vector<uint64_t>& offsets) const
+{
+
+    get(anchors, positions);
+    const uint64_t n = orientedReadIds.size();
+    SHASTA_ASSERT(positions.size() == n);
+
+    // Gather offsets.
+    offsets.clear();
+    offsets.resize(n);
+    for(uint64_t i=0; i<n; i++) {
+        const uint32_t positionA = positions[i].first.basePosition;
+        const uint32_t positionB = positions[i].second.basePosition;
+        SHASTA_ASSERT(positionB > positionA);
+        const uint64_t offset = positionB - positionA;
+        offsets[i] = offset;
+    }
+    sort(offsets.begin(), offsets.end());
+
+    for(uint64_t i1=1; i1<n; i1++) {
+        const uint64_t i0 = i1 - 1;
+        const double offset0 = double(offsets[i0]);
+        const double offset1 = double(offsets[i1]);
+        if(offset1 - offset0 > aDrift + .5 * bDrift  * (offset1 + offset0)) {
+            return false;
+        }
+    }
+
+    return true;
+}

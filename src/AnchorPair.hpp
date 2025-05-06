@@ -147,6 +147,15 @@ public:
         vector<AnchorPair>&
         ) const;
 
+    // This returns true if a call to split with the same arguments would not split this Anchor.
+    // The second and third areguments are work vectors added as arguments for performancew,
+    bool isConsistent(
+        const Anchors&,
+        double aDrift,
+        double bDrift,
+        vector< pair<Positions, Positions> >&,
+        vector<uint64_t>&) const;
+
     template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
     {
         ar & anchorIdA;
