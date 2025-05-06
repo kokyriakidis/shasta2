@@ -182,7 +182,6 @@ void Assembler::accessJourneys()
 
 
 
-
 void Assembler::createAssemblyGraph(
     const AssemblerOptions& options,
     uint64_t threadCount)
@@ -199,6 +198,23 @@ void Assembler::createAssemblyGraph(
     performanceLog << timestamp << "AssemblyGraph creation begins." << endl;
     AssemblyGraph assemblyGraph(options, anchors(), anchorGraph, threadCount);
     performanceLog << timestamp << "AssemblyGraph creation ends." << endl;
+
+}
+
+
+
+void Assembler::createAssemblyGraph1(
+    const AssemblerOptions& options,
+    uint64_t threadCount)
+{
+    // Adjust the numbers of threads, if necessary.
+    if(threadCount == 0) {
+        threadCount = std::thread::hardware_concurrency();
+    }
+
+    performanceLog << timestamp << "AnchorGraph creation begins." << endl;
+    const AnchorGraph anchorGraph(anchors(), journeys(), options.minAnchorGraphEdgeCoverage);
+    performanceLog << timestamp << "AnchorGraph creation ends." << endl;
 
 }
 

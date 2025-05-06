@@ -114,10 +114,14 @@ PYBIND11_MODULE(shasta2, shasta2Module)
           &Assembler::accessJourneys)
 
       // AssemblyGraph.
-     .def("createAssemblyGraph",
-         &Assembler::createAssemblyGraph,
-         arg("assemblerOptions"),
-         arg("threadCount") = 0)
+      .def("createAssemblyGraph",
+          &Assembler::createAssemblyGraph,
+          arg("assemblerOptions"),
+          arg("threadCount") = 0)
+      .def("createAssemblyGraph1",
+          &Assembler::createAssemblyGraph1,
+          arg("assemblerOptions"),
+          arg("threadCount") = 0)
      .def("getAssemblyGraph",
          &Assembler::getAssemblyGraph)
     ;
