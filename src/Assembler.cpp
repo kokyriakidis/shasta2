@@ -213,7 +213,11 @@ void Assembler::createAssemblyGraph1(
     }
 
     performanceLog << timestamp << "AnchorGraph creation begins." << endl;
-    const AnchorGraph anchorGraph(anchors(), journeys(), options.minAnchorGraphEdgeCoverage);
+    const AnchorGraph anchorGraph(
+        anchors(), journeys(),
+        options.minAnchorGraphEdgeCoverage,
+        options.aDrift,
+        options.bDrift);
     performanceLog << timestamp << "AnchorGraph creation ends." << endl;
 
 }
