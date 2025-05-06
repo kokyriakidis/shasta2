@@ -132,7 +132,7 @@ void AnchorGraph::computeEdgeJourneys(
     edgeJourneys.clear();
     edgeJourneys.resize(orientedReadCount);
     for(uint64_t i=0; i<orientedReadCount; i++) {
-        vector<edge_descriptor> edgeJourney = edgeJourneys[i];
+        vector<edge_descriptor>& edgeJourney = edgeJourneys[i];
         const vector< pair<uint32_t, edge_descriptor> >& u = v[i];
         for(const auto& p: u) {
             edgeJourney.push_back(p.second);

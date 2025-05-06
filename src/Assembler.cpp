@@ -8,6 +8,7 @@
 #include "MurmurHash2.hpp"
 #include "performanceLog.hpp"
 #include "Reads.hpp"
+#include "TransitionGraph.hpp"
 using namespace shasta;
 
 #include "MultithreadedObject.tpp"
@@ -216,18 +217,17 @@ void Assembler::createAssemblyGraph1(
     performanceLog << timestamp << "AnchorGraph creation begins." << endl;
     const AnchorGraph anchorGraph(
         anchors(), journeys(),
-        options.minAnchorGraphEdgeCoverage,
+        10 /*options.minAnchorGraphEdgeCoverage */,
         options.aDrift,
         options.bDrift);
     performanceLog << timestamp << "AnchorGraph creation ends." << endl;
 
-    // Compute edge journeys.
-    // The edge journey of an OrientedReadId is the sequence of
-    // AnchorGraph edges visited by the OrientedReadId.
-    vector< vector<AnchorGraph::edge_descriptor> > edgeJourneys;
-    performanceLog << timestamp << "AnchorGraph edge journey creation begins." << endl;
-    anchorGraph.computeEdgeJourneys(anchors(), edgeJourneys);
-    performanceLog << timestamp << "AnchorGraph edge journey creation ends." << endl;
+    // Create the TransitionGraph.
+    performanceLog << timestamp << "TransitionGraph creation begins." << endl;
+    const TransitionGraph transitionGraph(anchors(), anchorGraph);
+    performanceLog << timestamp << "TransitionGraph creation ends." << endl;
+    transitionGraph.writeGraphviz("TransitionGraph.dot");
+
 }
 
 
