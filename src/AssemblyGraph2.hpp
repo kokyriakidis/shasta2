@@ -59,6 +59,8 @@ public:
     AssemblyGraph2Vertex(uint64_t id) : id(id) {}
 
     void check(const Anchors&) const;
+
+    uint64_t offset() const;
 };
 
 

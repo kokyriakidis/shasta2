@@ -180,7 +180,7 @@ void AssemblyGraph2::writeGfa(ostream& gfa) const
 
         // Sequence.
         gfa << "*\t";
-        gfa << "LN:i:" << 100 * vertex.size() << "\n";   // For now
+        gfa << "LN:i:" << vertex.offset() << "\n";   // For now
     }
 
 
@@ -200,4 +200,15 @@ void AssemblyGraph2::writeGfa(ostream& gfa) const
             vertex1.id << "\t+\t*\n";
     }
 
+}
+
+
+
+uint64_t AssemblyGraph2Vertex::offset() const
+{
+    uint64_t sum = 0;
+    for(const AssemblyGraph2VertexStep& step: *this) {
+        sum += step.offset;
+    }
+    return sum;
 }
