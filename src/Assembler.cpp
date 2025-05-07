@@ -251,7 +251,7 @@ void Assembler::createAssemblyGraph2(
 
     // Generate an AnchorGraph in which all edges have consistent offsets.
     performanceLog << timestamp << "AnchorGraph creation begins." << endl;
-    const AnchorGraph anchorGraph(
+    shared_ptr<const AnchorGraph> anchorGraphPointer = make_shared<AnchorGraph>(
         anchors(), journeys(),
         6 /*options.minAnchorGraphEdgeCoverage */,
         options.aDrift,
@@ -260,14 +260,18 @@ void Assembler::createAssemblyGraph2(
 
     // Create the TransitionGraph.
     performanceLog << timestamp << "TransitionGraph creation begins." << endl;
-    const TransitionGraph transitionGraph(anchors(), anchorGraph);
+    shared_ptr<const TransitionGraph> transitionGraphPointer = make_shared<TransitionGraph>(
+        anchors(), *anchorGraphPointer);
     performanceLog << timestamp << "TransitionGraph creation ends." << endl;
-    transitionGraph.writeGraphviz("TransitionGraph.dot");
+    anchorGraphPointer = 0; // We no longer need the AnchorGraph.
+    transitionGraphPointer->writeGraphviz("TransitionGraph.dot");
 
     // Create the AssemblyGraph2.
     performanceLog << timestamp << "AssemblyGraph2 creation begins." << endl;
-    const AssemblyGraph2 assemblyGraph2(anchors(), transitionGraph);
+    const AssemblyGraph2 assemblyGraph2(anchors(), *transitionGraphPointer);
     performanceLog << timestamp << "AssemblyGraph2 creation ends." << endl;
+    transitionGraphPointer = 0; // We no longer need the TransitionGraph.
+
     assemblyGraph2.writeGfa("AssemblyGraph2.gfa");
 
 }
