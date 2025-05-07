@@ -20,9 +20,9 @@ using namespace shasta;
 
 TransitionGraph::TransitionGraph(
     const Anchors& anchors,
-    const AnchorGraph& anchorGraph)
+    const AnchorGraph& anchorGraph,
+    uint64_t minTransitionGraphEdgeCoverage)
 {
-    const uint64_t minTransitionGraphEdgeCoverage = 6;
     TransitionGraph& transitionGraph = *this;
 
     // Create the TransitionGraph vertices, one for each AnchorGraph edge.

@@ -93,7 +93,7 @@ void Assembler::assemble(
     createJourneys(threadCount);
     journeys().writeAnchorGapsByRead(reads(), markers(), anchors());
 
-    createAssemblyGraph(assemblerOptions, threadCount);
+    createAssemblyGraph2(assemblerOptions, threadCount);
 }
 
 
@@ -219,14 +219,17 @@ void Assembler::createAssemblyGraph1(
     performanceLog << timestamp << "AnchorGraph creation begins." << endl;
     const AnchorGraph anchorGraph(
         anchors(), journeys(),
-        6 /*options.minAnchorGraphEdgeCoverage */,
+        options.minAnchorGraphEdgeCoverage,
         options.aDrift,
         options.bDrift);
     performanceLog << timestamp << "AnchorGraph creation ends." << endl;
 
     // Create the TransitionGraph.
     performanceLog << timestamp << "TransitionGraph creation begins." << endl;
-    const TransitionGraph transitionGraph(anchors(), anchorGraph);
+    const TransitionGraph transitionGraph(
+        anchors(),
+        anchorGraph,
+        options.minTransitionGraphEdgeCoverage);
     performanceLog << timestamp << "TransitionGraph creation ends." << endl;
     transitionGraph.writeGraphviz("TransitionGraph.dot");
 
@@ -253,7 +256,7 @@ void Assembler::createAssemblyGraph2(
     performanceLog << timestamp << "AnchorGraph creation begins." << endl;
     shared_ptr<const AnchorGraph> anchorGraphPointer = make_shared<AnchorGraph>(
         anchors(), journeys(),
-        6 /*options.minAnchorGraphEdgeCoverage */,
+        options.minAnchorGraphEdgeCoverage,
         options.aDrift,
         options.bDrift);
     performanceLog << timestamp << "AnchorGraph creation ends." << endl;
@@ -261,7 +264,9 @@ void Assembler::createAssemblyGraph2(
     // Create the TransitionGraph.
     performanceLog << timestamp << "TransitionGraph creation begins." << endl;
     shared_ptr<const TransitionGraph> transitionGraphPointer = make_shared<TransitionGraph>(
-        anchors(), *anchorGraphPointer);
+        anchors(),
+        *anchorGraphPointer,
+        options.minTransitionGraphEdgeCoverage);
     performanceLog << timestamp << "TransitionGraph creation ends." << endl;
     anchorGraphPointer = 0; // We no longer need the AnchorGraph.
     transitionGraphPointer->writeGraphviz("TransitionGraph.dot");

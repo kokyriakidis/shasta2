@@ -103,6 +103,10 @@ void AssemblerOptions::addOptions()
         "Constant factor for offset consistency."
         )->capture_default_str();
 
+    add_option("--min-transition-graph-edge-coverage", minTransitionGraphEdgeCoverage,
+        "Minimum transition graph edge coverage."
+        )->capture_default_str();
+
     add_option("--assembly-graph-transitive-reduction-threshold",
         assemblyGraphOptions.transitiveReductionThreshold,
         "Length threshold for transitive reduction of the assembly graph."

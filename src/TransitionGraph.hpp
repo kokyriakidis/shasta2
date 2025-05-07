@@ -60,7 +60,8 @@ public:
 
     TransitionGraph(
         const Anchors&,
-        const AnchorGraph&);
+        const AnchorGraph&,
+        uint64_t minTransitionGraphEdgeCoverage);
 
     void writeGraphviz(const string& fileName) const;
     void writeGraphviz(ostream&) const;
