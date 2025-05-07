@@ -1,5 +1,6 @@
 // Shasta.
 #include "AssemblyGraph2.hpp"
+#include "Anchor.hpp"
 #include "findLinearChains.hpp"
 #include "TransitionGraph.hpp"
 using namespace shasta;
@@ -9,12 +10,17 @@ using namespace shasta;
 #include <list>
 #include <map>
 
+// Explicit instantiationn.
+#include "MultithreadedObject.tpp"
+template class MultithreadedObject<AssemblyGraph2>;
+
 
 
 AssemblyGraph2::AssemblyGraph2(
     const Anchors& anchors,
-    const AnchorGraph& /* anchorGraph */,
-    const TransitionGraph& transitionGraph)
+    const TransitionGraph& transitionGraph) :
+    MappedMemoryOwner(anchors),
+    MultithreadedObject<AssemblyGraph2>(*this)
 {
     AssemblyGraph2& assemblyGraph2 = *this;
 

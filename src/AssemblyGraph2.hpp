@@ -7,6 +7,8 @@
 // Shasta.
 #include "AnchorPair.hpp"
 #include "invalid.hpp"
+#include "MappedMemoryOwner.hpp"
+#include "MultithreadedObject.hpp"
 
 // Boost libraries.
 #include <boost/graph/adjacency_list.hpp>
@@ -31,7 +33,6 @@ namespace shasta {
         AssemblyGraph2Edge>;
 
     class Anchors;
-    class AnchorGraph;
     class TransitionGraph;
 }
 
@@ -68,11 +69,13 @@ public:
 
 
 
-class shasta::AssemblyGraph2 : public AssemblyGraph2BaseClass {
+class shasta::AssemblyGraph2 :
+    public AssemblyGraph2BaseClass,
+    public MappedMemoryOwner,
+    public MultithreadedObject<AssemblyGraph2> {
 public:
     AssemblyGraph2(
         const Anchors&,
-        const AnchorGraph&,
         const TransitionGraph&);
     uint64_t nextVertexId = 0;
 

@@ -266,7 +266,7 @@ void Assembler::createAssemblyGraph2(
 
     // Create the AssemblyGraph2.
     performanceLog << timestamp << "AssemblyGraph2 creation begins." << endl;
-    const AssemblyGraph2 assemblyGraph2(anchors(), anchorGraph, transitionGraph);
+    const AssemblyGraph2 assemblyGraph2(anchors(), transitionGraph);
     performanceLog << timestamp << "AssemblyGraph2 creation ends." << endl;
     assemblyGraph2.writeGfa("AssemblyGraph2.gfa");
 
