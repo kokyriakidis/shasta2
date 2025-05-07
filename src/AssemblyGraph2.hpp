@@ -56,6 +56,8 @@ class shasta::AssemblyGraph2Vertex : public vector<AssemblyGraph2VertexStep> {
 public:
     uint64_t id = invalid<uint64_t>;
     AssemblyGraph2Vertex(uint64_t id) : id(id) {}
+
+    void check(const Anchors&) const;
 };
 
 
@@ -73,6 +75,9 @@ public:
         const AnchorGraph&,
         const TransitionGraph&);
     uint64_t nextVertexId = 0;
+
+    void check(const Anchors&) const;
+    void check(const Anchors&, edge_descriptor) const;
 
     void writeGfa(const string& fileName) const;
     void writeGfa(ostream&) const;

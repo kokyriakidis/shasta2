@@ -72,6 +72,73 @@ AssemblyGraph2::AssemblyGraph2(
     cout << "The initial AssemblyGraph2 has " << num_vertices(assemblyGraph2) <<
         " vertices and " << num_edges(assemblyGraph2) << " edges." << endl;
 
+    // Check that all vertices and edges of the TransitionGraph are accounted for.
+    uint64_t vertexCount = 0;
+    uint64_t edgeCount = num_edges(assemblyGraph2);
+    BGL_FORALL_VERTICES(v, assemblyGraph2, AssemblyGraph2) {
+        vertexCount += assemblyGraph2[v].size();
+        edgeCount += (assemblyGraph2[v].size() - 1);
+    }
+    SHASTA_ASSERT(vertexCount == num_vertices(transitionGraph));
+    SHASTA_ASSERT(edgeCount == num_edges(transitionGraph));
+
+    // Check that all is good.
+    check(anchors);
+}
+
+
+
+void AssemblyGraph2::check(const Anchors& anchors) const
+{
+    const AssemblyGraph2& assemblyGraph2 = *this;
+
+    BGL_FORALL_VERTICES(v, assemblyGraph2, AssemblyGraph2) {
+        assemblyGraph2[v].check(anchors);
+    }
+    BGL_FORALL_EDGES(e, assemblyGraph2, AssemblyGraph2) {
+        check(anchors, e);
+    }
+}
+
+
+
+void AssemblyGraph2Vertex::check(const Anchors& anchors) const
+{
+
+#if 0
+    // The AnchorPairs must be adjacent to each other.
+    // This requires changes in the TransitionGraph.
+    for(uint64_t i1=1; i1<size(); i1++) {
+        const uint64_t i0 = i1 - 1;
+
+        const AssemblyGraph2VertexStep& step0 = (*this)[i0];
+        const AssemblyGraph2VertexStep& step1 = (*this)[i1];
+
+        /*
+        cout <<
+            i0 << " " <<
+            i1 << " " <<
+            step0.anchorPair.anchorIdA << " " <<
+            step0.anchorPair.anchorIdB << " " <<
+            step1.anchorPair.anchorIdA << " " <<
+            step1.anchorPair.anchorIdB << endl;
+        */
+
+        SHASTA_ASSERT(step0.anchorPair.anchorIdB == step1.anchorPair.anchorIdA);
+    }
+#endif
+
+    // The offsets must be correct.
+    for(const AssemblyGraph2VertexStep& step: *this) {
+        SHASTA_ASSERT(step.offset == step.anchorPair.getAverageOffset(anchors));
+    }
+}
+
+
+
+void AssemblyGraph2::check(const Anchors&, edge_descriptor) const
+{
+
 }
 
 
