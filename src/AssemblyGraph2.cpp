@@ -2,10 +2,13 @@
 #include "AssemblyGraph2.hpp"
 #include "Anchor.hpp"
 #include "findLinearChains.hpp"
+#include "LocalAssembly2.hpp"
+#include "performanceLog.hpp"
 #include "TransitionGraph.hpp"
 using namespace shasta;
 
 // Standard library.
+#include <chrono.hpp>
 #include <fstream.hpp>
 #include <list>
 #include <map>
@@ -18,9 +21,16 @@ template class MultithreadedObject<AssemblyGraph2>;
 
 AssemblyGraph2::AssemblyGraph2(
     const Anchors& anchors,
-    const TransitionGraph& transitionGraph) :
+    const TransitionGraph& transitionGraph,
+    double aDrift,
+    double bDrift,
+    uint64_t maxAbpoaLength) :
     MappedMemoryOwner(anchors),
-    MultithreadedObject<AssemblyGraph2>(*this)
+    MultithreadedObject<AssemblyGraph2>(*this),
+    anchors(anchors),
+    aDrift(aDrift),
+    bDrift(bDrift),
+    maxAbpoaLength(maxAbpoaLength)
 {
     AssemblyGraph2& assemblyGraph2 = *this;
 
@@ -88,12 +98,12 @@ AssemblyGraph2::AssemblyGraph2(
     SHASTA_ASSERT(edgeCount == num_edges(transitionGraph));
 
     // Check that all is good.
-    check(anchors);
+    check();
 }
 
 
 
-void AssemblyGraph2::check(const Anchors& anchors) const
+void AssemblyGraph2::check() const
 {
     const AssemblyGraph2& assemblyGraph2 = *this;
 
@@ -169,6 +179,7 @@ void AssemblyGraph2::writeGfa(ostream& gfa) const
     gfa << "H\tVN:Z:1.0\n";
 
     // Eacg vertex generates a gfa segment.
+    vector<shasta::Base> sequence;
     BGL_FORALL_VERTICES(v, assemblyGraph2, AssemblyGraph2) {
         const AssemblyGraph2Vertex& vertex = assemblyGraph2[v];
 
@@ -179,8 +190,15 @@ void AssemblyGraph2::writeGfa(ostream& gfa) const
         gfa << vertex.id << "\t";
 
         // Sequence.
-        gfa << "*\t";
-        gfa << "LN:i:" << vertex.offset() << "\n";   // For now
+        if(vertex.wasAssembled) {
+            vertex.getSequence(sequence);
+            copy(sequence.begin(), sequence.end(), ostream_iterator<shasta::Base>(gfa));
+            gfa << "\t";
+            gfa << "LN:i:" << sequence.size() << "\n";
+        } else {
+            gfa << "*\t";
+            gfa << "LN:i:" << vertex.offset() << "\n";
+        }
     }
 
 
@@ -211,4 +229,126 @@ uint64_t AssemblyGraph2Vertex::offset() const
         sum += step.offset;
     }
     return sum;
+}
+
+
+
+// Assemble sequence for all vertices.
+void AssemblyGraph2::assembleAll(uint64_t threadCount)
+{
+    cout << timestamp << "Sequence assembly begins." << endl;
+    const AssemblyGraph2& assemblyGraph2 = *this;
+
+    verticesToBeAssembled.clear();
+    BGL_FORALL_VERTICES(v, assemblyGraph2, AssemblyGraph2) {
+        verticesToBeAssembled.push_back(v);
+    }
+    assemble(threadCount);
+    cout << timestamp << "Sequence assembly ends." << endl;
+}
+
+
+
+// Assemble sequence for all vertices in the verticesToBeAssembled vector.
+// This fills in the stepsToBeAssembled with all steps of those edges,
+// then assembles each of the steps in parallel.
+void AssemblyGraph2::assemble(uint64_t threadCount)
+{
+    AssemblyGraph2& assemblyGraph2 = *this;
+
+    stepsToBeAssembled.clear();
+    for(const vertex_descriptor v: verticesToBeAssembled) {
+        AssemblyGraph2Vertex& vertex = assemblyGraph2[v];
+        for(uint64_t i=0; i<vertex.size(); i++) {
+            stepsToBeAssembled.push_back(make_pair(v, i));
+        }
+    }
+
+    const uint64_t batchCount = 1;
+    setupLoadBalancing(stepsToBeAssembled.size(), batchCount);
+    runThreads(&AssemblyGraph2::assembleThreadFunction, threadCount);
+
+    // Mark them as assembled.
+    for(const vertex_descriptor v: verticesToBeAssembled) {
+        assemblyGraph2[v].wasAssembled = true;
+    }
+
+    verticesToBeAssembled.clear();
+    stepsToBeAssembled.clear();
+}
+
+
+
+void AssemblyGraph2::assembleThreadFunction(uint64_t threadId)
+{
+    AssemblyGraph2& assemblyGraph2 = *this;
+
+    ofstream out("Assemble-Thread-" + to_string(threadId) + ".txt");
+
+    // Loop over all batches assigned to this thread.
+    uint64_t begin, end;
+    while(getNextBatch(begin, end)) {
+
+        // Loop over all assembly steps assigned to this batch.
+        for(uint64_t j=begin; j!=end; j++) {
+            if((j % 1000) == 0) {
+                std::lock_guard<std::mutex> lock(mutex);
+                performanceLog << timestamp << j << "/" << stepsToBeAssembled.size() << endl;
+            }
+
+            const auto& p = stepsToBeAssembled[j];
+            const vertex_descriptor v = p.first;
+            const uint64_t i = p.second;
+            AssemblyGraph2Vertex& vertex = assemblyGraph2[v];
+            SHASTA_ASSERT(i < vertex.size());
+            out << "Begin " << vertex.id << "," << i << endl;
+            const auto t0 = steady_clock::now();
+            assembleStep(v, i);
+            const auto t1 = steady_clock::now();
+            out << "End " << vertex.id << "," << i << "," << seconds(t1-t0) << endl;
+        }
+    }
+}
+
+
+
+// Assemble sequence for the specified vertex.
+void AssemblyGraph2::assemble(vertex_descriptor v, uint64_t threadCount)
+{
+    verticesToBeAssembled.clear();
+    verticesToBeAssembled.push_back(v);
+    assemble(threadCount);
+}
+
+
+
+// Assemble sequence for step i of the specified vertex.
+// This is the lowest level sequence assembly function and is not multithreaded.
+// It runs a LocalAssembly2 on the AnchorPair for that step.
+void AssemblyGraph2::assembleStep(vertex_descriptor v, uint64_t i)
+{
+    AssemblyGraph2& assemblyGraph2 = *this;
+    AssemblyGraph2Vertex& vertex = assemblyGraph2[v];
+    AssemblyGraph2VertexStep& step = vertex[i];
+
+    // Run the LocalAssembly2.
+    ofstream html;  // Not open, so no html output takes place.
+    LocalAssembly2 localAssembly(
+        anchors, html, false,
+        aDrift,
+        bDrift,
+        step.anchorPair);
+    localAssembly.run(false, maxAbpoaLength);
+    localAssembly.getSequence(step.sequence);
+
+}
+
+
+
+void AssemblyGraph2Vertex::getSequence(vector<Base>& sequence) const
+{
+    sequence.clear();
+    for(const auto& step: *this) {
+        copy(step.sequence.begin(), step.sequence.end(), back_inserter(sequence));
+    }
 }

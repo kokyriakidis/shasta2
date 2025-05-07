@@ -235,12 +235,20 @@ void Assembler::createAssemblyGraph2(
 
     // Create the AssemblyGraph2.
     performanceLog << timestamp << "AssemblyGraph2 creation begins." << endl;
-    const AssemblyGraph2 assemblyGraph2(anchors(), *transitionGraphPointer);
+    AssemblyGraph2 assemblyGraph2(
+        anchors(),
+        *transitionGraphPointer,
+        options.aDrift,
+        options.bDrift,
+        options.localAssemblyOptions.maxAbpoaLength);
     performanceLog << timestamp << "AssemblyGraph2 creation ends." << endl;
     transitionGraphPointer = 0; // We no longer need the TransitionGraph.
 
-    assemblyGraph2.writeGfa("AssemblyGraph2.gfa");
+    performanceLog << timestamp << "Sequence assembly begins." << endl;
+    assemblyGraph2.assembleAll(threadCount);
+    performanceLog << timestamp << "Sequence assembly ends." << endl;
 
+    assemblyGraph2.writeGfa("AssemblyGraph2.gfa");
 }
 
 

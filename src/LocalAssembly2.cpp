@@ -20,19 +20,40 @@ using namespace shasta;
 
 LocalAssembly2::LocalAssembly2(
     const Anchors& anchors,
-    AnchorId anchorIdA,
-    AnchorId anchorIdB,
-    bool computeAlignment,
-    uint64_t maxAbpoaLength,
+    ostream& html,
+    bool debugArgument,
     double aDrift,
     double bDrift,
-    ostream& html,
-    bool debugArgument) :
+    AnchorId anchorIdA,
+    AnchorId anchorIdB) :
     anchors(anchors),
     html(html),
     debug(debugArgument)
 {
     gatherOrientedReads(anchorIdA, anchorIdB, aDrift, bDrift);
+}
+
+
+
+LocalAssembly2::LocalAssembly2(
+    const Anchors& anchors,
+    ostream& html,
+    bool debugArgument,
+    double aDrift,
+    double bDrift,
+    const AnchorPair& anchorPair) :
+    anchors(anchors),
+    html(html),
+    debug(debugArgument)
+{
+    gatherOrientedReads(anchorPair, aDrift, bDrift);
+}
+
+
+
+void LocalAssembly2::run(
+    bool computeAlignment,
+    uint64_t maxAbpoaLength) {
 
     // Iterate until alignMarkers is successful.
     // Each failed iteration removes one or more OrientedReads.
@@ -94,8 +115,20 @@ void LocalAssembly2::gatherOrientedReads(
 {
     // Create an AnchorPair that contains the OrientedReadIds we want.
     // The last argument means that we just require the oriented reads
-    // to visit anchorIdB after anchorIdA, not immmediately after.
+    // to visit anchorIdB after anchorIdA, not immediately after.
     const AnchorPair anchorPairBeforeSplitting(anchors, anchorIdA, anchorIdB, false);
+
+    gatherOrientedReads(anchorPairBeforeSplitting, aDrift, bDrift);
+}
+
+
+
+void LocalAssembly2::gatherOrientedReads(
+    const AnchorPair& anchorPairBeforeSplitting,
+    double aDrift,
+    double bDrift)
+{
+
 
     // Split this AnchorPair into AnchorPairs with consistent offsets
     // and only use the larger one.

@@ -4,21 +4,36 @@
 
 namespace shasta {
     class LocalAssembly2;
+    class AnchorPair;
 }
 
 
 class shasta::LocalAssembly2 {
 public:
+
+    // This constructor uses an AnchorPair between the two specified anchors.
     LocalAssembly2(
         const Anchors&,
-        AnchorId anchorIdA,
-        AnchorId anchorIdB,
-        bool computeAlignment,
-        uint64_t maxAbpoaLength,
+        ostream& html,
+        bool debug,
         double aDrift,
         double bDrift,
+        AnchorId anchorIdA,
+        AnchorId anchorIdB);
+
+    // This constructor uses the AnchorPair passed in.
+    LocalAssembly2(
+        const Anchors&,
         ostream& html,
-        bool debug);
+        bool debug,
+        double aDrift,
+        double bDrift,
+        const AnchorPair&);
+
+    // After calling one of the above constructors, call run.
+    void run(
+        bool computeAlignment,
+        uint64_t maxAbpoaLength);
 
     void getSequence(vector<Base>&) const;
 
@@ -99,6 +114,10 @@ private:
     void gatherOrientedReads(
         AnchorId anchorIdA,
         AnchorId anchorIdB,
+        double aDrift,
+        double bDrift);
+    void gatherOrientedReads(
+        const AnchorPair&,
         double aDrift,
         double bDrift);
 

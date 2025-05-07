@@ -1124,12 +1124,15 @@ void Assembler::exploreLocalAssembly2(
 
 
     LocalAssembly2 localAssembly(
-        anchors(), anchorIdA, anchorIdB,
-        showAlignment,
-        maxAbpoaLength,
+        anchors(),
+        html,
+        debug,
         httpServerData.assemblerOptions->aDrift,
         httpServerData.assemblerOptions->bDrift,
-        html, debug);
+        anchorIdA, anchorIdB);
+    localAssembly.run(showAlignment, httpServerData.assemblerOptions->localAssemblyOptions.maxAbpoaLength);
+
+
 
     vector<Base> sequence;
     localAssembly.getSequence(sequence);

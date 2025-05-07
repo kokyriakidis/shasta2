@@ -1122,8 +1122,12 @@ void AssemblyGraph::assemble(edge_descriptor e, uint64_t threadCount)
 // This is the lowest level sequence assembly functions and is not multithreaded.
 // It runs a LocalAssembly between the appropriate pir of adjacent anchors in the
 // AssemblyGraphEdge.
-void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
+void AssemblyGraph::assembleStep(edge_descriptor, uint64_t)
 {
+    // Use AssemblyGraph2 instead.
+    SHASTA_ASSERT(0);
+
+#if 0
     AssemblyGraph& assemblyGraph = *this;
     AssemblyGraphEdge& edge = assemblyGraph[e];
 
@@ -1146,13 +1150,18 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
         0, localAssemblyDisplayOptions, assemblerOptions.localAssemblyOptions,
         false, false);
 #else
+
+    SHASTA_ASSERT(0);
+    /*
     LocalAssembly2 localAssembly(anchors, anchorId0, anchorId1, false,
         assemblerOptions.localAssemblyOptions.maxAbpoaLength,
         assemblerOptions.aDrift,
         assemblerOptions.bDrift,
         html, false);
+    */
 #endif
-    localAssembly.getSequence(sequence);
+    // localAssembly.getSequence(sequence);
+#endif
 }
 
 
