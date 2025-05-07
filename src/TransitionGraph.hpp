@@ -36,19 +36,21 @@ namespace shasta {
 
 class shasta::TransitionGraphVertex {
 public:
-    AnchorGraph::edge_descriptor eAnchorGraph;
-    uint64_t vertexId;
-    TransitionGraphVertex(AnchorGraph::edge_descriptor eAnchorGraph, uint64_t vertexId) :
-        eAnchorGraph(eAnchorGraph), vertexId(vertexId) {}
-    TransitionGraphVertex() : vertexId(invalid<uint64_t>) {}
+    AnchorPair anchorPair;
+    uint64_t id;
+    TransitionGraphVertex(const AnchorPair& anchorPair, uint64_t id) :
+        anchorPair(anchorPair), id(id) {}
+    TransitionGraphVertex() : id(invalid<uint64_t>) {}
 };
 
 
 
+// The TransitionGraphEdge contains an AnchorPair to bridge
+// between its source and target vertices.
+// If its source and target vertices have adjacent AnchorPairs,
+// this stores a null AnchorPair (converts to bool false).
 class shasta::TransitionGraphEdge {
 public:
-    uint64_t coverage;
-    TransitionGraphEdge(uint64_t coverage) : coverage(coverage) {}
 };
 
 
@@ -60,11 +62,14 @@ public:
         const Anchors&,
         const AnchorGraph&);
 
-    // A map that gives the TransitionGraph vertex
-    // corresponding to a given AnchorGraph edge.
-    std::map<AnchorGraph::edge_descriptor, vertex_descriptor> vertexMap;
-
     void writeGraphviz(const string& fileName) const;
     void writeGraphviz(ostream&) const;
+
+    // The journey of an oriented read in the TransitionGraph is
+    // the sequence of vertices it encounters.
+    vector< vector<vertex_descriptor> > journeys;
+    void computeJourneys(const Anchors&);
+
+    void check() const;
 
 };

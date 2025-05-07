@@ -10,10 +10,14 @@ using namespace shasta;
 
 
 AssemblyGraph1::AssemblyGraph1(
-    const AnchorGraph& anchorGraph,
-    const TransitionGraph& transitionGraph)
+    const AnchorGraph&,
+    const TransitionGraph&)
 {
+    SHASTA_ASSERT(0);   // Use AssemblyGraph2 instead.
+
+#if 0
     AssemblyGraph1& assemblyGraph1 = *this;
+
 
     // Find linear chains in the TransitionGraph.
     vector< vector<TransitionGraph::edge_descriptor> > chains;
@@ -70,7 +74,7 @@ AssemblyGraph1::AssemblyGraph1(
 
     cout << "The initial AssemblyGraph1 has " << num_vertices(assemblyGraph1) <<
         " vertices and " << num_edges(assemblyGraph1) << " edges." << endl;
-
+#endif
 }
 
 

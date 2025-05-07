@@ -13,7 +13,7 @@ using namespace shasta;
 
 AssemblyGraph2::AssemblyGraph2(
     const Anchors& anchors,
-    const AnchorGraph& anchorGraph,
+    const AnchorGraph& /* anchorGraph */,
     const TransitionGraph& transitionGraph)
 {
     AssemblyGraph2& assemblyGraph2 = *this;
@@ -21,7 +21,7 @@ AssemblyGraph2::AssemblyGraph2(
     // Find linear chains of vertices in the TransitionGraph.
     vector< std::list<TransitionGraph::vertex_descriptor> > chains;
     findLinearVertexChains(transitionGraph, chains);
-    cout << "Found " << chains.size() << " linear chains in the TransitionGraph." << endl;
+    // cout << "Found " << chains.size() << " linear chains in the TransitionGraph." << endl;
 
     // Maps filled n while creating vertices and used to create edges.
     std::map<TransitionGraph::vertex_descriptor, AssemblyGraph2::vertex_descriptor> firstVertexMap;
@@ -37,8 +37,7 @@ AssemblyGraph2::AssemblyGraph2(
         firstVertexMap.insert(make_pair(chain.front(), va));
         lastVertexMap.insert(make_pair(va, chain.back()));
         for(const TransitionGraph::vertex_descriptor vt: chain) {
-            const AnchorGraph::edge_descriptor eAnchorGraph = transitionGraph[vt].eAnchorGraph;
-            const AnchorPair& anchorPair = anchorGraph[eAnchorGraph];
+            const AnchorPair& anchorPair = transitionGraph[vt].anchorPair;
             const uint64_t offset = anchorPair.getAverageOffset(anchors);
             vertex.push_back(AssemblyGraph2VertexStep(anchorPair, offset));
         }
@@ -96,7 +95,7 @@ void AssemblyGraph2::check(const Anchors& anchors) const
         assemblyGraph2[v].check(anchors);
     }
     BGL_FORALL_EDGES(e, assemblyGraph2, AssemblyGraph2) {
-        check(anchors, e);
+        check(e);
     }
 }
 
@@ -105,9 +104,7 @@ void AssemblyGraph2::check(const Anchors& anchors) const
 void AssemblyGraph2Vertex::check(const Anchors& anchors) const
 {
 
-#if 0
-    // The AnchorPairs must be adjacent to each other.
-    // This requires changes in the TransitionGraph.
+    // The AnchorPairs of this vertex must be adjacent to each other.
     for(uint64_t i1=1; i1<size(); i1++) {
         const uint64_t i0 = i1 - 1;
 
@@ -126,7 +123,6 @@ void AssemblyGraph2Vertex::check(const Anchors& anchors) const
 
         SHASTA_ASSERT(step0.anchorPair.anchorIdB == step1.anchorPair.anchorIdA);
     }
-#endif
 
     // The offsets must be correct.
     for(const AssemblyGraph2VertexStep& step: *this) {
@@ -136,9 +132,17 @@ void AssemblyGraph2Vertex::check(const Anchors& anchors) const
 
 
 
-void AssemblyGraph2::check(const Anchors&, edge_descriptor) const
+void AssemblyGraph2::check(edge_descriptor e) const
 {
+    const AssemblyGraph2& assemblyGraph2 = *this;
 
+    const vertex_descriptor v0 = source(e, assemblyGraph2);
+    const vertex_descriptor v1 = target(e, assemblyGraph2);
+
+    const AssemblyGraph2Vertex& vertex0 = assemblyGraph2[v0];
+    const AssemblyGraph2Vertex& vertex1 = assemblyGraph2[v1];
+
+    SHASTA_ASSERT(vertex0.back().anchorPair.anchorIdB == vertex1.front().anchorPair.anchorIdA);
 }
 
 

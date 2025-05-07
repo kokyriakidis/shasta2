@@ -77,7 +77,7 @@ public:
     uint64_t nextVertexId = 0;
 
     void check(const Anchors&) const;
-    void check(const Anchors&, edge_descriptor) const;
+    void check(edge_descriptor) const;
 
     void writeGfa(const string& fileName) const;
     void writeGfa(ostream&) const;
