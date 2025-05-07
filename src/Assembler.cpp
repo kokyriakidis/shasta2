@@ -4,6 +4,7 @@
 #include "AssemblerOptions.hpp"
 #include "AssemblyGraph.hpp"
 #include "AssemblyGraph1.hpp"
+#include "AssemblyGraph2.hpp"
 #include "Journeys.hpp"
 #include "KmerCheckerFactory.hpp"
 #include "MurmurHash2.hpp"
@@ -234,6 +235,40 @@ void Assembler::createAssemblyGraph1(
     const AssemblyGraph1 assemblyGraph1(anchorGraph, transitionGraph);
     performanceLog << timestamp << "AssemblyGraph1 creation ends." << endl;
     assemblyGraph1.writeGfa("AssemblyGraph1.gfa");
+
+}
+
+
+
+void Assembler::createAssemblyGraph2(
+    const AssemblerOptions& options,
+    uint64_t threadCount)
+{
+    // Adjust the numbers of threads, if necessary.
+    if(threadCount == 0) {
+        threadCount = std::thread::hardware_concurrency();
+    }
+
+    // Generate an AnchorGraph in which all edges have consistent offsets.
+    performanceLog << timestamp << "AnchorGraph creation begins." << endl;
+    const AnchorGraph anchorGraph(
+        anchors(), journeys(),
+        6 /*options.minAnchorGraphEdgeCoverage */,
+        options.aDrift,
+        options.bDrift);
+    performanceLog << timestamp << "AnchorGraph creation ends." << endl;
+
+    // Create the TransitionGraph.
+    performanceLog << timestamp << "TransitionGraph creation begins." << endl;
+    const TransitionGraph transitionGraph(anchors(), anchorGraph);
+    performanceLog << timestamp << "TransitionGraph creation ends." << endl;
+    transitionGraph.writeGraphviz("TransitionGraph.dot");
+
+    // Create the AssemblyGraph2.
+    performanceLog << timestamp << "AssemblyGraph2 creation begins." << endl;
+    const AssemblyGraph2 assemblyGraph2(anchors(), anchorGraph, transitionGraph);
+    performanceLog << timestamp << "AssemblyGraph2 creation ends." << endl;
+    assemblyGraph2.writeGfa("AssemblyGraph2.gfa");
 
 }
 
