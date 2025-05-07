@@ -180,9 +180,6 @@ public:
     void createAssemblyGraph(
         const AssemblerOptions&,
         uint64_t threadCount);
-    void createAssemblyGraph1(
-        const AssemblerOptions&,
-        uint64_t threadCount);
     void createAssemblyGraph2(
         const AssemblerOptions&,
         uint64_t threadCount);
