@@ -116,6 +116,17 @@ TransitionGraph::TransitionGraph(
                     vertex2.anchorPair.orientedReadIds.push_back(infos[i].orientedReadId);
                 }
 
+                /*
+                cout << "Added bridge vertex to the TransitionGraph between (" <<
+                    anchorIdToString(vertex0.anchorPair.anchorIdA) << "," <<
+                    anchorIdToString(vertex0.anchorPair.anchorIdB) << ") and (" <<
+                    anchorIdToString(vertex1.anchorPair.anchorIdA) << "," <<
+                    anchorIdToString(vertex1.anchorPair.anchorIdB) << "), coverage " <<
+                    vertex2.anchorPair.orientedReadIds.size() << ", offset " <<
+                    vertex2.anchorPair.getAverageOffset(anchors) << endl;
+                */
+
+
                 add_edge(v0, v2, transitionGraph);
                 add_edge(v2, v1, transitionGraph);
             }
