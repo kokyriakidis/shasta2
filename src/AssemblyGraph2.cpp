@@ -352,3 +352,16 @@ void AssemblyGraph2Vertex::getSequence(vector<Base>& sequence) const
         copy(step.sequence.begin(), step.sequence.end(), back_inserter(sequence));
     }
 }
+
+
+
+// Detangle, phase, assemble sequence, output.
+void AssemblyGraph2::run(uint64_t threadCount)
+{
+    performanceLog << timestamp << "Sequence assembly begins." << endl;
+    assembleAll(threadCount);
+    performanceLog << timestamp << "Sequence assembly ends." << endl;
+
+    writeGfa("AssemblyGraph2.gfa");
+
+}

@@ -244,11 +244,9 @@ void Assembler::createAssemblyGraph2(
     performanceLog << timestamp << "AssemblyGraph2 creation ends." << endl;
     transitionGraphPointer = 0; // We no longer need the TransitionGraph.
 
-    performanceLog << timestamp << "Sequence assembly begins." << endl;
-    assemblyGraph2.assembleAll(threadCount);
-    performanceLog << timestamp << "Sequence assembly ends." << endl;
+    // Detangle, phase, assemble sequence, output.
+    assemblyGraph2.run(threadCount);
 
-    assemblyGraph2.writeGfa("AssemblyGraph2.gfa");
 }
 
 

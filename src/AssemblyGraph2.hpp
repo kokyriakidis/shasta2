@@ -81,7 +81,6 @@ class shasta::AssemblyGraph2 :
     public MappedMemoryOwner,
     public MultithreadedObject<AssemblyGraph2> {
 public:
-    const Anchors& anchors;
 
     AssemblyGraph2(
         const Anchors&,
@@ -89,6 +88,12 @@ public:
         double aDrift,
         double bDrift,
         uint64_t maxAbpoaLength);
+
+    // Detangle, phase, assemble sequence, output.
+    void run(uint64_t threadCount);
+
+private:
+    const Anchors& anchors;
     uint64_t nextVertexId = 0;
 
     void check() const;
