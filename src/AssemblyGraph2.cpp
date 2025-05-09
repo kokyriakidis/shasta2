@@ -1,9 +1,13 @@
 // Shasta.
 #include "AssemblyGraph2.hpp"
 #include "Anchor.hpp"
+#include "AssemblerOptions.hpp"
+#include "deduplicate.hpp"
 #include "findLinearChains.hpp"
 #include "LocalAssembly2.hpp"
+#include "orderPairs.hpp"
 #include "performanceLog.hpp"
+#include "rle.hpp"
 #include "TransitionGraph.hpp"
 using namespace shasta;
 
@@ -12,8 +16,9 @@ using namespace shasta;
 #include <fstream.hpp>
 #include <list>
 #include <map>
+#include "tuple.hpp"
 
-// Explicit instantiationn.
+// Explicit instantiation.
 #include "MultithreadedObject.tpp"
 template class MultithreadedObject<AssemblyGraph2>;
 
@@ -22,15 +27,11 @@ template class MultithreadedObject<AssemblyGraph2>;
 AssemblyGraph2::AssemblyGraph2(
     const Anchors& anchors,
     const TransitionGraph& transitionGraph,
-    double aDrift,
-    double bDrift,
-    uint64_t maxAbpoaLength) :
+    const AssemblerOptions& assemblerOptions) :
     MappedMemoryOwner(anchors),
     MultithreadedObject<AssemblyGraph2>(*this),
     anchors(anchors),
-    aDrift(aDrift),
-    bDrift(bDrift),
-    maxAbpoaLength(maxAbpoaLength)
+    assemblerOptions(assemblerOptions)
 {
     AssemblyGraph2& assemblyGraph2 = *this;
 
@@ -335,10 +336,10 @@ void AssemblyGraph2::assembleStep(vertex_descriptor v, uint64_t i)
     ofstream html;  // Not open, so no html output takes place.
     LocalAssembly2 localAssembly(
         anchors, html, false,
-        aDrift,
-        bDrift,
+        assemblerOptions.aDrift,
+        assemblerOptions.bDrift,
         step.anchorPair);
-    localAssembly.run(false, maxAbpoaLength);
+    localAssembly.run(false, assemblerOptions.localAssemblyOptions.maxAbpoaLength);
     localAssembly.getSequence(step.sequence);
 
 }
@@ -358,10 +359,379 @@ void AssemblyGraph2Vertex::getSequence(vector<Base>& sequence) const
 // Detangle, phase, assemble sequence, output.
 void AssemblyGraph2::run(uint64_t threadCount)
 {
+    writeGfa("AssemblyGraph-A.gfa");
+
+    bubbleCleanup(threadCount);
+    writeGfa("AssemblyGraph-B.gfa");
+    SHASTA_ASSERT(0);
+
     performanceLog << timestamp << "Sequence assembly begins." << endl;
     assembleAll(threadCount);
     performanceLog << timestamp << "Sequence assembly ends." << endl;
 
-    writeGfa("AssemblyGraph2.gfa");
+    writeGfa("AssemblyGraph-Z.gfa");
 
 }
+
+
+
+void AssemblyGraph2::bubbleCleanup(uint64_t threadCount)
+{
+    const bool debug = false;
+    AssemblyGraph2& assemblyGraph2 = *this;
+
+    vector<Bubble> allBubbles;
+    findBubbles(allBubbles);
+
+    // Histogram bubbles by ploidy.
+    {
+        vector<uint64_t> histogram;
+        for(const Bubble& bubble: allBubbles) {
+            const uint64_t ploidy = bubble.chains.size();
+            if(histogram.size() <= ploidy) {
+                histogram.resize(ploidy + 1, 0);
+            }
+            ++histogram[ploidy];
+        }
+        for(uint64_t ploidy=0; ploidy<histogram.size(); ploidy++) {
+            const uint64_t frequency = histogram[ploidy];
+            if(frequency > 0) {
+                cout << "Found " << frequency << " bubbles of ploidy " << ploidy << endl;
+            }
+        }
+    }
+
+
+    // If we decide to remove a Bubble, we have to replace it with a
+    // new vertex with an AnchorPair bridging between v0 and v1 of that Bubble.
+    // This will only be possible if the bubble is sufficiently short
+    // and there are enough common reads between v0 and v1.
+    // If not, we will leave the bubble alone.
+    // Figure out what Bubble satisfy this condition.
+    vector< pair<Bubble, AnchorPair> > candidateBubbles;
+    for(const Bubble& bubble: allBubbles) {
+        if(debug) {
+            cout << "Analyzing bubble with ploidy " << bubble.chains.size() << ": "
+                << assemblyGraph2[bubble.v0].id;
+
+            for(const vector<vertex_descriptor>& chain: bubble.chains) {
+                cout << " (";
+                for(uint64_t i=0; i<chain.size(); i++) {
+                    cout << assemblyGraph2[chain[i]].id;
+                    if(i == chain.size() - 1) {
+                        cout << ")";
+                    } else {
+                        cout << ",";
+                    }
+                }
+            }
+            cout << " " << assemblyGraph2[bubble.v1].id << endl;
+        }
+
+        // Get the last AnchorPair of the source vertex and the first AnchorPair
+        // of the target vertex, and the corresponding AnchorIds.
+        const AnchorPair& anchorPair0 = assemblyGraph2[bubble.v0].back().anchorPair;
+        const AnchorPair& anchorPair1 = assemblyGraph2[bubble.v1].front().anchorPair;
+        // const AnchorId anchorId0A = anchorPair0.anchorIdA;
+        const AnchorId anchorId0B = anchorPair0.anchorIdB;
+        const AnchorId anchorId1A = anchorPair1.anchorIdA;
+        // const AnchorId anchorId1B = anchorPair0.anchorIdB;
+
+        AnchorPair bridgeAnchorPair(anchors, anchorId0B, anchorId1A, false);
+
+        if(debug) {
+            cout << "Must bridge between anchors " <<
+                anchorIdToString(anchorId0B) << " " <<
+                anchorIdToString(anchorId1A) << ", common count " <<
+                bridgeAnchorPair.orientedReadIds.size() << endl;
+        }
+
+        // If coverage of the bridgeAnchorPair is low, we can't remove this bubble.
+        if(bridgeAnchorPair.orientedReadIds.size() < assemblerOptions.assemblyGraphOptions.bubbleCleanupMinCommonCount) {
+            if(debug) {
+                cout << "This bubble will not be removed due to insufficient coverage when bridging." << endl;
+            }
+            continue;
+        }
+
+        // Coverage of the bridgeAnchorPair is sufficient. But we only want to include
+        // OrientedReadIds that appear in at least one side of the Bubble.
+        vector<OrientedReadId> bubbleOrientedReadIds;
+        for(const vector<vertex_descriptor>& chain: bubble.chains) {
+            for(const vertex_descriptor v: chain) {
+                const AssemblyGraph2Vertex& vertex = assemblyGraph2[v];
+                for(const AssemblyGraph2VertexStep& step: vertex) {
+                    const AnchorPair& anchorPair = step.anchorPair;
+                    copy(anchorPair.orientedReadIds.begin(), anchorPair.orientedReadIds.end(),
+                        back_inserter(bubbleOrientedReadIds));
+                }
+            }
+        }
+        deduplicate(bubbleOrientedReadIds);
+        if(debug) {
+            cout << "Vertices internal to this bubble use " << bubbleOrientedReadIds.size() <<
+                " distinct oriented reads." << endl;
+        }
+
+        // We want use the OrientedReadIds that appear in both bubbleOrientedReadIds
+        // and the bridgeAnchorPair.
+        vector<OrientedReadId> orientedReadIds;
+        std::set_intersection(
+            bridgeAnchorPair.orientedReadIds.begin(), bridgeAnchorPair.orientedReadIds.end(),
+            bubbleOrientedReadIds.begin(), bubbleOrientedReadIds.end(),
+            back_inserter(orientedReadIds));
+        bridgeAnchorPair.orientedReadIds = orientedReadIds;
+        if(debug) {
+            cout << "The bridge AnchorPair will use " << bridgeAnchorPair.orientedReadIds.size() <<
+                " oriented reads." << endl;
+        }
+
+        // If coverage of the bridgeAnchorPair is low, we can't remove this bubble.
+        if(bridgeAnchorPair.orientedReadIds.size() < assemblerOptions.assemblyGraphOptions.bubbleCleanupMinCommonCount) {
+            if(debug) {
+                cout << "This bubble will not be removed due to insufficient coverage when bridging." << endl;
+            }
+            continue;
+        }
+
+        // Add this Bubble to our candidates for removal.
+        candidateBubbles.push_back(make_pair(bubble, bridgeAnchorPair));
+
+    }
+
+    if(debug) {
+        cout << "Found " << candidateBubbles.size() <<
+            " bubbles that are candidates for removal." << endl;
+    }
+
+
+
+    // Assemble sequence in the vertices internal to the candidate bubbles.
+    verticesToBeAssembled.clear();
+    for(const auto& p: candidateBubbles) {
+        const Bubble& bubble = p.first;
+        for(const vector<vertex_descriptor>& chain: bubble.chains) {
+            for(const vertex_descriptor v: chain) {
+                const AssemblyGraph2Vertex& vertex = assemblyGraph2[v];
+                if(not vertex.wasAssembled) {
+                    verticesToBeAssembled.push_back(v);
+                }
+            }
+        }
+    }
+    cout << timestamp << "Sequence assembly for bubble cleanup begins." << endl;
+    assemble(threadCount);
+    cout << timestamp << "Sequence assembly for bubble cleanup ends." << endl;
+
+
+
+    // Now that we have sequence for the candidate bubbles, we can decide
+    // which ones should be removed.
+    vector< vector<shasta::Base> > sequences;
+    uint64_t removedCount = 0;
+    for(const auto& p: candidateBubbles) {
+        const Bubble& bubble = p.first;
+
+        // Gather the sequences of all the sides of this bubble
+        sequences.clear();
+        for(const vector<vertex_descriptor>& chain: bubble.chains) {
+            sequences.emplace_back();
+            vector<shasta::Base>& sequence = sequences.back();
+            for(const vertex_descriptor v: chain) {
+                const AssemblyGraph2Vertex& vertex = assemblyGraph2[v];
+                SHASTA_ASSERT(vertex.wasAssembled);
+                for(const AssemblyGraph2VertexStep& step: vertex) {
+                    copy(step.sequence.begin(), step.sequence.end(), back_inserter(sequence));
+                }
+            }
+        }
+
+        if(debug) {
+            cout << "Sequences for bubble " << assemblyGraph2[bubble.v0].id <<
+                " ... " << assemblyGraph2[bubble.v1].id << endl;
+            for(uint64_t i=0; i<sequences.size(); i++) {
+                const vector<shasta::Base>& sequence = sequences[i];
+                cout << ">" << i << " " << sequence.size() << "\n";
+                copy(sequence.begin(), sequence.end(), ostream_iterator<shasta::Base>(cout));
+                cout << endl;
+            }
+
+        }
+
+        // This bubble can be removed if all the RLE sequences are identical.
+        bool allRawSequenceAreEqual = true;
+        for(uint64_t i=1; i<sequences.size(); i++) {
+            if(sequences[i] != sequences[0]) {
+                allRawSequenceAreEqual = false;
+                break;
+            }
+        }
+        if(debug) {
+            if(allRawSequenceAreEqual) {
+                cout << "The " << sequences.size() << " raw sequences are all equal." << endl;
+            } else {
+                cout << "The " << sequences.size() << " raw sequences are not all equal." << endl;
+            }
+        }
+
+
+        // If all raw sequence are equal, we can remove the bubble without checking the RLE sequences.
+        // Otherwise we have to also check the RLE sequences.
+        bool removeBubble = allRawSequenceAreEqual;
+        if(not allRawSequenceAreEqual) {
+
+            // Compute the RLE sequences.
+            vector< vector<shasta::Base> > rleSequences;
+            for(const vector<shasta::Base>& sequence: sequences) {
+                rleSequences.emplace_back();
+                rle(sequence, rleSequences.back());
+            }
+
+            // Check if they are all the same.
+            bool allRleSequenceAreEqual = true;
+            for(uint64_t i=1; i<sequences.size(); i++) {
+                if(rleSequences[i] != rleSequences[0]) {
+                    allRleSequenceAreEqual = false;
+                    break;
+                }
+            }
+
+            if(debug) {
+                if(allRleSequenceAreEqual) {
+                    cout << "The " << sequences.size() << " RLE sequences are all equal." << endl;
+                } else {
+                    cout << "The " << sequences.size() << " RLE sequences are not all equal." << endl;
+                }
+            }
+
+            removeBubble = allRleSequenceAreEqual;
+
+        }
+
+        if(debug) {
+            if(removeBubble) {
+                cout << "This bubble will be removed." << endl;
+            } else {
+                cout << "This bubble will not be removed." << endl;
+            }
+        }
+
+
+        // Remove the bubble, if we decided that we can do that.
+        if(removeBubble) {
+            ++removedCount;
+
+            // Remove the vertices of the bubble.
+            for(const vector<vertex_descriptor>& chain: bubble.chains) {
+                for(const vertex_descriptor v: chain) {
+                    clear_vertex(v, assemblyGraph2);
+                    remove_vertex(v, assemblyGraph2);
+                }
+            }
+
+            // Add a new vertex with a single step to replace the bubble.
+            const vertex_descriptor v2 = add_vertex(AssemblyGraph2Vertex(nextVertexId++), assemblyGraph2);
+            AssemblyGraph2Vertex& vertex2 = assemblyGraph2[v2];
+            const AnchorPair& anchorPair = p.second;
+            const uint64_t offset = anchorPair.getAverageOffset(anchors);
+            vertex2.emplace_back(anchorPair, offset);
+
+            // Add the edges.
+            add_edge(bubble.v0, v2, assemblyGraph2);
+            add_edge(v2, bubble.v1, assemblyGraph2);
+        }
+
+    }
+
+    cout << "Out of " << allBubbles.size() << " bubbles, " <<
+        candidateBubbles.size() << " were candidate for removal and " <<
+        removedCount << " were actually removed." << endl;
+
+
+}
+
+
+
+void AssemblyGraph2::findBubbles(vector<Bubble>& bubbles) const
+{
+    const AssemblyGraph2& assemblyGraph2 = *this;
+
+    // To find bubbles, find linear chains of edges.
+    // Each set of linear chains that begin and end at the same (v0, v1)
+    // and has size at least 2 forms a bubble.
+    vector< vector<edge_descriptor> > linearChains;
+    findLinearChains(assemblyGraph2, 0, linearChains);
+    const uint64_t linearChainCount = linearChains.size();
+
+    // We need to gather linear chains with the same (v0, v1).
+    class LinearChainInfo {
+    public:
+        vertex_descriptor v0;
+        vertex_descriptor v1;
+        uint64_t linearChainId; // Index in the linearChains vector.
+        bool operator<(const LinearChainInfo& that) const
+        {
+            return tie(v0, v1, linearChainId) < tie(that.v0, that.v1, that.linearChainId);
+        }
+    };
+    vector<LinearChainInfo> linearChainInfos(linearChainCount);
+    for(uint64_t linearChainId=0; linearChainId<linearChainCount; linearChainId++) {
+        const vector<edge_descriptor>& linearChain = linearChains[linearChainId];
+        LinearChainInfo& linearChainInfo = linearChainInfos[linearChainId];
+        linearChainInfo.v0 = source(linearChain.front(), assemblyGraph2);
+        linearChainInfo.v1 = target(linearChain.back(), assemblyGraph2);
+        linearChainInfo.linearChainId = linearChainId;
+    }
+    sort(linearChainInfos.begin(), linearChainInfos.end());
+
+
+
+    // Loop over streaks with the same (v0, v1).
+    // Each streak of length at least 2 generates a Bubble.
+    bubbles.clear();
+    for(uint64_t streakBegin=0; streakBegin<linearChainCount; /* Increment later */) {
+        const vertex_descriptor v0 = linearChainInfos[streakBegin].v0;
+        const vertex_descriptor v1 = linearChainInfos[streakBegin].v1;
+
+        uint64_t streakEnd = streakBegin + 1;
+        for(; streakEnd<linearChainCount; streakEnd++) {
+            if(linearChainInfos[streakEnd].v0 != v0) {
+                break;
+            }
+            if(linearChainInfos[streakEnd].v1 != v1) {
+                break;
+            }
+        }
+
+        const uint64_t ploidy = streakEnd - streakBegin;
+        if(ploidy > 1) {
+            bubbles.push_back(Bubble());
+            Bubble& bubble = bubbles.back();
+            bubble.v0 = v0;
+            bubble.v1 = v1;
+
+            for(uint64_t i=streakBegin; i!=streakEnd; i++) {
+                const LinearChainInfo& linearChainInfo = linearChainInfos[i];
+                const uint64_t linearChainId = linearChainInfo.linearChainId;
+                const vector<edge_descriptor>& linearChain = linearChains[linearChainId];
+
+                bubble.chains.resize(bubble.chains.size() + 1);
+                vector<vertex_descriptor>& chain = bubble.chains.back();
+
+                if(linearChain.size() > 1) {
+                    for(uint64_t j=0; j<linearChain.size()-1; j++) {
+                        const edge_descriptor e = linearChain[j];
+                        const vertex_descriptor v = target(e, assemblyGraph2);
+                        chain.push_back(v);
+                    }
+                }
+            }
+        }
+
+
+        // Prepare to process the next streak.
+        streakBegin = streakEnd;
+    }
+
+}
+

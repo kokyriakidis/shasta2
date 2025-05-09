@@ -238,9 +238,7 @@ void Assembler::createAssemblyGraph2(
     AssemblyGraph2 assemblyGraph2(
         anchors(),
         *transitionGraphPointer,
-        options.aDrift,
-        options.bDrift,
-        options.localAssemblyOptions.maxAbpoaLength);
+        options);
     performanceLog << timestamp << "AssemblyGraph2 creation ends." << endl;
     transitionGraphPointer = 0; // We no longer need the TransitionGraph.
 

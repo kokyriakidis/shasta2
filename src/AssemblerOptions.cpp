@@ -107,6 +107,11 @@ void AssemblerOptions::addOptions()
         "Minimum transition graph edge coverage."
         )->capture_default_str();
 
+     add_option("--assembly-graph-bubble-cleanup-min-common-count",
+        assemblyGraphOptions.bubbleCleanupMinCommonCount,
+        "Minimum number of common oriented reads for bubble cleanup."
+        )->capture_default_str();
+
     add_option("--assembly-graph-transitive-reduction-threshold",
         assemblyGraphOptions.transitiveReductionThreshold,
         "Length threshold for transitive reduction of the assembly graph."

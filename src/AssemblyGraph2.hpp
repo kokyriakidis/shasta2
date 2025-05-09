@@ -33,6 +33,7 @@ namespace shasta {
         AssemblyGraph2Edge>;
 
     class Anchors;
+    class AssemblerOptions;
     class Base;
     class TransitionGraph;
 }
@@ -85,30 +86,33 @@ public:
     AssemblyGraph2(
         const Anchors&,
         const TransitionGraph&,
-        double aDrift,
-        double bDrift,
-        uint64_t maxAbpoaLength);
+        const AssemblerOptions&);
 
     // Detangle, phase, assemble sequence, output.
     void run(uint64_t threadCount);
 
 private:
     const Anchors& anchors;
+    const AssemblerOptions& assemblerOptions;
     uint64_t nextVertexId = 0;
 
     void check() const;
     void check(edge_descriptor) const;
 
+    // Bubble cleanup.
+    // A bubble is a set of linear chains of vertices in the AssemblyGraph2.
+    // In most cases each of the linear chains contains only one vertex.
+    class Bubble {
+    public:
+        vertex_descriptor v0;
+        vertex_descriptor v1;
+        vector< vector<vertex_descriptor> > chains;
+    };
+    void findBubbles(vector<Bubble>&) const;
+    void bubbleCleanup(uint64_t threadCount);
+
     void writeGfa(const string& fileName) const;
     void writeGfa(ostream&) const;
-
-
-
-    // Sequence assembly.
-    // Each vertex generates a segment and its sequence.
-    double aDrift;
-    double bDrift;
-    uint64_t maxAbpoaLength;
 
     // Assemble sequence for all vertices.
     void assembleAll(uint64_t threadCount);
