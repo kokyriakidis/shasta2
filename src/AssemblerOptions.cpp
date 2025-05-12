@@ -95,6 +95,10 @@ void AssemblerOptions::addOptions()
         "Minimum anchor graph edge coverage."
         )->capture_default_str();
 
+    add_option("--max-anchor-graph-edge-coverage", maxAnchorGraphEdgeCoverage,
+        "Maximum anchor graph edge coverage."
+        )->capture_default_str();
+
     add_option("--a-drift", aDrift,
         "Constant allowed offset for offset consistency."
         )->capture_default_str();

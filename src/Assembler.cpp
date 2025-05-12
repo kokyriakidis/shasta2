@@ -194,7 +194,9 @@ void Assembler::createAssemblyGraph(
     }
 
     performanceLog << timestamp << "AnchorGraph creation begins." << endl;
-    const AnchorGraph anchorGraph(anchors(), journeys(), options.minAnchorGraphEdgeCoverage);
+    const AnchorGraph anchorGraph(anchors(), journeys(),
+        options.minAnchorGraphEdgeCoverage,
+        options.maxAnchorGraphEdgeCoverage);
     performanceLog << timestamp << "AnchorGraph creation ends." << endl;
 
     performanceLog << timestamp << "AssemblyGraph creation begins." << endl;
@@ -219,6 +221,7 @@ void Assembler::createAssemblyGraph2(
     shared_ptr<const AnchorGraph> anchorGraphPointer = make_shared<AnchorGraph>(
         anchors(), journeys(),
         options.minAnchorGraphEdgeCoverage,
+        options.maxAnchorGraphEdgeCoverage,
         options.aDrift,
         options.bDrift);
     performanceLog << timestamp << "AnchorGraph creation ends." << endl;

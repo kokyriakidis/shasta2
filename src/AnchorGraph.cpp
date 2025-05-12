@@ -16,7 +16,8 @@ using namespace shasta;
 AnchorGraph::AnchorGraph(
     const Anchors& anchors,
     const Journeys& journeys,
-    uint64_t minEdgeCoverage) :
+    uint64_t minEdgeCoverage,
+    uint64_t maxEdgeCoverage) :
     AnchorGraphBaseClass(anchors.size())
 {
     AnchorGraph& anchorGraph = *this;
@@ -27,7 +28,9 @@ AnchorGraph::AnchorGraph(
         AnchorPair::createChildren(anchors, journeys, anchorIdA, minEdgeCoverage, anchorPairs);
 
         for(const AnchorPair& anchorPair: anchorPairs) {
-            add_edge(anchorIdA, anchorPair.anchorIdB, anchorPair, anchorGraph);
+            if(anchorPair.orientedReadIds.size() <= maxEdgeCoverage) {
+                add_edge(anchorIdA, anchorPair.anchorIdB, anchorPair, anchorGraph);
+            }
         }
     }
 
@@ -44,6 +47,7 @@ AnchorGraph::AnchorGraph(
     const Anchors& anchors,
     const Journeys& journeys,
     uint64_t minEdgeCoverage,
+    uint64_t maxEdgeCoverage,
     double aDrift,
     double bDrift)
 {
@@ -65,7 +69,9 @@ AnchorGraph::AnchorGraph(
 
                 // Just generate an edge with this AnchorPair.
                 // This is the most common case.
-                add_edge(anchorIdA, anchorPair.anchorIdB, anchorPair, anchorGraph);
+                if(anchorPair.orientedReadIds.size() <= maxEdgeCoverage) {
+                    add_edge(anchorIdA, anchorPair.anchorIdB, anchorPair, anchorGraph);
+                }
 
             } else {
 
@@ -74,7 +80,7 @@ AnchorGraph::AnchorGraph(
                 anchorPair.split(anchors, aDrift, bDrift, newAnchorPairs);
 
                 for(const AnchorPair& anchorPair: newAnchorPairs) {
-                    if(anchorPair.size() >= minEdgeCoverage) {
+                    if((anchorPair.size() >= minEdgeCoverage) and (anchorPair.size() <= maxEdgeCoverage)) {
                         add_edge(anchorIdA, anchorPair.anchorIdB, anchorPair, anchorGraph);
                     }
                 }
