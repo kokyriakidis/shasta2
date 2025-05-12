@@ -114,6 +114,9 @@ private:
     void writeGfa(const string& fileName) const;
     void writeGfa(ostream&) const;
 
+    // Merge vertices in linear chains.
+    void compress();
+
     // Assemble sequence for all vertices.
     void assembleAll(uint64_t threadCount);
 
@@ -130,4 +133,6 @@ private:
     void assembleThreadFunction(uint64_t threadId);
     vector<vertex_descriptor> verticesToBeAssembled;
     vector< pair<vertex_descriptor, uint64_t> > stepsToBeAssembled;
+
+    void clearSequence();
 };

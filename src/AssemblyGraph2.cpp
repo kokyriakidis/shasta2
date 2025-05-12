@@ -363,6 +363,8 @@ void AssemblyGraph2::run(uint64_t threadCount)
 
     bubbleCleanup(threadCount);
     writeGfa("AssemblyGraph-B.gfa");
+    compress();
+    writeGfa("AssemblyGraph-C.gfa");
     SHASTA_ASSERT(0);
 
     performanceLog << timestamp << "Sequence assembly begins." << endl;
@@ -377,6 +379,8 @@ void AssemblyGraph2::run(uint64_t threadCount)
 
 void AssemblyGraph2::bubbleCleanup(uint64_t threadCount)
 {
+    performanceLog << timestamp << "Bubble cleanup begins." << endl;
+
     const bool debug = false;
     AssemblyGraph2& assemblyGraph2 = *this;
 
@@ -647,7 +651,8 @@ void AssemblyGraph2::bubbleCleanup(uint64_t threadCount)
         candidateBubbles.size() << " were candidate for removal and " <<
         removedCount << " were actually removed." << endl;
 
-
+    clearSequence();
+    performanceLog << timestamp << "Bubble cleanup ends." << endl;
 }
 
 
@@ -735,3 +740,65 @@ void AssemblyGraph2::findBubbles(vector<Bubble>& bubbles) const
 
 }
 
+
+
+// Merge vertices in linear chains.
+void AssemblyGraph2::compress()
+{
+    performanceLog << timestamp << "Compress begins." << endl;
+    AssemblyGraph2& assemblyGraph2 = *this;
+
+    // Find linear chains of vertices in the TransitionGraph.
+    vector< vector<vertex_descriptor> > chains;
+    findLinearVertexChains(assemblyGraph2, chains);
+
+    // Each chain with more than one vertex is replaced with a single vertex.
+    for(const vector<vertex_descriptor>& chain: chains) {
+        if(chain.size() < 2) {
+            continue;
+        }
+
+        // Create the new vertex.
+        const vertex_descriptor vNew = add_vertex(AssemblyGraph2Vertex(nextVertexId++), assemblyGraph2);
+        AssemblyGraph2Vertex& vertexNew = assemblyGraph2[vNew];
+        for(const vertex_descriptor v: chain) {
+            const AssemblyGraph2Vertex& vertex = assemblyGraph2[v];
+            copy(vertex.begin(), vertex.end(), back_inserter(vertexNew));
+        }
+
+        // Create the edges to/from the new vertex.
+        const vertex_descriptor v0 = chain.front();
+        BGL_FORALL_INEDGES(v0, e, assemblyGraph2, AssemblyGraph2) {
+            add_edge(source(e, assemblyGraph2), vNew, assemblyGraph2);
+        }
+        const vertex_descriptor v1 = chain.back();
+        BGL_FORALL_OUTEDGES(v1, e, assemblyGraph2, AssemblyGraph2) {
+            add_edge(vNew, target(e, assemblyGraph2), assemblyGraph2);
+        }
+
+        // Remove the old vertices.
+        for(const vertex_descriptor v: chain) {
+            clear_vertex(v, assemblyGraph2);
+            remove_vertex(v, assemblyGraph2);
+        }
+    }
+    performanceLog << timestamp << "Compress ends." << endl;
+
+}
+
+
+
+void AssemblyGraph2::clearSequence()
+{
+    AssemblyGraph2& assemblyGraph2 = *this;
+
+    BGL_FORALL_VERTICES(v, assemblyGraph2, AssemblyGraph2) {
+        AssemblyGraph2Vertex& vertex = assemblyGraph2[v];
+        vertex.wasAssembled= false;
+        for(AssemblyGraph2VertexStep& step: assemblyGraph2[v]) {
+            step.sequence.clear();
+            step.sequence.shrink_to_fit();
+        }
+    }
+
+}
