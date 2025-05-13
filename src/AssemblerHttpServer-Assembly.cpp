@@ -628,6 +628,144 @@ void Assembler::exploreSegment(
 
 
 
+void Assembler::exploreSegmentStep(
+    const vector<string>& request,
+    ostream& html)
+{
+    // Get the options from the request.
+    string assemblyStage;
+    HttpServer::getParameterValue(request, "assemblyStage", assemblyStage);
+
+    string segmentName;
+    HttpServer::getParameterValue(request, "segmentName", segmentName);
+
+    string stepIdString;
+    const bool stepIdStringIsPresent = HttpServer::getParameterValue(request, "stepId", stepIdString);
+    boost::trim(stepIdString);
+
+    string showAlignmentString;
+    const bool showAlignment = getParameterValue(request, "showAlignment", showAlignmentString);
+
+    string debugString;
+    const bool debug = getParameterValue(request, "debug", debugString);
+
+
+    // Start the form.
+    html << "<h2>Assembly graph segment step</h2><form><table>";
+
+    html <<
+        "<tr>"
+        "<th class=left>Assembly stage"
+        "<td class=centered><input type=text name=assemblyStage style='text-align:center' required";
+    if(not assemblyStage.empty()) {
+        html << " value='" << assemblyStage + "'";
+    }
+    html << " size=10>";
+
+    html <<
+        "<tr>"
+        "<th class=left>Segment name"
+        "<td class=centered><input type=text name=segmentName style='text-align:center' required";
+    if(not segmentName.empty()) {
+        html << " value='" << segmentName + "'";
+    }
+    html << ">";
+
+    html <<
+        "<tr>"
+        "<th class=left>Segment step id"
+        "<td class=centered><input type=text name=stepId style='text-align:center' required";
+    if(stepIdStringIsPresent) {
+        html << " value='" << stepIdString + "'";
+    }
+    html <<
+        ">"
+
+        "<tr><th>Show the alignment<td class=centered><input type=checkbox name=showAlignment" <<
+        (showAlignment ? " checked" : "") << ">"
+
+        "<tr><th>Show debug information<td class=centered><input type=checkbox name=debug" <<
+        (debug ? " checked" : "") << ">";
+
+    // End the form.
+    html <<
+        "</table>"
+        "<input type=submit value='Get segment step information'>"
+        "</form>";
+
+    if(segmentName.empty()) {
+        return;
+    }
+    if(not stepIdStringIsPresent) {
+        return;
+    }
+
+    uint64_t stepId;
+    try {
+        stepId = atoul(stepIdString);
+    } catch(std::exception& e) {
+        throw runtime_error("Step id " + stepIdString + " is not valid. Must be a number.");
+    }
+
+    uint64_t segmentId = invalid<uint64_t>;
+    try {
+        segmentId = std::stol(segmentName);
+    } catch(exception&) {
+    }
+    if(segmentId == invalid<uint64_t>) {
+        html << "Segment name must be a number.";
+        return;
+    }
+
+    // Get the AssemblyGraph for this assembly stage.
+    const AssemblyGraph2Postprocessor& assemblyGraph2 = getAssemblyGraph2(
+        assemblyStage,
+        *httpServerData.assemblerOptions);
+
+    // Find the AssemblyGraph2Vertex corresponding to the requested segment.
+    auto it = assemblyGraph2.vertexMap.find(segmentId);
+    if(it == assemblyGraph2.vertexMap.end()) {
+        html << "<p>Assembly graph at stage " << assemblyStage <<
+            " does not have segment " << segmentId;
+        return;
+    }
+
+    const AssemblyGraph2::vertex_descriptor v = it->second;
+    const AssemblyGraph2Vertex& vertex = assemblyGraph2[v];
+
+    if(stepId >= vertex.size()) {
+        html << "<p>Step " << stepId << " is not valid for this segment, which has " <<
+            vertex.size() << " steps.";
+        return;
+    }
+
+    html << "<h2>Step " << stepId << " of segment " << segmentId << " at assembly stage " <<
+        assemblyStage << "</h2>";
+
+
+
+    // Do the local assembly for this step.
+    LocalAssembly2 localAssembly(
+        anchors(), html, debug,
+        httpServerData.assemblerOptions->aDrift,
+        httpServerData.assemblerOptions->bDrift,
+        vertex[stepId].anchorPair);
+    localAssembly.run(showAlignment, httpServerData.assemblerOptions->localAssemblyOptions.maxAbpoaLength);
+
+
+
+    // Also output the sequence to fasta.
+    vector<Base> sequence;
+    localAssembly.getSequence(sequence);
+
+    ofstream fasta("LocalAssembly.fasta");
+    fasta << ">LocalAssembly " << sequence.size() << endl;
+    copy(sequence.begin(), sequence.end(), ostream_iterator<Base>(fasta));
+}
+
+
+
+
 AssemblyGraphPostprocessor& Assembler::getAssemblyGraph(
     const string& assemblyStage,
     const AssemblerOptions& assemblerOptions)

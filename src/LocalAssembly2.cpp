@@ -438,7 +438,7 @@ void LocalAssembly2::alignMarkers()
 
 
     // Write out allAlignedMarkers.
-    if(html) {
+    if(html and debug) {
         html <<
             "<h3>Aligned markers</h3>"
             "<p>Found " << allAlignedMarkersVector.size() << " sets of aligned markers, "
@@ -871,7 +871,7 @@ void LocalAssembly2::writeConsensus(const vector< pair<Base, uint64_t> >& consen
 void LocalAssembly2::writeConsensus() const
 {
     html <<
-        "<h3>Combined consensus for all assembly steps</h3>"
+        "<h3>Consensus</h3>"
         "<table>"
         "<tr><th class=left>Consensus sequence length<td class=left>" << consensus.size() <<
         "<tr><th class=left>Consensus sequence"
@@ -1008,7 +1008,7 @@ void LocalAssembly2::writeAlignment(
 // Write the global alignment (all steps).
 void LocalAssembly2::writeAlignment()
 {
-    html << "<h3>Combined alignment for all assembly steps</h3>";
+    html << "<h3>Alignment</h3>";
 
     // Get the input sequences for all reads.
     vector< vector<Base> > inputSequences(orientedReads.size());
