@@ -564,7 +564,7 @@ void Assembler::exploreSegment(
         html << "</div>";
 
         // Also write the sequence to LocalAssembly.fasta.
-        ofstream fasta("LocalAssembly.fasta");
+        ofstream fasta("Segment.fasta");
         fasta << ">" << segmentName << "-" << sequenceBegin << "-" << sequenceEnd <<
             " length " << sequenceEnd - sequenceBegin << endl;
         copy(sequence.begin() + sequenceBegin, sequence.begin() + sequenceEnd,
