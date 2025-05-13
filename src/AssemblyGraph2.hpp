@@ -12,6 +12,7 @@
 
 // Boost libraries.
 #include <boost/graph/adjacency_list.hpp>
+#include <boost/serialization/vector.hpp>
 
 // Standard library.
 #include <iosfwd.hpp>
@@ -43,7 +44,7 @@ namespace shasta {
 class shasta::AssemblyGraph2VertexStep {
 public:
     AnchorPair anchorPair;
-    uint64_t offset;
+    uint64_t offset = invalid<uint64_t>;
     vector<Base> sequence;
 
     AssemblyGraph2VertexStep(
@@ -52,6 +53,16 @@ public:
         anchorPair(anchorPair),
         offset(offset)
     {}
+
+    AssemblyGraph2VertexStep()
+    {}
+
+    template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
+    {
+        ar & anchorPair;
+        ar & offset;
+        ar & sequence;
+    }
 };
 
 
@@ -59,8 +70,10 @@ public:
 class shasta::AssemblyGraph2Vertex : public vector<AssemblyGraph2VertexStep> {
 public:
     uint64_t id = invalid<uint64_t>;
-    AssemblyGraph2Vertex(uint64_t id) : id(id) {}
     bool wasAssembled = false;
+
+    AssemblyGraph2Vertex(uint64_t id) : id(id) {}
+    AssemblyGraph2Vertex() {}
 
     void check(const Anchors&) const;
 
@@ -68,12 +81,22 @@ public:
     uint64_t sequenceLength() const;
 
     void getSequence(vector<Base>&) const;
+
+    template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
+    {
+        ar & boost::serialization::base_object< vector<AssemblyGraph2VertexStep> >(*this);
+        ar & id;
+        ar & wasAssembled;
+    }
 };
 
 
 
 class shasta::AssemblyGraph2Edge {
 public:
+    template<class Archive> void serialize(Archive& /* ar */, unsigned int /* version */)
+    {
+    }
 };
 
 
@@ -113,12 +136,31 @@ private:
     void bubbleCleanup(uint64_t threadCount);
 
     // Output.
-    void write(const string& baseName);
+    void write(const string& stage);
     void writeGfa(const string& fileName) const;
     void writeGfa(ostream&) const;
     void writeFasta(const string& fileName) const;
     void writeGraphviz(const string& fileName) const;
     void writeGraphviz(ostream&) const;
+
+
+
+    // Serialization.
+    friend class boost::serialization::access;
+    template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
+    {
+        ar & boost::serialization::base_object<AssemblyGraph2BaseClass>(*this);
+        ar & nextVertexId;
+    }
+    void save(ostream&) const;
+    void load(istream&);
+
+    // These do save/load to/from mapped memory.
+    // The file name is AssemblyGraph2-Stage.
+    void save(const string& stage) const;
+    void load(const string& stage);
+
+
 
     // Merge vertices in linear chains.
     void compress();

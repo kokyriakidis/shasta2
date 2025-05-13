@@ -11,6 +11,11 @@
 #include "TransitionGraph.hpp"
 using namespace shasta;
 
+// Boost libraries.
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/graph/adj_list_serialize.hpp>
+
 // Standard library.
 #include <chrono.hpp>
 #include <fstream.hpp>
@@ -164,10 +169,11 @@ void AssemblyGraph2::check(edge_descriptor e) const
 
 
 
-void AssemblyGraph2::write(const string& baseName)
+void AssemblyGraph2::write(const string& stage)
 {
-    writeGfa("AssemblyGraph2-" + baseName + ".gfa");
-    writeGraphviz("AssemblyGraph2-" + baseName + ".dot");
+    save(stage);
+    writeGfa("AssemblyGraph2-" + stage + ".gfa");
+    writeGraphviz("AssemblyGraph2-" + stage + ".dot");
 }
 
 
@@ -897,4 +903,69 @@ void AssemblyGraph2::clearSequence()
         }
     }
 
+}
+
+
+
+void AssemblyGraph2::save(ostream& s) const
+{
+    boost::archive::binary_oarchive archive(s);
+    archive << *this;
+}
+
+
+
+void AssemblyGraph2::load(istream& s)
+{
+    boost::archive::binary_iarchive archive(s);
+    archive >> *this;
+}
+
+
+
+void AssemblyGraph2::save(const string& stage) const
+{
+    // If not using persistent binary data, do nothing.
+    if(largeDataFileNamePrefix.empty()) {
+        return;
+    }
+
+    // First save to a string.
+    std::ostringstream s;
+    save(s);
+    const string dataString = s.str();
+
+    // Now save the string to binary data.
+    const string name = largeDataName("AssemblyGraph2-" + stage);
+    MemoryMapped::Vector<char> data;
+    data.createNew(name, largeDataPageSize);
+    data.resize(dataString.size());
+    const char* begin = dataString.data();
+    const char* end = begin + dataString.size();
+    copy(begin, end, data.begin());
+}
+
+
+
+void AssemblyGraph2::load(const string& assemblyStage)
+{
+    // Access the binary data.
+    MemoryMapped::Vector<char> data;
+    try {
+        const string name = largeDataName("AssemblyGraph2-" + assemblyStage);
+        data.accessExistingReadOnly(name);
+    } catch (std::exception&) {
+        throw runtime_error("Assembly graph at stage " + assemblyStage +
+            " is not available.");
+    }
+    const string dataString(data.begin(), data.size());
+
+    // Load it from here.
+    std::istringstream s(dataString);
+    try {
+        load(s);
+    } catch(std::exception& e) {
+        throw runtime_error("Error reading assembly graph at stage " + assemblyStage +
+            ": " + e.what());
+    }
 }
