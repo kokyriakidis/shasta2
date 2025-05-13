@@ -18,5 +18,7 @@ public:
         const AssemblerOptions&,
         const string& assemblyStage);
 
+    // Map from vertex id to vertex_descriptor.
+    std::map<uint64_t, vertex_descriptor> vertexMap;
 };
 

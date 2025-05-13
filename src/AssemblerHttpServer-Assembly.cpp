@@ -265,20 +265,20 @@ void Assembler::exploreSegment(
     string segmentName;;
     HttpServer::getParameterValue(request, "segmentName", segmentName);
 
-    string displayAnchors = "none";
-    HttpServer::getParameterValue(request, "displayAnchors", displayAnchors);
+    string displaySteps = "none";
+    HttpServer::getParameterValue(request, "displaySteps", displaySteps);
 
-    string beginString;
-    HttpServer::getParameterValue(request, "begin", beginString);
+    string stepBeginString;
+    HttpServer::getParameterValue(request, "stepBegin", stepBeginString);
 
-    string endString;
-    HttpServer::getParameterValue(request, "end", endString);
+    string stepEndString;
+    HttpServer::getParameterValue(request, "stepEnd", stepEndString);
 
-    string firstAnchorsCountString = "5";
-    HttpServer::getParameterValue(request, "firstAnchorsCountString", firstAnchorsCountString);
+    string firstStepsCountString = "5";
+    HttpServer::getParameterValue(request, "firstStepsCount", firstStepsCountString);
 
-    string lastAnchorsCountString = "5";
-    HttpServer::getParameterValue(request, "lastAnchorsCountString", lastAnchorsCountString);
+    string lastStepsCountString = "5";
+    HttpServer::getParameterValue(request, "lastStepsCount", lastStepsCountString);
 
     string showSequenceString;
     const bool showSequence = getParameterValue(request, "showSequence", showSequenceString);
@@ -316,35 +316,35 @@ void Assembler::exploreSegment(
 
 
 
-    // Options to control which segment anchors are shown.
+    // Options to control which segment steps are shown.
     html <<
         "<tr>"
-        "<th class=left>Show segment anchors"
+        "<th class=left>Show segment steps"
         "<td class=left>"
 
-        "<input type=radio required name=displayAnchors value='none'" <<
-        (displayAnchors == "none" ? " checked=on" : "") << "> None"
+        "<input type=radio required name=displaySteps value='none'" <<
+        (displaySteps == "none" ? " checked=on" : "") << "> None"
 
-        "<br><input type=radio required name=displayAnchors value='all'" <<
-        (displayAnchors == "all" ? " checked=on" : "") << "> All"
+        "<br><input type=radio required name=displaySteps value='all'" <<
+        (displaySteps == "all" ? " checked=on" : "") << "> All"
 
-        "<br><input type=radio required name=displayAnchors value='range'" <<
-        (displayAnchors == "range" ? " checked=on" : "") << "> Anchors in position range "
-        "<input type=text name=begin size=8 style='text-align:center' value='" << beginString << "'> to "
-        "<input type=text name=end size=8 style='text-align:center' value='" << endString << "'>"
+        "<br><input type=radio required name=displaySteps value='range'" <<
+        (displaySteps == "range" ? " checked=on" : "") << "> Steps in position range "
+        "<input type=text name=stepBegin size=8 style='text-align:center' value='" << stepBeginString << "'> to "
+        "<input type=text name=stepEnd size=8 style='text-align:center' value='" << stepEndString << "'>"
 
-        "<br><input type=radio required name=displayAnchors value='first'" <<
-        (displayAnchors == "first" ? " checked=on" : "") << "> First "
-        "<input type=text name=firstAnchorsCount size=8 style='text-align:center' value='" << firstAnchorsCountString << "'>"
-        " anchors"
+        "<br><input type=radio required name=displaySteps value='first'" <<
+        (displaySteps == "first" ? " checked=on" : "") << "> First "
+        "<input type=text name=firstStepsCount size=8 style='text-align:center' value='" << firstStepsCountString << "'>"
+        " steps"
 
-        "<br><input type=radio required name=displayAnchors value='last'" <<
-        (displayAnchors == "last" ? " checked=on" : "") << "> Last "
-        "<input type=text name=lastAnchorsCount size=8 style='text-align:center' value='" << lastAnchorsCountString << "'>"
-        " anchors"
+        "<br><input type=radio required name=displaySteps value='last'" <<
+        (displaySteps == "last" ? " checked=on" : "") << "> Last "
+        "<input type=text name=lastStepsCount size=8 style='text-align:center' value='" << lastStepsCountString << "'>"
+        " steps"
 
         "<br><input type=checkbox name=showSequenceDetails" << (showSequenceDetails ? " checked" : "") <<
-        "> Also show sequence details for these anchors";
+        "> Also show sequence details for these steps";
         ;
 
     // Options to control the sequence display.
@@ -389,145 +389,155 @@ void Assembler::exploreSegment(
     }
 
     // Get the AssemblyGraph for this assembly stage.
-    const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
+    const AssemblyGraph2Postprocessor& assemblyGraph2 = getAssemblyGraph2(
         assemblyStage,
         *httpServerData.assemblerOptions);
 
-    // Find the AssemblyGraphEdge corresponding to the requested segment.
-    auto it = assemblyGraph.edgeMap.find(segmentId);
-    if(it == assemblyGraph.edgeMap.end()) {
+    // Find the AssemblyGraph2Vertex corresponding to the requested segment.
+    auto it = assemblyGraph2.vertexMap.find(segmentId);
+    if(it == assemblyGraph2.vertexMap.end()) {
         html << "<p>Assembly graph at stage " << assemblyStage <<
             " does not have segment " << segmentId;
         return;
     }
-    const AssemblyGraph::edge_descriptor e = it->second;
-    const AssemblyGraphEdge& edge = assemblyGraph[e];
+    const AssemblyGraph2::vertex_descriptor v = it->second;
+    const AssemblyGraph2Vertex& vertex = assemblyGraph2[v];
 
-    const AnchorId anchorIdA = edge.front();
-    const AnchorId anchorIdB = edge.back();
-    SHASTA_ASSERT(anchorIdA == assemblyGraph[source(e, assemblyGraph)].anchorId);
-    SHASTA_ASSERT(anchorIdB == assemblyGraph[target(e, assemblyGraph)].anchorId);
+
 
     html << "<h2>Segment " << segmentId << " at assembly stage " << assemblyStage << "</h2>";
 
     // Summary table.
     html <<
         "<table>"
-        "<tr><th class=left>First anchor<td class = centered>" << anchorIdToString(anchorIdA) <<
-        "<tr><th class=left>Last anchor<td class = centered>" << anchorIdToString(anchorIdB) <<
-        "<tr><th class=left>Number of anchors<td class = centered>" << edge.size() <<
-        "<tr><th class=left>Estimated length<td class = centered>" << edge.length(anchors());
-    if(edge.wasAssembled) {
+        "<tr><th class=left>First anchor<td class = centered>" << anchorIdToString(vertex.front().anchorPair.anchorIdA) <<
+        "<tr><th class=left>Last anchor<td class = centered>" << anchorIdToString(vertex.back().anchorPair.anchorIdB) <<
+        "<tr><th class=left>Number of steps<td class = centered>" << vertex.size() <<
+        "<tr><th class=left>Estimated length<td class = centered>" << vertex.offset();
+    if(vertex.wasAssembled) {
         html <<
-            "<tr><th class=left>Assembled length<td class = centered>" << edge.sequenceLength();
+            "<tr><th class=left>Assembled length<td class = centered>" << vertex.sequenceLength();
 
     }
     html << "</table>";
 
 
-
-    // Figure out the anchor position range to use.
-    uint64_t begin = invalid<uint64_t>;
-    uint64_t end = invalid<uint64_t>;
-    if(displayAnchors == "all") {
-        begin = 0;
-        end = edge.size();
-    } else if(displayAnchors == "range") {
+    // Figure out the step position range to use.
+    uint64_t stepBegin = invalid<uint64_t>;
+    uint64_t stepEnd = invalid<uint64_t>;
+    if(displaySteps == "all") {
+        stepBegin = 0;
+        stepEnd = vertex.size();
+    } else if(displaySteps == "range") {
         try {
-            begin = atoul(beginString);
+            stepBegin = atoul(stepBeginString);
         } catch(std::exception& e) {
-            throw runtime_error("Begin " + beginString + " is not valid. Must be a number.");
+            throw runtime_error("Begin " + stepBeginString + " is not valid. Must be a number.");
         }
         try {
-            end = atoul(endString);
+            stepEnd = atoul(stepEndString);
         } catch(std::exception& e) {
-            throw runtime_error("End " + endString + " is not valid. Must be a number.");
+            throw runtime_error("End " + stepEndString + " is not valid. Must be a number.");
         }
-        if(begin >= edge.size()) {
-            begin = edge.size() - 1;
+        if(stepBegin >= vertex.size()) {
+            stepBegin = vertex.size() - 1;
         }
-        if(end > edge.size()) {
-            end = edge.size();
+        if(stepBegin > vertex.size()) {
+            stepBegin = vertex.size();
         }
-        if(end < begin) {
-            end = begin + 1;
+        if(stepEnd < stepBegin) {
+            stepEnd = stepBegin + 1;
         }
-    } else if(displayAnchors == "first") {
-        begin = 0;
+        if(stepEnd > vertex.size()) {
+            stepEnd = vertex.size();
+        }
+    } else if(displaySteps == "first") {
+        stepBegin = 0;
         try {
-            end = atoul(firstAnchorsCountString);
+            stepEnd = atoul(firstStepsCountString);
         } catch(std::exception& e) {
-            throw runtime_error("First anchors count " + firstAnchorsCountString + " is not valid. Must be a number.");
+            throw runtime_error("First anchors count " + firstStepsCountString + " is not valid. Must be a number.");
         }
-        if(end > edge.size()) {
-            end = edge.size();
+        if(stepEnd > vertex.size()) {
+            stepEnd = vertex.size();
         }
-    } else if(displayAnchors == "last") {
-        end = edge.size();
+    } else if(displaySteps == "last") {
+        stepEnd = vertex.size();
         uint64_t count = invalid<uint64_t>;
         try {
-            count = atoul(lastAnchorsCountString);
+            count = atoul(lastStepsCountString);
         } catch(std::exception& e) {
-            throw runtime_error("Last anchors count " + lastAnchorsCountString + " is not valid. Must be a number.");
+            throw runtime_error("Last anchors count " + lastStepsCountString + " is not valid. Must be a number.");
         }
-        if(count > edge.size()) {
-            begin = 0;
+        if(count > vertex.size()) {
+            stepBegin = 0;
         } else {
-            begin = end - count;
+            stepBegin = stepEnd - count;
         }
     }
 
 
 
     // Details table showing the requested anchors.
-    if(displayAnchors != "none") {
+    if(displaySteps != "none") {
 
         html <<
             "<p>"
             "<table>"
-            "<tr><th>Position<th>AnchorId<th>Coverage"
-            "<th>Common<br>coverage<br>with<br>next"
-            "<th>Base<br>offset<br>to<br>next";
+            "<tr><th>Step<th>AnchorIdA<th>AnchorIdB<th>Coverage<th>Estimated<br>Length";
+        if(vertex.wasAssembled) {
+            html << "<th>Actual<br>Length";
+            if(showSequenceDetails) {
+                html <<
+                    "<th>Sequence<br>begin"
+                    "<th>Sequence<br>end"
+                    "<th>Sequence";
+            }
+        }
 
-        for(uint64_t position=begin; position!=end; ++position) {
-            const AnchorId anchorId = edge[position];
-            const uint64_t coverage = anchors()[anchorId].coverage();
+        uint64_t sequencePosition = 0;
+        if(showSequenceDetails) {
+            for(uint64_t i=0; i<stepBegin; i++) {
+                sequencePosition += vertex[i].sequence.size();
+            }
+        }
+
+        for(uint64_t stepId=stepBegin; stepId!=stepEnd; ++stepId) {
+            const AssemblyGraph2VertexStep& step = vertex[stepId];
 
             html <<
                 "<tr>"
-                "<td class=centered>" << position <<
-                "<td class=centered>" << anchorIdToString(anchorId) <<
-                "<td class=centered>" << coverage;
-
-            if(position < edge.size() -1) {
-                const uint64_t nextPosition = position + 1;
-                const AnchorId nextAnchorId = edge[nextPosition];
-                uint64_t baseOffset;
-                const uint64_t commonCount = anchors().countCommon(anchorId, nextAnchorId, baseOffset);
-                html <<
-                    "<td class=centered>" << commonCount <<
-                    "<td class=centered>" << baseOffset;
-            } else {
-                html << "<td><td>";
+                "<td class=centered>" << stepId <<
+                "<td class=centered>" << anchorIdToString(step.anchorPair.anchorIdA) <<
+                "<td class=centered>" << anchorIdToString(step.anchorPair.anchorIdB) <<
+                "<td class=centered>" << step.anchorPair.orientedReadIds.size() <<
+                "<td class=centered>" << step.offset;
+            if(vertex.wasAssembled) {
+                html << "<td class=centered>" << step.sequence.size();
+                if(showSequenceDetails) {
+                    html <<
+                        "<td class=centered>" << sequencePosition <<
+                        "<td class=centered>" << sequencePosition + step.sequence.size() <<
+                        "<td style='font-family:monospace'>";
+                    copy(step.sequence.begin(), step.sequence.end(), ostream_iterator<Base>(html));
+                    sequencePosition += step.sequence.size();
+                }
             }
+
+
         }
 
         html << "</table>";
     }
 
-    if(not edge.wasAssembled) {
-        if(showSequence or showSequenceDetails) {
-            html << "<p>Sequence for this segment is not available.";
-            return;
-        }
-    }
+
 
     // Sequence, if requested.
-    if(showSequence) {
+    if(showSequence and vertex.wasAssembled) {
         html << "<h2>Assembled sequence</h2>";
 
         vector<Base> sequence;
-        edge.getSequence(sequence);
+        vertex.getSequence(sequence);
 
         if(not sequenceBeginIsPresent) {
             sequenceBegin = 0;
@@ -561,7 +571,7 @@ void Assembler::exploreSegment(
             ostream_iterator<Base>(fasta));
     }
 
-
+#if 0
     // Sequence details, if requested.
     if(showSequenceDetails and (displayAnchors != "none")) {
         html <<
@@ -613,6 +623,7 @@ void Assembler::exploreSegment(
         html << "</table>";
 
     }
+#endif
 }
 
 
