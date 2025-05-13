@@ -85,9 +85,6 @@ AssemblyGraph2::AssemblyGraph2(
         }
     }
 
-    cout << "The initial AssemblyGraph2 has " << num_vertices(assemblyGraph2) <<
-        " vertices and " << num_edges(assemblyGraph2) << " edges." << endl;
-
     // Check that all vertices and edges of the TransitionGraph are accounted for.
     uint64_t vertexCount = 0;
     uint64_t edgeCount = num_edges(assemblyGraph2);
@@ -106,6 +103,7 @@ AssemblyGraph2::AssemblyGraph2(
 
 void AssemblyGraph2::check() const
 {
+    performanceLog << timestamp << "AssemblyGraph2 check begins." << endl;
     const AssemblyGraph2& assemblyGraph2 = *this;
 
     BGL_FORALL_VERTICES(v, assemblyGraph2, AssemblyGraph2) {
@@ -114,6 +112,8 @@ void AssemblyGraph2::check() const
     BGL_FORALL_EDGES(e, assemblyGraph2, AssemblyGraph2) {
         check(e);
     }
+
+    performanceLog << timestamp << "AssemblyGraph2 check ends." << endl;
 }
 
 
@@ -166,8 +166,10 @@ void AssemblyGraph2::check(edge_descriptor e) const
 
 void AssemblyGraph2::writeGfa(const string& fileName) const
 {
+    performanceLog << timestamp << "GFA output begins for " << fileName << endl;
     ofstream gfa(fileName);
     writeGfa(gfa);
+    performanceLog << timestamp << "GFA output ends for " << fileName << endl;
 }
 
 
@@ -179,7 +181,7 @@ void AssemblyGraph2::writeGfa(ostream& gfa) const
     // Write the header line.
     gfa << "H\tVN:Z:1.0\n";
 
-    // Eacg vertex generates a gfa segment.
+    // Each vertex generates a gfa segment.
     vector<shasta::Base> sequence;
     BGL_FORALL_VERTICES(v, assemblyGraph2, AssemblyGraph2) {
         const AssemblyGraph2Vertex& vertex = assemblyGraph2[v];
@@ -223,6 +225,29 @@ void AssemblyGraph2::writeGfa(ostream& gfa) const
 
 
 
+void AssemblyGraph2::writeFasta(const string& fileName) const
+{
+    performanceLog << timestamp << "Fasta output begins for " << fileName << endl;
+
+    const AssemblyGraph2& assemblyGraph2 = *this;;
+    ofstream fasta(fileName);
+
+    vector<shasta::Base> sequence;
+    BGL_FORALL_VERTICES(v, assemblyGraph2, AssemblyGraph2) {
+        const AssemblyGraph2Vertex& vertex = assemblyGraph2[v];
+        vertex.getSequence(sequence);
+
+        fasta << ">" << vertex.id << "\n";
+        copy(sequence.begin(), sequence.end(), ostream_iterator<shasta::Base>(fasta));
+        fasta << "\n";
+    }
+
+    performanceLog << timestamp << "Fasta output ends for " << fileName << endl;
+}
+
+
+
+
 uint64_t AssemblyGraph2Vertex::offset() const
 {
     uint64_t sum = 0;
@@ -237,7 +262,7 @@ uint64_t AssemblyGraph2Vertex::offset() const
 // Assemble sequence for all vertices.
 void AssemblyGraph2::assembleAll(uint64_t threadCount)
 {
-    cout << timestamp << "Sequence assembly begins." << endl;
+    performanceLog << timestamp << "Sequence assembly begins." << endl;
     const AssemblyGraph2& assemblyGraph2 = *this;
 
     verticesToBeAssembled.clear();
@@ -245,7 +270,7 @@ void AssemblyGraph2::assembleAll(uint64_t threadCount)
         verticesToBeAssembled.push_back(v);
     }
     assemble(threadCount);
-    cout << timestamp << "Sequence assembly ends." << endl;
+    performanceLog << timestamp << "Sequence assembly ends." << endl;
 }
 
 
@@ -348,6 +373,7 @@ void AssemblyGraph2::assembleStep(vertex_descriptor v, uint64_t i)
 
 void AssemblyGraph2Vertex::getSequence(vector<Base>& sequence) const
 {
+    SHASTA_ASSERT(wasAssembled);
     sequence.clear();
     for(const auto& step: *this) {
         copy(step.sequence.begin(), step.sequence.end(), back_inserter(sequence));
@@ -359,19 +385,29 @@ void AssemblyGraph2Vertex::getSequence(vector<Base>& sequence) const
 // Detangle, phase, assemble sequence, output.
 void AssemblyGraph2::run(uint64_t threadCount)
 {
+    AssemblyGraph2& assemblyGraph2 = *this;
+
+    // Output of the initial AssemblyGraph2.
+    cout << "The initial AssemblyGraph2 has " << num_vertices(assemblyGraph2) <<
+        " vertices and " << num_edges(assemblyGraph2) << " edges." << endl;
     writeGfa("AssemblyGraph-A.gfa");
 
+    // Bubble cleanup.
     bubbleCleanup(threadCount);
-    writeGfa("AssemblyGraph-B.gfa");
     compress();
-    writeGfa("AssemblyGraph-C.gfa");
-    SHASTA_ASSERT(0);
+    cout << "After bubble cleanup, the AssemblyGraph2 has " << num_vertices(assemblyGraph2) <<
+        " vertices and " << num_edges(assemblyGraph2) << " edges." << endl;
+    writeGfa("AssemblyGraph-B.gfa");
+    check();
 
+    // Sequence assembly.
     performanceLog << timestamp << "Sequence assembly begins." << endl;
     assembleAll(threadCount);
     performanceLog << timestamp << "Sequence assembly ends." << endl;
 
+    // Final output.
     writeGfa("AssemblyGraph-Z.gfa");
+    writeFasta("AssemblyGraph-Z.fasta");
 
 }
 
@@ -523,9 +559,9 @@ void AssemblyGraph2::bubbleCleanup(uint64_t threadCount)
             }
         }
     }
-    cout << timestamp << "Sequence assembly for bubble cleanup begins." << endl;
+    performanceLog << timestamp << "Sequence assembly for bubble cleanup begins." << endl;
     assemble(threadCount);
-    cout << timestamp << "Sequence assembly for bubble cleanup ends." << endl;
+    performanceLog << timestamp << "Sequence assembly for bubble cleanup ends." << endl;
 
 
 

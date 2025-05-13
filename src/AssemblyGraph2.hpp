@@ -113,6 +113,7 @@ private:
 
     void writeGfa(const string& fileName) const;
     void writeGfa(ostream&) const;
+    void writeFasta(const string& fileName) const;
 
     // Merge vertices in linear chains.
     void compress();
