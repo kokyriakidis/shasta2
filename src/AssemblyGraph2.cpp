@@ -496,6 +496,18 @@ void AssemblyGraph2::run(uint64_t threadCount)
 
 void AssemblyGraph2::bubbleCleanup(uint64_t threadCount)
 {
+    while(bubbleCleanupIteration(threadCount) > 0)
+    {
+
+    }
+    clearSequence();
+
+}
+
+
+
+uint64_t AssemblyGraph2::bubbleCleanupIteration(uint64_t threadCount)
+{
     performanceLog << timestamp << "Bubble cleanup begins." << endl;
 
     const bool debug = false;
@@ -768,8 +780,10 @@ void AssemblyGraph2::bubbleCleanup(uint64_t threadCount)
         candidateBubbles.size() << " were candidate for removal and " <<
         removedCount << " were actually removed." << endl;
 
-    clearSequence();
     performanceLog << timestamp << "Bubble cleanup ends." << endl;
+    cout << "Bubble cleanup iteration removed " << removedCount << " bubbles." << endl;
+
+    return removedCount;
 }
 
 

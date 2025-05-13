@@ -141,6 +141,7 @@ private:
     };
     void findBubbles(vector<Bubble>&) const;
     void bubbleCleanup(uint64_t threadCount);
+    uint64_t bubbleCleanupIteration(uint64_t threadCount);
 
     // Output.
     void write(const string& stage);
