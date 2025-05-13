@@ -164,6 +164,14 @@ void AssemblyGraph2::check(edge_descriptor e) const
 
 
 
+void AssemblyGraph2::write(const string& baseName)
+{
+    writeGfa("AssemblyGraph2-" + baseName + ".gfa");
+    writeGraphviz("AssemblyGraph2-" + baseName + ".dot");
+}
+
+
+
 void AssemblyGraph2::writeGfa(const string& fileName) const
 {
     performanceLog << timestamp << "GFA output begins for " << fileName << endl;
@@ -442,15 +450,14 @@ void AssemblyGraph2::run(uint64_t threadCount)
     // Output of the initial AssemblyGraph2.
     cout << "The initial AssemblyGraph2 has " << num_vertices(assemblyGraph2) <<
         " vertices and " << num_edges(assemblyGraph2) << " edges." << endl;
-    writeGfa("AssemblyGraph-A.gfa");
+    write("A");
 
     // Bubble cleanup.
     bubbleCleanup(threadCount);
     compress();
     cout << "After bubble cleanup, the AssemblyGraph2 has " << num_vertices(assemblyGraph2) <<
         " vertices and " << num_edges(assemblyGraph2) << " edges." << endl;
-    writeGfa("AssemblyGraph-B.gfa");
-    writeGraphviz("AssemblyGraph-B.dot");
+    write("B");
     check();
 
     // Sequence assembly.
@@ -459,7 +466,7 @@ void AssemblyGraph2::run(uint64_t threadCount)
     performanceLog << timestamp << "Sequence assembly ends." << endl;
 
     // Final output.
-    writeGfa("AssemblyGraph-Z.gfa");
+    write("Z");
     writeFasta("AssemblyGraph-Z.fasta");
 
 }

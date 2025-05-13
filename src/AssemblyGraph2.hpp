@@ -112,6 +112,8 @@ private:
     void findBubbles(vector<Bubble>&) const;
     void bubbleCleanup(uint64_t threadCount);
 
+    // Output.
+    void write(const string& baseName);
     void writeGfa(const string& fileName) const;
     void writeGfa(ostream&) const;
     void writeFasta(const string& fileName) const;
