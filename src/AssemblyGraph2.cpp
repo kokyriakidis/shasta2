@@ -28,7 +28,7 @@ using namespace shasta;
 template class MultithreadedObject<AssemblyGraph2>;
 
 
-
+// Initial construction from the TransitionGraph.
 AssemblyGraph2::AssemblyGraph2(
     const Anchors& anchors,
     const TransitionGraph& transitionGraph,
@@ -102,6 +102,21 @@ AssemblyGraph2::AssemblyGraph2(
 
     // Check that all is good.
     check();
+}
+
+
+
+// Deserialize constructor.
+AssemblyGraph2::AssemblyGraph2(
+    const Anchors& anchors,
+    const AssemblerOptions& assemblerOptions,
+    const string& stage) :
+    MappedMemoryOwner(anchors),
+    MultithreadedObject<AssemblyGraph2>(*this),
+    anchors(anchors),
+    assemblerOptions(assemblerOptions)
+{
+    load(stage);
 }
 
 

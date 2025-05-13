@@ -1,6 +1,7 @@
 // Shasta.
 #include "Assembler.hpp"
 #include "AssemblyGraphPostprocessor.hpp"
+#include "AssemblyGraph2Postprocessor.hpp"
 #include "LocalAssembly.hpp"
 #include "LocalAssembly1.hpp"
 #include "LocalAssembly2.hpp"
@@ -222,28 +223,29 @@ void Assembler::exploreSegments(
         return;
     }
 
-    // Get the AssemblyGraph for this assembly stage.
-    const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
+    // Get the AssemblyGraph2 for this assembly stage.
+    const AssemblyGraph2Postprocessor& assemblyGraph2 = getAssemblyGraph2(
         assemblyStage,
         *httpServerData.assemblerOptions);
 
-    html << "<table><tr><th>Id<th>Number<br>of<br>anchors<th>Estimated<br>length<th>Actual<br>length";
+    html <<
+        "<h2>Assembly graph at stage " << assemblyStage << " </h2>"
+        "<p>The assembly graph at stage " << assemblyStage <<
+        " has " << num_vertices(assemblyGraph2) << " vertices (segments) and " <<
+        num_edges(assemblyGraph2) << " edges (links)." << endl;
 
-    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
-        const AssemblyGraphEdge& edge = assemblyGraph[e];
+    html << "<table><tr><th>Vertex<br>(segment)<br>id<th>Number<br>of<br>steps<th>Estimated<br>length<th>Actual<br>length";
+
+    BGL_FORALL_VERTICES(v, assemblyGraph2, AssemblyGraph2) {
+        const AssemblyGraph2Vertex& vertex = assemblyGraph2[v];
         html <<
             "<tr>"
-            "<td class=centered>" <<
-
-            "<a href='exploreSegment?assemblyStage=" << assemblyStage << "&segmentName=" << edge.id << "'>" <<
-            edge.id <<
-            "</a>"
-
-            "<td class=centered>" << edge.size() <<
-            "<td class=centered>" << edge.length(anchors()) <<
+            "<td class=centered>" << vertex.id <<
+            "<td class=centered>" << vertex.size() <<
+            "<td class=centered>" << vertex.offset() <<
             "<td class=centered>";
-        if(edge.wasAssembled) {
-            html << edge.sequenceLength();
+        if(vertex.wasAssembled) {
+            html << vertex.sequenceLength();
         }
     }
 
@@ -624,6 +626,21 @@ AssemblyGraphPostprocessor& Assembler::getAssemblyGraph(
         shared_ptr<AssemblyGraphPostprocessor> p =
             make_shared<AssemblyGraphPostprocessor>(assemblerOptions, anchors(), assemblyStage);
         tie(it, ignore) = assemblyGraphTable.insert(make_pair(assemblyStage, p));
+    }
+    return *(it->second);
+}
+
+
+
+AssemblyGraph2Postprocessor& Assembler::getAssemblyGraph2(
+    const string& assemblyStage,
+    const AssemblerOptions& assemblerOptions)
+{
+    auto it = assemblyGraph2Table.find(assemblyStage);
+    if(it == assemblyGraph2Table.end()) {
+        shared_ptr<AssemblyGraph2Postprocessor> p =
+            make_shared<AssemblyGraph2Postprocessor>(anchors(), assemblerOptions, assemblyStage);
+        tie(it, ignore) = assemblyGraph2Table.insert(make_pair(assemblyStage, p));
     }
     return *(it->second);
 }

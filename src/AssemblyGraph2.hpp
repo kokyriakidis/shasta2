@@ -107,10 +107,17 @@ class shasta::AssemblyGraph2 :
     public MultithreadedObject<AssemblyGraph2> {
 public:
 
+    // Initial construction from the TransitionGraph.
     AssemblyGraph2(
         const Anchors&,
         const TransitionGraph&,
         const AssemblerOptions&);
+
+    // Deserialize constructor.
+    AssemblyGraph2(
+        const Anchors&,
+        const AssemblerOptions&,
+        const string& stage);
 
     // Detangle, phase, assemble sequence, output.
     void run(uint64_t threadCount);
