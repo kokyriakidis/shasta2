@@ -225,6 +225,46 @@ void AssemblyGraph2::writeGfa(ostream& gfa) const
 
 
 
+void AssemblyGraph2::writeGraphviz(const string& fileName) const
+{
+    performanceLog << timestamp << "Grahviz output begins for " << fileName << endl;
+    ofstream dot(fileName);
+    writeGraphviz(dot);
+    performanceLog << timestamp << "Grahviz output ends for " << fileName << endl;
+
+}
+
+
+
+void AssemblyGraph2::writeGraphviz(ostream& dot) const
+{
+    const AssemblyGraph2& assemblyGraph2 = *this;
+
+    dot << "digraph AssemblyGraph2 {\n";
+
+    BGL_FORALL_VERTICES(v, assemblyGraph2, AssemblyGraph2) {
+        const AssemblyGraph2Vertex& vertex = assemblyGraph2[v];
+        dot << vertex.id << "[label=\"" <<
+            vertex.id << "\\n" <<
+            (vertex.wasAssembled ? vertex.sequenceLength() : vertex.offset()) << "\"];\n";
+    }
+
+    BGL_FORALL_EDGES(e, assemblyGraph2, AssemblyGraph2) {
+
+        const vertex_descriptor v0 = source(e, assemblyGraph2);
+        const vertex_descriptor v1 = target(e, assemblyGraph2);
+
+        const AssemblyGraph2Vertex& vertex0 = assemblyGraph2[v0];
+        const AssemblyGraph2Vertex& vertex1 = assemblyGraph2[v1];
+
+        dot << vertex0.id << "->" << vertex1.id << ";\n";
+    }
+
+    dot << "}\n";
+}
+
+
+
 void AssemblyGraph2::writeFasta(const string& fileName) const
 {
     performanceLog << timestamp << "Fasta output begins for " << fileName << endl;
@@ -382,6 +422,18 @@ void AssemblyGraph2Vertex::getSequence(vector<Base>& sequence) const
 
 
 
+uint64_t AssemblyGraph2Vertex::sequenceLength() const
+{
+    SHASTA_ASSERT(wasAssembled);
+    uint64_t length = 0;
+    for(const auto& step: *this) {
+        length += step.sequence.size();
+    }
+    return length;
+}
+
+
+
 // Detangle, phase, assemble sequence, output.
 void AssemblyGraph2::run(uint64_t threadCount)
 {
@@ -398,6 +450,7 @@ void AssemblyGraph2::run(uint64_t threadCount)
     cout << "After bubble cleanup, the AssemblyGraph2 has " << num_vertices(assemblyGraph2) <<
         " vertices and " << num_edges(assemblyGraph2) << " edges." << endl;
     writeGfa("AssemblyGraph-B.gfa");
+    writeGraphviz("AssemblyGraph-B.dot");
     check();
 
     // Sequence assembly.

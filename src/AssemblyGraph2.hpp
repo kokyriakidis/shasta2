@@ -65,6 +65,7 @@ public:
     void check(const Anchors&) const;
 
     uint64_t offset() const;
+    uint64_t sequenceLength() const;
 
     void getSequence(vector<Base>&) const;
 };
@@ -114,6 +115,8 @@ private:
     void writeGfa(const string& fileName) const;
     void writeGfa(ostream&) const;
     void writeFasta(const string& fileName) const;
+    void writeGraphviz(const string& fileName) const;
+    void writeGraphviz(ostream&) const;
 
     // Merge vertices in linear chains.
     void compress();
