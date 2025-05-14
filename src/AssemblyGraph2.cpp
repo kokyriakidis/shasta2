@@ -488,7 +488,7 @@ void AssemblyGraph2::run(uint64_t threadCount)
 
     // Final output.
     write("Z");
-    writeFasta("AssemblyGraph-Z.fasta");
+    writeFasta("AssemblyGraph2-Z.fasta");
 
 }
 
