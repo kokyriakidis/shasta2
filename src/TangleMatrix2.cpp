@@ -23,6 +23,17 @@ TangleMatrix2::TangleMatrix2(
         exits.emplace_back(v, vertex.front());
     }
 
+    // Check that no entrance/exit pairs are adjacent.
+    for(const auto& entrance: entrances) {
+        for(const auto& exit: exits) {
+            if(entrance.step.anchorPair.anchorIdB == exit.step.anchorPair.anchorIdA) {
+                throw runtime_error(
+                    "Entrance " + to_string(assemblyGraph2[entrance.v].id) +
+                    " is adjacent to exit " + to_string(assemblyGraph2[exit.v].id));
+            }
+        }
+    }
+
 
     // Compute the tangle matrix.
     tangleMatrix.resize(entrances.size(), vector<AnchorPair>(exits.size()));

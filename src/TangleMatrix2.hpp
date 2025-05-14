@@ -5,9 +5,8 @@
 A TangleMatrix is defined by two sets of AssemblyGraph2 vertices (segments):
 - The entrances.
 - The exits.
-Any two sets of vertices can be used to define a TangleMatrix,
-regardless of their location and connectivity in the AssemblyGraph2.
-The two sets are not required to be disjoint.
+
+The entrances and exits cannot be adjacent.
 
 The TangleMatrix is constructed using the last step of each entrance
 and the first step of each exit.
