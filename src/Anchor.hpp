@@ -1,6 +1,7 @@
 #pragma once
 
 // Shasta.
+#include "AnchorPair.hpp"
 #include "Kmer.hpp"
 #include "invalid.hpp"
 #include "MappedMemoryOwner.hpp"
@@ -136,6 +137,13 @@ public:
     void analyzeAnchorPair(AnchorId, AnchorId, AnchorPairInfo&) const;
     void writeHtml(AnchorId, AnchorId, AnchorPairInfo&, const Journeys&
         , ostream&) const;
+
+    // Create an AnchorPair to "bridge" between two given AnchorPairs.
+    AnchorPair bridge(
+        const AnchorPair&,
+        const AnchorPair&,
+        double aDrift,
+        double bDrift) const;
 
     void writeCoverageHistogram() const;
 

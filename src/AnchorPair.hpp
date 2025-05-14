@@ -148,7 +148,7 @@ public:
         ) const;
 
     // This returns true if a call to split with the same arguments would not split this Anchor.
-    // The second and third areguments are work vectors added as arguments for performancew,
+    // The last two arguments are work vectors added as arguments for performance.
     bool isConsistent(
         const Anchors&,
         double aDrift,

@@ -1047,3 +1047,29 @@ void Anchors::constructThreadFunctionPass2(uint64_t /* threadId */)
     }
 }
 
+
+
+
+// Create an AnchorPair to "bridge" between two given AnchorPairs.
+AnchorPair Anchors::bridge(
+    const AnchorPair& x,
+    const AnchorPair& y,
+    double aDrift,
+    double bDrift) const
+{
+    // Initially, bridge by just using all common OrientedReadIds.
+    AnchorPair z;
+    z.anchorIdA = x.anchorIdB;
+    z.anchorIdB = y.anchorIdA;
+    std::set_intersection(
+        x.orientedReadIds.begin(), x.orientedReadIds.end(),
+        y.orientedReadIds.begin(), y.orientedReadIds.end(),
+        back_inserter(z.orientedReadIds));
+
+    // Split z into AnchorPairs with consistent offsets.
+    vector<AnchorPair> splitAnchorPairs;
+    z.split(*this, aDrift, bDrift, splitAnchorPairs);
+
+    // Return the one with the most coverage.
+    return splitAnchorPairs.front();
+}
