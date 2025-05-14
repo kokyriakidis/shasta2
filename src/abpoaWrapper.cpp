@@ -59,6 +59,11 @@ void shasta::abpoa(
     abpt->max_n_cons = 1; // to generate 1 consensus sequences
     // abpt->sub_aln = 1;
 
+    // Use majority voting to compute consensus. The default is to use the MSA graph,
+    // and that sometimes generates unexpected consensuses.
+    // See here for some discussion https://github.com/yangao07/abPOA/issues/67.
+    abpt->cons_algrm = 1;
+
     abpoa_post_set_para(abpt);
     abpt->use_qv = 1;
 
