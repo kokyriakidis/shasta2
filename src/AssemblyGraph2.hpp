@@ -122,8 +122,8 @@ public:
     // Detangle, phase, assemble sequence, output.
     void run(uint64_t threadCount);
 
-private:
     const Anchors& anchors;
+private:
     const AssemblerOptions& assemblerOptions;
     uint64_t nextVertexId = 0;
 

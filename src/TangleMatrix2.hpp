@@ -33,7 +33,9 @@ public:
     TangleMatrix2(
         const AssemblyGraph2&,
         vector<vertex_descriptor> entranceVertices,
-        vector<vertex_descriptor> exitVertices);
+        vector<vertex_descriptor> exitVertices,
+        double aDrift,
+        double bDrift);
 
     void writeHtml(
         const AssemblyGraph2&,
@@ -65,5 +67,6 @@ public:
     vector<EntranceOrExit> exits;
 
     // The tangle matrix is indexed by [iEntrance][iExit].
-    vector < vector<uint64_t> > tangleMatrix;
+    // It contains the "bridge" AnchorPair between each entrance and exit.
+    vector < vector<AnchorPair> > tangleMatrix;
 };

@@ -1,4 +1,5 @@
 #include "TangleMatrix2.hpp"
+#include "Anchor.hpp"
 #include "Base.hpp"
 using namespace shasta;
 
@@ -7,7 +8,9 @@ using namespace shasta;
 TangleMatrix2::TangleMatrix2(
     const AssemblyGraph2& assemblyGraph2,
     vector<vertex_descriptor> entranceVertices,
-    vector<vertex_descriptor> exitVertices)
+    vector<vertex_descriptor> exitVertices,
+    double aDrift,
+    double bDrift)
 {
 
     for(const vertex_descriptor v: entranceVertices) {
@@ -22,15 +25,19 @@ TangleMatrix2::TangleMatrix2(
 
 
     // Compute the tangle matrix.
-    tangleMatrix.resize(entrances.size(), vector<uint64_t>(exits.size()));
+    tangleMatrix.resize(entrances.size(), vector<AnchorPair>(exits.size()));
     for(uint64_t iEntrance=0; iEntrance<entrances.size(); iEntrance++) {
         EntranceOrExit& entrance = entrances[iEntrance];
         for(uint64_t iExit=0; iExit<exits.size(); iExit++) {
             EntranceOrExit& exit = exits[iExit];
-            const uint64_t commonCount = entrance.step.anchorPair.countCommon(exit.step.anchorPair);
-            tangleMatrix[iEntrance][iExit] = commonCount;
-            entrance.commonCoverage += commonCount;
-            exit.commonCoverage += commonCount;
+
+            tangleMatrix[iEntrance][iExit] = assemblyGraph2.anchors.bridge(
+                entrance.step.anchorPair,
+                exit.step.anchorPair,
+                aDrift, bDrift);
+            const uint64_t coverage = tangleMatrix[iEntrance][iExit].orientedReadIds.size();
+            entrance.commonCoverage += coverage;
+            exit.commonCoverage += coverage;
         }
     }
 }
@@ -90,7 +97,8 @@ void TangleMatrix2::writeHtml(
             "<td class=centered style='background-color:CornSilk'>" << entrance.commonCoverage <<
             "<td>";
         for(uint64_t iExit=0; iExit<exits.size(); iExit++) {
-            html << "<td class=centered style='background-color:LightPink'>" << tangleMatrix[iEntrance][iExit];
+            html << "<td class=centered style='background-color:LightPink'>" <<
+                tangleMatrix[iEntrance][iExit].orientedReadIds.size();
         }
     }
 

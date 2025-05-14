@@ -921,7 +921,9 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
     }
 
     // Create the TangleMatrix2.
-    const TangleMatrix2 tangleMatrix(assemblyGraph2, entrances, exits);
+    const TangleMatrix2 tangleMatrix(assemblyGraph2, entrances, exits,
+        httpServerData.assemblerOptions->aDrift,
+        httpServerData.assemblerOptions->bDrift);
     tangleMatrix.writeHtml(assemblyGraph2, html);
 }
 
