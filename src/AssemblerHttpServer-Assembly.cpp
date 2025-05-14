@@ -6,7 +6,7 @@
 #include "LocalAssembly1.hpp"
 #include "LocalAssembly2.hpp"
 #include "Tangle.hpp"
-#include "TangleMatrix.hpp"
+#include "TangleMatrix2.hpp"
 using namespace shasta;
 
 // Boost libraries.
@@ -857,30 +857,30 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
     }
 
     // Get the AssemblyGraph for this assembly stage.
-    const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
+    const AssemblyGraph2Postprocessor& assemblyGraph2 = getAssemblyGraph2(
         assemblyStage,
         *httpServerData.assemblerOptions);
 
 
 
-    // Find AssemblyGraph edges corresponding to the entrances.
-    vector<AssemblyGraph::edge_descriptor> entrances;
+    // Find AssemblyGraph2 vertices corresponding to the entrances.
+    vector<AssemblyGraph2::vertex_descriptor> entrances;
     {
         boost::tokenizer< boost::char_separator<char> > tokenizer(entrancesString, boost::char_separator<char>(", "));
-        for(const string& edgeIdString: tokenizer) {
+        for(const string& vertexIdString: tokenizer) {
             uint64_t segmentId = invalid<uint64_t>;
             try {
-                segmentId = std::stol(edgeIdString);
+                segmentId = std::stol(vertexIdString);
             } catch(exception&) {
             }
             if(segmentId == invalid<uint64_t>) {
-                html << "Invalid segment " << edgeIdString << ". Must be a number.";
+                html << "Invalid segment " << vertexIdString << ". Must be a number.";
                 return;
             }
 
-            // Find the AssemblyGraphEdge corresponding to the requested segment.
-            auto it = assemblyGraph.edgeMap.find(segmentId);
-            if(it == assemblyGraph.edgeMap.end()) {
+            // Find the AssemblyGraph2Vertex corresponding to the requested segment.
+            auto it = assemblyGraph2.vertexMap.find(segmentId);
+            if(it == assemblyGraph2.vertexMap.end()) {
                 html << "<p>Assembly graph at stage " << assemblyStage <<
                     " does not have segment " << segmentId;
                 return;
@@ -893,8 +893,8 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
 
 
 
-    // Find AssemblyGraph edges corresponding to the exits.
-    vector<AssemblyGraph::edge_descriptor> exits;
+    // Find AssemblyGraph vertices corresponding to the exits.
+    vector<AssemblyGraph2::vertex_descriptor> exits;
     {
         boost::tokenizer< boost::char_separator<char> > tokenizer(exitsString, boost::char_separator<char>(", "));
         for(const string& edgeIdString: tokenizer) {
@@ -909,8 +909,8 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
             }
 
             // Find the AssemblyGraphEdge corresponding to the requested segment.
-            auto it = assemblyGraph.edgeMap.find(segmentId);
-            if(it == assemblyGraph.edgeMap.end()) {
+            auto it = assemblyGraph2.vertexMap.find(segmentId);
+            if(it == assemblyGraph2.vertexMap.end()) {
                 html << "<p>Assembly graph at stage " << assemblyStage <<
                     " does not have segment " << segmentId;
                 return;
@@ -920,10 +920,9 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
         }
     }
 
-
-    // Create the TangleMatrix.
-    const TangleMatrix tangleMatrix(assemblyGraph, entrances, exits);
-    tangleMatrix.writeHtml(assemblyGraph, html);
+    // Create the TangleMatrix2.
+    const TangleMatrix2 tangleMatrix(assemblyGraph2, entrances, exits);
+    tangleMatrix.writeHtml(assemblyGraph2, html);
 }
 
 

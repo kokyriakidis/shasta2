@@ -156,6 +156,9 @@ public:
         vector< pair<Positions, Positions> >&,
         vector<uint64_t>&) const;
 
+    // Count OrientedReadIds in common with another AnchorPair.
+    uint64_t countCommon(const AnchorPair&) const;
+
     template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
     {
         ar & anchorIdA;

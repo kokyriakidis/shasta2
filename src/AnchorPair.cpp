@@ -1,3 +1,4 @@
+// Shasta.
 #include "AnchorPair.hpp"
 #include "Anchor.hpp"
 #include "Markers.hpp"
@@ -5,7 +6,12 @@
 #include "Reads.hpp"
 using namespace shasta;
 
+// Boost libraries.
+#include <boost/iterator/function_output_iterator.hpp>
+
+// Standard library.
 #include "stdexcept.hpp"
+
 
 
 AnchorPair::AnchorPair(
@@ -565,4 +571,26 @@ bool AnchorPair::isConsistent(
     }
 
     return true;
+}
+
+
+
+// Count OrientedReadIds in common with another AnchorPair.
+uint64_t AnchorPair::countCommon(const AnchorPair& y) const
+{
+    const AnchorPair& x = *this;
+
+    uint64_t n = 0;
+    auto counter = [&n](auto){++n;};
+
+    std::set_intersection(
+        x.orientedReadIds.begin(),
+        x.orientedReadIds.end(),
+        y.orientedReadIds.begin(),
+        y.orientedReadIds.end(),
+        boost::make_function_output_iterator(counter)
+    );
+
+    return n;
+
 }
