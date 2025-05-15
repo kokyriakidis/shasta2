@@ -6,6 +6,7 @@
 #include "LocalAssembly1.hpp"
 #include "LocalAssembly2.hpp"
 #include "Tangle.hpp"
+#include "Tangle2.hpp"
 #include "TangleMatrix2.hpp"
 using namespace shasta;
 
@@ -954,7 +955,7 @@ void Assembler::exploreVertexTangle(const vector<string>& request, ostream& html
 
     html <<
         "<tr>"
-        "<th class=left>Name of a segment with target<br>at the desired vertex"
+        "<th class=left>Segment name"
         "<td class=centered><input type=text name=segmentName style='text-align:center' required";
     if(not segmentName.empty()) {
         html << " value='" << segmentName + "'";
@@ -984,27 +985,28 @@ void Assembler::exploreVertexTangle(const vector<string>& request, ostream& html
     }
 
     // Get the AssemblyGraph for this assembly stage.
-    AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
+    AssemblyGraph2Postprocessor& assemblyGraph2 = getAssemblyGraph2(
         assemblyStage,
         *httpServerData.assemblerOptions);
 
-    // Find the AssemblyGraphEdge corresponding to the requested segment.
-    auto it = assemblyGraph.edgeMap.find(segmentId);
-    if(it == assemblyGraph.edgeMap.end()) {
+    // Find the Assembly2GraphVertex corresponding to the requested segment.
+    auto it = assemblyGraph2.vertexMap.find(segmentId);
+    if(it == assemblyGraph2.vertexMap.end()) {
         html << "<p>Assembly graph at stage " << assemblyStage <<
             " does not have segment " << segmentId;
         return;
     }
-    const AssemblyGraph::edge_descriptor e = it->second;
+    const AssemblyGraph2::vertex_descriptor v = it->second;
 
 
 
-    // Create a Tangle at the target of this edge.
-    const AssemblyGraph::vertex_descriptor v = target(e, assemblyGraph);
-    const Tangle tangle(assemblyGraph, v);
+    // Create a Tangle at the target of this vertex.
+    const Tangle2 tangle2(assemblyGraph2, v,
+        httpServerData.assemblerOptions->aDrift,
+        httpServerData.assemblerOptions->bDrift);
 
     // Write out the TangleMatrix.
-    tangle.tangleMatrix.writeHtml(assemblyGraph, html);
+    tangle2.tangleMatrix->writeHtml(assemblyGraph2, html);
 }
 
 
