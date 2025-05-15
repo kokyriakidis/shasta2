@@ -289,3 +289,10 @@ bool PermutationDetangler::operator(
     return true;
 
 }
+
+
+
+bool PermutationDetangler::operator()(Tangle2&)
+{
+    return false;
+}

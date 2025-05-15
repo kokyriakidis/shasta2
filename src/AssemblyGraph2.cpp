@@ -8,7 +8,9 @@
 #include "orderPairs.hpp"
 #include "performanceLog.hpp"
 #include "rle.hpp"
+#include "Tangle2.hpp"
 #include "TransitionGraph.hpp"
+#include "TrivialDetangler.hpp"
 using namespace shasta;
 
 // Boost libraries.
@@ -479,6 +481,14 @@ void AssemblyGraph2::run(uint64_t threadCount)
     cout << "After bubble cleanup, the AssemblyGraph2 has " << num_vertices(assemblyGraph2) <<
         " vertices and " << num_edges(assemblyGraph2) << " edges." << endl;
     write("B");
+    check();
+
+    // Detangling.
+    TrivialDetangler detangler(assemblerOptions.assemblyGraphOptions.minCommonCoverage);
+    detangleVertices(detangler);
+    check();
+    compress();
+    write("C");
     check();
 
     // Sequence assembly.
@@ -997,4 +1007,51 @@ void AssemblyGraph2::load(const string& assemblyStage)
         throw runtime_error("Error reading assembly graph at stage " + assemblyStage +
             ": " + e.what());
     }
+}
+
+
+
+void AssemblyGraph2::detangleVertices(Detangler& detangler)
+{
+    AssemblyGraph2& assemblyGraph2 = *this;
+    performanceLog << timestamp << "AssemblyGraph2::detangleVertices begins." << endl;
+
+    // Gather all the vertices with more than one entrance and exit.
+    // These are our detangling candidates.
+    std::set<vertex_descriptor> detanglingCandidates;
+    BGL_FORALL_VERTICES(v, assemblyGraph2, AssemblyGraph2) {
+        const uint64_t entranceCount = in_degree (v, assemblyGraph2);
+        const uint64_t exitCount     = out_degree(v, assemblyGraph2);
+        if((entranceCount > 1) and (exitCount > 1)) {
+            detanglingCandidates.insert(v);
+        }
+    }
+    cout << "Found " << detanglingCandidates.size() <<
+        " tangle vertices out of " << num_vertices(assemblyGraph2) << " total vertices." << endl;
+
+
+    uint64_t attemptCount = 0;
+    uint64_t successCount = 0;
+    while(not detanglingCandidates.empty()) {
+        auto it = detanglingCandidates.begin();
+        const vertex_descriptor v = *it;
+        detanglingCandidates.erase(it);
+
+        ++attemptCount;
+        Tangle2 tangle(assemblyGraph2, v,
+            assemblerOptions.aDrift,
+            assemblerOptions.bDrift);
+        const bool success = detangler(tangle);
+        if(success) {
+            ++successCount;
+            for(const vertex_descriptor v: tangle.removedVertices) {
+                detanglingCandidates.erase(v);
+            }
+        }
+    }
+
+    performanceLog << timestamp << "AssemblyGraph2::detangleVertices ends." << endl;
+
+    cout << "Attempted detangling for " << attemptCount << " tangle vertices." << endl;
+    cout << "Detangling was successful for " << successCount << " tangle vertices." << endl;
 }

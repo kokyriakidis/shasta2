@@ -69,3 +69,43 @@ void Tangle2::connect(uint64_t iEntrance, uint64_t iExit) {
 }
 
 
+
+
+void Tangle2::detangle()
+{
+
+    // For each entrance/exit pair in the connectList, create a new
+    // vertex joining the entrance and exit.
+    for(const auto& p: connectList) {
+        const uint64_t iEntrance = p.first;
+        const uint64_t iExit = p.second;
+
+        const auto& entrance = tangleMatrix->entrances[iEntrance];
+        const auto& exit = tangleMatrix->exits[iExit];
+
+        const vertex_descriptor vEntrance = entrance.v;
+        const vertex_descriptor vExit = exit.v;
+
+        const AnchorPair& bridgeAnchorPair = tangleMatrix->tangleMatrix[iEntrance][iExit];
+        const uint64_t bridgeOffset = bridgeAnchorPair.getAverageOffset(assemblyGraph2.anchors);
+
+        // Create the new vertex.
+        const vertex_descriptor vNew = add_vertex(AssemblyGraph2Vertex(assemblyGraph2.nextVertexId++), assemblyGraph2);
+        AssemblyGraph2Vertex& vertexNew = assemblyGraph2[vNew];
+        vertexNew.emplace_back(bridgeAnchorPair, bridgeOffset);
+
+        // Connect it to the entrance and exit.
+        add_edge(vEntrance, vNew, assemblyGraph2);
+        add_edge(vNew, vExit, assemblyGraph2);
+
+    }
+
+    // Now we can remove all the tangle vertices.
+    // The entrance and exit vertices are not removed.
+    for(const vertex_descriptor v: tangleVertices) {
+        removedVertices.push_back(v);
+        clear_vertex(v, assemblyGraph2);
+        remove_vertex(v, assemblyGraph2);
+    }
+
+}

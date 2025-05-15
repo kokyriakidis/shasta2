@@ -36,6 +36,7 @@ namespace shasta {
     class Anchors;
     class AssemblerOptions;
     class Base;
+    class Detangler;
     class TransitionGraph;
 }
 
@@ -123,9 +124,9 @@ public:
     void run(uint64_t threadCount);
 
     const Anchors& anchors;
+    uint64_t nextVertexId = 0;
 private:
     const AssemblerOptions& assemblerOptions;
-    uint64_t nextVertexId = 0;
 
     void check() const;
     void check(edge_descriptor) const;
@@ -142,6 +143,8 @@ private:
     void findBubbles(vector<Bubble>&) const;
     void bubbleCleanup(uint64_t threadCount);
     uint64_t bubbleCleanupIteration(uint64_t threadCount);
+
+    void detangleVertices(Detangler&);
 
     // Output.
     void write(const string& stage);
