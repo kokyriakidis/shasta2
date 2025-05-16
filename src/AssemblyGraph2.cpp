@@ -487,23 +487,32 @@ void AssemblyGraph2::run(uint64_t threadCount)
 
 
     // Detangling.
-    TrivialDetangler trivialDetangler(assemblerOptions.assemblyGraphOptions.minCommonCoverage);
 
-    detangleVertices(trivialDetangler);
-    check();
-    compress();
+    TrivialDetangler trivialDetangler(assemblerOptions.assemblyGraphOptions.minCommonCoverage);
+    while(true) {
+        const uint64_t detangledCount = detangleVertices(trivialDetangler);
+        if(detangledCount == 0) {
+            break;
+        }
+        compress();
+    }
     cout << "After TrivialDetangler, the AssemblyGraph2 has " << num_vertices(assemblyGraph2) <<
         " vertices and " << num_edges(assemblyGraph2) << " edges." << endl;
+    check();
     write("C");
 
     SimpleDetangler simpleDetangler(3, 2);
-    detangleVertices(simpleDetangler);
-    write("D");
-    check();
-    compress();
+    while(true) {
+        const uint64_t detangledCount = detangleVertices(simpleDetangler);
+        if(detangledCount == 0) {
+            break;
+        }
+        compress();
+    }
     cout << "After SimpleDetangler, the AssemblyGraph2 has " << num_vertices(assemblyGraph2) <<
         " vertices and " << num_edges(assemblyGraph2) << " edges." << endl;
-    write("E");
+    check();
+    write("D");
 
 
     throw runtime_error("Skipping sequence assembly.");
@@ -1028,7 +1037,7 @@ void AssemblyGraph2::load(const string& assemblyStage)
 
 
 
-void AssemblyGraph2::detangleVertices(Detangler& detangler)
+uint64_t AssemblyGraph2::detangleVertices(Detangler& detangler)
 {
     AssemblyGraph2& assemblyGraph2 = *this;
     performanceLog << timestamp << "AssemblyGraph2::detangleVertices begins." << endl;
@@ -1076,4 +1085,6 @@ void AssemblyGraph2::detangleVertices(Detangler& detangler)
 
     cout << "Attempted detangling for " << attemptCount << " tangle vertices." << endl;
     cout << "Detangling was successful for " << successCount << " tangle vertices." << endl;
+
+    return successCount;
 }

@@ -145,7 +145,7 @@ private:
     uint64_t bubbleCleanupIteration(uint64_t threadCount);
 
 public:
-    void detangleVertices(Detangler&);
+    uint64_t detangleVertices(Detangler&);
 
     // Output.
     void write(const string& stage);
