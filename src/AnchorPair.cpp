@@ -507,7 +507,7 @@ void AnchorPair::split(
     for(uint64_t i=0; i<n; i++) {
         const uint32_t positionA = positions[i].first.basePosition;
         const uint32_t positionB = positions[i].second.basePosition;
-        SHASTA_ASSERT(positionB > positionA);
+        SHASTA_ASSERT(positionB >= positionA);  // Allow degenerate AnchorPair with anchorIdA = anchorIdB.
         const uint64_t offset = positionB - positionA;
         offsets.push_back(make_pair(i, offset));
     }

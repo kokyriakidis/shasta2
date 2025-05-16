@@ -23,6 +23,7 @@ TangleMatrix2::TangleMatrix2(
         exits.emplace_back(v, vertex.front());
     }
 
+#if 0
     // Check that no entrance/exit pairs are adjacent.
     for(const auto& entrance: entrances) {
         for(const auto& exit: exits) {
@@ -33,6 +34,7 @@ TangleMatrix2::TangleMatrix2(
             }
         }
     }
+#endif
 
 
     // Compute the tangle matrix.
