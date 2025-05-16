@@ -10,6 +10,7 @@
 #include "rle.hpp"
 #include "Tangle2.hpp"
 #include "TransitionGraph.hpp"
+#include "SimpleDetangler.hpp"
 #include "TrivialDetangler.hpp"
 using namespace shasta;
 
@@ -483,13 +484,29 @@ void AssemblyGraph2::run(uint64_t threadCount)
     write("B");
     check();
 
+
+
     // Detangling.
-    TrivialDetangler detangler(assemblerOptions.assemblyGraphOptions.minCommonCoverage);
-    detangleVertices(detangler);
+    TrivialDetangler trivialDetangler(assemblerOptions.assemblyGraphOptions.minCommonCoverage);
+
+    detangleVertices(trivialDetangler);
     check();
     compress();
+    cout << "After TrivialDetangler, the AssemblyGraph2 has " << num_vertices(assemblyGraph2) <<
+        " vertices and " << num_edges(assemblyGraph2) << " edges." << endl;
     write("C");
+
+    SimpleDetangler simpleDetangler(3, 2);
+    detangleVertices(simpleDetangler);
+    write("D");
     check();
+    compress();
+    cout << "After SimpleDetangler, the AssemblyGraph2 has " << num_vertices(assemblyGraph2) <<
+        " vertices and " << num_edges(assemblyGraph2) << " edges." << endl;
+    write("E");
+
+
+    throw runtime_error("Skipping sequence assembly.");
 
     // Sequence assembly.
     performanceLog << timestamp << "Sequence assembly begins." << endl;
