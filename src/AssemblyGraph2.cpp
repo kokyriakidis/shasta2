@@ -1037,16 +1037,21 @@ void AssemblyGraph2::detangleVertices(Detangler& detangler)
         const vertex_descriptor v = *it;
         detanglingCandidates.erase(it);
 
+        // cout << "Attempting to detangle vertex " << assemblyGraph2[v].id << endl;
+
         ++attemptCount;
         Tangle2 tangle(assemblyGraph2, v,
             assemblerOptions.aDrift,
             assemblerOptions.bDrift);
         const bool success = detangler(tangle);
         if(success) {
+            // cout << "Detangling successfull for vertex " << assemblyGraph2[v].id << endl;
             ++successCount;
             for(const vertex_descriptor v: tangle.removedVertices) {
                 detanglingCandidates.erase(v);
             }
+        } else {
+            // cout << "Detangling failure for vertex " << assemblyGraph2[v].id << endl;
         }
     }
 

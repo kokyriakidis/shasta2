@@ -5,6 +5,7 @@
 
 namespace shasta {
     class AssemblyGraph2Postprocessor;
+    class TrivialDetangler;
 }
 
 
@@ -19,6 +20,11 @@ public:
         const string& assemblyStage);
 
     // Map from vertex id to vertex_descriptor.
+
     std::map<uint64_t, vertex_descriptor> vertexMap;
+
+
+    // These are needed to simplify the Python API.
+    void detangleVertices(TrivialDetangler&);
 };
 

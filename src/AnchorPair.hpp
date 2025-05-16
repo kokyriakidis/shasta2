@@ -159,6 +159,9 @@ public:
     // Count OrientedReadIds in common with another AnchorPair.
     uint64_t countCommon(const AnchorPair&) const;
 
+    // Remove from the AnchorPair OrientedReadIds that have negative offsets.
+    void removeNegativeOffsets(const Anchors&);
+
     template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
     {
         ar & anchorIdA;

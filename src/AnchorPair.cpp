@@ -130,7 +130,7 @@ void AnchorPair::get(
 
             const uint32_t positionInJourneyA = itA->positionInJourney;
             const uint32_t positionInJourneyB = itB->positionInJourney;
-            SHASTA_ASSERT(positionInJourneyB > positionInJourneyA);
+            SHASTA_ASSERT(positionInJourneyB >= positionInJourneyA);    // Allow degenerate AnchorPair witn anchorIdA==anchorIdB
             const uint32_t ordinalA = itA->ordinal;
             const uint32_t ordinalB = itB->ordinal;
             const uint32_t positionA = orientedReadMarkers[ordinalA].position + kHalf;
@@ -146,6 +146,27 @@ void AnchorPair::get(
         ++itB;
     }
 }
+
+
+
+// Remove from the AnchorPair OrientedReadIds that have negative offsets.
+void AnchorPair::removeNegativeOffsets(const Anchors& anchors)
+{
+    vector< pair<uint32_t, uint32_t> > ordinals;
+    getOrdinals(anchors, ordinals);
+    SHASTA_ASSERT(ordinals.size() == orientedReadIds.size());
+
+    vector<OrientedReadId> newOrientedReadIds;
+    for(uint64_t i=0; i<orientedReadIds.size(); i++) {
+        const auto& p = ordinals[i];
+        if(p.second >= p.first) {
+            newOrientedReadIds.push_back(orientedReadIds[i]);
+        }
+    }
+
+    orientedReadIds.swap(newOrientedReadIds);
+}
+
 
 
 

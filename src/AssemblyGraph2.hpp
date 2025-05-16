@@ -144,10 +144,12 @@ private:
     void bubbleCleanup(uint64_t threadCount);
     uint64_t bubbleCleanupIteration(uint64_t threadCount);
 
+public:
     void detangleVertices(Detangler&);
 
     // Output.
     void write(const string& stage);
+private:
     void writeGfa(const string& fileName) const;
     void writeGfa(ostream&) const;
     void writeFasta(const string& fileName) const;

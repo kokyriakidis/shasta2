@@ -4,6 +4,7 @@
 #include "Assembler.hpp"
 #include "AssemblerOptions.hpp"
 #include "AssemblyGraphPostprocessor.hpp"
+#include "AssemblyGraph2Postprocessor.hpp"
 #include "Base.hpp"
 #include "deduplicate.hpp"
 #include "Detangler.hpp"
@@ -122,8 +123,10 @@ PYBIND11_MODULE(shasta2, shasta2Module)
           &Assembler::createAssemblyGraph2,
           arg("assemblerOptions"),
           arg("threadCount") = 0)
-     .def("getAssemblyGraph",
-         &Assembler::getAssemblyGraph)
+      .def("getAssemblyGraph",
+          &Assembler::getAssemblyGraph)
+      .def("getAssemblyGraph2",
+          &Assembler::getAssemblyGraph2, return_value_policy::reference)
     ;
 
 
@@ -170,6 +173,19 @@ PYBIND11_MODULE(shasta2, shasta2Module)
             )
             &AssemblyGraphPostprocessor::detangleEdges)
         ;
+
+
+    class_<AssemblyGraph2Postprocessor>(shasta2Module, "AssemblyGraph2")
+        .def("write", &AssemblyGraph2Postprocessor::write)
+        .def("detangleVertices",
+            (
+                void (AssemblyGraph2Postprocessor::*)
+                (TrivialDetangler&)
+            )
+            &AssemblyGraph2Postprocessor::detangleVertices)
+        ;
+
+
     class_<TrivialDetangler>(shasta2Module, "TrivialDetangler")
         .def(init<uint64_t>())
         ;

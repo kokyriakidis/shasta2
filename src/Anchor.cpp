@@ -1066,6 +1066,9 @@ AnchorPair Anchors::bridge(
         y.orientedReadIds.begin(), y.orientedReadIds.end(),
         back_inserter(z.orientedReadIds));
 
+    // Remove OrientedReadIds with negative offsets.
+    z.removeNegativeOffsets(*this);
+
     // Split z into AnchorPairs with consistent offsets.
     vector<AnchorPair> splitAnchorPairs;
     z.split(*this, aDrift, bDrift, splitAnchorPairs);

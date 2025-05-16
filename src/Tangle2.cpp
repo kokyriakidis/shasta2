@@ -89,14 +89,24 @@ void Tangle2::detangle()
         const AnchorPair& bridgeAnchorPair = tangleMatrix->tangleMatrix[iEntrance][iExit];
         const uint64_t bridgeOffset = bridgeAnchorPair.getAverageOffset(assemblyGraph2.anchors);
 
-        // Create the new vertex.
-        const vertex_descriptor vNew = add_vertex(AssemblyGraph2Vertex(assemblyGraph2.nextVertexId++), assemblyGraph2);
-        AssemblyGraph2Vertex& vertexNew = assemblyGraph2[vNew];
-        vertexNew.emplace_back(bridgeAnchorPair, bridgeOffset);
+        // If the bridgeAnchorPair is degenerate (the two AnchorIds are the same)
+        // we don't need to create a new vertex.
 
-        // Connect it to the entrance and exit.
-        add_edge(vEntrance, vNew, assemblyGraph2);
-        add_edge(vNew, vExit, assemblyGraph2);
+        if(bridgeAnchorPair.anchorIdA == bridgeAnchorPair.anchorIdB) {
+
+            add_edge(vEntrance, vExit, assemblyGraph2);
+
+        } else {
+
+            // Create the new vertex.
+            const vertex_descriptor vNew = add_vertex(AssemblyGraph2Vertex(assemblyGraph2.nextVertexId++), assemblyGraph2);
+            AssemblyGraph2Vertex& vertexNew = assemblyGraph2[vNew];
+            vertexNew.emplace_back(bridgeAnchorPair, bridgeOffset);
+
+            // Connect it to the entrance and exit.
+            add_edge(vEntrance, vNew, assemblyGraph2);
+            add_edge(vNew, vExit, assemblyGraph2);
+        }
 
     }
 

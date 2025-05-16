@@ -2,8 +2,8 @@
 
 from shasta2 import *
 
-options = AssemblerOptions()
-assemblyGraphOptions = options.assemblyGraphOptions
+assemblerOptions = AssemblerOptions()
+assemblyGraphOptions = assemblerOptions.assemblyGraphOptions
 
 # Create the Assembler and access what we need.
 assembler = Assembler()
@@ -12,21 +12,11 @@ assembler.accessAnchors()
 assembler.accessJourneys()
 
 
-# Get the AssemblyGraph at a chosen assembly stage and do something with it.
-assemblyGraph = assembler.getAssemblyGraph("Z");
-detangler = PermutationDetangler(
-	assemblyGraphOptions.minCommonCoverage,
-    assemblyGraphOptions.detangleEpsilon,
-    assemblyGraphOptions.detangleMaxLogP,
-    assemblyGraphOptions.detangleMinLogPDelta)
+# Get the AssemblyGraph2 at a chosen assembly stage and do something with it.
+assemblyGraph2 = assembler.getAssemblyGraph2("B", assemblerOptions);
+detangler = TrivialDetangler(assemblyGraphOptions.minCommonCoverage)
 	
-assemblyGraph.detangleEdges(detangler)
+assemblyGraph2.detangleVertices(detangler)
+assemblyGraph2.write("C")
 
 
-"""
-assemblyGraph = assembler.getAssemblyGraph("A");
-assemblyGraph.transitiveReduction(
-    assemblyGraphOptions.transitiveReductionThreshold,
-    assemblyGraphOptions.transitiveReductionA,
-    assemblyGraphOptions.transitiveReductionB);
-"""

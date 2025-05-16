@@ -1,6 +1,8 @@
 // Shasta.
 #include "AssemblyGraph2Postprocessor.hpp"
 #include "Base.hpp"
+#include "TrivialDetangler.hpp"
+
 using namespace shasta;
 
 // Boost libraries.
@@ -21,4 +23,10 @@ AssemblyGraph2Postprocessor::AssemblyGraph2Postprocessor(
         vertexMap.insert(make_pair(assemblyGraph2[v].id, v));
     }
 
+}
+
+
+// These are needed to simplify the Python API.
+void AssemblyGraph2Postprocessor::detangleVertices(TrivialDetangler& detangler) {
+    AssemblyGraph2::detangleVertices(detangler);
 }
