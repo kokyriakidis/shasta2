@@ -55,7 +55,8 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def_readonly("markerDensity", &AssemblerOptions::markerDensity)
         .def_readonly("minAnchorCoverage", &AssemblerOptions::minAnchorCoverage)
         .def_readonly("maxAnchorCoverage", &AssemblerOptions::maxAnchorCoverage)
-        .def_readonly("minAnchorGraphEdgeCoverage", &AssemblerOptions::minAnchorGraphEdgeCoverage)
+        .def_readonly("minAnchorGraphEdgeCoverageNear", &AssemblerOptions::minAnchorGraphEdgeCoverageNear)
+        .def_readonly("minAnchorGraphEdgeCoverageFar", &AssemblerOptions::minAnchorGraphEdgeCoverageFar)
         .def_readonly("assemblyGraphOptions", &AssemblerOptions::assemblyGraphOptions)
         ;
 

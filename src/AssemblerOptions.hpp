@@ -46,8 +46,8 @@ public:
     uint64_t minAnchorCoverage = 10;
     uint64_t maxAnchorCoverage = 60;
     uint64_t maxAnchorHomopolymerLength = 10;
-    uint64_t minAnchorGraphEdgeCoverage = 6;
-    uint64_t maxAnchorGraphEdgeCoverage = 60;
+    uint64_t minAnchorGraphEdgeCoverageNear = 10;
+    uint64_t minAnchorGraphEdgeCoverageFar = 3;
 
     double aDrift = 300.;
     double bDrift = 0.01;

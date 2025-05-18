@@ -3,6 +3,7 @@
 #include "Anchor.hpp"
 #include "Markers.hpp"
 #include "orderPairs.hpp"
+#include "ReadLengthDistribution.hpp"
 using namespace shasta;
 
 // Boost libraries.
@@ -16,8 +17,7 @@ using namespace shasta;
 AnchorGraph::AnchorGraph(
     const Anchors& anchors,
     const Journeys& journeys,
-    uint64_t minEdgeCoverage,
-    uint64_t maxEdgeCoverage) :
+    uint64_t minEdgeCoverage) :
     AnchorGraphBaseClass(anchors.size())
 {
     AnchorGraph& anchorGraph = *this;
@@ -28,9 +28,7 @@ AnchorGraph::AnchorGraph(
         AnchorPair::createChildren(anchors, journeys, anchorIdA, minEdgeCoverage, anchorPairs);
 
         for(const AnchorPair& anchorPair: anchorPairs) {
-            if(anchorPair.orientedReadIds.size() <= maxEdgeCoverage) {
-                add_edge(anchorIdA, anchorPair.anchorIdB, anchorPair, anchorGraph);
-            }
+            add_edge(anchorIdA, anchorPair.anchorIdB, anchorPair, anchorGraph);
         }
     }
 
@@ -46,12 +44,20 @@ AnchorGraph::AnchorGraph(
 AnchorGraph::AnchorGraph(
     const Anchors& anchors,
     const Journeys& journeys,
-    uint64_t minEdgeCoverage,
-    uint64_t maxEdgeCoverage,
+    uint64_t minEdgeCoverageNear,
+    uint64_t minEdgeCoverageFar,
     double aDrift,
     double bDrift)
 {
     AnchorGraph& anchorGraph = *this;
+
+    // The edge coverage threshold is a function of estimated offset.
+    // It is computed as max(edgeCoverageThresholdNear * coverageCorrelation(offset), edgeCoverageThresholdFar).
+    // As small offset coverageCorrelation is 1, so for small offsets the
+    // edge coverage threshold is edgeCoverageThresholdNear.
+    // At large offset the edge coverage threshold is edgeCoverageThresholdFar.
+
+    ReadLengthDistribution readLengthDistribution(anchors);
 
     const uint64_t anchorCount = anchors.size();
     vector<AnchorPair> anchorPairs;
@@ -61,15 +67,23 @@ AnchorGraph::AnchorGraph(
     vector<uint64_t> offsets;
 
     for(AnchorId anchorIdA=0; anchorIdA<anchorCount; anchorIdA++) {
-        AnchorPair::createChildren(anchors, journeys, anchorIdA, minEdgeCoverage, anchorPairs);
+        AnchorPair::createChildren(anchors, journeys, anchorIdA, minEdgeCoverageFar, anchorPairs);
 
         for(const AnchorPair& anchorPair: anchorPairs) {
 
             if(anchorPair.isConsistent(anchors, aDrift, bDrift, positions, offsets)) {
 
+                // Compute the edge coverage threshold for this AnchorPair.
+                // It is a function of the offset.
+                const uint64_t offset = anchorPair.getAverageOffset(anchors);
+                const uint64_t bin = offset / readLengthDistribution.binWidth;
+                const double coverageCorrelation = readLengthDistribution.data[bin].coverageCorrelation;
+                uint64_t edgeCoverageThreshold = uint64_t(coverageCorrelation * double(minEdgeCoverageNear));
+                edgeCoverageThreshold = max(edgeCoverageThreshold, minEdgeCoverageFar);
+
                 // Just generate an edge with this AnchorPair.
                 // This is the most common case.
-                if(anchorPair.orientedReadIds.size() <= maxEdgeCoverage) {
+                if(anchorPair.orientedReadIds.size() >= edgeCoverageThreshold) {
                     add_edge(anchorIdA, anchorPair.anchorIdB, anchorPair, anchorGraph);
                 }
 
@@ -80,7 +94,16 @@ AnchorGraph::AnchorGraph(
                 anchorPair.split(anchors, aDrift, bDrift, newAnchorPairs);
 
                 for(const AnchorPair& anchorPair: newAnchorPairs) {
-                    if((anchorPair.size() >= minEdgeCoverage) and (anchorPair.size() <= maxEdgeCoverage)) {
+
+                    // Compute the edge coverage threshold for this AnchorPair.
+                    // It is a function of the offset.
+                    const uint64_t offset = anchorPair.getAverageOffset(anchors);
+                    const uint64_t bin = offset / readLengthDistribution.binWidth;
+                    const double coverageCorrelation = readLengthDistribution.data[bin].coverageCorrelation;
+                    uint64_t edgeCoverageThreshold = uint64_t(coverageCorrelation * double(minEdgeCoverageNear));
+                    edgeCoverageThreshold = max(edgeCoverageThreshold, minEdgeCoverageFar);
+
+                    if(anchorPair.size() >= edgeCoverageThreshold) {
                         add_edge(anchorIdA, anchorPair.anchorIdB, anchorPair, anchorGraph);
                     }
                 }
