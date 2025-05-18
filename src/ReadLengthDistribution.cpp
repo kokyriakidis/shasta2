@@ -23,9 +23,10 @@ ReadLengthDistribution::ReadLengthDistribution(
 
     // Fill in the P values.
     const uint64_t readCount = reads.readCount();
-    for(uint64_t bin=0; bin<binCount; bin++) {
+    for(uint64_t bin=0; bin<histogram. size(); bin++) {
         data[bin].P = double(histogram[bin]) / double(readCount);
     }
+    data.back().P = 0.;
 
     // Fill in the Q and R values.
     data.back().Q = 0.;
