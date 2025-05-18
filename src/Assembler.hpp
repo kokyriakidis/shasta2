@@ -115,6 +115,7 @@ public:
         uint64_t minReadLength,
         size_t threadCount);
     void histogramReadLength(const string& fileName);
+    void computeReadLengthDistribution() const;
 
 
 

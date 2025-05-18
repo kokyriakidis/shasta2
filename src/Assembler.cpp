@@ -9,6 +9,7 @@
 #include "MurmurHash2.hpp"
 #include "performanceLog.hpp"
 #include "Reads.hpp"
+#include "ReadLengthDistribution.hpp"
 #include "TransitionGraph.hpp"
 using namespace shasta;
 
@@ -79,6 +80,7 @@ void Assembler::assemble(
         inputFileNames,
         assemblerOptions.minReadLength,
         threadCount);
+    computeReadLengthDistribution();
 
     createKmerChecker(assemblerOptions.k, assemblerOptions.markerDensity, threadCount);
     createMarkers(threadCount);
@@ -251,3 +253,7 @@ void Assembler::createAssemblyGraph2(
 }
 
 
+void Assembler::computeReadLengthDistribution() const
+{
+    ReadLengthDistribution readLengthDistribution(reads(), MappedMemoryOwner(*this));
+}
