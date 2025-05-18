@@ -16,16 +16,30 @@
 namespace shasta {
 
     class AnchorGraph;
+    class AnchorGraphEdge;
     using AnchorGraphBaseClass = boost::adjacency_list<
         boost::listS,
         boost::vecS,
         boost::bidirectionalS,
         boost::no_property,
-        AnchorPair>;
+        AnchorGraphEdge>;
 
     class Anchors;
     class Journeys;
 }
+
+
+
+class shasta::AnchorGraphEdge {
+public:
+    AnchorPair anchorPair;
+    uint64_t id = invalid<uint64_t>;
+
+    AnchorGraphEdge(const AnchorPair& anchorPair, uint64_t id) :
+        anchorPair(anchorPair),
+        id(id)
+    {}
+};
 
 
 

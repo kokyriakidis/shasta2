@@ -22,13 +22,19 @@ AnchorGraph::AnchorGraph(
 {
     AnchorGraph& anchorGraph = *this;
 
+    uint64_t nextEdgeId = 0;
+
     const uint64_t anchorCount = anchors.size();
+    for(AnchorId anchorId=0; anchorId<anchorCount; anchorId++) {
+        add_vertex(anchorGraph);
+    }
+
     vector<AnchorPair> anchorPairs;
     for(AnchorId anchorIdA=0; anchorIdA<anchorCount; anchorIdA++) {
         AnchorPair::createChildren(anchors, journeys, anchorIdA, minEdgeCoverage, anchorPairs);
 
         for(const AnchorPair& anchorPair: anchorPairs) {
-            add_edge(anchorIdA, anchorPair.anchorIdB, anchorPair, anchorGraph);
+            add_edge(anchorIdA, anchorPair.anchorIdB, AnchorGraphEdge(anchorPair, nextEdgeId++), anchorGraph);
         }
     }
 
@@ -49,6 +55,7 @@ AnchorGraph::AnchorGraph(
     double aDrift,
     double bDrift)
 {
+    // cout << "AAA " << minEdgeCoverageNear << " " << minEdgeCoverageFar << endl;
     AnchorGraph& anchorGraph = *this;
 
     // The edge coverage threshold is a function of estimated offset.
@@ -59,7 +66,13 @@ AnchorGraph::AnchorGraph(
 
     ReadLengthDistribution readLengthDistribution(anchors);
 
+    uint64_t nextEdgeId = 0;
+
     const uint64_t anchorCount = anchors.size();
+    for(AnchorId anchorId=0; anchorId<anchorCount; anchorId++) {
+        add_vertex(anchorGraph);
+    }
+
     vector<AnchorPair> anchorPairs;
     vector<AnchorPair> newAnchorPairs;
 
@@ -68,6 +81,8 @@ AnchorGraph::AnchorGraph(
 
     for(AnchorId anchorIdA=0; anchorIdA<anchorCount; anchorIdA++) {
         AnchorPair::createChildren(anchors, journeys, anchorIdA, minEdgeCoverageFar, anchorPairs);
+
+        // cout << "BBB " << anchorIdToString(anchorIdA) << " found " << anchorPairs.size() << " children." << endl;
 
         for(const AnchorPair& anchorPair: anchorPairs) {
 
@@ -80,11 +95,12 @@ AnchorGraph::AnchorGraph(
                 const double coverageCorrelation = readLengthDistribution.data[bin].coverageCorrelation;
                 uint64_t edgeCoverageThreshold = uint64_t(coverageCorrelation * double(minEdgeCoverageNear));
                 edgeCoverageThreshold = max(edgeCoverageThreshold, minEdgeCoverageFar);
+                // cout << "CCC " << offset << " " << edgeCoverageThreshold << " " << anchorPair.orientedReadIds.size() << endl;
 
                 // Just generate an edge with this AnchorPair.
                 // This is the most common case.
                 if(anchorPair.orientedReadIds.size() >= edgeCoverageThreshold) {
-                    add_edge(anchorIdA, anchorPair.anchorIdB, anchorPair, anchorGraph);
+                    add_edge(anchorIdA, anchorPair.anchorIdB, AnchorGraphEdge(anchorPair, nextEdgeId++), anchorGraph);
                 }
 
             } else {
@@ -102,9 +118,10 @@ AnchorGraph::AnchorGraph(
                     const double coverageCorrelation = readLengthDistribution.data[bin].coverageCorrelation;
                     uint64_t edgeCoverageThreshold = uint64_t(coverageCorrelation * double(minEdgeCoverageNear));
                     edgeCoverageThreshold = max(edgeCoverageThreshold, minEdgeCoverageFar);
+                    // cout << "DDD " << offset << " " << edgeCoverageThreshold << " " << anchorPair.orientedReadIds.size() << endl;
 
                     if(anchorPair.size() >= edgeCoverageThreshold) {
-                        add_edge(anchorIdA, anchorPair.anchorIdB, anchorPair, anchorGraph);
+                        add_edge(anchorIdA, anchorPair.anchorIdB, AnchorGraphEdge(anchorPair, nextEdgeId++), anchorGraph);
                     }
                 }
 
@@ -117,7 +134,7 @@ AnchorGraph::AnchorGraph(
 
     // Now all the edges must have consistent offsets.
     BGL_FORALL_EDGES(e, anchorGraph, AnchorGraph) {
-        SHASTA_ASSERT(anchorGraph[e].isConsistent(anchors, aDrift, bDrift, positions, offsets));
+        SHASTA_ASSERT(anchorGraph[e].anchorPair.isConsistent(anchors, aDrift, bDrift, positions, offsets));
     }
 
 }
@@ -142,7 +159,7 @@ void AnchorGraph::computeEdgeJourneys(
     vector< vector< pair<uint32_t, edge_descriptor> > > v(orientedReadCount);
     vector< pair<uint32_t, uint32_t> > ordinals;
     BGL_FORALL_EDGES(e, anchorGraph, AnchorGraph) {
-        const AnchorPair& anchorPair = anchorGraph[e];
+        const AnchorPair& anchorPair = anchorGraph[e].anchorPair;
         anchorPair.getOrdinals(anchors, ordinals);
         SHASTA_ASSERT(ordinals.size() == anchorPair.orientedReadIds.size());
         for(uint64_t i=0; i<anchorPair.orientedReadIds.size(); i++) {

@@ -62,8 +62,8 @@ AssemblyGraph::AssemblyGraph(
     for(const auto& chain: chains) {
         const AnchorGraph::edge_descriptor eA = chain.front();
         const AnchorGraph::edge_descriptor eB = chain.back();
-        const AnchorId anchorIdA = anchorGraph[eA].anchorIdA;
-        const AnchorId anchorIdB = anchorGraph[eB].anchorIdB;
+        const AnchorId anchorIdA = anchorGraph[eA].anchorPair.anchorIdA;
+        const AnchorId anchorIdB = anchorGraph[eB].anchorPair.anchorIdB;
         vertexAnchorIds.push_back(anchorIdA);
         vertexAnchorIds.push_back(anchorIdB);
     }
@@ -84,8 +84,8 @@ AssemblyGraph::AssemblyGraph(
     for(const auto& chain: chains) {
         const AnchorGraph::edge_descriptor eA = chain.front();
         const AnchorGraph::edge_descriptor eB = chain.back();
-        const AnchorId anchorIdA = anchorGraph[eA].anchorIdA;
-        const AnchorId anchorIdB = anchorGraph[eB].anchorIdB;
+        const AnchorId anchorIdA = anchorGraph[eA].anchorPair.anchorIdA;
+        const AnchorId anchorIdB = anchorGraph[eB].anchorPair.anchorIdB;
         const vertex_descriptor vA = vertexMap[anchorIdA];
         const vertex_descriptor vB = vertexMap[anchorIdB];
 

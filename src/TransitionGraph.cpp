@@ -26,9 +26,12 @@ TransitionGraph::TransitionGraph(
     TransitionGraph& transitionGraph = *this;
 
     // Create the TransitionGraph vertices, one for each AnchorGraph edge.
-    uint64_t nextVertexId = 0;;
+    // More vertices are created below. Those are not associated to an AnchorGraph edge.
+    uint64_t nextVertexId = 0;
     BGL_FORALL_EDGES(eA, anchorGraph, AnchorGraph) {
-        add_vertex(TransitionGraphVertex(anchorGraph[eA], nextVertexId++), transitionGraph);
+        const AnchorGraphEdge& anchorGraphEdge = anchorGraph[eA];
+        SHASTA_ASSERT(anchorGraphEdge.id == nextVertexId);
+        add_vertex(TransitionGraphVertex(anchorGraphEdge.anchorPair, nextVertexId++), transitionGraph);
     }
 
     // Compute journeys.
