@@ -1,5 +1,6 @@
 // Shasta.
 #include "LocalAnchorGraph.hpp"
+#include "AnchorGraph.hpp"
 #include "computeLayout.hpp"
 #include "html.hpp"
 #include "HttpServer.hpp"
@@ -20,65 +21,77 @@ using namespace shasta;
 
 
 
+// New constructor from the global AnchorGraph.
+// vertex and edge descriptors use a L (local) suffix for the LocalAnchorGraph
+// and G (global) for the AnchorGraph.
 LocalAnchorGraph::LocalAnchorGraph(
     const Anchors& anchors,
-    const Journeys& journeys,
+    const AnchorGraph& anchorGraph,
     const vector<AnchorId>& anchorIds,
-    uint64_t maxDistance,
-    uint64_t minCoverage) :
+    uint64_t maxDistance) :
     anchors(anchors),
-    maxDistance(maxDistance)
+    anchorGraphPointer(&anchorGraph)
 {
-    LocalAnchorGraph& graph = *this;
+    LocalAnchorGraph& localAnchorGraph = *this;
 
     // Initialize a BFS from these AnchorIds.
     std::queue<vertex_descriptor> q;
     for(const AnchorId anchorId: anchorIds) {
         SHASTA_ASSERT(not vertexMap.contains(anchorId));
-        const vertex_descriptor v = boost::add_vertex(LocalAnchorGraphVertex(anchorId, 0), graph);
-        vertexMap.insert({anchorId, v});
-        q.push(v);
+        const vertex_descriptor vL = boost::add_vertex(LocalAnchorGraphVertex(anchorId, 0), localAnchorGraph);
+        vertexMap.insert({anchorId, vL});
+        q.push(vL);
     }
 
-    // BFS to find the vertices. We will add the edges later.
-    vector<AnchorId> neighbors;
-    vector<uint64_t> coverage;
-    while(not q.empty()) {
-        const vertex_descriptor v0 = q.front();
-        q.pop();
 
-        const LocalAnchorGraphVertex& vertex0 = graph[v0];
-        const AnchorId anchorId0 = vertex0.anchorId;
-        const uint64_t distance0 = vertex0.distance;
+
+    // BFS to find the vertices. We will add the edges later.
+    while(not q.empty()) {
+
+        // Dequeue a vertex.
+        vertex_descriptor v0L = q.front();
+        q.pop();
+        const LocalAnchorGraphVertex& vertex0L = localAnchorGraph[v0L];
+        const AnchorId anchorId0 = vertex0L.anchorId;
+
+        const uint64_t distance0 = vertex0L.distance;
         const uint64_t distance1 = distance0 + 1;
 
-        anchors.findChildren(journeys, anchorId0, neighbors, coverage, minCoverage);
-        for(uint64_t i=0; i<neighbors.size(); i++) {
-            const AnchorId anchorId1 = neighbors[i];
+        // Get the corresponding global AnchorGraph vertex.
+        // In the global AnchorGraph, vertex descriptors are AnchorIds.
+        const AnchorGraph::vertex_descriptor v0G = anchorId0;
+
+        // Loop over out-edges.
+        BGL_FORALL_OUTEDGES(v0G, eG, anchorGraph, AnchorGraph) {
+            const AnchorGraph::vertex_descriptor v1G = target(eG, anchorGraph);
+            const AnchorId anchorId1 = v1G;
+
             auto it1 = vertexMap.find(anchorId1);
             if(it1 != vertexMap.end()) {
                 continue;
             }
 
-            const vertex_descriptor v1 = boost::add_vertex(LocalAnchorGraphVertex(anchorId1, distance1), graph);
-            vertexMap.insert({anchorId1, v1});
+            const vertex_descriptor v1L = boost::add_vertex(LocalAnchorGraphVertex(anchorId1, distance1), localAnchorGraph);
+            vertexMap.insert({anchorId1, v1L});
             if(distance1 < maxDistance) {
-                q.push(v1);
+                q.push(v1L);
             }
         }
 
-        anchors.findParents(journeys, anchorId0, neighbors, coverage, minCoverage);
-        for(uint64_t i=0; i<neighbors.size(); i++) {
-            const AnchorId anchorId1 = neighbors[i];
+        // Loop over in-edges.
+        BGL_FORALL_INEDGES(v0G, eG, anchorGraph, AnchorGraph) {
+            const AnchorGraph::vertex_descriptor v1G = source(eG, anchorGraph);
+            const AnchorId anchorId1 = v1G;
+
             auto it1 = vertexMap.find(anchorId1);
             if(it1 != vertexMap.end()) {
                 continue;
             }
 
-            const vertex_descriptor v1 = boost::add_vertex(LocalAnchorGraphVertex(anchorId1, distance1), graph);
-            vertexMap.insert({anchorId1, v1});
+            const vertex_descriptor v1L = boost::add_vertex(LocalAnchorGraphVertex(anchorId1, distance1), localAnchorGraph);
+            vertexMap.insert({anchorId1, v1L});
             if(distance1 < maxDistance) {
-                q.push(v1);
+                q.push(v1L);
             }
         }
     }
@@ -86,25 +99,28 @@ LocalAnchorGraph::LocalAnchorGraph(
 
 
     // Now add the edges.
-    BGL_FORALL_VERTICES(v0, graph, LocalAnchorGraph) {
-        const AnchorId anchorId0 = graph[v0].anchorId;
-        anchors.findChildren(journeys, anchorId0, neighbors, coverage);
-        for(uint64_t i=0; i<neighbors.size(); i++) {
-            if(coverage[i] < minCoverage) {
-                continue;
-            }
-            const AnchorId& anchorId1 = neighbors[i];
-            auto it1 = vertexMap.find(anchorId1);
-            if(it1 == vertexMap.end()) {
-                continue;
-            }
-            const vertex_descriptor v1 = it1->second;
+    BGL_FORALL_VERTICES(v0L, localAnchorGraph, LocalAnchorGraph) {
+        const LocalAnchorGraphVertex& vertex0L = localAnchorGraph[v0L];
+        const AnchorId anchorId0 = vertex0L.anchorId;
 
-            // Create the edge.
-            LocalAnchorGraphEdge edge;
-            edge.coverage = coverage[i];
-            anchors.analyzeAnchorPair(anchorId0, anchorId1, edge.info);
-            add_edge(v0, v1, edge, graph);
+        // Get the corresponding global AnchorGraph vertex.
+        // In the global AnchorGraph, vertex descriptors are AnchorIds.
+        const AnchorGraph::vertex_descriptor v0G = anchorId0;
+
+        // Loop over out-edges.
+        BGL_FORALL_OUTEDGES(v0G, eG, anchorGraph, AnchorGraph) {
+            const AnchorGraph::vertex_descriptor v1G = target(eG, anchorGraph);
+            const AnchorId anchorId1 = v1G;
+
+            auto it1 = vertexMap.find(anchorId1);
+            if(it1 != vertexMap.end()) {
+                const vertex_descriptor v1L = it1->second;
+
+                LocalAnchorGraphEdge edge;
+                edge.eG = eG;
+                add_edge(v0L, v1L, edge, localAnchorGraph);
+            }
+
         }
     }
 }
@@ -126,6 +142,8 @@ void LocalAnchorGraph::writeGraphviz(
     const LocalAnchorGraphDisplayOptions& options) const
 {
     const LocalAnchorGraph& graph = *this;
+    SHASTA_ASSERT(anchorGraphPointer);
+    const AnchorGraph& anchorGraph = *anchorGraphPointer;
 
     AnchorId referenceAnchorId = invalid<AnchorId>;
     if(options.vertexColoring == "byReadComposition") {
@@ -239,6 +257,15 @@ void LocalAnchorGraph::writeGraphviz(
         const string anchorId0String = anchorIdToString(anchorId0);
         const string anchorId1String = anchorIdToString(anchorId1);
 
+        const AnchorGraph::edge_descriptor eG = edge.eG;
+        const AnchorGraphEdge& edgeG = anchorGraph[eG];
+        const AnchorPair& anchorPair = edgeG.anchorPair;
+        SHASTA_ASSERT(anchorPair.anchorIdA == anchorId0);
+        SHASTA_ASSERT(anchorPair.anchorIdB == anchorId1);
+
+        const uint64_t coverage = anchorPair.orientedReadIds.size();
+        const uint64_t offset = anchorPair.getAverageOffset(anchors);
+
         s << "\"" << anchorId0String << "\"->";
         s << "\"" << anchorId1String << "\"";
 
@@ -254,14 +281,14 @@ void LocalAnchorGraph::writeGraphviz(
         s << " tooltip="
             "\"" << anchorId0String << " to "
             << anchorId1String <<
-            " " << edge.coverage << "/" << edge.info.common <<
-            " offset " << edge.info.offsetInBases << "\"";
+            ", coverage " << coverage <<
+            ", offset " << offset << "\"";
 
         // Label.
         if(options.edgeLabels) {
             s << " label=\"" <<
-                edge.coverage << "/" << edge.info.common <<
-                "\\nOffset " << edge.info.offsetInBases << "\"";
+                coverage <<
+                "\\nOffset " << offset << "\"";
         }
 
         // Color.
@@ -275,19 +302,15 @@ void LocalAnchorGraph::writeGraphviz(
         }
 
         // Thickness.
-        s << " penwidth=" << 0.5 * options.edgeThickness * double(edge.coverage);
+        s << " penwidth=" << 0.5 * options.edgeThickness * double(coverage);
 
         // Arrow size.
         s << " arrowsize=" << 0.5 * options.arrowSize;
 
         // Length. Only use by fdp and neato layouts.
-        int64_t offsetInBases = edge.info.offsetInBases;
-        if(offsetInBases < 0) {
-            offsetInBases = 10;
-        }
         const double displayLength =
             (options.minimumEdgeLength +
-                options.additionalEdgeLengthPerKb * 0.001 * double(offsetInBases)) / 72.;
+                options.additionalEdgeLengthPerKb * 0.001 * double(offset)) / 72.;
         s << " len=" << displayLength;
 
 
@@ -302,6 +325,7 @@ void LocalAnchorGraph::writeGraphviz(
 
     s << "}\n";
 }
+
 
 
 
@@ -615,19 +639,22 @@ void LocalAnchorGraph::writeHtml2(
 void LocalAnchorGraph::computeLayout(const LocalAnchorGraphDisplayOptions& options)
 {
     const LocalAnchorGraph& graph = *this;
+    SHASTA_ASSERT(anchorGraphPointer);
+    const AnchorGraph& anchorGraph = *anchorGraphPointer;
 
 
     // Create a map containing the desired length for each edge.
     std::map<edge_descriptor, double> edgeLengthMap;
-    BGL_FORALL_EDGES(e, graph, LocalAnchorGraph) {
-        int64_t offsetInBases = graph[e].info.offsetInBases;
-        if(offsetInBases < 0) {
-            offsetInBases = 10;
-        }
+    BGL_FORALL_EDGES(eL, graph, LocalAnchorGraph) {
+        const LocalAnchorGraphEdge& edgeL = graph[eL];
+        const AnchorGraphEdge& edgeG = anchorGraph[edgeL.eG];
+        const AnchorPair& anchorPair = edgeG.anchorPair;
+        const uint64_t offset = anchorPair.getAverageOffset(anchors);
+
         const double displayLength =
             options.minimumEdgeLength +
-            options.additionalEdgeLengthPerKb * 0.001 * double(offsetInBases);
-        edgeLengthMap.insert({e, displayLength});
+            options.additionalEdgeLengthPerKb * 0.001 * double(offset);
+        edgeLengthMap.insert({eL, displayLength});
     }
 
     // Compute the graph layout.
@@ -816,17 +843,23 @@ void LocalAnchorGraph::writeEdges(
     const LocalAnchorGraphDisplayOptions& options) const
 {
     const LocalAnchorGraph& graph = *this;
+    SHASTA_ASSERT(anchorGraphPointer);
+    const AnchorGraph& anchorGraph = *anchorGraphPointer;
 
     const double scalingFactor =
         (options.layoutMethod == "sfdp") ? 0.001 : 0.005;
 
     html << "\n<g id=edges>";
 
-    BGL_FORALL_EDGES(e, graph, LocalAnchorGraph) {
-        const LocalAnchorGraphEdge& edge = graph[e];
-        const uint64_t coverage = edge.coverage;
-        const vertex_descriptor v0 = source(e, graph);
-        const vertex_descriptor v1 = target(e, graph);
+    BGL_FORALL_EDGES(eL, graph, LocalAnchorGraph) {
+        const LocalAnchorGraphEdge& edgeL = graph[eL];
+        const AnchorGraphEdge& edgeG = anchorGraph[edgeL.eG];
+        const AnchorPair& anchorPair = edgeG.anchorPair;
+        const uint64_t coverage = anchorPair.orientedReadIds.size();
+        const uint64_t offset = anchorPair.getAverageOffset(anchors);
+
+        const vertex_descriptor v0 = source(eL, graph);
+        const vertex_descriptor v1 = target(eL, graph);
 
         // Get the position of these vertices in the computed layout.
         const auto it0 = layout.find(v0);
@@ -871,7 +904,7 @@ void LocalAnchorGraph::writeEdges(
             "'>"
             "<title>" <<
             anchorIdString0 << " to " << anchorIdString1 <<
-            ", coverage " << coverage << "/" << edge.info.common;
+            ", coverage " << coverage << ", offset " << offset;
         html << "</title>""</line>";
 
         // End the hyperlink.
@@ -890,10 +923,14 @@ void LocalAnchorGraph::writeEdges(
         html << " stroke=black";
     }
     html << ">";
-    BGL_FORALL_EDGES(e, graph, LocalAnchorGraph) {
-        const uint64_t coverage = graph[e].coverage;
-        const vertex_descriptor v0 = source(e, graph);
-        const vertex_descriptor v1 = target(e, graph);
+    BGL_FORALL_EDGES(eL, graph, LocalAnchorGraph) {
+        const LocalAnchorGraphEdge& edgeL = graph[eL];
+        const AnchorGraphEdge& edgeG = anchorGraph[edgeL.eG];
+        const AnchorPair& anchorPair = edgeG.anchorPair;
+        const uint64_t coverage = anchorPair.orientedReadIds.size();
+
+        const vertex_descriptor v0 = source(eL, graph);
+        const vertex_descriptor v1 = target(eL, graph);
 
         // Get the position of these vertices in the computed layout.
         const auto it0 = layout.find(v0);

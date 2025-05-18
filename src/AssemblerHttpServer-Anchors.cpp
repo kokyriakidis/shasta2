@@ -745,9 +745,6 @@ void Assembler::exploreLocalAnchorGraph(
     uint64_t distance = 10;
     HttpServer::getParameterValue(request, "distance", distance);
 
-    uint64_t minCoverage = httpServerData.assemblerOptions->minAnchorGraphEdgeCoverageNear;
-    HttpServer::getParameterValue(request, "minCoverage", minCoverage);
-
     // Get the options that control graph display.
     const LocalAnchorGraphDisplayOptions displayOptions(request);
 
@@ -758,7 +755,7 @@ void Assembler::exploreLocalAnchorGraph(
 
     // Form items for options that control graph creation.
     html <<
-        "<tr title='Enter comma separated anchor ids, each a number between 0 and " <<
+        "<tr title='Enter comma or space separated anchor ids, each a number between 0 and " <<
         anchors().size() / 2 - 1 << " followed by + or -.'>"
         "<th class=left>Starting anchor ids"
         "<td class=centered><input type=text name=anchorIdsString style='text-align:center' required";
@@ -774,13 +771,6 @@ void Assembler::exploreLocalAnchorGraph(
         "<td class=centered>"
         "<input type=text name=distance style='text-align:center' required size=8 value=" <<
         distance << ">";
-
-    html <<
-        "<tr>"
-        "<th class=left>Minimum edge coverage "
-        "<td class=centered>"
-        "<input type=text name=minCoverage style='text-align:center' required size=8 value=" <<
-        minCoverage << ">";
 
     // Form items for options that control graph display.
     displayOptions.writeForm(html);
@@ -801,7 +791,7 @@ void Assembler::exploreLocalAnchorGraph(
 
     // Extract the AnchorIds.
     vector<AnchorId> anchorIds;
-    boost::tokenizer< boost::char_separator<char> > tokenizer(anchorIdsString, boost::char_separator<char>(","));
+    boost::tokenizer< boost::char_separator<char> > tokenizer(anchorIdsString, boost::char_separator<char>(", "));
 
     for(const string& anchorIdString: tokenizer) {
         const AnchorId anchorId = anchorIdFromString(anchorIdString);
@@ -816,17 +806,18 @@ void Assembler::exploreLocalAnchorGraph(
     }
     deduplicate(anchorIds);
 
+    // Access the global AnchorGraph.
+    SHASTA_ASSERT(anchorGraphPointer);
+    const AnchorGraph& anchorGraph = *anchorGraphPointer;
 
 
     // Create the LocalAnchorGraph starting from these AnchorIds and moving
     // away up to the specified distance.
     LocalAnchorGraph graph(
         anchors(),
-        journeys(),
+        anchorGraph,
         anchorIds,
-        distance,
-        minCoverage
-        );
+        distance);
 
     html << "<h1>Local anchor graph</h1>";
     html << "The local anchor graph has " << num_vertices(graph) <<

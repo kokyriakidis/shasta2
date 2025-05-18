@@ -2,6 +2,7 @@
 
 // Shasta.
 #include "Anchor.hpp"
+#include "AnchorGraph.hpp"
 
 // Boost libraries.
 #include <boost/graph/adjacency_list.hpp>
@@ -23,6 +24,8 @@ namespace shasta {
         LocalAnchorGraphEdge>;
 
     class LocalAnchorGraphDisplayOptions;
+
+    class AnchorGraph;
 }
 
 
@@ -72,8 +75,8 @@ public:
 
 class shasta::LocalAnchorGraphEdge {
 public:
-    AnchorPairInfo info;
-    uint64_t coverage;
+    // The edge of the global AnchorGraph that corresponds to this LocalAnchorGraphEdge.
+    AnchorGraph::edge_descriptor eG;
 
 };
 
@@ -81,14 +84,15 @@ public:
 
 class shasta::LocalAnchorGraph : public LocalAnchorGraphAssemblyGraphBaseClass {
 public:
+
     LocalAnchorGraph(
         const Anchors&,
-        const Journeys&,
+        const AnchorGraph&,
         const vector<AnchorId>&,
-        uint64_t maxDistance,
-        uint64_t minCoverage);
+        uint64_t maxDistance);
 
     const Anchors& anchors;
+    const AnchorGraph* anchorGraphPointer = 0;
     uint64_t maxDistance;
     std::map<AnchorId, vertex_descriptor> vertexMap;
 
@@ -98,7 +102,6 @@ public:
     void writeHtml1(
         ostream& html,
         const LocalAnchorGraphDisplayOptions&) const;
-
 
     void writeGraphviz(
         const string& fileName,
