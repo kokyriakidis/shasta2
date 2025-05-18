@@ -219,13 +219,14 @@ void Assembler::createAssemblyGraph2(
 
     // Generate an AnchorGraph in which all edges have consistent offsets.
     performanceLog << timestamp << "AnchorGraph creation begins." << endl;
-    shared_ptr<const AnchorGraph> anchorGraphPointer = make_shared<AnchorGraph>(
+    anchorGraphPointer = make_shared<AnchorGraph>(
         anchors(), journeys(),
         options.minAnchorGraphEdgeCoverageNear,
         options.minAnchorGraphEdgeCoverageFar,
         options.aDrift,
         options.bDrift);
     performanceLog << timestamp << "AnchorGraph creation ends." << endl;
+    anchorGraphPointer->save();
 
     // Create the TransitionGraph.
     performanceLog << timestamp << "TransitionGraph creation begins." << endl;
@@ -249,6 +250,12 @@ void Assembler::createAssemblyGraph2(
     // Detangle, phase, assemble sequence, output.
     assemblyGraph2.run(threadCount);
 
+}
+
+
+void Assembler::accessAnchorGraph()
+{
+    anchorGraphPointer = make_shared<AnchorGraph>(*this);
 }
 
 

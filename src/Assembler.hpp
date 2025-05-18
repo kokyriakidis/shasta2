@@ -16,8 +16,10 @@
 namespace shasta {
 
     class Assembler;
+
     class AssemblyGraphPostprocessor;
     class AssemblyGraph2Postprocessor;
+    class AnchorGraph;
     class Anchors;
     class AssemblerInfo;
     class Journeys;
@@ -176,6 +178,11 @@ public:
     }
     void createJourneys(uint64_t threadCount);
     void accessJourneys();
+
+
+    // AnchorGraph.
+    shared_ptr<AnchorGraph> anchorGraphPointer;
+    void accessAnchorGraph();
 
 
     // AssemblyGraph.

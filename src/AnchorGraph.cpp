@@ -3,11 +3,16 @@
 #include "Anchor.hpp"
 #include "Markers.hpp"
 #include "orderPairs.hpp"
+#include "ReadId.hpp"
 #include "ReadLengthDistribution.hpp"
 using namespace shasta;
 
 // Boost libraries.
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/graph/adj_list_serialize.hpp>
 #include "boost/graph/iteration_macros.hpp"
+#include <boost/serialization/vector.hpp>
 
 // Standard library.
 #include "fstream.hpp"
@@ -18,7 +23,8 @@ AnchorGraph::AnchorGraph(
     const Anchors& anchors,
     const Journeys& journeys,
     uint64_t minEdgeCoverage) :
-    AnchorGraphBaseClass(anchors.size())
+    AnchorGraphBaseClass(anchors.size()),
+    MappedMemoryOwner(anchors)
 {
     AnchorGraph& anchorGraph = *this;
 
@@ -53,7 +59,8 @@ AnchorGraph::AnchorGraph(
     uint64_t minEdgeCoverageNear,
     uint64_t minEdgeCoverageFar,
     double aDrift,
-    double bDrift)
+    double bDrift) :
+    MappedMemoryOwner(anchors)
 {
     // cout << "AAA " << minEdgeCoverageNear << " " << minEdgeCoverageFar << endl;
     AnchorGraph& anchorGraph = *this;
@@ -140,6 +147,14 @@ AnchorGraph::AnchorGraph(
 }
 
 
+// Constructor from binary data.
+AnchorGraph::AnchorGraph(const MappedMemoryOwner& mappedMemoryOwner) :
+    MappedMemoryOwner(mappedMemoryOwner)
+{
+    load();
+}
+
+
 
 // Compute the edge journeys.
 // The edge journey of an OrientedReadId is the sequence of
@@ -186,3 +201,65 @@ void AnchorGraph::computeEdgeJourneys(
     }
  }
 
+
+
+void AnchorGraph::save(ostream& s) const
+{
+    boost::archive::binary_oarchive archive(s);
+    archive << *this;
+}
+
+
+
+void AnchorGraph::load(istream& s)
+{
+    boost::archive::binary_iarchive archive(s);
+    archive >> *this;
+}
+
+
+
+void AnchorGraph::save() const
+{
+    // If not using persistent binary data, do nothing.
+    if(largeDataFileNamePrefix.empty()) {
+        return;
+    }
+
+    // First save to a string.
+    std::ostringstream s;
+    save(s);
+    const string dataString = s.str();
+
+    // Now save the string to binary data.
+    const string name = largeDataName("AnchorGraph");
+    MemoryMapped::Vector<char> data;
+    data.createNew(name, largeDataPageSize);
+    data.resize(dataString.size());
+    const char* begin = dataString.data();
+    const char* end = begin + dataString.size();
+    copy(begin, end, data.begin());
+}
+
+
+
+void AnchorGraph::load()
+{
+    // Access the binary data.
+    MemoryMapped::Vector<char> data;
+    try {
+        const string name = largeDataName("AnchorGraph");
+        data.accessExistingReadOnly(name);
+    } catch (std::exception&) {
+        throw runtime_error("AnchorGraph is not available.");
+    }
+    const string dataString(data.begin(), data.size());
+
+    // Load it from here.
+    std::istringstream s(dataString);
+    try {
+        load(s);
+    } catch(std::exception& e) {
+        throw runtime_error(string("Error reading AnchorGraph: ") + e.what());
+    }
+}

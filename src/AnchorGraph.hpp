@@ -9,6 +9,7 @@
 
 // Shasta.
 #include "AnchorPair.hpp"
+#include "MappedMemoryOwner.hpp"
 
 // Boost libraries.
 #include <boost/graph/adjacency_list.hpp>
@@ -39,11 +40,21 @@ public:
         anchorPair(anchorPair),
         id(id)
     {}
+
+    AnchorGraphEdge() {}
+
+    template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
+    {
+        ar & anchorPair;
+        ar & id;
+    }
 };
 
 
 
-class shasta::AnchorGraph : public AnchorGraphBaseClass {
+class shasta::AnchorGraph :
+    public AnchorGraphBaseClass,
+    public MappedMemoryOwner {
 public:
     AnchorGraph(
         const Anchors&,
@@ -60,6 +71,9 @@ public:
         double aDrift,
         double bDrift);
 
+    // Constructor from binary data.
+    AnchorGraph(const MappedMemoryOwner&);
+
     // Compute the edge journeys.
     // The edge journey of an OrientedReadId is the sequence of
     // AnchorGraph edges visited by the OrientedReadId.
@@ -70,5 +84,20 @@ public:
         const Anchors&,
         vector< vector<edge_descriptor> >&
     ) const;
+
+
+
+    // Serialization.
+    friend class boost::serialization::access;
+    template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
+    {
+        ar & boost::serialization::base_object<AnchorGraphBaseClass>(*this);
+    }
+    void save(ostream&) const;
+    void load(istream&);
+
+    // These do save/load to/from mapped memory.
+    void save() const;
+    void load();
 };
 

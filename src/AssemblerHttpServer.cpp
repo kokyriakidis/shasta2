@@ -380,6 +380,13 @@ void Assembler::accessAllSoft()
         allDataAreAvailable = false;
     }
 
+    try {
+        accessAnchorGraph();
+    } catch(const exception& e) {
+        cout << "The AnchorGraph is not accessible." << endl;
+        allDataAreAvailable = false;
+    }
+
 
     if(!allDataAreAvailable) {
         cout << "Not all assembly data are accessible." << endl;
