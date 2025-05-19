@@ -278,6 +278,8 @@ void Assembler::createAssemblyGraph3(
         anchors(),
         *anchorGraphPointer,
         options);
+    anchorGraphPointer = 0;
+    assemblyGraph3.run(threadCount);
 
 }
 

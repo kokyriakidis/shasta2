@@ -54,6 +54,7 @@ class shasta::AssemblyGraph3EdgeStep {
 public:
     AnchorPair anchorPair;
     uint64_t offset = invalid<uint64_t>;
+    vector<Base> sequence;
 
     AssemblyGraph3EdgeStep(
         const AnchorPair& anchorPair,
@@ -79,6 +80,7 @@ public:
     void check(const Anchors&) const;
 
     uint64_t offset() const;
+    void getSequence(vector<Base>&) const;
 };
 
 
@@ -107,4 +109,30 @@ private:
     void check() const;
 
     void writeGfa(const string& fileName) const;
+
+
+
+    // Sequence assembly.
+
+    // Assemble sequence for all edges.
+    void assembleAll(uint64_t threadCount);
+
+    // Assemble sequence for the specified edge.
+    void assemble(edge_descriptor, uint64_t threadCount);
+
+    // Assemble sequence for step i of the specified edge.
+    // This is the lowest level sequence assembly function and is not multithreaded.
+    // It runs a LocalAssembly2 on the AnchorPair for that step.
+    void assembleStep(edge_descriptor, uint64_t i);
+
+    // Assemble sequence for all edges in the edgesToBeAssembled vector.
+    // This fills in the stepsToBeAssembled with all steps of those edges,
+    // then assembles each of the steps in parallel.
+    void assemble(uint64_t threadCount);
+    void assembleThreadFunction(uint64_t threadId);
+    vector<edge_descriptor> edgesToBeAssembled;
+    vector< pair<edge_descriptor, uint64_t> > stepsToBeAssembled;
+
+    // Clear sequence from all steps of all edges.
+    void clearSequence();
 };

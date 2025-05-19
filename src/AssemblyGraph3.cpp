@@ -2,7 +2,10 @@
 #include "AssemblyGraph3.hpp"
 #include "Anchor.hpp"
 #include "AnchorGraph.hpp"
+#include "AssemblerOptions.hpp"
 #include "findLinearChains.hpp"
+#include "LocalAssembly2.hpp"
+#include "performanceLog.hpp"
 using namespace shasta;
 
 // Standard library.
@@ -76,11 +79,23 @@ AssemblyGraph3::AssemblyGraph3(
     }
 
 
+    check();
+}
+
+
+
+// Detangle, phase, assemble sequence, output.
+void AssemblyGraph3::run(uint64_t threadCount)
+{
+    AssemblyGraph3& assemblyGraph3 = *this;
+
     cout << "The AssemblyGraph3 has " << num_vertices(assemblyGraph3) <<
         " vertices and " << num_edges(assemblyGraph3) << " edges." << endl;
 
-    writeGfa("AssemblyGraph3.gfa");
-    check();
+    writeGfa("AssemblyGraph3-A.gfa");
+
+    assembleAll(threadCount);
+    writeGfa("AssemblyGraph3-Z.gfa");
 }
 
 
@@ -138,6 +153,7 @@ void AssemblyGraph3::writeGfa(const string& fileName) const
     gfa << "H\tVN:Z:1.0\n";
 
     // Each edge generates a gfa segment.
+    vector<shasta::Base> sequence;
     BGL_FORALL_EDGES(e, assemblyGraph3, AssemblyGraph3) {
         const AssemblyGraph3Edge& edge = assemblyGraph3[e];
 
@@ -148,8 +164,16 @@ void AssemblyGraph3::writeGfa(const string& fileName) const
         gfa << edge.id << "\t";
 
         // Sequence.
-        gfa << "*\t";
-        gfa << "LN:i:" << edge.offset() << "\n";
+        if(edge.wasAssembled) {
+            edge.getSequence(sequence);
+            copy(sequence.begin(), sequence.end(), ostream_iterator<shasta::Base>(gfa));
+            gfa << "\t";
+            gfa << "LN:i:" << sequence.size() << "\n";
+
+        } else {
+            gfa << "*\t";
+            gfa << "LN:i:" << edge.offset() << "\n";
+        }
     }
 
 
@@ -171,4 +195,139 @@ void AssemblyGraph3::writeGfa(const string& fileName) const
     }
 
 
+}
+
+
+
+// Assemble sequence for all edges.
+void AssemblyGraph3::assembleAll(uint64_t threadCount)
+{
+    performanceLog << timestamp << "Sequence assembly begins." << endl;
+
+    const AssemblyGraph3& assemblyGraph3 = *this;
+
+    edgesToBeAssembled.clear();
+    BGL_FORALL_EDGES(e, assemblyGraph3, AssemblyGraph3) {
+        edgesToBeAssembled.push_back(e);
+    }
+    assemble(threadCount);
+    edgesToBeAssembled.clear();
+
+    performanceLog << timestamp << "Sequence assembly ends." << endl;
+}
+
+
+
+// Assemble sequence for the specified edge.
+void AssemblyGraph3::assemble(edge_descriptor e, uint64_t threadCount)
+{
+    edgesToBeAssembled.clear();
+    edgesToBeAssembled.push_back(e);
+    assemble(threadCount);
+}
+
+
+
+// Assemble sequence for step i of the specified edge.
+// This is the lowest level sequence assembly function and is not multithreaded.
+// It runs a LocalAssembly2 on the AnchorPair for that step.
+void AssemblyGraph3::assembleStep(edge_descriptor e, uint64_t i)
+{
+    AssemblyGraph3& assemblyGraph3 = *this;
+    AssemblyGraph3Edge& edge = assemblyGraph3[e];
+    AssemblyGraph3EdgeStep& step = edge[i];
+
+    // Run the LocalAssembly2.
+    ofstream html;  // Not open, so no html output takes place.
+    LocalAssembly2 localAssembly(
+        anchors, html, false,
+        assemblerOptions.aDrift,
+        assemblerOptions.bDrift,
+        step.anchorPair);
+    localAssembly.run(false, assemblerOptions.localAssemblyOptions.maxAbpoaLength);
+    localAssembly.getSequence(step.sequence);
+}
+
+
+
+// Assemble sequence for all edges in the edgesToBeAssembled vector.
+// This fills in the stepsToBeAssembled with all steps of those edges,
+// then assembles each of the steps in parallel.
+void AssemblyGraph3::assemble(uint64_t threadCount)
+{
+    AssemblyGraph3& assemblyGraph3 = *this;
+
+    stepsToBeAssembled.clear();
+    for(const edge_descriptor e: edgesToBeAssembled) {
+        AssemblyGraph3Edge& edge = assemblyGraph3[e];
+        for(uint64_t i=0; i<edge.size(); i++) {
+            stepsToBeAssembled.push_back(make_pair(e, i));
+        }
+    }
+
+    const uint64_t batchCount = 1;
+    setupLoadBalancing(stepsToBeAssembled.size(), batchCount);
+    runThreads(&AssemblyGraph3::assembleThreadFunction, threadCount);
+
+    // Mark them as assembled.
+    for(const edge_descriptor e: edgesToBeAssembled) {
+        assemblyGraph3[e].wasAssembled = true;
+    }
+
+    edgesToBeAssembled.clear();
+    stepsToBeAssembled.clear();
+}
+
+
+
+void AssemblyGraph3::assembleThreadFunction(uint64_t /* threadId */)
+{
+    AssemblyGraph3& assemblyGraph3 = *this;
+
+    // Loop over all batches assigned to this thread.
+    uint64_t begin, end;
+    while(getNextBatch(begin, end)) {
+
+        // Loop over all assembly steps assigned to this batch.
+        for(uint64_t j=begin; j!=end; j++) {
+            if((j % 1000) == 0) {
+                std::lock_guard<std::mutex> lock(mutex);
+                performanceLog << timestamp << j << "/" << stepsToBeAssembled.size() << endl;
+            }
+
+            const auto& p = stepsToBeAssembled[j];
+            const edge_descriptor e = p.first;
+            const uint64_t i = p.second;
+            AssemblyGraph3Edge& edge = assemblyGraph3[e];
+            SHASTA_ASSERT(i < edge.size());
+            assembleStep(e, i);
+        }
+    }
+}
+
+
+
+// Clear sequence from all steps of all edges.
+void AssemblyGraph3::clearSequence()
+{
+    AssemblyGraph3& assemblyGraph3 = *this;
+
+    BGL_FORALL_EDGES(e, assemblyGraph3, AssemblyGraph3) {
+        AssemblyGraph3Edge& edge = assemblyGraph3[e];
+        edge.wasAssembled= false;
+        for(AssemblyGraph3EdgeStep& step: edge) {
+            step.sequence.clear();
+            step.sequence.shrink_to_fit();
+        }
+    }
+}
+
+
+
+void AssemblyGraph3Edge::getSequence(vector<Base>& sequence) const
+{
+    sequence.clear();
+    for(const auto& step: *this) {
+        copy(step.sequence.begin(), step.sequence.end(), back_inserter(sequence));
+    }
 }
