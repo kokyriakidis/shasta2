@@ -96,7 +96,11 @@ void AssemblyGraph3::run(uint64_t threadCount)
     write("A");
 
     bubbleCleanup(threadCount);
-    cout << "After bubble cleanup AssemblyGraph3 has " << num_vertices(assemblyGraph3) <<
+    cout << "After bubble cleanup and before compress the AssemblyGraph3 has " <<
+        num_vertices(assemblyGraph3) <<
+        " and " << num_edges(assemblyGraph3) << " edges." << endl;
+    compress();
+    cout << "After bubble cleanup and compress the AssemblyGraph3 has " << num_vertices(assemblyGraph3) <<
         " vertices and " << num_edges(assemblyGraph3) << " edges." << endl;
     write("B");
 
@@ -572,4 +576,53 @@ uint64_t AssemblyGraph3::bubbleCleanupIteration(uint64_t threadCount)
         removedCount << " were actually removed." << endl;
 
     return removedCount;
+}
+
+
+
+// Compress linear chains of edges into a single edge.
+void AssemblyGraph3::compress()
+{
+    AssemblyGraph3& assemblyGraph3 = *this;
+
+    // Find linear chains of 2 or more edges.
+    vector< std::list<edge_descriptor> > chains;
+    findLinearChains(assemblyGraph3, 2, chains);
+
+    for(const auto& chain: chains) {
+        SHASTA_ASSERT(chain.size() > 1);
+
+        // Get the first and last edge of this chain.
+        const edge_descriptor e0 = chain.front();
+        const edge_descriptor e1 = chain.back();
+
+        // Get the first and last edge of this chain.
+        const vertex_descriptor v0 = source(e0, assemblyGraph3);
+        const vertex_descriptor v1 = target(e1, assemblyGraph3);
+
+        // Add the new edge.
+        edge_descriptor eNew;
+        tie(eNew, ignore) = add_edge(v0, v1, AssemblyGraph3Edge(nextEdgeId++), assemblyGraph3);
+        AssemblyGraph3Edge& edgeNew = assemblyGraph3[eNew];
+
+        // Concatenate the steps of all the edges in the chain.
+        for(const edge_descriptor e: chain) {
+            const AssemblyGraph3Edge& edge = assemblyGraph3[e];
+            copy(edge.begin(), edge.end(), back_inserter(edgeNew));
+        }
+
+        // Now we can remove the edges of the chain and its internal vertices.
+        bool isFirst = true;
+        for(const edge_descriptor e: chain) {
+            if(isFirst) {
+                isFirst = false;
+            } else {
+                const vertex_descriptor v = source(e, assemblyGraph3);
+                boost::clear_vertex(v, assemblyGraph3);
+                boost::remove_vertex(v, assemblyGraph3);
+            }
+        }
+
+    }
+
 }

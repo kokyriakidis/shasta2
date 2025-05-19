@@ -120,7 +120,8 @@ private:
     void bubbleCleanup(uint64_t threadCount);
     uint64_t bubbleCleanupIteration(uint64_t threadCount);
 
-
+    // Compress linear chains of edges into a single edge.
+    void compress();
 
     // Output.
     void write(const string& stage);
