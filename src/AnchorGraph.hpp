@@ -48,6 +48,7 @@ public:
     template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
     {
         ar & anchorPair;
+        ar & offset;
         ar & id;
     }
 };

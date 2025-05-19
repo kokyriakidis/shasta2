@@ -264,7 +264,7 @@ void LocalAnchorGraph::writeGraphviz(
         SHASTA_ASSERT(anchorPair.anchorIdB == anchorId1);
 
         const uint64_t coverage = anchorPair.orientedReadIds.size();
-        const uint64_t offset = anchorPair.getAverageOffset(anchors);
+        const uint64_t offset = edgeG.offset;
 
         s << "\"" << anchorId0String << "\"->";
         s << "\"" << anchorId1String << "\"";
@@ -648,8 +648,7 @@ void LocalAnchorGraph::computeLayout(const LocalAnchorGraphDisplayOptions& optio
     BGL_FORALL_EDGES(eL, graph, LocalAnchorGraph) {
         const LocalAnchorGraphEdge& edgeL = graph[eL];
         const AnchorGraphEdge& edgeG = anchorGraph[edgeL.eG];
-        const AnchorPair& anchorPair = edgeG.anchorPair;
-        const uint64_t offset = anchorPair.getAverageOffset(anchors);
+        const uint64_t offset = edgeG.offset;
 
         const double displayLength =
             options.minimumEdgeLength +
@@ -856,7 +855,7 @@ void LocalAnchorGraph::writeEdges(
         const AnchorGraphEdge& edgeG = anchorGraph[edgeL.eG];
         const AnchorPair& anchorPair = edgeG.anchorPair;
         const uint64_t coverage = anchorPair.orientedReadIds.size();
-        const uint64_t offset = anchorPair.getAverageOffset(anchors);
+        const uint64_t offset = edgeG.offset;
 
         const vertex_descriptor v0 = source(eL, graph);
         const vertex_descriptor v1 = target(eL, graph);

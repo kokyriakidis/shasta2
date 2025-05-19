@@ -148,6 +148,7 @@ AnchorGraph::AnchorGraph(
     // Now all the edges must have consistent offsets.
     BGL_FORALL_EDGES(e, anchorGraph, AnchorGraph) {
         SHASTA_ASSERT(anchorGraph[e].anchorPair.isConsistent(anchors, aDrift, bDrift, positions, offsets));
+        SHASTA_ASSERT(anchorGraph[e].offset < 100000000);
     }
 
 }
