@@ -4,6 +4,7 @@
 #include "AssemblerOptions.hpp"
 #include "AssemblyGraph.hpp"
 #include "AssemblyGraph2.hpp"
+#include "AssemblyGraph3.hpp"
 #include "Journeys.hpp"
 #include "KmerCheckerFactory.hpp"
 #include "MurmurHash2.hpp"
@@ -251,6 +252,35 @@ void Assembler::createAssemblyGraph2(
     assemblyGraph2.run(threadCount);
 
 }
+
+
+
+void Assembler::createAssemblyGraph3(
+    const AssemblerOptions& options,
+    uint64_t threadCount)
+{
+    // Adjust the numbers of threads, if necessary.
+    if(threadCount == 0) {
+        threadCount = std::thread::hardware_concurrency();
+    }
+
+    // Generate an AnchorGraph in which all edges have consistent offsets.
+    anchorGraphPointer = make_shared<AnchorGraph>(
+        anchors(), journeys(),
+        options.minAnchorGraphEdgeCoverageNear,
+        options.minAnchorGraphEdgeCoverageFar,
+        options.aDrift,
+        options.bDrift);
+    anchorGraphPointer->save();
+
+    // Create the AssemblyGraph3.
+    AssemblyGraph3 assemblyGraph3(
+        anchors(),
+        *anchorGraphPointer,
+        options);
+
+}
+
 
 
 void Assembler::accessAnchorGraph()

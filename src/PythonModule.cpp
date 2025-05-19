@@ -126,6 +126,10 @@ PYBIND11_MODULE(shasta2, shasta2Module)
           &Assembler::createAssemblyGraph2,
           arg("assemblerOptions"),
           arg("threadCount") = 0)
+      .def("createAssemblyGraph3",
+          &Assembler::createAssemblyGraph3,
+          arg("assemblerOptions"),
+          arg("threadCount") = 0)
       .def("getAssemblyGraph",
           &Assembler::getAssemblyGraph)
       .def("getAssemblyGraph2",
