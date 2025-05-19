@@ -92,10 +92,11 @@ void AssemblyGraph3::run(uint64_t threadCount)
     cout << "The AssemblyGraph3 has " << num_vertices(assemblyGraph3) <<
         " vertices and " << num_edges(assemblyGraph3) << " edges." << endl;
 
-    writeGfa("AssemblyGraph3-A.gfa");
+    write("A");
 
     assembleAll(threadCount);
-    writeGfa("AssemblyGraph3-Z.gfa");
+    write("Z");
+    writeFasta("Z");
 }
 
 
@@ -143,11 +144,43 @@ uint64_t AssemblyGraph3Edge::offset() const
 }
 
 
+void AssemblyGraph3::write(const string& stage)
+{
+    writeGfa("AssemblyGraph3-" + stage + ".gfa");
+}
+
+
+
+void AssemblyGraph3::writeFasta(const string& stage) const
+{
+    const AssemblyGraph3& assemblyGraph3 = *this;;
+
+    ofstream fasta("AssemblyGraph3-" + stage + ".fasta");
+
+    vector<shasta::Base> sequence;
+    BGL_FORALL_EDGES(e, assemblyGraph3, AssemblyGraph3) {
+        const AssemblyGraph3Edge& edge = assemblyGraph3[e];
+        edge.getSequence(sequence);
+
+        fasta << ">" << edge.id << "\n";
+        copy(sequence.begin(), sequence.end(), ostream_iterator<shasta::Base>(fasta));
+        fasta << "\n";
+    }
+}
+
+
 
 void AssemblyGraph3::writeGfa(const string& fileName) const
 {
-    const AssemblyGraph3& assemblyGraph3 = *this;
     ofstream gfa(fileName);
+    writeGfa(gfa);
+}
+
+
+
+void AssemblyGraph3::writeGfa(ostream& gfa) const
+{
+    const AssemblyGraph3& assemblyGraph3 = *this;
 
     // Write the header line.
     gfa << "H\tVN:Z:1.0\n";

@@ -108,7 +108,13 @@ private:
 
     void check() const;
 
+
+
+    // Output.
+    void write(const string& stage);
     void writeGfa(const string& fileName) const;
+    void writeGfa(ostream&) const;
+    void writeFasta(const string& stage) const;
 
 
 
