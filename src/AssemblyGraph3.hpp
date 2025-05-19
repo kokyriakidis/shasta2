@@ -108,6 +108,18 @@ private:
 
     void check() const;
 
+    // Bubble cleanup.
+    // A bubble is a set of parallel edges in the AssemblyGraph3.
+    class Bubble {
+    public:
+        vertex_descriptor v0;
+        vertex_descriptor v1;
+        vector<edge_descriptor> edges;
+    };
+    void findBubbles(vector<Bubble>&) const;
+    void bubbleCleanup(uint64_t threadCount);
+    uint64_t bubbleCleanupIteration(uint64_t threadCount);
+
 
 
     // Output.
