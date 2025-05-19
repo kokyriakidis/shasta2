@@ -103,4 +103,6 @@ private:
     const AssemblerOptions& assemblerOptions;
     uint64_t nextVertexId = 0;
     uint64_t nextEdgeId = 0;
+
+    void check() const;
 };

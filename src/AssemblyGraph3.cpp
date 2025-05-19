@@ -36,7 +36,7 @@ AssemblyGraph3::AssemblyGraph3(
     std::map<AnchorId, vertex_descriptor> vertexMap;
     for(const auto& chain: chains) {
         const AnchorId anchorId0 = anchorGraph[chain.front()].anchorPair.anchorIdA;
-        const AnchorId anchorId1 = anchorGraph[chain.front()].anchorPair.anchorIdB;
+        const AnchorId anchorId1 = anchorGraph[chain.back()].anchorPair.anchorIdB;
 
         if(not vertexMap.contains(anchorId0)) {
             const vertex_descriptor v0 = add_vertex(AssemblyGraph3Vertex(anchorId0, nextVertexId++), assemblyGraph3);
@@ -55,7 +55,7 @@ AssemblyGraph3::AssemblyGraph3(
     // Generate the edges. There is an edge for each linear chain.
     for(const auto& chain: chains) {
         const AnchorId anchorId0 = anchorGraph[chain.front()].anchorPair.anchorIdA;
-        const AnchorId anchorId1 = anchorGraph[chain.front()].anchorPair.anchorIdB;
+        const AnchorId anchorId1 = anchorGraph[chain.back()].anchorPair.anchorIdB;
 
         const vertex_descriptor v0 = vertexMap.at(anchorId0);
         const vertex_descriptor v1 = vertexMap.at(anchorId1);
@@ -75,4 +75,40 @@ AssemblyGraph3::AssemblyGraph3(
 
     cout << "The AssemblyGraph3 has " << num_vertices(assemblyGraph3) <<
         " vertices and " << num_edges(assemblyGraph3) << " edges." << endl;
+
+    check();
+}
+
+
+
+void AssemblyGraph3::check() const
+{
+    const AssemblyGraph3& assemblyGraph3 = *this;
+
+    BGL_FORALL_EDGES(e, assemblyGraph3, AssemblyGraph3) {
+        const AssemblyGraph3Edge& edge = assemblyGraph3[e];
+        SHASTA_ASSERT(not edge.empty());
+
+
+
+        // Check that the first/last AnchorIds of this edge are consistent
+        // with the ones in the source/target vertices.
+        const vertex_descriptor v0 = source(e, assemblyGraph3);
+        const vertex_descriptor v1 = target(e, assemblyGraph3);
+
+        const AnchorId anchorId0 = assemblyGraph3[v0].anchorId;
+        const AnchorId anchorId1 = assemblyGraph3[v1].anchorId;
+
+        SHASTA_ASSERT(edge.front().anchorPair.anchorIdA == anchorId0);
+        SHASTA_ASSERT(edge.back().anchorPair.anchorIdB == anchorId1);
+
+
+
+        // Check that AnchorPairs in this edge are adjacent to each other.
+        for(uint64_t i1=1; i1<edge.size(); i1++) {
+            const uint64_t i0 = i1 - 1;
+            SHASTA_ASSERT(edge[i0].anchorPair.anchorIdB == edge[i1].anchorPair.anchorIdA);
+        }
+    }
+
 }
