@@ -105,4 +105,6 @@ private:
     uint64_t nextEdgeId = 0;
 
     void check() const;
+
+    void writeGfa(const string& fileName) const;
 };

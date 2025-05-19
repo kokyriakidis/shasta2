@@ -5,6 +5,9 @@
 #include "findLinearChains.hpp"
 using namespace shasta;
 
+// Standard library.
+#include <fstream.hpp>
+
 // Explicit instantiation.
 #include "MultithreadedObject.tpp"
 template class MultithreadedObject<AssemblyGraph3>;
@@ -76,6 +79,7 @@ AssemblyGraph3::AssemblyGraph3(
     cout << "The AssemblyGraph3 has " << num_vertices(assemblyGraph3) <<
         " vertices and " << num_edges(assemblyGraph3) << " edges." << endl;
 
+    writeGfa("AssemblyGraph3.gfa");
     check();
 }
 
@@ -108,7 +112,63 @@ void AssemblyGraph3::check() const
         for(uint64_t i1=1; i1<edge.size(); i1++) {
             const uint64_t i0 = i1 - 1;
             SHASTA_ASSERT(edge[i0].anchorPair.anchorIdB == edge[i1].anchorPair.anchorIdA);
+        }    }
+
+}
+
+
+
+uint64_t AssemblyGraph3Edge::offset() const
+{
+    uint64_t sum = 0;
+    for(const auto& step: *this) {
+        sum += step.offset;
+    }
+    return sum;
+}
+
+
+
+void AssemblyGraph3::writeGfa(const string& fileName) const
+{
+    const AssemblyGraph3& assemblyGraph3 = *this;
+    ofstream gfa(fileName);
+
+    // Write the header line.
+    gfa << "H\tVN:Z:1.0\n";
+
+    // Each edge generates a gfa segment.
+    BGL_FORALL_EDGES(e, assemblyGraph3, AssemblyGraph3) {
+        const AssemblyGraph3Edge& edge = assemblyGraph3[e];
+
+        // Record type.
+        gfa << "S\t";
+
+        // Name.
+        gfa << edge.id << "\t";
+
+        // Sequence.
+        gfa << "*\t";
+        gfa << "LN:i:" << edge.offset() << "\n";
+    }
+
+
+
+    // For each vertex, generate a link between each pair of
+    // incoming/outgoing edges.
+    BGL_FORALL_VERTICES(v, assemblyGraph3, AssemblyGraph3) {
+        BGL_FORALL_INEDGES(v, e0, assemblyGraph3, AssemblyGraph3) {
+            const uint64_t id0 = assemblyGraph3[e0].id;
+            BGL_FORALL_OUTEDGES(v, e1, assemblyGraph3, AssemblyGraph3) {
+                const uint64_t id1 = assemblyGraph3[e1].id;
+
+                gfa <<
+                    "L\t" <<
+                    id0 << "\t+\t" <<
+                    id1 << "\t+\t*\n";
+            }
         }
     }
+
 
 }
