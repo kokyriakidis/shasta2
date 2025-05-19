@@ -34,10 +34,12 @@ namespace shasta {
 class shasta::AnchorGraphEdge {
 public:
     AnchorPair anchorPair;
+    uint64_t offset = invalid<uint64_t>;
     uint64_t id = invalid<uint64_t>;
 
-    AnchorGraphEdge(const AnchorPair& anchorPair, uint64_t id) :
+    AnchorGraphEdge(const AnchorPair& anchorPair, uint64_t offset, uint64_t id) :
         anchorPair(anchorPair),
+        offset(offset),
         id(id)
     {}
 

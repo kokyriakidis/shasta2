@@ -40,7 +40,9 @@ AnchorGraph::AnchorGraph(
         AnchorPair::createChildren(anchors, journeys, anchorIdA, minEdgeCoverage, anchorPairs);
 
         for(const AnchorPair& anchorPair: anchorPairs) {
-            add_edge(anchorIdA, anchorPair.anchorIdB, AnchorGraphEdge(anchorPair, nextEdgeId++), anchorGraph);
+            const uint64_t offset = anchorPair.getAverageOffset(anchors);
+            add_edge(anchorIdA, anchorPair.anchorIdB,
+                AnchorGraphEdge(anchorPair, offset, nextEdgeId++), anchorGraph);
         }
     }
 
@@ -107,7 +109,9 @@ AnchorGraph::AnchorGraph(
                 // Just generate an edge with this AnchorPair.
                 // This is the most common case.
                 if(anchorPair.orientedReadIds.size() >= edgeCoverageThreshold) {
-                    add_edge(anchorIdA, anchorPair.anchorIdB, AnchorGraphEdge(anchorPair, nextEdgeId++), anchorGraph);
+                    const uint64_t offset = anchorPair.getAverageOffset(anchors);
+                    add_edge(anchorIdA, anchorPair.anchorIdB,
+                        AnchorGraphEdge(anchorPair, offset, nextEdgeId++), anchorGraph);
                 }
 
             } else {
@@ -128,7 +132,9 @@ AnchorGraph::AnchorGraph(
                     // cout << "DDD " << offset << " " << edgeCoverageThreshold << " " << anchorPair.orientedReadIds.size() << endl;
 
                     if(anchorPair.size() >= edgeCoverageThreshold) {
-                        add_edge(anchorIdA, anchorPair.anchorIdB, AnchorGraphEdge(anchorPair, nextEdgeId++), anchorGraph);
+                        const uint64_t offset = anchorPair.getAverageOffset(anchors);
+                        add_edge(anchorIdA, anchorPair.anchorIdB,
+                            AnchorGraphEdge(anchorPair, offset, nextEdgeId++), anchorGraph);
                     }
                 }
 
