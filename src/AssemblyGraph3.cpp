@@ -68,8 +68,7 @@ AssemblyGraph3::AssemblyGraph3(
         // Each AnchorGraph edge in the chain contributes a step to this AssemblyGraph3 edge.
         for(const AnchorGraph::edge_descriptor eA: chain) {
             const AnchorGraphEdge& edgeA = anchorGraph[eA];
-            const uint64_t offset = invalid<uint64_t>;
-            edge.emplace_back(edgeA.anchorPair, offset);
+            edge.emplace_back(edgeA.anchorPair, edgeA.offset);
         }
     }
 
