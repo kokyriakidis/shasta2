@@ -2,6 +2,7 @@
 #include "Assembler.hpp"
 #include "AssemblyGraphPostprocessor.hpp"
 #include "AssemblyGraph2Postprocessor.hpp"
+#include "AssemblyGraph3Postprocessor.hpp"
 #include "LocalAssembly.hpp"
 #include "LocalAssembly1.hpp"
 #include "LocalAssembly2.hpp"
@@ -224,29 +225,28 @@ void Assembler::exploreSegments(
         return;
     }
 
-    // Get the AssemblyGraph2 for this assembly stage.
-    const AssemblyGraph2Postprocessor& assemblyGraph2 = getAssemblyGraph2(
+    // Get the AssemblyGraph3 for this assembly stage.
+    const AssemblyGraph3Postprocessor& assemblyGraph3 = getAssemblyGraph3(
         assemblyStage,
         *httpServerData.assemblerOptions);
 
     html <<
         "<h2>Assembly graph at stage " << assemblyStage << " </h2>"
         "<p>The assembly graph at stage " << assemblyStage <<
-        " has " << num_vertices(assemblyGraph2) << " vertices (segments) and " <<
-        num_edges(assemblyGraph2) << " edges (links)." << endl;
+        " has " << num_edges(assemblyGraph3) << " edges (segments)." << endl;
 
     html << "<table><tr><th>Vertex<br>(segment)<br>id<th>Number<br>of<br>steps<th>Estimated<br>length<th>Actual<br>length";
 
-    BGL_FORALL_VERTICES(v, assemblyGraph2, AssemblyGraph2) {
-        const AssemblyGraph2Vertex& vertex = assemblyGraph2[v];
+    BGL_FORALL_EDGES(e, assemblyGraph3, AssemblyGraph3) {
+        const AssemblyGraph3Edge& edge = assemblyGraph3[e];
         html <<
             "<tr>"
-            "<td class=centered>" << vertex.id <<
-            "<td class=centered>" << vertex.size() <<
-            "<td class=centered>" << vertex.offset() <<
+            "<td class=centered>" << edge.id <<
+            "<td class=centered>" << edge.size() <<
+            "<td class=centered>" << edge.offset() <<
             "<td class=centered>";
-        if(vertex.wasAssembled) {
-            html << vertex.sequenceLength();
+        if(edge.wasAssembled) {
+            html << edge.sequenceLength();
         }
     }
 
@@ -791,6 +791,21 @@ AssemblyGraph2Postprocessor& Assembler::getAssemblyGraph2(
         shared_ptr<AssemblyGraph2Postprocessor> p =
             make_shared<AssemblyGraph2Postprocessor>(anchors(), assemblerOptions, assemblyStage);
         tie(it, ignore) = assemblyGraph2Table.insert(make_pair(assemblyStage, p));
+    }
+    return *(it->second);
+}
+
+
+
+AssemblyGraph3Postprocessor& Assembler::getAssemblyGraph3(
+    const string& assemblyStage,
+    const AssemblerOptions& assemblerOptions)
+{
+    auto it = assemblyGraph3Table.find(assemblyStage);
+    if(it == assemblyGraph3Table.end()) {
+        shared_ptr<AssemblyGraph3Postprocessor> p =
+            make_shared<AssemblyGraph3Postprocessor>(anchors(), assemblerOptions, assemblyStage);
+        tie(it, ignore) = assemblyGraph3Table.insert(make_pair(assemblyStage, p));
     }
     return *(it->second);
 }

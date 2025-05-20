@@ -19,6 +19,7 @@ namespace shasta {
 
     class AssemblyGraphPostprocessor;
     class AssemblyGraph2Postprocessor;
+    class AssemblyGraph3Postprocessor;
     class AnchorGraph;
     class Anchors;
     class AssemblerInfo;
@@ -283,6 +284,10 @@ public:
         const string& assemblyStage,
         const AssemblerOptions&);
     std::map<string, shared_ptr<AssemblyGraph2Postprocessor> > assemblyGraph2Table;
+    AssemblyGraph3Postprocessor& getAssemblyGraph3(
+        const string& assemblyStage,
+        const AssemblerOptions&);
+    std::map<string, shared_ptr<AssemblyGraph3Postprocessor> > assemblyGraph3Table;
 
 };
 

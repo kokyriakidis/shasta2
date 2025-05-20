@@ -91,6 +91,21 @@ AssemblyGraph3::AssemblyGraph3(
 
 
 
+// Deserialize constructor.
+AssemblyGraph3::AssemblyGraph3(
+    const Anchors& anchors,
+    const AssemblerOptions& assemblerOptions,
+    const string& stage) :
+    MappedMemoryOwner(anchors),
+    MultithreadedObject<AssemblyGraph3>(*this),
+    anchors(anchors),
+    assemblerOptions(assemblerOptions)
+{
+    load(stage);
+}
+
+
+
 // Detangle, phase, assemble sequence, output.
 void AssemblyGraph3::run(uint64_t threadCount)
 {
@@ -380,6 +395,19 @@ void AssemblyGraph3Edge::getSequence(vector<Base>& sequence) const
     for(const auto& step: *this) {
         copy(step.sequence.begin(), step.sequence.end(), back_inserter(sequence));
     }
+}
+
+
+
+uint64_t AssemblyGraph3Edge::sequenceLength() const
+{
+    SHASTA_ASSERT(wasAssembled);
+
+    uint64_t length = 0;
+    for(const auto& step: *this) {
+        length += step.sequence.size();
+    }
+    return length;
 }
 
 

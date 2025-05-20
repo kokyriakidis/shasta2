@@ -97,6 +97,7 @@ public:
     void check(const Anchors&) const;
 
     uint64_t offset() const;
+    uint64_t sequenceLength() const;
     void getSequence(vector<Base>&) const;
 
     template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
@@ -120,6 +121,12 @@ public:
         const Anchors&,
         const AnchorGraph&,
         const AssemblerOptions&);
+
+    // Deserialize constructor.
+    AssemblyGraph3(
+        const Anchors&,
+        const AssemblerOptions&,
+        const string& stage);
 
     // Detangle, phase, assemble sequence, output.
     void run(uint64_t threadCount);
