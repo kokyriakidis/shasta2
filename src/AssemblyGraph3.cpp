@@ -726,3 +726,13 @@ void AssemblyGraph3::load(const string& assemblyStage)
             ": " + e.what());
     }
 }
+
+
+
+uint64_t AssemblyGraph3::detangleEdges(Detangler& /* detangler */)
+{
+    cout << "AssemblyGraph3::detangleEdges begins." << endl;
+
+    cout << "AssemblyGraph3::detangleEdges ends." << endl;
+    return 0;
+}

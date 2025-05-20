@@ -1,6 +1,7 @@
 #pragma once
 
 #include "AssemblyGraph3.hpp"
+#include "TrivialDetangler.hpp"
 
 
 namespace shasta {
@@ -20,6 +21,5 @@ public:
 
     // Map from edge id to edge_descriptor.
     std::map<uint64_t, edge_descriptor> edgeMap;
-
 };
 

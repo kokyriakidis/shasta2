@@ -12,11 +12,11 @@ assembler.accessAnchors()
 assembler.accessJourneys()
 
 
-# Get the AssemblyGraph3 at a chosen assembly.
-assemblyGraph3 = assembler.getAssemblyGraph3("B", assemblerOptions);
+# Get the assemblyGraph3Postprocessor at a chosen assembly.
+assemblyGraph3Postprocessor = assembler.getAssemblyGraph3("B", assemblerOptions);
 
-# detangler = TrivialDetangler(assemblyGraphOptions.minCommonCoverage)	
-# assemblyGraph2.detangleVertices(detangler)
-assemblyGraph3.write("C")
+detangler = TrivialDetangler(assemblyGraphOptions.minCommonCoverage)	
+assemblyGraph3Postprocessor.detangleEdges(detangler)
+# assemblyGraph3Postprocessor.write("C")
 
 

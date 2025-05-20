@@ -196,15 +196,21 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         ;
 
 
-    class_<AssemblyGraph3Postprocessor>(shasta2Module, "AssemblyGraph3")
+    class_<AssemblyGraph3>(shasta2Module, "AssemblyGraph3")
+        .def("detangleEdges", &AssemblyGraph3::detangleEdges)
         .def("write", &AssemblyGraph3Postprocessor::write)
         ;
 
+    class_<AssemblyGraph3Postprocessor>(shasta2Module, "AssemblyGraph3Postprocessor",
+        pybind11::base<AssemblyGraph3>());
 
-    class_<TrivialDetangler>(shasta2Module, "TrivialDetangler")
+
+    class_<Detangler>(shasta2Module, "Detangler")
+        ;
+    class_<TrivialDetangler>(shasta2Module, "TrivialDetangler", pybind11::base<Detangler>())
         .def(init<uint64_t>())
         ;
-    class_<PermutationDetangler>(shasta2Module, "PermutationDetangler")
+    class_<PermutationDetangler>(shasta2Module, "PermutationDetangler", pybind11::base<Detangler>())
         .def(init<uint64_t, double, double, double>())
         ;
 

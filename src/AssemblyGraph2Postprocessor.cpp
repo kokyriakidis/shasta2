@@ -27,6 +27,7 @@ AssemblyGraph2Postprocessor::AssemblyGraph2Postprocessor(
 
 
 // These are needed to simplify the Python API.
-void AssemblyGraph2Postprocessor::detangleVertices(TrivialDetangler& detangler) {
+void AssemblyGraph2Postprocessor::detangleVertices(TrivialDetangler& detangler)
+{
     AssemblyGraph2::detangleVertices(detangler);
 }

@@ -32,6 +32,7 @@ namespace shasta {
     class AnchorGraph;
     class Anchors;
     class AssemblerOptions;
+    class Detangler;
 
 }
 
@@ -153,6 +154,10 @@ private:
 
     // Compress linear chains of edges into a single edge.
     void compress();
+
+public:
+    uint64_t detangleEdges(Detangler&);
+
 
     // Output.
 public:
