@@ -12,11 +12,11 @@ assembler.accessAnchors()
 assembler.accessJourneys()
 
 
-# Get the AssemblyGraph2 at a chosen assembly stage and do something with it.
-assemblyGraph2 = assembler.getAssemblyGraph2("B", assemblerOptions);
-detangler = TrivialDetangler(assemblyGraphOptions.minCommonCoverage)
-	
-assemblyGraph2.detangleVertices(detangler)
-assemblyGraph2.write("C")
+# Get the AssemblyGraph3 at a chosen assembly.
+assemblyGraph3 = assembler.getAssemblyGraph3("B", assemblerOptions);
+
+# detangler = TrivialDetangler(assemblyGraphOptions.minCommonCoverage)	
+# assemblyGraph2.detangleVertices(detangler)
+assemblyGraph3.write("C")
 
 

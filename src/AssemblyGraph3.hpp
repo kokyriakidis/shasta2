@@ -155,7 +155,9 @@ private:
     void compress();
 
     // Output.
+public:
     void write(const string& stage);
+private:
     void writeGfa(const string& fileName) const;
     void writeGfa(ostream&) const;
     void writeFasta(const string& stage) const;
