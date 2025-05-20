@@ -239,9 +239,10 @@ void Assembler::exploreSegments(
 
     BGL_FORALL_EDGES(e, assemblyGraph3, AssemblyGraph3) {
         const AssemblyGraph3Edge& edge = assemblyGraph3[e];
+        const string url = "exploreSegment?assemblyStage=" + assemblyStage + "&segmentName=" + to_string(edge.id);
         html <<
             "<tr>"
-            "<td class=centered>" << edge.id <<
+            "<td class=centered><a href='" << url << "'>" << edge.id << "</a>"
             "<td class=centered>" << edge.size() <<
             "<td class=centered>" << edge.offset() <<
             "<td class=centered>";
@@ -389,20 +390,20 @@ void Assembler::exploreSegment(
         return;
     }
 
-    // Get the AssemblyGraph for this assembly stage.
-    const AssemblyGraph2Postprocessor& assemblyGraph2 = getAssemblyGraph2(
+    // Get the AssemblyGraph3 for this assembly stage.
+    const AssemblyGraph3Postprocessor& assemblyGraph3 = getAssemblyGraph3(
         assemblyStage,
         *httpServerData.assemblerOptions);
 
-    // Find the AssemblyGraph2Vertex corresponding to the requested segment.
-    auto it = assemblyGraph2.vertexMap.find(segmentId);
-    if(it == assemblyGraph2.vertexMap.end()) {
+    // Find the AssemblyGraph3Edge corresponding to the requested segment.
+    auto it = assemblyGraph3.edgeMap.find(segmentId);
+    if(it == assemblyGraph3.edgeMap.end()) {
         html << "<p>Assembly graph at stage " << assemblyStage <<
             " does not have segment " << segmentId;
         return;
     }
-    const AssemblyGraph2::vertex_descriptor v = it->second;
-    const AssemblyGraph2Vertex& vertex = assemblyGraph2[v];
+    const AssemblyGraph3::edge_descriptor e = it->second;
+    const AssemblyGraph3Edge& edge = assemblyGraph3[e];
 
 
 
@@ -411,13 +412,14 @@ void Assembler::exploreSegment(
     // Summary table.
     html <<
         "<table>"
-        "<tr><th class=left>First anchor<td class = centered>" << anchorIdToString(vertex.front().anchorPair.anchorIdA) <<
-        "<tr><th class=left>Last anchor<td class = centered>" << anchorIdToString(vertex.back().anchorPair.anchorIdB) <<
-        "<tr><th class=left>Number of steps<td class = centered>" << vertex.size() <<
-        "<tr><th class=left>Estimated length<td class = centered>" << vertex.offset();
-    if(vertex.wasAssembled) {
+        "<tr><th class=left>First anchor<td class = centered>" << anchorIdToString(edge.front().anchorPair.anchorIdA) <<
+        "<tr><th class=left>Last anchor<td class = centered>" << anchorIdToString(edge.back().anchorPair.anchorIdB) <<
+        "<tr><th class=left>Number of steps<td class = centered>" << edge.size() <<
+        "<tr><th class=left>Estimated length<td class = centered>" << edge.offset() <<
+        "<tr><th class=left>Assembled<td class = centered>" << (edge.wasAssembled ? "Yes" : "No");
+    if(edge.wasAssembled) {
         html <<
-            "<tr><th class=left>Assembled length<td class = centered>" << vertex.sequenceLength();
+            "<tr><th class=left>Assembled length<td class = centered>" << edge.sequenceLength();
 
     }
     html << "</table>";
@@ -428,7 +430,7 @@ void Assembler::exploreSegment(
     uint64_t stepEnd = invalid<uint64_t>;
     if(displaySteps == "all") {
         stepBegin = 0;
-        stepEnd = vertex.size();
+        stepEnd = edge.size();
     } else if(displaySteps == "range") {
         try {
             stepBegin = atoul(stepBeginString);
@@ -440,17 +442,17 @@ void Assembler::exploreSegment(
         } catch(std::exception& e) {
             throw runtime_error("End " + stepEndString + " is not valid. Must be a number.");
         }
-        if(stepBegin >= vertex.size()) {
-            stepBegin = vertex.size() - 1;
+        if(stepBegin >= edge.size()) {
+            stepBegin = edge.size() - 1;
         }
-        if(stepBegin > vertex.size()) {
-            stepBegin = vertex.size();
+        if(stepBegin > edge.size()) {
+            stepBegin = edge.size();
         }
         if(stepEnd < stepBegin) {
             stepEnd = stepBegin + 1;
         }
-        if(stepEnd > vertex.size()) {
-            stepEnd = vertex.size();
+        if(stepEnd > edge.size()) {
+            stepEnd = edge.size();
         }
     } else if(displaySteps == "first") {
         stepBegin = 0;
@@ -459,18 +461,18 @@ void Assembler::exploreSegment(
         } catch(std::exception& e) {
             throw runtime_error("First anchors count " + firstStepsCountString + " is not valid. Must be a number.");
         }
-        if(stepEnd > vertex.size()) {
-            stepEnd = vertex.size();
+        if(stepEnd > edge.size()) {
+            stepEnd = edge.size();
         }
     } else if(displaySteps == "last") {
-        stepEnd = vertex.size();
+        stepEnd = edge.size();
         uint64_t count = invalid<uint64_t>;
         try {
             count = atoul(lastStepsCountString);
         } catch(std::exception& e) {
             throw runtime_error("Last anchors count " + lastStepsCountString + " is not valid. Must be a number.");
         }
-        if(count > vertex.size()) {
+        if(count > edge.size()) {
             stepBegin = 0;
         } else {
             stepBegin = stepEnd - count;
@@ -479,14 +481,14 @@ void Assembler::exploreSegment(
 
 
 
-    // Details table showing the requested anchors.
+    // Details table showing the requested steps.
     if(displaySteps != "none") {
 
         html <<
             "<p>"
             "<table>"
             "<tr><th>Step<th>AnchorIdA<th>AnchorIdB<th>Coverage<th>Estimated<br>Length";
-        if(vertex.wasAssembled) {
+        if(edge.wasAssembled) {
             html << "<th>Actual<br>Length";
             if(showSequenceDetails) {
                 html <<
@@ -499,12 +501,12 @@ void Assembler::exploreSegment(
         uint64_t sequencePosition = 0;
         if(showSequenceDetails) {
             for(uint64_t i=0; i<stepBegin; i++) {
-                sequencePosition += vertex[i].sequence.size();
+                sequencePosition += edge[i].sequence.size();
             }
         }
 
         for(uint64_t stepId=stepBegin; stepId!=stepEnd; ++stepId) {
-            const AssemblyGraph2VertexStep& step = vertex[stepId];
+            const AssemblyGraph3EdgeStep& step = edge[stepId];
 
             html <<
                 "<tr>"
@@ -513,7 +515,7 @@ void Assembler::exploreSegment(
                 "<td class=centered>" << anchorIdToString(step.anchorPair.anchorIdB) <<
                 "<td class=centered>" << step.anchorPair.orientedReadIds.size() <<
                 "<td class=centered>" << step.offset;
-            if(vertex.wasAssembled) {
+            if(edge.wasAssembled) {
                 html << "<td class=centered>" << step.sequence.size();
                 if(showSequenceDetails) {
                     html <<
@@ -534,11 +536,11 @@ void Assembler::exploreSegment(
 
 
     // Sequence, if requested.
-    if(showSequence and vertex.wasAssembled) {
+    if(showSequence and edge.wasAssembled) {
         html << "<h2>Assembled sequence</h2>";
 
         vector<Base> sequence;
-        vertex.getSequence(sequence);
+        edge.getSequence(sequence);
 
         if(not sequenceBeginIsPresent) {
             sequenceBegin = 0;
@@ -572,59 +574,6 @@ void Assembler::exploreSegment(
             ostream_iterator<Base>(fasta));
     }
 
-#if 0
-    // Sequence details, if requested.
-    if(showSequenceDetails and (displayAnchors != "none")) {
-        html <<
-            "<h2>Sequence assembly details</h2>"
-            "<table>"
-            "<tr>"
-            "<th>Step<th>AnchorIdA<th>AnchorIdB"
-            "<th>CoverageA<th>CoverageB<th>Common<br>coverage<th>"
-            "Sequence<br>Length<th>Position<br>begin<th>Position<br>end<th>Sequence";
-
-        uint64_t positionBegin = 0;
-        for(uint64_t step=0; step<edge.sequences.size(); step++) {
-            const vector<Base>& sequence = edge.sequences[step];
-            const uint64_t sequenceLength = sequence.size();
-            const uint64_t positionEnd = positionBegin + sequenceLength;
-
-            if((step >= begin) and (step + 1 < end)) {
-                const AnchorId anchorIdA = edge[step];
-                const AnchorId anchorIdB = edge[step + 1];
-                const uint64_t coverageA = anchors()[anchorIdA].coverage();
-                const uint64_t coverageB = anchors()[anchorIdB].coverage();
-                const uint64_t commonCount = anchors().countCommon(anchorIdA, anchorIdB);
-
-                html <<
-                    "<tr>"
-
-                    "<td class=centered>" <<
-
-                    "<a href='"
-                    "exploreLocalAssembly2?anchorIdAString=" << HttpServer::urlEncode(anchorIdToString(anchorIdA)) <<
-                    "&anchorIdBString=" << HttpServer::urlEncode(anchorIdToString(anchorIdB)) <<
-                    "'>" << step << "</a>"
-
-                    "<td class=centered>" << anchorIdToString(anchorIdA) <<
-                    "<td class=centered>" << anchorIdToString(anchorIdB) <<
-                    "<td class=centered>" << coverageA <<
-                    "<td class=centered>" << coverageB <<
-                    "<td class=centered>" << commonCount <<
-                    "<td class=centered>" << sequenceLength <<
-                    "<td class=centered>" << positionBegin <<
-                    "<td class=centered>" << positionEnd <<
-                    "<td style='font-family:monospace'>";
-                copy(sequence.begin(), sequence.end(), ostream_iterator<Base>(html));
-            }
-
-            positionBegin = positionEnd;
-        }
-
-        html << "</table>";
-
-    }
-#endif
 }
 
 
