@@ -12,6 +12,7 @@
 
 // Boost libraries.
 #include <boost/graph/adjacency_list.hpp>
+#include <boost/serialization/vector.hpp>
 
 
 namespace shasta {
@@ -39,6 +40,9 @@ namespace shasta {
 // Tha AnchorId of a vertex is the last AnchorId of the last AnchorPair
 // of all incoming edges and the first AnchorId of the first AnchorPair
 // of each outgoing edge.
+// When the Assembly3Graph is initially created from the AnchorGraph,
+// there can be at most one vertex for each AnchorId.
+// However that is no longer true after detangling.
 class shasta::AssemblyGraph3Vertex {
 public:
     AnchorId anchorId = invalid<AnchorId>;
@@ -46,6 +50,13 @@ public:
 
     AssemblyGraph3Vertex(AnchorId anchorId, uint64_t id) :
         anchorId(anchorId), id(id) {}
+    AssemblyGraph3Vertex() {}
+
+    template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
+    {
+        ar & anchorId;
+        ar & id;
+    }
 };
 
 
@@ -66,6 +77,12 @@ public:
     AssemblyGraph3EdgeStep()
     {}
 
+    template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
+    {
+        ar & anchorPair;
+        ar & offset;
+        ar & sequence;
+    }
 };
 
 
@@ -81,6 +98,13 @@ public:
 
     uint64_t offset() const;
     void getSequence(vector<Base>&) const;
+
+    template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
+    {
+        ar & boost::serialization::base_object< vector<AssemblyGraph3EdgeStep> >(*this);
+        ar & id;
+        ar & wasAssembled;
+    }
 };
 
 
@@ -154,4 +178,22 @@ private:
 
     // Clear sequence from all steps of all edges.
     void clearSequence();
+
+
+
+    // Serialization.
+    friend class boost::serialization::access;
+    template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
+    {
+        ar & boost::serialization::base_object<AssemblyGraph3BaseClass>(*this);
+        ar & nextVertexId;
+        ar & nextEdgeId;
+    }
+    void save(ostream&) const;
+    void load(istream&);
+
+    // These do save/load to/from mapped memory.
+    // The file name is AssemblyGraph2-Stage.
+    void save(const string& stage) const;
+    void load(const string& stage);
 };
