@@ -507,10 +507,12 @@ void Assembler::exploreSegment(
 
         for(uint64_t stepId=stepBegin; stepId!=stepEnd; ++stepId) {
             const AssemblyGraph3EdgeStep& step = edge[stepId];
+            const string url = "exploreSegmentStep?assemblyStage=" +
+                assemblyStage + "&segmentName=" + to_string(segmentId) + "&stepId=" + to_string(stepId);
 
             html <<
                 "<tr>"
-                "<td class=centered>" << stepId <<
+                "<td class=centered><a href='" << url << "'>" << stepId << "</a>"
                 "<td class=centered>" << anchorIdToString(step.anchorPair.anchorIdA) <<
                 "<td class=centered>" << anchorIdToString(step.anchorPair.anchorIdB) <<
                 "<td class=centered>" << step.anchorPair.orientedReadIds.size() <<
@@ -667,25 +669,25 @@ void Assembler::exploreSegmentStep(
         return;
     }
 
-    // Get the AssemblyGraph for this assembly stage.
-    const AssemblyGraph2Postprocessor& assemblyGraph2 = getAssemblyGraph2(
+    // Get the AssemblyGraph3 for this assembly stage.
+    const AssemblyGraph3Postprocessor& assemblyGraph3 = getAssemblyGraph3(
         assemblyStage,
         *httpServerData.assemblerOptions);
 
-    // Find the AssemblyGraph2Vertex corresponding to the requested segment.
-    auto it = assemblyGraph2.vertexMap.find(segmentId);
-    if(it == assemblyGraph2.vertexMap.end()) {
+    // Find the AssemblyGraph3Edge corresponding to the requested segment.
+    auto it = assemblyGraph3.edgeMap.find(segmentId);
+    if(it == assemblyGraph3.edgeMap.end()) {
         html << "<p>Assembly graph at stage " << assemblyStage <<
             " does not have segment " << segmentId;
         return;
     }
 
-    const AssemblyGraph2::vertex_descriptor v = it->second;
-    const AssemblyGraph2Vertex& vertex = assemblyGraph2[v];
+    const AssemblyGraph3::edge_descriptor e = it->second;
+    const AssemblyGraph3Edge& edge = assemblyGraph3[e];
 
-    if(stepId >= vertex.size()) {
+    if(stepId >= edge.size()) {
         html << "<p>Step " << stepId << " is not valid for this segment, which has " <<
-            vertex.size() << " steps.";
+            edge.size() << " steps.";
         return;
     }
 
@@ -699,7 +701,7 @@ void Assembler::exploreSegmentStep(
         anchors(), html, debug,
         httpServerData.assemblerOptions->aDrift,
         httpServerData.assemblerOptions->bDrift,
-        vertex[stepId].anchorPair);
+        edge[stepId].anchorPair);
     localAssembly.run(showAlignment, httpServerData.assemblerOptions->localAssemblyOptions.maxAbpoaLength);
 
 
