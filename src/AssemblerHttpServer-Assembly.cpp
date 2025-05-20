@@ -7,7 +7,7 @@
 #include "LocalAssembly1.hpp"
 #include "LocalAssembly2.hpp"
 #include "Tangle.hpp"
-#include "Tangle2.hpp"
+#include "Tangle3.hpp"
 #include "TangleMatrix2.hpp"
 #include "TangleMatrix3.hpp"
 using namespace shasta;
@@ -899,8 +899,11 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
 
 
 // The vertex is specified using one of the segments that have the vertex as their target.
-void Assembler::exploreVertexTangle(const vector<string>& request, ostream& html)
+void Assembler::exploreVertexTangle(const vector<string>& /* request */, ostream& /* html */)
 {
+    throw runtime_error("Not implemented. Use tangle matrix instead, specifying the in-edges and out-edges.");
+
+#if 0
     // Get the options from the request.
     string assemblyStage;
     HttpServer::getParameterValue(request, "assemblyStage", assemblyStage);
@@ -974,6 +977,8 @@ void Assembler::exploreVertexTangle(const vector<string>& request, ostream& html
 
     // Write out the TangleMatrix.
     tangle2.tangleMatrix->writeHtml(assemblyGraph2, html);
+
+#endif
 }
 
 
@@ -1030,27 +1035,29 @@ void Assembler::exploreEdgeTangle(const vector<string>& request, ostream& html)
         return;
     }
 
-    // Get the AssemblyGraph for this assembly stage.
-    AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
+    // Get the AssemblyGraph3 for this assembly stage.
+    AssemblyGraph3Postprocessor& assemblyGraph3 = getAssemblyGraph3(
         assemblyStage,
         *httpServerData.assemblerOptions);
 
-    // Find the AssemblyGraphEdge corresponding to the requested segment.
-    auto it = assemblyGraph.edgeMap.find(segmentId);
-    if(it == assemblyGraph.edgeMap.end()) {
+    // Find the AssemblyGraph3Edge corresponding to the requested segment.
+    auto it = assemblyGraph3.edgeMap.find(segmentId);
+    if(it == assemblyGraph3.edgeMap.end()) {
         html << "<p>Assembly graph at stage " << assemblyStage <<
             " does not have segment " << segmentId;
         return;
     }
-    const AssemblyGraph::edge_descriptor e = it->second;
+    const AssemblyGraph3::edge_descriptor e = it->second;
 
 
 
     // Create a Tangle at this edge.
-    const Tangle tangle(assemblyGraph, e);
+    const Tangle3 tangle(assemblyGraph3, e,
+        httpServerData.assemblerOptions->aDrift,
+        httpServerData.assemblerOptions->bDrift);
 
     // Write out the TangleMatrix.
-    tangle.tangleMatrix.writeHtml(assemblyGraph, html);
+    tangle.tangleMatrix->writeHtml(assemblyGraph3, html);
 }
 
 
