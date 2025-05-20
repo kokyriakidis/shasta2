@@ -212,6 +212,7 @@ void LocalAssembly2::writeOrientedReads()
 {
     html <<
         "<h3>Oriented reads portions used in this local assembly</h3>"
+        "<p>This local assembly uses " << orientedReads.size() << " oriented reads."
         "<table><tr>"
         "<th>OrientedReadId"
         "<th>OrdinalA"
