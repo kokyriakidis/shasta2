@@ -198,6 +198,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
 
     class_<AssemblyGraph3>(shasta2Module, "AssemblyGraph3")
         .def("detangleEdges", &AssemblyGraph3::detangleEdges)
+        .def("compress", &AssemblyGraph3::compress)
         .def("write", &AssemblyGraph3Postprocessor::write)
         ;
 

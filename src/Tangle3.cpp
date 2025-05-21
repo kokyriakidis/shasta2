@@ -7,6 +7,10 @@ using namespace shasta;
 // Boost libraries.
 #include <boost/graph/iteration_macros.hpp>
 
+// Standard library.
+#include <tuple.hpp>
+
+
 
 // Constructor from a single AssemblyGraph edge.
 Tangle3::Tangle3(
@@ -59,4 +63,93 @@ Tangle3::Tangle3(
     // Now we can create the TangleMatrix3.
     tangleMatrix = make_shared<TangleMatrix3>(
         assemblyGraph3, entranceEdges, exitEdges, aDrift, bDrift);
+}
+
+
+
+void Tangle3::connect(uint64_t iEntrance, uint64_t iExit) {
+    SHASTA_ASSERT(iEntrance < tangleMatrix->entrances.size());
+    SHASTA_ASSERT(iExit < tangleMatrix->exits.size());
+    connectList.push_back({iEntrance, iExit});
+}
+
+
+
+void Tangle3::detangle()
+{
+    // Make a copy of each entrance edge, with the target vertex replaced by a new vertex
+    // with the same AnchorId.
+    vector<vertex_descriptor> newEntranceVertices;
+    for(const auto& entrance: tangleMatrix->entrances) {
+        const edge_descriptor eOld = entrance.e;
+        const vertex_descriptor v0Old = source(eOld, assemblyGraph3);
+        AssemblyGraph3Edge& edgeOld = assemblyGraph3[eOld];
+        const AnchorId lastAnchorId = edgeOld.back().anchorPair.anchorIdB;
+
+        // Create the new vertex.
+        const vertex_descriptor v1 = add_vertex(
+            AssemblyGraph3Vertex(lastAnchorId, assemblyGraph3.nextVertexId++), assemblyGraph3);
+        newEntranceVertices.push_back(v1);
+
+        // Create the new edge, with the same steps and id as the old one.
+        edge_descriptor eNew;
+        tie(eNew, ignore) = add_edge(v0Old, v1, AssemblyGraph3Edge(edgeOld.id), assemblyGraph3);
+        AssemblyGraph3Edge& edgeNew = assemblyGraph3[eNew];
+        edgeNew.swapSteps(edgeOld);
+        edgeNew.wasAssembled = edgeOld.wasAssembled;
+    }
+
+
+
+    // Make a copy of each exit edge, with the source vertex replaced by a new vertex
+    // with the same AnchorId.
+    vector<vertex_descriptor> newExitVertices;
+    for(const auto& exit: tangleMatrix->exits) {
+        const edge_descriptor eOld = exit.e;
+        const vertex_descriptor v1Old = target(eOld, assemblyGraph3);
+        AssemblyGraph3Edge& edgeOld = assemblyGraph3[eOld];
+        const AnchorId firstAnchorId = edgeOld.front().anchorPair.anchorIdA;
+
+        // Create the new vertex.
+        const vertex_descriptor v0 = add_vertex(
+            AssemblyGraph3Vertex(firstAnchorId, assemblyGraph3.nextVertexId++), assemblyGraph3);
+        newExitVertices.push_back(v0);
+
+        // Create the new edge, with the same steps and id as the old one.
+        edge_descriptor eNew;
+        tie(eNew, ignore) = add_edge(v0, v1Old, AssemblyGraph3Edge(edgeOld.id), assemblyGraph3);
+        AssemblyGraph3Edge& edgeNew = assemblyGraph3[eNew];
+        edgeNew.swapSteps(edgeOld);
+        edgeNew.wasAssembled = edgeOld.wasAssembled;
+    }
+
+
+
+    // Now connect these vertices as prescribed by the connectList.
+    // The new edges get a single AnchorPair obtained from the
+    // corresponding entry of the TangleMatrix.
+    for(const auto& p: connectList) {
+        const uint64_t iEntrance = p.first;
+        const uint64_t iExit = p.second;
+
+        const vertex_descriptor v0 = newEntranceVertices[iEntrance];
+        const vertex_descriptor v1 = newExitVertices[iExit];
+
+        const AnchorPair& anchorPair = (*tangleMatrix).tangleMatrix[iEntrance][iExit];
+        const uint64_t offset = anchorPair.getAverageOffset(assemblyGraph3.anchors);
+
+        edge_descriptor e;
+        tie(e, ignore) = add_edge(v0, v1, AssemblyGraph3Edge(assemblyGraph3.nextEdgeId++), assemblyGraph3);
+        AssemblyGraph3Edge& edge = assemblyGraph3[e];
+
+        edge.push_back(AssemblyGraph3EdgeStep(anchorPair, offset));
+    }
+
+    // Now we can remove all the tangle vertices and their edges.
+    // This also removes the old entrances and exits.
+    removedVertices = tangleVertices;
+    for(const vertex_descriptor v: tangleVertices) {
+        clear_vertex(v, assemblyGraph3);
+        remove_vertex(v, assemblyGraph3);
+    }
 }

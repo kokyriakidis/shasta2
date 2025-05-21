@@ -107,6 +107,11 @@ public:
         ar & id;
         ar & wasAssembled;
     }
+
+    void swapSteps(AssemblyGraph3Edge& that)
+    {
+        vector<AssemblyGraph3EdgeStep>::swap(that);
+    }
 };
 
 
@@ -133,10 +138,10 @@ public:
     void run(uint64_t threadCount);
 
     const Anchors& anchors;
-private:
-    const AssemblerOptions& assemblerOptions;
     uint64_t nextVertexId = 0;
     uint64_t nextEdgeId = 0;
+private:
+    const AssemblerOptions& assemblerOptions;
 
     void check() const;
 
@@ -152,10 +157,10 @@ private:
     void bubbleCleanup(uint64_t threadCount);
     uint64_t bubbleCleanupIteration(uint64_t threadCount);
 
+public:
     // Compress linear chains of edges into a single edge.
     void compress();
 
-public:
     uint64_t detangleEdges(Detangler&);
 
 

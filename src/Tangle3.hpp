@@ -38,8 +38,8 @@ public:
     // Detangling instructions.
     // Each pair is (entranceIndex, exitIndex) that are to be connected
     // when detangling.
-    // Detangling decisions are not made in Tangle2. They are made by the
-    // Detangler2 object.
+    // Detangling decisions are not made in Tangle3. They are made by the
+    // Detangler object.
     vector< pair<uint64_t, uint64_t> > connectList;
     void connect(uint64_t iEntrance, uint64_t iExit);
     void detangle();

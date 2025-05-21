@@ -82,3 +82,9 @@ bool SimpleDetangler::operator()(Tangle2& tangle)
 
 }
 
+
+
+bool SimpleDetangler::operator()(Tangle3&)
+{
+    return false;
+}

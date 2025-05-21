@@ -13,10 +13,11 @@ assembler.accessJourneys()
 
 
 # Get the assemblyGraph3Postprocessor at a chosen assembly.
-assemblyGraph3Postprocessor = assembler.getAssemblyGraph3("B", assemblerOptions);
+assemblyGraph3 = assembler.getAssemblyGraph3("B", assemblerOptions);
 
 detangler = TrivialDetangler(assemblyGraphOptions.minCommonCoverage)	
-assemblyGraph3Postprocessor.detangleEdges(detangler)
-# assemblyGraph3Postprocessor.write("C")
+assemblyGraph3.detangleEdges(detangler)
+assemblyGraph3.compress()
+assemblyGraph3.write("C")
 
 

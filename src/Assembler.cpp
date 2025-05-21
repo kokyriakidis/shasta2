@@ -95,7 +95,7 @@ void Assembler::assemble(
     createJourneys(threadCount);
     journeys().writeAnchorGapsByRead(reads(), markers(), anchors());
 
-    createAssemblyGraph2(assemblerOptions, threadCount);
+    createAssemblyGraph3(assemblerOptions, threadCount);
 }
 
 
