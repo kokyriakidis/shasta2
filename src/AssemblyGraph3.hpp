@@ -161,6 +161,7 @@ public:
     // Compress linear chains of edges into a single edge.
     void compress();
 
+    uint64_t detangle(const vector< vector<vertex_descriptor> >& detanglingCandidates, Detangler&);
     uint64_t detangleEdges(Detangler&);
 
 

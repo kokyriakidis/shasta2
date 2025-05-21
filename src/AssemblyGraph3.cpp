@@ -752,9 +752,6 @@ uint64_t AssemblyGraph3::detangleEdges(Detangler& detangler)
 {
     cout << "AssemblyGraph3::detangleEdges begins." << endl;
     AssemblyGraph3& assemblyGraph3 = *this;
-    const bool debug = false;
-
-
 
     // Gather edges on which we will attempt detangling.
     vector< vector<vertex_descriptor> > detanglingCandidates;
@@ -762,7 +759,7 @@ uint64_t AssemblyGraph3::detangleEdges(Detangler& detangler)
         const vertex_descriptor v0 = source(e, assemblyGraph3);
         const vertex_descriptor v1 = target(e, assemblyGraph3);
 
-        // For now only to the most common case.
+        // For now only do the most common case.
         if(
             (out_degree(v0, assemblyGraph3) == 1) and   // e is only out-edge of v0
             (in_degree(v1, assemblyGraph3) == 1) and    // e is only in-edge of v1
@@ -776,8 +773,19 @@ uint64_t AssemblyGraph3::detangleEdges(Detangler& detangler)
     cout << "Found " << detanglingCandidates.size() <<
         " tangle edges out of " << num_edges(assemblyGraph3) << " total edges." << endl;
 
+    // Do the detangling.
+    return detangle(detanglingCandidates, detangler);
+}
 
-    // Main detangling loop.
+
+
+uint64_t AssemblyGraph3::detangle(
+    const vector< vector<vertex_descriptor> >& detanglingCandidates,
+    Detangler& detangler)
+{
+    const bool debug = false;
+    AssemblyGraph3& assemblyGraph3 = *this;
+
     std::set<vertex_descriptor> removedVertices;
     uint64_t attemptCount = 0;
     uint64_t successCount = 0;
