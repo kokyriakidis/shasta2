@@ -501,7 +501,7 @@ void AssemblyGraph2::run(uint64_t threadCount)
     check();
     write("C");
 
-    SimpleDetangler simpleDetangler(3, 2);
+    SimpleDetangler simpleDetangler(3, 1, 6);
     while(true) {
         const uint64_t detangledCount = detangleVertices(simpleDetangler);
         if(detangledCount == 0) {

@@ -8,6 +8,7 @@
 #include "LocalAssembly2.hpp"
 #include "performanceLog.hpp"
 #include "rle.hpp"
+#include "SimpleDetangler.hpp"
 #include "Tangle3.hpp"
 #include "TangleMatrix3.hpp"
 #include "TrivialDetangler.hpp"
@@ -133,15 +134,16 @@ void AssemblyGraph3::run(uint64_t threadCount)
     write("B");
 
     // Vertex detangling.
-    TrivialDetangler trivialDetangler(assemblerOptions.assemblyGraphOptions.minCommonCoverage);
-    detangleVertices(trivialDetangler);
+    // TrivialDetangler trivialDetangler(assemblerOptions.assemblyGraphOptions.minCommonCoverage);
+    SimpleDetangler simpleDetangler(3, 1, 4);
+    detangleVertices(simpleDetangler);
     compress();
     cout << "After vertex detangling and compress the AssemblyGraph3 has " << num_vertices(assemblyGraph3) <<
         " vertices and " << num_edges(assemblyGraph3) << " edges." << endl;
     write("C");
 
     // Edge detangling.
-    detangleEdges(trivialDetangler);
+    detangleEdges(simpleDetangler);
     compress();
     cout << "After edge detangling and compress the AssemblyGraph3 has " << num_vertices(assemblyGraph3) <<
         " vertices and " << num_edges(assemblyGraph3) << " edges." << endl;
