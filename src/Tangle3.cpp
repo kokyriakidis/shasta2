@@ -12,6 +12,20 @@ using namespace shasta;
 
 
 
+// Constructor from a single AssemblyGraph3 vertex.
+Tangle3::Tangle3(
+    AssemblyGraph3& assemblyGraph3,
+    vertex_descriptor v,
+    double aDrift,
+    double bDrift) :
+    Tangle3(assemblyGraph3,
+        vector<vertex_descriptor>(1, v),
+        aDrift, bDrift)
+{
+}
+
+
+
 // Constructor from a single AssemblyGraph edge.
 Tangle3::Tangle3(
     AssemblyGraph3& assemblyGraph3,

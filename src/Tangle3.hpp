@@ -26,6 +26,13 @@ public:
         double aDrift,
         double bDrift);
 
+    // Constructor from a single AssemblyGraph3 vertex.
+    Tangle3(
+        AssemblyGraph3&,
+        vertex_descriptor,
+        double aDrift,
+        double bDrift);
+
     // Constructor from a single AssemblyGraph3 edge.
     Tangle3(
         AssemblyGraph3&,
