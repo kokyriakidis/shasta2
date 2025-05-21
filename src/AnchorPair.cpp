@@ -380,7 +380,7 @@ uint32_t AnchorPair::getAverageOffset(const Anchors& anchors) const
 
             const uint32_t ordinalA = itA->ordinal;
             const uint32_t ordinalB = itB->ordinal;
-            if(ordinalB <= ordinalA) {
+            if(ordinalB < ordinalA) {       // Degenerate AnchorPair with AnchorIdA==AnchorIdB is ok.
                 throw runtime_error(
                     "Order violation at anchor pair " +
                     anchorIdToString(anchorIdA) + " " +
@@ -391,7 +391,7 @@ uint32_t AnchorPair::getAverageOffset(const Anchors& anchors) const
             }
             const uint32_t positionA = orientedReadMarkers[ordinalA].position + kHalf;
             const uint32_t positionB = orientedReadMarkers[ordinalB].position + kHalf;
-            SHASTA_ASSERT(positionB > positionA);
+            SHASTA_ASSERT(positionB >= positionA);      // Degenerate AnchorPair with AnchorIdA==AnchorIdB is ok.
 
             const uint32_t offset = positionB - positionA;
             sumBaseOffset += offset;
@@ -456,7 +456,7 @@ void AnchorPair::getOffsets(
 
             const uint32_t ordinalA = itA->ordinal;
             const uint32_t ordinalB = itB->ordinal;
-            if(ordinalB <= ordinalA) {
+            if(ordinalB < ordinalA) {          // Degenerate AnchorPair with AnchorIdA==AnchorIdB is ok.
                 throw runtime_error(
                     "Order violation at anchor pair " +
                     anchorIdToString(anchorIdA) + " " +

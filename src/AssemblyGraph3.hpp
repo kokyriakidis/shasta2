@@ -162,6 +162,7 @@ public:
     void compress();
 
     uint64_t detangle(const vector< vector<vertex_descriptor> >& detanglingCandidates, Detangler&);
+    uint64_t detangleVertices(Detangler&);
     uint64_t detangleEdges(Detangler&);
 
 

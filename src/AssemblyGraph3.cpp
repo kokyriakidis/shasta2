@@ -132,15 +132,20 @@ void AssemblyGraph3::run(uint64_t threadCount)
         " vertices and " << num_edges(assemblyGraph3) << " edges." << endl;
     write("B");
 
-
+    // Vertex detangling.
+    TrivialDetangler trivialDetangler(assemblerOptions.assemblyGraphOptions.minCommonCoverage);
+    detangleVertices(trivialDetangler);
+    compress();
+    cout << "After vertex detangling and compress the AssemblyGraph3 has " << num_vertices(assemblyGraph3) <<
+        " vertices and " << num_edges(assemblyGraph3) << " edges." << endl;
+    write("C");
 
     // Edge detangling.
-    TrivialDetangler trivialDetangler(assemblerOptions.assemblyGraphOptions.minCommonCoverage);
     detangleEdges(trivialDetangler);
     compress();
     cout << "After edge detangling and compress the AssemblyGraph3 has " << num_vertices(assemblyGraph3) <<
         " vertices and " << num_edges(assemblyGraph3) << " edges." << endl;
-    write("C");
+    write("D");
 
     // Sequence assembly.
     assembleAll(threadCount);
@@ -320,6 +325,11 @@ void AssemblyGraph3::assembleStep(edge_descriptor e, uint64_t i)
     AssemblyGraph3& assemblyGraph3 = *this;
     AssemblyGraph3Edge& edge = assemblyGraph3[e];
     AssemblyGraph3EdgeStep& step = edge[i];
+
+    if(step.anchorPair.anchorIdA == step.anchorPair.anchorIdB) {
+        step.sequence.clear();
+        return;
+    }
 
     // Run the LocalAssembly2.
     ofstream html;  // Not open, so no html output takes place.
@@ -748,12 +758,41 @@ void AssemblyGraph3::load(const string& assemblyStage)
 
 
 
+uint64_t AssemblyGraph3::detangleVertices(Detangler& detangler)
+{
+    cout << "AssemblyGraph3::detangleEdges begins." << endl;
+    AssemblyGraph3& assemblyGraph3 = *this;
+
+    // Gather vertices on which we will attempt detangling.
+    // Each generates a tangle with just one vertex.
+    vector< vector<vertex_descriptor> > detanglingCandidates;
+    BGL_FORALL_VERTICES(v, assemblyGraph3, AssemblyGraph3) {
+
+        // For now only do the most common case.
+        if(
+            (in_degree(v, assemblyGraph3) == 2) and    // v has 2 in-edges
+            (out_degree(v, assemblyGraph3) == 2)       // v has 2 out-edges
+             ) {
+            detanglingCandidates.emplace_back(vector<vertex_descriptor>({v}));
+        }
+
+    }
+    cout << "Found " << detanglingCandidates.size() <<
+        " tangle vertices out of " << num_vertices(assemblyGraph3) << " total vertices." << endl;
+
+    // Do the detangling.
+    return detangle(detanglingCandidates, detangler);
+}
+
+
+
 uint64_t AssemblyGraph3::detangleEdges(Detangler& detangler)
 {
     cout << "AssemblyGraph3::detangleEdges begins." << endl;
     AssemblyGraph3& assemblyGraph3 = *this;
 
     // Gather edges on which we will attempt detangling.
+    // Each generates a tangle with just two vertices.
     vector< vector<vertex_descriptor> > detanglingCandidates;
     BGL_FORALL_EDGES(e, assemblyGraph3, AssemblyGraph3) {
         const vertex_descriptor v0 = source(e, assemblyGraph3);
