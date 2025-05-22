@@ -18,7 +18,6 @@ namespace shasta {
     class Assembler;
 
     class AssemblyGraphPostprocessor;
-    class AssemblyGraph2Postprocessor;
     class AssemblyGraph3Postprocessor;
     class AnchorGraph;
     class Anchors;
@@ -190,9 +189,6 @@ public:
     void createAssemblyGraph(
         const AssemblerOptions&,
         uint64_t threadCount);
-    void createAssemblyGraph2(
-        const AssemblerOptions&,
-        uint64_t threadCount);
     void createAssemblyGraph3(
         const AssemblerOptions&,
         uint64_t threadCount);
@@ -280,10 +276,6 @@ public:
         const string& assemblyStage,
         const AssemblerOptions&);
     std::map<string, shared_ptr<AssemblyGraphPostprocessor> > assemblyGraphTable;
-    AssemblyGraph2Postprocessor& getAssemblyGraph2(
-        const string& assemblyStage,
-        const AssemblerOptions&);
-    std::map<string, shared_ptr<AssemblyGraph2Postprocessor> > assemblyGraph2Table;
     AssemblyGraph3Postprocessor& getAssemblyGraph3(
         const string& assemblyStage,
         const AssemblerOptions&);

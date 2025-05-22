@@ -3,7 +3,6 @@
 #include "AnchorGraph.hpp"
 #include "AssemblerOptions.hpp"
 #include "AssemblyGraph.hpp"
-#include "AssemblyGraph2.hpp"
 #include "AssemblyGraph3.hpp"
 #include "Journeys.hpp"
 #include "KmerCheckerFactory.hpp"
@@ -204,52 +203,6 @@ void Assembler::createAssemblyGraph(
     performanceLog << timestamp << "AssemblyGraph creation begins." << endl;
     AssemblyGraph assemblyGraph(options, anchors(), anchorGraph, threadCount);
     performanceLog << timestamp << "AssemblyGraph creation ends." << endl;
-
-}
-
-
-
-void Assembler::createAssemblyGraph2(
-    const AssemblerOptions& options,
-    uint64_t threadCount)
-{
-    // Adjust the numbers of threads, if necessary.
-    if(threadCount == 0) {
-        threadCount = std::thread::hardware_concurrency();
-    }
-
-    // Generate an AnchorGraph in which all edges have consistent offsets.
-    performanceLog << timestamp << "AnchorGraph creation begins." << endl;
-    anchorGraphPointer = make_shared<AnchorGraph>(
-        anchors(), journeys(),
-        options.minAnchorGraphEdgeCoverageNear,
-        options.minAnchorGraphEdgeCoverageFar,
-        options.aDrift,
-        options.bDrift);
-    performanceLog << timestamp << "AnchorGraph creation ends." << endl;
-    anchorGraphPointer->save();
-
-    // Create the TransitionGraph.
-    performanceLog << timestamp << "TransitionGraph creation begins." << endl;
-    shared_ptr<const TransitionGraph> transitionGraphPointer = make_shared<TransitionGraph>(
-        anchors(),
-        *anchorGraphPointer,
-        options.minTransitionGraphEdgeCoverage);
-    performanceLog << timestamp << "TransitionGraph creation ends." << endl;
-    anchorGraphPointer = 0; // We no longer need the AnchorGraph.
-    transitionGraphPointer->writeGraphviz("TransitionGraph.dot");
-
-    // Create the AssemblyGraph2.
-    performanceLog << timestamp << "AssemblyGraph2 creation begins." << endl;
-    AssemblyGraph2 assemblyGraph2(
-        anchors(),
-        *transitionGraphPointer,
-        options);
-    performanceLog << timestamp << "AssemblyGraph2 creation ends." << endl;
-    transitionGraphPointer = 0; // We no longer need the TransitionGraph.
-
-    // Detangle, phase, assemble sequence, output.
-    assemblyGraph2.run(threadCount);
 
 }
 

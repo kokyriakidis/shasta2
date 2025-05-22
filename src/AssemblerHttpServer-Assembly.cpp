@@ -1,14 +1,12 @@
 // Shasta.
 #include "Assembler.hpp"
 #include "AssemblyGraphPostprocessor.hpp"
-#include "AssemblyGraph2Postprocessor.hpp"
 #include "AssemblyGraph3Postprocessor.hpp"
 #include "LocalAssembly.hpp"
 #include "LocalAssembly1.hpp"
 #include "LocalAssembly2.hpp"
 #include "Tangle.hpp"
 #include "Tangle3.hpp"
-#include "TangleMatrix2.hpp"
 #include "TangleMatrix3.hpp"
 using namespace shasta;
 
@@ -728,21 +726,6 @@ AssemblyGraphPostprocessor& Assembler::getAssemblyGraph(
         shared_ptr<AssemblyGraphPostprocessor> p =
             make_shared<AssemblyGraphPostprocessor>(assemblerOptions, anchors(), assemblyStage);
         tie(it, ignore) = assemblyGraphTable.insert(make_pair(assemblyStage, p));
-    }
-    return *(it->second);
-}
-
-
-
-AssemblyGraph2Postprocessor& Assembler::getAssemblyGraph2(
-    const string& assemblyStage,
-    const AssemblerOptions& assemblerOptions)
-{
-    auto it = assemblyGraph2Table.find(assemblyStage);
-    if(it == assemblyGraph2Table.end()) {
-        shared_ptr<AssemblyGraph2Postprocessor> p =
-            make_shared<AssemblyGraph2Postprocessor>(anchors(), assemblerOptions, assemblyStage);
-        tie(it, ignore) = assemblyGraph2Table.insert(make_pair(assemblyStage, p));
     }
     return *(it->second);
 }

@@ -292,13 +292,6 @@ bool PermutationDetangler::operator(
 
 
 
-bool PermutationDetangler::operator()(Tangle2&)
-{
-    return false;
-}
-
-
-
 bool PermutationDetangler::operator()(Tangle3&)
 {
     return false;

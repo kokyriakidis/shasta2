@@ -12,7 +12,6 @@ namespace shasta {
 class shasta::TrivialDetangler : public Detangler {
 public:
     bool operator()(Tangle&);
-    bool operator()(Tangle2&);
     bool operator()(Tangle3&);
 
     TrivialDetangler(uint64_t minCommonCoverage) :

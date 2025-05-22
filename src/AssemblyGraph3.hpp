@@ -214,7 +214,7 @@ private:
     void load(istream&);
 
     // These do save/load to/from mapped memory.
-    // The file name is AssemblyGraph2-Stage.
+    // The file name is AssemblyGraph3-Stage.
     void save(const string& stage) const;
     void load(const string& stage);
 };

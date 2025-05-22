@@ -1124,7 +1124,6 @@ void AssemblyGraph::assemble(edge_descriptor e, uint64_t threadCount)
 // AssemblyGraphEdge.
 void AssemblyGraph::assembleStep(edge_descriptor, uint64_t)
 {
-    // Use AssemblyGraph2 instead.
     SHASTA_ASSERT(0);
 
 #if 0
