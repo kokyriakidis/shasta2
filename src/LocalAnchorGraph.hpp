@@ -89,7 +89,8 @@ public:
         const Anchors&,
         const AnchorGraph&,
         const vector<AnchorId>&,
-        uint64_t maxDistance);
+        uint64_t maxDistance,
+        bool edgesMarkedForAssembly);
 
     const Anchors& anchors;
     const AnchorGraph* anchorGraphPointer = 0;

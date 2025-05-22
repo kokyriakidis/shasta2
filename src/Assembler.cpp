@@ -93,6 +93,8 @@ void Assembler::assemble(
     createJourneys(threadCount);
     journeys().writeAnchorGapsByRead(reads(), markers(), anchors());
 
+    createAnchorGraph(assemblerOptions);
+
     createAssemblyGraph3(assemblerOptions, threadCount);
 }
 
@@ -207,6 +209,22 @@ void Assembler::createAssemblyGraph(
 
 
 
+void Assembler::createAnchorGraph(const AssemblerOptions& options)
+{
+    // Generate an AnchorGraph in which all edges have consistent offsets.
+    anchorGraphPointer = make_shared<AnchorGraph>(
+        anchors(), journeys(),
+        options.minAnchorGraphEdgeCoverageNear,
+        options.minAnchorGraphEdgeCoverageFar,
+        options.aDrift,
+        options.bDrift,
+        AnchorGraph::FixDeadEnds());
+    anchorGraphPointer->save();
+
+}
+
+
+
 void Assembler::createAssemblyGraph3(
     const AssemblerOptions& options,
     uint64_t threadCount)
@@ -216,14 +234,6 @@ void Assembler::createAssemblyGraph3(
         threadCount = std::thread::hardware_concurrency();
     }
 
-    // Generate an AnchorGraph in which all edges have consistent offsets.
-    anchorGraphPointer = make_shared<AnchorGraph>(
-        anchors(), journeys(),
-        options.minAnchorGraphEdgeCoverageNear,
-        options.minAnchorGraphEdgeCoverageFar,
-        options.aDrift,
-        options.bDrift);
-    anchorGraphPointer->save();
 
     // Create the AssemblyGraph3.
     AssemblyGraph3 assemblyGraph3(

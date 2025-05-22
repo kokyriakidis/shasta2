@@ -745,6 +745,11 @@ void Assembler::exploreLocalAnchorGraph(
     uint64_t distance = 10;
     HttpServer::getParameterValue(request, "distance", distance);
 
+    string edgesMarkedForAssemblyString;
+    bool edgesMarkedForAssembly = HttpServer::getParameterValue(request,
+        "edgesMarkedForAssembly", edgesMarkedForAssemblyString);
+
+
     // Get the options that control graph display.
     const LocalAnchorGraphDisplayOptions displayOptions(request);
 
@@ -771,6 +776,13 @@ void Assembler::exploreLocalAnchorGraph(
         "<td class=centered>"
         "<input type=text name=distance style='text-align:center' required size=8 value=" <<
         distance << ">";
+
+    html << "<tr>"
+        "<th class=left>Only use edges marked for use in assembly"
+        "<td class=centered>"
+        "<input type=checkbox name=edgesMarkedForAssembly" <<
+        (edgesMarkedForAssembly ? " checked" : "") <<
+        ">";
 
     // Form items for options that control graph display.
     displayOptions.writeForm(html);
@@ -817,7 +829,8 @@ void Assembler::exploreLocalAnchorGraph(
         anchors(),
         anchorGraph,
         anchorIds,
-        distance);
+        distance,
+        edgesMarkedForAssembly);
 
     html << "<h1>Local anchor graph</h1>";
     html << "The local anchor graph has " << num_vertices(graph) <<

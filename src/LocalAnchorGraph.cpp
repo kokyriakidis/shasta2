@@ -28,7 +28,8 @@ LocalAnchorGraph::LocalAnchorGraph(
     const Anchors& anchors,
     const AnchorGraph& anchorGraph,
     const vector<AnchorId>& anchorIds,
-    uint64_t maxDistance) :
+    uint64_t maxDistance,
+    bool edgesMarkedForAssembly) :
     anchors(anchors),
     anchorGraphPointer(&anchorGraph)
 {
@@ -63,6 +64,9 @@ LocalAnchorGraph::LocalAnchorGraph(
 
         // Loop over out-edges.
         BGL_FORALL_OUTEDGES(v0G, eG, anchorGraph, AnchorGraph) {
+            if(edgesMarkedForAssembly and (not anchorGraph[eG].useForAssembly)) {
+                continue;
+            }
             const AnchorGraph::vertex_descriptor v1G = target(eG, anchorGraph);
             const AnchorId anchorId1 = v1G;
 
@@ -80,6 +84,9 @@ LocalAnchorGraph::LocalAnchorGraph(
 
         // Loop over in-edges.
         BGL_FORALL_INEDGES(v0G, eG, anchorGraph, AnchorGraph) {
+            if(edgesMarkedForAssembly and (not anchorGraph[eG].useForAssembly)) {
+                continue;
+            }
             const AnchorGraph::vertex_descriptor v1G = source(eG, anchorGraph);
             const AnchorId anchorId1 = v1G;
 
@@ -109,6 +116,9 @@ LocalAnchorGraph::LocalAnchorGraph(
 
         // Loop over out-edges.
         BGL_FORALL_OUTEDGES(v0G, eG, anchorGraph, AnchorGraph) {
+            if(edgesMarkedForAssembly and (not anchorGraph[eG].useForAssembly)) {
+                continue;
+            }
             const AnchorGraph::vertex_descriptor v1G = target(eG, anchorGraph);
             const AnchorId anchorId1 = v1G;
 
@@ -396,7 +406,7 @@ void LocalAnchorGraphDisplayOptions::writeForm(ostream& html) const
 
     html <<
         "<tr>"
-        "<th title='Graphics size in pixels. "
+        "<th class=left title='Graphics size in pixels. "
         "Changing this works better than zooming. Make it larger if the graph is too crowded."
         " Ok to make it much larger than screen size.'>"
         "Graphics size in pixels"
@@ -477,7 +487,7 @@ void LocalAnchorGraphDisplayOptions::writeForm(ostream& html) const
 
         "<b>Edge coloring</b>"
         "<br><input type=radio required name=edgeColoring value='black'" <<
-        (edgeColoring == "black" ? " checked=on" : "") << ">Black"
+        (edgeColoring == "black" ? " checked=on" : "") << ">Black (purple for parallel edges)"
         "<br><input type=radio required name=edgeColoring value='random'" <<
         (edgeColoring == "random" ? " checked=on" : "") << ">Random"
         "<br><input type=radio required name=edgeColoring value='byCoverageLoss'" <<
@@ -879,7 +889,7 @@ void LocalAnchorGraph::writeEdges(
         const AnchorId anchorId1 = vertex1.anchorId;
         const string anchorIdString1 = anchorIdToString(anchorId1);
 
-        string color = "Black";
+        string color = (edgeG.isParallelEdge ? "Purple" : "Black");
 
         if(options.edgeColoring == "random") {
             // To decide the color, hash the AnchorIds.

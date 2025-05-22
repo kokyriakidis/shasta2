@@ -18,6 +18,7 @@ using namespace shasta;
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/graph/adj_list_serialize.hpp>
+#include <boost/graph/filtered_graph.hpp>
 
 // Standard library.
 #include <fstream.hpp>
@@ -41,9 +42,25 @@ AssemblyGraph3::AssemblyGraph3(
 {
     AssemblyGraph3& assemblyGraph3 = *this;
 
-    // Find linear chains of edges in the AnchorGraph.
+    // Create a filtered AnchorGraph containing only the edges marked as "useForAssembly".
+    class EdgePredicate {
+    public:
+        bool operator()(const AnchorGraph::edge_descriptor& e) const
+        {
+            return (*anchorGraph)[e].useForAssembly;
+        }
+        EdgePredicate(const AnchorGraph& anchorGraph) : anchorGraph(&anchorGraph) {}
+        EdgePredicate() : anchorGraph(0) {}
+        const AnchorGraph* anchorGraph;
+    };
+    using FilteredAnchorGraph = boost::filtered_graph<AnchorGraph, EdgePredicate>;
+    FilteredAnchorGraph filteredAnchorGraph(anchorGraph, EdgePredicate(anchorGraph));
+
+
+
+    // Find linear chains of edges in the FilteredAnchorGraph.
     vector< std::list<AnchorGraph::edge_descriptor> > chains;
-    findLinearChains(anchorGraph, 1, chains);
+    findLinearChains(filteredAnchorGraph, 1, chains);
 
     // Generate vertices.
     // At this stage there is a vertex for each AnchorGraph vertex

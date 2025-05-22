@@ -36,6 +36,8 @@ public:
     AnchorPair anchorPair;
     uint64_t offset = invalid<uint64_t>;
     uint64_t id = invalid<uint64_t>;
+    bool isParallelEdge = false;
+    bool useForAssembly = false;
 
     AnchorGraphEdge(const AnchorPair& anchorPair, uint64_t offset, uint64_t id) :
         anchorPair(anchorPair),
@@ -50,6 +52,8 @@ public:
         ar & anchorPair;
         ar & offset;
         ar & id;
+        ar & isParallelEdge;
+        ar & useForAssembly;
     }
 };
 
@@ -73,6 +77,20 @@ public:
         uint64_t minEdgeCoverageFar,
         double aDrift,
         double bDrift);
+
+    // Constructor that splits edges that have an AnchorPair
+    // with inconsistent offsets, and also does local search to
+    // eliminate dead ends where possible.
+    struct FixDeadEnds{};
+    AnchorGraph(
+        const Anchors&,
+        const Journeys&,
+        uint64_t minEdgeCoverageNear,
+        uint64_t minEdgeCoverageFar,
+        double aDrift,
+        double bDrift,
+        FixDeadEnds);
+
 
     // Constructor from binary data.
     AnchorGraph(const MappedMemoryOwner&);

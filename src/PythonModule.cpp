@@ -117,6 +117,12 @@ PYBIND11_MODULE(shasta2, shasta2Module)
       .def("accessJourneys",
           &Assembler::accessJourneys)
 
+      // AnchorGraph.
+      .def("createAnchorGraph",
+          &Assembler::createAnchorGraph)
+      .def("accessAnchorGraph",
+          &Assembler::accessAnchorGraph)
+
       // AssemblyGraph.
       .def("createAssemblyGraph",
           &Assembler::createAssemblyGraph,

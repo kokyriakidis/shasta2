@@ -182,6 +182,7 @@ public:
 
     // AnchorGraph.
     shared_ptr<AnchorGraph> anchorGraphPointer;
+    void createAnchorGraph(const AssemblerOptions&);
     void accessAnchorGraph();
 
 
