@@ -10,7 +10,6 @@
 #include "performanceLog.hpp"
 #include "Reads.hpp"
 #include "ReadLengthDistribution.hpp"
-#include "TransitionGraph.hpp"
 using namespace shasta;
 
 #include "MultithreadedObject.tpp"

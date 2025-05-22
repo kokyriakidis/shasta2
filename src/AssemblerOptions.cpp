@@ -107,10 +107,6 @@ void AssemblerOptions::addOptions()
         "Constant factor for offset consistency."
         )->capture_default_str();
 
-    add_option("--min-transition-graph-edge-coverage", minTransitionGraphEdgeCoverage,
-        "Minimum transition graph edge coverage."
-        )->capture_default_str();
-
      add_option("--assembly-graph-bubble-cleanup-min-common-count",
         assemblyGraphOptions.bubbleCleanupMinCommonCount,
         "Minimum number of common oriented reads for bubble cleanup."
