@@ -42,8 +42,6 @@ AnchorGraph::AnchorGraph(
 {
     AnchorGraph& anchorGraph = *this;
 
-    uint64_t nextEdgeId = 0;
-
     const uint64_t anchorCount = anchors.size();
     for(AnchorId anchorId=0; anchorId<anchorCount; anchorId++) {
         add_vertex(anchorGraph);
@@ -77,7 +75,8 @@ AnchorGraph::AnchorGraph(
     uint64_t minEdgeCoverageNear,
     uint64_t minEdgeCoverageFar,
     double aDrift,
-    double bDrift) :
+    double bDrift,
+    uint64_t threadCount) :
     MappedMemoryOwner(anchors),
     MultithreadedObject<AnchorGraph>(*this)
 {
@@ -195,7 +194,7 @@ AnchorGraph::AnchorGraph(
     // Eliminate dead ends where possible, using shortest path searches.
     handleDeadEnds(anchors, readLengthDistribution,
         aDrift, bDrift,
-        minEdgeCoverageNear, minEdgeCoverageFar, maxDistance);
+        minEdgeCoverageNear, minEdgeCoverageFar, maxDistance, threadCount);
 }
 
 
@@ -616,12 +615,21 @@ void AnchorGraph::handleDeadEnds(
     double bDrift,
     uint64_t minEdgeCoverageNear,
     uint64_t minEdgeCoverageFar,
-    uint64_t maxDistance)
+    uint64_t maxDistance,
+    uint64_t threadCount)
 {
     AnchorGraph& anchorGraph = *this;
-    const bool debug = false;
-
     performanceLog << timestamp << "AnchorGraph::handleDeadEnds begins." << endl;
+
+    // Fill in the HandleDeadEndsData that need to be visible by all threads.
+    HandleDeadEndsData& data = handleDeadEndsData;
+    data.anchors = &anchors;
+    data.readLengthDistribution = &readLengthDistribution;
+    data.aDrift = aDrift;
+    data.bDrift = bDrift;
+    data.minEdgeCoverageNear = minEdgeCoverageNear;
+    data.minEdgeCoverageFar = minEdgeCoverageFar;
+    data.maxDistance = maxDistance;
 
     // Create a filtered AnchorGraph containing only the edges marked as "useForAssembly".
     class EdgePredicate {
@@ -637,8 +645,119 @@ void AnchorGraph::handleDeadEnds(
     using FilteredAnchorGraph = boost::filtered_graph<AnchorGraph, EdgePredicate>;
     FilteredAnchorGraph filteredAnchorGraph(anchorGraph, EdgePredicate(anchorGraph));
 
+    // Fill in the dead ends in the filtered graph. Ignore isolated vertices.
+    // Probably we should ignore all vertices in very small connected components instead.
+    BGL_FORALL_VERTICES(anchorId0, filteredAnchorGraph, FilteredAnchorGraph) {
+        const bool isForwardDeadEnd = (out_degree(anchorId0, filteredAnchorGraph) == 0);
+        const bool isBackwardDeadEnd = (in_degree(anchorId0, filteredAnchorGraph) == 0);
+
+        // If it is isolated, ignore it.
+        if(isForwardDeadEnd and isBackwardDeadEnd) {
+            continue;
+        }
+
+        if(isForwardDeadEnd) {
+            data.deadEnds.push_back(make_pair(anchorId0, 0));
+        } else if(isBackwardDeadEnd) {
+            data.deadEnds.push_back(make_pair(anchorId0, 1));
+        }
+    }
+    cout << "Found " << data.deadEnds.size() << " dead ends in the initial AnchorGraph." << endl;
+
+    // Run the searches in parallel.
+    data.threadPairs.clear();
+    data.threadPairs.resize(threadCount);
+    const uint64_t batchCount = 1;
+    setupLoadBalancing(data.deadEnds.size(), batchCount);
+    runThreads(&AnchorGraph::handleDeadEndsThreadFunction, threadCount);
+
+    // For reproducibility, consolidate the pairs found by each thread and deduplicate.
+    vector< pair<AnchorPair, uint64_t> > allPairs;
+    for(const auto& v: data.threadPairs) {
+        copy(v.begin(), v.end(), back_inserter(allPairs));
+    }
+    data.threadPairs.clear();
+    class SortHelper{
+    public:
+        bool operator()(const pair<AnchorPair, uint64_t>& x, const pair<AnchorPair, uint64_t>& y) const
+        {
+            return tie(x.first.anchorIdA, x.first.anchorIdB) < tie(y.first.anchorIdA, y.first.anchorIdB);
+        }
+    };
+    sort(allPairs.begin(), allPairs.end(), SortHelper());
+    std::unique(allPairs.begin(), allPairs.end(), SortHelper());
+
+    cout << "Found " << allPairs.size() << " candidate edges for " <<
+        data.deadEnds.size() << " dead ends." << endl;
 
 
+    // Add one edge for each AnchorPair, but only if at least one of the two anchors
+    // is still a dead end.
+    uint64_t addedCount = 0;
+    for(const auto& p: allPairs) {
+        const AnchorPair& anchorPair = p.first;
+        const uint64_t offset = p.second;
+        const AnchorId anchorIdA = anchorPair.anchorIdA;
+        const AnchorId anchorIdB = anchorPair.anchorIdB;
+
+        if((out_degree(anchorIdA, filteredAnchorGraph) == 0) or (in_degree(anchorIdB, filteredAnchorGraph) == 0)) {
+            edge_descriptor e;
+            tie(e, ignore) = add_edge(anchorIdA, anchorIdB,
+                AnchorGraphEdge(anchorPair, offset, nextEdgeId++), anchorGraph);
+            ++addedCount;
+            anchorGraph[e].useForAssembly = true;
+            anchorGraph[e].addedAtDeadEnd = true;
+        }
+    }
+    cout << "Added " << addedCount << " new edges to fix dead ends." << endl;
+
+}
+
+
+
+void AnchorGraph::handleDeadEndsThreadFunction(uint64_t threadId)
+{
+    HandleDeadEndsData& data = handleDeadEndsData;
+
+    // Get the search parameters
+    const Anchors& anchors = *data.anchors;
+    const ReadLengthDistribution& readLengthDistribution = *data.readLengthDistribution;
+    const double aDrift = data.aDrift;
+    const double bDrift = data.bDrift;
+    const uint64_t minEdgeCoverageNear = data.minEdgeCoverageNear;
+    const uint64_t minEdgeCoverageFar = data.minEdgeCoverageFar;
+    const uint64_t maxDistance = data.maxDistance;
+
+    // Vector where we will store the AnchorPairs found by this thread.
+    auto& threadPairs = data.threadPairs[threadId];
+    threadPairs.clear();
+
+    // Loop over batches of dead ends assigned to this thread.
+    uint64_t begin, end;
+    AnchorPair anchorPair;
+    while(getNextBatch(begin, end)) {
+
+        // Loop over dead ends in this batch.
+        for(uint64_t i=begin; i!=end; i++) {
+            const auto& p = data.deadEnds[i];
+            const AnchorId anchorId = p.first;
+            const uint64_t direction = p.second;
+
+            uint64_t offset;
+            const bool found = search(direction, anchorId, anchors, readLengthDistribution,
+                aDrift, bDrift,
+                minEdgeCoverageNear, minEdgeCoverageFar, maxDistance,
+                anchorPair, offset);
+
+            // If successful, store it.
+            if(found) {
+                threadPairs.emplace_back(anchorPair, offset);
+            }
+        }
+    }
+
+
+#if 0
     // Loop over forward or backward dead ends in the filtered anchor graph,
     // ignoring isolated vertices.
     // Probably we should ignore all vertices in very small connected components instead.
@@ -677,6 +796,5 @@ void AnchorGraph::handleDeadEnds(
 
         }
     }
-
-    performanceLog << timestamp << "AnchorGraph::handleDeadEnds ends." << endl;
+#endif
 }

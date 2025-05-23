@@ -8,12 +8,19 @@
 // the initial Assembly graph and then discarded.
 
 // Shasta.
+#include "Anchor.hpp"
 #include "AnchorPair.hpp"
 #include "MappedMemoryOwner.hpp"
 #include "MultithreadedObject.hpp"
 
 // Boost libraries.
 #include <boost/graph/adjacency_list.hpp>
+
+// Standard library.
+#include <utility.hpp>
+#include <vector.hpp>
+
+
 
 namespace shasta {
 
@@ -40,6 +47,7 @@ public:
     uint64_t id = invalid<uint64_t>;
     bool isParallelEdge = false;
     bool useForAssembly = false;
+    bool addedAtDeadEnd = false;
 
     AnchorGraphEdge(const AnchorPair& anchorPair, uint64_t offset, uint64_t id) :
         anchorPair(anchorPair),
@@ -56,6 +64,7 @@ public:
         ar & id;
         ar & isParallelEdge;
         ar & useForAssembly;
+        ar & addedAtDeadEnd;
     }
 };
 
@@ -81,11 +90,13 @@ public:
         uint64_t minEdgeCoverageNear,
         uint64_t minEdgeCoverageFar,
         double aDrift,
-        double bDrift);
+        double bDrift,
+        uint64_t threadCount);
 
     // Constructor from binary data.
     AnchorGraph(const MappedMemoryOwner&);
 
+    uint64_t nextEdgeId = 0;
 
     // Dijkstra search.
     // This performs a shortest path search starting at the specified AnchorId
@@ -133,6 +144,8 @@ public:
         uint64_t& offset
         ) const;
 
+
+
     // Eliminate dead ends where possible, using shortest path searches.
     void handleDeadEnds(
         const Anchors&,
@@ -141,7 +154,33 @@ public:
         double bDrift,
         uint64_t minEdgeCoverageNear,
         uint64_t minEdgeCoverageFar,
-        uint64_t maxDistance);
+        uint64_t maxDistance,
+        uint64_t threadCount);
+
+    class HandleDeadEndsData {
+    public:
+
+        // The arguments of handleDeadEnds, so they are visible to the threads.
+        const Anchors* anchors;
+        const ReadLengthDistribution* readLengthDistribution;
+        double aDrift;
+        double bDrift;
+        uint64_t minEdgeCoverageNear;
+        uint64_t minEdgeCoverageFar;
+        uint64_t maxDistance;
+
+        // The list of the dead end AnchorIds and their direction
+        // (0 = forward dead end, 1 = backward dead end).
+        vector< pair<AnchorId, uint64_t> > deadEnds;
+
+        // The AnchorPairs found by each thread and their offset.
+        vector< vector< pair<AnchorPair, uint64_t> > > threadPairs;
+    };
+    HandleDeadEndsData handleDeadEndsData;
+
+    void handleDeadEndsThreadFunction(uint64_t threadId);
+
+
 
     // Serialization.
     friend class boost::serialization::access;

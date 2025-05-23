@@ -211,13 +211,20 @@ void Assembler::createAssemblyGraph(
 
 void Assembler::createAnchorGraph(const AssemblerOptions& options)
 {
+    // Adjust the number of threads, if necessary.
+    uint64_t threadCount = options.threadCount;
+    if(threadCount == 0) {
+        threadCount = std::thread::hardware_concurrency();
+    }
+
     // Generate an AnchorGraph in which all edges have consistent offsets.
     anchorGraphPointer = make_shared<AnchorGraph>(
         anchors(), journeys(), readLengthDistribution(),
         options.minAnchorGraphEdgeCoverageNear,
         options.minAnchorGraphEdgeCoverageFar,
         options.aDrift,
-        options.bDrift);
+        options.bDrift,
+        threadCount);
     anchorGraphPointer->save();
 
 }
