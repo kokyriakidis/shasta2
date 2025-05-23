@@ -27,6 +27,7 @@ namespace shasta {
 
     class Anchors;
     class Journeys;
+    class ReadLengthDistribution;
 }
 
 
@@ -93,6 +94,50 @@ public:
 
     // Constructor from binary data.
     AnchorGraph(const MappedMemoryOwner&);
+
+
+    // Dijkstra search.
+    // This performs a shortest path search starting at the specified AnchorId
+    // and stops when it finds a consistent AnchorPair that
+    // satisfies the coverage criteria and can therefore be used to create a new edge.
+    // If successful, this returns true and:
+    // - If direction is 0, the last arguments is set to an AnchorPair with AnchorIdA = startAnchorId.
+    // - If direction is 1, the last arguments is set to an AnchorPair with AnchorIdB = startAnchorId.
+    // If not successful, this return false and the last argument is not modified.
+    bool search(
+        uint64_t direction,
+        AnchorId startAnchorId,
+        const Anchors&,
+        const ReadLengthDistribution&,
+        double aDrift,
+        double bDrift,
+        uint64_t minEdgeCoverageNear,
+        uint64_t minEdgeCoverageFar,
+        AnchorPair&,
+        uint64_t& offset
+        ) const;
+    bool searchForward(
+        AnchorId startAnchorId,
+        const Anchors&,
+        const ReadLengthDistribution&,
+        double aDrift,
+        double bDrift,
+        uint64_t minEdgeCoverageNear,
+        uint64_t minEdgeCoverageFar,
+        AnchorPair&,
+        uint64_t& offset
+        ) const;
+    bool searchBackward(
+        AnchorId startAnchorId,
+        const Anchors&,
+        const ReadLengthDistribution&,
+        double aDrift,
+        double bDrift,
+        uint64_t minEdgeCoverageNear,
+        uint64_t minEdgeCoverageFar,
+        AnchorPair&,
+        uint64_t& offset
+        ) const;
 
 
 

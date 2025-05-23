@@ -1,6 +1,7 @@
 // Shasta.
 #include "AnchorGraph.hpp"
 #include "Anchor.hpp"
+#include "AnchorPair.hpp"
 #include "Markers.hpp"
 #include "orderPairs.hpp"
 #include "ReadId.hpp"
@@ -11,7 +12,10 @@ using namespace shasta;
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/graph/adj_list_serialize.hpp>
-#include "boost/graph/iteration_macros.hpp"
+#include <boost/graph/iteration_macros.hpp>
+#include <boost/multi_index_container.hpp>
+#include <boost/multi_index/ordered_index.hpp>
+#include <boost/multi_index/member.hpp>
 #include <boost/serialization/vector.hpp>
 
 // Standard library.
@@ -265,6 +269,22 @@ AnchorGraph::AnchorGraph(
         }
     }
     cout << useForAssemblyCount << " AnchorGraph edges were marked to be used for assembly." << endl;
+
+#if 0
+    // Test search.
+    AnchorPair anchorPair;
+    uint64_t offset = invalid<uint64_t>;
+    search(1, anchorIdFromString("421976+"),
+        anchors,
+        readLengthDistribution,
+        aDrift, bDrift,
+        minEdgeCoverageNear, minEdgeCoverageFar,
+        anchorPair, offset);
+    cout << "Found " << anchorIdToString(anchorPair.anchorIdA) << " -> " <<
+        anchorIdToString(anchorPair.anchorIdB) <<
+        ", coverage " << anchorPair.orientedReadIds.size() <<
+        ", offset " << offset << endl;
+#endif
 }
 
 
@@ -337,4 +357,328 @@ void AnchorGraph::load()
     } catch(std::exception& e) {
         throw runtime_error(string("Error reading AnchorGraph: ") + e.what());
     }
+}
+
+
+
+// Dijkstra search.
+// This performs a shortest path search starting at the specified AnchorId
+// and stops when it finds a consistent AnchorPair that
+// satisfies the coverage criteria and can therefore be used to create a new edge.
+// If direction is 0, this returns an AnchorPair with AnchorIdA = startAnchorId;
+// If direction is 1, this returns an AnchorPair with AnchorIdB = startAnchorId;
+bool AnchorGraph::search(
+    uint64_t direction,
+    AnchorId startAnchorId,
+    const Anchors& anchors,
+    const ReadLengthDistribution&  readLengthDistribution,
+    double aDrift,
+    double bDrift,
+    uint64_t minEdgeCoverageNear,
+    uint64_t minEdgeCoverageFar,
+    AnchorPair& anchorPairArgument,
+    uint64_t& offsetArgument
+    ) const
+{
+    if(direction == 0) {
+        return searchForward(
+            startAnchorId,
+            anchors,
+            readLengthDistribution,
+            aDrift,
+            bDrift,
+            minEdgeCoverageNear,
+            minEdgeCoverageFar,
+            anchorPairArgument,
+            offsetArgument
+            );
+    } else if(direction == 1) {
+        return searchBackward(
+            startAnchorId,
+            anchors,
+            readLengthDistribution,
+            aDrift,
+            bDrift,
+            minEdgeCoverageNear,
+            minEdgeCoverageFar,
+            anchorPairArgument,
+            offsetArgument
+            );
+    } else {
+        SHASTA_ASSERT(0);
+    }
+}
+
+
+
+bool AnchorGraph::searchForward(
+    AnchorId startAnchorId,
+    const Anchors& anchors,
+    const ReadLengthDistribution&  readLengthDistribution,
+    double aDrift,
+    double bDrift,
+    uint64_t minEdgeCoverageNear,
+    uint64_t minEdgeCoverageFar,
+    AnchorPair& anchorPairArgument,
+    uint64_t& offsetArgument
+    ) const
+{
+    using boost::multi_index_container;
+    using boost::multi_index::indexed_by;
+    using boost::multi_index::member;
+    using boost::multi_index::ordered_unique;
+    using boost::multi_index::ordered_non_unique;
+
+    const AnchorGraph& anchorGraph = *this;
+
+    const bool debug = false;
+
+    if(debug) {
+        cout << "AnchorGraph::search called for " << anchorIdToString(startAnchorId) << endl;
+    }
+
+
+
+    // A container with the vertices (AnchorIds) encountered so far and their distance in the search.
+    class VertexInfo {
+    public:
+        AnchorId anchorId;
+        uint64_t distance;
+    };
+    using VerticesEncountered = multi_index_container<VertexInfo, indexed_by<
+            ordered_unique<member <VertexInfo, AnchorId, &VertexInfo::anchorId> >,
+            ordered_non_unique< member<VertexInfo, uint64_t ,&VertexInfo::distance> >
+        > >;
+
+    // Nomenclature consistent with the Wikipedia article
+    // https://en.wikipedia.org/wiki/Dijkstra's_algorithm#Algorithm
+    VerticesEncountered unvisited;
+    auto& indexByAnchorId = unvisited.get<0>();
+    auto& indexByDistance = unvisited.get<1>();
+
+    std::set<AnchorId> visited;
+    unvisited.insert({startAnchorId, 0});
+
+    vector<AnchorPair> newAnchorPairs;
+
+    // Main loop.
+    while(not unvisited.empty()) {
+
+        // Get the unvisited with the smallest distance.
+        auto it0 = indexByDistance.begin();
+        const VertexInfo& info0 = *it0;
+        const AnchorId anchorId0 = info0.anchorId;
+        const uint64_t distance0 = info0.distance;
+        indexByDistance.erase(it0);
+
+        if(debug) {
+            cout << "Dequeued " << anchorIdToString(anchorId0) << " at distance " << distance0 << endl;
+        }
+
+        // See if this is the AnchorPair we want.
+        if(anchorId0 != startAnchorId) {
+            AnchorPair anchorPair(anchors, startAnchorId, anchorId0, false);
+
+            // Split it to make it consistent.
+            anchorPair.split(anchors, aDrift, bDrift, newAnchorPairs);
+            const AnchorPair& consistentAnchorPair = newAnchorPairs.front();
+            const uint64_t offset = consistentAnchorPair.getAverageOffset(anchors);
+            const uint64_t coverage = consistentAnchorPair.orientedReadIds.size();
+
+            // Compute the edge coverage threshold that applies for this offset.
+            const uint64_t bin = offset / readLengthDistribution.binWidth;
+            const double coverageCorrelation = readLengthDistribution.data[bin].coverageCorrelation;
+            uint64_t edgeCoverageThreshold = uint64_t(coverageCorrelation * double(minEdgeCoverageNear));
+            edgeCoverageThreshold = max(edgeCoverageThreshold, minEdgeCoverageFar);
+
+            if(debug) {
+                cout << "    Offset from start " << offset << ", coverage " << coverage <<
+                    ", coverage threshold " << edgeCoverageThreshold << endl;
+            }
+
+            if(coverage >= edgeCoverageThreshold) {
+                anchorPairArgument = anchorPair;
+                offsetArgument = offset;
+                return true;
+            }
+       }
+
+        BGL_FORALL_OUTEDGES(anchorId0, e, anchorGraph, AnchorGraph) {
+            const AnchorId anchorId1 = target(e, anchorGraph);
+            const uint64_t distance1 = distance0 + anchorGraph[e].offset;
+            if(debug) {
+                cout << "    Found " << anchorIdToString(anchorId1) << " at distance " << distance1 << endl;
+            }
+
+
+
+            const auto it1 = indexByAnchorId.find(anchorId1);
+            if(it1 == indexByAnchorId.end()) {
+                unvisited.insert({anchorId1, distance1});
+
+                if(debug) {
+                    cout << "    Added " << anchorIdToString(anchorId1) << " at distance " << distance1 << endl;
+                }
+            } else {
+                const uint64_t oldDistance1 = it1->distance;
+                if(distance1 < oldDistance1) {
+                    indexByAnchorId.replace(it1, {anchorId1, distance1});
+                    if(debug) {
+                        cout << "    Replaced " << anchorIdToString(anchorId1) <<
+                            ", old distance " << oldDistance1 <<
+                            ", new distance " << distance1 << endl;
+                    }
+                } else {
+                    if(debug) {
+                        cout << "    Did not replace " << anchorIdToString(anchorId1) <<
+                            ", old distance " << oldDistance1 <<
+                            ", new distance " << distance1 << endl;
+                    }
+                }
+            }
+        }
+
+
+
+    }
+
+
+    return false;
+}
+
+
+
+bool AnchorGraph::searchBackward(
+    AnchorId startAnchorId,
+    const Anchors& anchors,
+    const ReadLengthDistribution&  readLengthDistribution,
+    double aDrift,
+    double bDrift,
+    uint64_t minEdgeCoverageNear,
+    uint64_t minEdgeCoverageFar,
+    AnchorPair& anchorPairArgument,
+    uint64_t& offsetArgument
+    ) const
+{
+    using boost::multi_index_container;
+    using boost::multi_index::indexed_by;
+    using boost::multi_index::member;
+    using boost::multi_index::ordered_unique;
+    using boost::multi_index::ordered_non_unique;
+
+    const AnchorGraph& anchorGraph = *this;
+
+    const bool debug = false;
+
+    if(debug) {
+        cout << "AnchorGraph::search called for " << anchorIdToString(startAnchorId) << endl;
+    }
+
+
+
+    // A container with the vertices (AnchorIds) encountered so far and their distance in the search.
+    class VertexInfo {
+    public:
+        AnchorId anchorId;
+        uint64_t distance;
+    };
+    using VerticesEncountered = multi_index_container<VertexInfo, indexed_by<
+            ordered_unique<member <VertexInfo, AnchorId, &VertexInfo::anchorId> >,
+            ordered_non_unique< member<VertexInfo, uint64_t ,&VertexInfo::distance> >
+        > >;
+
+    // Nomenclature consistent with the Wikipedia article
+    // https://en.wikipedia.org/wiki/Dijkstra's_algorithm#Algorithm
+    VerticesEncountered unvisited;
+    auto& indexByAnchorId = unvisited.get<0>();
+    auto& indexByDistance = unvisited.get<1>();
+
+    std::set<AnchorId> visited;
+    unvisited.insert({startAnchorId, 0});
+
+    vector<AnchorPair> newAnchorPairs;
+
+    // Main loop.
+    while(not unvisited.empty()) {
+
+        // Get the unvisited with the smallest distance.
+        auto it0 = indexByDistance.begin();
+        const VertexInfo& info0 = *it0;
+        const AnchorId anchorId0 = info0.anchorId;
+        const uint64_t distance0 = info0.distance;
+        indexByDistance.erase(it0);
+
+        if(debug) {
+            cout << "Dequeued " << anchorIdToString(anchorId0) << " at distance " << distance0 << endl;
+        }
+
+        // See if this is the AnchorPair we want.
+        if(anchorId0 != startAnchorId) {
+            AnchorPair anchorPair(anchors, anchorId0, startAnchorId, false);
+
+            // Split it to make it consistent.
+            anchorPair.split(anchors, aDrift, bDrift, newAnchorPairs);
+            const AnchorPair& consistentAnchorPair = newAnchorPairs.front();
+            const uint64_t offset = consistentAnchorPair.getAverageOffset(anchors);
+            const uint64_t coverage = consistentAnchorPair.orientedReadIds.size();
+
+            // Compute the edge coverage threshold that applies for this offset.
+            const uint64_t bin = offset / readLengthDistribution.binWidth;
+            const double coverageCorrelation = readLengthDistribution.data[bin].coverageCorrelation;
+            uint64_t edgeCoverageThreshold = uint64_t(coverageCorrelation * double(minEdgeCoverageNear));
+            edgeCoverageThreshold = max(edgeCoverageThreshold, minEdgeCoverageFar);
+
+            if(debug) {
+                cout << "    Offset from start " << offset << ", coverage " << coverage <<
+                    ", coverage threshold " << edgeCoverageThreshold << endl;
+            }
+
+            if(coverage >= edgeCoverageThreshold) {
+                anchorPairArgument = anchorPair;
+                offsetArgument = offset;
+                return true;
+            }
+       }
+
+        BGL_FORALL_INEDGES(anchorId0, e, anchorGraph, AnchorGraph) {
+            const AnchorId anchorId1 = source(e, anchorGraph);
+            const uint64_t distance1 = distance0 + anchorGraph[e].offset;
+            if(debug) {
+                cout << "    Found " << anchorIdToString(anchorId1) << " at distance " << distance1 << endl;
+            }
+
+
+
+            const auto it1 = indexByAnchorId.find(anchorId1);
+            if(it1 == indexByAnchorId.end()) {
+                unvisited.insert({anchorId1, distance1});
+
+                if(debug) {
+                    cout << "    Added " << anchorIdToString(anchorId1) << " at distance " << distance1 << endl;
+                }
+            } else {
+                const uint64_t oldDistance1 = it1->distance;
+                if(distance1 < oldDistance1) {
+                    indexByAnchorId.replace(it1, {anchorId1, distance1});
+                    if(debug) {
+                        cout << "    Replaced " << anchorIdToString(anchorId1) <<
+                            ", old distance " << oldDistance1 <<
+                            ", new distance " << distance1 << endl;
+                    }
+                } else {
+                    if(debug) {
+                        cout << "    Did not replace " << anchorIdToString(anchorId1) <<
+                            ", old distance " << oldDistance1 <<
+                            ", new distance " << distance1 << endl;
+                    }
+                }
+            }
+        }
+
+
+
+    }
+
+
+    return false;
 }
