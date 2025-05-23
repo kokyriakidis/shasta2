@@ -57,7 +57,7 @@ AnchorGraph::AnchorGraph(
 }
 
 
-
+#if 0
 // Constructor that splits edges that have an AnchorPair
 // with inconsistent offsets.
 AnchorGraph::AnchorGraph(
@@ -157,6 +157,7 @@ AnchorGraph::AnchorGraph(
     }
 
 }
+#endif
 
 
 
@@ -166,6 +167,7 @@ AnchorGraph::AnchorGraph(
 AnchorGraph::AnchorGraph(
     const Anchors& anchors,
     const Journeys& journeys,
+    const ReadLengthDistribution& readLengthDistribution,
     uint64_t minEdgeCoverageNear,
     uint64_t minEdgeCoverageFar,
     double aDrift,
@@ -175,22 +177,12 @@ AnchorGraph::AnchorGraph(
 {
     AnchorGraph& anchorGraph = *this;
 
-    // The edge coverage threshold is a function of estimated offset.
-    // It is computed as max(edgeCoverageThresholdNear * coverageCorrelation(offset), edgeCoverageThresholdFar).
-    // As small offset coverageCorrelation is 1, so for small offsets the
-    // edge coverage threshold is edgeCoverageThresholdNear.
-    // At large offset the edge coverage threshold is edgeCoverageThresholdFar.
-    // The coverageCorrelation is provided by the ReadLengthDistribution;
-    ReadLengthDistribution readLengthDistribution(anchors);
-
     // Create the vertices, one for each AnchorId.
     // In the AnchorGraph, vertex_descriptors are AnchorIds.
     const uint64_t anchorCount = anchors.size();
     for(AnchorId anchorId=0; anchorId<anchorCount; anchorId++) {
         add_vertex(anchorGraph);
     }
-
-
 
     // Initial creation of the edges, without any limits on coverage.
     // Edges that don't have a consistent offset are split as necessary.

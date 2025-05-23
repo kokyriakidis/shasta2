@@ -68,13 +68,15 @@ PYBIND11_MODULE(shasta2, shasta2Module)
             "Assembler constructor.",
             arg("largeDataFileNamePrefix") = "Data/")
 
-        // Reads
+        // Reads.
         .def("histogramReadLength",
             &Assembler::histogramReadLength,
             "Create a histogram of read length and write it to a csv file.",
             arg("fileName") = "ReadLengthHistogram.csv")
-        .def("computeReadLengthDistribution",
-            &Assembler::computeReadLengthDistribution)
+        .def("createReadLengthDistribution",
+            &Assembler::createReadLengthDistribution)
+        .def("accessReadLengthDistribution",
+            &Assembler::accessReadLengthDistribution)
 
         // K-mer checker.
         .def("createKmerChecker",

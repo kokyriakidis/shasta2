@@ -79,7 +79,7 @@ void Assembler::assemble(
         inputFileNames,
         assemblerOptions.minReadLength,
         threadCount);
-    computeReadLengthDistribution();
+    createReadLengthDistribution();
 
     createKmerChecker(assemblerOptions.k, assemblerOptions.markerDensity, threadCount);
     createMarkers(threadCount);
@@ -213,7 +213,7 @@ void Assembler::createAnchorGraph(const AssemblerOptions& options)
 {
     // Generate an AnchorGraph in which all edges have consistent offsets.
     anchorGraphPointer = make_shared<AnchorGraph>(
-        anchors(), journeys(),
+        anchors(), journeys(), readLengthDistribution(),
         options.minAnchorGraphEdgeCoverageNear,
         options.minAnchorGraphEdgeCoverageFar,
         options.aDrift,
@@ -249,11 +249,6 @@ void Assembler::createAssemblyGraph3(
 
 void Assembler::accessAnchorGraph()
 {
-    anchorGraphPointer = make_shared<AnchorGraph>(*this);
-}
-
-
-void Assembler::computeReadLengthDistribution() const
-{
-    ReadLengthDistribution readLengthDistribution(reads(), MappedMemoryOwner(*this));
+    const MappedMemoryOwner& mappedMemoryOwner = *this;
+    anchorGraphPointer = make_shared<AnchorGraph>(mappedMemoryOwner);
 }

@@ -69,6 +69,7 @@ public:
         const Journeys&,
         uint64_t minEdgeCoverage);
 
+#if 0
     // Constructor that splits edges that have an AnchorPair
     // with inconsistent offsets.
     AnchorGraph(
@@ -78,6 +79,7 @@ public:
         uint64_t minEdgeCoverageFar,
         double aDrift,
         double bDrift);
+#endif
 
     // Constructor that splits edges that have an AnchorPair
     // with inconsistent offsets, and also does local search to
@@ -86,6 +88,7 @@ public:
     AnchorGraph(
         const Anchors&,
         const Journeys&,
+        const ReadLengthDistribution&,
         uint64_t minEdgeCoverageNear,
         uint64_t minEdgeCoverageFar,
         double aDrift,

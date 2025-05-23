@@ -29,6 +29,7 @@ namespace shasta {
     class Markers;
     class MarkerKmers;
     class Mode3Assembler;
+    class ReadLengthDistribution;
     class Reads;
 
 
@@ -117,7 +118,19 @@ public:
         uint64_t minReadLength,
         size_t threadCount);
     void histogramReadLength(const string& fileName);
-    void computeReadLengthDistribution() const;
+
+
+
+    // Read length distribution.
+    // It provides the computation of coverage correlation,
+    // used during assembly.
+    shared_ptr<ReadLengthDistribution> readLengthDistributionPointer;
+    void createReadLengthDistribution();
+    void accessReadLengthDistribution();
+    ReadLengthDistribution& readLengthDistribution() const
+    {
+        return *readLengthDistributionPointer;
+    }
 
 
 
