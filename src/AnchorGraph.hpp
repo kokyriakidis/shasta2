@@ -10,6 +10,7 @@
 // Shasta.
 #include "AnchorPair.hpp"
 #include "MappedMemoryOwner.hpp"
+#include "MultithreadedObject.hpp"
 
 // Boost libraries.
 #include <boost/graph/adjacency_list.hpp>
@@ -62,7 +63,8 @@ public:
 
 class shasta::AnchorGraph :
     public AnchorGraphBaseClass,
-    public MappedMemoryOwner {
+    public MappedMemoryOwner,
+    public MultithreadedObject<AnchorGraph> {
 public:
     AnchorGraph(
         const Anchors&,
@@ -102,6 +104,7 @@ public:
         double bDrift,
         uint64_t minEdgeCoverageNear,
         uint64_t minEdgeCoverageFar,
+        uint64_t maxDistance,
         AnchorPair&,
         uint64_t& offset
         ) const;
@@ -113,6 +116,7 @@ public:
         double bDrift,
         uint64_t minEdgeCoverageNear,
         uint64_t minEdgeCoverageFar,
+        uint64_t maxDistance,
         AnchorPair&,
         uint64_t& offset
         ) const;
@@ -124,11 +128,20 @@ public:
         double bDrift,
         uint64_t minEdgeCoverageNear,
         uint64_t minEdgeCoverageFar,
+        uint64_t maxDistance,
         AnchorPair&,
         uint64_t& offset
         ) const;
 
-
+    // Eliminate dead ends where possible, using shortest path searches.
+    void handleDeadEnds(
+        const Anchors&,
+        const ReadLengthDistribution&,
+        double aDrift,
+        double bDrift,
+        uint64_t minEdgeCoverageNear,
+        uint64_t minEdgeCoverageFar,
+        uint64_t maxDistance);
 
     // Serialization.
     friend class boost::serialization::access;

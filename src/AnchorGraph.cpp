@@ -4,14 +4,17 @@
 #include "AnchorPair.hpp"
 #include "Markers.hpp"
 #include "orderPairs.hpp"
+#include "performanceLog.hpp"
 #include "ReadId.hpp"
 #include "ReadLengthDistribution.hpp"
+#include "timestamp.hpp"
 using namespace shasta;
 
 // Boost libraries.
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/graph/adj_list_serialize.hpp>
+#include <boost/graph/filtered_graph.hpp>
 #include <boost/graph/iteration_macros.hpp>
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/ordered_index.hpp>
@@ -22,6 +25,11 @@ using namespace shasta;
 #include <fstream.hpp>
 #include <tuple.hpp>
 
+// Explicit instantiation.
+#include "MultithreadedObject.tpp"
+template class MultithreadedObject<AnchorGraph>;
+
+
 
 
 AnchorGraph::AnchorGraph(
@@ -29,7 +37,8 @@ AnchorGraph::AnchorGraph(
     const Journeys& journeys,
     uint64_t minEdgeCoverage) :
     AnchorGraphBaseClass(anchors.size()),
-    MappedMemoryOwner(anchors)
+    MappedMemoryOwner(anchors),
+    MultithreadedObject<AnchorGraph>(*this)
 {
     AnchorGraph& anchorGraph = *this;
 
@@ -69,7 +78,8 @@ AnchorGraph::AnchorGraph(
     uint64_t minEdgeCoverageFar,
     double aDrift,
     double bDrift) :
-    MappedMemoryOwner(anchors)
+    MappedMemoryOwner(anchors),
+    MultithreadedObject<AnchorGraph>(*this)
 {
     AnchorGraph& anchorGraph = *this;
 
@@ -158,28 +168,42 @@ AnchorGraph::AnchorGraph(
     }
     cout << useForAssemblyCount << " AnchorGraph edges were marked to be used for assembly." << endl;
 
+
+    const uint64_t maxDistance = 300000;
 #if 0
     // Test search.
     AnchorPair anchorPair;
     uint64_t offset = invalid<uint64_t>;
-    search(1, anchorIdFromString("421976+"),
+    const bool success = search(0, anchorIdFromString("2149-"),
         anchors,
         readLengthDistribution,
         aDrift, bDrift,
-        minEdgeCoverageNear, minEdgeCoverageFar,
+        minEdgeCoverageNear, minEdgeCoverageFar, maxDistance,
         anchorPair, offset);
-    cout << "Found " << anchorIdToString(anchorPair.anchorIdA) << " -> " <<
-        anchorIdToString(anchorPair.anchorIdB) <<
-        ", coverage " << anchorPair.orientedReadIds.size() <<
-        ", offset " << offset << endl;
+    if(success) {
+        cout << "Found " << anchorIdToString(anchorPair.anchorIdA) << " -> " <<
+            anchorIdToString(anchorPair.anchorIdB) <<
+            ", coverage " << anchorPair.orientedReadIds.size() <<
+            ", offset " << offset << endl;
+    } else {
+        cout << "Search failed." << endl;
+    }
+    return;
 #endif
+
+
+    // Eliminate dead ends where possible, using shortest path searches.
+    handleDeadEnds(anchors, readLengthDistribution,
+        aDrift, bDrift,
+        minEdgeCoverageNear, minEdgeCoverageFar, maxDistance);
 }
 
 
 
 // Constructor from binary data.
 AnchorGraph::AnchorGraph(const MappedMemoryOwner& mappedMemoryOwner) :
-    MappedMemoryOwner(mappedMemoryOwner)
+    MappedMemoryOwner(mappedMemoryOwner),
+    MultithreadedObject<AnchorGraph>(*this)
 {
     load();
 }
@@ -264,6 +288,7 @@ bool AnchorGraph::search(
     double bDrift,
     uint64_t minEdgeCoverageNear,
     uint64_t minEdgeCoverageFar,
+    uint64_t maxDistance,
     AnchorPair& anchorPairArgument,
     uint64_t& offsetArgument
     ) const
@@ -273,24 +298,20 @@ bool AnchorGraph::search(
             startAnchorId,
             anchors,
             readLengthDistribution,
-            aDrift,
-            bDrift,
-            minEdgeCoverageNear,
-            minEdgeCoverageFar,
-            anchorPairArgument,
-            offsetArgument
+            aDrift, bDrift,
+            minEdgeCoverageNear, minEdgeCoverageFar,
+            maxDistance,
+            anchorPairArgument, offsetArgument
             );
     } else if(direction == 1) {
         return searchBackward(
             startAnchorId,
             anchors,
             readLengthDistribution,
-            aDrift,
-            bDrift,
-            minEdgeCoverageNear,
-            minEdgeCoverageFar,
-            anchorPairArgument,
-            offsetArgument
+            aDrift, bDrift,
+            minEdgeCoverageNear, minEdgeCoverageFar,
+            maxDistance,
+            anchorPairArgument, offsetArgument
             );
     } else {
         SHASTA_ASSERT(0);
@@ -307,6 +328,7 @@ bool AnchorGraph::searchForward(
     double bDrift,
     uint64_t minEdgeCoverageNear,
     uint64_t minEdgeCoverageFar,
+    uint64_t maxDistance,
     AnchorPair& anchorPairArgument,
     uint64_t& offsetArgument
     ) const
@@ -372,6 +394,9 @@ bool AnchorGraph::searchForward(
             const AnchorPair& consistentAnchorPair = newAnchorPairs.front();
             const uint64_t offset = consistentAnchorPair.getAverageOffset(anchors);
             const uint64_t coverage = consistentAnchorPair.orientedReadIds.size();
+            if(coverage == 0) {
+                continue;
+            }
 
             // Compute the edge coverage threshold that applies for this offset.
             const uint64_t bin = offset / readLengthDistribution.binWidth;
@@ -389,15 +414,20 @@ bool AnchorGraph::searchForward(
                 offsetArgument = offset;
                 return true;
             }
+
        }
 
         BGL_FORALL_OUTEDGES(anchorId0, e, anchorGraph, AnchorGraph) {
             const AnchorId anchorId1 = target(e, anchorGraph);
             const uint64_t distance1 = distance0 + anchorGraph[e].offset;
+
+            if(distance1 > maxDistance) {
+                continue;
+            }
+
             if(debug) {
                 cout << "    Found " << anchorIdToString(anchorId1) << " at distance " << distance1 << endl;
             }
-
 
 
             const auto it1 = indexByAnchorId.find(anchorId1);
@@ -444,6 +474,7 @@ bool AnchorGraph::searchBackward(
     double bDrift,
     uint64_t minEdgeCoverageNear,
     uint64_t minEdgeCoverageFar,
+    uint64_t maxDistance,
     AnchorPair& anchorPairArgument,
     uint64_t& offsetArgument
     ) const
@@ -509,6 +540,9 @@ bool AnchorGraph::searchBackward(
             const AnchorPair& consistentAnchorPair = newAnchorPairs.front();
             const uint64_t offset = consistentAnchorPair.getAverageOffset(anchors);
             const uint64_t coverage = consistentAnchorPair.orientedReadIds.size();
+            if(coverage == 0) {
+                continue;
+            }
 
             // Compute the edge coverage threshold that applies for this offset.
             const uint64_t bin = offset / readLengthDistribution.binWidth;
@@ -526,13 +560,14 @@ bool AnchorGraph::searchBackward(
                 offsetArgument = offset;
                 return true;
             }
+
        }
 
         BGL_FORALL_INEDGES(anchorId0, e, anchorGraph, AnchorGraph) {
             const AnchorId anchorId1 = source(e, anchorGraph);
             const uint64_t distance1 = distance0 + anchorGraph[e].offset;
-            if(debug) {
-                cout << "    Found " << anchorIdToString(anchorId1) << " at distance " << distance1 << endl;
+            if(distance1 > maxDistance) {
+                continue;
             }
 
 
@@ -569,4 +604,79 @@ bool AnchorGraph::searchBackward(
 
 
     return false;
+}
+
+
+
+// Eliminate dead ends where possible, using shortest path searches.
+void AnchorGraph::handleDeadEnds(
+    const Anchors& anchors,
+    const ReadLengthDistribution& readLengthDistribution,
+    double aDrift,
+    double bDrift,
+    uint64_t minEdgeCoverageNear,
+    uint64_t minEdgeCoverageFar,
+    uint64_t maxDistance)
+{
+    AnchorGraph& anchorGraph = *this;
+    const bool debug = false;
+
+    performanceLog << timestamp << "AnchorGraph::handleDeadEnds begins." << endl;
+
+    // Create a filtered AnchorGraph containing only the edges marked as "useForAssembly".
+    class EdgePredicate {
+    public:
+        bool operator()(const AnchorGraph::edge_descriptor& e) const
+        {
+            return (*anchorGraph)[e].useForAssembly;
+        }
+        EdgePredicate(const AnchorGraph& anchorGraph) : anchorGraph(&anchorGraph) {}
+        EdgePredicate() : anchorGraph(0) {}
+        const AnchorGraph* anchorGraph;
+    };
+    using FilteredAnchorGraph = boost::filtered_graph<AnchorGraph, EdgePredicate>;
+    FilteredAnchorGraph filteredAnchorGraph(anchorGraph, EdgePredicate(anchorGraph));
+
+
+
+    // Loop over forward or backward dead ends in the filtered anchor graph,
+    // ignoring isolated vertices.
+    // Probably we should ignore all vertices in very small connected components instead.
+    BGL_FORALL_VERTICES(anchorId0, filteredAnchorGraph, FilteredAnchorGraph) {
+        const bool isForwardDeadEnd = (out_degree(anchorId0, filteredAnchorGraph) == 0);
+        const bool isBackwardDeadEnd = (in_degree(anchorId0, filteredAnchorGraph) == 0);
+
+        // If it is isolated, ignore it.
+        if(isForwardDeadEnd and isBackwardDeadEnd) {
+            continue;
+        }
+
+
+        // Forward dead end.
+        if(isForwardDeadEnd) {
+            if(debug) {
+                cout << timestamp << "Working on forward dead end at " << anchorIdToString(anchorId0) << endl;
+            }
+
+            AnchorPair anchorPair;
+            uint64_t offset;
+            const bool found = searchForward(anchorId0, anchors, readLengthDistribution,
+                aDrift, bDrift,
+                minEdgeCoverageNear, minEdgeCoverageFar, maxDistance,
+                anchorPair, offset);
+
+            if(debug) {
+                if(found) {
+                    cout << "Success. Found " << anchorIdToString(anchorPair.anchorIdB) <<
+                        ", coverage " << anchorPair.orientedReadIds.size() <<
+                        ", offset " << offset << endl;
+                } else {
+                    cout << "Failure." << endl;
+                }
+            }
+
+        }
+    }
+
+    performanceLog << timestamp << "AnchorGraph::handleDeadEnds ends." << endl;
 }
