@@ -69,22 +69,9 @@ public:
         const Journeys&,
         uint64_t minEdgeCoverage);
 
-#if 0
-    // Constructor that splits edges that have an AnchorPair
-    // with inconsistent offsets.
-    AnchorGraph(
-        const Anchors&,
-        const Journeys&,
-        uint64_t minEdgeCoverageNear,
-        uint64_t minEdgeCoverageFar,
-        double aDrift,
-        double bDrift);
-#endif
-
     // Constructor that splits edges that have an AnchorPair
     // with inconsistent offsets, and also does local search to
     // eliminate dead ends where possible.
-    struct FixDeadEnds{};
     AnchorGraph(
         const Anchors&,
         const Journeys&,
@@ -92,8 +79,7 @@ public:
         uint64_t minEdgeCoverageNear,
         uint64_t minEdgeCoverageFar,
         double aDrift,
-        double bDrift,
-        FixDeadEnds);
+        double bDrift);
 
     // Constructor from binary data.
     AnchorGraph(const MappedMemoryOwner&);

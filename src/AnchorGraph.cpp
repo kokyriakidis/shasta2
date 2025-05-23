@@ -57,109 +57,6 @@ AnchorGraph::AnchorGraph(
 }
 
 
-#if 0
-// Constructor that splits edges that have an AnchorPair
-// with inconsistent offsets.
-AnchorGraph::AnchorGraph(
-    const Anchors& anchors,
-    const Journeys& journeys,
-    uint64_t minEdgeCoverageNear,
-    uint64_t minEdgeCoverageFar,
-    double aDrift,
-    double bDrift) :
-    MappedMemoryOwner(anchors)
-{
-    // cout << "AAA " << minEdgeCoverageNear << " " << minEdgeCoverageFar << endl;
-    AnchorGraph& anchorGraph = *this;
-
-    // The edge coverage threshold is a function of estimated offset.
-    // It is computed as max(edgeCoverageThresholdNear * coverageCorrelation(offset), edgeCoverageThresholdFar).
-    // As small offset coverageCorrelation is 1, so for small offsets the
-    // edge coverage threshold is edgeCoverageThresholdNear.
-    // At large offset the edge coverage threshold is edgeCoverageThresholdFar.
-
-    ReadLengthDistribution readLengthDistribution(anchors);
-
-    uint64_t nextEdgeId = 0;
-
-    const uint64_t anchorCount = anchors.size();
-    for(AnchorId anchorId=0; anchorId<anchorCount; anchorId++) {
-        add_vertex(anchorGraph);
-    }
-
-    vector<AnchorPair> anchorPairs;
-    vector<AnchorPair> newAnchorPairs;
-
-    vector< pair<AnchorPair::Positions, AnchorPair::Positions> > positions;
-    vector<uint64_t> offsets;
-
-    for(AnchorId anchorIdA=0; anchorIdA<anchorCount; anchorIdA++) {
-        AnchorPair::createChildren(anchors, journeys, anchorIdA, minEdgeCoverageFar, anchorPairs);
-
-        // cout << "BBB " << anchorIdToString(anchorIdA) << " found " << anchorPairs.size() << " children." << endl;
-
-        for(const AnchorPair& anchorPair: anchorPairs) {
-
-            if(anchorPair.isConsistent(anchors, aDrift, bDrift, positions, offsets)) {
-
-                // Compute the edge coverage threshold for this AnchorPair.
-                // It is a function of the offset.
-                const uint64_t offset = anchorPair.getAverageOffset(anchors);
-                const uint64_t bin = offset / readLengthDistribution.binWidth;
-                const double coverageCorrelation = readLengthDistribution.data[bin].coverageCorrelation;
-                uint64_t edgeCoverageThreshold = uint64_t(coverageCorrelation * double(minEdgeCoverageNear));
-                edgeCoverageThreshold = max(edgeCoverageThreshold, minEdgeCoverageFar);
-                // cout << "CCC " << offset << " " << edgeCoverageThreshold << " " << anchorPair.orientedReadIds.size() << endl;
-
-                // Just generate an edge with this AnchorPair.
-                // This is the most common case.
-                if(anchorPair.orientedReadIds.size() >= edgeCoverageThreshold) {
-                    const uint64_t offset = anchorPair.getAverageOffset(anchors);
-                    add_edge(anchorIdA, anchorPair.anchorIdB,
-                        AnchorGraphEdge(anchorPair, offset, nextEdgeId++), anchorGraph);
-                }
-
-            } else {
-
-                // We have to split this AnchorPair into consistent AnchorPairs,
-                // then generate a new edge for each (a set of parallel edges).
-                anchorPair.split(anchors, aDrift, bDrift, newAnchorPairs);
-
-                for(const AnchorPair& anchorPair: newAnchorPairs) {
-
-                    // Compute the edge coverage threshold for this AnchorPair.
-                    // It is a function of the offset.
-                    const uint64_t offset = anchorPair.getAverageOffset(anchors);
-                    const uint64_t bin = offset / readLengthDistribution.binWidth;
-                    const double coverageCorrelation = readLengthDistribution.data[bin].coverageCorrelation;
-                    uint64_t edgeCoverageThreshold = uint64_t(coverageCorrelation * double(minEdgeCoverageNear));
-                    edgeCoverageThreshold = max(edgeCoverageThreshold, minEdgeCoverageFar);
-                    // cout << "DDD " << offset << " " << edgeCoverageThreshold << " " << anchorPair.orientedReadIds.size() << endl;
-
-                    if(anchorPair.size() >= edgeCoverageThreshold) {
-                        const uint64_t offset = anchorPair.getAverageOffset(anchors);
-                        add_edge(anchorIdA, anchorPair.anchorIdB,
-                            AnchorGraphEdge(anchorPair, offset, nextEdgeId++), anchorGraph);
-                    }
-                }
-
-            }
-        }
-    }
-
-    cout << "The anchor graph has " << num_vertices(*this) <<
-        " vertices and " << num_edges(*this) << " edges." << endl;
-
-    // Now all the edges must have consistent offsets.
-    BGL_FORALL_EDGES(e, anchorGraph, AnchorGraph) {
-        SHASTA_ASSERT(anchorGraph[e].anchorPair.isConsistent(anchors, aDrift, bDrift, positions, offsets));
-        SHASTA_ASSERT(anchorGraph[e].offset < 100000000);
-    }
-
-}
-#endif
-
-
 
 // Constructor that splits edges that have an AnchorPair
 // with inconsistent offsets, and also does local search to
@@ -171,8 +68,7 @@ AnchorGraph::AnchorGraph(
     uint64_t minEdgeCoverageNear,
     uint64_t minEdgeCoverageFar,
     double aDrift,
-    double bDrift,
-    FixDeadEnds) :
+    double bDrift) :
     MappedMemoryOwner(anchors)
 {
     AnchorGraph& anchorGraph = *this;

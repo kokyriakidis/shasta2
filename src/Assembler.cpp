@@ -217,8 +217,7 @@ void Assembler::createAnchorGraph(const AssemblerOptions& options)
         options.minAnchorGraphEdgeCoverageNear,
         options.minAnchorGraphEdgeCoverageFar,
         options.aDrift,
-        options.bDrift,
-        AnchorGraph::FixDeadEnds());
+        options.bDrift);
     anchorGraphPointer->save();
 
 }
