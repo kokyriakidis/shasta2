@@ -31,7 +31,8 @@ LocalAnchorGraph::LocalAnchorGraph(
     uint64_t maxDistance,
     bool edgesMarkedForAssembly) :
     anchors(anchors),
-    anchorGraphPointer(&anchorGraph)
+    anchorGraphPointer(&anchorGraph),
+    maxDistance(maxDistance)
 {
     LocalAnchorGraph& localAnchorGraph = *this;
 
