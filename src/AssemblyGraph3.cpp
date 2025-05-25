@@ -466,18 +466,12 @@ void AssemblyGraph3::findBubbles(vector<Bubble>& bubbles) const
     bubbles.clear();
 
     // Look at bubbles with source v0.
-    // We require v0 to have in-degree 1 and v1 out-degree 1.
     std::map<vertex_descriptor, vector<edge_descriptor> > m;
     BGL_FORALL_VERTICES(v0, assemblyGraph3, AssemblyGraph3) {
-        if(in_degree(v0, assemblyGraph3) != 1) {
-            continue;
-        }
         m.clear();
         BGL_FORALL_OUTEDGES(v0, e, assemblyGraph3, AssemblyGraph3) {
             const vertex_descriptor v1 = target(e, assemblyGraph3);
-            if(out_degree(v1, assemblyGraph3) == 1) {
-                m[v1].push_back(e);
-            }
+            m[v1].push_back(e);
         }
 
         for(const auto& p: m) {
@@ -540,6 +534,23 @@ uint64_t AssemblyGraph3::bubbleCleanupIteration(uint64_t threadCount)
         const vertex_descriptor v0 = bubble.v0;
         const vertex_descriptor v1 = bubble.v1;
 
+        const AssemblyGraph3Vertex& vertex0 = assemblyGraph3[v0];
+        const AssemblyGraph3Vertex& vertex1 = assemblyGraph3[v1];
+
+        const AnchorId anchorId0 = vertex0.anchorId;
+        const AnchorId anchorId1 = vertex1.anchorId;
+
+        const AnchorPair bridgeAnchorPair(anchors, anchorId0, anchorId1, false);
+
+        // If coverage of the bridgeAnchorPair is sufficient, add this bubble to our list of candidates.
+        if(bridgeAnchorPair.orientedReadIds.size() >= assemblerOptions.assemblyGraphOptions.bubbleCleanupMinCommonCount) {
+            candidateBubbles.push_back(make_pair(bubble, bridgeAnchorPair));
+        }
+
+
+#if 0
+        // This is the old code that assumes that the bubble is preceded/followed by a
+        // single segment.
         SHASTA_ASSERT(in_degree(v0, assemblyGraph3) == 1);
         SHASTA_ASSERT(out_degree(v1, assemblyGraph3) == 1);
 
@@ -563,6 +574,7 @@ uint64_t AssemblyGraph3::bubbleCleanupIteration(uint64_t threadCount)
         if(bridgeAnchorPair.orientedReadIds.size() >= assemblerOptions.assemblyGraphOptions.bubbleCleanupMinCommonCount) {
             candidateBubbles.push_back(make_pair(bubble, bridgeAnchorPair));
         }
+#endif
     }
     cout << candidateBubbles.size() << " bubbles are candidate for removal." << endl;
 
@@ -591,6 +603,7 @@ uint64_t AssemblyGraph3::bubbleCleanupIteration(uint64_t threadCount)
         vector< vector<shasta::Base> > sequences;
         for(const edge_descriptor e: bubble.edges) {
             sequences.emplace_back();
+            SHASTA_ASSERT(assemblyGraph3[e].wasAssembled);
             assemblyGraph3[e].getSequence(sequences.back());
         }
 
