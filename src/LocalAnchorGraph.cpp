@@ -309,6 +309,16 @@ void LocalAnchorGraph::writeGraphviz(
             const uint32_t hashValue = MurmurHash2(&p, sizeof(p), 759);
             const double hue = double(hashValue % 360) / 360.;
             s << " color=\"" << std::fixed << std::setprecision(2) << hue << " 1. 1.\"";
+        } else {
+            string color = "Black";
+            if(edgeG.isParallelEdge) {
+                color = "Orange";
+            }
+            if(edgeG.addedAtDeadEnd) {
+                color = "Magenta";
+            }
+            s << " color=\"" << color << "\"";
+
         }
 
         // Thickness.
@@ -487,11 +497,11 @@ void LocalAnchorGraphDisplayOptions::writeForm(ostream& html) const
 
         "<b>Edge coloring</b>"
         "<br><input type=radio required name=edgeColoring value='black'" <<
-        (edgeColoring == "black" ? " checked=on" : "") << ">Black (purple for parallel edges)"
+        (edgeColoring == "black" ? " checked=on" : "") << "> Black (orange for parallel edges, magenta for edges added at dead ends)"
         "<br><input type=radio required name=edgeColoring value='random'" <<
-        (edgeColoring == "random" ? " checked=on" : "") << ">Random"
+        (edgeColoring == "random" ? " checked=on" : "") << "> Random"
         "<br><input type=radio required name=edgeColoring value='byCoverageLoss'" <<
-        (edgeColoring == "byCoverageLoss" ? " checked=on" : "") << ">By coverage loss"
+        (edgeColoring == "byCoverageLoss" ? " checked=on" : "") << "> By coverage loss"
         "<hr>"
 
         "<b>Edge graphics</b>"
@@ -889,7 +899,13 @@ void LocalAnchorGraph::writeEdges(
         const AnchorId anchorId1 = vertex1.anchorId;
         const string anchorIdString1 = anchorIdToString(anchorId1);
 
-        string color = (edgeG.isParallelEdge ? "Purple" : "Black");
+        string color = "Black";
+        if(edgeG.isParallelEdge) {
+            color = "Orange";
+        }
+        if(edgeG.addedAtDeadEnd) {
+            color = "Magenta";
+        }
 
         if(options.edgeColoring == "random") {
             // To decide the color, hash the AnchorIds.
