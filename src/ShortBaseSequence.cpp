@@ -17,16 +17,25 @@ void shasta::testShortBaseSequence()
         cout << "Enter a k-mer." << endl;
         cin >> kmerString;
         const uint64_t k = kmerString.size();
-        if(k > 64) {
-            cout << "Can be at most 64 bases long." << endl;
+        if(k > 128) {
+            cout << "Can be at most 128 bases long." << endl;
         }
 
         // Create the k-mer.
-        ShortBaseSequence64 kmer;
+        ShortBaseSequence128 kmer;
         for(uint64_t i=0; i<k; i++) {
             kmer.set(i, Base::fromCharacter(kmerString[i]));
         }
 
+        kmer.write(cout, 128);
+        cout << endl;
+
+        for(uint64_t i=0; i<128; i++) {
+            cout << kmer[i];
+        }
+        cout << endl;
+
+#if 0
         // Test maxHomopolymerLength.
         cout << "maxHomopolymerLength returned " <<
             kmer.maxHomopolymerLength(k) << endl;
@@ -44,6 +53,6 @@ void shasta::testShortBaseSequence()
             kmer.countExactRepeatCopies<5>(k) << endl;
         cout << "countExactRepeatCopies<6> returned " <<
             kmer.countExactRepeatCopies<6>(k) << endl;
-
+#endif
     }
 }

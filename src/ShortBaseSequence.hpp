@@ -69,17 +69,17 @@ public:
     // Set the base at a given position.
     void set(uint64_t i, Base base) {
         const uint64_t bitIndex = capacityMinus1 - (i & capacityMinus1);
-        const Int mask = Int(1ULL << bitIndex);
+        const Int mask = Int(1ULL) << bitIndex;
         const Int maskComplement = Int(~mask);
 
-        const uint64_t bit0 = (base.value) & 1ULL;
+        const uint64_t bit0 = (base.value) & Int(1ULL);
         if(bit0 == 0) {
             data[0] &= maskComplement;
         } else {
             data[0] |= mask;
         }
 
-        const uint64_t bit1 = (base.value >> 1ULL) & 1ULL;
+        const uint64_t bit1 = (base.value >> 1ULL) & Int(1ULL);
         if(bit1 == 0) {
             data[1] &= maskComplement;
         } else {
@@ -167,13 +167,13 @@ public:
     }
 
     void shiftLeft() {
-        data[0] = Int(data[0] << 1);
-        data[1] = Int(data[1] << 1);
+        data[0] = data[0] << Int(1ULL);
+        data[1] = data[1] << Int(1ULL);
     }
 
     void shiftRight() {
-        data[0] = Int(data[0] >> 1);
-        data[1] = Int(data[1] >> 1);
+        data[0] = data[0] >> Int(1ULL);
+        data[1] = data[1] >> Int(1ULL);
     }
 
 
