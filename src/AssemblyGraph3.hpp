@@ -179,7 +179,9 @@ private:
     // Sequence assembly.
 
     // Assemble sequence for all edges.
+public:
     void assembleAll(uint64_t threadCount);
+private:
 
     // Assemble sequence for the specified edge.
     void assemble(edge_descriptor, uint64_t threadCount);

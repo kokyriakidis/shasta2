@@ -34,10 +34,13 @@ public:
     void run(
         bool computeAlignment,
         uint64_t maxAbpoaLength);
-
     void getSequence(vector<Base>&) const;
 
 private:
+    // This checks for shortcuts (e. g. all sequences are identical)
+    // that can be used to run faster. It returns true if successful.
+    bool runFast(bool computeAlignment);
+
     const Anchors& anchors;
     ostream& html;
     bool debug;

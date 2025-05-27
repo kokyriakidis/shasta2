@@ -312,6 +312,11 @@ void AssemblyGraph3::assembleAll(uint64_t threadCount)
 {
     performanceLog << timestamp << "Sequence assembly begins." << endl;
 
+    // Adjust the numbers of threads, if necessary.
+    if(threadCount == 0) {
+        threadCount = std::thread::hardware_concurrency();
+    }
+
     const AssemblyGraph3& assemblyGraph3 = *this;
 
     edgesToBeAssembled.clear();
@@ -752,6 +757,8 @@ void AssemblyGraph3::save(const string& stage) const
     std::ostringstream s;
     save(s);
     const string dataString = s.str();
+
+    // cout << "Serialization of AssemblyGraph3-" + stage << " needs " << dataString.size() << " bytes." << endl;
 
     // Now save the string to binary data.
     const string name = largeDataName("AssemblyGraph3-" + stage);

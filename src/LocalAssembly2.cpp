@@ -53,7 +53,15 @@ LocalAssembly2::LocalAssembly2(
 
 void LocalAssembly2::run(
     bool computeAlignment,
-    uint64_t maxAbpoaLength) {
+    uint64_t maxAbpoaLength)
+{
+#if 1
+    // Under some conditions (e. g. all sequences are identical) we can speed up the process.
+    // This is the case most of the time.
+    if(runFast(computeAlignment)) {
+        return;
+    }
+#endif
 
     // Iterate until alignMarkers is successful.
     // Each failed iteration removes one or more OrientedReads.
@@ -99,6 +107,153 @@ void LocalAssembly2::run(
     // Assemble sequence using the AlignedMarkers we found.
     assemble(computeAlignment, maxAbpoaLength);
 
+}
+
+
+
+// This checks for shortcuts (e. g. all sequences are identical)
+// that can be used to run faster. It returns true if successful.
+bool LocalAssembly2::runFast(bool computeAlignment)
+{
+    SHASTA_ASSERT(not orientedReads.empty());
+    const uint32_t kHalf = uint32_t(anchors.k / 2);
+
+#if 0
+    // Check if all the ordinal offsets are identical.
+    bool ordinalOffsetsAreIdentical = true;
+    const uint32_t ordinalOffset0 = orientedReads.front().ordinalOffset();
+    for(const OrientedRead& orientedRead: orientedReads) {
+        if(orientedRead.ordinalOffset() != ordinalOffset0) {
+            ordinalOffsetsAreIdentical = false;
+            break;
+        }
+    }
+#endif
+
+
+    // Check if all the position offsets (sequence lengths) are identical.
+    // We cannot use OrientedRead.sequenceLength() because we did not fill in
+    // the MarkerInfos, and we don't want to fill them in in the fast path.
+    bool positionOffsetsAreIdentical = true;
+    uint32_t positionOffset0 = invalid<uint32_t>;
+    for(uint64_t i=0; i<orientedReads.size(); i++) {
+        const OrientedRead& orientedRead = orientedReads[i];
+        const OrientedReadId orientedReadId = orientedRead.orientedReadId;
+        const auto orientedReadMarkers = anchors.markers[orientedReadId.getValue()];
+
+        const uint32_t ordinalA = orientedRead.ordinalA;
+        const uint32_t ordinalB = orientedRead.ordinalB;
+
+        const uint32_t positionA = orientedReadMarkers[ordinalA].position;
+        const uint32_t positionB = orientedReadMarkers[ordinalB].position;
+
+        const uint32_t positionOffset = positionB - positionA;
+
+        if(i == 0) {
+            positionOffset0 = positionOffset;
+        } else {
+            if(positionOffset != positionOffset0) {
+                positionOffsetsAreIdentical = false;
+                break;
+            }
+        }
+    }
+
+
+
+    // Check if all the sequences are identical.
+    bool sequencesAreIdentical = true;
+    vector<Base> sequence0;
+    vector<Base> sequence;
+    for(uint64_t i=0; i<orientedReads.size(); i++) {
+        const OrientedRead& orientedRead = orientedReads[i];
+        const OrientedReadId orientedReadId = orientedRead.orientedReadId;
+        const auto orientedReadMarkers = anchors.markers[orientedReadId.getValue()];
+
+        const uint32_t ordinalA = orientedRead.ordinalA;
+        const uint32_t ordinalB = orientedRead.ordinalB;
+
+        const uint32_t positionA = orientedReadMarkers[ordinalA].position + kHalf;
+        const uint32_t positionB = orientedReadMarkers[ordinalB].position + kHalf;
+
+        sequence.clear();
+        for(uint32_t position=positionA; position!=positionB; position++) {
+            sequence.push_back(anchors.reads.getOrientedReadBase(orientedReadId, position));
+        }
+
+        if(i == 0) {
+            sequence0 = sequence;
+        } else {
+            if(sequence != sequence0) {
+                sequencesAreIdentical = false;
+                break;
+            }
+        }
+    }
+
+
+#if 0
+    // We can't write these messages if called in multithreaded code.
+    if(ordinalOffsetsAreIdentical) {
+        cout << "Ordinal offsets are all equal to " << ordinalOffset0 << endl;
+    } else {
+        cout << "Ordinal offsets are not all identical" << endl;
+    }
+
+    if(positionOffsetsAreIdentical) {
+        cout << "Position offsets are all equal to " << positionOffset0 << endl;
+    } else {
+        cout << "Position offsets are not all identical" << endl;
+    }
+
+    if(sequencesAreIdentical) {
+        cout << "Sequences are all identical " << endl;
+    } else {
+        cout << "Sequences are not all identical" << endl;
+    }
+#endif
+
+
+    // If the position offsets are all identical and no greater than k/2, all the sequences
+    // must also be identical.
+    if(positionOffsetsAreIdentical and positionOffset0 <= kHalf) {
+        SHASTA_ASSERT(sequencesAreIdentical);
+    }
+
+    // If the sequences are not all identical, we have to do it the hard way.
+    if(not sequencesAreIdentical) {
+        return false;
+    }
+
+
+
+    // If getting here, all oriented reads have the same sequence.
+    const uint64_t sequenceLength = sequence0.size();
+    const uint64_t coverage = orientedReads.size();
+
+    // Store the consensus and, if computeAlignment is true, the aligned consensus.
+    consensus.clear();
+    alignedConsensus.clear();
+    consensus.resize(sequenceLength);
+    if(computeAlignment) {
+        alignedConsensus.resize(sequenceLength);
+    }
+    for(uint64_t i=0; i<sequenceLength; i++) {
+        const Base base = sequence[i];
+        consensus[i] = make_pair(base, coverage);
+        if(computeAlignment) {
+            alignedConsensus[i] = AlignedBase(base);
+        }
+    }
+
+    // Also store the Alignment, if requested.
+    if(computeAlignment) {
+        alignment.clear();
+        alignment.resize(coverage, alignedConsensus);
+    }
+
+
+    return true;
 }
 
 
