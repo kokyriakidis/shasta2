@@ -29,6 +29,7 @@ bool SimpleDetangler::operator()(Tangle3& tangle)
         }
     }
 
+#if 0
     // For now only do the 2x2 case.
     if(tangleMatrix.entrances.size() < 2) {
         return false;
@@ -36,7 +37,7 @@ bool SimpleDetangler::operator()(Tangle3& tangle)
     if(tangleMatrix.exits.size() < 2) {
         return false;
     }
-
+#endif
 
     // Gather entries by type.
     vector< pair<uint64_t, uint64_t> > insignificantEntries;
@@ -61,14 +62,18 @@ bool SimpleDetangler::operator()(Tangle3& tangle)
         return false;
     }
 
-
-    // We can generate a connection for each significant entry.
-
     // If all entrances are connected to all exits, don't do it.
     if(significantEntries.size() == tangleMatrix.entrances.size() * tangleMatrix.exits.size()) {
         return false;
     }
 
+    // If there are no significant entries, don't detangle.
+    if(significantEntries.empty()) {
+        return false;
+    }
+
+
+#if 0
     // Check that each entrance will get a connection with at least one exit.
     for(uint64_t iEntrance=0; iEntrance<tangleMatrix.entrances.size(); iEntrance++) {
         bool isGood = false;
@@ -96,6 +101,21 @@ bool SimpleDetangler::operator()(Tangle3& tangle)
             return false;
         }
     }
+#endif
+
+    // Check the base offsets of the significant entries. If any of them are too long,
+    // don't detangle.
+    for(const auto& p: significantEntries) {
+        const AnchorPair& anchorPair = tangleMatrix.tangleMatrix[p.first][p.second];
+        const uint64_t offset = anchorPair.getAverageOffset(tangle.assemblyGraph3.anchors);
+        if(debug) {
+            cout << "Base offset for " << p.first << " " << p.second << " is " << offset << endl;
+        }
+        if(offset > maxBaseOffset) {
+            return false;
+        }
+    }
+
 
     // All good, detangle using the significant entries.
     for(const auto& p: significantEntries) {

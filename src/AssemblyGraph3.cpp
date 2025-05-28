@@ -131,39 +131,28 @@ AssemblyGraph3::AssemblyGraph3(
 // Detangle, phase, assemble sequence, output.
 void AssemblyGraph3::run(uint64_t threadCount)
 {
-    AssemblyGraph3& assemblyGraph3 = *this;
+    // AssemblyGraph3& assemblyGraph3 = *this;
 
     // Initial output.
-    cout << "The initial AssemblyGraph3 has " << num_vertices(assemblyGraph3) <<
-        " vertices and " << num_edges(assemblyGraph3) << " edges." << endl;
     write("A");
 
 
 
     // Bubble cleanup.
     bubbleCleanup(threadCount);
-    cout << "After bubble cleanup and before compress the AssemblyGraph3 has " <<
-        num_vertices(assemblyGraph3) <<
-        " and " << num_edges(assemblyGraph3) << " edges." << endl;
     compress();
-    cout << "After bubble cleanup and compress the AssemblyGraph3 has " << num_vertices(assemblyGraph3) <<
-        " vertices and " << num_edges(assemblyGraph3) << " edges." << endl;
     write("B");
 
     // Vertex detangling.
     // TrivialDetangler trivialDetangler(assemblerOptions.assemblyGraphOptions.minCommonCoverage);
-    SimpleDetangler simpleDetangler(3, 1, 4);
+    SimpleDetangler simpleDetangler(0, 1, 2, 30000);
     detangleVertices(simpleDetangler);
     compress();
-    cout << "After vertex detangling and compress the AssemblyGraph3 has " << num_vertices(assemblyGraph3) <<
-        " vertices and " << num_edges(assemblyGraph3) << " edges." << endl;
     write("C");
 
     // Edge detangling.
     detangleEdges(simpleDetangler);
     compress();
-    cout << "After edge detangling and compress the AssemblyGraph3 has " << num_vertices(assemblyGraph3) <<
-        " vertices and " << num_edges(assemblyGraph3) << " edges." << endl;
     write("D");
 
     // Sequence assembly.
@@ -220,6 +209,10 @@ uint64_t AssemblyGraph3Edge::offset() const
 
 void AssemblyGraph3::write(const string& stage)
 {
+    cout << "Assembly graph at stage " << stage << " has " <<
+        num_vertices(*this) << " vertices and " <<
+        num_edges(*this) << " edges (segments)." << endl;
+
     save(stage);
     writeGfa("AssemblyGraph3-" + stage + ".gfa");
 }
@@ -799,7 +792,6 @@ void AssemblyGraph3::load(const string& assemblyStage)
 
 uint64_t AssemblyGraph3::detangleVertices(Detangler& detangler)
 {
-    cout << "AssemblyGraph3::detangleEdges begins." << endl;
     AssemblyGraph3& assemblyGraph3 = *this;
 
     // Gather vertices on which we will attempt detangling.
@@ -816,8 +808,10 @@ uint64_t AssemblyGraph3::detangleVertices(Detangler& detangler)
         }
 
     }
-    cout << "Found " << detanglingCandidates.size() <<
-        " tangle vertices out of " << num_vertices(assemblyGraph3) << " total vertices." << endl;
+
+
+    // cout << "Found " << detanglingCandidates.size() <<
+    //     " tangle vertices out of " << num_vertices(assemblyGraph3) << " total vertices." << endl;
 
     // Do the detangling.
     return detangle(detanglingCandidates, detangler);
@@ -827,8 +821,8 @@ uint64_t AssemblyGraph3::detangleVertices(Detangler& detangler)
 
 uint64_t AssemblyGraph3::detangleEdges(Detangler& detangler)
 {
-    cout << "AssemblyGraph3::detangleEdges begins." << endl;
     AssemblyGraph3& assemblyGraph3 = *this;
+    // cout << "Edge detangling begins." << endl;
 
     // Gather edges on which we will attempt detangling.
     // Each generates a tangle with just two vertices.
@@ -848,8 +842,10 @@ uint64_t AssemblyGraph3::detangleEdges(Detangler& detangler)
         }
 
     }
-    cout << "Found " << detanglingCandidates.size() <<
-        " tangle edges out of " << num_edges(assemblyGraph3) << " total edges." << endl;
+
+
+    // cout << "Found " << detanglingCandidates.size() <<
+    //     " tangle edges out of " << num_edges(assemblyGraph3) << " total edges." << endl;
 
     // Do the detangling.
     return detangle(detanglingCandidates, detangler);
@@ -862,6 +858,8 @@ uint64_t AssemblyGraph3::detangle(
     Detangler& detangler)
 {
     const bool debug = false;
+    // detangler.debug = true;
+
     AssemblyGraph3& assemblyGraph3 = *this;
 
     std::set<vertex_descriptor> removedVertices;
@@ -891,6 +889,21 @@ uint64_t AssemblyGraph3::detangle(
             assemblerOptions.bDrift);
         if(debug) {
             const TangleMatrix3& tangleMatrix = *(tangle.tangleMatrix);
+            cout << "Tangle with " << tangleMatrix.entrances.size() << " entrances and " <<
+                tangleMatrix.exits.size() << " exits." << endl;
+
+            cout << "Entrances:";
+            for(const auto& entrance: tangleMatrix.entrances) {
+                cout << " " << assemblyGraph3[entrance.e].id;
+            }
+            cout << endl;
+
+            cout << "Exits:";
+            for(const auto& exit: tangleMatrix.exits) {
+                cout << " " << assemblyGraph3[exit.e].id;
+            }
+            cout << endl;
+
             for(uint64_t iEntrance=0; iEntrance<tangleMatrix.entrances.size(); iEntrance++) {
                 for(uint64_t iExit=0; iExit<tangleMatrix.exits.size(); iExit++) {
                     cout << tangleMatrix.tangleMatrix[iEntrance][iExit].orientedReadIds.size() << " ";
@@ -901,16 +914,23 @@ uint64_t AssemblyGraph3::detangle(
 
         const bool success = detangler(tangle);
         if(success) {
+            if(debug) {
+                cout << "Detangle was successful." << endl;
+            }
             ++successCount;
+        } else {
+            if(debug) {
+                cout << "Detangle failed." << endl;
+            }
         }
 
 
     }
-    cout << "Attempted detangling for " << attemptCount << " tangles." << endl;
-    cout << "Detangling was successful for " << successCount << " tangles." << endl;
+    // cout << "Attempted detangling for " << attemptCount << " tangles." << endl;
+    // cout << "Detangling was successful for " << successCount << " tangles." << endl;
 
 
 
-    cout << "AssemblyGraph3::detangleEdges ends." << endl;
+    // cout << "AssemblyGraph3::detangleEdges ends." << endl;
     return 0;
 }

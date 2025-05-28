@@ -12,22 +12,17 @@ assembler.accessMarkers()
 assembler.accessAnchors()
 assembler.accessJourneys()
 
+# Get the assemblyGraph3Postprocessor at a chosen assembly stage.
+assemblyGraph3 = assembler.getAssemblyGraph3("B", assemblerOptions)
 
-# Get the assemblyGraph3Postprocessor at a chosen assembly.
-assemblyGraph3 = assembler.getAssemblyGraph3("D", assemblerOptions)
-assemblyGraph3.assembleAll(0)
-assemblyGraph3.write("Z1");
 
-"""
-detangler = TrivialDetangler(assemblyGraphOptions.minCommonCoverage)
+detangler = SimpleDetangler(0, 1, 2, 30000)
 
-for iteration in range(3):
-	assemblyGraph3.detangleVertices(detangler)
-	assemblyGraph3.compress()
-	
-	assemblyGraph3.detangleEdges(detangler)
-	assemblyGraph3.compress()
+assemblyGraph3.detangleVertices(detangler)
+assemblyGraph3.compress()
 
-assemblyGraph3.write("C")
-"""
+assemblyGraph3.detangleEdges(detangler)
+assemblyGraph3.compress()
+
+assemblyGraph3.write("X")
 

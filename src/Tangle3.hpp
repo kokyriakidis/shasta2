@@ -56,9 +56,9 @@ public:
 
     bool debug = false;
 
-private:
     AssemblyGraph3& assemblyGraph3;
 
+private:
     // The Tangle3 vertices.
     vector<vertex_descriptor> tangleVertices;
     bool isTangleVertex(vertex_descriptor v) const
