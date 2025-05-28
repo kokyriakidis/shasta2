@@ -40,6 +40,7 @@ private:
     // This checks for shortcuts (e. g. all sequences are identical)
     // that can be used to run faster. It returns true if successful.
     bool runFast(bool computeAlignment);
+    void writeOrientedReadsFast() const;
 
     const Anchors& anchors;
     ostream& html;

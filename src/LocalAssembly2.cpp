@@ -253,6 +253,25 @@ bool LocalAssembly2::runFast(bool computeAlignment)
     }
 
 
+
+    // Html output, if requested.
+    if(html) {
+        html << "<p>The oriented reads are all identical. No MSA was required.";
+        writeOrientedReadsFast();
+
+        html <<
+            "<h3>Consensus</h3>"
+            "<p>All consensus positions have coverage " << orientedReads.size() <<
+            "<table>"
+            "<tr><th class=left>Consensus sequence"
+            "<td style='font-family:monospace'>";
+        for(const auto& p: consensus) {
+            html << p.first;
+        }
+        html << "</table>";
+    }
+
+
     return true;
 }
 
@@ -390,6 +409,30 @@ void LocalAssembly2::writeOrientedReads()
     }
     html << "</table>";
 }
+
+
+void LocalAssembly2::writeOrientedReadsFast() const
+{
+    html <<
+        "<h3>Oriented reads portions used in this local assembly</h3>"
+        "<p>This local assembly uses " << orientedReads.size() << " oriented reads."
+        "<table><tr>"
+        "<th>OrientedReadId"
+        "<th>OrdinalA"
+        "<th>OrdinalB"
+        "<th>Ordinal<br>offset";
+
+    for(const OrientedRead& orientedRead: orientedReads) {
+        html <<
+            "<tr>"
+            "<td class=centered>" << orientedRead.orientedReadId <<
+            "<td class=centered>" << orientedRead.ordinalA <<
+            "<td class=centered>" << orientedRead.ordinalB <<
+            "<td class=centered>" << orientedRead.ordinalOffset();
+    }
+    html << "</table>";
+}
+
 
 
 #if 0
