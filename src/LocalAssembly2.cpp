@@ -256,11 +256,12 @@ bool LocalAssembly2::runFast(bool computeAlignment)
 
     // Html output, if requested.
     if(html) {
-        html << "<p>The oriented reads are all identical. No MSA was required.";
+        html << "<p>The oriented read sequences are all identical. No MSA was required.";
         writeOrientedReadsFast();
 
         html <<
             "<h3>Consensus</h3>"
+            "<p>Consensus sequence length is " << consensus.size() <<
             "<p>All consensus positions have coverage " << orientedReads.size() <<
             "<table>"
             "<tr><th class=left>Consensus sequence"

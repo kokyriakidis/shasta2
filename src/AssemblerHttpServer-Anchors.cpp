@@ -155,9 +155,13 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
                 if(annotation.v == AssemblyGraph3::null_vertex()) {
                     // This AnchorId is used in a step.
                     const AssemblyGraph3Edge& edge = assemblyGraph3[annotation.e];
+                    const string segmentUrl = "exploreSegment?assemblyStage=" + assemblyStage +
+                        "&segmentName=" +to_string(edge.id);
+                    const string stepUrl = "exploreSegmentStep?assemblyStage=" + assemblyStage +
+                        "&segmentName=" + to_string(edge.id) + "&stepId=" + to_string(annotation.step);
                     html <<
-                        "Segment " << edge.id <<
-                        ", step " << annotation.step <<
+                        "Segment <a href='" << segmentUrl << "'>" << edge.id << "</a>"
+                        ", step <a href='" << stepUrl << "'>" << annotation.step << "</a>"
                         " of " << edge.size() <<
                         ", " <<
                         (annotation.isAnchorIdA ? "first" : "second") <<
