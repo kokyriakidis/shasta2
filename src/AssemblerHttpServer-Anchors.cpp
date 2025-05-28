@@ -2,6 +2,7 @@
 #include "Anchor.hpp"
 #include "Assembler.hpp"
 #include "AssemblerOptions.hpp"
+#include "AssemblyGraph3Postprocessor.hpp"
 #include "deduplicate.hpp"
 #include "Journeys.hpp"
 #include "LocalAnchorGraph.hpp"
@@ -12,8 +13,9 @@
 using namespace shasta;
 
 // Boost libraries.
-#include <boost/tokenizer.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/graph/iteration_macros.hpp>
+#include <boost/tokenizer.hpp>
 
 
 
@@ -25,6 +27,9 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
     string anchorIdString;
     const bool anchorIdStringIsPresent = HttpServer::getParameterValue(request, "anchorIdString", anchorIdString);
     boost::trim(anchorIdString);
+
+    string assemblyStage;
+    HttpServer::getParameterValue(request, "assemblyStage", assemblyStage);
 
     // Begin the form.
     html <<
@@ -41,6 +46,16 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
     html <<
         " size=8 title='Enter an anchor id between 0 and " <<
         anchors().size() / 2 - 1 << " followed by + or -.'>";
+
+    // Assembly stage for annotations.
+    html <<
+        "<tr title='Leave blank for no annotations'>"
+        "<th class=left>Assembly stage for annotations"
+        "<td class=centered><input type=text name=assemblyStage style='text-align:center'";
+    if(not assemblyStage.empty()) {
+        html << " value='" << assemblyStage + "'";
+    }
+    html << " size=10>";
 
     // End the form.
     html <<
@@ -115,6 +130,72 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
 
 
     html << "</table>";
+
+
+
+    // Assembly graph annotations, if requested.
+    if(not assemblyStage.empty()) {
+
+        // Get the AssemblyGraph3 for this assembly stage.
+        const AssemblyGraph3Postprocessor& assemblyGraph3 = getAssemblyGraph3(
+            assemblyStage,
+            *httpServerData.assemblerOptions);
+        const auto annotations = assemblyGraph3.getAnnotations(anchorId);
+
+        html << "<h2>Assembly graph annotations at assembly stage " << assemblyStage << "</h2>";
+
+        if(annotations.empty()) {
+            html << "This Anchor is not referenced in assembly stage " << assemblyStage;
+        } else {
+            html << "<ul>";
+
+            for(const auto& annotation: annotations) {
+                html << "<li>";
+
+                if(annotation.v == AssemblyGraph3::null_vertex()) {
+                    // This AnchorId is used in a step.
+                    const AssemblyGraph3Edge& edge = assemblyGraph3[annotation.e];
+                    html <<
+                        "Segment " << edge.id <<
+                        ", step " << annotation.step <<
+                        " of " << edge.size() <<
+                        ", " <<
+                        (annotation.isAnchorIdA ? "first" : "second") <<
+                        " anchor.";
+
+                } else {
+
+                    // This AnchorId is used in a vertex.
+                    const AssemblyGraph3::vertex_descriptor v = annotation.v;
+                    html << "Assembly graph vertex with";
+
+                    // Incoming segments.
+                    if(in_degree(v, assemblyGraph3) == 0) {
+                        html << " no incoming segments";
+                    } else {
+                        html << " incoming segments";
+                        BGL_FORALL_INEDGES(v, e, assemblyGraph3, AssemblyGraph3) {
+                            html << " " << assemblyGraph3[e].id;
+                        }
+                        html << ",";
+                    }
+
+                    // Outgoing segments.
+                    if(out_degree(v, assemblyGraph3) == 0) {
+                        html << " no outgoing segments";
+                    } else {
+                        html << " outgoing segments";
+                        BGL_FORALL_OUTEDGES(v, e, assemblyGraph3, AssemblyGraph3) {
+                            html << " " << assemblyGraph3[e].id;
+                        }
+                        html << ".";
+                    }
+                }
+            }
+
+            html << "</ul>";
+        }
+    }
 
 
 
