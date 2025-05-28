@@ -179,7 +179,10 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
                     } else {
                         html << " incoming segments";
                         BGL_FORALL_INEDGES(v, e, assemblyGraph3, AssemblyGraph3) {
-                            html << " " << assemblyGraph3[e].id;
+                            const AssemblyGraph3Edge& edge = assemblyGraph3[e];
+                            const string segmentUrl = "exploreSegment?assemblyStage=" + assemblyStage +
+                                "&segmentName=" + to_string(edge.id);
+                            html << " <a href='" << segmentUrl << "'>" << edge.id << "</a>";
                         }
                         html << ",";
                     }
@@ -190,7 +193,10 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
                     } else {
                         html << " outgoing segments";
                         BGL_FORALL_OUTEDGES(v, e, assemblyGraph3, AssemblyGraph3) {
-                            html << " " << assemblyGraph3[e].id;
+                            const AssemblyGraph3Edge& edge = assemblyGraph3[e];
+                            const string segmentUrl = "exploreSegment?assemblyStage=" + assemblyStage +
+                                "&segmentName=" + to_string(edge.id);
+                            html << " <a href='" << segmentUrl << "'>" << edge.id << "</a>";
                         }
                         html << ".";
                     }
