@@ -132,32 +132,24 @@ AssemblyGraph3::AssemblyGraph3(
 void AssemblyGraph3::run(uint64_t threadCount)
 {
     // AssemblyGraph3& assemblyGraph3 = *this;
+    const uint64_t maxIterationCount = 3;
 
     // Initial output.
     write("A");
-
-
 
     // Bubble cleanup.
     bubbleCleanup(threadCount);
     compress();
     write("B");
 
-    // Vertex detangling.
-    // TrivialDetangler trivialDetangler(assemblerOptions.assemblyGraphOptions.minCommonCoverage);
+    // Detangling.
     SimpleDetangler simpleDetangler(
         assemblerOptions.assemblyGraphOptions.detangleMinCommonCoverage,
         assemblerOptions.assemblyGraphOptions.detangleLowCoverageThreshold,
         assemblerOptions.assemblyGraphOptions.detangleHighCoverageThreshold,
         assemblerOptions.assemblyGraphOptions.detangleInitialMaxBaseOffset);
-    detangleVertices(simpleDetangler);
-    compress();
+    detangle(maxIterationCount, simpleDetangler);
     write("C");
-
-    // Edge detangling.
-    detangleEdges(simpleDetangler);
-    compress();
-    write("D");
 
     // Sequence assembly.
     assembleAll(threadCount);
@@ -794,7 +786,7 @@ void AssemblyGraph3::load(const string& assemblyStage)
 
 
 
-uint64_t AssemblyGraph3::detangleVertices(Detangler& detangler)
+bool AssemblyGraph3::detangleVertices(Detangler& detangler)
 {
     AssemblyGraph3& assemblyGraph3 = *this;
 
@@ -823,7 +815,7 @@ uint64_t AssemblyGraph3::detangleVertices(Detangler& detangler)
 
 
 
-uint64_t AssemblyGraph3::detangleEdges(Detangler& detangler)
+bool AssemblyGraph3::detangleEdges(Detangler& detangler)
 {
     AssemblyGraph3& assemblyGraph3 = *this;
     // cout << "Edge detangling begins." << endl;
@@ -857,7 +849,7 @@ uint64_t AssemblyGraph3::detangleEdges(Detangler& detangler)
 
 
 
-uint64_t AssemblyGraph3::detangle(
+bool AssemblyGraph3::detangle(
     const vector< vector<vertex_descriptor> >& detanglingCandidates,
     Detangler& detangler)
 {
@@ -935,6 +927,47 @@ uint64_t AssemblyGraph3::detangle(
 
 
 
-    // cout << "AssemblyGraph3::detangleEdges ends." << endl;
-    return 0;
+    return successCount > 0;
+}
+
+
+
+// One iteration of all usable detangling functions using the given Detangler.
+bool AssemblyGraph3::detangleIteration(Detangler& detangler)
+{
+    bool success = false;
+
+    success = success or detangleVertices(detangler);
+    compress();
+
+    success = success or detangleEdges(detangler);
+    compress();
+
+    return success;
+}
+
+
+
+// Multiple iterations of all usable detangling functions using the given Detangler.
+bool AssemblyGraph3::detangle(uint64_t maxIterationCount, Detangler& detangler)
+{
+    bool success = false;
+    for(uint64_t iteration=0; iteration<maxIterationCount; iteration++) {
+        cout << "Starting detangle iteration " << iteration << endl;
+        const bool iterationSuccess = detangleIteration(detangler);
+
+        if(iterationSuccess) {
+            // At least this iteration was successful, so overall a success.
+            // Try another iteration.
+            success = true;
+        } else {
+
+            // This last iteration failed, but a previous one might have been successful.
+            // Stop iterating.
+            break;
+        }
+
+    }
+
+    return success;
 }

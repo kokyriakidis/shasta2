@@ -161,9 +161,26 @@ public:
     // Compress linear chains of edges into a single edge.
     void compress();
 
-    uint64_t detangle(const vector< vector<vertex_descriptor> >& detanglingCandidates, Detangler&);
-    uint64_t detangleVertices(Detangler&);
-    uint64_t detangleEdges(Detangler&);
+
+
+    // Detangling.
+
+    // One iteration of detangling a given set of tangles using the given Detangler.
+    // This is the lowest level detangling function.
+    bool detangle(const vector< vector<vertex_descriptor> >& detanglingCandidates, Detangler&);
+
+    // One iteration of vertex detangling using the given Detangler.
+    bool detangleVertices(Detangler&);
+
+    // One iteration of edge detangling using the given Detangler.
+    bool detangleEdges(Detangler&);
+
+    // One iteration of all usable detangling functions using the given Detangler.
+    bool detangleIteration(Detangler&);
+
+    // Multiple iterations of all usable detangling functions using the given Detangler.
+    bool detangle(uint64_t maxIterationCount, Detangler&);
+
 
 
     // Output.
