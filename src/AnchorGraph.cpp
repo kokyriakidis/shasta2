@@ -19,6 +19,7 @@ using namespace shasta;
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/member.hpp>
+#include <boost/pending/disjoint_sets.hpp>
 #include <boost/serialization/vector.hpp>
 
 // Standard library.
@@ -166,6 +167,74 @@ AnchorGraph::AnchorGraph(
         }
     }
     cout << useForAssemblyCount << " AnchorGraph edges were marked to be used for assembly." << endl;
+
+
+
+    // Compute connected components using only the edges flagged as "useForAssembly".
+    vector<uint64_t> rank(anchorCount);
+    vector<uint64_t> parent(anchorCount);
+    boost::disjoint_sets<uint64_t*, uint64_t*> disjointSets(&rank[0], &parent[0]);
+    for(uint64_t i=0; i<anchorCount; i++) {
+        disjointSets.make_set(i);
+    }
+    BGL_FORALL_EDGES(e, anchorGraph, AnchorGraph) {
+        if(anchorGraph[e].useForAssembly) {
+            const AnchorId anchorId0 = source(e, anchorGraph);
+            const AnchorId anchorId1 = target(e, anchorGraph);
+            disjointSets.union_set(anchorId0, anchorId1);
+        }
+    }
+
+    // Count the vertices in each connected component.
+    vector<uint64_t> componentSize(anchorCount, 0);
+    BGL_FORALL_VERTICES(anchorId, anchorGraph, AnchorGraph) {
+        const uint64_t componentId = disjointSets.find_set(anchorId);
+        ++componentSize[componentId];
+    }
+
+    // Create a histogram of component sizes.
+    vector<uint64_t> histogram;
+    for(uint64_t componentId=0; componentId<anchorCount; componentId++) {
+        const uint64_t size = componentSize[componentId];
+        if(size > 0) {
+            if(size >= histogram.size()) {
+                histogram.resize(size + 1, 0);
+            }
+            ++histogram[size];
+        }
+    }
+
+    /*
+    cout << "Component size histogram for the AnchorGraph before handling dead ends:" << endl;
+    for(uint64_t size=1; size<histogram.size(); size++) {
+        const uint64_t frequency = histogram[size];
+        if(frequency) {
+            cout << size << "," << frequency << endl;
+        }
+    }
+    */
+
+    // Mark as not to be used for assembly edges in small connected components.
+    uint64_t removedCount = 0;
+    const uint64_t minComponentSize = 5;
+    BGL_FORALL_EDGES(e, anchorGraph, AnchorGraph) {
+        if(anchorGraph[e].useForAssembly) {
+            const AnchorId anchorId0 = source(e, anchorGraph);
+            const AnchorId anchorId1 = target(e, anchorGraph);
+            const uint64_t componentId0 = disjointSets.find_set(anchorId0);
+            const uint64_t componentId1 = disjointSets.find_set(anchorId1);
+            SHASTA_ASSERT(componentId0 == componentId1);
+            const uint64_t size = componentSize[componentId0];
+            if(size < minComponentSize) {
+                anchorGraph[e].useForAssembly = false;
+                anchorGraph[e].inSmallComponent = true;
+                ++removedCount;
+            }
+        }
+    }
+    cout << "Found " << removedCount << " edges in small connected components." << endl;
+
+
 
 
     const uint64_t maxDistance = 300000;

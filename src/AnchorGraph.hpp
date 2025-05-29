@@ -47,6 +47,7 @@ public:
     uint64_t id = invalid<uint64_t>;
     bool isParallelEdge = false;
     bool useForAssembly = false;
+    bool inSmallComponent = false;
     bool addedAtDeadEnd = false;
 
     AnchorGraphEdge(const AnchorPair& anchorPair, uint64_t offset, uint64_t id) :
