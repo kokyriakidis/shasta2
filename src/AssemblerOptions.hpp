@@ -59,8 +59,12 @@ public:
         uint64_t transitiveReductionThreshold = 10000;
         uint64_t transitiveReductionA = 200;
         uint64_t transitiveReductionB = 2;
-        uint64_t minCommonCoverage = 3;
 
+        // Options that control detangling.
+        uint64_t detangleMinCommonCoverage = 3;
+        uint64_t detangleLowCoverageThreshold = 1;
+        uint64_t detangleHighCoverageThreshold = 4;
+        uint64_t detangleInitialMaxBaseOffset = 30000;
         double detangleEpsilon = 0.05;
         double detangleMaxLogP = 30.;
         double detangleMinLogPDelta = 100.;

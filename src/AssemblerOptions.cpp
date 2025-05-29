@@ -127,22 +127,37 @@ void AssemblerOptions::addOptions()
         "b-value for transitive reduction of the assembly graph."
         )->capture_default_str();
 
-    add_option("--assembly-graph-min-common-coverage",
-        assemblyGraphOptions.minCommonCoverage,
+    add_option("--detangle-min-common-coverage",
+        assemblyGraphOptions.detangleMinCommonCoverage,
         "Minimum common coverage for detangling."
         )->capture_default_str();
 
-    add_option("--assembly-graph-detangle-epsilon",
+    add_option("--detangle-low-coverage-threshold",
+        assemblyGraphOptions.detangleLowCoverageThreshold,
+        "Low coverage threshold for detangling."
+        )->capture_default_str();
+
+    add_option("--detangle-high-coverage-threshold",
+        assemblyGraphOptions.detangleHighCoverageThreshold,
+        "High coverage threshold for detangling."
+        )->capture_default_str();
+
+    add_option("--detangle-initial-max-base-offset",
+        assemblyGraphOptions.detangleInitialMaxBaseOffset,
+        "Initial maximum base offset for detangling."
+        )->capture_default_str();
+
+    add_option("--detangle-epsilon",
         assemblyGraphOptions.detangleEpsilon,
         "Epsilon value for chi-square detangling."
         )->capture_default_str();
 
-    add_option("--assembly-graph-detangle-maxLogP",
+    add_option("--detangle-maxLogP",
         assemblyGraphOptions.detangleMaxLogP,
         "MaxLogP value for chi-square detangling."
         )->capture_default_str();
 
-    add_option("--assembly-graph-detangle-minLogPDelta",
+    add_option("--detangle-minLogPDelta",
         assemblyGraphOptions.detangleMinLogPDelta,
         "MinLogPDelta value for chi-square detangling."
         )->capture_default_str();

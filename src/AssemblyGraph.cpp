@@ -119,7 +119,7 @@ AssemblyGraph::AssemblyGraph(
     createTangleTemplates();
 
     PermutationDetangler detangler(
-        assemblyGraphOptions.minCommonCoverage,
+        assemblyGraphOptions.detangleMinCommonCoverage,
         assemblyGraphOptions.detangleEpsilon,
         assemblyGraphOptions.detangleMaxLogP,
         assemblyGraphOptions.detangleMinLogPDelta);

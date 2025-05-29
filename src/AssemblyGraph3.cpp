@@ -145,7 +145,11 @@ void AssemblyGraph3::run(uint64_t threadCount)
 
     // Vertex detangling.
     // TrivialDetangler trivialDetangler(assemblerOptions.assemblyGraphOptions.minCommonCoverage);
-    SimpleDetangler simpleDetangler(0, 1, 2, 30000);
+    SimpleDetangler simpleDetangler(
+        assemblerOptions.assemblyGraphOptions.detangleMinCommonCoverage,
+        assemblerOptions.assemblyGraphOptions.detangleLowCoverageThreshold,
+        assemblerOptions.assemblyGraphOptions.detangleHighCoverageThreshold,
+        assemblerOptions.assemblyGraphOptions.detangleInitialMaxBaseOffset);
     detangleVertices(simpleDetangler);
     compress();
     write("C");
