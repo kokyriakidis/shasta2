@@ -1,3 +1,15 @@
+# For building, the following are required:
+# - The Boost C++ libraries (Ubuntu package libboost-dev).
+# - Cli11 (Ubuntu package libcli11-dev).
+# - The Abpoa library. Ubuntu package abpoa only provides the executable.
+#   See ~/abpoa/README for build directions.
+#   * The include files must be in ~/abpoa/abPOA/include. 
+#   * The static and dynamic libraries (libabpoa.a and libabpoa.so) must be in /usr/local/lib.
+# For running, the following are required:
+# - Poasta executable must be in the PATH. See ~/poasta/README for build directions.
+# - Graphviz (if using the http server, Ubuntu package graphviz).
+
+
 cmake_minimum_required(VERSION 3.16)
 project(shasta2)
 
