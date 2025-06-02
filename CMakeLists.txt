@@ -7,7 +7,10 @@
 #   * The static and dynamic libraries (libabpoa.a and libabpoa.so) must be in /usr/local/lib.
 # For running, the following are required:
 # - Poasta executable must be in the PATH. See ~/poasta/README for build directions.
-# - Graphviz (if using the http server, Ubuntu package graphviz).
+# - If using the http server:
+#   * Graphviz (Ubuntu package graphviz).
+#   * ogdf-fmmm (see ~/ogdf-fmmm/ogdf-fmm/README for build directions). 
+#     Must be on path under name customLayout.
 
 
 cmake_minimum_required(VERSION 3.16)
