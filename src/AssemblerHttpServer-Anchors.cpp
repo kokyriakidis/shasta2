@@ -836,6 +836,9 @@ void Assembler::exploreLocalAnchorGraph(
     uint64_t distance = 10;
     HttpServer::getParameterValue(request, "distance", distance);
 
+    uint64_t minCoverage = 1;
+    HttpServer::getParameterValue(request, "minCoverage", minCoverage);
+
     string edgesMarkedForAssemblyString;
     bool edgesMarkedForAssembly = HttpServer::getParameterValue(request,
         "edgesMarkedForAssembly", edgesMarkedForAssemblyString);
@@ -867,6 +870,12 @@ void Assembler::exploreLocalAnchorGraph(
         "<td class=centered>"
         "<input type=text name=distance style='text-align:center' required size=8 value=" <<
         distance << ">";
+
+    html << "<tr>"
+        "<th class=left>Minimum coverage"
+        "<td class=centered>"
+        "<input type=text name=minCoverage style='text-align:center' required size=8 value=" <<
+        minCoverage << ">";
 
     html << "<tr>"
         "<th class=left>Only use edges marked for use in assembly"
@@ -921,6 +930,7 @@ void Assembler::exploreLocalAnchorGraph(
         anchorGraph,
         anchorIds,
         distance,
+		minCoverage,
         edgesMarkedForAssembly);
 
     html << "<h1>Local anchor graph</h1>";

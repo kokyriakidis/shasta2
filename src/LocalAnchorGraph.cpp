@@ -29,6 +29,7 @@ LocalAnchorGraph::LocalAnchorGraph(
     const AnchorGraph& anchorGraph,
     const vector<AnchorId>& anchorIds,
     uint64_t maxDistance,
+	uint64_t minCoverage,
     bool edgesMarkedForAssembly) :
     anchors(anchors),
     anchorGraphPointer(&anchorGraph),
@@ -68,6 +69,9 @@ LocalAnchorGraph::LocalAnchorGraph(
             if(edgesMarkedForAssembly and (not anchorGraph[eG].useForAssembly)) {
                 continue;
             }
+            if(anchorGraph[eG].anchorPair.size() < minCoverage) {
+            	continue;
+            }
             const AnchorGraph::vertex_descriptor v1G = target(eG, anchorGraph);
             const AnchorId anchorId1 = v1G;
 
@@ -87,6 +91,9 @@ LocalAnchorGraph::LocalAnchorGraph(
         BGL_FORALL_INEDGES(v0G, eG, anchorGraph, AnchorGraph) {
             if(edgesMarkedForAssembly and (not anchorGraph[eG].useForAssembly)) {
                 continue;
+            }
+            if(anchorGraph[eG].anchorPair.size() < minCoverage) {
+            	continue;
             }
             const AnchorGraph::vertex_descriptor v1G = source(eG, anchorGraph);
             const AnchorId anchorId1 = v1G;
@@ -119,6 +126,9 @@ LocalAnchorGraph::LocalAnchorGraph(
         BGL_FORALL_OUTEDGES(v0G, eG, anchorGraph, AnchorGraph) {
             if(edgesMarkedForAssembly and (not anchorGraph[eG].useForAssembly)) {
                 continue;
+            }
+            if(anchorGraph[eG].anchorPair.size() < minCoverage) {
+            	continue;
             }
             const AnchorGraph::vertex_descriptor v1G = target(eG, anchorGraph);
             const AnchorId anchorId1 = v1G;
