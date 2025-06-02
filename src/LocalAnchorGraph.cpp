@@ -968,7 +968,7 @@ void LocalAnchorGraph::writeEdges(
     // Write the "arrows" to show edge directions.
     // They are just short lines near the target vertex of each edge.
     html << "\n<g id=arrows";
-    if(options.edgeColoring == "black") {
+    if((options.edgeColoring == "black") or (options.edgeColoring == "byFlags")) {
         html << " stroke=white";
     } else {
         html << " stroke=black";
