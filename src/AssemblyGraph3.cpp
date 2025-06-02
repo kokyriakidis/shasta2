@@ -4,6 +4,7 @@
 #include "AnchorGraph.hpp"
 #include "AssemblerOptions.hpp"
 #include "Detangler.hpp"
+#include "ExactDetangler.hpp"
 #include "findLinearChains.hpp"
 #include "LocalAssembly2.hpp"
 #include "performanceLog.hpp"
@@ -132,7 +133,7 @@ AssemblyGraph3::AssemblyGraph3(
 void AssemblyGraph3::run(uint64_t threadCount)
 {
     // AssemblyGraph3& assemblyGraph3 = *this;
-    const uint64_t maxIterationCount = 3;
+    const uint64_t maxIterationCount = 10;
 
     // Initial output.
     write("A");
@@ -143,12 +144,12 @@ void AssemblyGraph3::run(uint64_t threadCount)
     write("B");
 
     // Detangling.
-    SimpleDetangler simpleDetangler(
+    SimpleDetangler detangler(
         assemblerOptions.assemblyGraphOptions.detangleMinCommonCoverage,
         assemblerOptions.assemblyGraphOptions.detangleLowCoverageThreshold,
         assemblerOptions.assemblyGraphOptions.detangleHighCoverageThreshold,
         assemblerOptions.assemblyGraphOptions.detangleInitialMaxBaseOffset);
-    detangle(maxIterationCount, simpleDetangler);
+    detangle(maxIterationCount, detangler);
     write("C");
 
     // Sequence assembly.
@@ -830,10 +831,8 @@ bool AssemblyGraph3::detangleEdges(Detangler& detangler)
         // For now only do the most common case.
         if(
             (out_degree(v0, assemblyGraph3) == 1) and   // e is only out-edge of v0
-            (in_degree(v1, assemblyGraph3) == 1) and    // e is only in-edge of v1
-            (in_degree(v0, assemblyGraph3) == 2) and    // v0 has 2 in-edges
-            (out_degree(v1, assemblyGraph3) == 2)       // v1 has 2 out-edges
-             ) {
+            (in_degree (v1, assemblyGraph3) == 1)       // e is only in-edge of v1
+            ) {
             detanglingCandidates.emplace_back(vector<vertex_descriptor>({v0, v1}));
         }
 

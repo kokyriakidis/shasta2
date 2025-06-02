@@ -29,16 +29,6 @@ bool SimpleDetangler::operator()(Tangle3& tangle)
         }
     }
 
-#if 0
-    // For now only do the 2x2 case.
-    if(tangleMatrix.entrances.size() < 2) {
-        return false;
-    }
-    if(tangleMatrix.exits.size() < 2) {
-        return false;
-    }
-#endif
-
     // Gather entries by type.
     vector< pair<uint64_t, uint64_t> > insignificantEntries;
     vector< pair<uint64_t, uint64_t> > ambiguousEntries;
@@ -72,8 +62,6 @@ bool SimpleDetangler::operator()(Tangle3& tangle)
         return false;
     }
 
-
-#if 0
     // Check that each entrance will get a connection with at least one exit.
     for(uint64_t iEntrance=0; iEntrance<tangleMatrix.entrances.size(); iEntrance++) {
         bool isGood = false;
@@ -101,8 +89,8 @@ bool SimpleDetangler::operator()(Tangle3& tangle)
             return false;
         }
     }
-#endif
 
+#if 0
     // Check the base offsets of the significant entries. If any of them are too long,
     // don't detangle.
     for(const auto& p: significantEntries) {
@@ -115,7 +103,7 @@ bool SimpleDetangler::operator()(Tangle3& tangle)
             return false;
         }
     }
-
+#endif
 
     // All good, detangle using the significant entries.
     for(const auto& p: significantEntries) {
