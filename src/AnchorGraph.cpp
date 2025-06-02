@@ -462,7 +462,8 @@ bool AnchorGraph::searchForward(
             const AnchorPair& consistentAnchorPair = newAnchorPairs.front();
             const uint64_t offset = consistentAnchorPair.getAverageOffset(anchors);
             const uint64_t coverage = consistentAnchorPair.orientedReadIds.size();
-            if(coverage == 0) {
+
+            if(coverage <= 1) {
                 continue;
             }
 
@@ -555,7 +556,7 @@ bool AnchorGraph::searchBackward(
 
     const AnchorGraph& anchorGraph = *this;
 
-    const bool debug = false;
+    const bool debug = false; // anchorIdToString(startAnchorId) == "198725-";
 
     if(debug) {
         cout << "AnchorGraph::search called for " << anchorIdToString(startAnchorId) << endl;
@@ -608,7 +609,7 @@ bool AnchorGraph::searchBackward(
             const AnchorPair& consistentAnchorPair = newAnchorPairs.front();
             const uint64_t offset = consistentAnchorPair.getAverageOffset(anchors);
             const uint64_t coverage = consistentAnchorPair.orientedReadIds.size();
-            if(coverage == 0) {
+            if(coverage <= 1) {
                 continue;
             }
 
