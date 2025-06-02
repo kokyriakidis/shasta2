@@ -2,6 +2,8 @@
 
 #include "Anchor.hpp"
 
+#include <list>
+
 namespace shasta {
     class LocalAssembly2;
     class AnchorPair;

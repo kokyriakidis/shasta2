@@ -166,10 +166,10 @@ private:
 
         // An id for this marker, global to the LocalAssembly.
         // This is the index of this marker in the disjoint sets data structure.
-        uint64_t id;
+        uint64_t id = invalid<uint64_t>;
 
         // The id of the disjoint set this MarkerData belongs to.
-        uint64_t disjointSetId;
+        uint64_t disjointSetId = invalid<uint64_t>;
 
     };
 

@@ -14,6 +14,7 @@ using namespace shasta;
 // Standard library.
 #include <chrono.hpp>
 #include <fstream.hpp>
+#include <map>
 #include <queue>
 
 

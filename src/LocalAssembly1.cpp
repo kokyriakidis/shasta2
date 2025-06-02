@@ -9,6 +9,7 @@
 using namespace shasta;
 
 #include <chrono.hpp>
+#include<map>
 
 
 LocalAssembly1::LocalAssembly1(

@@ -15,6 +15,7 @@
 
 // Boost libraries.
 #include <boost/graph/adjacency_list.hpp>
+#include <boost/serialization/base_object.hpp>
 
 // Standard library.
 #include <utility.hpp>
