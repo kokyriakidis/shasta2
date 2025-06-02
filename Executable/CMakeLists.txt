@@ -5,7 +5,7 @@ project(shasta2Executable)
 add_definitions(-std=c++20)
 
 # Compilation warnings.
-add_definitions(-Wall -Wconversion -Wno-unused-result -Wno-trigraphs -Wno-psabi -Wunused-parameter)
+add_definitions(-Wall -Wconversion -Wno-unused-result -Wno-trigraphs -Wno-psabi -Wunused-parameter -Wno-unused-function)
 
 # Optimization and debug options.
 if(BUILD_DEBUG)
@@ -22,7 +22,7 @@ endif(BUILD_DEBUG)
 file(GLOB SOURCES ../src/*.cpp)
 
 # Include directory.
-include_directories(../src ~/abPOA/abPOA/include)
+include_directories(../src ~/abpoa/abPOA/include)
 
 # Define our executable.
 add_executable(shasta2Executable ${SOURCES})

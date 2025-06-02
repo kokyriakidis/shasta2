@@ -6,7 +6,7 @@ project(shasta2PythonModule)
 add_definitions(-std=c++20)
 
 # Compilation warnings.
-add_definitions(-Wall -Wconversion -Wno-unused-result -Wno-trigraphs -Wno-psabi -Wunused-parameter)
+add_definitions(-Wall -Wconversion -Wno-unused-result -Wno-trigraphs -Wno-psabi -Wunused-parameter -Wno-unused-function)
 
 # Optimization and debug options.
 if(BUILD_DEBUG)
@@ -26,7 +26,7 @@ add_definitions(-DSHASTA_PYTHON_API)
 file(GLOB SOURCES ../src/*.cpp)
 
 # Include directory.
-include_directories(../src ~/abPOA/abPOA/include)
+include_directories(../src ~/abpoa/abPOA/include)
 
 # Define our library.
 add_library(shasta2PythonModule SHARED ${SOURCES})
