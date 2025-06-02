@@ -287,6 +287,30 @@ void LocalAnchorGraph::writeGraphviz(
         const uint64_t coverage = anchorPair.orientedReadIds.size();
         const uint64_t offset = edgeG.offset;
 
+        string color = "Black";
+
+        if(options.edgeColoring == "byFlags") {
+			if(edgeG.isParallelEdge) {
+				color = "Orange";
+			} else if(edgeG.addedAtDeadEnd) {
+				color = "Magenta";
+			} else if(edgeG.inSmallComponent) {
+				color = "Pink";
+			} else if(not edgeG.useForAssembly) {
+				color = "GreenYellow";
+			}
+        }
+
+        else if(options.edgeColoring == "random") {
+            // To decide the color, hash the AnchorIds.
+            // This way we always get the same color for the same edge.
+            const auto p = make_pair(anchorId0, anchorId1);
+            const uint32_t hashValue = MurmurHash2(&p, sizeof(p), 759);
+            const uint32_t hue = hashValue % 360;
+            color = "hsl(" + to_string(hue) + ",50%,50%)";
+        }
+
+
         s << "\"" << anchorId0String << "\"->";
         s << "\"" << anchorId1String << "\"";
 
@@ -313,24 +337,7 @@ void LocalAnchorGraph::writeGraphviz(
         }
 
         // Color.
-        if(options.edgeColoring == "random") {
-            // To decide the color, hash the AnchorIds.
-            // This way we always get the same color for the same edge.
-            const auto p = make_pair(anchorId0, anchorId1);
-            const uint32_t hashValue = MurmurHash2(&p, sizeof(p), 759);
-            const double hue = double(hashValue % 360) / 360.;
-            s << " color=\"" << std::fixed << std::setprecision(2) << hue << " 1. 1.\"";
-        } else {
-            string color = "Black";
-            if(edgeG.isParallelEdge) {
-                color = "Orange";
-            }
-            if(edgeG.addedAtDeadEnd) {
-                color = "Magenta";
-            }
-            s << " color=\"" << color << "\"";
-
-        }
+        s << " color=\"" << color << "\"";
 
         // Thickness.
         s << " penwidth=" << 0.5 * options.edgeThickness * double(coverage);
@@ -507,8 +514,10 @@ void LocalAnchorGraphDisplayOptions::writeForm(ostream& html) const
         "<td class=left>"
 
         "<b>Edge coloring</b>"
-        "<br><input type=radio required name=edgeColoring value='black'" <<
-        (edgeColoring == "black" ? " checked=on" : "") << "> Black (orange for parallel edges, magenta for edges added at dead ends)"
+		"<br><input type=radio required name=edgeColoring value='black'" <<
+		(edgeColoring == "black" ? " checked=on" : "") << "> Black"
+		"<br><input type=radio required name=edgeColoring value='byFlags'" <<
+		(edgeColoring == "byFlags" ? " checked=on" : "") << "> By flags"
         "<br><input type=radio required name=edgeColoring value='random'" <<
         (edgeColoring == "random" ? " checked=on" : "") << "> Random"
         "<br><input type=radio required name=edgeColoring value='byCoverageLoss'" <<
@@ -911,14 +920,20 @@ void LocalAnchorGraph::writeEdges(
         const string anchorIdString1 = anchorIdToString(anchorId1);
 
         string color = "Black";
-        if(edgeG.isParallelEdge) {
-            color = "Orange";
-        }
-        if(edgeG.addedAtDeadEnd) {
-            color = "Magenta";
+
+        if(options.edgeColoring == "byFlags") {
+			if(edgeG.isParallelEdge) {
+				color = "Orange";
+			} else if(edgeG.addedAtDeadEnd) {
+				color = "Magenta";
+			} else if(edgeG.inSmallComponent) {
+				color = "Pink";
+			} else if(not edgeG.useForAssembly) {
+				color = "GreenYellow";
+			}
         }
 
-        if(options.edgeColoring == "random") {
+        else if(options.edgeColoring == "random") {
             // To decide the color, hash the AnchorIds.
             // This way we always get the same color for the same edge.
             const auto p = make_pair(anchorId0, anchorId1);
