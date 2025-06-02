@@ -796,10 +796,9 @@ bool AssemblyGraph3::detangleVertices(Detangler& detangler)
     vector< vector<vertex_descriptor> > detanglingCandidates;
     BGL_FORALL_VERTICES(v, assemblyGraph3, AssemblyGraph3) {
 
-        // For now only do the most common case.
         if(
-            (in_degree(v, assemblyGraph3) == 2) and    // v has 2 in-edges
-            (out_degree(v, assemblyGraph3) == 2)       // v has 2 out-edges
+            (in_degree(v, assemblyGraph3) > 1) and
+            (out_degree(v, assemblyGraph3) > 1)
              ) {
             detanglingCandidates.emplace_back(vector<vertex_descriptor>({v}));
         }
