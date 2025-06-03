@@ -207,9 +207,9 @@ void LocalAnchorGraph::writeGraphviz(
 
         // Color.
         if(vertex.distance == 0) {
-            s << " color=blue";
+            s << " fillcolor=LightBlue style=filled";
         } else if(vertex.distance == maxDistance) {
-            s << " color=cyan";
+            s << " fillcolor=Cyan style=filled";
         } else {
 
             // Color by similarity of read composition with the reference Anchor.
@@ -307,7 +307,7 @@ void LocalAnchorGraph::writeGraphviz(
             const auto p = make_pair(anchorId0, anchorId1);
             const uint32_t hashValue = MurmurHash2(&p, sizeof(p), 759);
             const uint32_t hue = hashValue % 360;
-            color = "hsl(" + to_string(hue) + ",50%,50%)";
+            color = to_string(hue / 360.) + " 1. 1.";
         }
 
 
