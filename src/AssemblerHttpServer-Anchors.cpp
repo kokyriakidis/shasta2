@@ -839,9 +839,9 @@ void Assembler::exploreLocalAnchorGraph(
     uint64_t minCoverage = 1;
     HttpServer::getParameterValue(request, "minCoverage", minCoverage);
 
-    string edgesMarkedForAssemblyString;
-    bool edgesMarkedForAssembly = HttpServer::getParameterValue(request,
-        "edgesMarkedForAssembly", edgesMarkedForAssemblyString);
+    string includeEdgesNotMarkedForAssemblyString;
+    bool includeEdgesNotMarkedForAssembly = HttpServer::getParameterValue(request,
+        "includeEdgesNotMarkedForAssembly", includeEdgesNotMarkedForAssemblyString);
 
 
     // Get the options that control graph display.
@@ -878,10 +878,10 @@ void Assembler::exploreLocalAnchorGraph(
         minCoverage << ">";
 
     html << "<tr>"
-        "<th class=left>Only use edges marked for use in assembly"
+        "<th class=left>Include edges not marked for use in assembly"
         "<td class=centered>"
-        "<input type=checkbox name=edgesMarkedForAssembly" <<
-        (edgesMarkedForAssembly ? " checked" : "") <<
+        "<input type=checkbox name=includeEdgesNotMarkedForAssembly" <<
+        (includeEdgesNotMarkedForAssembly ? " checked" : "") <<
         ">";
 
     // Form items for options that control graph display.
@@ -931,7 +931,7 @@ void Assembler::exploreLocalAnchorGraph(
         anchorIds,
         distance,
 		minCoverage,
-        edgesMarkedForAssembly);
+        not includeEdgesNotMarkedForAssembly);
 
     html << "<h1>Local anchor graph</h1>";
     html << "The local anchor graph has " << num_vertices(graph) <<
