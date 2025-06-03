@@ -260,10 +260,12 @@ AnchorGraph::AnchorGraph(
 #endif
 
 
+#if 0
     // Eliminate dead ends where possible, using shortest path searches.
     handleDeadEnds(anchors, readLengthDistribution,
         aDrift, bDrift,
         minEdgeCoverageNear, minEdgeCoverageFar, maxDistance, threadCount);
+#endif
 }
 
 
