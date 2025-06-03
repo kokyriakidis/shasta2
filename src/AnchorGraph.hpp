@@ -50,6 +50,8 @@ public:
     bool useForAssembly = false;
     bool inSmallComponent = false;
     bool addedAtDeadEnd = false;
+    bool lowCoverage1 = false;
+    bool lowCoverage2 = false;
 
     AnchorGraphEdge(const AnchorPair& anchorPair, uint64_t offset, uint64_t id) :
         anchorPair(anchorPair),
@@ -91,6 +93,7 @@ public:
         const ReadLengthDistribution&,
         uint64_t minEdgeCoverageNear,
         uint64_t minEdgeCoverageFar,
+		double coverageFractionThreshold,
         double aDrift,
         double bDrift,
         uint64_t threadCount);

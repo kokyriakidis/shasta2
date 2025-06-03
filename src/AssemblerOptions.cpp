@@ -99,6 +99,10 @@ void AssemblerOptions::addOptions()
         "Minimum anchor graph edge coverage for large offset."
         )->capture_default_str();
 
+    add_option("--anchor-graph-edge-coverage-fraction-threshold", anchorGraphEdgeCoverageFractionThreshold,
+        "Anchor graph edge coverage fraction threshold."
+        )->capture_default_str();
+
     add_option("--a-drift", aDrift,
         "Constant allowed offset for offset consistency."
         )->capture_default_str();

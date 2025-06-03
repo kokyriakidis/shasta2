@@ -75,9 +75,10 @@ AnchorGraph::AnchorGraph(
     const ReadLengthDistribution& readLengthDistribution,
     uint64_t minEdgeCoverageNear,
     uint64_t minEdgeCoverageFar,
+	double coverageFractionThreshold,
     double aDrift,
     double bDrift,
-    uint64_t threadCount) :
+    uint64_t /* threadCount */) :
     MappedMemoryOwner(anchors),
     MultithreadedObject<AnchorGraph>(*this)
 {
@@ -148,8 +149,8 @@ AnchorGraph::AnchorGraph(
     }
 
 
-    // Mark as "useForAssembly" edges with sufficient coverage.
-    uint64_t useForAssemblyCount = 0;
+
+    // Mark as "lowCoverage1" edges which don't pass a first coverage test.
     BGL_FORALL_EDGES(e, anchorGraph, AnchorGraph) {
         AnchorGraphEdge& edge = anchorGraph[e];
         const uint64_t offset = edge.offset;
@@ -160,11 +161,123 @@ AnchorGraph::AnchorGraph(
         uint64_t edgeCoverageThreshold = uint64_t(coverageCorrelation * double(minEdgeCoverageNear));
         edgeCoverageThreshold = max(edgeCoverageThreshold, minEdgeCoverageFar);
 
-        // If coverage is sufficient, mark the edge as useForAssembly.
-        if(edge.anchorPair.orientedReadIds.size() >= edgeCoverageThreshold) {
-            edge.useForAssembly = true;
-            ++useForAssemblyCount;
+        // If coverage is low, mark the edge as "lowCoverage1".
+        if(edge.anchorPair.orientedReadIds.size() < edgeCoverageThreshold) {
+            edge.lowCoverage1 = true;
         }
+    }
+
+
+    const bool debug = false;
+
+    // Mark as "lowCoverage2" edges which don't pass a second coverage test.
+    BGL_FORALL_EDGES(e, anchorGraph, AnchorGraph) {
+
+    	if(debug) {
+            const vertex_descriptor v0 = source(e, anchorGraph);
+            const vertex_descriptor v1 = target(e, anchorGraph);
+            cout << "Working on edge " << anchorIdToString(v0) << " " << anchorIdToString(v1) << endl;
+    	}
+
+    	// Gather information about this edge.
+        AnchorGraphEdge& edge = anchorGraph[e];
+        if(edge.lowCoverage1) {
+        	if(debug) {
+        		cout << "Already flagged as lowCoverage1." << endl;
+        	}
+        	continue;
+        }
+        const uint64_t offset = edge.offset;
+        const uint64_t coverage = edge.anchorPair.orientedReadIds.size();
+
+        // Compute the coverage correlation factor for this offset.
+        const uint64_t bin = offset / readLengthDistribution.binWidth;
+        const double coverageCorrelation = readLengthDistribution.data[bin].coverageCorrelation;
+
+        // Compute maximum and total coverage for the outgoing edges of the source vertex of e.
+        // Don't consider edges flagged as "lowCoverage1".
+        const vertex_descriptor v0 = source(e, anchorGraph);
+        uint64_t maxOutCoverage0 = 0;
+        uint64_t totalOutCoverage0 = 0;
+        BGL_FORALL_OUTEDGES(v0, e0, anchorGraph, AnchorGraph) {
+        	const AnchorGraphEdge& edge0 = anchorGraph[e0];
+        	if(edge0.lowCoverage1) {
+        		continue;
+        	}
+        	const uint64_t outCoverage0 = edge0.anchorPair.orientedReadIds.size();
+        	maxOutCoverage0 = max(maxOutCoverage0, outCoverage0);
+        	totalOutCoverage0 += outCoverage0;
+        }
+
+        // If this edge has maximum coverage among the outgoing edges of v0,
+        // don't flag it as "lowCoverage2".
+        if(coverage == maxOutCoverage0) {
+        	if(debug) {
+        		cout << "Has maximum out-coverage." << endl;
+        	}
+        	continue;
+        }
+
+        // Compute maximum and total coverage for the incoming edges of the target vertex of e.
+        // Don't consider edges flagged as "lowCoverage1".
+        const vertex_descriptor v1 = target(e, anchorGraph);
+        uint64_t maxInCoverage1 = 0;
+        uint64_t totalInCoverage1 = 0;
+        BGL_FORALL_INEDGES(v1, e1, anchorGraph, AnchorGraph) {
+        	const AnchorGraphEdge& edge1 = anchorGraph[e1];
+        	if(edge1.lowCoverage1) {
+        		continue;
+        	}
+        	const uint64_t inCoverage1 = edge1.anchorPair.orientedReadIds.size();
+        	maxInCoverage1 = max(maxInCoverage1, inCoverage1);
+        	totalInCoverage1 += inCoverage1;
+        }
+
+        // If this edge has maximum coverage among the incoming edges of v1,
+        // don't flag it as "lowCoverage2".
+        if(coverage == maxInCoverage1) {
+        	if(debug) {
+        		cout << "Has maximum in-coverage." << endl;
+        	}
+        	continue;
+        }
+
+        // This is not the edge with the most out-coverage of v0
+        // or with the most in-coverage of v1. We will apply an additional
+        // coverage test.
+
+        // Compute the additional coverage threshold we are going to use for this edge.
+        const uint64_t minCoverage2 = uint64_t(std::round(
+        		coverageFractionThreshold *
+				double(min(totalOutCoverage0, totalInCoverage1)) *
+				coverageCorrelation
+				));
+
+        // If coverage is low, flag this edge as "lowCoverage2".
+        if(coverage < minCoverage2) {
+        	edge.lowCoverage2 = true;
+        	if(debug) {
+        		cout << "Flagged as lowCoverage2." << endl;
+        	}
+        }
+
+    }
+
+
+    // Now mark as "useForAssembly" the edges not flagged as "lowCoverage1" or "lowCoverage2".
+    uint64_t useForAssemblyCount = 0;
+    BGL_FORALL_EDGES(e, anchorGraph, AnchorGraph) {
+    	AnchorGraphEdge& edge = anchorGraph[e];
+    	if(not (edge.lowCoverage1 or edge.lowCoverage2)) {
+    		edge.useForAssembly = true;
+    		++useForAssemblyCount;
+    	}
+    	if(debug) {
+            const vertex_descriptor v0 = source(e, anchorGraph);
+            const vertex_descriptor v1 = target(e, anchorGraph);
+            cout << "Flags for edge " << anchorIdToString(v0) << " " << anchorIdToString(v1) << " " <<
+            	edge.lowCoverage1 << " " << edge.lowCoverage2 << " " << edge.useForAssembly << endl;
+    	}
     }
     cout << useForAssemblyCount << " AnchorGraph edges were marked to be used for assembly." << endl;
 
@@ -237,8 +350,9 @@ AnchorGraph::AnchorGraph(
 
 
 
-    const uint64_t maxDistance = 300000;
 #if 0
+    const uint64_t maxDistance = 300000;
+
     // Test search.
     AnchorPair anchorPair;
     uint64_t offset = invalid<uint64_t>;
@@ -257,10 +371,7 @@ AnchorGraph::AnchorGraph(
         cout << "Search failed." << endl;
     }
     return;
-#endif
 
-
-#if 0
     // Eliminate dead ends where possible, using shortest path searches.
     handleDeadEnds(anchors, readLengthDistribution,
         aDrift, bDrift,

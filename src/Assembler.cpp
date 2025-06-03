@@ -222,6 +222,7 @@ void Assembler::createAnchorGraph(const AssemblerOptions& options)
         anchors(), journeys(), readLengthDistribution(),
         options.minAnchorGraphEdgeCoverageNear,
         options.minAnchorGraphEdgeCoverageFar,
+		options.anchorGraphEdgeCoverageFractionThreshold,
         options.aDrift,
         options.bDrift,
         threadCount);
