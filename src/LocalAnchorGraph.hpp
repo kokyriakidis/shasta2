@@ -26,6 +26,7 @@ namespace shasta {
     class LocalAnchorGraphDisplayOptions;
 
     class AnchorGraph;
+    class AssemblyGraph3Postprocessor;
 }
 
 
@@ -42,6 +43,7 @@ public:
     string vertexColoring;
     string similarityMeasure;
     string referenceAnchorIdString;
+    string assemblyStage;
 
     // Edges.
     string edgeColoring;
@@ -100,10 +102,12 @@ public:
 
     void writeHtml(
         ostream& html,
-        const LocalAnchorGraphDisplayOptions&);
+        const LocalAnchorGraphDisplayOptions&,
+        const AssemblyGraph3Postprocessor*);
     void writeHtml1(
         ostream& html,
-        const LocalAnchorGraphDisplayOptions&) const;
+        const LocalAnchorGraphDisplayOptions&,
+        const AssemblyGraph3Postprocessor*) const;
 
     void writeGraphviz(
         const string& fileName,
@@ -119,7 +123,8 @@ private:
     // Html/svg output without using svg output created by Graphviz.
     void writeHtml2(
         ostream& html,
-        const LocalAnchorGraphDisplayOptions&);
+        const LocalAnchorGraphDisplayOptions&,
+        const AssemblyGraph3Postprocessor*);
 
     // The position of each vertex in the computed layout.
     std::map<vertex_descriptor, array<double, 2> > layout;
@@ -142,7 +147,8 @@ private:
 
     void writeVertices(
         ostream& html,
-        const LocalAnchorGraphDisplayOptions&) const;
+        const LocalAnchorGraphDisplayOptions&,
+        const AssemblyGraph3Postprocessor*) const;
 
     void writeEdges(
         ostream& html,

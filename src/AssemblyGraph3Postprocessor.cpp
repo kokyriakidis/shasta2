@@ -1,6 +1,7 @@
 // Shasta
 #include "AssemblyGraph3Postprocessor.hpp"
 #include "Base.hpp"
+#include "deduplicate.hpp"
 using namespace shasta;
 
 // Boost libraries.
@@ -55,4 +56,36 @@ span<const AssemblyGraph3Postprocessor::Annotation>
 {
     const auto p = std::equal_range(annotations.begin(), annotations.end(), Annotation(anchorId));
     return span<const Annotation>(p.first, p.second);
+}
+
+
+
+// Return true if an AnchorId has one or more vertex annotations.
+bool AssemblyGraph3Postprocessor::hasVertexAnnotation(AnchorId anchorId) const
+{
+    const auto annotations = getAnnotations(anchorId);
+    for(const Annotation& annotation: annotations) {
+        if(annotation.v != null_vertex()) {
+            return true;
+        }
+    }
+    return false;
+}
+
+
+
+// Find the edges that an AnchorId has annotations for.
+void AssemblyGraph3Postprocessor::findAnnotationEdges(
+    AnchorId anchorId,
+    vector<edge_descriptor>& edges) const
+{
+    edges.clear();
+
+    const auto annotations = getAnnotations(anchorId);
+    for(const Annotation& annotation: annotations) {
+        if(annotation.v == null_vertex()) {
+            edges.push_back(annotation.e);
+        }
+    }
+    deduplicate(edges);
 }

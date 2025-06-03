@@ -923,6 +923,17 @@ void Assembler::exploreLocalAnchorGraph(
     const AnchorGraph& anchorGraph = *anchorGraphPointer;
 
 
+    // If needed, get the AssemblyGraph3 for this assembly stage.
+    const AssemblyGraph3Postprocessor* assemblyGraph3Pointer = 0;
+    if(displayOptions.vertexColoring == "byAssemblyAnnotations") {
+        const AssemblyGraph3Postprocessor& assemblyGraph3 = getAssemblyGraph3(
+            displayOptions.assemblyStage,
+            *httpServerData.assemblerOptions);
+        assemblyGraph3Pointer = &assemblyGraph3;
+    }
+
+
+
     // Create the LocalAnchorGraph starting from these AnchorIds and moving
     // away up to the specified distance.
     LocalAnchorGraph graph(
@@ -938,6 +949,6 @@ void Assembler::exploreLocalAnchorGraph(
          " vertices and " << num_edges(graph) << " edges.";
 
     // Write it to html.
-    graph.writeHtml(html, displayOptions);
+    graph.writeHtml(html, displayOptions, assemblyGraph3Pointer);
 
 }

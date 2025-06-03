@@ -1,6 +1,7 @@
 // Shasta.
 #include "LocalAnchorGraph.hpp"
 #include "AnchorGraph.hpp"
+#include "AssemblyGraph3Postprocessor.hpp"
 #include "computeLayout.hpp"
 #include "html.hpp"
 #include "HttpServer.hpp"
@@ -391,6 +392,9 @@ LocalAnchorGraphDisplayOptions::LocalAnchorGraphDisplayOptions(const vector<stri
     referenceAnchorIdString = "";
     HttpServer::getParameterValue(request, "referenceAnchorId", referenceAnchorIdString);
 
+    assemblyStage = "";
+    HttpServer::getParameterValue(request, "assemblyStage", assemblyStage);
+
     edgeColoring = "random";
     HttpServer::getParameterValue(request, "edgeColoring", edgeColoring);
 
@@ -498,14 +502,23 @@ void LocalAnchorGraphDisplayOptions::writeForm(ostream& html) const
         (similarityMeasure == "jaccard" ? " checked=on" : "") << ">Jaccard similarity"
         "<br><input type=radio required name=similarityMeasure value='correctedJaccard'" <<
         (similarityMeasure == "correctedJaccard" ? " checked=on" : "") << ">Corrected Jaccard similarity"
-        "</div>"
 
-        "<input type=text name=referenceAnchorId size=6 style='text-align:center'";
-        if(not referenceAnchorIdString.empty()) {
-            html << " value='" << referenceAnchorIdString + "'";
+        "<br><input type=text name=referenceAnchorId size=6 style='text-align:center'";
+    if(not referenceAnchorIdString.empty()) {
+        html << " value='" << referenceAnchorIdString + "'";
+    }
+    html << "> Reference anchor id</div>";
+
+    // Vertex coloring using assembly annotations.
+    html <<
+        "<input type=radio required name=vertexColoring value='byAssemblyAnnotations'" <<
+        (vertexColoring == "byAssemblyAnnotations" ? " checked=on" : "") <<
+        "> By annotations on assembly stage "
+        "<input type=text name=assemblyStage style='text-align:center'";
+        if(not assemblyStage.empty()) {
+            html << " value='" << assemblyStage + "'";
         }
-        html << "> Reference anchor id";
-
+        html << " size=10>";
 
 
     html <<
@@ -549,17 +562,18 @@ void LocalAnchorGraphDisplayOptions::writeForm(ostream& html) const
 
 void LocalAnchorGraph::writeHtml(
     ostream& html,
-    const LocalAnchorGraphDisplayOptions& options)
+    const LocalAnchorGraphDisplayOptions& options,
+    const AssemblyGraph3Postprocessor* assemblyGraph3Pointer)
 {
     if((options.layoutMethod == "dot") and (options.vertexLabels or options.edgeLabels)) {
 
         // Use svg output from graphviz.
-        writeHtml1(html, options);
+        writeHtml1(html, options, assemblyGraph3Pointer);
 
     } else {
 
         // Compute graph layout and use it to generate svg.
-        writeHtml2(html, options);
+        writeHtml2(html, options, assemblyGraph3Pointer);
 
     }
 }
@@ -569,7 +583,8 @@ void LocalAnchorGraph::writeHtml(
 // This is the code that uses svg output from graphviz.
 void LocalAnchorGraph::writeHtml1(
     ostream& html,
-    const LocalAnchorGraphDisplayOptions& options) const
+    const LocalAnchorGraphDisplayOptions& options,
+    const AssemblyGraph3Postprocessor* /* assemblyGraph3Pointer */) const
 {
 
 
@@ -633,7 +648,8 @@ void LocalAnchorGraph::writeHtml1(
 // then creates the svg.
 void LocalAnchorGraph::writeHtml2(
     ostream& html,
-    const LocalAnchorGraphDisplayOptions& options)
+    const LocalAnchorGraphDisplayOptions& options,
+    const AssemblyGraph3Postprocessor* assemblyGraph3Pointer)
 {
     // Use scientific notation because svg does not accept floating points
     // ending with a decimal point.
@@ -663,7 +679,7 @@ void LocalAnchorGraph::writeHtml2(
     writeEdges(html, options);
 
     // Write the vertices.
-    writeVertices(html, options);
+    writeVertices(html, options, assemblyGraph3Pointer);
 
     // Finish the svg.
     html << "</svg></div>";
@@ -777,9 +793,14 @@ void LocalAnchorGraph::Box::extend(double factor)
 
 void LocalAnchorGraph::writeVertices(
     ostream& html,
-    const LocalAnchorGraphDisplayOptions& options) const
+    const LocalAnchorGraphDisplayOptions& options,
+    const AssemblyGraph3Postprocessor* assemblyGraph3Pointer) const
 {
     const LocalAnchorGraph& graph = *this;
+
+    if(options.vertexColoring == "byAssemblyAnnotations") {
+        SHASTA_ASSERT(assemblyGraph3Pointer);
+    }
 
     const double scalingFactor =
         (options.layoutMethod == "sfdp") ? 0.002 : 0.01;
@@ -816,13 +837,24 @@ void LocalAnchorGraph::writeVertices(
             anchors.analyzeAnchorPair(referenceAnchorId, anchorId, info);
         }
 
+        // Get annotation information, if needed.
+        bool hasVertexAnnotation = false;
+        vector<AssemblyGraph3::edge_descriptor> annotationEdges;
+        if(options.vertexColoring == "byAssemblyAnnotations") {
+            hasVertexAnnotation = assemblyGraph3Pointer->hasVertexAnnotation(anchorId);
+            if(not hasVertexAnnotation) {
+                assemblyGraph3Pointer->findAnnotationEdges(anchorId, annotationEdges);
+            }
+        }
+
+
         // Choose the color for this vertex.
         string color;
         if(vertex.distance == maxDistance) {
             color = "Cyan";
         } else if(vertex.distance == 0) {
             color = "Blue";
-        } else {
+        } else if(options.vertexColoring == "byReadComposition") {
 
             // Color by similarity of read composition with the reference Anchor.
             if(options.vertexColoring == "byReadComposition") {
@@ -842,11 +874,27 @@ void LocalAnchorGraph::writeVertices(
                 color = "hsl(" + to_string(uint32_t(std::round(hue * 120.))) +
                     ",100%,50%)";
 
-            } else {
-
-                color = "Black";
             }
+        } else if(options.vertexColoring == "byAssemblyAnnotations") {
+            if(hasVertexAnnotation) {
+                color = "Red";
+            } else {
+                if(annotationEdges.size() > 1) {
+                    color = "Green";    // Multiple segments
+                } else if(annotationEdges.size() == 1) {
+                    const uint64_t segmentId = (*assemblyGraph3Pointer)[annotationEdges.front()].id;
+                    const uint32_t hashValue = MurmurHash2(&segmentId, sizeof(segmentId), 759);
+                    const uint32_t hue = hashValue % 360;
+                    color = "hsl(" + to_string(hue) + ",50%,50%)";
+                } else {
+                    color = "Black";
+                }
+            }
+        } else {
+            color = "Black";
         }
+
+
 
         // Hyperlink.
         html << "\n<a href='exploreAnchor?anchorIdString=" <<
@@ -864,6 +912,16 @@ void LocalAnchorGraph::writeVertices(
                 ", J' " << info.correctedJaccard();
             if(info.common > 0) {
                 html << ", offset " << info.offsetInBases;
+            }
+        }
+        if(options.vertexColoring == "byAssemblyAnnotations") {
+            if(hasVertexAnnotation) {
+                html << ", assembly graph vertex";
+            } else if(annotationEdges.size() > 1) {
+                html << ", multiple segments";
+            } else if(annotationEdges.size() == 1) {
+                const uint64_t segmentId = (*assemblyGraph3Pointer)[annotationEdges.front()].id;
+                html << ", segment " << segmentId;
             }
         }
         html << "</title></circle>";

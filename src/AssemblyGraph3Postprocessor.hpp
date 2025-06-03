@@ -75,5 +75,11 @@ public:
     void computeAnnotations();
     span<const Annotation> getAnnotations(AnchorId) const;
 
+    // Return true if an AnchorId has one or more vertex annotations.
+    bool hasVertexAnnotation(AnchorId) const;
+
+    // Find the edges that an AnchorId has annotations for.
+    void findAnnotationEdges(AnchorId, vector<edge_descriptor>&) const;
+
 };
 
