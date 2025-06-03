@@ -423,6 +423,19 @@ void Assembler::exploreSegment(
     }
     html << "</table>";
 
+    html <<
+        "<br><a href='exploreLocalAnchorGraph?anchorIdsString=" <<
+        HttpServer::urlEncode(anchorIdToString(edge.front().anchorPair.anchorIdA)) <<
+        "'>See the first anchor in the local anchor graph</a>"
+        "<br><a href='exploreLocalAnchorGraph?anchorIdsString=" <<
+        HttpServer::urlEncode(anchorIdToString(edge.back().anchorPair.anchorIdB)) <<
+        "'>See the last anchor in the local anchor graph</a>"
+        "<br><a href='exploreLocalAnchorGraph?anchorIdsString=" <<
+        HttpServer::urlEncode(
+            anchorIdToString(edge.front().anchorPair.anchorIdA) + " " +
+            anchorIdToString(edge.back().anchorPair.anchorIdB)) <<
+        "'>See the first and last anchor in the local anchor graph</a>";
+
 
     // Figure out the step position range to use.
     uint64_t stepBegin = invalid<uint64_t>;
@@ -532,7 +545,24 @@ void Assembler::exploreSegment(
         }
 
         html << "</table>";
+
+        // Link to the local anchor graph showing these anchors.
+        {
+            const AssemblyGraph3EdgeStep& firstStep = edge[stepBegin];
+            const AnchorId anchorIdA = firstStep.anchorPair.anchorIdA;
+            string url = "exploreLocalAnchorGraph?anchorIdsString=" + anchorIdToString(anchorIdA);
+            for(uint64_t stepId=stepBegin; stepId!=stepEnd; ++stepId) {
+                const AssemblyGraph3EdgeStep& step = edge[stepId];
+                const AnchorId anchorIdB = step.anchorPair.anchorIdB;
+                url += " ";
+                url += HttpServer::urlEncode(anchorIdToString(anchorIdB));
+            }
+
+            html << "<br><a href='"<< url <<
+            "'>See these anchors in the local anchor graph</a>";
+        }
     }
+
 
 
 
