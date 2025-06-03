@@ -550,15 +550,15 @@ void Assembler::exploreSegment(
         {
             const AssemblyGraph3EdgeStep& firstStep = edge[stepBegin];
             const AnchorId anchorIdA = firstStep.anchorPair.anchorIdA;
-            string url = "exploreLocalAnchorGraph?anchorIdsString=" + anchorIdToString(anchorIdA);
+            string urlAnchors = anchorIdToString(anchorIdA);
             for(uint64_t stepId=stepBegin; stepId!=stepEnd; ++stepId) {
                 const AssemblyGraph3EdgeStep& step = edge[stepId];
                 const AnchorId anchorIdB = step.anchorPair.anchorIdB;
-                url += " ";
-                url += HttpServer::urlEncode(anchorIdToString(anchorIdB));
+                urlAnchors += " ";
+                urlAnchors += anchorIdToString(anchorIdB);
             }
 
-            html << "<br><a href='"<< url <<
+            html << "<br><a href='exploreLocalAnchorGraph?anchorIdsString="<< HttpServer::urlEncode(urlAnchors) <<
             "'>See these anchors in the local anchor graph</a>";
         }
     }
