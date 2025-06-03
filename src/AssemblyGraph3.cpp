@@ -212,6 +212,7 @@ void AssemblyGraph3::write(const string& stage)
 
     save(stage);
     writeGfa("AssemblyGraph3-" + stage + ".gfa");
+    writeGraphviz("AssemblyGraph3-" + stage + ".dot");
 }
 
 
@@ -293,6 +294,55 @@ void AssemblyGraph3::writeGfa(ostream& gfa) const
     }
 
 
+}
+
+
+
+void AssemblyGraph3::writeGraphviz(const string& fileName) const
+{
+    ofstream dot(fileName);
+    writeGraphviz(dot);
+}
+
+
+
+void AssemblyGraph3::writeGraphviz(ostream& dot) const
+{
+    const AssemblyGraph3& assemblyGraph3 = *this;
+
+    dot << "digraph AssemblyGraph3 {\n";
+
+
+
+    // Write the vertices.
+    BGL_FORALL_VERTICES(v, assemblyGraph3, AssemblyGraph3) {
+    	const AssemblyGraph3Vertex& vertex = assemblyGraph3[v];
+    	dot <<
+    		vertex.id <<
+    		" [label=\"" << anchorIdToString(vertex.anchorId) << "\"]"
+    	    ";\n";
+    }
+
+
+
+    // Write the edges.
+    BGL_FORALL_EDGES(e, assemblyGraph3, AssemblyGraph3) {
+        const AssemblyGraph3Edge& edge = assemblyGraph3[e];
+    	const vertex_descriptor v0 = source(e, assemblyGraph3);
+    	const vertex_descriptor v1 = target(e, assemblyGraph3);
+    	const AssemblyGraph3Vertex& vertex0 = assemblyGraph3[v0];
+    	const AssemblyGraph3Vertex& vertex1 = assemblyGraph3[v1];
+    	dot <<
+    	    vertex0.id << "->" <<
+    	    vertex1.id <<
+    	    " [label=\"" << edge.id << "\\n" <<
+    	    (edge.wasAssembled ? edge.sequenceLength() : edge.offset()) <<
+    	    "\\n" << edge.size() <<
+    	    "\"]"
+    	    ";\n";
+    }
+
+    dot << "}\n";
 }
 
 
