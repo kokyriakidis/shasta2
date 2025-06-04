@@ -166,6 +166,11 @@ void AssemblerOptions::addOptions()
         "MinLogPDelta value for chi-square detangling."
         )->capture_default_str();
 
+    add_option("--prune-length",
+        pruneLength,
+        "Maximum length of a hanging segments to be pruned."
+        )->capture_default_str();
+
     add_option("--local-assembly-estimated-offset-ratio",
         localAssemblyOptions.estimatedOffsetRatio,
         "Estimated offset ratio for local assembly."

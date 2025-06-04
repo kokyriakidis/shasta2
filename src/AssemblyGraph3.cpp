@@ -139,10 +139,15 @@ void AssemblyGraph3::run(uint64_t threadCount)
     // Initial output.
     write("A");
 
+    // Prune.
+    prune(assemblerOptions.pruneLength);
+    compress();
+    write("B");
+
     // Bubble cleanup.
     bubbleCleanup(threadCount);
     compress();
-    write("B");
+    write("C");
 
     // Detangling.
     ChiSquareDetangler detangler(
@@ -151,7 +156,7 @@ void AssemblyGraph3::run(uint64_t threadCount)
         assemblerOptions.assemblyGraphOptions.detangleMaxLogP,
         assemblerOptions.assemblyGraphOptions.detangleMinLogPDelta);
     detangle(maxIterationCount, detangler);
-    write("C");
+    write("D");
 
     // Sequence assembly.
     assembleAll(threadCount);
@@ -1014,4 +1019,61 @@ bool AssemblyGraph3::detangle(uint64_t maxIterationCount, Detangler& detangler)
     }
 
     return success;
+}
+
+
+
+void AssemblyGraph3::prune(uint64_t pruneLength)
+{
+    AssemblyGraph3& assemblyGraph3 = *this;
+
+    vector<vertex_descriptor> verticesToBeRemoved;
+    vector<edge_descriptor> edgesToBeRemoved;
+    while(true) {
+
+        // Edge pruning for this iteration.
+        edgesToBeRemoved.clear();
+        uint64_t pruneCount = 0;
+        uint64_t prunedLength = 0;
+        BGL_FORALL_EDGES(e, assemblyGraph3, AssemblyGraph3) {
+            const uint64_t offset = assemblyGraph3[e].offset();
+
+            // If long enough, don't prune it.
+            if(offset > pruneLength) {
+                continue;
+            }
+
+            // See if it can be pruned.
+            const vertex_descriptor v0 = source(e, assemblyGraph3);
+            const vertex_descriptor v1 = target(e, assemblyGraph3);
+            if((in_degree(v0, assemblyGraph3) == 0) or (out_degree(v1, assemblyGraph3) == 0)) {
+                edgesToBeRemoved.push_back(e);
+                ++pruneCount;
+                prunedLength += offset;
+            }
+        }
+
+        // Remove the edges.
+        for(const edge_descriptor e: edgesToBeRemoved) {
+            boost::remove_edge(e, assemblyGraph3);
+        }
+
+        // Now remove any vertices that are left isolated.
+        verticesToBeRemoved.clear();
+        BGL_FORALL_VERTICES(v, assemblyGraph3, AssemblyGraph3) {
+            if((in_degree(v, assemblyGraph3) == 0) and (out_degree(v, assemblyGraph3) == 0)) {
+                verticesToBeRemoved.push_back(v);
+            }
+        }
+        for(const vertex_descriptor v: verticesToBeRemoved) {
+            boost::remove_vertex(v, assemblyGraph3);
+        }
+
+        cout << "Prune iteration removed " << pruneCount <<
+            " edges with total estimated length " << prunedLength << endl;
+
+        if(pruneCount == 0) {
+            break;
+        }
+    }
 }

@@ -71,6 +71,7 @@ public:
         double detangleMinLogPDelta = 10.;
     };
     AssemblyGraphOptions assemblyGraphOptions;
+    uint64_t pruneLength = 50000;
 
     class LocalAssemblyOptions {
     public:

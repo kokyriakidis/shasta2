@@ -157,6 +157,8 @@ private:
     void bubbleCleanup(uint64_t threadCount);
     uint64_t bubbleCleanupIteration(uint64_t threadCount);
 
+    void prune(uint64_t pruneLength);
+
 public:
     // Compress linear chains of edges into a single edge.
     void compress();
