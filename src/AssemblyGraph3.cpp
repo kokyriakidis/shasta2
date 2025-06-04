@@ -7,6 +7,7 @@
 #include "Detangler.hpp"
 #include "ExactDetangler.hpp"
 #include "findLinearChains.hpp"
+#include "inducedSubgraphIsomorphisms.hpp"
 #include "LocalAssembly2.hpp"
 #include "performanceLog.hpp"
 #include "rle.hpp"
@@ -136,6 +137,7 @@ void AssemblyGraph3::run(uint64_t threadCount)
     // AssemblyGraph3& assemblyGraph3 = *this;
     const uint64_t maxIterationCount = 10;
 
+
     // Initial output.
     write("A");
 
@@ -150,6 +152,7 @@ void AssemblyGraph3::run(uint64_t threadCount)
     write("C");
 
     // Detangling.
+    createTangleTemplates();
     ChiSquareDetangler detangler(
         assemblerOptions.assemblyGraphOptions.detangleMinCommonCoverage,
         assemblerOptions.assemblyGraphOptions.detangleEpsilon,
@@ -992,6 +995,11 @@ bool AssemblyGraph3::detangleIteration(Detangler& detangler)
     success = success or detangleEdges(detangler);
     compress();
 
+    for(const TangleTemplate& tangleTemplate: tangleTemplates) {
+        detangle(tangleTemplate, detangler);
+        compress();
+    }
+
     return success;
 }
 
@@ -1076,4 +1084,189 @@ void AssemblyGraph3::prune(uint64_t pruneLength)
             break;
         }
     }
+}
+
+
+
+
+void AssemblyGraph3::createTangleTemplates()
+{
+
+    tangleTemplates.emplace_back(4);
+    {
+        TangleTemplate& g = tangleTemplates.back();
+        add_edge(0, 1, g);
+        add_edge(1, 2, g);
+        add_edge(1, 2, g);
+        add_edge(2, 3, g);
+    }
+
+    tangleTemplates.emplace_back(3);
+    {
+        TangleTemplate& g = tangleTemplates.back();
+        add_edge(0, 1, g);
+        add_edge(0, 1, g);
+        add_edge(1, 2, g);
+        tangleTemplates.push_back(reverse(g));
+    }
+
+    tangleTemplates.emplace_back(6);
+    {
+        TangleTemplate& g = tangleTemplates.back();
+        add_edge(0, 1, g);
+        add_edge(1, 2, g);
+        add_edge(1, 2, g);
+        add_edge(2, 3, g);
+        add_edge(3, 4, g);
+        add_edge(3, 4, g);
+        add_edge(4, 5, g);
+    }
+
+    tangleTemplates.emplace_back(8);
+    {
+        TangleTemplate& g = tangleTemplates.back();
+        add_edge(0, 1, g);
+        add_edge(1, 2, g);
+        add_edge(1, 2, g);
+        add_edge(2, 3, g);
+        add_edge(3, 4, g);
+        add_edge(3, 4, g);
+        add_edge(4, 5, g);
+        add_edge(5, 6, g);
+        add_edge(5, 6, g);
+        add_edge(6, 7, g);
+    }
+
+    // Skip four bubbles.
+    tangleTemplates.emplace_back(10);
+    {
+        TangleTemplate& g = tangleTemplates.back();
+        add_edge(0, 1, g);
+        add_edge(1, 2, g);
+        add_edge(1, 2, g);
+        add_edge(2, 3, g);
+        add_edge(3, 4, g);
+        add_edge(3, 4, g);
+        add_edge(4, 5, g);
+        add_edge(5, 6, g);
+        add_edge(5, 6, g);
+        add_edge(6, 7, g);
+        add_edge(7, 8, g);
+        add_edge(7, 8, g);
+        add_edge(8, 9, g);
+    }
+
+    tangleTemplates.emplace_back(6);
+    {
+        TangleTemplate& g = tangleTemplates.back();
+        add_edge(0, 1, g);
+        add_edge(1, 2, g);
+        add_edge(1, 3, g);
+        add_edge(2, 4, g);
+        add_edge(2, 5, g);
+        add_edge(3, 4, g);
+        add_edge(3, 5, g);
+        tangleTemplates.push_back(reverse(g));
+    }
+
+    tangleTemplates.emplace_back(8);
+    {
+        TangleTemplate& g = tangleTemplates.back();
+        add_edge(0, 1, g);
+        add_edge(1, 2, g);
+        add_edge(1, 3, g);
+        add_edge(2, 4, g);
+        add_edge(2, 5, g);
+        add_edge(3, 4, g);
+        add_edge(3, 5, g);
+        add_edge(4, 6, g);
+        add_edge(5, 6, g);
+        add_edge(6, 7, g);
+    }
+
+
+    tangleTemplates.emplace_back(5);
+    {
+        TangleTemplate& g = tangleTemplates.back();
+        add_edge(0, 1, g);
+        add_edge(1, 2, g);
+        add_edge(1, 3, g);
+        add_edge(1, 4, g);
+        add_edge(2, 3, g);
+        add_edge(2, 4, g);
+        tangleTemplates.push_back(reverse(g));
+    }
+
+    tangleTemplates.emplace_back(6);
+    {
+        TangleTemplate& g = tangleTemplates.back();
+        add_edge(0, 1, g);
+        add_edge(1, 2, g);
+        add_edge(1, 3, g);
+        add_edge(2, 3, g);
+        add_edge(2, 4, g);
+        add_edge(3, 4, g);
+        add_edge(4, 5, g);
+    }
+
+    for(uint64_t i=0; i<tangleTemplates.size(); i++) {
+        const TangleTemplate& tangleTemplate = tangleTemplates[i];
+        const string dotFileName = "TangleTemplate-" + to_string(i) + ".dot";
+        ofstream dot(dotFileName);
+        writeGraphviz(dot, tangleTemplate);
+        dot.close();
+        std::system(("dot -O -T svg -Nshape=rectangle " + dotFileName).c_str());
+    }
+}
+
+
+
+
+// This reverses all of the edges of the TangleTemplate.
+// We can't use boost::reverse_graph because that creates
+// a graph of a different type.
+AssemblyGraph3::TangleTemplate AssemblyGraph3::reverse(const TangleTemplate& x)
+{
+    TangleTemplate y(num_vertices(x));
+
+    BGL_FORALL_EDGES(e, x, TangleTemplate) {
+        add_edge(target(e, x), source(e, x), y);
+    }
+    return y;
+}
+
+
+
+void AssemblyGraph3::writeGraphviz(ostream& s, const TangleTemplate& g)
+{
+    s << "digraph TangleTemplate {\n";
+
+    BGL_FORALL_VERTICES(v, g, TangleTemplate) {
+        s << v << ";\n";
+    }
+
+    BGL_FORALL_EDGES(e, g, TangleTemplate) {
+        const auto v0 = source(e, g);
+        const auto v1 = target(e, g);
+        s << v0 << "->" << v1 << ";\n";
+    }
+
+    s << "}\n";
+}
+
+
+
+// One iteration of detangling using a given TangleTemplate.
+bool AssemblyGraph3::detangle(
+    const TangleTemplate& tangleTemplate,
+    Detangler& detangler)
+{
+    AssemblyGraph3& assemblyGraph3 = *this;
+    vector< vector<vertex_descriptor> > detanglingCandidates;
+    inducedSubgraphIsomorphisms(assemblyGraph3, tangleTemplate, detanglingCandidates);
+
+    cout << "Found " << detanglingCandidates.size() << " instances for the requested Tangle template." << endl;
+
+    // Do the detangling.
+    return detangle(detanglingCandidates, detangler);
 }

@@ -183,7 +183,15 @@ public:
     // Multiple iterations of all usable detangling functions using the given Detangler.
     bool detangle(uint64_t maxIterationCount, Detangler&);
 
+    // Detangle using tangle templates.
+    using TangleTemplate = boost::adjacency_list<boost::listS, boost::vecS, boost::bidirectionalS>;
+    static void writeGraphviz(ostream&, const TangleTemplate&);
+    static TangleTemplate reverse(const TangleTemplate&);
+    vector<TangleTemplate> tangleTemplates;
+    void createTangleTemplates();
 
+    // One iteration of detangling using a given TangleTemplate.
+    bool detangle(const TangleTemplate&, Detangler&);
 
     // Output.
 public:
