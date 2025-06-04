@@ -877,15 +877,7 @@ bool AssemblyGraph3::detangleEdges(Detangler& detangler)
     BGL_FORALL_EDGES(e, assemblyGraph3, AssemblyGraph3) {
         const vertex_descriptor v0 = source(e, assemblyGraph3);
         const vertex_descriptor v1 = target(e, assemblyGraph3);
-
-        // For now only do the most common case.
-        if(
-            (out_degree(v0, assemblyGraph3) == 1) and   // e is only out-edge of v0
-            (in_degree (v1, assemblyGraph3) == 1)       // e is only in-edge of v1
-            ) {
-            detanglingCandidates.emplace_back(vector<vertex_descriptor>({v0, v1}));
-        }
-
+        detanglingCandidates.emplace_back(vector<vertex_descriptor>({v0, v1}));
     }
 
 
@@ -961,6 +953,9 @@ bool AssemblyGraph3::detangle(
         if(success) {
             if(debug) {
                 cout << "Detangle was successful." << endl;
+            }
+            for(vertex_descriptor v: tangle.removedVertices) {
+                removedVertices.insert(v);
             }
             ++successCount;
         } else {
