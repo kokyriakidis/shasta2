@@ -989,14 +989,21 @@ bool AssemblyGraph3::detangleIteration(Detangler& detangler)
 {
     bool success = false;
 
-    success = success or detangleVertices(detangler);
+    const bool verticesSuccess = detangleVertices(detangler);
+    success = success or verticesSuccess;
     compress();
 
-    success = success or detangleEdges(detangler);
+    const bool edgesSuccess = success or detangleEdges(detangler);
+    success = success or edgesSuccess;
     compress();
 
-    for(const TangleTemplate& tangleTemplate: tangleTemplates) {
-        detangle(tangleTemplate, detangler);
+    for(uint64_t tangleTemplateId=0; tangleTemplateId<tangleTemplates.size(); tangleTemplateId++) {
+        const TangleTemplate& tangleTemplate = tangleTemplates[tangleTemplateId];
+        cout << "Working on tangle template " << tangleTemplateId <<
+            " with " << num_vertices(tangleTemplate) <<
+            " vertices and " << num_edges(tangleTemplate) << " edges." << endl;
+        const bool templateSuccess = detangle(tangleTemplate, detangler);
+        success = success or templateSuccess;
         compress();
     }
 
@@ -1207,6 +1214,16 @@ void AssemblyGraph3::createTangleTemplates()
         add_edge(2, 4, g);
         add_edge(3, 4, g);
         add_edge(4, 5, g);
+    }
+
+    tangleTemplates.emplace_back(4);
+    {
+        TangleTemplate& g = tangleTemplates.back();
+        add_edge(0, 1, g);
+        add_edge(1, 2, g);
+        add_edge(1, 3, g);
+        add_edge(2, 3, g);
+        tangleTemplates.push_back(reverse(g));
     }
 
     for(uint64_t i=0; i<tangleTemplates.size(); i++) {
