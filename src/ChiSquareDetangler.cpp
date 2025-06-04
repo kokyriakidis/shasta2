@@ -45,7 +45,18 @@ bool ChiSquareDetangler::operator()(Tangle3& tangle)
     }
 
     if(debug) {
-        cout << "Working on tangle matrix:" << endl;
+        cout << "Working on a tangle with " << entranceCount << " entrances and " << exitCount << " exits." << endl;
+        cout << "Entrances:";
+        for(const auto& entrance: tangleMatrix.entrances) {
+            cout << " " << tangle.assemblyGraph3[entrance.e].id;
+        }
+        cout << endl;
+        cout << "Exits:";
+        for(const auto& exit: tangleMatrix.exits) {
+            cout << " " << tangle.assemblyGraph3[exit.e].id;
+        }
+        cout << endl;
+        cout << "Tangle matrix:" << endl;
         for(uint64_t iEntrance=0; iEntrance<entranceCount; iEntrance++) {
             for(uint64_t iExit=0; iExit<exitCount; iExit++) {
                 const uint64_t coverage = tangleMatrix.tangleMatrix[iEntrance][iExit].size();
