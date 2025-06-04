@@ -3,6 +3,7 @@
 #include "Anchor.hpp"
 #include "AnchorGraph.hpp"
 #include "AssemblerOptions.hpp"
+#include "ChiSquareDetangler.hpp"
 #include "Detangler.hpp"
 #include "ExactDetangler.hpp"
 #include "findLinearChains.hpp"
@@ -144,11 +145,11 @@ void AssemblyGraph3::run(uint64_t threadCount)
     write("B");
 
     // Detangling.
-    SimpleDetangler detangler(
+    ChiSquareDetangler detangler(
         assemblerOptions.assemblyGraphOptions.detangleMinCommonCoverage,
-        assemblerOptions.assemblyGraphOptions.detangleLowCoverageThreshold,
-        assemblerOptions.assemblyGraphOptions.detangleHighCoverageThreshold,
-        assemblerOptions.assemblyGraphOptions.detangleInitialMaxBaseOffset);
+        assemblerOptions.assemblyGraphOptions.detangleEpsilon,
+        assemblerOptions.assemblyGraphOptions.detangleMaxLogP,
+        assemblerOptions.assemblyGraphOptions.detangleMinLogPDelta);
     detangle(maxIterationCount, detangler);
     write("C");
 

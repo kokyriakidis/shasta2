@@ -68,7 +68,7 @@ public:
         uint64_t detangleInitialMaxBaseOffset = 30000;
         double detangleEpsilon = 0.05;
         double detangleMaxLogP = 30.;
-        double detangleMinLogPDelta = 100.;
+        double detangleMinLogPDelta = 10.;
     };
     AssemblyGraphOptions assemblyGraphOptions;
 

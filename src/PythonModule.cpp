@@ -6,6 +6,7 @@
 #include "AssemblyGraphPostprocessor.hpp"
 #include "AssemblyGraph3Postprocessor.hpp"
 #include "Base.hpp"
+#include "ChiSquareDetangler.hpp"
 #include "deduplicate.hpp"
 #include "Detangler.hpp"
 #include "diploidBayesianPhase.hpp"
@@ -203,7 +204,10 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         pybind11::base<AssemblyGraph3>());
 
 
+
+    // Detangler classes.
     class_<Detangler>(shasta2Module, "Detangler")
+        .def_readwrite("debug", &Detangler::debug)
         ;
     class_<TrivialDetangler>(shasta2Module, "TrivialDetangler", pybind11::base<Detangler>())
         .def(init<uint64_t>())
@@ -214,6 +218,10 @@ PYBIND11_MODULE(shasta2, shasta2Module)
     class_<PermutationDetangler>(shasta2Module, "PermutationDetangler", pybind11::base<Detangler>())
         .def(init<uint64_t, double, double, double>())
         ;
+    class_<ChiSquareDetangler>(shasta2Module, "ChiSquareDetangler", pybind11::base<Detangler>())
+        .def(init<uint64_t, double, double, double>())
+        ;
+
 
 
     // Non-member functions exposed to Python.
