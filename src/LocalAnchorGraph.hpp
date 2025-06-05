@@ -111,12 +111,12 @@ public:
 
     void writeGraphviz(
         const string& fileName,
-        const LocalAnchorGraphDisplayOptions&
-        ) const;
+        const LocalAnchorGraphDisplayOptions&,
+        const AssemblyGraph3Postprocessor*) const;
     void writeGraphviz(
         ostream&,
-        const LocalAnchorGraphDisplayOptions&
-        ) const;
+        const LocalAnchorGraphDisplayOptions&,
+        const AssemblyGraph3Postprocessor*) const;
 
 private:
 

@@ -151,21 +151,27 @@ LocalAnchorGraph::LocalAnchorGraph(
 
 void LocalAnchorGraph::writeGraphviz(
     const string& fileName,
-    const LocalAnchorGraphDisplayOptions& options) const
+    const LocalAnchorGraphDisplayOptions& options,
+    const AssemblyGraph3Postprocessor* assemblyGraph3Pointer) const
 {
     ofstream file(fileName);
-    writeGraphviz(file, options);
+    writeGraphviz(file, options, assemblyGraph3Pointer);
 }
 
 
 
 void LocalAnchorGraph::writeGraphviz(
     ostream& s,
-    const LocalAnchorGraphDisplayOptions& options) const
+    const LocalAnchorGraphDisplayOptions& options,
+    const AssemblyGraph3Postprocessor* assemblyGraph3Pointer) const
 {
     const LocalAnchorGraph& graph = *this;
     SHASTA_ASSERT(anchorGraphPointer);
     const AnchorGraph& anchorGraph = *anchorGraphPointer;
+
+    if(options.vertexColoring == "byAssemblyAnnotations") {
+        SHASTA_ASSERT(assemblyGraph3Pointer);
+    }
 
     AnchorId referenceAnchorId = invalid<AnchorId>;
     if(options.vertexColoring == "byReadComposition") {
@@ -187,6 +193,29 @@ void LocalAnchorGraph::writeGraphviz(
         const string anchorIdString = anchorIdToString(anchorId);
         const uint64_t coverage = anchors[anchorId].coverage();
 
+        // Get annotation information, if needed.
+        bool hasVertexAnnotation = false;
+        vector<AssemblyGraph3::edge_descriptor> annotationEdges;
+        if(options.vertexColoring == "byAssemblyAnnotations") {
+            hasVertexAnnotation = assemblyGraph3Pointer->hasVertexAnnotation(anchorId);
+            if(not hasVertexAnnotation) {
+                assemblyGraph3Pointer->findAnnotationEdges(anchorId, annotationEdges);
+            }
+        }
+
+        // Annotation text.
+        string annotationText;
+        if(options.vertexColoring == "byAssemblyAnnotations") {
+            if(hasVertexAnnotation) {
+                annotationText = "Vertex";
+            } else if(annotationEdges.size() > 1) {
+                annotationText = "Multiple";
+            } else if(annotationEdges.size() == 1) {
+                const uint64_t segmentId = (*assemblyGraph3Pointer)[annotationEdges.front()].id;
+                annotationText = to_string(segmentId);
+            }
+        }
+
         // Vertex name.
         s << "\"" << anchorIdString << "\"";
 
@@ -197,11 +226,19 @@ void LocalAnchorGraph::writeGraphviz(
         s << "URL=\"exploreAnchor?anchorIdString=" << HttpServer::urlEncode(anchorIdString) << "\"";
 
         // Tooltip.
-        s << " tooltip=\"" << anchorIdString << " " << coverage << "\"";
+        s << " tooltip=\"" << anchorIdString << " " << coverage;
+        if(not annotationText.empty()) {
+            s << " " << annotationText;
+        }
+        s << "\"";
 
         // Label.
         if(options.vertexLabels) {
-            s << " label=\"" << anchorIdString << "\\n" << coverage << "\"";
+            s << " label=\"" << anchorIdString << "\\n" << coverage;
+            if(not annotationText.empty()) {
+                s << "\\n" << annotationText;
+            }
+            s << "\"";
         }
 
 
@@ -231,14 +268,29 @@ void LocalAnchorGraph::writeGraphviz(
                     hue = info.correctedJaccard();
                  }
 
-                const string colorString = "\"" + to_string(hue / 3.) + " 1. 1.\"";
+                const string colorString = "\"" + to_string(hue / 3.) + " 1 1\"";
                 if(options.vertexLabels) {
                     s << " style=filled fillcolor=" << colorString;
                 } else {
                     s << " color=" << colorString;
                     s << " fillcolor=" << colorString;
                 }
-             }
+            } else if(options.vertexColoring == "byAssemblyAnnotations") {
+                if(hasVertexAnnotation) {
+                    s << " style=filled fillcolor=Red";
+                } else {
+                    if(annotationEdges.size() > 1) {
+                        s << " style=filled fillcolor=Green";    // Multiple segments
+                    } else if(annotationEdges.size() == 1) {
+                        const uint64_t segmentId = (*assemblyGraph3Pointer)[annotationEdges.front()].id;
+                        const uint32_t hashValue = MurmurHash2(&segmentId, sizeof(segmentId), 759);
+                        const uint32_t hue = hashValue % 1000;
+                        s << "style=filled fillcolor=\"" << double(hue / 1000.) << " .6 .9\"";
+                    }
+                }
+            } else {
+                SHASTA_ASSERT(0);
+            }
         }
 
 
@@ -584,14 +636,14 @@ void LocalAnchorGraph::writeHtml(
 void LocalAnchorGraph::writeHtml1(
     ostream& html,
     const LocalAnchorGraphDisplayOptions& options,
-    const AssemblyGraph3Postprocessor* /* assemblyGraph3Pointer */) const
+    const AssemblyGraph3Postprocessor* assemblyGraph3Pointer) const
 {
 
 
         // Write it out in graphviz format.
         const string uuid = to_string(boost::uuids::random_generator()());
         const string dotFileName = tmpDirectory() + uuid + ".dot";
-        writeGraphviz(dotFileName, options);
+        writeGraphviz(dotFileName, options, assemblyGraph3Pointer);
 
         // Use graphviz to compute the layout.
         const string svgFileName = dotFileName + ".svg";
