@@ -11,6 +11,7 @@
 #include "Detangler.hpp"
 #include "diploidBayesianPhase.hpp"
 #include "extractKmer128.hpp"
+#include "findConvergingVertex.hpp"
 #include "globalMsa.hpp"
 #include "LongBaseSequence.hpp"
 #include "mappedCopy.hpp"
@@ -269,6 +270,9 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         );
     shasta2Module.def("testSubsetGraph",
         testSubsetGraph
+        );
+    shasta2Module.def("testFindConvergingVertex",
+        testFindConvergingVertex
         );
     shasta2Module.def("globalMsaPython",
         globalMsaPython
