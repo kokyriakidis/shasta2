@@ -7,6 +7,7 @@
 #include "Detangler.hpp"
 #include "ExactDetangler.hpp"
 #include "findLinearChains.hpp"
+#include "findConvergingVertex.hpp"
 #include "inducedSubgraphIsomorphisms.hpp"
 #include "LocalAssembly2.hpp"
 #include "performanceLog.hpp"
@@ -22,6 +23,7 @@ using namespace shasta;
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/graph/adj_list_serialize.hpp>
 #include <boost/graph/filtered_graph.hpp>
+#include <boost/graph/reverse_graph.hpp>
 
 // Standard library.
 #include <fstream.hpp>
@@ -328,7 +330,7 @@ void AssemblyGraph3::writeGraphviz(ostream& dot) const
     	const AssemblyGraph3Vertex& vertex = assemblyGraph3[v];
     	dot <<
     		vertex.id <<
-    		" [label=\"" << anchorIdToString(vertex.anchorId) << "\"]"
+    		" [label=\"" << anchorIdToString(vertex.anchorId) << "\\n" << vertex.id << "\"]"
     	    ";\n";
     }
 
@@ -1286,4 +1288,113 @@ bool AssemblyGraph3::detangle(
 
     // Do the detangling.
     return detangle(detanglingCandidates, detangler);
+}
+
+
+
+void AssemblyGraph3::findSuperbubbles(
+    uint64_t maxDistance,
+    vector< pair<vertex_descriptor, vertex_descriptor> >& vertexPairs) const
+{
+    const AssemblyGraph3& assemblyGraph3 = *this;
+
+    vector< pair<vertex_descriptor, vertex_descriptor> > forwardPairs;
+    BGL_FORALL_VERTICES(vA, assemblyGraph3, AssemblyGraph3) {
+        const vertex_descriptor vB = findConvergingVertex(assemblyGraph3, vA, maxDistance);
+        if(vB != null_vertex()) {
+            forwardPairs.emplace_back(vA, vB);
+            // cout << assemblyGraph3[vA].id << "..." << assemblyGraph3[vB].id << endl;
+        }
+    }
+    sort(forwardPairs.begin(), forwardPairs.end());
+    // cout << "Found " << forwardPairs.size() << " forward pairs." << endl;
+
+    const boost::reverse_graph<AssemblyGraph3> reverseAssemblyGraph3(assemblyGraph3);
+    vector< pair<vertex_descriptor, vertex_descriptor> > backwardPairs;
+    BGL_FORALL_VERTICES(vA, assemblyGraph3, AssemblyGraph3) {
+        const vertex_descriptor vB = findConvergingVertex(reverseAssemblyGraph3, vA, maxDistance);
+        if(vB != null_vertex()) {
+            backwardPairs.emplace_back(vB, vA);
+            // cout << assemblyGraph3[vA].id << "..." << assemblyGraph3[vB].id << endl;
+        }
+    }
+    sort(backwardPairs.begin(), backwardPairs.end());
+    // cout << "Found " << backwardPairs.size() << " backward pairs." << endl;
+
+    // Find pairs that appeared in both directions.
+    vertexPairs.clear();
+    std::set_intersection(
+        forwardPairs.begin(), forwardPairs.end(),
+        backwardPairs.begin(), backwardPairs.end(),
+        back_inserter(vertexPairs));
+
+#if 0
+    cout << "Found " << vertexPairs.size() << " bidirectional pairs:" << endl;
+    for(const auto& p: vertexPairs) {
+        cout << assemblyGraph3[p.first].id << "..." << assemblyGraph3[p.second].id << endl;
+    }
+#endif
+
+}
+
+
+
+// Given the entrance and exit of a superbubble, find the internal vertices.
+void AssemblyGraph3::gatherSuperbubbleVertices(
+    vertex_descriptor entrance,
+    vertex_descriptor exit,
+    vector<vertex_descriptor>& internalVerticesVector) const
+{
+    const AssemblyGraph3& assemblyGraph3 = *this;
+
+    // Do a BFS starting at the entrance and stopping at the exit.
+    std::queue<vertex_descriptor> q;
+    std::set<vertex_descriptor> internalVertices;
+    q.push(entrance);
+    while(not q.empty()) {
+        const vertex_descriptor v0 = q.front();
+        q.pop();
+        // cout << "Dequeued " << assemblyGraph3[v0].id << endl;
+        BGL_FORALL_OUTEDGES(v0, e, assemblyGraph3, AssemblyGraph3) {
+            const vertex_descriptor v1 = target(e, assemblyGraph3);
+            if(v1 != exit) {
+                if(not internalVertices.contains(v1)) {
+                    internalVertices.insert(v1);
+                    q.push(v1);
+                    // cout << "Enqueued " << assemblyGraph3[v1].id << endl;
+                }
+            }
+        }
+    }
+
+    internalVerticesVector.clear();
+    copy(internalVertices.begin(), internalVertices.end(), back_inserter(internalVerticesVector));
+}
+
+
+
+void AssemblyGraph3::analyzeSuperbubbles(uint64_t maxDistance) const
+{
+    const AssemblyGraph3& assemblyGraph3 = *this;
+
+    vector< pair<vertex_descriptor, vertex_descriptor> > entranceExitPairs;
+    findSuperbubbles(maxDistance, entranceExitPairs);
+    cout << "Found " << entranceExitPairs.size() << " superbubbles." << endl;
+
+    vector<vertex_descriptor> internalVertices;
+    for(const auto& p: entranceExitPairs) {
+        cout << "Superbubble with entrance/exit vertices " << assemblyGraph3[p.first].id <<
+            " " << assemblyGraph3[p.second].id << endl;
+        gatherSuperbubbleVertices(p.first, p.second, internalVertices);
+
+        if(internalVertices.empty()) {
+            cout << "No internal vertices." << endl;
+        } else {
+            cout << internalVertices.size() << " internal vertices:";
+            for(const vertex_descriptor v: internalVertices) {
+                cout << " " << assemblyGraph3[v].id;
+            }
+            cout << endl;
+        }
+    }
 }

@@ -193,8 +193,27 @@ public:
     // One iteration of detangling using a given TangleTemplate.
     bool detangle(const TangleTemplate&, Detangler&);
 
-    // Output.
 public:
+
+
+    // Superbubbles.
+    // Use findConvergingVertex to find superbubbles with one entrance and one exit.
+    // This returns a vector of pairs (entrance vertex, exit vertex).
+    void findSuperbubbles(
+        uint64_t maxDistance,
+        vector< pair<vertex_descriptor, vertex_descriptor> >&) const;
+
+    // Given the entrance and exit of a superbubble, find the internal vertices.
+    void gatherSuperbubbleVertices(
+        vertex_descriptor entrance,
+        vertex_descriptor exit,
+        vector<vertex_descriptor>& internalVertices) const;
+
+    // Find superbubbles and analyze them.
+    void analyzeSuperbubbles(uint64_t maxDistance) const;
+
+
+    // Output.
     void write(const string& stage);
 private:
     void writeGfa(const string& fileName) const;

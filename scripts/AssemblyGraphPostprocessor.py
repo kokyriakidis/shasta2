@@ -13,8 +13,11 @@ assembler.accessAnchors()
 assembler.accessJourneys()
 
 # Get the assemblyGraph3Postprocessor at a chosen assembly stage.
-assemblyGraph3 = assembler.getAssemblyGraph3("B", assemblerOptions)
+assemblyGraph3 = assembler.getAssemblyGraph3("A", assemblerOptions)
+assemblyGraph3.analyzeSuperbubbles(20)
 
+
+"""
 detangler = ChiSquareDetangler(
     assemblyGraphOptions.detangleMinCommonCoverage,
     assemblyGraphOptions.detangleEpsilon,
@@ -24,3 +27,4 @@ detangler.debug = True
 assemblyGraph3.detangleVertices(detangler)
 assemblyGraph3.compress()
 # assemblyGraph3.write("X")
+"""

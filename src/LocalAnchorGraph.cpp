@@ -288,10 +288,7 @@ void LocalAnchorGraph::writeGraphviz(
                         s << "style=filled fillcolor=\"" << double(hue / 1000.) << " .6 .9\"";
                     }
                 }
-            } else {
-                SHASTA_ASSERT(0);
-            }
-        }
+            }        }
 
 
 

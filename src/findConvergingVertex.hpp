@@ -19,7 +19,7 @@
 #include <vector.hpp>
 
 // REMOVE THIS WHEN DONE DEBUGGING.
-#include <iostream.hpp>
+// #include <iostream.hpp>
 
 
 // Give a vertex vA of a directed graph, this finds the first vertex,
@@ -47,7 +47,7 @@ template<class Graph> typename Graph::vertex_descriptor shasta::findConvergingVe
     using VertexDescriptor = typename Graph::vertex_descriptor;
     using Rational = boost::rational<uint64_t>;
 
-    const bool debug = false;
+    // const bool debug = false;
 
     // The LocalGraph is constructed using a BFS starting at vA up to distance maxDistance.
     // Each vertex contains a vertex_descriptor of the Graph.
@@ -88,52 +88,66 @@ template<class Graph> typename Graph::vertex_descriptor shasta::findConvergingVe
         const uint64_t distance0 = localVertex0.distance;
         const uint64_t distance1 = distance0 + 1;
 
+#if 0
         if(debug) {
             cout << "Dequeued " << graph[v0] << " at distance " << distance0 << endl;
         }
+#endif
 
         // Loop over its out-edges.
         BGL_FORALL_OUTEDGES_T(v0, e, graph, Graph) {
             const VertexDescriptor v1 = target(e, graph);
+
+#if 0
             if(debug) {
                 cout << "Encountered " << graph[v1] << endl;
             }
+#endif
 
             // Check if we already encountered v1.
             auto it1 = m.find(v1);
             if(it1 == m.end()) {
+#if 0
                 if(debug) {
                     cout << "Adding " << graph[v1] << " to local graph at distance " << distance1 << endl;
                 }
+#endif
                 const LocalVertexDescriptor lv1 = add_vertex(LocalVertex(v1, distance1), localGraph);
                 m.insert({v1, lv1});
                 add_edge(lv0, lv1, localGraph);
+#if 0
                 if(debug) {
                     cout << "Adding " << graph[v0] << "->" << graph[v1] << endl;
                 }
+#endif
                 if(distance1 < maxDistance) {
                    q.push(v1);
                 }
             } else {
                 LocalVertexDescriptor lv1 = it1->second;
                 add_edge(lv0, lv1, localGraph);
+#if 0
                 if(debug) {
                     cout << "Adding " << graph[v0] << "->" << graph[v1] << endl;
                 }
+#endif
             }
 
         }
     }
 
+#if 0
     if(debug) {
         cout << "The BFS found " << num_vertices(localGraph) <<
             " vertices and " << num_edges(localGraph) << " edges." << endl;
     }
+#endif
 
     if(num_vertices(localGraph) == 1) {
         return Graph::null_vertex();
     }
 
+#if 0
     // Write out the LocalGraph in Graphviz format.
     if(debug) {
         cout << "digraph LocalGraph {\n";
@@ -148,20 +162,23 @@ template<class Graph> typename Graph::vertex_descriptor shasta::findConvergingVe
         }
         cout << "}\n";
     }
-
+#endif
 
     // Do a topological sort of the LocalGraph.
     vector<LocalVertexDescriptor> topologicalOrder;
     try {
         boost::topological_sort(localGraph, back_inserter(topologicalOrder));
     } catch(const boost::not_a_dag&) {
+#if 0
         if(debug) {
             cout << "Found a loop." << endl;
         }
+#endif
         return Graph::null_vertex();
     }
     reverse(topologicalOrder.begin(), topologicalOrder.end());
 
+#if 0
     if(debug) {
         cout << "Topological order:";
         for(const LocalVertexDescriptor lv: topologicalOrder) {
@@ -169,6 +186,7 @@ template<class Graph> typename Graph::vertex_descriptor shasta::findConvergingVe
         }
         cout << endl;
     }
+#endif
 
     // Sanity check on the topological ordering.
     SHASTA_ASSERT(topologicalOrder.size() == num_vertices(localGraph));
@@ -188,12 +206,14 @@ template<class Graph> typename Graph::vertex_descriptor shasta::findConvergingVe
         }
     }
 
+#if 0
     if(debug) {
         BGL_FORALL_VERTICES_T(lv, localGraph, LocalGraph) {
             const LocalVertex& localVertex = localGraph[lv];
             cout << graph[localVertex.v] << " has flow " << localVertex.flow << endl;
         }
     }
+#endif
 
     // Find the first vertex, in topological order, with flow equal to 1.
     for(uint64_t i=1; i<topologicalOrder.size(); i++) {
