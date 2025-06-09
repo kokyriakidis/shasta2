@@ -97,7 +97,7 @@ void Tangle3::detangle()
     for(const auto& entrance: tangleMatrix->entrances) {
         const edge_descriptor eOld = entrance.e;
         const vertex_descriptor v0Old = source(eOld, assemblyGraph3);
-        AssemblyGraph3Edge& edgeOld = assemblyGraph3[eOld];
+        AssemblyGraphEdge& edgeOld = assemblyGraph3[eOld];
         const AnchorId lastAnchorId = edgeOld.back().anchorPair.anchorIdB;
 
         // Create the new vertex.
@@ -107,8 +107,8 @@ void Tangle3::detangle()
 
         // Create the new edge, with the same steps and id as the old one.
         edge_descriptor eNew;
-        tie(eNew, ignore) = add_edge(v0Old, v1, AssemblyGraph3Edge(edgeOld.id), assemblyGraph3);
-        AssemblyGraph3Edge& edgeNew = assemblyGraph3[eNew];
+        tie(eNew, ignore) = add_edge(v0Old, v1, AssemblyGraphEdge(edgeOld.id), assemblyGraph3);
+        AssemblyGraphEdge& edgeNew = assemblyGraph3[eNew];
         edgeNew.swapSteps(edgeOld);
         edgeNew.wasAssembled = edgeOld.wasAssembled;
     }
@@ -121,7 +121,7 @@ void Tangle3::detangle()
     for(const auto& exit: tangleMatrix->exits) {
         const edge_descriptor eOld = exit.e;
         const vertex_descriptor v1Old = target(eOld, assemblyGraph3);
-        AssemblyGraph3Edge& edgeOld = assemblyGraph3[eOld];
+        AssemblyGraphEdge& edgeOld = assemblyGraph3[eOld];
         const AnchorId firstAnchorId = edgeOld.front().anchorPair.anchorIdA;
 
         // Create the new vertex.
@@ -131,8 +131,8 @@ void Tangle3::detangle()
 
         // Create the new edge, with the same steps and id as the old one.
         edge_descriptor eNew;
-        tie(eNew, ignore) = add_edge(v0, v1Old, AssemblyGraph3Edge(edgeOld.id), assemblyGraph3);
-        AssemblyGraph3Edge& edgeNew = assemblyGraph3[eNew];
+        tie(eNew, ignore) = add_edge(v0, v1Old, AssemblyGraphEdge(edgeOld.id), assemblyGraph3);
+        AssemblyGraphEdge& edgeNew = assemblyGraph3[eNew];
         edgeNew.swapSteps(edgeOld);
         edgeNew.wasAssembled = edgeOld.wasAssembled;
     }
@@ -153,8 +153,8 @@ void Tangle3::detangle()
         const uint64_t offset = anchorPair.getAverageOffset(assemblyGraph3.anchors);
 
         edge_descriptor e;
-        tie(e, ignore) = add_edge(v0, v1, AssemblyGraph3Edge(assemblyGraph3.nextEdgeId++), assemblyGraph3);
-        AssemblyGraph3Edge& edge = assemblyGraph3[e];
+        tie(e, ignore) = add_edge(v0, v1, AssemblyGraphEdge(assemblyGraph3.nextEdgeId++), assemblyGraph3);
+        AssemblyGraphEdge& edge = assemblyGraph3[e];
 
         edge.push_back(AssemblyGraph3EdgeStep(anchorPair, offset));
     }

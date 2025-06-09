@@ -14,12 +14,12 @@ TangleMatrix3::TangleMatrix3(
 {
 
     for(const edge_descriptor e: entranceEdges) {
-        const AssemblyGraph3Edge& edge = assemblyGraph3[e];
+        const AssemblyGraphEdge& edge = assemblyGraph3[e];
         entrances.emplace_back(e, edge.back());
     }
 
     for(const edge_descriptor e: exitEdges) {
-        const AssemblyGraph3Edge& edge = assemblyGraph3[e];
+        const AssemblyGraphEdge& edge = assemblyGraph3[e];
         exits.emplace_back(e, edge.front());
     }
 

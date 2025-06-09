@@ -38,7 +38,7 @@ void AssemblyGraph3Postprocessor::computeAnnotations()
 
     // Edges.
     BGL_FORALL_EDGES(e, assemblyGraph3, AssemblyGraph3) {
-        const AssemblyGraph3Edge& edge = assemblyGraph3[e];
+        const AssemblyGraphEdge& edge = assemblyGraph3[e];
         for(uint64_t step=0; step<edge.size(); step++) {
             const AnchorPair& anchorPair = edge[step].anchorPair;
             annotations.emplace_back(anchorPair.anchorIdA, e, step, true);

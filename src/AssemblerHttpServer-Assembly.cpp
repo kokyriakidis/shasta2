@@ -235,7 +235,7 @@ void Assembler::exploreSegments(
     html << "<table><tr><th>Vertex<br>(segment)<br>id<th>Number<br>of<br>steps<th>Estimated<br>length<th>Actual<br>length";
 
     BGL_FORALL_EDGES(e, assemblyGraph3, AssemblyGraph3) {
-        const AssemblyGraph3Edge& edge = assemblyGraph3[e];
+        const AssemblyGraphEdge& edge = assemblyGraph3[e];
         const string url = "exploreSegment?assemblyStage=" + assemblyStage + "&segmentName=" + to_string(edge.id);
         html <<
             "<tr>"
@@ -392,7 +392,7 @@ void Assembler::exploreSegment(
         assemblyStage,
         *httpServerData.assemblerOptions);
 
-    // Find the AssemblyGraph3Edge corresponding to the requested segment.
+    // Find the AssemblyGraphEdge corresponding to the requested segment.
     auto it = assemblyGraph3.edgeMap.find(segmentId);
     if(it == assemblyGraph3.edgeMap.end()) {
         html << "<p>Assembly graph at stage " << assemblyStage <<
@@ -400,7 +400,7 @@ void Assembler::exploreSegment(
         return;
     }
     const AssemblyGraph3::edge_descriptor e = it->second;
-    const AssemblyGraph3Edge& edge = assemblyGraph3[e];
+    const AssemblyGraphEdge& edge = assemblyGraph3[e];
 
 
 
@@ -701,7 +701,7 @@ void Assembler::exploreSegmentStep(
         assemblyStage,
         *httpServerData.assemblerOptions);
 
-    // Find the AssemblyGraph3Edge corresponding to the requested segment.
+    // Find the AssemblyGraphEdge corresponding to the requested segment.
     auto it = assemblyGraph3.edgeMap.find(segmentId);
     if(it == assemblyGraph3.edgeMap.end()) {
         html << "<p>Assembly graph at stage " << assemblyStage <<
@@ -710,7 +710,7 @@ void Assembler::exploreSegmentStep(
     }
 
     const AssemblyGraph3::edge_descriptor e = it->second;
-    const AssemblyGraph3Edge& edge = assemblyGraph3[e];
+    const AssemblyGraphEdge& edge = assemblyGraph3[e];
 
     if(stepId >= edge.size()) {
         html << "<p>Step " << stepId << " is not valid for this segment, which has " <<
@@ -842,7 +842,7 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
                 return;
             }
 
-            // Find the AssemblyGraph3Edge corresponding to the requested segment.
+            // Find the AssemblyGraphEdge corresponding to the requested segment.
             auto it = assemblyGraph3.edgeMap.find(segmentId);
             if(it == assemblyGraph3.edgeMap.end()) {
                 html << "<p>Assembly graph at stage " << assemblyStage <<
@@ -872,7 +872,7 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
                 return;
             }
 
-            // Find the AssemblyGraph3Edge corresponding to the requested segment.
+            // Find the AssemblyGraphEdge corresponding to the requested segment.
             auto it = assemblyGraph3.edgeMap.find(segmentId);
             if(it == assemblyGraph3.edgeMap.end()) {
                 html << "<p>Assembly graph at stage " << assemblyStage <<
@@ -952,7 +952,7 @@ void Assembler::exploreVertexTangle(const vector<string>& request, ostream& html
         assemblyStage,
         *httpServerData.assemblerOptions);
 
-    // Find the AssemblyGraph3Edge corresponding to the requested segment.
+    // Find the AssemblyGraphEdge corresponding to the requested segment.
     auto it = assemblyGraph3.edgeMap.find(segmentId);
     if(it == assemblyGraph3.edgeMap.end()) {
         html << "<p>Assembly graph at stage " << assemblyStage <<
@@ -1032,7 +1032,7 @@ void Assembler::exploreEdgeTangle(const vector<string>& request, ostream& html)
         assemblyStage,
         *httpServerData.assemblerOptions);
 
-    // Find the AssemblyGraph3Edge corresponding to the requested segment.
+    // Find the AssemblyGraphEdge corresponding to the requested segment.
     auto it = assemblyGraph3.edgeMap.find(segmentId);
     if(it == assemblyGraph3.edgeMap.end()) {
         html << "<p>Assembly graph at stage " << assemblyStage <<

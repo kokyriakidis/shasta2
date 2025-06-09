@@ -103,8 +103,8 @@ AssemblyGraph3::AssemblyGraph3(
 
         edge_descriptor e;
         bool edgeWasAdded;
-        tie(e, edgeWasAdded) = add_edge(v0, v1, AssemblyGraph3Edge(nextEdgeId++), assemblyGraph3);
-        AssemblyGraph3Edge& edge = assemblyGraph3[e];
+        tie(e, edgeWasAdded) = add_edge(v0, v1, AssemblyGraphEdge(nextEdgeId++), assemblyGraph3);
+        AssemblyGraphEdge& edge = assemblyGraph3[e];
 
         // Each AnchorGraph edge in the chain contributes a step to this AssemblyGraph3 edge.
         for(const AnchorGraph::edge_descriptor eA: chain) {
@@ -177,7 +177,7 @@ void AssemblyGraph3::check() const
     const AssemblyGraph3& assemblyGraph3 = *this;
 
     BGL_FORALL_EDGES(e, assemblyGraph3, AssemblyGraph3) {
-        const AssemblyGraph3Edge& edge = assemblyGraph3[e];
+        const AssemblyGraphEdge& edge = assemblyGraph3[e];
         SHASTA_ASSERT(not edge.empty());
 
 
@@ -205,7 +205,7 @@ void AssemblyGraph3::check() const
 
 
 
-uint64_t AssemblyGraph3Edge::offset() const
+uint64_t AssemblyGraphEdge::offset() const
 {
     uint64_t sum = 0;
     for(const auto& step: *this) {
@@ -237,7 +237,7 @@ void AssemblyGraph3::writeFasta(const string& stage) const
 
     vector<shasta::Base> sequence;
     BGL_FORALL_EDGES(e, assemblyGraph3, AssemblyGraph3) {
-        const AssemblyGraph3Edge& edge = assemblyGraph3[e];
+        const AssemblyGraphEdge& edge = assemblyGraph3[e];
         edge.getSequence(sequence);
 
         fasta << ">" << edge.id << "\n";
@@ -266,7 +266,7 @@ void AssemblyGraph3::writeGfa(ostream& gfa) const
     // Each edge generates a gfa segment.
     vector<shasta::Base> sequence;
     BGL_FORALL_EDGES(e, assemblyGraph3, AssemblyGraph3) {
-        const AssemblyGraph3Edge& edge = assemblyGraph3[e];
+        const AssemblyGraphEdge& edge = assemblyGraph3[e];
 
         // Record type.
         gfa << "S\t";
@@ -339,7 +339,7 @@ void AssemblyGraph3::writeGraphviz(ostream& dot) const
 
     // Write the edges.
     BGL_FORALL_EDGES(e, assemblyGraph3, AssemblyGraph3) {
-        const AssemblyGraph3Edge& edge = assemblyGraph3[e];
+        const AssemblyGraphEdge& edge = assemblyGraph3[e];
     	const vertex_descriptor v0 = source(e, assemblyGraph3);
     	const vertex_descriptor v1 = target(e, assemblyGraph3);
     	const AssemblyGraphVertex& vertex0 = assemblyGraph3[v0];
@@ -399,7 +399,7 @@ void AssemblyGraph3::assemble(edge_descriptor e, uint64_t threadCount)
 void AssemblyGraph3::assembleStep(edge_descriptor e, uint64_t i)
 {
     AssemblyGraph3& assemblyGraph3 = *this;
-    AssemblyGraph3Edge& edge = assemblyGraph3[e];
+    AssemblyGraphEdge& edge = assemblyGraph3[e];
     AssemblyGraph3EdgeStep& step = edge[i];
 
     if(step.anchorPair.anchorIdA == step.anchorPair.anchorIdB) {
@@ -429,7 +429,7 @@ void AssemblyGraph3::assemble(uint64_t threadCount)
 
     stepsToBeAssembled.clear();
     for(const edge_descriptor e: edgesToBeAssembled) {
-        AssemblyGraph3Edge& edge = assemblyGraph3[e];
+        AssemblyGraphEdge& edge = assemblyGraph3[e];
         for(uint64_t i=0; i<edge.size(); i++) {
             stepsToBeAssembled.push_back(make_pair(e, i));
         }
@@ -468,7 +468,7 @@ void AssemblyGraph3::assembleThreadFunction(uint64_t /* threadId */)
             const auto& p = stepsToBeAssembled[j];
             const edge_descriptor e = p.first;
             const uint64_t i = p.second;
-            AssemblyGraph3Edge& edge = assemblyGraph3[e];
+            AssemblyGraphEdge& edge = assemblyGraph3[e];
             SHASTA_ASSERT(i < edge.size());
             assembleStep(e, i);
         }
@@ -483,7 +483,7 @@ void AssemblyGraph3::clearSequence()
     AssemblyGraph3& assemblyGraph3 = *this;
 
     BGL_FORALL_EDGES(e, assemblyGraph3, AssemblyGraph3) {
-        AssemblyGraph3Edge& edge = assemblyGraph3[e];
+        AssemblyGraphEdge& edge = assemblyGraph3[e];
         edge.wasAssembled= false;
         for(AssemblyGraph3EdgeStep& step: edge) {
             step.sequence.clear();
@@ -494,7 +494,7 @@ void AssemblyGraph3::clearSequence()
 
 
 
-void AssemblyGraph3Edge::getSequence(vector<Base>& sequence) const
+void AssemblyGraphEdge::getSequence(vector<Base>& sequence) const
 {
     sequence.clear();
     for(const auto& step: *this) {
@@ -504,7 +504,7 @@ void AssemblyGraph3Edge::getSequence(vector<Base>& sequence) const
 
 
 
-uint64_t AssemblyGraph3Edge::sequenceLength() const
+uint64_t AssemblyGraphEdge::sequenceLength() const
 {
     SHASTA_ASSERT(wasAssembled);
 
@@ -715,8 +715,8 @@ uint64_t AssemblyGraph3::bubbleCleanupIteration(uint64_t threadCount)
             edge_descriptor e;
             bool edgeWasAdded;
             tie(e, edgeWasAdded) = add_edge(bubble.v0, bubble.v1,
-                AssemblyGraph3Edge(nextEdgeId++), assemblyGraph3);
-            AssemblyGraph3Edge& edge = assemblyGraph3[e];
+                AssemblyGraphEdge(nextEdgeId++), assemblyGraph3);
+            AssemblyGraphEdge& edge = assemblyGraph3[e];
 
             const AnchorPair& anchorPair = p.second;
             const uint64_t offset = anchorPair.getAverageOffset(anchors);
@@ -755,12 +755,12 @@ void AssemblyGraph3::compress()
 
         // Add the new edge.
         edge_descriptor eNew;
-        tie(eNew, ignore) = add_edge(v0, v1, AssemblyGraph3Edge(nextEdgeId++), assemblyGraph3);
-        AssemblyGraph3Edge& edgeNew = assemblyGraph3[eNew];
+        tie(eNew, ignore) = add_edge(v0, v1, AssemblyGraphEdge(nextEdgeId++), assemblyGraph3);
+        AssemblyGraphEdge& edgeNew = assemblyGraph3[eNew];
 
         // Concatenate the steps of all the edges in the chain.
         for(const edge_descriptor e: chain) {
-            const AssemblyGraph3Edge& edge = assemblyGraph3[e];
+            const AssemblyGraphEdge& edge = assemblyGraph3[e];
             copy(edge.begin(), edge.end(), back_inserter(edgeNew));
         }
 

@@ -154,7 +154,7 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
 
                 if(annotation.v == AssemblyGraph3::null_vertex()) {
                     // This AnchorId is used in a step.
-                    const AssemblyGraph3Edge& edge = assemblyGraph3[annotation.e];
+                    const AssemblyGraphEdge& edge = assemblyGraph3[annotation.e];
                     const string segmentUrl = "exploreSegment?assemblyStage=" + assemblyStage +
                         "&segmentName=" +to_string(edge.id);
                     const string stepUrl = "exploreSegmentStep?assemblyStage=" + assemblyStage +
@@ -179,7 +179,7 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
                     } else {
                         html << " incoming segments";
                         BGL_FORALL_INEDGES(v, e, assemblyGraph3, AssemblyGraph3) {
-                            const AssemblyGraph3Edge& edge = assemblyGraph3[e];
+                            const AssemblyGraphEdge& edge = assemblyGraph3[e];
                             const string segmentUrl = "exploreSegment?assemblyStage=" + assemblyStage +
                                 "&segmentName=" + to_string(edge.id);
                             html << " <a href='" << segmentUrl << "'>" << edge.id << "</a>";
@@ -193,7 +193,7 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
                     } else {
                         html << " outgoing segments";
                         BGL_FORALL_OUTEDGES(v, e, assemblyGraph3, AssemblyGraph3) {
-                            const AssemblyGraph3Edge& edge = assemblyGraph3[e];
+                            const AssemblyGraphEdge& edge = assemblyGraph3[e];
                             const string segmentUrl = "exploreSegment?assemblyStage=" + assemblyStage +
                                 "&segmentName=" + to_string(edge.id);
                             html << " <a href='" << segmentUrl << "'>" << edge.id << "</a>";

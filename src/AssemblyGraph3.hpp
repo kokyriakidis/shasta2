@@ -20,7 +20,7 @@ namespace shasta {
 
     class AssemblyGraph3;
     class AssemblyGraphVertex;
-    class AssemblyGraph3Edge;
+    class AssemblyGraphEdge;
     class AssemblyGraph3EdgeStep;
 
     using AssemblyGraph3BaseClass = boost::adjacency_list<
@@ -28,7 +28,7 @@ namespace shasta {
         boost::listS,
         boost::bidirectionalS,
         AssemblyGraphVertex,
-        AssemblyGraph3Edge>;
+        AssemblyGraphEdge>;
 
     class AnchorGraph;
     class Anchors;
@@ -89,12 +89,12 @@ public:
 
 
 
-class shasta::AssemblyGraph3Edge : public vector<AssemblyGraph3EdgeStep> {
+class shasta::AssemblyGraphEdge : public vector<AssemblyGraph3EdgeStep> {
 public:
     uint64_t id = invalid<uint64_t>;
     bool wasAssembled = false;
 
-    AssemblyGraph3Edge(uint64_t id = invalid<uint64_t>) : id(id) {}
+    AssemblyGraphEdge(uint64_t id = invalid<uint64_t>) : id(id) {}
 
     void check(const Anchors&) const;
 
@@ -109,7 +109,7 @@ public:
         ar & wasAssembled;
     }
 
-    void swapSteps(AssemblyGraph3Edge& that)
+    void swapSteps(AssemblyGraphEdge& that)
     {
         vector<AssemblyGraph3EdgeStep>::swap(that);
     }

@@ -42,7 +42,7 @@ public:
         public:
         edge_descriptor e;
 
-        // The last step of this AssemblyGraph3Edge (for an Entrance).
+        // The last step of this AssemblyGraphEdge (for an Entrance).
         // The first step of thisAssemblyGraph3Edge (for an Exit).
         const AssemblyGraph3EdgeStep& step;
 
