@@ -1002,9 +1002,11 @@ bool AssemblyGraph::detangleIteration(Detangler& detangler)
 
     for(uint64_t tangleTemplateId=0; tangleTemplateId<tangleTemplates.size(); tangleTemplateId++) {
         const TangleTemplate& tangleTemplate = tangleTemplates[tangleTemplateId];
+        /*
         cout << "Working on tangle template " << tangleTemplateId <<
             " with " << num_vertices(tangleTemplate) <<
             " vertices and " << num_edges(tangleTemplate) << " edges." << endl;
+        */
         const bool templateSuccess = detangle(tangleTemplate, detangler);
         success = success or templateSuccess;
         compress();
@@ -1020,7 +1022,7 @@ bool AssemblyGraph::detangle(uint64_t maxIterationCount, Detangler& detangler)
 {
     bool success = false;
     for(uint64_t iteration=0; iteration<maxIterationCount; iteration++) {
-        cout << "Starting detangle iteration " << iteration << endl;
+        // cout << "Starting detangle iteration " << iteration << endl;
         const bool iterationSuccess = detangleIteration(detangler);
 
         if(iterationSuccess) {
@@ -1285,7 +1287,7 @@ bool AssemblyGraph::detangle(
     vector< vector<vertex_descriptor> > detanglingCandidates;
     inducedSubgraphIsomorphisms(assemblyGraph, tangleTemplate, detanglingCandidates);
 
-    cout << "Found " << detanglingCandidates.size() << " instances for the requested Tangle template." << endl;
+    // cout << "Found " << detanglingCandidates.size() << " instances for the requested Tangle template." << endl;
 
     // Do the detangling.
     return detangle(detanglingCandidates, detangler);
