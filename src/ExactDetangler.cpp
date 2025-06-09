@@ -1,11 +1,11 @@
 #include "ExactDetangler.hpp"
-#include "Tangle3.hpp"
+#include "Tangle.hpp"
 #include "TangleMatrix3.hpp"
 using namespace shasta;
 
 
 
-bool ExactDetangler::operator()(Tangle3& tangle)
+bool ExactDetangler::operator()(Tangle& tangle)
 {
     const TangleMatrix3& tangleMatrix = *(tangle.tangleMatrix);
 

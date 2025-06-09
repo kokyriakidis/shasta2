@@ -4,7 +4,7 @@
 #include "LocalAssembly.hpp"
 #include "LocalAssembly1.hpp"
 #include "LocalAssembly2.hpp"
-#include "Tangle3.hpp"
+#include "Tangle.hpp"
 #include "TangleMatrix3.hpp"
 using namespace shasta;
 
@@ -964,7 +964,7 @@ void Assembler::exploreVertexTangle(const vector<string>& request, ostream& html
 
 
     // Create a Tangle at the target of this vertex.
-    const Tangle3 tangle3(assemblyGraph3, target(e, assemblyGraph3),
+    const Tangle tangle3(assemblyGraph3, target(e, assemblyGraph3),
         httpServerData.assemblerOptions->aDrift,
         httpServerData.assemblerOptions->bDrift);
 
@@ -1044,7 +1044,7 @@ void Assembler::exploreEdgeTangle(const vector<string>& request, ostream& html)
 
 
     // Create a Tangle at this edge.
-    const Tangle3 tangle(assemblyGraph3, e,
+    const Tangle tangle(assemblyGraph3, e,
         httpServerData.assemblerOptions->aDrift,
         httpServerData.assemblerOptions->bDrift);
 

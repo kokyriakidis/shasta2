@@ -25,7 +25,7 @@ PermutationDetangler::PermutationDetangler(
 
 
 
-bool PermutationDetangler::operator()(Tangle3&)
+bool PermutationDetangler::operator()(Tangle&)
 {
     return false;
 }

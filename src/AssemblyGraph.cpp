@@ -13,7 +13,7 @@
 #include "performanceLog.hpp"
 #include "rle.hpp"
 #include "SimpleDetangler.hpp"
-#include "Tangle3.hpp"
+#include "Tangle.hpp"
 #include "TangleMatrix3.hpp"
 #include "TrivialDetangler.hpp"
 using namespace shasta;
@@ -932,7 +932,7 @@ bool AssemblyGraph::detangle(
 
         // Attempt detangling for the tangle defined by these vertices.
         ++attemptCount;
-        Tangle3 tangle(assemblyGraph3, tangleVertices,
+        Tangle tangle(assemblyGraph3, tangleVertices,
             assemblerOptions.aDrift,
             assemblerOptions.bDrift);
         if(debug) {

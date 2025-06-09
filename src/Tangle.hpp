@@ -8,33 +8,33 @@
 #include <vector.hpp>
 
 namespace shasta {
-    class Tangle3;
+    class Tangle;
     class TangleMatrix3;
 }
 
 
 
-class shasta::Tangle3 {
+class shasta::Tangle {
 public:
     using vertex_descriptor = AssemblyGraph::vertex_descriptor;
     using edge_descriptor = AssemblyGraph::edge_descriptor;
 
     // Constructor from a set of AssemblyGraph vertices.
-    Tangle3(
+    Tangle(
         AssemblyGraph&,
         const vector<vertex_descriptor>&,
         double aDrift,
         double bDrift);
 
     // Constructor from a single AssemblyGraph vertex.
-    Tangle3(
+    Tangle(
         AssemblyGraph&,
         vertex_descriptor,
         double aDrift,
         double bDrift);
 
     // Constructor from a single AssemblyGraph edge.
-    Tangle3(
+    Tangle(
         AssemblyGraph&,
         edge_descriptor,
         double aDrift,
@@ -45,13 +45,13 @@ public:
     // Detangling instructions.
     // Each pair is (entranceIndex, exitIndex) that are to be connected
     // when detangling.
-    // Detangling decisions are not made in Tangle3. They are made by the
+    // Detangling decisions are not made in Tangle. They are made by the
     // Detangler object.
     vector< pair<uint64_t, uint64_t> > connectList;
     void connect(uint64_t iEntrance, uint64_t iExit);
     void detangle();
 
-    // If the Tangle3 is detangled successfully, we store the vertices that were removed.
+    // If the Tangle is detangled successfully, we store the vertices that were removed.
     vector<vertex_descriptor> removedVertices;
 
     bool debug = false;
@@ -59,7 +59,7 @@ public:
     AssemblyGraph& assemblyGraph3;
 
 private:
-    // The Tangle3 vertices.
+    // The Tangle vertices.
     vector<vertex_descriptor> tangleVertices;
     bool isTangleVertex(vertex_descriptor v) const
     {

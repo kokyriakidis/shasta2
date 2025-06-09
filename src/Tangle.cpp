@@ -1,5 +1,5 @@
 // Shasta.
-#include "Tangle3.hpp"
+#include "Tangle.hpp"
 #include "Anchor.hpp"
 #include "TangleMatrix3.hpp"
 using namespace shasta;
@@ -13,12 +13,12 @@ using namespace shasta;
 
 
 // Constructor from a single AssemblyGraph vertex.
-Tangle3::Tangle3(
+Tangle::Tangle(
     AssemblyGraph& assemblyGraph3,
     vertex_descriptor v,
     double aDrift,
     double bDrift) :
-    Tangle3(assemblyGraph3,
+    Tangle(assemblyGraph3,
         vector<vertex_descriptor>(1, v),
         aDrift, bDrift)
 {
@@ -27,12 +27,12 @@ Tangle3::Tangle3(
 
 
 // Constructor from a single AssemblyGraph edge.
-Tangle3::Tangle3(
+Tangle::Tangle(
     AssemblyGraph& assemblyGraph3,
     edge_descriptor e,
     double aDrift,
     double bDrift) :
-    Tangle3(assemblyGraph3,
+    Tangle(assemblyGraph3,
         vector<vertex_descriptor>({source(e, assemblyGraph3), target(e, assemblyGraph3)}),
         aDrift, bDrift)
 {
@@ -41,7 +41,7 @@ Tangle3::Tangle3(
 
 
 // Constructor from a set of AssemblyGraph vertices.
-Tangle3::Tangle3(
+Tangle::Tangle(
     AssemblyGraph& assemblyGraph3,
     const vector<vertex_descriptor>& tangleVerticesArgument,
     double aDrift,
@@ -81,7 +81,7 @@ Tangle3::Tangle3(
 
 
 
-void Tangle3::connect(uint64_t iEntrance, uint64_t iExit) {
+void Tangle::connect(uint64_t iEntrance, uint64_t iExit) {
     SHASTA_ASSERT(iEntrance < tangleMatrix->entrances.size());
     SHASTA_ASSERT(iExit < tangleMatrix->exits.size());
     connectList.push_back({iEntrance, iExit});
@@ -89,7 +89,7 @@ void Tangle3::connect(uint64_t iEntrance, uint64_t iExit) {
 
 
 
-void Tangle3::detangle()
+void Tangle::detangle()
 {
     // Make a copy of each entrance edge, with the target vertex replaced by a new vertex
     // with the same AnchorId.

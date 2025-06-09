@@ -2,7 +2,7 @@
 #include "ChiSquareDetangler.hpp"
 #include "Base.hpp"
 #include "orderPairs.hpp"
-#include "Tangle3.hpp"
+#include "Tangle.hpp"
 #include "TangleMatrix3.hpp"
 using namespace shasta;
 
@@ -24,7 +24,7 @@ ChiSquareDetangler::ChiSquareDetangler(
 
 
 
-bool ChiSquareDetangler::operator()(Tangle3& tangle)
+bool ChiSquareDetangler::operator()(Tangle& tangle)
 {
     const TangleMatrix3& tangleMatrix = *(tangle.tangleMatrix);
     const uint64_t entranceCount = tangleMatrix.entrances.size();
