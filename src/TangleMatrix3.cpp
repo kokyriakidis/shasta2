@@ -6,7 +6,7 @@ using namespace shasta;
 
 
 TangleMatrix3::TangleMatrix3(
-    const AssemblyGraph3& assemblyGraph3,
+    const AssemblyGraph& assemblyGraph3,
     vector<edge_descriptor> entranceEdges,
     vector<edge_descriptor> exitEdges,
     double aDrift,
@@ -46,7 +46,7 @@ TangleMatrix3::TangleMatrix3(
 
 
 void TangleMatrix3::writeHtml(
-    const AssemblyGraph3& assemblyGraph3,
+    const AssemblyGraph& assemblyGraph3,
     ostream& html) const
 {
     html <<

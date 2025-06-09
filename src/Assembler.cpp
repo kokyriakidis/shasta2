@@ -2,7 +2,7 @@
 #include "Anchor.hpp"
 #include "AnchorGraph.hpp"
 #include "AssemblerOptions.hpp"
-#include "AssemblyGraph3.hpp"
+#include "AssemblyGraph.hpp"
 #include "Journeys.hpp"
 #include "KmerCheckerFactory.hpp"
 #include "MurmurHash2.hpp"
@@ -219,8 +219,8 @@ void Assembler::createAssemblyGraph3(
     }
 
 
-    // Create the AssemblyGraph3.
-    AssemblyGraph3 assemblyGraph3(
+    // Create the AssemblyGraph.
+    AssemblyGraph assemblyGraph3(
         anchors(),
         *anchorGraphPointer,
         options);

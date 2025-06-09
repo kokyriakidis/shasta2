@@ -12,7 +12,7 @@ and the first step of each exit.
 *******************************************************************************/
 
 // Shasta.
-#include "AssemblyGraph3.hpp"
+#include "AssemblyGraph.hpp"
 
 // Standard library.
 #include <vector.hpp>
@@ -25,17 +25,17 @@ namespace shasta {
 
 class shasta::TangleMatrix3 {
 public:
-    using edge_descriptor = AssemblyGraph3::edge_descriptor;
+    using edge_descriptor = AssemblyGraph::edge_descriptor;
 
     TangleMatrix3(
-        const AssemblyGraph3&,
+        const AssemblyGraph&,
         vector<edge_descriptor> entranceVertices,
         vector<edge_descriptor> exitVertices,
         double aDrift,
         double bDrift);
 
     void writeHtml(
-        const AssemblyGraph3&,
+        const AssemblyGraph&,
         ostream&) const;
 
     class EntranceOrExit {

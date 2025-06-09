@@ -1,7 +1,7 @@
 #pragma once
 
 // Shasta.
-#include "AssemblyGraph3.hpp"
+#include "AssemblyGraph.hpp"
 #include "TrivialDetangler.hpp"
 
 // Standard library.
@@ -14,9 +14,9 @@ namespace shasta {
 
 
 
-// AssemblyGraph3 functionality needed only during postprocessing.
+// AssemblyGraph functionality needed only during postprocessing.
 // It is used in the http server and in the Python API.
-class shasta::AssemblyGraph3Postprocessor : public AssemblyGraph3 {
+class shasta::AssemblyGraph3Postprocessor : public AssemblyGraph {
 public:
     AssemblyGraph3Postprocessor(
         const Anchors&,
@@ -29,7 +29,7 @@ public:
 
 
     // Annotations of where each AnchorId is used in the current state
-    // of AssemblyGraph3. An AnchorId can be used in three ways:
+    // of AssemblyGraph. An AnchorId can be used in three ways:
     // - In an AssemblyGraphVertex.
     // - In an AssemblyGraphEdge::anchorPair, as anchorIdA.
     // - In an AssemblyGraphEdge::anchorPair, as anchorIdB.

@@ -1,7 +1,7 @@
 #pragma once
 
 // Shasta.
-#include "AssemblyGraph3.hpp"
+#include "AssemblyGraph.hpp"
 
 // Standard library.
 #include <memory.hpp>
@@ -16,26 +16,26 @@ namespace shasta {
 
 class shasta::Tangle3 {
 public:
-    using vertex_descriptor = AssemblyGraph3::vertex_descriptor;
-    using edge_descriptor = AssemblyGraph3::edge_descriptor;
+    using vertex_descriptor = AssemblyGraph::vertex_descriptor;
+    using edge_descriptor = AssemblyGraph::edge_descriptor;
 
-    // Constructor from a set of AssemblyGraph3 vertices.
+    // Constructor from a set of AssemblyGraph vertices.
     Tangle3(
-        AssemblyGraph3&,
+        AssemblyGraph&,
         const vector<vertex_descriptor>&,
         double aDrift,
         double bDrift);
 
-    // Constructor from a single AssemblyGraph3 vertex.
+    // Constructor from a single AssemblyGraph vertex.
     Tangle3(
-        AssemblyGraph3&,
+        AssemblyGraph&,
         vertex_descriptor,
         double aDrift,
         double bDrift);
 
-    // Constructor from a single AssemblyGraph3 edge.
+    // Constructor from a single AssemblyGraph edge.
     Tangle3(
-        AssemblyGraph3&,
+        AssemblyGraph&,
         edge_descriptor,
         double aDrift,
         double bDrift);
@@ -56,7 +56,7 @@ public:
 
     bool debug = false;
 
-    AssemblyGraph3& assemblyGraph3;
+    AssemblyGraph& assemblyGraph3;
 
 private:
     // The Tangle3 vertices.

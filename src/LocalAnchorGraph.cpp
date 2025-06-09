@@ -195,7 +195,7 @@ void LocalAnchorGraph::writeGraphviz(
 
         // Get annotation information, if needed.
         bool hasVertexAnnotation = false;
-        vector<AssemblyGraph3::edge_descriptor> annotationEdges;
+        vector<AssemblyGraph::edge_descriptor> annotationEdges;
         if(options.vertexColoring == "byAssemblyAnnotations") {
             hasVertexAnnotation = assemblyGraph3Pointer->hasVertexAnnotation(anchorId);
             if(not hasVertexAnnotation) {
@@ -888,7 +888,7 @@ void LocalAnchorGraph::writeVertices(
 
         // Get annotation information, if needed.
         bool hasVertexAnnotation = false;
-        vector<AssemblyGraph3::edge_descriptor> annotationEdges;
+        vector<AssemblyGraph::edge_descriptor> annotationEdges;
         if(options.vertexColoring == "byAssemblyAnnotations") {
             hasVertexAnnotation = assemblyGraph3Pointer->hasVertexAnnotation(anchorId);
             if(not hasVertexAnnotation) {

@@ -141,18 +141,18 @@ PYBIND11_MODULE(shasta2, shasta2Module)
 
 
 
-    class_<AssemblyGraph3>(shasta2Module, "AssemblyGraph3")
-        .def("detangleVertices", &AssemblyGraph3::detangleVertices)
-        .def("detangleEdges", &AssemblyGraph3::detangleEdges)
-        .def("compress", &AssemblyGraph3::compress)
-        .def("assembleAll", &AssemblyGraph3::assembleAll)
-        .def("analyzeSuperbubbles", &AssemblyGraph3::analyzeSuperbubbles)
-        .def("colorStrongComponents", &AssemblyGraph3::colorStrongComponents)
+    class_<AssemblyGraph>(shasta2Module, "AssemblyGraph")
+        .def("detangleVertices", &AssemblyGraph::detangleVertices)
+        .def("detangleEdges", &AssemblyGraph::detangleEdges)
+        .def("compress", &AssemblyGraph::compress)
+        .def("assembleAll", &AssemblyGraph::assembleAll)
+        .def("analyzeSuperbubbles", &AssemblyGraph::analyzeSuperbubbles)
+        .def("colorStrongComponents", &AssemblyGraph::colorStrongComponents)
         .def("write", &AssemblyGraph3Postprocessor::write)
         ;
 
     class_<AssemblyGraph3Postprocessor>(shasta2Module, "AssemblyGraph3Postprocessor",
-        pybind11::base<AssemblyGraph3>());
+        pybind11::base<AssemblyGraph>());
 
 
 

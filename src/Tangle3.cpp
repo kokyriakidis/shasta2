@@ -12,9 +12,9 @@ using namespace shasta;
 
 
 
-// Constructor from a single AssemblyGraph3 vertex.
+// Constructor from a single AssemblyGraph vertex.
 Tangle3::Tangle3(
-    AssemblyGraph3& assemblyGraph3,
+    AssemblyGraph& assemblyGraph3,
     vertex_descriptor v,
     double aDrift,
     double bDrift) :
@@ -28,7 +28,7 @@ Tangle3::Tangle3(
 
 // Constructor from a single AssemblyGraph edge.
 Tangle3::Tangle3(
-    AssemblyGraph3& assemblyGraph3,
+    AssemblyGraph& assemblyGraph3,
     edge_descriptor e,
     double aDrift,
     double bDrift) :
@@ -40,9 +40,9 @@ Tangle3::Tangle3(
 
 
 
-// Constructor from a set of AssemblyGraph3 vertices.
+// Constructor from a set of AssemblyGraph vertices.
 Tangle3::Tangle3(
-    AssemblyGraph3& assemblyGraph3,
+    AssemblyGraph& assemblyGraph3,
     const vector<vertex_descriptor>& tangleVerticesArgument,
     double aDrift,
     double bDrift) :
@@ -55,7 +55,7 @@ Tangle3::Tangle3(
     // Find the entrance edges.
     vector<edge_descriptor> entranceEdges;
     for(const vertex_descriptor v0: tangleVertices) {
-        BGL_FORALL_INEDGES(v0, e, assemblyGraph3, AssemblyGraph3) {
+        BGL_FORALL_INEDGES(v0, e, assemblyGraph3, AssemblyGraph) {
             const vertex_descriptor v1 = source(e, assemblyGraph3);
             if(not isTangleVertex(v1)) {
                 entranceEdges.push_back(e);
@@ -66,7 +66,7 @@ Tangle3::Tangle3(
     // Find the exit edges.
     vector<edge_descriptor> exitEdges;
     for(const vertex_descriptor v0: tangleVertices) {
-        BGL_FORALL_OUTEDGES(v0, e, assemblyGraph3, AssemblyGraph3) {
+        BGL_FORALL_OUTEDGES(v0, e, assemblyGraph3, AssemblyGraph) {
             const vertex_descriptor v1 = target(e, assemblyGraph3);
             if(not isTangleVertex(v1)) {
                 exitEdges.push_back(e);

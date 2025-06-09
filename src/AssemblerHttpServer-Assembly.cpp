@@ -222,7 +222,7 @@ void Assembler::exploreSegments(
         return;
     }
 
-    // Get the AssemblyGraph3 for this assembly stage.
+    // Get the AssemblyGraph for this assembly stage.
     const AssemblyGraph3Postprocessor& assemblyGraph3 = getAssemblyGraph3(
         assemblyStage,
         *httpServerData.assemblerOptions);
@@ -234,7 +234,7 @@ void Assembler::exploreSegments(
 
     html << "<table><tr><th>Vertex<br>(segment)<br>id<th>Number<br>of<br>steps<th>Estimated<br>length<th>Actual<br>length";
 
-    BGL_FORALL_EDGES(e, assemblyGraph3, AssemblyGraph3) {
+    BGL_FORALL_EDGES(e, assemblyGraph3, AssemblyGraph) {
         const AssemblyGraphEdge& edge = assemblyGraph3[e];
         const string url = "exploreSegment?assemblyStage=" + assemblyStage + "&segmentName=" + to_string(edge.id);
         html <<
@@ -387,7 +387,7 @@ void Assembler::exploreSegment(
         return;
     }
 
-    // Get the AssemblyGraph3 for this assembly stage.
+    // Get the AssemblyGraph for this assembly stage.
     const AssemblyGraph3Postprocessor& assemblyGraph3 = getAssemblyGraph3(
         assemblyStage,
         *httpServerData.assemblerOptions);
@@ -399,7 +399,7 @@ void Assembler::exploreSegment(
             " does not have segment " << segmentId;
         return;
     }
-    const AssemblyGraph3::edge_descriptor e = it->second;
+    const AssemblyGraph::edge_descriptor e = it->second;
     const AssemblyGraphEdge& edge = assemblyGraph3[e];
 
 
@@ -696,7 +696,7 @@ void Assembler::exploreSegmentStep(
         return;
     }
 
-    // Get the AssemblyGraph3 for this assembly stage.
+    // Get the AssemblyGraph for this assembly stage.
     const AssemblyGraph3Postprocessor& assemblyGraph3 = getAssemblyGraph3(
         assemblyStage,
         *httpServerData.assemblerOptions);
@@ -709,7 +709,7 @@ void Assembler::exploreSegmentStep(
         return;
     }
 
-    const AssemblyGraph3::edge_descriptor e = it->second;
+    const AssemblyGraph::edge_descriptor e = it->second;
     const AssemblyGraphEdge& edge = assemblyGraph3[e];
 
     if(stepId >= edge.size()) {
@@ -820,15 +820,15 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
         return;
     }
 
-    // Get the AssemblyGraph3 for this assembly stage.
+    // Get the AssemblyGraph for this assembly stage.
     const AssemblyGraph3Postprocessor& assemblyGraph3 = getAssemblyGraph3(
         assemblyStage,
         *httpServerData.assemblerOptions);
 
 
 
-    // Find AssemblyGraph3 edges corresponding to the entrances.
-    vector<AssemblyGraph3::edge_descriptor> entrances;
+    // Find AssemblyGraph edges corresponding to the entrances.
+    vector<AssemblyGraph::edge_descriptor> entrances;
     {
         boost::tokenizer< boost::char_separator<char> > tokenizer(entrancesString, boost::char_separator<char>(", "));
         for(const string& vertexIdString: tokenizer) {
@@ -857,8 +857,8 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
 
 
 
-    // Find AssemblyGraph3 edge corresponding to the exits.
-    vector<AssemblyGraph3::edge_descriptor> exits;
+    // Find AssemblyGraph edge corresponding to the exits.
+    vector<AssemblyGraph::edge_descriptor> exits;
     {
         boost::tokenizer< boost::char_separator<char> > tokenizer(exitsString, boost::char_separator<char>(", "));
         for(const string& edgeIdString: tokenizer) {
@@ -947,7 +947,7 @@ void Assembler::exploreVertexTangle(const vector<string>& request, ostream& html
         return;
     }
 
-    // Get the AssemblyGraph3 for this assembly stage.
+    // Get the AssemblyGraph for this assembly stage.
     AssemblyGraph3Postprocessor& assemblyGraph3 = getAssemblyGraph3(
         assemblyStage,
         *httpServerData.assemblerOptions);
@@ -959,7 +959,7 @@ void Assembler::exploreVertexTangle(const vector<string>& request, ostream& html
             " does not have segment " << segmentId;
         return;
     }
-    const AssemblyGraph3::edge_descriptor e = it->second;
+    const AssemblyGraph::edge_descriptor e = it->second;
 
 
 
@@ -1027,7 +1027,7 @@ void Assembler::exploreEdgeTangle(const vector<string>& request, ostream& html)
         return;
     }
 
-    // Get the AssemblyGraph3 for this assembly stage.
+    // Get the AssemblyGraph for this assembly stage.
     AssemblyGraph3Postprocessor& assemblyGraph3 = getAssemblyGraph3(
         assemblyStage,
         *httpServerData.assemblerOptions);
@@ -1039,7 +1039,7 @@ void Assembler::exploreEdgeTangle(const vector<string>& request, ostream& html)
             " does not have segment " << segmentId;
         return;
     }
-    const AssemblyGraph3::edge_descriptor e = it->second;
+    const AssemblyGraph::edge_descriptor e = it->second;
 
 
 

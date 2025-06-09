@@ -13,9 +13,9 @@ assembler.accessAnchors()
 assembler.accessJourneys()
 
 # Get the assemblyGraph3Postprocessor at a chosen assembly stage.
-assemblyGraph3 = assembler.getAssemblyGraph3("Z", assemblerOptions)
-# assemblyGraph3.analyzeSuperbubbles(10)
-assemblyGraph3.colorStrongComponents()
+assemblyGraph = assembler.getAssemblyGraph("Z", assemblerOptions)
+# assemblyGraph.analyzeSuperbubbles(10)
+assemblyGraph.colorStrongComponents()
 
 
 """
@@ -25,7 +25,7 @@ detangler = ChiSquareDetangler(
     assemblyGraphOptions.detangleMaxLogP,
     assemblyGraphOptions.detangleMinLogPDelta)
 detangler.debug = True  
-assemblyGraph3.detangleVertices(detangler)
-assemblyGraph3.compress()
-# assemblyGraph3.write("X")
+assemblyGraph.detangleVertices(detangler)
+assemblyGraph.compress()
+# assemblyGraph.write("X")
 """
