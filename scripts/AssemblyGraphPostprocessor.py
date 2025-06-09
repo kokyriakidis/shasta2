@@ -13,8 +13,9 @@ assembler.accessAnchors()
 assembler.accessJourneys()
 
 # Get the assemblyGraph3Postprocessor at a chosen assembly stage.
-assemblyGraph3 = assembler.getAssemblyGraph3("B", assemblerOptions)
-assemblyGraph3.analyzeSuperbubbles(10)
+assemblyGraph3 = assembler.getAssemblyGraph3("Z", assemblerOptions)
+# assemblyGraph3.analyzeSuperbubbles(10)
+assemblyGraph3.colorStrongComponents()
 
 
 """

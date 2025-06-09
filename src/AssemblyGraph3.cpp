@@ -24,6 +24,7 @@ using namespace shasta;
 #include <boost/graph/adj_list_serialize.hpp>
 #include <boost/graph/filtered_graph.hpp>
 #include <boost/graph/reverse_graph.hpp>
+#include <boost/graph/strong_components.hpp>
 
 // Standard library.
 #include <fstream.hpp>
@@ -1442,4 +1443,77 @@ void AssemblyGraph3::analyzeSuperbubbles(uint64_t maxDistance) const
             csv << assemblyGraph3[e].id << ",Green\n";
         }
     }
+}
+
+
+
+// Find the non-trivial strongly connected components.
+// Each component is stored with vertices sorted to permit binary searches.
+void AssemblyGraph3::findStrongComponents(
+    vector< vector<vertex_descriptor> >& strongComponents) const
+{
+    const AssemblyGraph3& assemblyGraph3 = *this;
+
+    // Map the vertices to integers.
+    uint64_t vertexIndex = 0;
+    std::map<vertex_descriptor, uint64_t> vertexMap;
+    BGL_FORALL_VERTICES(v, assemblyGraph3, AssemblyGraph3) {
+        vertexMap.insert({v, vertexIndex++});
+    }
+
+    // Compute strong components.
+    std::map<vertex_descriptor, uint64_t> componentMap;
+    boost::strong_components(
+        assemblyGraph3,
+        boost::make_assoc_property_map(componentMap),
+        boost::vertex_index_map(boost::make_assoc_property_map(vertexMap)));
+
+    // Gather the vertices in each strong component.
+    std::map<uint64_t, vector<vertex_descriptor> > componentVertices;
+    for(const auto& p: componentMap) {
+        componentVertices[p.second].push_back(p.first);
+    }
+
+    strongComponents.clear();
+    for(const auto& p: componentVertices) {
+        const vector<vertex_descriptor>& component = p.second;
+        if(component.size() > 1) {
+            strongComponents.push_back(component);
+            sort(strongComponents.back().begin(), strongComponents.back().end());
+        }
+    }
+
+
+}
+
+
+
+// This creates a csv file that can be loaded in bandage to see
+// the strongly connected components.
+void  AssemblyGraph3::colorStrongComponents() const
+{
+    const AssemblyGraph3& assemblyGraph3 = *this;
+
+    vector< vector<vertex_descriptor> > strongComponents;
+    findStrongComponents(strongComponents);
+
+    ofstream csv("StrongComponents.csv");
+    csv << "Id,Color,Component\n";
+
+    // Loop over the non-trivial strongly connected components.
+    for(uint64_t i=0; i<strongComponents.size(); i++) {
+        const vector<vertex_descriptor>& strongComponent = strongComponents[i];
+
+        for(const vertex_descriptor v0: strongComponent) {
+            BGL_FORALL_OUTEDGES(v0, e, assemblyGraph3, AssemblyGraph3) {
+                const vertex_descriptor v1 = target(e, assemblyGraph3);
+                if(std::binary_search(strongComponent.begin(), strongComponent.end(), v1)) {
+                    csv << assemblyGraph3[e].id << ",Green," << i << "\n";
+                }
+            }
+        }
+
+    }
+
+
 }

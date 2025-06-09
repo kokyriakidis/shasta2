@@ -221,6 +221,14 @@ public:
     // Find superbubbles and analyze them.
     void analyzeSuperbubbles(uint64_t maxDistance) const;
 
+    // Find the non-trivial strongly connected components.
+    // Each component is stored with vertices sorted to permit binary searches.
+    void findStrongComponents(vector< vector<vertex_descriptor> >&) const;
+
+    // This creates a csv file that can be loaded in bandage to see
+    // the strongly connected components.
+    void colorStrongComponents() const;
+
 
     // Output.
     void write(const string& stage);
