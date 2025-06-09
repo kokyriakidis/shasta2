@@ -156,7 +156,7 @@ void Tangle3::detangle()
         tie(e, ignore) = add_edge(v0, v1, AssemblyGraphEdge(assemblyGraph3.nextEdgeId++), assemblyGraph3);
         AssemblyGraphEdge& edge = assemblyGraph3[e];
 
-        edge.push_back(AssemblyGraph3EdgeStep(anchorPair, offset));
+        edge.push_back(AssemblyGraphEdgeStep(anchorPair, offset));
     }
 
     // Now we can remove all the tangle vertices and their edges.

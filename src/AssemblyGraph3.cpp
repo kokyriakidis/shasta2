@@ -400,7 +400,7 @@ void AssemblyGraph3::assembleStep(edge_descriptor e, uint64_t i)
 {
     AssemblyGraph3& assemblyGraph3 = *this;
     AssemblyGraphEdge& edge = assemblyGraph3[e];
-    AssemblyGraph3EdgeStep& step = edge[i];
+    AssemblyGraphEdgeStep& step = edge[i];
 
     if(step.anchorPair.anchorIdA == step.anchorPair.anchorIdB) {
         step.sequence.clear();
@@ -485,7 +485,7 @@ void AssemblyGraph3::clearSequence()
     BGL_FORALL_EDGES(e, assemblyGraph3, AssemblyGraph3) {
         AssemblyGraphEdge& edge = assemblyGraph3[e];
         edge.wasAssembled= false;
-        for(AssemblyGraph3EdgeStep& step: edge) {
+        for(AssemblyGraphEdgeStep& step: edge) {
             step.sequence.clear();
             step.sequence.shrink_to_fit();
         }

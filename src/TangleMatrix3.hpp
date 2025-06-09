@@ -44,7 +44,7 @@ public:
 
         // The last step of this AssemblyGraphEdge (for an Entrance).
         // The first step of thisAssemblyGraph3Edge (for an Exit).
-        const AssemblyGraph3EdgeStep& step;
+        const AssemblyGraphEdgeStep& step;
 
         // Common coverage for this entrance or exit.
         // This is the sum of tangle matrix entries for this entrance or exit.
@@ -52,7 +52,7 @@ public:
 
         EntranceOrExit(
             edge_descriptor e,
-            const AssemblyGraph3EdgeStep& step) :
+            const AssemblyGraphEdgeStep& step) :
             e(e), step(step) {}
 
         uint64_t coverage() const

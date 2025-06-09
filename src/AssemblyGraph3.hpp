@@ -21,7 +21,7 @@ namespace shasta {
     class AssemblyGraph3;
     class AssemblyGraphVertex;
     class AssemblyGraphEdge;
-    class AssemblyGraph3EdgeStep;
+    class AssemblyGraphEdgeStep;
 
     using AssemblyGraphBaseClass = boost::adjacency_list<
         boost::listS,
@@ -63,20 +63,20 @@ public:
 
 
 
-class shasta::AssemblyGraph3EdgeStep {
+class shasta::AssemblyGraphEdgeStep {
 public:
     AnchorPair anchorPair;
     uint64_t offset = invalid<uint64_t>;
     vector<Base> sequence;
 
-    AssemblyGraph3EdgeStep(
+    AssemblyGraphEdgeStep(
         const AnchorPair& anchorPair,
         uint64_t offset) :
         anchorPair(anchorPair),
         offset(offset)
     {}
 
-    AssemblyGraph3EdgeStep()
+    AssemblyGraphEdgeStep()
     {}
 
     template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
@@ -89,7 +89,7 @@ public:
 
 
 
-class shasta::AssemblyGraphEdge : public vector<AssemblyGraph3EdgeStep> {
+class shasta::AssemblyGraphEdge : public vector<AssemblyGraphEdgeStep> {
 public:
     uint64_t id = invalid<uint64_t>;
     bool wasAssembled = false;
@@ -104,14 +104,14 @@ public:
 
     template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
     {
-        ar & boost::serialization::base_object< vector<AssemblyGraph3EdgeStep> >(*this);
+        ar & boost::serialization::base_object< vector<AssemblyGraphEdgeStep> >(*this);
         ar & id;
         ar & wasAssembled;
     }
 
     void swapSteps(AssemblyGraphEdge& that)
     {
-        vector<AssemblyGraph3EdgeStep>::swap(that);
+        vector<AssemblyGraphEdgeStep>::swap(that);
     }
 };
 

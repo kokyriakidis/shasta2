@@ -516,7 +516,7 @@ void Assembler::exploreSegment(
         }
 
         for(uint64_t stepId=stepBegin; stepId!=stepEnd; ++stepId) {
-            const AssemblyGraph3EdgeStep& step = edge[stepId];
+            const AssemblyGraphEdgeStep& step = edge[stepId];
             const string url = "exploreSegmentStep?assemblyStage=" +
                 assemblyStage + "&segmentName=" + to_string(segmentId) + "&stepId=" + to_string(stepId);
 
@@ -546,11 +546,11 @@ void Assembler::exploreSegment(
 
         // Link to the local anchor graph showing these anchors.
         {
-            const AssemblyGraph3EdgeStep& firstStep = edge[stepBegin];
+            const AssemblyGraphEdgeStep& firstStep = edge[stepBegin];
             const AnchorId anchorIdA = firstStep.anchorPair.anchorIdA;
             string urlAnchors = anchorIdToString(anchorIdA);
             for(uint64_t stepId=stepBegin; stepId!=stepEnd; ++stepId) {
-                const AssemblyGraph3EdgeStep& step = edge[stepId];
+                const AssemblyGraphEdgeStep& step = edge[stepId];
                 const AnchorId anchorIdB = step.anchorPair.anchorIdB;
                 urlAnchors += " ";
                 urlAnchors += anchorIdToString(anchorIdB);
