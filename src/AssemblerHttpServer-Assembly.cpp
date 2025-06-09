@@ -5,7 +5,7 @@
 #include "LocalAssembly1.hpp"
 #include "LocalAssembly2.hpp"
 #include "Tangle.hpp"
-#include "TangleMatrix3.hpp"
+#include "TangleMatrix.hpp"
 using namespace shasta;
 
 // Boost libraries.
@@ -884,8 +884,8 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
         }
     }
 
-    // Create the TangleMatrix3.
-    const TangleMatrix3 tangleMatrix(assemblyGraph3, entrances, exits,
+    // Create the TangleMatrix.
+    const TangleMatrix tangleMatrix(assemblyGraph3, entrances, exits,
         httpServerData.assemblerOptions->aDrift,
         httpServerData.assemblerOptions->bDrift);
     tangleMatrix.writeHtml(assemblyGraph3, html);

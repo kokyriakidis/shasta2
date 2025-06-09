@@ -9,7 +9,7 @@
 
 namespace shasta {
     class Tangle;
-    class TangleMatrix3;
+    class TangleMatrix;
 }
 
 
@@ -40,7 +40,7 @@ public:
         double aDrift,
         double bDrift);
 
-    shared_ptr<TangleMatrix3> tangleMatrix;
+    shared_ptr<TangleMatrix> tangleMatrix;
 
     // Detangling instructions.
     // Each pair is (entranceIndex, exitIndex) that are to be connected

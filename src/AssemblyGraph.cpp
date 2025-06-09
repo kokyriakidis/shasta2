@@ -14,7 +14,7 @@
 #include "rle.hpp"
 #include "SimpleDetangler.hpp"
 #include "Tangle.hpp"
-#include "TangleMatrix3.hpp"
+#include "TangleMatrix.hpp"
 #include "TrivialDetangler.hpp"
 using namespace shasta;
 
@@ -936,7 +936,7 @@ bool AssemblyGraph::detangle(
             assemblerOptions.aDrift,
             assemblerOptions.bDrift);
         if(debug) {
-            const TangleMatrix3& tangleMatrix = *(tangle.tangleMatrix);
+            const TangleMatrix& tangleMatrix = *(tangle.tangleMatrix);
             cout << "Tangle with " << tangleMatrix.entrances.size() << " entrances and " <<
                 tangleMatrix.exits.size() << " exits." << endl;
 

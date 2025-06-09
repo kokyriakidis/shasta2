@@ -18,16 +18,16 @@ and the first step of each exit.
 #include <vector.hpp>
 
 namespace shasta {
-    class TangleMatrix3;
+    class TangleMatrix;
 
 }
 
 
-class shasta::TangleMatrix3 {
+class shasta::TangleMatrix {
 public:
     using edge_descriptor = AssemblyGraph::edge_descriptor;
 
-    TangleMatrix3(
+    TangleMatrix(
         const AssemblyGraph&,
         vector<edge_descriptor> entranceVertices,
         vector<edge_descriptor> exitVertices,

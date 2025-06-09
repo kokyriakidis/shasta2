@@ -1,11 +1,11 @@
-#include "TangleMatrix3.hpp"
+#include "TangleMatrix.hpp"
 #include "Anchor.hpp"
 #include "Base.hpp"
 using namespace shasta;
 
 
 
-TangleMatrix3::TangleMatrix3(
+TangleMatrix::TangleMatrix(
     const AssemblyGraph& assemblyGraph3,
     vector<edge_descriptor> entranceEdges,
     vector<edge_descriptor> exitEdges,
@@ -45,7 +45,7 @@ TangleMatrix3::TangleMatrix3(
 
 
 
-void TangleMatrix3::writeHtml(
+void TangleMatrix::writeHtml(
     const AssemblyGraph& assemblyGraph3,
     ostream& html) const
 {

@@ -1,7 +1,7 @@
 // Shasta.
 #include "Tangle.hpp"
 #include "Anchor.hpp"
-#include "TangleMatrix3.hpp"
+#include "TangleMatrix.hpp"
 using namespace shasta;
 
 // Boost libraries.
@@ -74,8 +74,8 @@ Tangle::Tangle(
         }
     }
 
-    // Now we can create the TangleMatrix3.
-    tangleMatrix = make_shared<TangleMatrix3>(
+    // Now we can create the TangleMatrix.
+    tangleMatrix = make_shared<TangleMatrix>(
         assemblyGraph3, entranceEdges, exitEdges, aDrift, bDrift);
 }
 

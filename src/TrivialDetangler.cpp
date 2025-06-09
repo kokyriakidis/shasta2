@@ -1,13 +1,13 @@
 #include "TrivialDetangler.hpp"
 #include "Tangle.hpp"
-#include "TangleMatrix3.hpp"
+#include "TangleMatrix.hpp"
 using namespace shasta;
 
 
 
 bool TrivialDetangler::operator()(Tangle& tangle)
 {
-    const TangleMatrix3& tangleMatrix = *(tangle.tangleMatrix);
+    const TangleMatrix& tangleMatrix = *(tangle.tangleMatrix);
 
     // Check common coverage on all entrances and exits.
     for(const auto& entrance: tangleMatrix.entrances) {

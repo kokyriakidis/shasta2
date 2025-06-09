@@ -3,7 +3,7 @@
 #include "Base.hpp"
 #include "orderPairs.hpp"
 #include "Tangle.hpp"
-#include "TangleMatrix3.hpp"
+#include "TangleMatrix.hpp"
 using namespace shasta;
 
 // Boost libraries.
@@ -26,7 +26,7 @@ ChiSquareDetangler::ChiSquareDetangler(
 
 bool ChiSquareDetangler::operator()(Tangle& tangle)
 {
-    const TangleMatrix3& tangleMatrix = *(tangle.tangleMatrix);
+    const TangleMatrix& tangleMatrix = *(tangle.tangleMatrix);
     const uint64_t entranceCount = tangleMatrix.entrances.size();
     const uint64_t exitCount = tangleMatrix.exits.size();
 
