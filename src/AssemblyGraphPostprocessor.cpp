@@ -15,11 +15,11 @@ AssemblyGraphPostprocessor::AssemblyGraphPostprocessor(
     const string& assemblyStage) :
     AssemblyGraph(anchors, assemblerOptions, assemblyStage)
 {
-    const AssemblyGraph& assemblyGraph3 = *this;
+    const AssemblyGraph& assemblyGraph = *this;
 
     // Fill in the edge map.
-    BGL_FORALL_EDGES(e, assemblyGraph3, AssemblyGraph) {
-        edgeMap.insert(make_pair(assemblyGraph3[e].id, e));
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        edgeMap.insert(make_pair(assemblyGraph[e].id, e));
     }
 
     computeAnnotations();
@@ -28,17 +28,17 @@ AssemblyGraphPostprocessor::AssemblyGraphPostprocessor(
 
 void AssemblyGraphPostprocessor::computeAnnotations()
 {
-    const AssemblyGraph& assemblyGraph3 = *this;
+    const AssemblyGraph& assemblyGraph = *this;
     annotations.clear();
 
     // Vertices.
-    BGL_FORALL_VERTICES(v, assemblyGraph3, AssemblyGraph) {
-        annotations.emplace_back(assemblyGraph3[v].anchorId, v);
+    BGL_FORALL_VERTICES(v, assemblyGraph, AssemblyGraph) {
+        annotations.emplace_back(assemblyGraph[v].anchorId, v);
     }
 
     // Edges.
-    BGL_FORALL_EDGES(e, assemblyGraph3, AssemblyGraph) {
-        const AssemblyGraphEdge& edge = assemblyGraph3[e];
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        const AssemblyGraphEdge& edge = assemblyGraph[e];
         for(uint64_t step=0; step<edge.size(); step++) {
             const AnchorPair& anchorPair = edge[step].anchorPair;
             annotations.emplace_back(anchorPair.anchorIdA, e, step, true);

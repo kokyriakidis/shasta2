@@ -87,7 +87,7 @@ bool SimpleDetangler::operator()(Tangle& tangle)
     // don't detangle.
     for(const auto& p: significantEntries) {
         const AnchorPair& anchorPair = tangleMatrix.tangleMatrix[p.first][p.second];
-        const uint64_t offset = anchorPair.getAverageOffset(tangle.assemblyGraph3.anchors);
+        const uint64_t offset = anchorPair.getAverageOffset(tangle.assemblyGraph.anchors);
         if(debug) {
             cout << "Base offset for " << p.first << " " << p.second << " is " << offset << endl;
         }

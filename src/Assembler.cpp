@@ -220,12 +220,12 @@ void Assembler::createAssemblyGraph3(
 
 
     // Create the AssemblyGraph.
-    AssemblyGraph assemblyGraph3(
+    AssemblyGraph assemblyGraph(
         anchors(),
         *anchorGraphPointer,
         options);
     anchorGraphPointer = 0;
-    assemblyGraph3.run(threadCount);
+    assemblyGraph.run(threadCount);
 
 }
 

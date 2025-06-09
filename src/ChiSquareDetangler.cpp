@@ -41,12 +41,12 @@ bool ChiSquareDetangler::operator()(Tangle& tangle)
         cout << "Working on a tangle with " << entranceCount << " entrances and " << exitCount << " exits." << endl;
         cout << "Entrances:";
         for(const auto& entrance: tangleMatrix.entrances) {
-            cout << " " << tangle.assemblyGraph3[entrance.e].id;
+            cout << " " << tangle.assemblyGraph[entrance.e].id;
         }
         cout << endl;
         cout << "Exits:";
         for(const auto& exit: tangleMatrix.exits) {
-            cout << " " << tangle.assemblyGraph3[exit.e].id;
+            cout << " " << tangle.assemblyGraph[exit.e].id;
         }
         cout << endl;
         cout << "Tangle matrix:" << endl;

@@ -56,7 +56,7 @@ public:
 
     bool debug = false;
 
-    AssemblyGraph& assemblyGraph3;
+    AssemblyGraph& assemblyGraph;
 
 private:
     // The Tangle vertices.

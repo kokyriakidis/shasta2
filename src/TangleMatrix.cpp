@@ -6,7 +6,7 @@ using namespace shasta;
 
 
 TangleMatrix::TangleMatrix(
-    const AssemblyGraph& assemblyGraph3,
+    const AssemblyGraph& assemblyGraph,
     vector<edge_descriptor> entranceEdges,
     vector<edge_descriptor> exitEdges,
     double aDrift,
@@ -14,12 +14,12 @@ TangleMatrix::TangleMatrix(
 {
 
     for(const edge_descriptor e: entranceEdges) {
-        const AssemblyGraphEdge& edge = assemblyGraph3[e];
+        const AssemblyGraphEdge& edge = assemblyGraph[e];
         entrances.emplace_back(e, edge.back());
     }
 
     for(const edge_descriptor e: exitEdges) {
-        const AssemblyGraphEdge& edge = assemblyGraph3[e];
+        const AssemblyGraphEdge& edge = assemblyGraph[e];
         exits.emplace_back(e, edge.front());
     }
 
@@ -32,7 +32,7 @@ TangleMatrix::TangleMatrix(
         for(uint64_t iExit=0; iExit<exits.size(); iExit++) {
             EntranceOrExit& exit = exits[iExit];
 
-            tangleMatrix[iEntrance][iExit] = assemblyGraph3.anchors.bridge(
+            tangleMatrix[iEntrance][iExit] = assemblyGraph.anchors.bridge(
                 entrance.step.anchorPair,
                 exit.step.anchorPair,
                 aDrift, bDrift);
@@ -46,7 +46,7 @@ TangleMatrix::TangleMatrix(
 
 
 void TangleMatrix::writeHtml(
-    const AssemblyGraph& assemblyGraph3,
+    const AssemblyGraph& assemblyGraph,
     ostream& html) const
 {
     html <<
@@ -63,7 +63,7 @@ void TangleMatrix::writeHtml(
 
     html << "<tr><th style='background-color:LightCyan'>Segment";
     for(uint64_t i=0; i<exits.size(); i++) {
-        html << "<td class=centered style='background-color:LightCyan'>" << assemblyGraph3[exits[i].e].id;
+        html << "<td class=centered style='background-color:LightCyan'>" << assemblyGraph[exits[i].e].id;
     }
 
     html << "<tr><th style='background-color:LightCyan'>Coverage";
@@ -93,7 +93,7 @@ void TangleMatrix::writeHtml(
         html <<
             "<tr>"
             "<td class=centered style='background-color:CornSilk'>" << iEntrance <<
-            "<td class=centered style='background-color:CornSilk'>" << assemblyGraph3[entrance.e].id <<
+            "<td class=centered style='background-color:CornSilk'>" << assemblyGraph[entrance.e].id <<
             "<td class=centered style='background-color:CornSilk'>" << entrance.coverage() <<
             "<td class=centered style='background-color:CornSilk'>" << entrance.commonCoverage <<
             "<td>";

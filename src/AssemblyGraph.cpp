@@ -46,7 +46,7 @@ AssemblyGraph::AssemblyGraph(
     anchors(anchors),
     assemblerOptions(assemblerOptions)
 {
-    AssemblyGraph& assemblyGraph3 = *this;
+    AssemblyGraph& assemblyGraph = *this;
 
     // Create a filtered AnchorGraph containing only the edges marked as "useForAssembly".
     class EdgePredicate {
@@ -80,16 +80,16 @@ AssemblyGraph::AssemblyGraph(
         const AnchorId anchorId1 = anchorGraph[chain.back()].anchorPair.anchorIdB;
 
         if(not vertexMap.contains(anchorId0)) {
-            const vertex_descriptor v0 = add_vertex(AssemblyGraphVertex(anchorId0, nextVertexId++), assemblyGraph3);
+            const vertex_descriptor v0 = add_vertex(AssemblyGraphVertex(anchorId0, nextVertexId++), assemblyGraph);
             vertexMap.insert(make_pair(anchorId0, v0));
         }
 
         if(not vertexMap.contains(anchorId1)) {
-            const vertex_descriptor v1 = add_vertex(AssemblyGraphVertex(anchorId1, nextVertexId++), assemblyGraph3);
+            const vertex_descriptor v1 = add_vertex(AssemblyGraphVertex(anchorId1, nextVertexId++), assemblyGraph);
             vertexMap.insert(make_pair(anchorId1, v1));
         }
     }
-    SHASTA_ASSERT(vertexMap.size() == num_vertices(assemblyGraph3));
+    SHASTA_ASSERT(vertexMap.size() == num_vertices(assemblyGraph));
 
 
 
@@ -103,8 +103,8 @@ AssemblyGraph::AssemblyGraph(
 
         edge_descriptor e;
         bool edgeWasAdded;
-        tie(e, edgeWasAdded) = add_edge(v0, v1, AssemblyGraphEdge(nextEdgeId++), assemblyGraph3);
-        AssemblyGraphEdge& edge = assemblyGraph3[e];
+        tie(e, edgeWasAdded) = add_edge(v0, v1, AssemblyGraphEdge(nextEdgeId++), assemblyGraph);
+        AssemblyGraphEdge& edge = assemblyGraph[e];
 
         // Each AnchorGraph edge in the chain contributes a step to this AssemblyGraph edge.
         for(const AnchorGraph::edge_descriptor eA: chain) {
@@ -137,7 +137,7 @@ AssemblyGraph::AssemblyGraph(
 // Detangle, phase, assemble sequence, output.
 void AssemblyGraph::run(uint64_t threadCount)
 {
-    // AssemblyGraph& assemblyGraph3 = *this;
+    // AssemblyGraph& assemblyGraph = *this;
     const uint64_t maxIterationCount = 10;
 
 
@@ -174,21 +174,21 @@ void AssemblyGraph::run(uint64_t threadCount)
 
 void AssemblyGraph::check() const
 {
-    const AssemblyGraph& assemblyGraph3 = *this;
+    const AssemblyGraph& assemblyGraph = *this;
 
-    BGL_FORALL_EDGES(e, assemblyGraph3, AssemblyGraph) {
-        const AssemblyGraphEdge& edge = assemblyGraph3[e];
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        const AssemblyGraphEdge& edge = assemblyGraph[e];
         SHASTA_ASSERT(not edge.empty());
 
 
 
         // Check that the first/last AnchorIds of this edge are consistent
         // with the ones in the source/target vertices.
-        const vertex_descriptor v0 = source(e, assemblyGraph3);
-        const vertex_descriptor v1 = target(e, assemblyGraph3);
+        const vertex_descriptor v0 = source(e, assemblyGraph);
+        const vertex_descriptor v1 = target(e, assemblyGraph);
 
-        const AnchorId anchorId0 = assemblyGraph3[v0].anchorId;
-        const AnchorId anchorId1 = assemblyGraph3[v1].anchorId;
+        const AnchorId anchorId0 = assemblyGraph[v0].anchorId;
+        const AnchorId anchorId1 = assemblyGraph[v1].anchorId;
 
         SHASTA_ASSERT(edge.front().anchorPair.anchorIdA == anchorId0);
         SHASTA_ASSERT(edge.back().anchorPair.anchorIdB == anchorId1);
@@ -231,13 +231,13 @@ void AssemblyGraph::write(const string& stage)
 
 void AssemblyGraph::writeFasta(const string& stage) const
 {
-    const AssemblyGraph& assemblyGraph3 = *this;;
+    const AssemblyGraph& assemblyGraph = *this;;
 
     ofstream fasta("AssemblyGraph-" + stage + ".fasta");
 
     vector<shasta::Base> sequence;
-    BGL_FORALL_EDGES(e, assemblyGraph3, AssemblyGraph) {
-        const AssemblyGraphEdge& edge = assemblyGraph3[e];
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        const AssemblyGraphEdge& edge = assemblyGraph[e];
         edge.getSequence(sequence);
 
         fasta << ">" << edge.id << "\n";
@@ -258,15 +258,15 @@ void AssemblyGraph::writeGfa(const string& fileName) const
 
 void AssemblyGraph::writeGfa(ostream& gfa) const
 {
-    const AssemblyGraph& assemblyGraph3 = *this;
+    const AssemblyGraph& assemblyGraph = *this;
 
     // Write the header line.
     gfa << "H\tVN:Z:1.0\n";
 
     // Each edge generates a gfa segment.
     vector<shasta::Base> sequence;
-    BGL_FORALL_EDGES(e, assemblyGraph3, AssemblyGraph) {
-        const AssemblyGraphEdge& edge = assemblyGraph3[e];
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        const AssemblyGraphEdge& edge = assemblyGraph[e];
 
         // Record type.
         gfa << "S\t";
@@ -291,11 +291,11 @@ void AssemblyGraph::writeGfa(ostream& gfa) const
 
     // For each vertex, generate a link between each pair of
     // incoming/outgoing edges.
-    BGL_FORALL_VERTICES(v, assemblyGraph3, AssemblyGraph) {
-        BGL_FORALL_INEDGES(v, e0, assemblyGraph3, AssemblyGraph) {
-            const uint64_t id0 = assemblyGraph3[e0].id;
-            BGL_FORALL_OUTEDGES(v, e1, assemblyGraph3, AssemblyGraph) {
-                const uint64_t id1 = assemblyGraph3[e1].id;
+    BGL_FORALL_VERTICES(v, assemblyGraph, AssemblyGraph) {
+        BGL_FORALL_INEDGES(v, e0, assemblyGraph, AssemblyGraph) {
+            const uint64_t id0 = assemblyGraph[e0].id;
+            BGL_FORALL_OUTEDGES(v, e1, assemblyGraph, AssemblyGraph) {
+                const uint64_t id1 = assemblyGraph[e1].id;
 
                 gfa <<
                     "L\t" <<
@@ -320,15 +320,15 @@ void AssemblyGraph::writeGraphviz(const string& fileName) const
 
 void AssemblyGraph::writeGraphviz(ostream& dot) const
 {
-    const AssemblyGraph& assemblyGraph3 = *this;
+    const AssemblyGraph& assemblyGraph = *this;
 
     dot << "digraph AssemblyGraph {\n";
 
 
 
     // Write the vertices.
-    BGL_FORALL_VERTICES(v, assemblyGraph3, AssemblyGraph) {
-    	const AssemblyGraphVertex& vertex = assemblyGraph3[v];
+    BGL_FORALL_VERTICES(v, assemblyGraph, AssemblyGraph) {
+    	const AssemblyGraphVertex& vertex = assemblyGraph[v];
     	dot <<
     		vertex.id <<
     		" [label=\"" << anchorIdToString(vertex.anchorId) << "\\n" << vertex.id << "\"]"
@@ -338,12 +338,12 @@ void AssemblyGraph::writeGraphviz(ostream& dot) const
 
 
     // Write the edges.
-    BGL_FORALL_EDGES(e, assemblyGraph3, AssemblyGraph) {
-        const AssemblyGraphEdge& edge = assemblyGraph3[e];
-    	const vertex_descriptor v0 = source(e, assemblyGraph3);
-    	const vertex_descriptor v1 = target(e, assemblyGraph3);
-    	const AssemblyGraphVertex& vertex0 = assemblyGraph3[v0];
-    	const AssemblyGraphVertex& vertex1 = assemblyGraph3[v1];
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        const AssemblyGraphEdge& edge = assemblyGraph[e];
+    	const vertex_descriptor v0 = source(e, assemblyGraph);
+    	const vertex_descriptor v1 = target(e, assemblyGraph);
+    	const AssemblyGraphVertex& vertex0 = assemblyGraph[v0];
+    	const AssemblyGraphVertex& vertex1 = assemblyGraph[v1];
     	dot <<
     	    vertex0.id << "->" <<
     	    vertex1.id <<
@@ -369,10 +369,10 @@ void AssemblyGraph::assembleAll(uint64_t threadCount)
         threadCount = std::thread::hardware_concurrency();
     }
 
-    const AssemblyGraph& assemblyGraph3 = *this;
+    const AssemblyGraph& assemblyGraph = *this;
 
     edgesToBeAssembled.clear();
-    BGL_FORALL_EDGES(e, assemblyGraph3, AssemblyGraph) {
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
         edgesToBeAssembled.push_back(e);
     }
     assemble(threadCount);
@@ -398,8 +398,8 @@ void AssemblyGraph::assemble(edge_descriptor e, uint64_t threadCount)
 // It runs a LocalAssembly2 on the AnchorPair for that step.
 void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
 {
-    AssemblyGraph& assemblyGraph3 = *this;
-    AssemblyGraphEdge& edge = assemblyGraph3[e];
+    AssemblyGraph& assemblyGraph = *this;
+    AssemblyGraphEdge& edge = assemblyGraph[e];
     AssemblyGraphEdgeStep& step = edge[i];
 
     if(step.anchorPair.anchorIdA == step.anchorPair.anchorIdB) {
@@ -425,11 +425,11 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
 // then assembles each of the steps in parallel.
 void AssemblyGraph::assemble(uint64_t threadCount)
 {
-    AssemblyGraph& assemblyGraph3 = *this;
+    AssemblyGraph& assemblyGraph = *this;
 
     stepsToBeAssembled.clear();
     for(const edge_descriptor e: edgesToBeAssembled) {
-        AssemblyGraphEdge& edge = assemblyGraph3[e];
+        AssemblyGraphEdge& edge = assemblyGraph[e];
         for(uint64_t i=0; i<edge.size(); i++) {
             stepsToBeAssembled.push_back(make_pair(e, i));
         }
@@ -441,7 +441,7 @@ void AssemblyGraph::assemble(uint64_t threadCount)
 
     // Mark them as assembled.
     for(const edge_descriptor e: edgesToBeAssembled) {
-        assemblyGraph3[e].wasAssembled = true;
+        assemblyGraph[e].wasAssembled = true;
     }
 
     edgesToBeAssembled.clear();
@@ -452,7 +452,7 @@ void AssemblyGraph::assemble(uint64_t threadCount)
 
 void AssemblyGraph::assembleThreadFunction(uint64_t /* threadId */)
 {
-    AssemblyGraph& assemblyGraph3 = *this;
+    AssemblyGraph& assemblyGraph = *this;
 
     // Loop over all batches assigned to this thread.
     uint64_t begin, end;
@@ -468,7 +468,7 @@ void AssemblyGraph::assembleThreadFunction(uint64_t /* threadId */)
             const auto& p = stepsToBeAssembled[j];
             const edge_descriptor e = p.first;
             const uint64_t i = p.second;
-            AssemblyGraphEdge& edge = assemblyGraph3[e];
+            AssemblyGraphEdge& edge = assemblyGraph[e];
             SHASTA_ASSERT(i < edge.size());
             assembleStep(e, i);
         }
@@ -480,10 +480,10 @@ void AssemblyGraph::assembleThreadFunction(uint64_t /* threadId */)
 // Clear sequence from all steps of all edges.
 void AssemblyGraph::clearSequence()
 {
-    AssemblyGraph& assemblyGraph3 = *this;
+    AssemblyGraph& assemblyGraph = *this;
 
-    BGL_FORALL_EDGES(e, assemblyGraph3, AssemblyGraph) {
-        AssemblyGraphEdge& edge = assemblyGraph3[e];
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        AssemblyGraphEdge& edge = assemblyGraph[e];
         edge.wasAssembled= false;
         for(AssemblyGraphEdgeStep& step: edge) {
             step.sequence.clear();
@@ -519,15 +519,15 @@ uint64_t AssemblyGraphEdge::sequenceLength() const
 
 void AssemblyGraph::findBubbles(vector<Bubble>& bubbles) const
 {
-    const AssemblyGraph& assemblyGraph3 = *this;
+    const AssemblyGraph& assemblyGraph = *this;
     bubbles.clear();
 
     // Look at bubbles with source v0.
     std::map<vertex_descriptor, vector<edge_descriptor> > m;
-    BGL_FORALL_VERTICES(v0, assemblyGraph3, AssemblyGraph) {
+    BGL_FORALL_VERTICES(v0, assemblyGraph, AssemblyGraph) {
         m.clear();
-        BGL_FORALL_OUTEDGES(v0, e, assemblyGraph3, AssemblyGraph) {
-            const vertex_descriptor v1 = target(e, assemblyGraph3);
+        BGL_FORALL_OUTEDGES(v0, e, assemblyGraph, AssemblyGraph) {
+            const vertex_descriptor v1 = target(e, assemblyGraph);
             m[v1].push_back(e);
         }
 
@@ -575,7 +575,7 @@ void AssemblyGraph::bubbleCleanup(uint64_t threadCount)
 
 uint64_t AssemblyGraph::bubbleCleanupIteration(uint64_t threadCount)
 {
-    AssemblyGraph& assemblyGraph3 = *this;
+    AssemblyGraph& assemblyGraph = *this;
 
     // Find all bubbles.
     vector<Bubble> allBubbles;
@@ -591,8 +591,8 @@ uint64_t AssemblyGraph::bubbleCleanupIteration(uint64_t threadCount)
         const vertex_descriptor v0 = bubble.v0;
         const vertex_descriptor v1 = bubble.v1;
 
-        const AssemblyGraphVertex& vertex0 = assemblyGraph3[v0];
-        const AssemblyGraphVertex& vertex1 = assemblyGraph3[v1];
+        const AssemblyGraphVertex& vertex0 = assemblyGraph[v0];
+        const AssemblyGraphVertex& vertex1 = assemblyGraph[v1];
 
         const AnchorId anchorId0 = vertex0.anchorId;
         const AnchorId anchorId1 = vertex1.anchorId;
@@ -608,18 +608,18 @@ uint64_t AssemblyGraph::bubbleCleanupIteration(uint64_t threadCount)
 #if 0
         // This is the old code that assumes that the bubble is preceded/followed by a
         // single segment.
-        SHASTA_ASSERT(in_degree(v0, assemblyGraph3) == 1);
-        SHASTA_ASSERT(out_degree(v1, assemblyGraph3) == 1);
+        SHASTA_ASSERT(in_degree(v0, assemblyGraph) == 1);
+        SHASTA_ASSERT(out_degree(v1, assemblyGraph) == 1);
 
         in_edge_iterator it0;
-        tie(it0, ignore) = in_edges(v0, assemblyGraph3);
+        tie(it0, ignore) = in_edges(v0, assemblyGraph);
         const edge_descriptor e0 = *it0;
-        const AnchorPair& anchorPair0 = assemblyGraph3[e0].back().anchorPair;
+        const AnchorPair& anchorPair0 = assemblyGraph[e0].back().anchorPair;
 
         out_edge_iterator it1;
-        tie(it1, ignore) = out_edges(v1, assemblyGraph3);
+        tie(it1, ignore) = out_edges(v1, assemblyGraph);
         const edge_descriptor e1 = *it1;
-        const AnchorPair& anchorPair1 = assemblyGraph3[e1].front().anchorPair;
+        const AnchorPair& anchorPair1 = assemblyGraph[e1].front().anchorPair;
 
         // Construct the bridge AnchorPair.
         const AnchorPair bridgeAnchorPair = anchors.bridge(
@@ -641,7 +641,7 @@ uint64_t AssemblyGraph::bubbleCleanupIteration(uint64_t threadCount)
     for(const auto& p: candidateBubbles) {
         const Bubble& bubble = p.first;
         for(const edge_descriptor e: bubble.edges) {
-            if(not assemblyGraph3[e].wasAssembled) {
+            if(not assemblyGraph[e].wasAssembled) {
                 edgesToBeAssembled.push_back(e);
             }
         }
@@ -660,8 +660,8 @@ uint64_t AssemblyGraph::bubbleCleanupIteration(uint64_t threadCount)
         vector< vector<shasta::Base> > sequences;
         for(const edge_descriptor e: bubble.edges) {
             sequences.emplace_back();
-            SHASTA_ASSERT(assemblyGraph3[e].wasAssembled);
-            assemblyGraph3[e].getSequence(sequences.back());
+            SHASTA_ASSERT(assemblyGraph[e].wasAssembled);
+            assemblyGraph[e].getSequence(sequences.back());
         }
 
         // This bubble can be removed if all the raw sequences are identical.
@@ -708,15 +708,15 @@ uint64_t AssemblyGraph::bubbleCleanupIteration(uint64_t threadCount)
 
             // Remove the edges of the bubble.
             for(const edge_descriptor e: bubble.edges) {
-                boost::remove_edge(e, assemblyGraph3);
+                boost::remove_edge(e, assemblyGraph);
             }
 
             // Add a new edge with a single step to replace the bubble.
             edge_descriptor e;
             bool edgeWasAdded;
             tie(e, edgeWasAdded) = add_edge(bubble.v0, bubble.v1,
-                AssemblyGraphEdge(nextEdgeId++), assemblyGraph3);
-            AssemblyGraphEdge& edge = assemblyGraph3[e];
+                AssemblyGraphEdge(nextEdgeId++), assemblyGraph);
+            AssemblyGraphEdge& edge = assemblyGraph[e];
 
             const AnchorPair& anchorPair = p.second;
             const uint64_t offset = anchorPair.getAverageOffset(anchors);
@@ -736,11 +736,11 @@ uint64_t AssemblyGraph::bubbleCleanupIteration(uint64_t threadCount)
 // Compress linear chains of edges into a single edge.
 void AssemblyGraph::compress()
 {
-    AssemblyGraph& assemblyGraph3 = *this;
+    AssemblyGraph& assemblyGraph = *this;
 
     // Find linear chains of 2 or more edges.
     vector< std::list<edge_descriptor> > chains;
-    findLinearChains(assemblyGraph3, 2, chains);
+    findLinearChains(assemblyGraph, 2, chains);
 
     for(const auto& chain: chains) {
         SHASTA_ASSERT(chain.size() > 1);
@@ -750,17 +750,17 @@ void AssemblyGraph::compress()
         const edge_descriptor e1 = chain.back();
 
         // Get the first and last edge of this chain.
-        const vertex_descriptor v0 = source(e0, assemblyGraph3);
-        const vertex_descriptor v1 = target(e1, assemblyGraph3);
+        const vertex_descriptor v0 = source(e0, assemblyGraph);
+        const vertex_descriptor v1 = target(e1, assemblyGraph);
 
         // Add the new edge.
         edge_descriptor eNew;
-        tie(eNew, ignore) = add_edge(v0, v1, AssemblyGraphEdge(nextEdgeId++), assemblyGraph3);
-        AssemblyGraphEdge& edgeNew = assemblyGraph3[eNew];
+        tie(eNew, ignore) = add_edge(v0, v1, AssemblyGraphEdge(nextEdgeId++), assemblyGraph);
+        AssemblyGraphEdge& edgeNew = assemblyGraph[eNew];
 
         // Concatenate the steps of all the edges in the chain.
         for(const edge_descriptor e: chain) {
-            const AssemblyGraphEdge& edge = assemblyGraph3[e];
+            const AssemblyGraphEdge& edge = assemblyGraph[e];
             copy(edge.begin(), edge.end(), back_inserter(edgeNew));
         }
 
@@ -770,9 +770,9 @@ void AssemblyGraph::compress()
             if(isFirst) {
                 isFirst = false;
             } else {
-                const vertex_descriptor v = source(e, assemblyGraph3);
-                boost::clear_vertex(v, assemblyGraph3);
-                boost::remove_vertex(v, assemblyGraph3);
+                const vertex_descriptor v = source(e, assemblyGraph);
+                boost::clear_vertex(v, assemblyGraph);
+                boost::remove_vertex(v, assemblyGraph);
             }
         }
 
@@ -851,16 +851,16 @@ void AssemblyGraph::load(const string& assemblyStage)
 
 bool AssemblyGraph::detangleVertices(Detangler& detangler)
 {
-    AssemblyGraph& assemblyGraph3 = *this;
+    AssemblyGraph& assemblyGraph = *this;
 
     // Gather vertices on which we will attempt detangling.
     // Each generates a tangle with just one vertex.
     vector< vector<vertex_descriptor> > detanglingCandidates;
-    BGL_FORALL_VERTICES(v, assemblyGraph3, AssemblyGraph) {
+    BGL_FORALL_VERTICES(v, assemblyGraph, AssemblyGraph) {
 
         if(
-            (in_degree(v, assemblyGraph3) > 1) and
-            (out_degree(v, assemblyGraph3) > 1)
+            (in_degree(v, assemblyGraph) > 1) and
+            (out_degree(v, assemblyGraph) > 1)
              ) {
             detanglingCandidates.emplace_back(vector<vertex_descriptor>({v}));
         }
@@ -869,7 +869,7 @@ bool AssemblyGraph::detangleVertices(Detangler& detangler)
 
 
     // cout << "Found " << detanglingCandidates.size() <<
-    //     " tangle vertices out of " << num_vertices(assemblyGraph3) << " total vertices." << endl;
+    //     " tangle vertices out of " << num_vertices(assemblyGraph) << " total vertices." << endl;
 
     // Do the detangling.
     return detangle(detanglingCandidates, detangler);
@@ -879,21 +879,21 @@ bool AssemblyGraph::detangleVertices(Detangler& detangler)
 
 bool AssemblyGraph::detangleEdges(Detangler& detangler)
 {
-    AssemblyGraph& assemblyGraph3 = *this;
+    AssemblyGraph& assemblyGraph = *this;
     // cout << "Edge detangling begins." << endl;
 
     // Gather edges on which we will attempt detangling.
     // Each generates a tangle with just two vertices.
     vector< vector<vertex_descriptor> > detanglingCandidates;
-    BGL_FORALL_EDGES(e, assemblyGraph3, AssemblyGraph) {
-        const vertex_descriptor v0 = source(e, assemblyGraph3);
-        const vertex_descriptor v1 = target(e, assemblyGraph3);
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        const vertex_descriptor v0 = source(e, assemblyGraph);
+        const vertex_descriptor v1 = target(e, assemblyGraph);
         detanglingCandidates.emplace_back(vector<vertex_descriptor>({v0, v1}));
     }
 
 
     // cout << "Found " << detanglingCandidates.size() <<
-    //     " tangle edges out of " << num_edges(assemblyGraph3) << " total edges." << endl;
+    //     " tangle edges out of " << num_edges(assemblyGraph) << " total edges." << endl;
 
     // Do the detangling.
     return detangle(detanglingCandidates, detangler);
@@ -908,7 +908,7 @@ bool AssemblyGraph::detangle(
     const bool debug = false;
     // detangler.debug = true;
 
-    AssemblyGraph& assemblyGraph3 = *this;
+    AssemblyGraph& assemblyGraph = *this;
 
     std::set<vertex_descriptor> removedVertices;
     uint64_t attemptCount = 0;
@@ -932,7 +932,7 @@ bool AssemblyGraph::detangle(
 
         // Attempt detangling for the tangle defined by these vertices.
         ++attemptCount;
-        Tangle tangle(assemblyGraph3, tangleVertices,
+        Tangle tangle(assemblyGraph, tangleVertices,
             assemblerOptions.aDrift,
             assemblerOptions.bDrift);
         if(debug) {
@@ -942,13 +942,13 @@ bool AssemblyGraph::detangle(
 
             cout << "Entrances:";
             for(const auto& entrance: tangleMatrix.entrances) {
-                cout << " " << assemblyGraph3[entrance.e].id;
+                cout << " " << assemblyGraph[entrance.e].id;
             }
             cout << endl;
 
             cout << "Exits:";
             for(const auto& exit: tangleMatrix.exits) {
-                cout << " " << assemblyGraph3[exit.e].id;
+                cout << " " << assemblyGraph[exit.e].id;
             }
             cout << endl;
 
@@ -1043,7 +1043,7 @@ bool AssemblyGraph::detangle(uint64_t maxIterationCount, Detangler& detangler)
 
 void AssemblyGraph::prune(uint64_t pruneLength)
 {
-    AssemblyGraph& assemblyGraph3 = *this;
+    AssemblyGraph& assemblyGraph = *this;
 
     vector<vertex_descriptor> verticesToBeRemoved;
     vector<edge_descriptor> edgesToBeRemoved;
@@ -1053,8 +1053,8 @@ void AssemblyGraph::prune(uint64_t pruneLength)
         edgesToBeRemoved.clear();
         uint64_t pruneCount = 0;
         uint64_t prunedLength = 0;
-        BGL_FORALL_EDGES(e, assemblyGraph3, AssemblyGraph) {
-            const uint64_t offset = assemblyGraph3[e].offset();
+        BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+            const uint64_t offset = assemblyGraph[e].offset();
 
             // If long enough, don't prune it.
             if(offset > pruneLength) {
@@ -1062,9 +1062,9 @@ void AssemblyGraph::prune(uint64_t pruneLength)
             }
 
             // See if it can be pruned.
-            const vertex_descriptor v0 = source(e, assemblyGraph3);
-            const vertex_descriptor v1 = target(e, assemblyGraph3);
-            if((in_degree(v0, assemblyGraph3) == 0) or (out_degree(v1, assemblyGraph3) == 0)) {
+            const vertex_descriptor v0 = source(e, assemblyGraph);
+            const vertex_descriptor v1 = target(e, assemblyGraph);
+            if((in_degree(v0, assemblyGraph) == 0) or (out_degree(v1, assemblyGraph) == 0)) {
                 edgesToBeRemoved.push_back(e);
                 ++pruneCount;
                 prunedLength += offset;
@@ -1073,18 +1073,18 @@ void AssemblyGraph::prune(uint64_t pruneLength)
 
         // Remove the edges.
         for(const edge_descriptor e: edgesToBeRemoved) {
-            boost::remove_edge(e, assemblyGraph3);
+            boost::remove_edge(e, assemblyGraph);
         }
 
         // Now remove any vertices that are left isolated.
         verticesToBeRemoved.clear();
-        BGL_FORALL_VERTICES(v, assemblyGraph3, AssemblyGraph) {
-            if((in_degree(v, assemblyGraph3) == 0) and (out_degree(v, assemblyGraph3) == 0)) {
+        BGL_FORALL_VERTICES(v, assemblyGraph, AssemblyGraph) {
+            if((in_degree(v, assemblyGraph) == 0) and (out_degree(v, assemblyGraph) == 0)) {
                 verticesToBeRemoved.push_back(v);
             }
         }
         for(const vertex_descriptor v: verticesToBeRemoved) {
-            boost::remove_vertex(v, assemblyGraph3);
+            boost::remove_vertex(v, assemblyGraph);
         }
 
         cout << "Prune iteration removed " << pruneCount <<
@@ -1281,9 +1281,9 @@ bool AssemblyGraph::detangle(
     const TangleTemplate& tangleTemplate,
     Detangler& detangler)
 {
-    AssemblyGraph& assemblyGraph3 = *this;
+    AssemblyGraph& assemblyGraph = *this;
     vector< vector<vertex_descriptor> > detanglingCandidates;
-    inducedSubgraphIsomorphisms(assemblyGraph3, tangleTemplate, detanglingCandidates);
+    inducedSubgraphIsomorphisms(assemblyGraph, tangleTemplate, detanglingCandidates);
 
     cout << "Found " << detanglingCandidates.size() << " instances for the requested Tangle template." << endl;
 
@@ -1297,26 +1297,26 @@ void AssemblyGraph::findSuperbubbles(
     uint64_t maxDistance,
     vector< pair<vertex_descriptor, vertex_descriptor> >& vertexPairs) const
 {
-    const AssemblyGraph& assemblyGraph3 = *this;
+    const AssemblyGraph& assemblyGraph = *this;
 
     vector< pair<vertex_descriptor, vertex_descriptor> > forwardPairs;
-    BGL_FORALL_VERTICES(vA, assemblyGraph3, AssemblyGraph) {
-        const vertex_descriptor vB = findConvergingVertex(assemblyGraph3, vA, maxDistance);
+    BGL_FORALL_VERTICES(vA, assemblyGraph, AssemblyGraph) {
+        const vertex_descriptor vB = findConvergingVertex(assemblyGraph, vA, maxDistance);
         if(vB != null_vertex()) {
             forwardPairs.emplace_back(vA, vB);
-            // cout << assemblyGraph3[vA].id << "..." << assemblyGraph3[vB].id << endl;
+            // cout << assemblyGraph[vA].id << "..." << assemblyGraph[vB].id << endl;
         }
     }
     sort(forwardPairs.begin(), forwardPairs.end());
     // cout << "Found " << forwardPairs.size() << " forward pairs." << endl;
 
-    const boost::reverse_graph<AssemblyGraph> reverseAssemblyGraph3(assemblyGraph3);
+    const boost::reverse_graph<AssemblyGraph> reverseAssemblyGraph3(assemblyGraph);
     vector< pair<vertex_descriptor, vertex_descriptor> > backwardPairs;
-    BGL_FORALL_VERTICES(vA, assemblyGraph3, AssemblyGraph) {
+    BGL_FORALL_VERTICES(vA, assemblyGraph, AssemblyGraph) {
         const vertex_descriptor vB = findConvergingVertex(reverseAssemblyGraph3, vA, maxDistance);
         if(vB != null_vertex()) {
             backwardPairs.emplace_back(vB, vA);
-            // cout << assemblyGraph3[vA].id << "..." << assemblyGraph3[vB].id << endl;
+            // cout << assemblyGraph[vA].id << "..." << assemblyGraph[vB].id << endl;
         }
     }
     sort(backwardPairs.begin(), backwardPairs.end());
@@ -1332,7 +1332,7 @@ void AssemblyGraph::findSuperbubbles(
 #if 0
     cout << "Found " << vertexPairs.size() << " bidirectional pairs:" << endl;
     for(const auto& p: vertexPairs) {
-        cout << assemblyGraph3[p.first].id << "..." << assemblyGraph3[p.second].id << endl;
+        cout << assemblyGraph[p.first].id << "..." << assemblyGraph[p.second].id << endl;
     }
 #endif
 
@@ -1346,7 +1346,7 @@ void AssemblyGraph::gatherSuperbubbleVertices(
     vertex_descriptor exit,
     vector<vertex_descriptor>& internalVerticesVector) const
 {
-    const AssemblyGraph& assemblyGraph3 = *this;
+    const AssemblyGraph& assemblyGraph = *this;
 
     // Do a BFS starting at the entrance and stopping at the exit.
     std::queue<vertex_descriptor> q;
@@ -1355,14 +1355,14 @@ void AssemblyGraph::gatherSuperbubbleVertices(
     while(not q.empty()) {
         const vertex_descriptor v0 = q.front();
         q.pop();
-        // cout << "Dequeued " << assemblyGraph3[v0].id << endl;
-        BGL_FORALL_OUTEDGES(v0, e, assemblyGraph3, AssemblyGraph) {
-            const vertex_descriptor v1 = target(e, assemblyGraph3);
+        // cout << "Dequeued " << assemblyGraph[v0].id << endl;
+        BGL_FORALL_OUTEDGES(v0, e, assemblyGraph, AssemblyGraph) {
+            const vertex_descriptor v1 = target(e, assemblyGraph);
             if(v1 != exit) {
                 if(not internalVertices.contains(v1)) {
                     internalVertices.insert(v1);
                     q.push(v1);
-                    // cout << "Enqueued " << assemblyGraph3[v1].id << endl;
+                    // cout << "Enqueued " << assemblyGraph[v1].id << endl;
                 }
             }
         }
@@ -1381,18 +1381,18 @@ void AssemblyGraph::gatherSuperbubbleEdges(
     const vector<vertex_descriptor>& internalVertices,
     vector<edge_descriptor>& internalEdges) const
 {
-    const AssemblyGraph& assemblyGraph3 = *this;
+    const AssemblyGraph& assemblyGraph = *this;
 
     internalEdges.clear();
 
     // Add the out-edges of the entrance.
-    BGL_FORALL_OUTEDGES(entrance, e, assemblyGraph3, AssemblyGraph) {
+    BGL_FORALL_OUTEDGES(entrance, e, assemblyGraph, AssemblyGraph) {
         internalEdges.push_back(e);
     }
 
     // Add the out-edges of the internal vertices.
     for(const vertex_descriptor v: internalVertices) {
-        BGL_FORALL_OUTEDGES(v, e, assemblyGraph3, AssemblyGraph) {
+        BGL_FORALL_OUTEDGES(v, e, assemblyGraph, AssemblyGraph) {
             internalEdges.push_back(e);
         }
     }
@@ -1402,7 +1402,7 @@ void AssemblyGraph::gatherSuperbubbleEdges(
 
 void AssemblyGraph::analyzeSuperbubbles(uint64_t maxDistance) const
 {
-    const AssemblyGraph& assemblyGraph3 = *this;
+    const AssemblyGraph& assemblyGraph = *this;
 
     vector< pair<vertex_descriptor, vertex_descriptor> > entranceExitPairs;
     findSuperbubbles(maxDistance, entranceExitPairs);
@@ -1423,24 +1423,24 @@ void AssemblyGraph::analyzeSuperbubbles(uint64_t maxDistance) const
 
         // If there are no internal vertices, this is a bubble.
         if(internalVertices.empty()) {
-            const uint64_t ploidy = out_degree(v0, assemblyGraph3);
-            SHASTA_ASSERT(ploidy == in_degree(v1, assemblyGraph3));
+            const uint64_t ploidy = out_degree(v0, assemblyGraph);
+            SHASTA_ASSERT(ploidy == in_degree(v1, assemblyGraph));
             cout << "Bubble with ploidy " << ploidy << ":";
             for(const edge_descriptor e: internalEdges) {
-                cout << " " << assemblyGraph3[e].id;
+                cout << " " << assemblyGraph[e].id;
             }
             cout << endl;
         } else {
             cout << "Superbubble with internalEdges " << internalEdges.size() << " edges:";
             for(const edge_descriptor e: internalEdges) {
-                cout << " " << assemblyGraph3[e].id;
+                cout << " " << assemblyGraph[e].id;
             }
             cout << endl;
 
         }
 
         for(const edge_descriptor e: internalEdges) {
-            csv << assemblyGraph3[e].id << ",Green\n";
+            csv << assemblyGraph[e].id << ",Green\n";
         }
     }
 }
@@ -1452,19 +1452,19 @@ void AssemblyGraph::analyzeSuperbubbles(uint64_t maxDistance) const
 void AssemblyGraph::findStrongComponents(
     vector< vector<vertex_descriptor> >& strongComponents) const
 {
-    const AssemblyGraph& assemblyGraph3 = *this;
+    const AssemblyGraph& assemblyGraph = *this;
 
     // Map the vertices to integers.
     uint64_t vertexIndex = 0;
     std::map<vertex_descriptor, uint64_t> vertexMap;
-    BGL_FORALL_VERTICES(v, assemblyGraph3, AssemblyGraph) {
+    BGL_FORALL_VERTICES(v, assemblyGraph, AssemblyGraph) {
         vertexMap.insert({v, vertexIndex++});
     }
 
     // Compute strong components.
     std::map<vertex_descriptor, uint64_t> componentMap;
     boost::strong_components(
-        assemblyGraph3,
+        assemblyGraph,
         boost::make_assoc_property_map(componentMap),
         boost::vertex_index_map(boost::make_assoc_property_map(vertexMap)));
 
@@ -1492,7 +1492,7 @@ void AssemblyGraph::findStrongComponents(
 // the strongly connected components.
 void  AssemblyGraph::colorStrongComponents() const
 {
-    const AssemblyGraph& assemblyGraph3 = *this;
+    const AssemblyGraph& assemblyGraph = *this;
 
     vector< vector<vertex_descriptor> > strongComponents;
     findStrongComponents(strongComponents);
@@ -1505,10 +1505,10 @@ void  AssemblyGraph::colorStrongComponents() const
         const vector<vertex_descriptor>& strongComponent = strongComponents[i];
 
         for(const vertex_descriptor v0: strongComponent) {
-            BGL_FORALL_OUTEDGES(v0, e, assemblyGraph3, AssemblyGraph) {
-                const vertex_descriptor v1 = target(e, assemblyGraph3);
+            BGL_FORALL_OUTEDGES(v0, e, assemblyGraph, AssemblyGraph) {
+                const vertex_descriptor v1 = target(e, assemblyGraph);
                 if(std::binary_search(strongComponent.begin(), strongComponent.end(), v1)) {
-                    csv << assemblyGraph3[e].id << ",Green," << i << "\n";
+                    csv << assemblyGraph[e].id << ",Green," << i << "\n";
                 }
             }
         }

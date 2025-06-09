@@ -223,19 +223,19 @@ void Assembler::exploreSegments(
     }
 
     // Get the AssemblyGraph for this assembly stage.
-    const AssemblyGraphPostprocessor& assemblyGraph3 = getAssemblyGraph3(
+    const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph3(
         assemblyStage,
         *httpServerData.assemblerOptions);
 
     html <<
         "<h2>Assembly graph at stage " << assemblyStage << " </h2>"
         "<p>The assembly graph at stage " << assemblyStage <<
-        " has " << num_edges(assemblyGraph3) << " edges (segments)." << endl;
+        " has " << num_edges(assemblyGraph) << " edges (segments)." << endl;
 
     html << "<table><tr><th>Vertex<br>(segment)<br>id<th>Number<br>of<br>steps<th>Estimated<br>length<th>Actual<br>length";
 
-    BGL_FORALL_EDGES(e, assemblyGraph3, AssemblyGraph) {
-        const AssemblyGraphEdge& edge = assemblyGraph3[e];
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        const AssemblyGraphEdge& edge = assemblyGraph[e];
         const string url = "exploreSegment?assemblyStage=" + assemblyStage + "&segmentName=" + to_string(edge.id);
         html <<
             "<tr>"
@@ -388,19 +388,19 @@ void Assembler::exploreSegment(
     }
 
     // Get the AssemblyGraph for this assembly stage.
-    const AssemblyGraphPostprocessor& assemblyGraph3 = getAssemblyGraph3(
+    const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph3(
         assemblyStage,
         *httpServerData.assemblerOptions);
 
     // Find the AssemblyGraphEdge corresponding to the requested segment.
-    auto it = assemblyGraph3.edgeMap.find(segmentId);
-    if(it == assemblyGraph3.edgeMap.end()) {
+    auto it = assemblyGraph.edgeMap.find(segmentId);
+    if(it == assemblyGraph.edgeMap.end()) {
         html << "<p>Assembly graph at stage " << assemblyStage <<
             " does not have segment " << segmentId;
         return;
     }
     const AssemblyGraph::edge_descriptor e = it->second;
-    const AssemblyGraphEdge& edge = assemblyGraph3[e];
+    const AssemblyGraphEdge& edge = assemblyGraph[e];
 
 
 
@@ -697,20 +697,20 @@ void Assembler::exploreSegmentStep(
     }
 
     // Get the AssemblyGraph for this assembly stage.
-    const AssemblyGraphPostprocessor& assemblyGraph3 = getAssemblyGraph3(
+    const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph3(
         assemblyStage,
         *httpServerData.assemblerOptions);
 
     // Find the AssemblyGraphEdge corresponding to the requested segment.
-    auto it = assemblyGraph3.edgeMap.find(segmentId);
-    if(it == assemblyGraph3.edgeMap.end()) {
+    auto it = assemblyGraph.edgeMap.find(segmentId);
+    if(it == assemblyGraph.edgeMap.end()) {
         html << "<p>Assembly graph at stage " << assemblyStage <<
             " does not have segment " << segmentId;
         return;
     }
 
     const AssemblyGraph::edge_descriptor e = it->second;
-    const AssemblyGraphEdge& edge = assemblyGraph3[e];
+    const AssemblyGraphEdge& edge = assemblyGraph[e];
 
     if(stepId >= edge.size()) {
         html << "<p>Step " << stepId << " is not valid for this segment, which has " <<
@@ -821,7 +821,7 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
     }
 
     // Get the AssemblyGraph for this assembly stage.
-    const AssemblyGraphPostprocessor& assemblyGraph3 = getAssemblyGraph3(
+    const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph3(
         assemblyStage,
         *httpServerData.assemblerOptions);
 
@@ -843,8 +843,8 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
             }
 
             // Find the AssemblyGraphEdge corresponding to the requested segment.
-            auto it = assemblyGraph3.edgeMap.find(segmentId);
-            if(it == assemblyGraph3.edgeMap.end()) {
+            auto it = assemblyGraph.edgeMap.find(segmentId);
+            if(it == assemblyGraph.edgeMap.end()) {
                 html << "<p>Assembly graph at stage " << assemblyStage <<
                     " does not have segment " << segmentId;
                 return;
@@ -873,8 +873,8 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
             }
 
             // Find the AssemblyGraphEdge corresponding to the requested segment.
-            auto it = assemblyGraph3.edgeMap.find(segmentId);
-            if(it == assemblyGraph3.edgeMap.end()) {
+            auto it = assemblyGraph.edgeMap.find(segmentId);
+            if(it == assemblyGraph.edgeMap.end()) {
                 html << "<p>Assembly graph at stage " << assemblyStage <<
                     " does not have segment " << segmentId;
                 return;
@@ -885,10 +885,10 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
     }
 
     // Create the TangleMatrix.
-    const TangleMatrix tangleMatrix(assemblyGraph3, entrances, exits,
+    const TangleMatrix tangleMatrix(assemblyGraph, entrances, exits,
         httpServerData.assemblerOptions->aDrift,
         httpServerData.assemblerOptions->bDrift);
-    tangleMatrix.writeHtml(assemblyGraph3, html);
+    tangleMatrix.writeHtml(assemblyGraph, html);
 }
 
 
@@ -948,13 +948,13 @@ void Assembler::exploreVertexTangle(const vector<string>& request, ostream& html
     }
 
     // Get the AssemblyGraph for this assembly stage.
-    AssemblyGraphPostprocessor& assemblyGraph3 = getAssemblyGraph3(
+    AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph3(
         assemblyStage,
         *httpServerData.assemblerOptions);
 
     // Find the AssemblyGraphEdge corresponding to the requested segment.
-    auto it = assemblyGraph3.edgeMap.find(segmentId);
-    if(it == assemblyGraph3.edgeMap.end()) {
+    auto it = assemblyGraph.edgeMap.find(segmentId);
+    if(it == assemblyGraph.edgeMap.end()) {
         html << "<p>Assembly graph at stage " << assemblyStage <<
             " does not have segment " << segmentId;
         return;
@@ -964,12 +964,12 @@ void Assembler::exploreVertexTangle(const vector<string>& request, ostream& html
 
 
     // Create a Tangle at the target of this vertex.
-    const Tangle tangle3(assemblyGraph3, target(e, assemblyGraph3),
+    const Tangle tangle3(assemblyGraph, target(e, assemblyGraph),
         httpServerData.assemblerOptions->aDrift,
         httpServerData.assemblerOptions->bDrift);
 
     // Write out the TangleMatrix.
-    tangle3.tangleMatrix->writeHtml(assemblyGraph3, html);
+    tangle3.tangleMatrix->writeHtml(assemblyGraph, html);
 
 }
 
@@ -1028,13 +1028,13 @@ void Assembler::exploreEdgeTangle(const vector<string>& request, ostream& html)
     }
 
     // Get the AssemblyGraph for this assembly stage.
-    AssemblyGraphPostprocessor& assemblyGraph3 = getAssemblyGraph3(
+    AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph3(
         assemblyStage,
         *httpServerData.assemblerOptions);
 
     // Find the AssemblyGraphEdge corresponding to the requested segment.
-    auto it = assemblyGraph3.edgeMap.find(segmentId);
-    if(it == assemblyGraph3.edgeMap.end()) {
+    auto it = assemblyGraph.edgeMap.find(segmentId);
+    if(it == assemblyGraph.edgeMap.end()) {
         html << "<p>Assembly graph at stage " << assemblyStage <<
             " does not have segment " << segmentId;
         return;
@@ -1044,12 +1044,12 @@ void Assembler::exploreEdgeTangle(const vector<string>& request, ostream& html)
 
 
     // Create a Tangle at this edge.
-    const Tangle tangle(assemblyGraph3, e,
+    const Tangle tangle(assemblyGraph, e,
         httpServerData.assemblerOptions->aDrift,
         httpServerData.assemblerOptions->bDrift);
 
     // Write out the TangleMatrix.
-    tangle.tangleMatrix->writeHtml(assemblyGraph3, html);
+    tangle.tangleMatrix->writeHtml(assemblyGraph, html);
 }
 
 
