@@ -131,12 +131,12 @@ PYBIND11_MODULE(shasta2, shasta2Module)
           &Assembler::accessAnchorGraph)
 
       // AssemblyGraph.
-      .def("createAssemblyGraph3",
-          &Assembler::createAssemblyGraph3,
+      .def("createAssemblyGraph",
+          &Assembler::createAssemblyGraph,
           arg("assemblerOptions"),
           arg("threadCount") = 0)
       .def("getAssemblyGraph3",
-          &Assembler::getAssemblyGraph3, return_value_policy::reference)
+          &Assembler::getAssemblyGraph, return_value_policy::reference)
     ;
 
 

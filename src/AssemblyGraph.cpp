@@ -1310,10 +1310,10 @@ void AssemblyGraph::findSuperbubbles(
     sort(forwardPairs.begin(), forwardPairs.end());
     // cout << "Found " << forwardPairs.size() << " forward pairs." << endl;
 
-    const boost::reverse_graph<AssemblyGraph> reverseAssemblyGraph3(assemblyGraph);
+    const boost::reverse_graph<AssemblyGraph> reverseAssemblyGraph(assemblyGraph);
     vector< pair<vertex_descriptor, vertex_descriptor> > backwardPairs;
     BGL_FORALL_VERTICES(vA, assemblyGraph, AssemblyGraph) {
-        const vertex_descriptor vB = findConvergingVertex(reverseAssemblyGraph3, vA, maxDistance);
+        const vertex_descriptor vB = findConvergingVertex(reverseAssemblyGraph, vA, maxDistance);
         if(vB != null_vertex()) {
             backwardPairs.emplace_back(vB, vA);
             // cout << assemblyGraph[vA].id << "..." << assemblyGraph[vB].id << endl;

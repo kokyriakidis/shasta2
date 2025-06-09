@@ -28,7 +28,6 @@ namespace shasta {
     class LongBaseSequences;
     class Markers;
     class MarkerKmers;
-    class Mode3Assembler;
     class ReadLengthDistribution;
     class Reads;
 
@@ -200,7 +199,7 @@ public:
 
 
     // AssemblyGraph.
-    void createAssemblyGraph3(
+    void createAssemblyGraph(
         const AssemblerOptions&,
         uint64_t threadCount);
 
@@ -283,10 +282,10 @@ public:
     void exploreLocalAssembly2(const vector<string>&, ostream&);
 
     // Get the AssemblyGraph for a given assembly stage.
-    AssemblyGraphPostprocessor& getAssemblyGraph3(
+    AssemblyGraphPostprocessor& getAssemblyGraph(
         const string& assemblyStage,
         const AssemblerOptions&);
-    std::map<string, shared_ptr<AssemblyGraphPostprocessor> > assemblyGraph3Table;
+    std::map<string, shared_ptr<AssemblyGraphPostprocessor> > assemblyGraphTable;
 
 };
 

@@ -137,7 +137,7 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
     if(not assemblyStage.empty()) {
 
         // Get the AssemblyGraph for this assembly stage.
-        const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph3(
+        const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
             assemblyStage,
             *httpServerData.assemblerOptions);
         const auto annotations = assemblyGraph.getAnnotations(anchorId);
@@ -924,12 +924,12 @@ void Assembler::exploreLocalAnchorGraph(
 
 
     // If needed, get the AssemblyGraph for this assembly stage.
-    const AssemblyGraphPostprocessor* assemblyGraph3Pointer = 0;
+    const AssemblyGraphPostprocessor* assemblyGraphPointer = 0;
     if(displayOptions.vertexColoring == "byAssemblyAnnotations") {
-        const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph3(
+        const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
             displayOptions.assemblyStage,
             *httpServerData.assemblerOptions);
-        assemblyGraph3Pointer = &assemblyGraph;
+        assemblyGraphPointer = &assemblyGraph;
     }
 
 
@@ -949,6 +949,6 @@ void Assembler::exploreLocalAnchorGraph(
          " vertices and " << num_edges(graph) << " edges.";
 
     // Write it to html.
-    graph.writeHtml(html, displayOptions, assemblyGraph3Pointer);
+    graph.writeHtml(html, displayOptions, assemblyGraphPointer);
 
 }

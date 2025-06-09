@@ -223,7 +223,7 @@ void Assembler::exploreSegments(
     }
 
     // Get the AssemblyGraph for this assembly stage.
-    const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph3(
+    const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
         assemblyStage,
         *httpServerData.assemblerOptions);
 
@@ -388,7 +388,7 @@ void Assembler::exploreSegment(
     }
 
     // Get the AssemblyGraph for this assembly stage.
-    const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph3(
+    const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
         assemblyStage,
         *httpServerData.assemblerOptions);
 
@@ -697,7 +697,7 @@ void Assembler::exploreSegmentStep(
     }
 
     // Get the AssemblyGraph for this assembly stage.
-    const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph3(
+    const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
         assemblyStage,
         *httpServerData.assemblerOptions);
 
@@ -745,15 +745,15 @@ void Assembler::exploreSegmentStep(
 
 
 
-AssemblyGraphPostprocessor& Assembler::getAssemblyGraph3(
+AssemblyGraphPostprocessor& Assembler::getAssemblyGraph(
     const string& assemblyStage,
     const AssemblerOptions& assemblerOptions)
 {
-    auto it = assemblyGraph3Table.find(assemblyStage);
-    if(it == assemblyGraph3Table.end()) {
+    auto it = assemblyGraphTable.find(assemblyStage);
+    if(it == assemblyGraphTable.end()) {
         shared_ptr<AssemblyGraphPostprocessor> p =
             make_shared<AssemblyGraphPostprocessor>(anchors(), assemblerOptions, assemblyStage);
-        tie(it, ignore) = assemblyGraph3Table.insert(make_pair(assemblyStage, p));
+        tie(it, ignore) = assemblyGraphTable.insert(make_pair(assemblyStage, p));
     }
     return *(it->second);
 }
@@ -821,7 +821,7 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
     }
 
     // Get the AssemblyGraph for this assembly stage.
-    const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph3(
+    const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
         assemblyStage,
         *httpServerData.assemblerOptions);
 
@@ -948,7 +948,7 @@ void Assembler::exploreVertexTangle(const vector<string>& request, ostream& html
     }
 
     // Get the AssemblyGraph for this assembly stage.
-    AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph3(
+    AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
         assemblyStage,
         *httpServerData.assemblerOptions);
 
@@ -964,12 +964,12 @@ void Assembler::exploreVertexTangle(const vector<string>& request, ostream& html
 
 
     // Create a Tangle at the target of this vertex.
-    const Tangle tangle3(assemblyGraph, target(e, assemblyGraph),
+    const Tangle tangle(assemblyGraph, target(e, assemblyGraph),
         httpServerData.assemblerOptions->aDrift,
         httpServerData.assemblerOptions->bDrift);
 
     // Write out the TangleMatrix.
-    tangle3.tangleMatrix->writeHtml(assemblyGraph, html);
+    tangle.tangleMatrix->writeHtml(assemblyGraph, html);
 
 }
 
@@ -1028,7 +1028,7 @@ void Assembler::exploreEdgeTangle(const vector<string>& request, ostream& html)
     }
 
     // Get the AssemblyGraph for this assembly stage.
-    AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph3(
+    AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
         assemblyStage,
         *httpServerData.assemblerOptions);
 

@@ -94,7 +94,7 @@ void Assembler::assemble(
 
     createAnchorGraph(assemblerOptions);
 
-    createAssemblyGraph3(assemblerOptions, threadCount);
+    createAssemblyGraph(assemblerOptions, threadCount);
 }
 
 
@@ -209,7 +209,7 @@ void Assembler::createAnchorGraph(const AssemblerOptions& options)
 
 
 
-void Assembler::createAssemblyGraph3(
+void Assembler::createAssemblyGraph(
     const AssemblerOptions& options,
     uint64_t threadCount)
 {

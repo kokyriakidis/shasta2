@@ -2,7 +2,7 @@
 
 // In the AssemblyGraph, each edge is a linear chains of adjacent AnchorPairs.
 // It is initially created from linear chains of edges in the AnchorGraph.
-// Each Assembly3GraphEdge generates a gfa segment.
+// Each AssemblyGraphEdge generates a gfa segment.
 
 // Shasta.
 #include "AnchorPair.hpp"
@@ -42,7 +42,7 @@ namespace shasta {
 // Tha AnchorId of a vertex is the last AnchorId of the last AnchorPair
 // of all incoming edges and the first AnchorId of the first AnchorPair
 // of each outgoing edge.
-// When the Assembly3Graph is initially created from the AnchorGraph,
+// When the AssemblyGraph is initially created from the AnchorGraph,
 // there can be at most one vertex for each AnchorId.
 // However that is no longer true after detangling.
 class shasta::AssemblyGraphVertex {
