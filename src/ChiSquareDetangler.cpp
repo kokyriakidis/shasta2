@@ -24,13 +24,6 @@ ChiSquareDetangler::ChiSquareDetangler(
 
 
 
-bool ChiSquareDetangler::operator()(Tangle&)
-{
-    return false;
-}
-
-
-
 bool ChiSquareDetangler::operator()(Tangle3& tangle)
 {
     const TangleMatrix3& tangleMatrix = *(tangle.tangleMatrix);

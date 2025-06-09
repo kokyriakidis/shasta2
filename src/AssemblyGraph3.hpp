@@ -6,6 +6,7 @@
 
 // Shasta.
 #include "AnchorPair.hpp"
+#include "Base.hpp"
 #include "invalid.hpp"
 #include "MappedMemoryOwner.hpp"
 #include "MultithreadedObject.hpp"

@@ -11,7 +11,6 @@ namespace shasta {
 
 class shasta::PermutationDetangler : public Detangler {
 public:
-    bool operator()(Tangle&);
     bool operator()(Tangle3&);
 
     PermutationDetangler(

@@ -12,7 +12,6 @@ namespace shasta {
 
 class shasta::ChiSquareDetangler : public Detangler {
 public:
-    bool operator()(Tangle&);
     bool operator()(Tangle3&);
 
     ChiSquareDetangler(

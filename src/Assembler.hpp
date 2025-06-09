@@ -200,9 +200,6 @@ public:
 
 
     // AssemblyGraph.
-    void createAssemblyGraph(
-        const AssemblerOptions&,
-        uint64_t threadCount);
     void createAssemblyGraph3(
         const AssemblerOptions&,
         uint64_t threadCount);
@@ -286,10 +283,6 @@ public:
     void exploreLocalAssembly2(const vector<string>&, ostream&);
 
     // Get the AssemblyGraph for a given assembly stage.
-    AssemblyGraphPostprocessor& getAssemblyGraph(
-        const string& assemblyStage,
-        const AssemblerOptions&);
-    std::map<string, shared_ptr<AssemblyGraphPostprocessor> > assemblyGraphTable;
     AssemblyGraph3Postprocessor& getAssemblyGraph3(
         const string& assemblyStage,
         const AssemblerOptions&);

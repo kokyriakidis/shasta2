@@ -3,7 +3,6 @@
 // Shasta.
 #include "Assembler.hpp"
 #include "AssemblerOptions.hpp"
-#include "AssemblyGraphPostprocessor.hpp"
 #include "AssemblyGraph3Postprocessor.hpp"
 #include "Base.hpp"
 #include "ChiSquareDetangler.hpp"
@@ -132,64 +131,13 @@ PYBIND11_MODULE(shasta2, shasta2Module)
           &Assembler::accessAnchorGraph)
 
       // AssemblyGraph.
-      .def("createAssemblyGraph",
-          &Assembler::createAssemblyGraph,
-          arg("assemblerOptions"),
-          arg("threadCount") = 0)
       .def("createAssemblyGraph3",
           &Assembler::createAssemblyGraph3,
           arg("assemblerOptions"),
           arg("threadCount") = 0)
-      .def("getAssemblyGraph",
-          &Assembler::getAssemblyGraph)
       .def("getAssemblyGraph3",
           &Assembler::getAssemblyGraph3, return_value_policy::reference)
     ;
-
-
-
-    // AssemblyGraph and related access functions.
-    class_<AssemblyGraph::vertex_descriptor>(shasta2Module, "AssemblyGraphVertexDescriptor")
-        ;
-    class_<AssemblyGraph::edge_descriptor>(shasta2Module, "AssemblyGraphEdgeDescriptor")
-        ;
-    class_<AssemblyGraphVertex>(shasta2Module, "AssemblyGraphVertex")
-        .def_readwrite("anchorId", &AssemblyGraphVertex::anchorId)
-        ;
-    class_<AssemblyGraphEdge>(shasta2Module, "AssemblyGraphEdge")
-        .def_readwrite("id", &AssemblyGraphEdge::id)
-        ;
-    class_<AssemblyGraphPostprocessor>(shasta2Module, "AssemblyGraph")
-        .def("getVertexDescriptor", &AssemblyGraphPostprocessor::getVertexDescriptor)
-        .def("getVertex", &AssemblyGraphPostprocessor::getVertex, return_value_policy::reference)
-        .def("getEdgeDescriptor", &AssemblyGraphPostprocessor::getEdgeDescriptor)
-        .def("getEdge", &AssemblyGraphPostprocessor::getEdge, return_value_policy::reference)
-        .def("transitiveReduction", &AssemblyGraphPostprocessor::transitiveReduction)
-        .def("detangleVertices",
-            (
-                void (AssemblyGraphPostprocessor::*)
-                (TrivialDetangler&)
-            )
-            &AssemblyGraphPostprocessor::detangleVertices)
-        .def("detangleEdges",
-            (
-                void (AssemblyGraphPostprocessor::*)
-                (TrivialDetangler&)
-            )
-            &AssemblyGraphPostprocessor::detangleEdges)
-        .def("detangleVertices",
-            (
-                void (AssemblyGraphPostprocessor::*)
-                (PermutationDetangler&)
-            )
-            &AssemblyGraphPostprocessor::detangleVertices)
-        .def("detangleEdges",
-            (
-                void (AssemblyGraphPostprocessor::*)
-                (PermutationDetangler&)
-            )
-            &AssemblyGraphPostprocessor::detangleEdges)
-        ;
 
 
 

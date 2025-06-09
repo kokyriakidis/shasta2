@@ -1,11 +1,9 @@
 // Shasta.
 #include "Assembler.hpp"
-#include "AssemblyGraphPostprocessor.hpp"
 #include "AssemblyGraph3Postprocessor.hpp"
 #include "LocalAssembly.hpp"
 #include "LocalAssembly1.hpp"
 #include "LocalAssembly2.hpp"
-#include "Tangle.hpp"
 #include "Tangle3.hpp"
 #include "TangleMatrix3.hpp"
 using namespace shasta;
@@ -744,21 +742,6 @@ void Assembler::exploreSegmentStep(
     copy(sequence.begin(), sequence.end(), ostream_iterator<Base>(fasta));
 }
 
-
-
-
-AssemblyGraphPostprocessor& Assembler::getAssemblyGraph(
-    const string& assemblyStage,
-    const AssemblerOptions& assemblerOptions)
-{
-    auto it = assemblyGraphTable.find(assemblyStage);
-    if(it == assemblyGraphTable.end()) {
-        shared_ptr<AssemblyGraphPostprocessor> p =
-            make_shared<AssemblyGraphPostprocessor>(assemblerOptions, anchors(), assemblyStage);
-        tie(it, ignore) = assemblyGraphTable.insert(make_pair(assemblyStage, p));
-    }
-    return *(it->second);
-}
 
 
 

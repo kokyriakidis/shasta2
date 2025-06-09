@@ -1,15 +1,7 @@
 #include "SimpleDetangler.hpp"
-#include "Tangle.hpp"
 #include "Tangle3.hpp"
 #include "TangleMatrix3.hpp"
 using namespace shasta;
-
-
-
-bool SimpleDetangler::operator()(Tangle&)
-{
-    return false;
-}
 
 
 
