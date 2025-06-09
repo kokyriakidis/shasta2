@@ -1373,6 +1373,32 @@ void AssemblyGraph3::gatherSuperbubbleVertices(
 
 
 
+// Given the entrance and exit and inbternal vertices of a superbubble, find the internal edges.
+void AssemblyGraph3::gatherSuperbubbleEdges(
+    vertex_descriptor entrance,
+    vertex_descriptor /* exit */,
+    const vector<vertex_descriptor>& internalVertices,
+    vector<edge_descriptor>& internalEdges) const
+{
+    const AssemblyGraph3& assemblyGraph3 = *this;
+
+    internalEdges.clear();
+
+    // Add the out-edges of the entrance.
+    BGL_FORALL_OUTEDGES(entrance, e, assemblyGraph3, AssemblyGraph3) {
+        internalEdges.push_back(e);
+    }
+
+    // Add the out-edges of the internal vertices.
+    for(const vertex_descriptor v: internalVertices) {
+        BGL_FORALL_OUTEDGES(v, e, assemblyGraph3, AssemblyGraph3) {
+            internalEdges.push_back(e);
+        }
+    }
+}
+
+
+
 void AssemblyGraph3::analyzeSuperbubbles(uint64_t maxDistance) const
 {
     const AssemblyGraph3& assemblyGraph3 = *this;
@@ -1381,20 +1407,39 @@ void AssemblyGraph3::analyzeSuperbubbles(uint64_t maxDistance) const
     findSuperbubbles(maxDistance, entranceExitPairs);
     cout << "Found " << entranceExitPairs.size() << " superbubbles." << endl;
 
-    vector<vertex_descriptor> internalVertices;
-    for(const auto& p: entranceExitPairs) {
-        cout << "Superbubble with entrance/exit vertices " << assemblyGraph3[p.first].id <<
-            " " << assemblyGraph3[p.second].id << endl;
-        gatherSuperbubbleVertices(p.first, p.second, internalVertices);
+    ofstream csv("AnalyzeSuperbubbles.csv");
+    csv << "Segment,Color\n";
 
+
+    vector<vertex_descriptor> internalVertices;
+    vector<edge_descriptor> internalEdges;
+    for(const auto& p: entranceExitPairs) {
+        const vertex_descriptor v0 = p.first;
+        const vertex_descriptor v1 = p.second;
+
+        gatherSuperbubbleVertices(v0, v1, internalVertices);
+        gatherSuperbubbleEdges(v0, v1, internalVertices, internalEdges);
+
+        // If there are no internal vertices, this is a bubble.
         if(internalVertices.empty()) {
-            cout << "No internal vertices." << endl;
-        } else {
-            cout << internalVertices.size() << " internal vertices:";
-            for(const vertex_descriptor v: internalVertices) {
-                cout << " " << assemblyGraph3[v].id;
+            const uint64_t ploidy = out_degree(v0, assemblyGraph3);
+            SHASTA_ASSERT(ploidy == in_degree(v1, assemblyGraph3));
+            cout << "Bubble with ploidy " << ploidy << ":";
+            for(const edge_descriptor e: internalEdges) {
+                cout << " " << assemblyGraph3[e].id;
             }
             cout << endl;
+        } else {
+            cout << "Superbubble with internalEdges " << internalEdges.size() << " edges:";
+            for(const edge_descriptor e: internalEdges) {
+                cout << " " << assemblyGraph3[e].id;
+            }
+            cout << endl;
+
+        }
+
+        for(const edge_descriptor e: internalEdges) {
+            csv << assemblyGraph3[e].id << ",Green\n";
         }
     }
 }

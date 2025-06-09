@@ -196,7 +196,8 @@ public:
 public:
 
 
-    // Superbubbles.
+    // Superbubbles. A superbubble is a Tangle in which all entrance edges are into
+    // a single vertex and all exit edges are fro a sigle vertex.
     // Use findConvergingVertex to find superbubbles with one entrance and one exit.
     // This returns a vector of pairs (entrance vertex, exit vertex).
     void findSuperbubbles(
@@ -208,6 +209,13 @@ public:
         vertex_descriptor entrance,
         vertex_descriptor exit,
         vector<vertex_descriptor>& internalVertices) const;
+
+    // Given the entrance and exit and inbternal vertices of a superbubble, find the internal edges.
+    void gatherSuperbubbleEdges(
+        vertex_descriptor entrance,
+        vertex_descriptor exit,
+        const vector<vertex_descriptor>& internalVertices,
+        vector<edge_descriptor>& internalEdges) const;
 
     // Find superbubbles and analyze them.
     void analyzeSuperbubbles(uint64_t maxDistance) const;
