@@ -13,6 +13,7 @@
 #include "performanceLog.hpp"
 #include "rle.hpp"
 #include "SimpleDetangler.hpp"
+#include "Superbubble.hpp"
 #include "Tangle.hpp"
 #include "TangleMatrix.hpp"
 #include "TrivialDetangler.hpp"
@@ -1297,7 +1298,7 @@ bool AssemblyGraph::detangle(
 
 void AssemblyGraph::findSuperbubbles(
     uint64_t maxDistance,
-    vector< pair<vertex_descriptor, vertex_descriptor> >& vertexPairs) const
+    vector<Superbubble>& superbubbles) const
 {
     const AssemblyGraph& assemblyGraph = *this;
 
@@ -1325,79 +1326,19 @@ void AssemblyGraph::findSuperbubbles(
     // cout << "Found " << backwardPairs.size() << " backward pairs." << endl;
 
     // Find pairs that appeared in both directions.
-    vertexPairs.clear();
+    vector< pair<vertex_descriptor, vertex_descriptor> > bidirectionalPairs;
     std::set_intersection(
         forwardPairs.begin(), forwardPairs.end(),
         backwardPairs.begin(), backwardPairs.end(),
-        back_inserter(vertexPairs));
+        back_inserter(bidirectionalPairs));
 
-#if 0
-    cout << "Found " << vertexPairs.size() << " bidirectional pairs:" << endl;
-    for(const auto& p: vertexPairs) {
-        cout << assemblyGraph[p.first].id << "..." << assemblyGraph[p.second].id << endl;
-    }
-#endif
+    // Each of these pairs generates a Superbubble.
+    superbubbles.clear();
+    for(const auto& p: bidirectionalPairs) {
+        superbubbles.emplace_back(assemblyGraph, p.first, p.second);
 
-}
-
-
-
-// Given the entrance and exit of a superbubble, find the internal vertices.
-void AssemblyGraph::gatherSuperbubbleVertices(
-    vertex_descriptor entrance,
-    vertex_descriptor exit,
-    vector<vertex_descriptor>& internalVerticesVector) const
-{
-    const AssemblyGraph& assemblyGraph = *this;
-
-    // Do a BFS starting at the entrance and stopping at the exit.
-    std::queue<vertex_descriptor> q;
-    std::set<vertex_descriptor> internalVertices;
-    q.push(entrance);
-    while(not q.empty()) {
-        const vertex_descriptor v0 = q.front();
-        q.pop();
-        // cout << "Dequeued " << assemblyGraph[v0].id << endl;
-        BGL_FORALL_OUTEDGES(v0, e, assemblyGraph, AssemblyGraph) {
-            const vertex_descriptor v1 = target(e, assemblyGraph);
-            if(v1 != exit) {
-                if(not internalVertices.contains(v1)) {
-                    internalVertices.insert(v1);
-                    q.push(v1);
-                    // cout << "Enqueued " << assemblyGraph[v1].id << endl;
-                }
-            }
-        }
     }
 
-    internalVerticesVector.clear();
-    copy(internalVertices.begin(), internalVertices.end(), back_inserter(internalVerticesVector));
-}
-
-
-
-// Given the entrance and exit and inbternal vertices of a superbubble, find the internal edges.
-void AssemblyGraph::gatherSuperbubbleEdges(
-    vertex_descriptor entrance,
-    vertex_descriptor /* exit */,
-    const vector<vertex_descriptor>& internalVertices,
-    vector<edge_descriptor>& internalEdges) const
-{
-    const AssemblyGraph& assemblyGraph = *this;
-
-    internalEdges.clear();
-
-    // Add the out-edges of the entrance.
-    BGL_FORALL_OUTEDGES(entrance, e, assemblyGraph, AssemblyGraph) {
-        internalEdges.push_back(e);
-    }
-
-    // Add the out-edges of the internal vertices.
-    for(const vertex_descriptor v: internalVertices) {
-        BGL_FORALL_OUTEDGES(v, e, assemblyGraph, AssemblyGraph) {
-            internalEdges.push_back(e);
-        }
-    }
 }
 
 
@@ -1406,42 +1347,32 @@ void AssemblyGraph::analyzeSuperbubbles(uint64_t maxDistance) const
 {
     const AssemblyGraph& assemblyGraph = *this;
 
-    vector< pair<vertex_descriptor, vertex_descriptor> > entranceExitPairs;
-    findSuperbubbles(maxDistance, entranceExitPairs);
-    cout << "Found " << entranceExitPairs.size() << " superbubbles." << endl;
+    vector<Superbubble> superbubbles;
+    findSuperbubbles(maxDistance, superbubbles);
+    cout << "Found " << superbubbles.size() << " superbubbles." << endl;
 
     ofstream csv("AnalyzeSuperbubbles.csv");
     csv << "Segment,Color\n";
 
+    for(const Superbubble& superbubble: superbubbles) {
 
-    vector<vertex_descriptor> internalVertices;
-    vector<edge_descriptor> internalEdges;
-    for(const auto& p: entranceExitPairs) {
-        const vertex_descriptor v0 = p.first;
-        const vertex_descriptor v1 = p.second;
-
-        gatherSuperbubbleVertices(v0, v1, internalVertices);
-        gatherSuperbubbleEdges(v0, v1, internalVertices, internalEdges);
-
-        // If there are no internal vertices, this is a bubble.
-        if(internalVertices.empty()) {
-            const uint64_t ploidy = out_degree(v0, assemblyGraph);
-            SHASTA_ASSERT(ploidy == in_degree(v1, assemblyGraph));
+        if(superbubble.isBubble()) {
+            const uint64_t ploidy = superbubble.ploidy();
             cout << "Bubble with ploidy " << ploidy << ":";
-            for(const edge_descriptor e: internalEdges) {
+            for(const edge_descriptor e: superbubble.internalEdges) {
                 cout << " " << assemblyGraph[e].id;
             }
             cout << endl;
         } else {
-            cout << "Superbubble with internalEdges " << internalEdges.size() << " edges:";
-            for(const edge_descriptor e: internalEdges) {
+            cout << "Superbubble with " << superbubble.internalEdges.size() << " internal edges:";
+            for(const edge_descriptor e: superbubble.internalEdges) {
                 cout << " " << assemblyGraph[e].id;
             }
             cout << endl;
 
         }
 
-        for(const edge_descriptor e: internalEdges) {
+        for(const edge_descriptor e: superbubble.internalEdges) {
             csv << assemblyGraph[e].id << ",Green\n";
         }
     }
