@@ -19,7 +19,7 @@
 namespace shasta {
 
     class AssemblyGraph3;
-    class AssemblyGraph3Vertex;
+    class AssemblyGraphVertex;
     class AssemblyGraph3Edge;
     class AssemblyGraph3EdgeStep;
 
@@ -27,7 +27,7 @@ namespace shasta {
         boost::listS,
         boost::listS,
         boost::bidirectionalS,
-        AssemblyGraph3Vertex,
+        AssemblyGraphVertex,
         AssemblyGraph3Edge>;
 
     class AnchorGraph;
@@ -45,14 +45,14 @@ namespace shasta {
 // When the Assembly3Graph is initially created from the AnchorGraph,
 // there can be at most one vertex for each AnchorId.
 // However that is no longer true after detangling.
-class shasta::AssemblyGraph3Vertex {
+class shasta::AssemblyGraphVertex {
 public:
     AnchorId anchorId = invalid<AnchorId>;
     uint64_t id = invalid<uint64_t>;
 
-    AssemblyGraph3Vertex(AnchorId anchorId, uint64_t id) :
+    AssemblyGraphVertex(AnchorId anchorId, uint64_t id) :
         anchorId(anchorId), id(id) {}
-    AssemblyGraph3Vertex() {}
+    AssemblyGraphVertex() {}
 
     template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
     {

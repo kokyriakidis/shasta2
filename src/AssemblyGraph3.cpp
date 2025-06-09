@@ -80,12 +80,12 @@ AssemblyGraph3::AssemblyGraph3(
         const AnchorId anchorId1 = anchorGraph[chain.back()].anchorPair.anchorIdB;
 
         if(not vertexMap.contains(anchorId0)) {
-            const vertex_descriptor v0 = add_vertex(AssemblyGraph3Vertex(anchorId0, nextVertexId++), assemblyGraph3);
+            const vertex_descriptor v0 = add_vertex(AssemblyGraphVertex(anchorId0, nextVertexId++), assemblyGraph3);
             vertexMap.insert(make_pair(anchorId0, v0));
         }
 
         if(not vertexMap.contains(anchorId1)) {
-            const vertex_descriptor v1 = add_vertex(AssemblyGraph3Vertex(anchorId1, nextVertexId++), assemblyGraph3);
+            const vertex_descriptor v1 = add_vertex(AssemblyGraphVertex(anchorId1, nextVertexId++), assemblyGraph3);
             vertexMap.insert(make_pair(anchorId1, v1));
         }
     }
@@ -328,7 +328,7 @@ void AssemblyGraph3::writeGraphviz(ostream& dot) const
 
     // Write the vertices.
     BGL_FORALL_VERTICES(v, assemblyGraph3, AssemblyGraph3) {
-    	const AssemblyGraph3Vertex& vertex = assemblyGraph3[v];
+    	const AssemblyGraphVertex& vertex = assemblyGraph3[v];
     	dot <<
     		vertex.id <<
     		" [label=\"" << anchorIdToString(vertex.anchorId) << "\\n" << vertex.id << "\"]"
@@ -342,8 +342,8 @@ void AssemblyGraph3::writeGraphviz(ostream& dot) const
         const AssemblyGraph3Edge& edge = assemblyGraph3[e];
     	const vertex_descriptor v0 = source(e, assemblyGraph3);
     	const vertex_descriptor v1 = target(e, assemblyGraph3);
-    	const AssemblyGraph3Vertex& vertex0 = assemblyGraph3[v0];
-    	const AssemblyGraph3Vertex& vertex1 = assemblyGraph3[v1];
+    	const AssemblyGraphVertex& vertex0 = assemblyGraph3[v0];
+    	const AssemblyGraphVertex& vertex1 = assemblyGraph3[v1];
     	dot <<
     	    vertex0.id << "->" <<
     	    vertex1.id <<
@@ -591,8 +591,8 @@ uint64_t AssemblyGraph3::bubbleCleanupIteration(uint64_t threadCount)
         const vertex_descriptor v0 = bubble.v0;
         const vertex_descriptor v1 = bubble.v1;
 
-        const AssemblyGraph3Vertex& vertex0 = assemblyGraph3[v0];
-        const AssemblyGraph3Vertex& vertex1 = assemblyGraph3[v1];
+        const AssemblyGraphVertex& vertex0 = assemblyGraph3[v0];
+        const AssemblyGraphVertex& vertex1 = assemblyGraph3[v1];
 
         const AnchorId anchorId0 = vertex0.anchorId;
         const AnchorId anchorId1 = vertex1.anchorId;

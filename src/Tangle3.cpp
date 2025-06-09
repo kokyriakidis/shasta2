@@ -102,7 +102,7 @@ void Tangle3::detangle()
 
         // Create the new vertex.
         const vertex_descriptor v1 = add_vertex(
-            AssemblyGraph3Vertex(lastAnchorId, assemblyGraph3.nextVertexId++), assemblyGraph3);
+            AssemblyGraphVertex(lastAnchorId, assemblyGraph3.nextVertexId++), assemblyGraph3);
         newEntranceVertices.push_back(v1);
 
         // Create the new edge, with the same steps and id as the old one.
@@ -126,7 +126,7 @@ void Tangle3::detangle()
 
         // Create the new vertex.
         const vertex_descriptor v0 = add_vertex(
-            AssemblyGraph3Vertex(firstAnchorId, assemblyGraph3.nextVertexId++), assemblyGraph3);
+            AssemblyGraphVertex(firstAnchorId, assemblyGraph3.nextVertexId++), assemblyGraph3);
         newExitVertices.push_back(v0);
 
         // Create the new edge, with the same steps and id as the old one.

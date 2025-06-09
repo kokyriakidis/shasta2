@@ -30,11 +30,11 @@ public:
 
     // Annotations of where each AnchorId is used in the current state
     // of AssemblyGraph3. An AnchorId can be used in three ways:
-    // - In an AssemblyGraph3Vertex.
+    // - In an AssemblyGraphVertex.
     // - In an AssemblyGraph3Edge::anchorPair, as anchorIdA.
     // - In an AssemblyGraph3Edge::anchorPair, as anchorIdB.
     // An AnchorId can be used any number of times (0, 1, or multiple times).
-    // For the case of an AssemblyGraph3Vertex, the vertex_descriptor v is not
+    // For the case of an AssemblyGraphVertex, the vertex_descriptor v is not
     // null vertex and contains the vertex descriptor that uses the AnchorId.
     // The other fields are invalid.
     // For the other two cases, the vertex_descriptor is null_vertex.
