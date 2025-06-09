@@ -23,7 +23,7 @@ namespace shasta {
     class AssemblyGraphEdge;
     class AssemblyGraph3EdgeStep;
 
-    using AssemblyGraph3BaseClass = boost::adjacency_list<
+    using AssemblyGraphBaseClass = boost::adjacency_list<
         boost::listS,
         boost::listS,
         boost::bidirectionalS,
@@ -118,7 +118,7 @@ public:
 
 
 class shasta::AssemblyGraph3 :
-    public AssemblyGraph3BaseClass,
+    public AssemblyGraphBaseClass,
     public MappedMemoryOwner,
     public MultithreadedObject<AssemblyGraph3> {
 public:
@@ -273,7 +273,7 @@ private:
     friend class boost::serialization::access;
     template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
     {
-        ar & boost::serialization::base_object<AssemblyGraph3BaseClass>(*this);
+        ar & boost::serialization::base_object<AssemblyGraphBaseClass>(*this);
         ar & nextVertexId;
         ar & nextEdgeId;
     }
