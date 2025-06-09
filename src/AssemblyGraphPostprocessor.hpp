@@ -9,16 +9,16 @@
 
 
 namespace shasta {
-    class AssemblyGraph3Postprocessor;
+    class AssemblyGraphPostprocessor;
 }
 
 
 
 // AssemblyGraph functionality needed only during postprocessing.
 // It is used in the http server and in the Python API.
-class shasta::AssemblyGraph3Postprocessor : public AssemblyGraph {
+class shasta::AssemblyGraphPostprocessor : public AssemblyGraph {
 public:
-    AssemblyGraph3Postprocessor(
+    AssemblyGraphPostprocessor(
         const Anchors&,
         const AssemblerOptions&,
         const string& assemblyStage);

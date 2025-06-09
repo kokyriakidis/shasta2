@@ -1,5 +1,5 @@
 // Shasta
-#include "AssemblyGraph3Postprocessor.hpp"
+#include "AssemblyGraphPostprocessor.hpp"
 #include "Base.hpp"
 #include "deduplicate.hpp"
 using namespace shasta;
@@ -9,7 +9,7 @@ using namespace shasta;
 
 
 
-AssemblyGraph3Postprocessor::AssemblyGraph3Postprocessor(
+AssemblyGraphPostprocessor::AssemblyGraphPostprocessor(
     const Anchors& anchors,
     const AssemblerOptions& assemblerOptions,
     const string& assemblyStage) :
@@ -26,7 +26,7 @@ AssemblyGraph3Postprocessor::AssemblyGraph3Postprocessor(
 }
 
 
-void AssemblyGraph3Postprocessor::computeAnnotations()
+void AssemblyGraphPostprocessor::computeAnnotations()
 {
     const AssemblyGraph& assemblyGraph3 = *this;
     annotations.clear();
@@ -51,8 +51,8 @@ void AssemblyGraph3Postprocessor::computeAnnotations()
 
 
 
-span<const AssemblyGraph3Postprocessor::Annotation>
-    AssemblyGraph3Postprocessor::getAnnotations(AnchorId anchorId) const
+span<const AssemblyGraphPostprocessor::Annotation>
+    AssemblyGraphPostprocessor::getAnnotations(AnchorId anchorId) const
 {
     const auto p = std::equal_range(annotations.begin(), annotations.end(), Annotation(anchorId));
     return span<const Annotation>(p.first, p.second);
@@ -61,7 +61,7 @@ span<const AssemblyGraph3Postprocessor::Annotation>
 
 
 // Return true if an AnchorId has one or more vertex annotations.
-bool AssemblyGraph3Postprocessor::hasVertexAnnotation(AnchorId anchorId) const
+bool AssemblyGraphPostprocessor::hasVertexAnnotation(AnchorId anchorId) const
 {
     const auto annotations = getAnnotations(anchorId);
     for(const Annotation& annotation: annotations) {
@@ -75,7 +75,7 @@ bool AssemblyGraph3Postprocessor::hasVertexAnnotation(AnchorId anchorId) const
 
 
 // Find the edges that an AnchorId has annotations for.
-void AssemblyGraph3Postprocessor::findAnnotationEdges(
+void AssemblyGraphPostprocessor::findAnnotationEdges(
     AnchorId anchorId,
     vector<edge_descriptor>& edges) const
 {

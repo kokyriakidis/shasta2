@@ -2,7 +2,7 @@
 #include "Anchor.hpp"
 #include "Assembler.hpp"
 #include "AssemblerOptions.hpp"
-#include "AssemblyGraph3Postprocessor.hpp"
+#include "AssemblyGraphPostprocessor.hpp"
 #include "deduplicate.hpp"
 #include "Journeys.hpp"
 #include "LocalAnchorGraph.hpp"
@@ -137,7 +137,7 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
     if(not assemblyStage.empty()) {
 
         // Get the AssemblyGraph for this assembly stage.
-        const AssemblyGraph3Postprocessor& assemblyGraph3 = getAssemblyGraph3(
+        const AssemblyGraphPostprocessor& assemblyGraph3 = getAssemblyGraph3(
             assemblyStage,
             *httpServerData.assemblerOptions);
         const auto annotations = assemblyGraph3.getAnnotations(anchorId);
@@ -924,9 +924,9 @@ void Assembler::exploreLocalAnchorGraph(
 
 
     // If needed, get the AssemblyGraph for this assembly stage.
-    const AssemblyGraph3Postprocessor* assemblyGraph3Pointer = 0;
+    const AssemblyGraphPostprocessor* assemblyGraph3Pointer = 0;
     if(displayOptions.vertexColoring == "byAssemblyAnnotations") {
-        const AssemblyGraph3Postprocessor& assemblyGraph3 = getAssemblyGraph3(
+        const AssemblyGraphPostprocessor& assemblyGraph3 = getAssemblyGraph3(
             displayOptions.assemblyStage,
             *httpServerData.assemblerOptions);
         assemblyGraph3Pointer = &assemblyGraph3;

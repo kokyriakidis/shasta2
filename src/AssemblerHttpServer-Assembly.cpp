@@ -1,6 +1,6 @@
 // Shasta.
 #include "Assembler.hpp"
-#include "AssemblyGraph3Postprocessor.hpp"
+#include "AssemblyGraphPostprocessor.hpp"
 #include "LocalAssembly.hpp"
 #include "LocalAssembly1.hpp"
 #include "LocalAssembly2.hpp"
@@ -223,7 +223,7 @@ void Assembler::exploreSegments(
     }
 
     // Get the AssemblyGraph for this assembly stage.
-    const AssemblyGraph3Postprocessor& assemblyGraph3 = getAssemblyGraph3(
+    const AssemblyGraphPostprocessor& assemblyGraph3 = getAssemblyGraph3(
         assemblyStage,
         *httpServerData.assemblerOptions);
 
@@ -388,7 +388,7 @@ void Assembler::exploreSegment(
     }
 
     // Get the AssemblyGraph for this assembly stage.
-    const AssemblyGraph3Postprocessor& assemblyGraph3 = getAssemblyGraph3(
+    const AssemblyGraphPostprocessor& assemblyGraph3 = getAssemblyGraph3(
         assemblyStage,
         *httpServerData.assemblerOptions);
 
@@ -697,7 +697,7 @@ void Assembler::exploreSegmentStep(
     }
 
     // Get the AssemblyGraph for this assembly stage.
-    const AssemblyGraph3Postprocessor& assemblyGraph3 = getAssemblyGraph3(
+    const AssemblyGraphPostprocessor& assemblyGraph3 = getAssemblyGraph3(
         assemblyStage,
         *httpServerData.assemblerOptions);
 
@@ -745,14 +745,14 @@ void Assembler::exploreSegmentStep(
 
 
 
-AssemblyGraph3Postprocessor& Assembler::getAssemblyGraph3(
+AssemblyGraphPostprocessor& Assembler::getAssemblyGraph3(
     const string& assemblyStage,
     const AssemblerOptions& assemblerOptions)
 {
     auto it = assemblyGraph3Table.find(assemblyStage);
     if(it == assemblyGraph3Table.end()) {
-        shared_ptr<AssemblyGraph3Postprocessor> p =
-            make_shared<AssemblyGraph3Postprocessor>(anchors(), assemblerOptions, assemblyStage);
+        shared_ptr<AssemblyGraphPostprocessor> p =
+            make_shared<AssemblyGraphPostprocessor>(anchors(), assemblerOptions, assemblyStage);
         tie(it, ignore) = assemblyGraph3Table.insert(make_pair(assemblyStage, p));
     }
     return *(it->second);
@@ -821,7 +821,7 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
     }
 
     // Get the AssemblyGraph for this assembly stage.
-    const AssemblyGraph3Postprocessor& assemblyGraph3 = getAssemblyGraph3(
+    const AssemblyGraphPostprocessor& assemblyGraph3 = getAssemblyGraph3(
         assemblyStage,
         *httpServerData.assemblerOptions);
 
@@ -948,7 +948,7 @@ void Assembler::exploreVertexTangle(const vector<string>& request, ostream& html
     }
 
     // Get the AssemblyGraph for this assembly stage.
-    AssemblyGraph3Postprocessor& assemblyGraph3 = getAssemblyGraph3(
+    AssemblyGraphPostprocessor& assemblyGraph3 = getAssemblyGraph3(
         assemblyStage,
         *httpServerData.assemblerOptions);
 
@@ -1028,7 +1028,7 @@ void Assembler::exploreEdgeTangle(const vector<string>& request, ostream& html)
     }
 
     // Get the AssemblyGraph for this assembly stage.
-    AssemblyGraph3Postprocessor& assemblyGraph3 = getAssemblyGraph3(
+    AssemblyGraphPostprocessor& assemblyGraph3 = getAssemblyGraph3(
         assemblyStage,
         *httpServerData.assemblerOptions);
 

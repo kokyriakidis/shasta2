@@ -3,7 +3,7 @@
 // Shasta.
 #include "Assembler.hpp"
 #include "AssemblerOptions.hpp"
-#include "AssemblyGraph3Postprocessor.hpp"
+#include "AssemblyGraphPostprocessor.hpp"
 #include "Base.hpp"
 #include "ChiSquareDetangler.hpp"
 #include "deduplicate.hpp"
@@ -148,10 +148,10 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def("assembleAll", &AssemblyGraph::assembleAll)
         .def("analyzeSuperbubbles", &AssemblyGraph::analyzeSuperbubbles)
         .def("colorStrongComponents", &AssemblyGraph::colorStrongComponents)
-        .def("write", &AssemblyGraph3Postprocessor::write)
+        .def("write", &AssemblyGraphPostprocessor::write)
         ;
 
-    class_<AssemblyGraph3Postprocessor>(shasta2Module, "AssemblyGraph3Postprocessor",
+    class_<AssemblyGraphPostprocessor>(shasta2Module, "AssemblyGraphPostprocessor",
         pybind11::base<AssemblyGraph>());
 
 

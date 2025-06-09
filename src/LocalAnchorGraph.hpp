@@ -26,7 +26,7 @@ namespace shasta {
     class LocalAnchorGraphDisplayOptions;
 
     class AnchorGraph;
-    class AssemblyGraph3Postprocessor;
+    class AssemblyGraphPostprocessor;
 }
 
 
@@ -103,20 +103,20 @@ public:
     void writeHtml(
         ostream& html,
         const LocalAnchorGraphDisplayOptions&,
-        const AssemblyGraph3Postprocessor*);
+        const AssemblyGraphPostprocessor*);
     void writeHtml1(
         ostream& html,
         const LocalAnchorGraphDisplayOptions&,
-        const AssemblyGraph3Postprocessor*) const;
+        const AssemblyGraphPostprocessor*) const;
 
     void writeGraphviz(
         const string& fileName,
         const LocalAnchorGraphDisplayOptions&,
-        const AssemblyGraph3Postprocessor*) const;
+        const AssemblyGraphPostprocessor*) const;
     void writeGraphviz(
         ostream&,
         const LocalAnchorGraphDisplayOptions&,
-        const AssemblyGraph3Postprocessor*) const;
+        const AssemblyGraphPostprocessor*) const;
 
 private:
 
@@ -124,7 +124,7 @@ private:
     void writeHtml2(
         ostream& html,
         const LocalAnchorGraphDisplayOptions&,
-        const AssemblyGraph3Postprocessor*);
+        const AssemblyGraphPostprocessor*);
 
     // The position of each vertex in the computed layout.
     std::map<vertex_descriptor, array<double, 2> > layout;
@@ -148,7 +148,7 @@ private:
     void writeVertices(
         ostream& html,
         const LocalAnchorGraphDisplayOptions&,
-        const AssemblyGraph3Postprocessor*) const;
+        const AssemblyGraphPostprocessor*) const;
 
     void writeEdges(
         ostream& html,

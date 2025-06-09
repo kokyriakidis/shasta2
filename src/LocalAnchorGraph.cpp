@@ -1,7 +1,7 @@
 // Shasta.
 #include "LocalAnchorGraph.hpp"
 #include "AnchorGraph.hpp"
-#include "AssemblyGraph3Postprocessor.hpp"
+#include "AssemblyGraphPostprocessor.hpp"
 #include "computeLayout.hpp"
 #include "html.hpp"
 #include "HttpServer.hpp"
@@ -152,7 +152,7 @@ LocalAnchorGraph::LocalAnchorGraph(
 void LocalAnchorGraph::writeGraphviz(
     const string& fileName,
     const LocalAnchorGraphDisplayOptions& options,
-    const AssemblyGraph3Postprocessor* assemblyGraph3Pointer) const
+    const AssemblyGraphPostprocessor* assemblyGraph3Pointer) const
 {
     ofstream file(fileName);
     writeGraphviz(file, options, assemblyGraph3Pointer);
@@ -163,7 +163,7 @@ void LocalAnchorGraph::writeGraphviz(
 void LocalAnchorGraph::writeGraphviz(
     ostream& s,
     const LocalAnchorGraphDisplayOptions& options,
-    const AssemblyGraph3Postprocessor* assemblyGraph3Pointer) const
+    const AssemblyGraphPostprocessor* assemblyGraph3Pointer) const
 {
     const LocalAnchorGraph& graph = *this;
     SHASTA_ASSERT(anchorGraphPointer);
@@ -612,7 +612,7 @@ void LocalAnchorGraphDisplayOptions::writeForm(ostream& html) const
 void LocalAnchorGraph::writeHtml(
     ostream& html,
     const LocalAnchorGraphDisplayOptions& options,
-    const AssemblyGraph3Postprocessor* assemblyGraph3Pointer)
+    const AssemblyGraphPostprocessor* assemblyGraph3Pointer)
 {
     if((options.layoutMethod == "dot") and (options.vertexLabels or options.edgeLabels)) {
 
@@ -633,7 +633,7 @@ void LocalAnchorGraph::writeHtml(
 void LocalAnchorGraph::writeHtml1(
     ostream& html,
     const LocalAnchorGraphDisplayOptions& options,
-    const AssemblyGraph3Postprocessor* assemblyGraph3Pointer) const
+    const AssemblyGraphPostprocessor* assemblyGraph3Pointer) const
 {
 
 
@@ -698,7 +698,7 @@ void LocalAnchorGraph::writeHtml1(
 void LocalAnchorGraph::writeHtml2(
     ostream& html,
     const LocalAnchorGraphDisplayOptions& options,
-    const AssemblyGraph3Postprocessor* assemblyGraph3Pointer)
+    const AssemblyGraphPostprocessor* assemblyGraph3Pointer)
 {
     // Use scientific notation because svg does not accept floating points
     // ending with a decimal point.
@@ -843,7 +843,7 @@ void LocalAnchorGraph::Box::extend(double factor)
 void LocalAnchorGraph::writeVertices(
     ostream& html,
     const LocalAnchorGraphDisplayOptions& options,
-    const AssemblyGraph3Postprocessor* assemblyGraph3Pointer) const
+    const AssemblyGraphPostprocessor* assemblyGraph3Pointer) const
 {
     const LocalAnchorGraph& graph = *this;
 
