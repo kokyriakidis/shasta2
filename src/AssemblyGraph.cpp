@@ -1354,17 +1354,18 @@ void AssemblyGraph::analyzeSuperbubbles(uint64_t maxDistance) const
     ofstream csv("AnalyzeSuperbubbles.csv");
     csv << "Segment,Color\n";
 
-    for(const Superbubble& superbubble: superbubbles) {
+    for(uint64_t i=0; i<superbubbles.size(); i++) {
+        const Superbubble& superbubble = superbubbles[i];
 
         if(superbubble.isBubble()) {
             const uint64_t ploidy = superbubble.ploidy();
-            cout << "Bubble with ploidy " << ploidy << ":";
+            cout << "Superbubble " << i << " is a bubble with ploidy " << ploidy << ":";
             for(const edge_descriptor e: superbubble.internalEdges) {
                 cout << " " << assemblyGraph[e].id;
             }
             cout << endl;
         } else {
-            cout << "Superbubble with " << superbubble.internalEdges.size() << " internal edges:";
+            cout << "Superbubble " << i << " with " << superbubble.internalEdges.size() << " internal edges:";
             for(const edge_descriptor e: superbubble.internalEdges) {
                 cout << " " << assemblyGraph[e].id;
             }
@@ -1375,6 +1376,31 @@ void AssemblyGraph::analyzeSuperbubbles(uint64_t maxDistance) const
         for(const edge_descriptor e: superbubble.internalEdges) {
             csv << assemblyGraph[e].id << ",Green\n";
         }
+    }
+
+
+    // Figure out if some vertices belong to more than one superbubble.
+    std::map<vertex_descriptor, vector<uint64_t> > m;
+    for(uint64_t i=0; i<superbubbles.size(); i++) {
+        const Superbubble& superbubble = superbubbles[i];
+        for(const vertex_descriptor v: superbubble.internalVertices) {
+            m[v].push_back(i);
+        }
+    }
+    std::set< pair<uint64_t, uint64_t> > intersectingPairs;
+    for(const auto& p: m) {
+        const vector<uint64_t>& v = p.second;
+        for(uint64_t j=0; j<v.size()-1; j++) {
+            const uint64_t jj = v[j];
+            for(uint64_t k=j+1; j<v.size(); k++) {
+                const uint64_t kk = v[k];
+                intersectingPairs.insert({min(jj, kk), max(jj, kk)});
+            }
+        }
+    }
+    cout << "Intersecting superbubble pairs:" << endl;
+    for(const auto& p: intersectingPairs) {
+        cout << p.first << " " << p.second << endl;
     }
 }
 
