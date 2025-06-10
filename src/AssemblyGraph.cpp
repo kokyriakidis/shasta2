@@ -1003,7 +1003,7 @@ bool AssemblyGraph::detangleIteration(Detangler& detangler)
     success = success or verticesSuccess;
     compress();
 
-    const bool edgesSuccess = success or detangleEdges(detangler);
+    const bool edgesSuccess = detangleEdges(detangler);
     success = success or edgesSuccess;
     compress();
 
@@ -1029,7 +1029,7 @@ bool AssemblyGraph::detangle(uint64_t maxIterationCount, Detangler& detangler)
 {
     bool success = false;
     for(uint64_t iteration=0; iteration<maxIterationCount; iteration++) {
-        // cout << "Starting detangle iteration " << iteration << endl;
+        cout << "Starting detangle iteration " << iteration << endl;
         const bool iterationSuccess = detangleIteration(detangler);
 
         if(iterationSuccess) {
