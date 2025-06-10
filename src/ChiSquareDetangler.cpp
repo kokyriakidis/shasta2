@@ -405,7 +405,18 @@ bool ChiSquareDetangler::operator()(Tangle& tangle, bool doDetangle)
         }
     }
 
-    SHASTA_ASSERT(0);
+    // Store the connect pairs and, if requested, detangle.
+    vector< vector<bool> >& bestConnectivityMatrix = table.front().second;
+    for(uint64_t iEntrance=0; iEntrance<entranceCount; iEntrance++) {
+        for(uint64_t iExit=0; iExit<exitCount; iExit++) {
+            if(bestConnectivityMatrix[iEntrance][iExit]) {
+                tangle.connect(iEntrance, iExit);
+            }
+        }
+    }
+    if(doDetangle) {
+        tangle.detangle();
+    }
 
-    return false;
+    return true;
 }
