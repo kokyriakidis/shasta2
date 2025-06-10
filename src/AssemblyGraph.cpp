@@ -1402,6 +1402,129 @@ void AssemblyGraph::analyzeSuperbubbles(uint64_t maxDistance) const
     for(const auto& p: intersectingPairs) {
         cout << p.first << " " << p.second << endl;
     }
+    SHASTA_ASSERT(intersectingPairs.empty());
+
+
+    // Find Superbubble chains.
+    vector< vector <Superbubble> > superbubbleChains;
+    findSuperbubbleChains(superbubbles, superbubbleChains);
+    cout << "Found " << superbubbleChains.size() << " superbubble chains." << endl;
+
+    {
+        ofstream csv("SuperbubbleChains.csv");
+        csv << "ChainId,Position,Type,Internal vertices count,Internal edges count,\n";
+        for(uint64_t chainId=0; chainId<superbubbleChains.size(); chainId++) {
+            const  vector <Superbubble>& chain = superbubbleChains[chainId];
+            for(uint64_t position=0; position<chain.size(); position++) {
+                const Superbubble& superbubble = chain[position];
+                csv << chainId << ",";
+                csv << position << ",";
+                if(superbubble.internalVertices.empty()) {
+                    csv << "Bubble,";
+                } else {
+                    csv << "Superbubble,";
+                }
+                csv << superbubble.internalVertices.size() << ",";
+                csv << superbubble.internalEdges.size() << ",";
+                for(const edge_descriptor e: superbubble.internalEdges) {
+                    csv << assemblyGraph[e].id << ",";
+                }
+                csv << "\n";
+            }
+        }
+    }
+}
+
+
+void AssemblyGraph::findSuperbubbleChains(
+    const vector<Superbubble>& superbubbles,
+    vector< vector <Superbubble> >& superbubbleChains
+    ) const
+{
+    // Index the superbubbles by their source and target vertex.
+    std::map<vertex_descriptor, vector<uint64_t> > mapBySource;
+    std::map<vertex_descriptor, vector<uint64_t> > mapByTarget;
+    for(uint64_t superbubbleId=0; superbubbleId<superbubbles.size(); superbubbleId++) {
+        const Superbubble& superbubble = superbubbles[superbubbleId];
+        mapBySource[superbubble.source].push_back(superbubbleId);
+        mapByTarget[superbubble.target].push_back(superbubbleId);
+    }
+
+    // Sanity check: a vertex can only be a source or target of a single Superbubble.
+    for(const auto& p: mapBySource) {
+        SHASTA_ASSERT(p.second.size() == 1);
+    }
+    for(const auto& p: mapByTarget) {
+        SHASTA_ASSERT(p.second.size() == 1);
+    }
+
+    // A vector to keep track of the Superbubbles we already added to a chain.
+    vector<bool> wasUsed(superbubbles.size(), false);
+
+    // Work vectors used below to construct chains.
+    vector<uint64_t> forward;
+    vector<uint64_t> backward;
+
+    // Generate Superbubble chains.
+    superbubbleChains.clear();
+    for(uint64_t superbubbleId=0; superbubbleId<superbubbles.size(); superbubbleId++) {
+        if(wasUsed[superbubbleId]) {
+            continue;
+        }
+        // cout << "Starting a new chain at Superbubble " << superbubbleId << endl;
+
+        // This Superbubble has not yet been added to any chain.
+        // We will start a new chain here.
+
+        // Create the forward portion of this chain.
+        forward.clear();
+        vertex_descriptor v = superbubbles[superbubbleId].target;
+        while(true) {
+            const auto it = mapBySource.find(v);
+            if(it == mapBySource.end()) {
+                break;
+            }
+            const vector<uint64_t>& nextVector = it->second;
+            SHASTA_ASSERT(nextVector.size() == 1);
+            const uint64_t nextSuperbubbleId = nextVector.front();
+            forward.push_back(nextSuperbubbleId);
+            // cout << "Forward: " << nextSuperbubbleId << endl;
+
+            v = superbubbles[nextSuperbubbleId].target;
+        }
+
+        // Create the backward portion of this chain.
+        backward.clear();
+        v = superbubbles[superbubbleId].source;
+        while(true) {
+            const auto it = mapByTarget.find(v);
+            if(it == mapByTarget.end()) {
+                break;
+            }
+            const vector<uint64_t>& previousVector = it->second;
+            SHASTA_ASSERT(previousVector.size() == 1);
+            const uint64_t previousSuperbubbleId = previousVector.front();
+            backward.push_back(previousSuperbubbleId);
+            // cout << "Backward: " << previousSuperbubbleId << endl;
+
+            v = superbubbles[previousSuperbubbleId].source;
+        }
+
+        // Now we can create the new chain.
+        superbubbleChains.emplace_back();
+        vector<Superbubble>& chain = superbubbleChains.back();
+        std::reverse(backward.begin(), backward.end());
+        for(const uint64_t id: backward) {
+            wasUsed[id] = true;
+            chain.push_back(superbubbles[id]);
+        }
+        chain.push_back(superbubbles[superbubbleId]);
+        wasUsed[superbubbleId] = true;
+        for(const uint64_t id: forward) {
+            wasUsed[id] = true;
+            chain.push_back(superbubbles[id]);
+        }
+    }
 }
 
 
@@ -1476,3 +1599,4 @@ void  AssemblyGraph::colorStrongComponents() const
 
 
 }
+

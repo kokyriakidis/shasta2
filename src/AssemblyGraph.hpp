@@ -204,8 +204,17 @@ public:
         uint64_t maxDistance,
         vector<Superbubble>&) const;
 
+    void findSuperbubbleChains(
+        const vector<Superbubble>& superbubbles,
+        vector< vector <Superbubble> >& superbubbleChains
+        ) const;
+
     // Find superbubbles and analyze them.
     void analyzeSuperbubbles(uint64_t maxDistance) const;
+
+
+
+    // Strongly connected components.
 
     // Find the non-trivial strongly connected components.
     // Each component is stored with vertices sorted to permit binary searches.
