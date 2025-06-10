@@ -24,7 +24,7 @@ ChiSquareDetangler::ChiSquareDetangler(
 
 
 
-bool ChiSquareDetangler::operator()(Tangle& tangle)
+bool ChiSquareDetangler::operator()(Tangle& tangle, bool doDetangle)
 {
     const TangleMatrix& tangleMatrix = *(tangle.tangleMatrix);
     const uint64_t entranceCount = tangleMatrix.entrances.size();
@@ -86,7 +86,9 @@ bool ChiSquareDetangler::operator()(Tangle& tangle)
         if((tangleMatrix.tangleMatrix[0][1].size() == 0) and (tangleMatrix.tangleMatrix[1][0].size() == 0)) {
             tangle.connect(0, 0);
             tangle.connect(1, 1);
-            tangle.detangle();
+            if(doDetangle) {
+                tangle.detangle();
+            }
             if(debug) {
                 cout << "Special case: 2 by 2, in phase." << endl;
             }
@@ -97,7 +99,9 @@ bool ChiSquareDetangler::operator()(Tangle& tangle)
         if((tangleMatrix.tangleMatrix[0][0].size() == 0) and (tangleMatrix.tangleMatrix[1][1].size() == 0)) {
             tangle.connect(0, 1);
             tangle.connect(1, 0);
-            tangle.detangle();
+            if(doDetangle) {
+                tangle.detangle();
+            }
             if(debug) {
                 cout << "Special case: 2 by 2, out of phase." << endl;
             }
@@ -399,8 +403,9 @@ bool ChiSquareDetangler::operator()(Tangle& tangle)
             }
             return false;
         }
-
     }
+
+    SHASTA_ASSERT(0);
 
     return false;
 }

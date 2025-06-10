@@ -5,7 +5,7 @@ using namespace shasta;
 
 
 
-bool TrivialDetangler::operator()(Tangle& tangle)
+bool TrivialDetangler::operator()(Tangle& tangle, bool doDetangle)
 {
     const TangleMatrix& tangleMatrix = *(tangle.tangleMatrix);
 
@@ -51,7 +51,9 @@ bool TrivialDetangler::operator()(Tangle& tangle)
         tangle.connect(0, 1);
         tangle.connect(1, 0);
     }
-    tangle.detangle();
+    if(doDetangle) {
+        tangle.detangle();
+    }
 
     return true;
 }

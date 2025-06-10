@@ -11,7 +11,7 @@ namespace shasta {
 
 class shasta::SimpleDetangler : public Detangler {
 public:
-    bool operator()(Tangle&);
+    bool operator()(Tangle&, bool doDetangle);
 
     // Tangle matrix elements <= detangleLowThreshold are considered insignificant.
     // Tangle matrix elements >= detangleHighThreshold are considered significant.

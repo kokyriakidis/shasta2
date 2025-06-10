@@ -5,7 +5,7 @@ using namespace shasta;
 
 
 
-bool ExactDetangler::operator()(Tangle& tangle)
+bool ExactDetangler::operator()(Tangle& tangle, bool doDetangle)
 {
     const TangleMatrix& tangleMatrix = *(tangle.tangleMatrix);
 
@@ -18,6 +18,8 @@ bool ExactDetangler::operator()(Tangle& tangle)
         }
     }
 
-    tangle.detangle();
+    if(doDetangle) {
+        tangle.detangle();
+    }
     return true;
 }

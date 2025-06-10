@@ -961,7 +961,7 @@ bool AssemblyGraph::detangle(
             cout << endl;
         }
 
-        const bool success = detangler(tangle);
+        const bool success = detangler(tangle, true);
         if(success) {
             if(debug) {
                 cout << "Detangle was successful." << endl;

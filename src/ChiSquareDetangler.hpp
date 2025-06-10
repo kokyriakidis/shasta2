@@ -12,7 +12,7 @@ namespace shasta {
 
 class shasta::ChiSquareDetangler : public Detangler {
 public:
-    bool operator()(Tangle&);
+    bool operator()(Tangle&, bool doDetangle);
 
     ChiSquareDetangler(
         uint64_t minCommonCoverage,
