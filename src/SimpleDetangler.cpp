@@ -3,6 +3,8 @@
 #include "TangleMatrix.hpp"
 using namespace shasta;
 
+#include <boost/graph/iteration_macros.hpp>
+
 
 
 bool SimpleDetangler::operator()(Tangle& tangle, bool doDetangle)
@@ -19,6 +21,39 @@ bool SimpleDetangler::operator()(Tangle& tangle, bool doDetangle)
         if(exit.commonCoverage < minCommonCoverage) {
             return false;
         }
+    }
+
+    const uint64_t entranceCount = tangleMatrix.entrances.size();
+    const uint64_t exitCount = tangleMatrix.exits.size();
+
+    if(debug) {
+        cout << "Working on a tangle with " << entranceCount << " entrances and " << exitCount << " exits." << endl;
+        cout << "Entrances:";
+        for(const auto& entrance: tangleMatrix.entrances) {
+            cout << " " << tangle.assemblyGraph[entrance.e].id;
+        }
+        cout << endl;
+        cout << "Exits:";
+        for(const auto& exit: tangleMatrix.exits) {
+            cout << " " << tangle.assemblyGraph[exit.e].id;
+        }
+        cout << endl;
+        cout << "Tangle matrix:" << endl;
+        for(uint64_t iEntrance=0; iEntrance<entranceCount; iEntrance++) {
+            for(uint64_t iExit=0; iExit<exitCount; iExit++) {
+                const uint64_t coverage = tangleMatrix.tangleMatrix[iEntrance][iExit].size();
+                cout << coverage << " ";
+            }
+            cout << endl;
+        }
+
+        cout << "Internal edges of this tangle:";
+        for(const AssemblyGraph::vertex_descriptor v: tangle.tangleVertices) {
+            BGL_FORALL_OUTEDGES(v, e, tangle.assemblyGraph, AssemblyGraph) {
+                cout << " " << tangle.assemblyGraph[e].id;
+            }
+        }
+        cout << endl;
     }
 
     // Gather entries by type.
@@ -41,16 +76,25 @@ bool SimpleDetangler::operator()(Tangle& tangle, bool doDetangle)
 
     // If we have ambiguous entries, give up.
     if(not ambiguousEntries.empty()) {
+        if(debug) {
+            cout << "Not detangling because ambiguous entries are present." << endl;
+        }
         return false;
     }
 
     // If all entrances are connected to all exits, don't do it.
     if(significantEntries.size() == tangleMatrix.entrances.size() * tangleMatrix.exits.size()) {
+        if(debug) {
+            cout << "Not detangling because all entrances are connected to all exits." << endl;
+        }
         return false;
     }
 
     // If there are no significant entries, don't detangle.
     if(significantEntries.empty()) {
+        if(debug) {
+            cout << "Not detangling because no significant entries are present." << endl;
+        }
         return false;
     }
 
@@ -64,6 +108,9 @@ bool SimpleDetangler::operator()(Tangle& tangle, bool doDetangle)
             }
         }
         if(not isGood) {
+            if(debug) {
+                cout << "Not detangling because not all entrances are connected to at least one exit." << endl;
+            }
             return false;
         }
     }
@@ -78,6 +125,9 @@ bool SimpleDetangler::operator()(Tangle& tangle, bool doDetangle)
             }
         }
         if(not isGood) {
+            if(debug) {
+                cout << "Not detangling because not all exits are connected to at least one enrance." << endl;
+            }
             return false;
         }
     }
@@ -85,6 +135,10 @@ bool SimpleDetangler::operator()(Tangle& tangle, bool doDetangle)
     // All good, detangle using the significant entries.
     for(const auto& p: significantEntries) {
         tangle.connect(p.first, p.second);
+    }
+
+    if(debug) {
+        cout << "Detangling." << endl;
     }
 
     if(doDetangle) {

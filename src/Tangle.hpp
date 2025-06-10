@@ -58,7 +58,6 @@ public:
 
     AssemblyGraph& assemblyGraph;
 
-private:
     // The Tangle vertices.
     vector<vertex_descriptor> tangleVertices;
     bool isTangleVertex(vertex_descriptor v) const
