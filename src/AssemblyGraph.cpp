@@ -157,11 +157,17 @@ void AssemblyGraph::run(uint64_t threadCount)
 
     // Detangling.
     createTangleTemplates();
+    SimpleDetangler detangler(
+        assemblerOptions.assemblyGraphOptions.detangleMinCommonCoverage,
+        assemblerOptions.assemblyGraphOptions.detangleLowCoverageThreshold,
+        assemblerOptions.assemblyGraphOptions.detangleHighCoverageThreshold);
+    /*
     ChiSquareDetangler detangler(
         assemblerOptions.assemblyGraphOptions.detangleMinCommonCoverage,
         assemblerOptions.assemblyGraphOptions.detangleEpsilon,
         assemblerOptions.assemblyGraphOptions.detangleMaxLogP,
         assemblerOptions.assemblyGraphOptions.detangleMinLogPDelta);
+    */
     detangle(maxIterationCount, detangler);
     write("D");
 

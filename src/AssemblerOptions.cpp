@@ -146,11 +146,6 @@ void AssemblerOptions::addOptions()
         "High coverage threshold for detangling."
         )->capture_default_str();
 
-    add_option("--detangle-initial-max-base-offset",
-        assemblyGraphOptions.detangleInitialMaxBaseOffset,
-        "Initial maximum base offset for detangling."
-        )->capture_default_str();
-
     add_option("--detangle-epsilon",
         assemblyGraphOptions.detangleEpsilon,
         "Epsilon value for chi-square detangling."

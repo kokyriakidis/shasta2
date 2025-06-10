@@ -82,21 +82,6 @@ bool SimpleDetangler::operator()(Tangle& tangle, bool doDetangle)
         }
     }
 
-#if 0
-    // Check the base offsets of the significant entries. If any of them are too long,
-    // don't detangle.
-    for(const auto& p: significantEntries) {
-        const AnchorPair& anchorPair = tangleMatrix.tangleMatrix[p.first][p.second];
-        const uint64_t offset = anchorPair.getAverageOffset(tangle.assemblyGraph.anchors);
-        if(debug) {
-            cout << "Base offset for " << p.first << " " << p.second << " is " << offset << endl;
-        }
-        if(offset > maxBaseOffset) {
-            return false;
-        }
-    }
-#endif
-
     // All good, detangle using the significant entries.
     for(const auto& p: significantEntries) {
         tangle.connect(p.first, p.second);
