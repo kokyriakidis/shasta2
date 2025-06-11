@@ -168,22 +168,23 @@ public:
 
 
     // Detangling.
+    // The detangling functions return the number of successful detangling operations.
 
     // Low level detangling function.
-    bool detangle(const vector< vector<vertex_descriptor> >& detanglingCandidates, Detangler&);
+    uint64_t detangle(const vector< vector<vertex_descriptor> >& detanglingCandidates, Detangler&);
 
-    bool detangleVerticesIteration(Detangler&);
-    bool detangleVertices(uint64_t maxIterationCount, Detangler&);
+    uint64_t detangleVerticesIteration(Detangler&);
+    uint64_t detangleVertices(uint64_t maxIterationCount, Detangler&);
 
-    bool detangleEdgesIteration(Detangler&);
-    bool detangleEdges(uint64_t maxIterationCount, Detangler&);
+    uint64_t detangleEdgesIteration(Detangler&);
+    uint64_t detangleEdges(uint64_t maxIterationCount, Detangler&);
 
-    bool detangleTemplateIteration(uint64_t templateId, Detangler&);
-    bool detangleTemplate(uint64_t templateId, uint64_t maxIterationCount, Detangler&);
-    bool detangleTemplates(uint64_t maxIterationCount, Detangler&);
+    uint64_t detangleTemplateIteration(uint64_t templateId, Detangler&);
+    uint64_t detangleTemplate(uint64_t templateId, uint64_t maxIterationCount, Detangler&);
+    uint64_t detangleTemplates(uint64_t maxIterationCount, Detangler&);
 
     // High level detangling function.
-    bool detangle(uint64_t maxIterationCount, Detangler&);
+    uint64_t detangle(uint64_t maxIterationCount, Detangler&);
 
 
 

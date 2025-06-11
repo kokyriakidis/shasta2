@@ -856,27 +856,28 @@ void AssemblyGraph::load(const string& assemblyStage)
 
 
 
-bool AssemblyGraph::detangleVertices(uint64_t maxIterationCount, Detangler& detangler)
+uint64_t AssemblyGraph::detangleVertices(uint64_t maxIterationCount, Detangler& detangler)
 {
-    bool success = false;
+    uint64_t changeCount = 0;
 
     for(uint64_t iteration=0; iteration<maxIterationCount; iteration++) {
-        cout << "Detangle vertices iteration " << iteration << endl;
-        const bool iterationSuccess = detangleVerticesIteration(detangler);
-        if(iterationSuccess) {
+        const uint64_t iterationChangeCount = detangleVerticesIteration(detangler);
+        if(iterationChangeCount > 0) {
+            changeCount += iterationChangeCount;
             compress();
-            success = true;
+            cout << "Detangle vertices iteration " << iteration << ": " << changeCount <<
+                " successful detangling operations." << endl;
         } else {
             break;
         }
     }
 
-    return success;
+    return changeCount;
 }
 
 
 
-bool AssemblyGraph::detangleVerticesIteration(Detangler& detangler)
+uint64_t AssemblyGraph::detangleVerticesIteration(Detangler& detangler)
 {
     AssemblyGraph& assemblyGraph = *this;
 
@@ -900,27 +901,28 @@ bool AssemblyGraph::detangleVerticesIteration(Detangler& detangler)
 
 
 
-bool AssemblyGraph::detangleEdges(uint64_t maxIterationCount, Detangler& detangler)
+uint64_t AssemblyGraph::detangleEdges(uint64_t maxIterationCount, Detangler& detangler)
 {
-    bool success = false;
+    uint64_t changeCount = 0;
 
     for(uint64_t iteration=0; iteration<maxIterationCount; iteration++) {
-        cout << "Detangle edges iteration " << iteration << endl;
-        const bool iterationSuccess = detangleEdgesIteration(detangler);
-        if(iterationSuccess) {
+        const uint64_t iterationChangeCount = detangleEdgesIteration(detangler);
+        if(iterationChangeCount > 0) {
+            changeCount += iterationChangeCount;
             compress();
-            success = true;
+            cout << "Detangle edges iteration " << iteration << ": " << iterationChangeCount <<
+                " successful detangling operations." << endl;
         } else {
             break;
         }
     }
 
-    return success;
+    return changeCount;
 }
 
 
 
-bool AssemblyGraph::detangleEdgesIteration(Detangler& detangler)
+uint64_t AssemblyGraph::detangleEdgesIteration(Detangler& detangler)
 {
     AssemblyGraph& assemblyGraph = *this;
     // cout << "Edge detangling begins." << endl;
@@ -940,56 +942,59 @@ bool AssemblyGraph::detangleEdgesIteration(Detangler& detangler)
 
 
 
-bool AssemblyGraph::detangleTemplates(uint64_t maxIterationCount, Detangler& detangler)
+uint64_t AssemblyGraph::detangleTemplates(uint64_t maxIterationCount, Detangler& detangler)
 {
-    bool success = false;
+    uint64_t changeCount = 0;
+
     for(uint64_t templateId=0; templateId<tangleTemplates.size(); templateId++) {
-        const bool thisTemplateSuccess = detangleTemplate(templateId, maxIterationCount, detangler);
-        success = success or thisTemplateSuccess;
+        const uint64_t thisTemplateChangeCount = detangleTemplate(templateId, maxIterationCount, detangler);
+        changeCount += thisTemplateChangeCount;
     }
-    return success;
+
+    return changeCount;
 }
 
 
 
-bool AssemblyGraph::detangleTemplate(
+uint64_t AssemblyGraph::detangleTemplate(
     uint64_t templateId,
     uint64_t maxIterationCount,
     Detangler& detangler)
 {
-    bool success = false;
+    uint64_t changeCount = 0;
 
     for(uint64_t iteration=0; iteration<maxIterationCount; iteration++) {
-        cout << "Detangle template " << templateId << " iteration " << iteration << endl;
-        const bool iterationSuccess = detangleTemplateIteration(templateId, detangler);
-        if(iterationSuccess) {
+        const uint64_t iterationChangeCount = detangleTemplateIteration(templateId, detangler);
+        if(iterationChangeCount > 0) {
             compress();
-            success = true;
+            changeCount += iterationChangeCount;
+            cout << "Detangle tangle template " << templateId << " iteration " << iteration << ": " << changeCount <<
+                " successful detangling operations." << endl;
         } else {
             break;
         }
     }
 
-    return success;
+    return changeCount;
 }
 
 
 
-bool AssemblyGraph::detangleTemplateIteration(uint64_t templateId, Detangler& detangler)
+uint64_t AssemblyGraph::detangleTemplateIteration(uint64_t templateId, Detangler& detangler)
 {
     const TangleTemplate& tangleTemplate = tangleTemplates[templateId];
 
     AssemblyGraph& assemblyGraph = *this;
     vector< vector<vertex_descriptor> > detanglingCandidates;
     inducedSubgraphIsomorphisms(assemblyGraph, tangleTemplate, detanglingCandidates);
-    cout << "Found " << detanglingCandidates.size() << " instances of this tangle template." << endl;
+    // cout << "Found " << detanglingCandidates.size() << " instances of this tangle template." << endl;
 
     return detangle(detanglingCandidates, detangler);
 }
 
 
 
-bool AssemblyGraph::detangle(
+uint64_t AssemblyGraph::detangle(
     const vector< vector<vertex_descriptor> >& detanglingCandidates,
     Detangler& detangler)
 {
@@ -1070,7 +1075,7 @@ bool AssemblyGraph::detangle(
 
 
 
-    return successCount > 0;
+    return successCount;
 }
 
 
@@ -1106,14 +1111,16 @@ bool AssemblyGraph::detangleIteration(Detangler& detangler)
 
 
 
-bool AssemblyGraph::detangle(uint64_t maxIterationCount, Detangler& detangler)
+uint64_t AssemblyGraph::detangle(uint64_t maxIterationCount, Detangler& detangler)
 {
 
-    const bool verticesSuccess = detangleVertices(maxIterationCount, detangler);
-    const bool edgesSuccess = detangleEdges(maxIterationCount, detangler);
-    const bool templatesSuccess = detangleTemplates(maxIterationCount, detangler);
+    const uint64_t verticesChangeCount = detangleVertices(maxIterationCount, detangler);
+    const uint64_t edgesChangeCount = detangleEdges(maxIterationCount, detangler);
+    const uint64_t templateChangeCount = detangleTemplates(maxIterationCount, detangler);
 
-    return verticesSuccess or edgesSuccess or templatesSuccess;
+    const uint64_t changeCount = verticesChangeCount + edgesChangeCount + templateChangeCount;
+
+    return changeCount;
 }
 
 
