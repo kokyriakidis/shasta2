@@ -105,9 +105,50 @@ bool LikelihoodRatioDetangler::operator()(Tangle& tangle, bool doDetangle)
             return false;
         }
     }
+    const vector< vector<bool> >& bestConnectivityMatrix = tangleMatrix.hypotheses.front().connectivityMatrix;
+
+
+
+    // Figure out if the best connectivity matrix is forward injective (only one exit for each entrance).
+    bool isForwardInjective = true;
+    for(uint64_t iEntrance=0; iEntrance<entranceCount; iEntrance++) {
+        uint64_t count = 0;
+        for(uint64_t iExit=0; iExit<exitCount; iExit++) {
+            if(bestConnectivityMatrix[iEntrance][iExit]) {
+                ++count;
+            }
+        }
+        if(count > 1) {
+            isForwardInjective = false;
+            break;
+        }
+    }
+
+    // Figure out if the best connectivity matrix is backward injective (only one enytrance for each exit).
+    bool isBackwardInjective = true;
+    for(uint64_t iExit=0; iExit<exitCount; iExit++) {
+        uint64_t count = 0;
+        for(uint64_t iEntrance=0; iEntrance<entranceCount; iEntrance++) {
+            if(bestConnectivityMatrix[iEntrance][iExit]) {
+                ++count;
+            }
+        }
+        if(count > 1) {
+            isBackwardInjective = false;
+            break;
+        }
+    }
+
+    if(not(isForwardInjective or isBackwardInjective)) {
+        if(debug) {
+            cout << "Not detangling because the best connectivity matrix is not forward or backward injective." << endl;
+        }
+        return false;
+    }
+
+
 
     // Store the connect pairs and, if requested, detangle.
-    vector< vector<bool> >& bestConnectivityMatrix = tangleMatrix.hypotheses.front().connectivityMatrix;
     for(uint64_t iEntrance=0; iEntrance<entranceCount; iEntrance++) {
         for(uint64_t iExit=0; iExit<exitCount; iExit++) {
             if(bestConnectivityMatrix[iEntrance][iExit]) {
