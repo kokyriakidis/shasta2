@@ -3,12 +3,12 @@
 #include "Anchor.hpp"
 #include "AnchorGraph.hpp"
 #include "AssemblerOptions.hpp"
-#include "ChiSquareDetangler.hpp"
 #include "Detangler.hpp"
 #include "ExactDetangler.hpp"
 #include "findLinearChains.hpp"
 #include "findConvergingVertex.hpp"
 #include "inducedSubgraphIsomorphisms.hpp"
+#include "LikelihoodRatioDetangler.hpp"
 #include "LocalAssembly2.hpp"
 #include "MurmurHash2.hpp"
 #include "performanceLog.hpp"
@@ -158,17 +158,17 @@ void AssemblyGraph::run(uint64_t threadCount)
 
     // Detangling.
     createTangleTemplates();
+    /*
     SimpleDetangler detangler(
         assemblerOptions.assemblyGraphOptions.detangleMinCommonCoverage,
         assemblerOptions.assemblyGraphOptions.detangleLowCoverageThreshold,
         assemblerOptions.assemblyGraphOptions.detangleHighCoverageThreshold);
-    /*
-    ChiSquareDetangler detangler(
+    */
+    LikelihoodRatioDetangler detangler(
         assemblerOptions.assemblyGraphOptions.detangleMinCommonCoverage,
         assemblerOptions.assemblyGraphOptions.detangleEpsilon,
         assemblerOptions.assemblyGraphOptions.detangleMaxLogP,
         assemblerOptions.assemblyGraphOptions.detangleMinLogPDelta);
-    */
     detangle(maxIterationCount, detangler);
     write("D");
 

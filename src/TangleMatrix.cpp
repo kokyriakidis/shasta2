@@ -139,7 +139,7 @@ void TangleMatrix::writeHtml(
 
 // Likelihood ratio test of the tangle matrix (G test).
 // https://en.wikipedia.org/wiki/G-test
-void TangleMatrix::gTest(double epsilon)
+bool TangleMatrix::gTest(double epsilon)
 {
     const bool debug = false;
 
@@ -152,7 +152,7 @@ void TangleMatrix::gTest(double epsilon)
     // 2x2 2x3 2x4 3x3
     const uint64_t totalTangleMatrixEntryCount = entranceCount * exitCount;
     if(totalTangleMatrixEntryCount > 9) {
-        throw runtime_error("Tangle matrix is too big for full chi square evaluation.");
+        return false;
     }
 
     // Compute total common coverage.
@@ -318,4 +318,6 @@ void TangleMatrix::gTest(double epsilon)
     }
 
     sort(hypotheses.begin(), hypotheses.end());
+
+    return true;
 }

@@ -89,5 +89,5 @@ public:
         }
     };
     vector<Hypothesis> hypotheses;
-    void gTest(double epsilon);
+    bool gTest(double epsilon);
 };
