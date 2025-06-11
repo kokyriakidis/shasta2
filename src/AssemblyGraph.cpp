@@ -10,6 +10,7 @@
 #include "findConvergingVertex.hpp"
 #include "inducedSubgraphIsomorphisms.hpp"
 #include "LocalAssembly2.hpp"
+#include "MurmurHash2.hpp"
 #include "performanceLog.hpp"
 #include "rle.hpp"
 #include "SimpleDetangler.hpp"
@@ -1450,33 +1451,34 @@ void AssemblyGraph::analyzeSuperbubbles(uint64_t maxDistance) const
     findSuperbubbles(maxDistance, superbubbles);
     cout << "Found " << superbubbles.size() << " superbubbles." << endl;
 
-    ofstream csv("AnalyzeSuperbubbles.csv");
-    csv << "Segment,Color\n";
+    {
+        ofstream csv("AnalyzeSuperbubbles.csv");
+        csv << "Segment,Color\n";
 
-    for(uint64_t i=0; i<superbubbles.size(); i++) {
-        const Superbubble& superbubble = superbubbles[i];
+        for(uint64_t i=0; i<superbubbles.size(); i++) {
+            const Superbubble& superbubble = superbubbles[i];
 
-        if(superbubble.isBubble()) {
-            const uint64_t ploidy = superbubble.ploidy();
-            cout << "Superbubble " << i << " is a bubble with ploidy " << ploidy << ":";
-            for(const edge_descriptor e: superbubble.internalEdges) {
-                cout << " " << assemblyGraph[e].id;
+            if(superbubble.isBubble()) {
+                const uint64_t ploidy = superbubble.ploidy();
+                cout << "Superbubble " << i << " is a bubble with ploidy " << ploidy << ":";
+                for(const edge_descriptor e: superbubble.internalEdges) {
+                    cout << " " << assemblyGraph[e].id;
+                }
+                cout << endl;
+            } else {
+                cout << "Superbubble " << i << " with " << superbubble.internalEdges.size() << " internal edges:";
+                for(const edge_descriptor e: superbubble.internalEdges) {
+                    cout << " " << assemblyGraph[e].id;
+                }
+                cout << endl;
+
             }
-            cout << endl;
-        } else {
-            cout << "Superbubble " << i << " with " << superbubble.internalEdges.size() << " internal edges:";
+
             for(const edge_descriptor e: superbubble.internalEdges) {
-                cout << " " << assemblyGraph[e].id;
+                csv << assemblyGraph[e].id << ",Green\n";
             }
-            cout << endl;
-
-        }
-
-        for(const edge_descriptor e: superbubble.internalEdges) {
-            csv << assemblyGraph[e].id << ",Green\n";
-        }
     }
-
+    }
 
     // Figure out if some vertices belong to more than one superbubble.
     std::map<vertex_descriptor, vector<uint64_t> > m;
@@ -1509,8 +1511,9 @@ void AssemblyGraph::analyzeSuperbubbles(uint64_t maxDistance) const
     findSuperbubbleChains(superbubbles, superbubbleChains);
     cout << "Found " << superbubbleChains.size() << " superbubble chains." << endl;
 
+
     {
-        ofstream csv("SuperbubbleChains.csv");
+        ofstream csv("SuperbubbleChainsDetails.csv");
         csv << "ChainId,Position,Type,Internal vertices count,Internal edges count,\n";
         for(uint64_t chainId=0; chainId<superbubbleChains.size(); chainId++) {
             const  vector <Superbubble>& chain = superbubbleChains[chainId];
@@ -1532,6 +1535,45 @@ void AssemblyGraph::analyzeSuperbubbles(uint64_t maxDistance) const
             }
         }
     }
+
+
+
+    {
+        ofstream csv("SuperbubbleChains.csv");
+        csv << "Segment,Color,Chain,Position\n";
+
+        for(uint64_t chainId=0; chainId<superbubbleChains.size(); chainId++) {
+            const  vector <Superbubble>& chain = superbubbleChains[chainId];
+
+            double redValue = double(MurmurHash2(&chainId, sizeof(chainId), 759) % 1000);
+            double greenValue = double(MurmurHash2(&chainId, sizeof(chainId), 761) % 1000);
+            double blueValue = double(MurmurHash2(&chainId, sizeof(chainId), 763) % 1000);
+            double sum = redValue + greenValue + blueValue;
+            redValue /= sum;
+            greenValue /= sum;
+            blueValue /= sum;
+
+            std::ostringstream colorStream;
+            colorStream << "#";
+            colorStream << std::setfill('0') << std::setw(2) << std::hex << uint16_t(redValue * 255);
+            colorStream << std::setfill('0') << std::setw(2) << std::hex << uint16_t(greenValue * 255);
+            colorStream << std::setfill('0') << std::setw(2) << std::hex << uint16_t(blueValue * 255);
+
+            const string color = colorStream.str();
+
+            for(uint64_t position=0; position<chain.size(); position++) {
+                const Superbubble& superbubble = chain[position];
+                for(const edge_descriptor e: superbubble.internalEdges) {
+                    csv <<
+                        assemblyGraph[e].id << "," <<
+                        color << "," <<
+                        chainId << "," <<
+                        position << "\n";
+                }
+            }
+        }
+    }
+
 }
 
 
