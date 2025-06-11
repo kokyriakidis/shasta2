@@ -775,6 +775,9 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
     HttpServer::getParameterValue(request, "exits", exitsString);
     boost::trim(exitsString);
 
+    double epsilon = httpServerData.assemblerOptions->assemblyGraphOptions.detangleEpsilon;
+    HttpServer::getParameterValue(request, "epsilon", epsilon);
+
 
 
     // Start the form.
@@ -809,6 +812,10 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
         html << " value='" << exitsString << "'";
     }
     html << " size=30>";
+
+    html << "<tr><th class=left>Epsilon for G-test evaluation"
+        "<td class=centered>"
+        "<input type=text name=epsilon style='text-align:center' value='" << epsilon << "'>";
 
     // End the form.
     html <<
@@ -885,9 +892,10 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
     }
 
     // Create the TangleMatrix.
-    const TangleMatrix tangleMatrix(assemblyGraph, entrances, exits,
+    TangleMatrix tangleMatrix(assemblyGraph, entrances, exits,
         httpServerData.assemblerOptions->aDrift,
         httpServerData.assemblerOptions->bDrift);
+    tangleMatrix.gTest(epsilon);
     tangleMatrix.writeHtml(assemblyGraph, html);
 }
 
@@ -903,6 +911,9 @@ void Assembler::exploreVertexTangle(const vector<string>& request, ostream& html
 
     string segmentName;;
     HttpServer::getParameterValue(request, "segmentName", segmentName);
+
+    double epsilon = httpServerData.assemblerOptions->assemblyGraphOptions.detangleEpsilon;
+    HttpServer::getParameterValue(request, "epsilon", epsilon);
 
     // Start the form.
     html << "<h2>Assembly graph vertex tangle</h2><form><table>";
@@ -925,7 +936,9 @@ void Assembler::exploreVertexTangle(const vector<string>& request, ostream& html
     }
     html << ">";
 
-
+    html << "<tr><th class=left>Epsilon for G-test evaluation"
+        "<td class=centered>"
+        "<input type=text name=epsilon style='text-align:center' value='" << epsilon << "'>";
 
    // End the form.
     html <<
@@ -967,6 +980,7 @@ void Assembler::exploreVertexTangle(const vector<string>& request, ostream& html
     const Tangle tangle(assemblyGraph, target(e, assemblyGraph),
         httpServerData.assemblerOptions->aDrift,
         httpServerData.assemblerOptions->bDrift);
+    tangle.tangleMatrix->gTest(epsilon);
 
     // Write out the TangleMatrix.
     tangle.tangleMatrix->writeHtml(assemblyGraph, html);
@@ -983,6 +997,9 @@ void Assembler::exploreEdgeTangle(const vector<string>& request, ostream& html)
 
     string segmentName;;
     HttpServer::getParameterValue(request, "segmentName", segmentName);
+
+    double epsilon = httpServerData.assemblerOptions->assemblyGraphOptions.detangleEpsilon;
+    HttpServer::getParameterValue(request, "epsilon", epsilon);
 
     // Start the form.
     html << "<h2>Assembly graph edge tangle</h2><form><table>";
@@ -1005,6 +1022,9 @@ void Assembler::exploreEdgeTangle(const vector<string>& request, ostream& html)
     }
     html << ">";
 
+    html << "<tr><th class=left>Epsilon for G-test evaluation"
+        "<td class=centered>"
+        "<input type=text name=epsilon style='text-align:center' value='" << epsilon << "'>";
 
 
    // End the form.
@@ -1047,6 +1067,7 @@ void Assembler::exploreEdgeTangle(const vector<string>& request, ostream& html)
     const Tangle tangle(assemblyGraph, e,
         httpServerData.assemblerOptions->aDrift,
         httpServerData.assemblerOptions->bDrift);
+    tangle.tangleMatrix->gTest(epsilon);
 
     // Write out the TangleMatrix.
     tangle.tangleMatrix->writeHtml(assemblyGraph, html);

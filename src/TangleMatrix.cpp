@@ -105,5 +105,217 @@ void TangleMatrix::writeHtml(
 
     html << "</table>";
 
+
+    if(not hypotheses.empty()) {
+        html <<
+            "<h3>G test</h3>"
+            "<table><tr>"
+            "<th>Connectivity<br>matrix"
+            "<th>G<br>(dB)";
+
+        for(const auto& hypothesis: hypotheses) {
+            html << "<tr><td style='display: flex; align-items: center; justify-content: center;'>";
+
+            html << "<table>";
+            for(uint64_t iEntrance=0; iEntrance<entrances.size(); iEntrance++) {
+                html << "<tr>";
+                for(uint64_t iExit=0; iExit<exits.size(); iExit++) {
+                    html << "<td class=centered>" << hypothesis.connectivityMatrix[iEntrance][iExit];
+                }
+            }
+            html << "</table>";
+
+            html <<
+                "<td class=centered>" << std::fixed << std::setprecision(1) << hypothesis.G;
+
+        }
+
+        html << "</table>";
+    }
+
 }
 
+
+
+// Likelihood ratio test of the tangle matrix (G test).
+// https://en.wikipedia.org/wiki/G-test
+void TangleMatrix::gTest(double epsilon)
+{
+    const bool debug = false;
+
+    const uint64_t entranceCount = entrances.size();
+    const uint64_t exitCount = exits.size();
+
+    // Limit to a maximum of 9 tangle matrix entries.
+    // Excluding the trivial cases with one entrance or one exit,
+    // this allows the following combinations (and transposed):
+    // 2x2 2x3 2x4 3x3
+    const uint64_t totalTangleMatrixEntryCount = entranceCount * exitCount;
+    if(totalTangleMatrixEntryCount > 9) {
+        throw runtime_error("Tangle matrix is too big for full chi square evaluation.");
+    }
+
+    // Compute total common coverage.
+    uint64_t totalCommonCoverageOnEntrances = 0;
+    for(const auto& entrance: entrances) {
+        totalCommonCoverageOnEntrances += entrance.commonCoverage;
+    }
+    uint64_t totalCommonCoverageOnExits = 0;
+    for(const auto& exit: exits) {
+        totalCommonCoverageOnExits += exit.commonCoverage;
+    }
+    SHASTA_ASSERT(totalCommonCoverageOnEntrances == totalCommonCoverageOnExits);
+    const uint64_t totalCommonCoverage = totalCommonCoverageOnEntrances;
+
+    // Compute what the tangle matrix would be under entirely random assumptions.
+    vector< vector<double> > randomTangleMatrix(entranceCount, vector<double>(exitCount, 0.));
+    for(uint64_t iEntrance=0; iEntrance<entranceCount; iEntrance++) {
+        for(uint64_t iExit=0; iExit<exitCount; iExit++) {
+            randomTangleMatrix[iEntrance][iExit] =
+                double(entrances[iEntrance].commonCoverage) *
+                double(exits[iExit].commonCoverage) /
+                double(totalCommonCoverage);
+        }
+    }
+
+    // Some matrices used in the loop below.
+    vector< vector<double> > idealTangleMatrixA(entranceCount, vector<double>(exitCount));
+    vector< vector<double> > idealTangleMatrixB(entranceCount, vector<double>(exitCount));
+    vector< vector<double> > idealTangleMatrix(entranceCount, vector<double>(exitCount));
+    vector< vector<double> > expectedTangleMatrix(entranceCount, vector<double>(exitCount));
+    vector< vector<bool> > connectivityMatrix(entranceCount, vector<bool>(exitCount));
+
+
+
+    // The connectivity matrix contains true for entrance/exit pairs to be connected.
+    // Try all N possible connectivity matrices. Each of them can generate a Hypothesis.
+    const uint64_t N = 1ULL << totalTangleMatrixEntryCount;
+    hypotheses.clear();
+    for(uint64_t connectivityInteger=0; connectivityInteger<N; connectivityInteger++) {
+
+        // Use the bits of connectivityInteger to construct the connectivity matrix.
+        uint64_t mask = 1;
+        for(uint64_t iEntrance=0; iEntrance<entranceCount; iEntrance++) {
+            for(uint64_t iExit=0; iExit<exitCount; iExit++) {
+                connectivityMatrix[iEntrance][iExit] = ((connectivityInteger & mask) != 0);
+                mask = mask << 1;
+            }
+        }
+
+        if(debug) {
+            cout << "Trying connectivity matrix:" << endl;
+            for(uint64_t iEntrance=0; iEntrance<entranceCount; iEntrance++) {
+                for(uint64_t iExit=0; iExit<exitCount; iExit++) {
+                    cout << connectivityMatrix[iEntrance][iExit] << " ";
+                }
+                cout << endl;
+            }
+        }
+
+        // Compute the tangle matrix we would see assuming this connectivity matrix
+        // and no errors. This can be done in two ways:
+        // - Equally distributing common coverage at each entrance among all the
+        //   exits for which the connectivity matrix is true for that entrance (idealTangleMatrixA).
+        // - Equally distributing common coverage at each exit among all the
+        //   entrances for which the connectivity matrix is true for that entrance (idealTangleMatrixB).
+        // We average the two ways to compute the idealTangleMatrix.
+
+        // Compute idealTangleMatrixA.
+        for(uint64_t iEntrance=0; iEntrance<entranceCount; iEntrance++) {
+            uint64_t nonZeroCount = 0;
+            for(uint64_t iExit=0; iExit<exitCount; iExit++) {
+                if(connectivityMatrix[iEntrance][iExit]) {
+                    ++nonZeroCount;
+                }
+            }
+            if(nonZeroCount == 0) {
+                for(uint64_t iExit=0; iExit<exitCount; iExit++) {
+                    idealTangleMatrixA[iEntrance][iExit] = 0.;
+                }
+            } else {
+                const double value = double(entrances[iEntrance].commonCoverage) / double(nonZeroCount);
+                for(uint64_t iExit=0; iExit<exitCount; iExit++) {
+                    if(connectivityMatrix[iEntrance][iExit]) {
+                        idealTangleMatrixA[iEntrance][iExit] = value;
+                    } else {
+                        idealTangleMatrixA[iEntrance][iExit] = 0.;
+                    }
+                }
+            }
+        }
+
+        // Compute idealTangleMatrixB.
+        for(uint64_t iExit=0; iExit<exitCount; iExit++) {
+            uint64_t nonZeroCount = 0;
+            for(uint64_t iEntrance=0; iEntrance<entranceCount; iEntrance++) {
+                if(connectivityMatrix[iEntrance][iExit]) {
+                    ++nonZeroCount;
+                }
+            }
+            if(nonZeroCount == 0) {
+                for(uint64_t iEntrance=0; iEntrance<entranceCount; iEntrance++) {
+                    idealTangleMatrixB[iEntrance][iExit] = 0.;
+                }
+            } else {
+                const double value = double(exits[iExit].commonCoverage) / double(nonZeroCount);
+                for(uint64_t iEntrance=0; iEntrance<entranceCount; iEntrance++) {
+                    if(connectivityMatrix[iEntrance][iExit]) {
+                        idealTangleMatrixB[iEntrance][iExit] = value;
+                    } else {
+                        idealTangleMatrixB[iEntrance][iExit] = 0.;
+                    }
+                }
+            }
+        }
+
+        // Compute the ideal tangle matrix by averaging idealTangleMatrixA and idealTangleMatrixB.
+        for(uint64_t iEntrance=0; iEntrance<entranceCount; iEntrance++) {
+            for(uint64_t iExit=0; iExit<exitCount; iExit++) {
+                idealTangleMatrix[iEntrance][iExit] =  0.5 *
+                    (idealTangleMatrixA[iEntrance][iExit] + idealTangleMatrixB[iEntrance][iExit]);
+            }
+        }
+
+        // Compute the expected tangle matrix given this connectivity matrix.
+        for(uint64_t iEntrance=0; iEntrance<entranceCount; iEntrance++) {
+            for(uint64_t iExit=0; iExit<exitCount; iExit++) {
+                expectedTangleMatrix[iEntrance][iExit] =
+                    (1. - epsilon) * idealTangleMatrix [iEntrance][iExit] +
+                    epsilon        * randomTangleMatrix[iEntrance][iExit];
+            }
+        }
+
+        if(debug) {
+            cout << "Expected non-ideal tangle matrix for this connectivity matrix:" << endl;
+            for(uint64_t iEntrance=0; iEntrance<entranceCount; iEntrance++) {
+                for(uint64_t iExit=0; iExit<exitCount; iExit++) {
+                    cout << expectedTangleMatrix[iEntrance][iExit] << " ";
+                }
+                cout << endl;
+            }
+        }
+
+        // Do a G-test of the observed tangle matrix against the expected one.
+        // https://en.wikipedia.org/wiki/G-test
+        double G = 0.;
+        for(uint64_t iEntrance=0; iEntrance<entranceCount; iEntrance++) {
+            for(uint64_t iExit=0; iExit<exitCount; iExit++) {
+                const double actualCoverage = double(tangleMatrix[iEntrance][iExit].size());
+                if(actualCoverage > 0.) {
+                    const double expectedCoverage = expectedTangleMatrix[iEntrance][iExit];
+                    G += actualCoverage * log10(actualCoverage / expectedCoverage);
+                }
+            }
+        }
+        G *= 20.;  // Factor of 2 and convert to decibels.
+
+        if(debug) {
+            cout << "G " << G << endl;
+        }
+
+        // Store this hypothesis.
+        hypotheses.emplace_back(Hypothesis(connectivityMatrix, G));
+    }
+
+    sort(hypotheses.begin(), hypotheses.end());
+}

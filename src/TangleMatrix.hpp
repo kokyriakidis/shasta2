@@ -66,4 +66,28 @@ public:
     // The tangle matrix is indexed by [iEntrance][iExit].
     // It contains the "bridge" AnchorPair between each entrance and exit.
     vector < vector<AnchorPair> > tangleMatrix;
+
+
+
+    // Likelihood ratio test of the tangle matrix (G test).
+    // https://en.wikipedia.org/wiki/G-test
+    class Hypothesis {
+    public:
+        vector< vector<bool> > connectivityMatrix;
+        double G;
+
+        Hypothesis(
+            const vector< vector<bool> >& connectivityMatrix,
+            double G) :
+            connectivityMatrix(connectivityMatrix),
+            G(G)
+            {}
+
+        // Sort by G2.
+        bool operator<(const Hypothesis& that) const {
+            return G < that.G;
+        }
+    };
+    vector<Hypothesis> hypotheses;
+    void gTest(double epsilon);
 };
