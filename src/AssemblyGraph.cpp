@@ -856,7 +856,27 @@ void AssemblyGraph::load(const string& assemblyStage)
 
 
 
-bool AssemblyGraph::detangleVertices(Detangler& detangler)
+bool AssemblyGraph::detangleVertices(uint64_t maxIterationCount, Detangler& detangler)
+{
+    bool success = false;
+
+    for(uint64_t iteration=0; iteration<maxIterationCount; iteration++) {
+        cout << "Detangle vertices iteration " << iteration << endl;
+        const bool iterationSuccess = detangleVerticesIteration(detangler);
+        if(iterationSuccess) {
+            compress();
+            success = true;
+        } else {
+            break;
+        }
+    }
+
+    return success;
+}
+
+
+
+bool AssemblyGraph::detangleVerticesIteration(Detangler& detangler)
 {
     AssemblyGraph& assemblyGraph = *this;
 
@@ -874,17 +894,33 @@ bool AssemblyGraph::detangleVertices(Detangler& detangler)
 
     }
 
-
-    // cout << "Found " << detanglingCandidates.size() <<
-    //     " tangle vertices out of " << num_vertices(assemblyGraph) << " total vertices." << endl;
-
     // Do the detangling.
     return detangle(detanglingCandidates, detangler);
 }
 
 
 
-bool AssemblyGraph::detangleEdges(Detangler& detangler)
+bool AssemblyGraph::detangleEdges(uint64_t maxIterationCount, Detangler& detangler)
+{
+    bool success = false;
+
+    for(uint64_t iteration=0; iteration<maxIterationCount; iteration++) {
+        cout << "Detangle edges iteration " << iteration << endl;
+        const bool iterationSuccess = detangleEdgesIteration(detangler);
+        if(iterationSuccess) {
+            compress();
+            success = true;
+        } else {
+            break;
+        }
+    }
+
+    return success;
+}
+
+
+
+bool AssemblyGraph::detangleEdgesIteration(Detangler& detangler)
 {
     AssemblyGraph& assemblyGraph = *this;
     // cout << "Edge detangling begins." << endl;
@@ -898,11 +934,56 @@ bool AssemblyGraph::detangleEdges(Detangler& detangler)
         detanglingCandidates.emplace_back(vector<vertex_descriptor>({v0, v1}));
     }
 
-
-    // cout << "Found " << detanglingCandidates.size() <<
-    //     " tangle edges out of " << num_edges(assemblyGraph) << " total edges." << endl;
-
     // Do the detangling.
+    return detangle(detanglingCandidates, detangler);
+}
+
+
+
+bool AssemblyGraph::detangleTemplates(uint64_t maxIterationCount, Detangler& detangler)
+{
+    bool success = false;
+    for(uint64_t templateId=0; templateId<tangleTemplates.size(); templateId++) {
+        const bool thisTemplateSuccess = detangleTemplate(templateId, maxIterationCount, detangler);
+        success = success or thisTemplateSuccess;
+    }
+    return success;
+}
+
+
+
+bool AssemblyGraph::detangleTemplate(
+    uint64_t templateId,
+    uint64_t maxIterationCount,
+    Detangler& detangler)
+{
+    bool success = false;
+
+    for(uint64_t iteration=0; iteration<maxIterationCount; iteration++) {
+        cout << "Detangle template " << templateId << " iteration " << iteration << endl;
+        const bool iterationSuccess = detangleTemplateIteration(templateId, detangler);
+        if(iterationSuccess) {
+            compress();
+            success = true;
+        } else {
+            break;
+        }
+    }
+
+    return success;
+}
+
+
+
+bool AssemblyGraph::detangleTemplateIteration(uint64_t templateId, Detangler& detangler)
+{
+    const TangleTemplate& tangleTemplate = tangleTemplates[templateId];
+
+    AssemblyGraph& assemblyGraph = *this;
+    vector< vector<vertex_descriptor> > detanglingCandidates;
+    inducedSubgraphIsomorphisms(assemblyGraph, tangleTemplate, detanglingCandidates);
+    cout << "Found " << detanglingCandidates.size() << " instances of this tangle template." << endl;
+
     return detangle(detanglingCandidates, detangler);
 }
 
@@ -993,7 +1074,7 @@ bool AssemblyGraph::detangle(
 }
 
 
-
+#if 0
 // One iteration of all usable detangling functions using the given Detangler.
 bool AssemblyGraph::detangleIteration(Detangler& detangler)
 {
@@ -1021,31 +1102,18 @@ bool AssemblyGraph::detangleIteration(Detangler& detangler)
 
     return success;
 }
+#endif
 
 
 
-// Multiple iterations of all usable detangling functions using the given Detangler.
 bool AssemblyGraph::detangle(uint64_t maxIterationCount, Detangler& detangler)
 {
-    bool success = false;
-    for(uint64_t iteration=0; iteration<maxIterationCount; iteration++) {
-        cout << "Starting detangle iteration " << iteration << endl;
-        const bool iterationSuccess = detangleIteration(detangler);
 
-        if(iterationSuccess) {
-            // At least this iteration was successful, so overall a success.
-            // Try another iteration.
-            success = true;
-        } else {
+    const bool verticesSuccess = detangleVertices(maxIterationCount, detangler);
+    const bool edgesSuccess = detangleEdges(maxIterationCount, detangler);
+    const bool templatesSuccess = detangleTemplates(maxIterationCount, detangler);
 
-            // This last iteration failed, but a previous one might have been successful.
-            // Stop iterating.
-            break;
-        }
-
-    }
-
-    return success;
+    return verticesSuccess or edgesSuccess or templatesSuccess;
 }
 
 
@@ -1107,9 +1175,24 @@ void AssemblyGraph::prune(uint64_t pruneLength)
 
 
 
-
+// Tangle teplates are processed in the order defined here.
+// They should entered in order of increasing complexity (number of edges).
 void AssemblyGraph::createTangleTemplates()
 {
+    // Templates with 3 edges.
+
+    tangleTemplates.emplace_back(3);
+    {
+        TangleTemplate& g = tangleTemplates.back();
+        add_edge(0, 1, g);
+        add_edge(0, 1, g);
+        add_edge(1, 2, g);
+        tangleTemplates.push_back(reverse(g));
+    }
+
+
+
+    // Templates with 4 edges.
 
     tangleTemplates.emplace_back(4);
     {
@@ -1120,12 +1203,46 @@ void AssemblyGraph::createTangleTemplates()
         add_edge(2, 3, g);
     }
 
-    tangleTemplates.emplace_back(3);
+    tangleTemplates.emplace_back(4);
     {
         TangleTemplate& g = tangleTemplates.back();
         add_edge(0, 1, g);
+        add_edge(1, 2, g);
+        add_edge(1, 3, g);
+        add_edge(2, 3, g);
+        tangleTemplates.push_back(reverse(g));
+    }
+
+
+
+    // Templates with 6 edges.
+
+    tangleTemplates.emplace_back(5);
+    {
+        TangleTemplate& g = tangleTemplates.back();
         add_edge(0, 1, g);
         add_edge(1, 2, g);
+        add_edge(1, 3, g);
+        add_edge(1, 4, g);
+        add_edge(2, 3, g);
+        add_edge(2, 4, g);
+        tangleTemplates.push_back(reverse(g));
+    }
+
+
+
+    // Templates with 7 edges.
+
+    tangleTemplates.emplace_back(6);
+    {
+        TangleTemplate& g = tangleTemplates.back();
+        add_edge(0, 1, g);
+        add_edge(1, 2, g);
+        add_edge(1, 3, g);
+        add_edge(2, 4, g);
+        add_edge(2, 5, g);
+        add_edge(3, 4, g);
+        add_edge(3, 5, g);
         tangleTemplates.push_back(reverse(g));
     }
 
@@ -1140,6 +1257,35 @@ void AssemblyGraph::createTangleTemplates()
         add_edge(3, 4, g);
         add_edge(4, 5, g);
     }
+
+    tangleTemplates.emplace_back(6);
+    {
+        TangleTemplate& g = tangleTemplates.back();
+        add_edge(0, 1, g);
+        add_edge(1, 2, g);
+        add_edge(1, 3, g);
+        add_edge(2, 4, g);
+        add_edge(2, 5, g);
+        add_edge(3, 4, g);
+        add_edge(3, 5, g);
+        tangleTemplates.push_back(reverse(g));
+    }
+
+    tangleTemplates.emplace_back(6);
+    {
+        TangleTemplate& g = tangleTemplates.back();
+        add_edge(0, 1, g);
+        add_edge(1, 2, g);
+        add_edge(1, 3, g);
+        add_edge(2, 3, g);
+        add_edge(2, 4, g);
+        add_edge(3, 4, g);
+        add_edge(4, 5, g);
+    }
+
+
+
+    // Templates with 10 edges.
 
     tangleTemplates.emplace_back(8);
     {
@@ -1154,38 +1300,6 @@ void AssemblyGraph::createTangleTemplates()
         add_edge(5, 6, g);
         add_edge(5, 6, g);
         add_edge(6, 7, g);
-    }
-
-    // Skip four bubbles.
-    tangleTemplates.emplace_back(10);
-    {
-        TangleTemplate& g = tangleTemplates.back();
-        add_edge(0, 1, g);
-        add_edge(1, 2, g);
-        add_edge(1, 2, g);
-        add_edge(2, 3, g);
-        add_edge(3, 4, g);
-        add_edge(3, 4, g);
-        add_edge(4, 5, g);
-        add_edge(5, 6, g);
-        add_edge(5, 6, g);
-        add_edge(6, 7, g);
-        add_edge(7, 8, g);
-        add_edge(7, 8, g);
-        add_edge(8, 9, g);
-    }
-
-    tangleTemplates.emplace_back(6);
-    {
-        TangleTemplate& g = tangleTemplates.back();
-        add_edge(0, 1, g);
-        add_edge(1, 2, g);
-        add_edge(1, 3, g);
-        add_edge(2, 4, g);
-        add_edge(2, 5, g);
-        add_edge(3, 4, g);
-        add_edge(3, 5, g);
-        tangleTemplates.push_back(reverse(g));
     }
 
     tangleTemplates.emplace_back(8);
@@ -1204,39 +1318,28 @@ void AssemblyGraph::createTangleTemplates()
     }
 
 
-    tangleTemplates.emplace_back(5);
-    {
-        TangleTemplate& g = tangleTemplates.back();
-        add_edge(0, 1, g);
-        add_edge(1, 2, g);
-        add_edge(1, 3, g);
-        add_edge(1, 4, g);
-        add_edge(2, 3, g);
-        add_edge(2, 4, g);
-        tangleTemplates.push_back(reverse(g));
-    }
 
-    tangleTemplates.emplace_back(6);
+    // Templates with 13 edges.
+
+    tangleTemplates.emplace_back(10);
     {
         TangleTemplate& g = tangleTemplates.back();
         add_edge(0, 1, g);
         add_edge(1, 2, g);
-        add_edge(1, 3, g);
+        add_edge(1, 2, g);
         add_edge(2, 3, g);
-        add_edge(2, 4, g);
+        add_edge(3, 4, g);
         add_edge(3, 4, g);
         add_edge(4, 5, g);
+        add_edge(5, 6, g);
+        add_edge(5, 6, g);
+        add_edge(6, 7, g);
+        add_edge(7, 8, g);
+        add_edge(7, 8, g);
+        add_edge(8, 9, g);
     }
 
-    tangleTemplates.emplace_back(4);
-    {
-        TangleTemplate& g = tangleTemplates.back();
-        add_edge(0, 1, g);
-        add_edge(1, 2, g);
-        add_edge(1, 3, g);
-        add_edge(2, 3, g);
-        tangleTemplates.push_back(reverse(g));
-    }
+
 
     for(uint64_t i=0; i<tangleTemplates.size(); i++) {
         const TangleTemplate& tangleTemplate = tangleTemplates[i];
@@ -1281,23 +1384,6 @@ void AssemblyGraph::writeGraphviz(ostream& s, const TangleTemplate& g)
     }
 
     s << "}\n";
-}
-
-
-
-// One iteration of detangling using a given TangleTemplate.
-bool AssemblyGraph::detangle(
-    const TangleTemplate& tangleTemplate,
-    Detangler& detangler)
-{
-    AssemblyGraph& assemblyGraph = *this;
-    vector< vector<vertex_descriptor> > detanglingCandidates;
-    inducedSubgraphIsomorphisms(assemblyGraph, tangleTemplate, detanglingCandidates);
-
-    // cout << "Found " << detanglingCandidates.size() << " instances for the requested Tangle template." << endl;
-
-    // Do the detangling.
-    return detangle(detanglingCandidates, detangler);
 }
 
 

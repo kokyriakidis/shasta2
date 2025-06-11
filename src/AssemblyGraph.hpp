@@ -169,31 +169,31 @@ public:
 
     // Detangling.
 
-    // One iteration of detangling a given set of tangles using the given Detangler.
-    // This is the lowest level detangling function.
+    // Low level detangling function.
     bool detangle(const vector< vector<vertex_descriptor> >& detanglingCandidates, Detangler&);
 
-    // One iteration of vertex detangling using the given Detangler.
-    bool detangleVertices(Detangler&);
+    bool detangleVerticesIteration(Detangler&);
+    bool detangleVertices(uint64_t maxIterationCount, Detangler&);
 
-    // One iteration of edge detangling using the given Detangler.
-    bool detangleEdges(Detangler&);
+    bool detangleEdgesIteration(Detangler&);
+    bool detangleEdges(uint64_t maxIterationCount, Detangler&);
 
-    // One iteration of all usable detangling functions using the given Detangler.
-    bool detangleIteration(Detangler&);
+    bool detangleTemplateIteration(uint64_t templateId, Detangler&);
+    bool detangleTemplate(uint64_t templateId, uint64_t maxIterationCount, Detangler&);
+    bool detangleTemplates(uint64_t maxIterationCount, Detangler&);
 
-    // Multiple iterations of all usable detangling functions using the given Detangler.
+    // High level detangling function.
     bool detangle(uint64_t maxIterationCount, Detangler&);
 
-    // Detangle using tangle templates.
+
+
+    // Tangle templates.
     using TangleTemplate = boost::adjacency_list<boost::listS, boost::vecS, boost::bidirectionalS>;
     static void writeGraphviz(ostream&, const TangleTemplate&);
     static TangleTemplate reverse(const TangleTemplate&);
     vector<TangleTemplate> tangleTemplates;
     void createTangleTemplates();
 
-    // One iteration of detangling using a given TangleTemplate.
-    bool detangle(const TangleTemplate&, Detangler&);
 
 public:
 
