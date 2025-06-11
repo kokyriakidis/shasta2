@@ -79,42 +79,6 @@ bool ChiSquareDetangler::operator()(Tangle& tangle, bool doDetangle)
 
 
 
-    // Special case : 2 by 2 tangle matrix.
-    if((entranceCount == 2) and (exitCount == 2)) {
-
-        // Special case: 2 by 2 tangle matrix, diagonal.
-        if((tangleMatrix.tangleMatrix[0][1].size() == 0) and (tangleMatrix.tangleMatrix[1][0].size() == 0)) {
-            tangle.connect(0, 0);
-            tangle.connect(1, 1);
-            if(doDetangle) {
-                tangle.detangle();
-            }
-            if(debug) {
-                cout << "Special case: 2 by 2, in phase." << endl;
-            }
-            return true;
-        }
-
-        // Special case: 2 by 2 tangle matrix, off-diagonal.
-        if((tangleMatrix.tangleMatrix[0][0].size() == 0) and (tangleMatrix.tangleMatrix[1][1].size() == 0)) {
-            tangle.connect(0, 1);
-            tangle.connect(1, 0);
-            if(doDetangle) {
-                tangle.detangle();
-            }
-            if(debug) {
-                cout << "Special case: 2 by 2, out of phase." << endl;
-            }
-            return true;
-        }
-    }
-
-
-
-    // Code for the general case follows.
-
-
-
     // For now limit this to 2 by 2, 2 by 3, and 3 by 3.
     const uint64_t totalTangleMatrixEntryCount = entranceCount * exitCount;
     if(totalTangleMatrixEntryCount > 9) {
