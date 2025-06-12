@@ -29,6 +29,7 @@ public:
     vertex_descriptor target;
 
     // The internal vertices are stored sorted so we can do binary searches on it.
+    // They do not include the source and target vertices.
     vector<vertex_descriptor> internalVertices;
     void gatherInternalVertices();
     bool contains(vertex_descriptor v) const {

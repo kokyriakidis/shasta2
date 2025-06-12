@@ -35,6 +35,7 @@ namespace shasta {
     class AssemblerOptions;
     class Detangler;
     class Superbubble;
+    class SuperbubbleChain;
 
 }
 
@@ -199,18 +200,29 @@ public:
 public:
 
 
-    // Superbubbles. A superbubble is a Tangle in which all entrance edges are into
-    // a single vertex and all exit edges are from a sigle vertex.
+    // Superbubbles and SuperbubbleChains.
+    // - A Superbubble is a Tangle in which all entrance edges are into
+    //   a single vertex and all exit edges are from a single vertex.
+    // - A SuperbubbleChain is a linear sequence of Superbubbles.
+    //   In the sequence, the target vertex of a Superbubble is the same
+    //   as the source vertex of the next Superbubble in the SuperbubbleChain.
     void findSuperbubbles(
         uint64_t maxDistance,
         vector<Superbubble>&) const;
 
+    // This creates a csv file with one line of information for each superbubble.
+    void writeSuperbubbles(const vector<Superbubble>&, const string& fileName) const;
+
+    // This creates a csv file that can be loaded in Bandage to see the Superbubbles.
+    void writeSuperbubblesForBandage(const vector<Superbubble>&, const string& fileName) const;
+
+
     void findSuperbubbleChains(
-        const vector<Superbubble>& superbubbles,
-        vector< vector <Superbubble> >& superbubbleChains
+        const vector<Superbubble>&,
+        vector<SuperbubbleChain>&
         ) const;
 
-    // Find superbubbles and analyze them.
+    // Find Superbubbles and SuperbubbleChains and analyze them.
     void analyzeSuperbubbles(uint64_t maxDistance) const;
 
 
