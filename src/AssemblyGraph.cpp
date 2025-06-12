@@ -3,6 +3,7 @@
 #include "Anchor.hpp"
 #include "AnchorGraph.hpp"
 #include "AssemblerOptions.hpp"
+#include "deduplicate.hpp"
 #include "Detangler.hpp"
 #include "ExactDetangler.hpp"
 #include "findLinearChains.hpp"
@@ -1397,6 +1398,8 @@ void AssemblyGraph::writeGraphviz(ostream& s, const TangleTemplate& g)
 
 
 
+// This finds all Superbubbles seen using the specified maxDistance.
+// Some pairs of Superbubble can intersect (that is, they can have common edges).
 void AssemblyGraph::findSuperbubbles(
     uint64_t maxDistance,
     vector<Superbubble>& superbubbles) const
@@ -1440,6 +1443,80 @@ void AssemblyGraph::findSuperbubbles(
 
     }
 
+}
+
+
+
+// Remove Superbubbles that are entirely contained in a larger superbubble.
+void AssemblyGraph::removeContainedSuperbubbles(vector<Superbubble>& superbubbles) const
+{
+    // Find pairs of intersecting superbubbles.
+    // Two superbubbles intersect if they have one or more internal edges in common.
+    std::map<edge_descriptor, vector<uint64_t> > m;
+    for(uint64_t superbubbleId=0; superbubbleId<superbubbles.size(); superbubbleId++) {
+        const Superbubble& superbubble = superbubbles[superbubbleId];
+        for(const edge_descriptor e: superbubble.internalEdges) {
+            m[e].push_back(superbubbleId);
+        }
+    }
+    std::set< pair<uint64_t, uint64_t> > intersectingPairs;
+    for(const auto& p: m) {
+        const vector<uint64_t>& edgeSuperbubbles = p.second;
+        for(uint64_t i0=0; i0<edgeSuperbubbles.size()-1; i0++) {
+            const uint64_t superbubbleId0 = edgeSuperbubbles[i0];
+            for(uint64_t i1=i0+1; i1<edgeSuperbubbles.size(); i1++) {
+                const uint64_t superbubbleId1 = edgeSuperbubbles[i1];
+                intersectingPairs.insert({
+                    min(superbubbleId0, superbubbleId1),
+                    max(superbubbleId0, superbubbleId1)});
+            }
+        }
+    }
+    // cout << "Found " << intersectingPairs.size() << " intersecting superbubble pairs:" << endl;
+
+    vector<edge_descriptor> commonEdges;
+    vector<uint64_t> superbubblesToBeRemoved;
+    for(const auto& p: intersectingPairs) {
+        const uint64_t superbubbleId0 = p.first;
+        const uint64_t superbubbleId1 = p.second;
+        const Superbubble& superbubble0 = superbubbles[superbubbleId0];
+        const Superbubble& superbubble1 = superbubbles[superbubbleId1];
+        const auto& internalEdges0 = superbubble0.internalEdges;
+        const auto& internalEdges1 = superbubble1.internalEdges;
+
+        // Find the common edges.
+        commonEdges.clear();
+        std::set_intersection(
+            internalEdges0.begin(), internalEdges0.end(),
+            internalEdges1.begin(), internalEdges1.end(),
+            back_inserter(commonEdges)
+            );
+
+        if(commonEdges.size() == internalEdges0.size()) {
+            // cout << "Superbubble " << superbubbleId0 << " is contained in superbubble " << superbubbleId1 << endl;
+            superbubblesToBeRemoved.push_back(superbubbleId0);
+        } else if(commonEdges.size() == internalEdges1.size()) {
+            // cout << "Superbubble " << superbubbleId1 << " is contained in superbubble " << superbubbleId0 << endl;
+            superbubblesToBeRemoved.push_back(superbubbleId1);
+        } else {
+            // cout << "Superbubbles " << superbubbleId0 << " and " << superbubbleId1 << " intersect." << endl;
+            // This should never happen, but just in case we cout remove both of them.
+            SHASTA_ASSERT(0);
+            // superbubblesToBeRemoved.push_back(superbubbleId0);
+            // superbubblesToBeRemoved.push_back(superbubbleId1);
+        }
+    }
+    deduplicate(superbubblesToBeRemoved);
+    // cout << "Removing " << superbubblesToBeRemoved.size() << " superbubbles that "
+    //     "are contained in another superbubble." << endl;
+
+    vector<Superbubble> newSuperbubbles;
+    for(uint64_t superbubbleId=0; superbubbleId<superbubbles.size(); superbubbleId++) {
+        if(not binary_search(superbubblesToBeRemoved.begin(), superbubblesToBeRemoved.end(), superbubbleId)) {
+            newSuperbubbles.push_back(superbubbles[superbubbleId]);
+        }
+    }
+    newSuperbubbles.swap(superbubbles);
 }
 
 
@@ -1531,36 +1608,42 @@ void AssemblyGraph::analyzeSuperbubbles(uint64_t maxDistance) const
 
     vector<Superbubble> superbubbles;
     findSuperbubbles(maxDistance, superbubbles);
-    cout << "Found " << superbubbles.size() << " superbubbles." << endl;
+    removeContainedSuperbubbles(superbubbles);
 
     writeSuperbubbles(superbubbles, "Superbubbles.csv");
     writeSuperbubblesForBandage(superbubbles, "Superbubbles-Bandage.csv");
 
-    // Figure out if some vertices belong to more than one superbubble.
-    std::map<vertex_descriptor, vector<uint64_t> > m;
-    for(uint64_t i=0; i<superbubbles.size(); i++) {
-        const Superbubble& superbubble = superbubbles[i];
-        for(const vertex_descriptor v: superbubble.internalVertices) {
-            m[v].push_back(i);
+    cout << "Found " << superbubbles.size() << " non-overlapping superbubbles." << endl;
+
+
+#if 0
+    // Find pairs of intersecting superbubbles.
+    // Two superbubbles intersect if they have one or more internal edges in common.
+    std::map<edge_descriptor, vector<uint64_t> > m;
+    for(uint64_t superbubbleId=0; superbubbleId<superbubbles.size(); superbubbleId++) {
+        const Superbubble& superbubble = superbubbles[superbubbleId];
+        for(const edge_descriptor e: superbubble.internalEdges) {
+            m[e].push_back(superbubbleId);
         }
     }
     std::set< pair<uint64_t, uint64_t> > intersectingPairs;
     for(const auto& p: m) {
-        const vector<uint64_t>& v = p.second;
-        for(uint64_t j=0; j<v.size()-1; j++) {
-            const uint64_t jj = v[j];
-            for(uint64_t k=j+1; j<v.size(); k++) {
-                const uint64_t kk = v[k];
-                intersectingPairs.insert({min(jj, kk), max(jj, kk)});
+        const vector<uint64_t>& edgeSuperbubbles = p.second;
+        for(uint64_t i0=0; i0<edgeSuperbubbles.size()-1; i0++) {
+            const uint64_t superbubbleId0 = edgeSuperbubbles[i0];
+            for(uint64_t i1=i0+1; i1<edgeSuperbubbles.size(); i1++) {
+                const uint64_t superbubbleId1 = edgeSuperbubbles[i1];
+                intersectingPairs.insert({
+                    min(superbubbleId0, superbubbleId1),
+                    max(superbubbleId0, superbubbleId1)});
             }
         }
     }
-    cout << "Intersecting superbubble pairs:" << endl;
+    cout << "Found " << intersectingPairs.size() << " intersecting superbubble pairs:" << endl;
     for(const auto& p: intersectingPairs) {
         cout << p.first << " " << p.second << endl;
     }
-    SHASTA_ASSERT(intersectingPairs.empty());
-
+#endif
 
     // Find Superbubble chains.
     vector<SuperbubbleChain> superbubbleChains;

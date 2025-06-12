@@ -66,5 +66,7 @@ void Superbubble::gatherInternalEdges()
         }
     }
 
+    sort(internalEdges.begin(), internalEdges.end());
+
 }
 

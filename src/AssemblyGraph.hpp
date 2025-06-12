@@ -206,9 +206,15 @@ public:
     // - A SuperbubbleChain is a linear sequence of Superbubbles.
     //   In the sequence, the target vertex of a Superbubble is the same
     //   as the source vertex of the next Superbubble in the SuperbubbleChain.
+
+    // This finds all Superbubbles seen using the specified maxDistance.
+    // Some pairs of Superbubble can intersect (that is, they can have common edges).
     void findSuperbubbles(
         uint64_t maxDistance,
         vector<Superbubble>&) const;
+
+    // Remove Superbubbles that are entirely contained in a larger superbubble.
+    void removeContainedSuperbubbles(vector<Superbubble>&) const;
 
     // This creates a csv file with one line of information for each superbubble.
     void writeSuperbubbles(const vector<Superbubble>&, const string& fileName) const;

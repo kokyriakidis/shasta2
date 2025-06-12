@@ -59,6 +59,7 @@ public:
         return ploidyAtSource;
     }
 
+    // The internal edges are stored sorted.
     vector<edge_descriptor> internalEdges;
     void gatherInternalEdges();
 
