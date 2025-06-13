@@ -145,7 +145,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def("detangleEdges", &AssemblyGraph::detangleEdges)
         .def("compress", &AssemblyGraph::compress)
         .def("assembleAll", &AssemblyGraph::assembleAll)
-        .def("analyzeSuperbubbleChains", &AssemblyGraph::analyzeSuperbubbleChains)
+        .def("phaseSuperbubbleChains", &AssemblyGraph::phaseSuperbubbleChains)
         .def("colorStrongComponents", &AssemblyGraph::colorStrongComponents)
         .def("write", &AssemblyGraphPostprocessor::write)
         ;

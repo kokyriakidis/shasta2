@@ -143,8 +143,8 @@ public:
     const Anchors& anchors;
     uint64_t nextVertexId = 0;
     uint64_t nextEdgeId = 0;
-private:
     const AssemblerOptions& assemblerOptions;
+private:
 
     void check() const;
 
@@ -227,8 +227,8 @@ public:
     void writeSuperbubbleChains(const vector<SuperbubbleChain>&, const string& fileName) const;
     void writeSuperbubbleChainsForBandage(const vector<SuperbubbleChain>&, const string& fileName) const;
 
-    // Find Superbubbles and SuperbubbleChains and analyze them.
-    void analyzeSuperbubbleChains(uint64_t maxDistance) const;
+    // Phasing of SuperbubbleChains.
+    void phaseSuperbubbleChains(uint64_t maxDistance);
 
 
 

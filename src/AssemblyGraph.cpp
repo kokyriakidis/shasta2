@@ -1654,7 +1654,7 @@ void AssemblyGraph::writeSuperbubbleChainsForBandage(
 
 
 
-void AssemblyGraph::analyzeSuperbubbleChains(uint64_t maxDistance) const
+void AssemblyGraph::phaseSuperbubbleChains(uint64_t maxDistance)
 {
 
     // Find superbubbles.
@@ -1671,6 +1671,15 @@ void AssemblyGraph::analyzeSuperbubbleChains(uint64_t maxDistance) const
     cout << "Found " << superbubbleChains.size() << " superbubble chains." << endl;
     writeSuperbubbleChains(superbubbleChains, "SuperbubbleChains.csv");
     writeSuperbubbleChainsForBandage(superbubbleChains, "SuperbubbleChains-Bandage.csv");
+
+    // Phase them.
+    for(uint64_t superbubbleChainId=0; superbubbleChainId<superbubbles.size(); superbubbleChainId++) {
+        if(superbubbleChainId != 174) {
+            continue;           // For debugging.
+        }
+        SuperbubbleChain& superbubbleChain = superbubbleChains[superbubbleChainId];
+        superbubbleChain.phase(*this, superbubbleChainId);
+    }
 
 }
 

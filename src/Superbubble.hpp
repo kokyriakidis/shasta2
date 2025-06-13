@@ -73,8 +73,14 @@ public:
         return ploidyAtSource;
     }
 
+    bool isTrivial()
+    {
+        return internalVertices.empty() and internalEdges.size() == 1;
+    }
+
     Superbubble(
         const AssemblyGraph&,
         vertex_descriptor sourceVertex,
         vertex_descriptor targetVertex);
+
 };
