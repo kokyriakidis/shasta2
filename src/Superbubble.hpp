@@ -25,8 +25,8 @@ public:
 
     const AssemblyGraph& assemblyGraph;
 
-    vertex_descriptor source;
-    vertex_descriptor target;
+    vertex_descriptor sourceVertex;
+    vertex_descriptor targetVertex;
 
     // The internal vertices are stored sorted so we can do binary searches on it.
     // They do not include the source and target vertices.
@@ -36,6 +36,20 @@ public:
         return std::binary_search(internalVertices.begin(), internalVertices.end(), v);
     }
 
+    // The source edges are the out-edges of the source vertex, stored sorted.
+    // The target edges are the in-edges of the target vertex, stored sorted.
+    // All source and target edges are also stored in the internalEdges vector.
+    // An edge can be at the same time a source and edge and a target edge.
+    vector<edge_descriptor> sourceEdges;
+    vector<edge_descriptor> targetEdges;
+
+    // The internal edges are stored sorted.
+    // They include the source and target edges.
+    vector<edge_descriptor> internalEdges;
+
+    // Gather the source, target, and internal edges.
+    void gatherEdges();
+
     // If there are no internal vertices, this Superbubble is a bubble.
     bool isBubble() const {
         return internalVertices.empty();
@@ -43,12 +57,12 @@ public:
 
     const uint64_t sourcePloidy() const
     {
-        return out_degree(source, assemblyGraph);
+        return sourceEdges.size();
     }
 
     const uint64_t targetPloidy() const
     {
-        return in_degree(target, assemblyGraph);
+        return targetEdges.size();
     }
 
     const uint64_t ploidy() const {
@@ -59,12 +73,8 @@ public:
         return ploidyAtSource;
     }
 
-    // The internal edges are stored sorted.
-    vector<edge_descriptor> internalEdges;
-    void gatherInternalEdges();
-
     Superbubble(
         const AssemblyGraph&,
-        vertex_descriptor source,
-        vertex_descriptor target);
+        vertex_descriptor sourceVertex,
+        vertex_descriptor targetVertex);
 };

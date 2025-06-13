@@ -1686,8 +1686,8 @@ void AssemblyGraph::findSuperbubbleChains(
     std::map<vertex_descriptor, vector<uint64_t> > mapByTarget;
     for(uint64_t superbubbleId=0; superbubbleId<superbubbles.size(); superbubbleId++) {
         const Superbubble& superbubble = superbubbles[superbubbleId];
-        mapBySource[superbubble.source].push_back(superbubbleId);
-        mapByTarget[superbubble.target].push_back(superbubbleId);
+        mapBySource[superbubble.sourceVertex].push_back(superbubbleId);
+        mapByTarget[superbubble.targetVertex].push_back(superbubbleId);
     }
 
     // Sanity check: a vertex can only be a source or target of a single Superbubble.
@@ -1718,7 +1718,7 @@ void AssemblyGraph::findSuperbubbleChains(
 
         // Create the forward portion of this chain.
         forward.clear();
-        vertex_descriptor v = superbubbles[superbubbleId].target;
+        vertex_descriptor v = superbubbles[superbubbleId].targetVertex;
         while(true) {
             const auto it = mapBySource.find(v);
             if(it == mapBySource.end()) {
@@ -1730,12 +1730,12 @@ void AssemblyGraph::findSuperbubbleChains(
             forward.push_back(nextSuperbubbleId);
             // cout << "Forward: " << nextSuperbubbleId << endl;
 
-            v = superbubbles[nextSuperbubbleId].target;
+            v = superbubbles[nextSuperbubbleId].targetVertex;
         }
 
         // Create the backward portion of this chain.
         backward.clear();
-        v = superbubbles[superbubbleId].source;
+        v = superbubbles[superbubbleId].sourceVertex;
         while(true) {
             const auto it = mapByTarget.find(v);
             if(it == mapByTarget.end()) {
@@ -1747,7 +1747,7 @@ void AssemblyGraph::findSuperbubbleChains(
             backward.push_back(previousSuperbubbleId);
             // cout << "Backward: " << previousSuperbubbleId << endl;
 
-            v = superbubbles[previousSuperbubbleId].source;
+            v = superbubbles[previousSuperbubbleId].sourceVertex;
         }
 
         // Now we can create the new SuperbubbleChain.
