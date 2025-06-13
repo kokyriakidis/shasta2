@@ -9,6 +9,7 @@
 #include "Markers.hpp"
 #include "orderPairs.hpp"
 #include "Reads.hpp"
+#include "ReadId.hpp"
 #include "AnchorPair.hpp"
 using namespace shasta;
 
@@ -544,6 +545,75 @@ void Assembler::exploreAnchorPair(const vector<string>& request, ostream& html)
                 html << "</table>";
             }
         }
+    }
+
+
+    // Analyze the journeys between these anchors.
+    {
+        html << "<h3>Analysis of journeys between these two anchors</h3>";
+
+        html << "<table>";
+
+        vector<AnchorId> anchorIds;
+        for(uint64_t i=0; i<anchorPair.size(); i++) {
+            const OrientedReadId orientedReadId = anchorPair.orientedReadIds[i];
+            const auto& positionsAB = positions[i];
+
+            const Journey journey = journeys()[orientedReadId];
+
+            const auto& positionsA = positionsAB.first;
+            const auto& positionsB = positionsAB.second;
+            const auto positionInJourneyA = positionsA.positionInJourney;
+            const auto positionInJourneyB = positionsB.positionInJourney;
+
+            html << "<tr><th class=centered>" << orientedReadId;
+            for(auto position=positionInJourneyA+1; position<positionInJourneyB; position++) {
+                const AnchorId anchorId = journey[position];
+                anchorIds.push_back(anchorId);
+                html << "<td class=centered>" << anchorIdToString(journey[position]);
+            }
+
+
+        }
+        html << "</table>";
+
+        deduplicate(anchorIds);
+
+        html << "<br><table><tr><td>";
+        for(const AnchorId anchorId: anchorIds) {
+            html << "<th class=centered'>" << anchorIdToString(anchorId);
+        }
+        for(uint64_t i=0; i<anchorPair.size(); i++) {
+            const OrientedReadId orientedReadId = anchorPair.orientedReadIds[i];
+            const auto& positionsAB = positions[i];
+
+            html << "<tr><th class=centered>" << orientedReadId;
+
+            const Journey journey = journeys()[orientedReadId];
+
+            const auto& positionsA = positionsAB.first;
+            const auto& positionsB = positionsAB.second;
+            const auto positionInJourneyA = positionsA.positionInJourney;
+            const auto positionInJourneyB = positionsB.positionInJourney;
+            const auto begin = journey.begin() + positionInJourneyA + 1;
+            const auto end = journey.begin() + positionInJourneyB;
+
+            for(const AnchorId anchorId: anchorIds) {
+                html << "<td class=centered";
+                const bool found = std::find(begin, end, anchorId) != end;
+                if(found) {
+                    html << " style='background-color:green'";
+                }
+                html << ">";
+                if(found) {
+                    html << "&check;";
+                }
+            }
+        }
+
+        html << "</table>";
+
+
     }
 
 
