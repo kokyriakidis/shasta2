@@ -216,20 +216,19 @@ public:
     // Remove Superbubbles that are entirely contained in a larger superbubble.
     void removeContainedSuperbubbles(vector<Superbubble>&) const;
 
-    // This creates a csv file with one line of information for each superbubble.
     void writeSuperbubbles(const vector<Superbubble>&, const string& fileName) const;
-
-    // This creates a csv file that can be loaded in Bandage to see the Superbubbles.
     void writeSuperbubblesForBandage(const vector<Superbubble>&, const string& fileName) const;
-
 
     void findSuperbubbleChains(
         const vector<Superbubble>&,
         vector<SuperbubbleChain>&
         ) const;
 
+    void writeSuperbubbleChains(const vector<SuperbubbleChain>&, const string& fileName) const;
+    void writeSuperbubbleChainsForBandage(const vector<SuperbubbleChain>&, const string& fileName) const;
+
     // Find Superbubbles and SuperbubbleChains and analyze them.
-    void analyzeSuperbubbles(uint64_t maxDistance) const;
+    void analyzeSuperbubbleChains(uint64_t maxDistance) const;
 
 
 
