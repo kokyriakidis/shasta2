@@ -8,6 +8,7 @@
 #include "ExactDetangler.hpp"
 #include "findLinearChains.hpp"
 #include "findConvergingVertex.hpp"
+#include "color.hpp"
 #include "inducedSubgraphIsomorphisms.hpp"
 #include "LikelihoodRatioDetangler.hpp"
 #include "LocalAssembly2.hpp"
@@ -1571,27 +1572,7 @@ void AssemblyGraph::writeSuperbubblesForBandage(
 
     for(uint64_t id=0; id<superbubbles.size(); id++) {
         const Superbubble& superbubble = superbubbles[id];
-
-        double redValue = double(MurmurHash2(&id, sizeof(id), 759) % 1000);
-        double greenValue = double(MurmurHash2(&id, sizeof(id), 761) % 1000);
-        double blueValue = double(MurmurHash2(&id, sizeof(id), 763) % 1000);
-        double sum = redValue + greenValue + blueValue;
-        const double brightness = 1.5;
-        const double factor = brightness / sum;
-        redValue *= factor;
-        greenValue *= factor;
-        blueValue *= factor;
-        const int red = min(255, int(redValue * 255.));
-        const int green = min(255, int(greenValue * 255.));
-        const int blue = min(255, int(blueValue * 255.));
-
-        std::ostringstream colorStream;
-        colorStream << "#";
-        colorStream << std::setfill('0') << std::setw(2) << std::hex << red;
-        colorStream << std::setfill('0') << std::setw(2) << std::hex << green;
-        colorStream << std::setfill('0') << std::setw(2) << std::hex << blue;
-
-        const string color = colorStream.str();
+        const string color = randomHslColor(id, 0.75, 0.5);
 
         for(const edge_descriptor e: superbubble.internalEdges) {
             csv << assemblyGraph[e].id << "," << color << "\n";
@@ -1656,22 +1637,7 @@ void AssemblyGraph::writeSuperbubbleChainsForBandage(
 
     for(uint64_t chainId=0; chainId<superbubbleChains.size(); chainId++) {
         const SuperbubbleChain& superbubbleChain = superbubbleChains[chainId];
-
-        double redValue = double(MurmurHash2(&chainId, sizeof(chainId), 759) % 1000);
-        double greenValue = double(MurmurHash2(&chainId, sizeof(chainId), 761) % 1000);
-        double blueValue = double(MurmurHash2(&chainId, sizeof(chainId), 763) % 1000);
-        double sum = redValue + greenValue + blueValue;
-        redValue /= sum;
-        greenValue /= sum;
-        blueValue /= sum;
-
-        std::ostringstream colorStream;
-        colorStream << "#";
-        colorStream << std::setfill('0') << std::setw(2) << std::hex << uint16_t(redValue * 255);
-        colorStream << std::setfill('0') << std::setw(2) << std::hex << uint16_t(greenValue * 255);
-        colorStream << std::setfill('0') << std::setw(2) << std::hex << uint16_t(blueValue * 255);
-
-        const string color = colorStream.str();
+        const string color = randomHslColor(chainId, 0.75, 0.5);
 
         for(uint64_t position=0; position<superbubbleChain.size(); position++) {
             const Superbubble& superbubble = superbubbleChain[position];
