@@ -1292,7 +1292,7 @@ void Anchors::clusterAnchorPairOrientedReads(
         dot << "graph SimilarityGraph {\n";
         for(uint64_t i=0; i<orientedReadCount; i++) {
             const OrientedReadId orientedReadId = anchorPair.orientedReadIds[i];
-            const string color = randomHslColor(similarityGraph[i].clusterId, 0.9, 0.5);
+            const string color = randomHslColor(similarityGraph[i].clusterId, 1., 0.5);
             dot << i << " [label=\"" << orientedReadId << "\\n" << similarityGraph[i].clusterId << "\""
                 " fillcolor=\"" << color << "\"];\n";
         }
