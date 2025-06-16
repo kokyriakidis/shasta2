@@ -550,7 +550,13 @@ void Assembler::exploreAnchorPair(const vector<string>& request, ostream& html)
     }
 
 
+    // Cluster oriented reads on this AnchorPair.
+    const double minJaccard = 0.7;
+    anchors().clusterAnchorPairOrientedReads(anchorPair, journeys(), minJaccard, html);
 
+
+    // The code below was moved to Anchors::clusterAnchorPairOrientedReads.
+#if 0
     // Analyze the journeys between these anchors.
     {
         html << "<h3>Analysis of journeys between these two anchors</h3>";
@@ -581,8 +587,9 @@ void Assembler::exploreAnchorPair(const vector<string>& request, ostream& html)
         html << "</table>";
 
         deduplicate(anchorIds);
+        html << "<p>Found " << anchorIds.size() << " distinct AnchorIds.";
 
-        html << "<br><table><tr><td>";
+        html << "<p><table><tr><td>";
         for(const AnchorId anchorId: anchorIds) {
             html << "<th class=centered'>" << anchorIdToString(anchorId);
         }
@@ -725,7 +732,7 @@ void Assembler::exploreAnchorPair(const vector<string>& request, ostream& html)
         }
         html << "</table>";
     }
-
+#endif
 
 
     // Old code.

@@ -1,4 +1,6 @@
+// Shasta.
 #include "Anchor.hpp"
+#include "color.hpp"
 #include "deduplicate.hpp"
 #include "html.hpp"
 #include "invalid.hpp"
@@ -9,9 +11,20 @@
 #include "orderPairs.hpp"
 #include "performanceLog.hpp"
 #include "Reads.hpp"
+#include "runCommandWithTimeout.hpp"
 #include "timestamp.hpp"
+#include "tmpDirectory.hpp"
 using namespace shasta;
 
+// Boost libraries.
+#include <boost/dynamic_bitset.hpp>
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/iteration_macros.hpp>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
+
+// Standard library.
 #include <cmath>
 
 // Explicit instantiation.
@@ -1075,4 +1088,239 @@ AnchorPair Anchors::bridge(
 
     // Return the one with the most coverage.
     return splitAnchorPairs.front();
+}
+
+
+
+// Cluster oriented reads in an anchor pair using their journey
+// portions between AnchorIdA and AnchorIdB.
+// Output to html if it is open.
+void Anchors::clusterAnchorPairOrientedReads(
+    const AnchorPair& anchorPair,
+    const Journeys& journeys,
+    double minJaccard,
+    ostream& html) const
+{
+    const uint64_t orientedReadCount = anchorPair.size();
+
+    // Get positions of AnchorIdA and AnchorIdB on the oriented reads og this AnchorPair.
+    vector< pair<AnchorPair::Positions, AnchorPair::Positions> > positions;
+    anchorPair.get(*this, positions);
+
+    // Gather the AnchorIds visited by each oriented read between AnchorIdA and AnchorIdB
+    // of the given AnchorPair.
+    if(html) {
+        html << "<h3>Journey portions within this anchor pair</h3><p><table>";
+    }
+    vector<AnchorId> anchorIds;
+    for(uint64_t i=0; i<orientedReadCount; i++) {
+        const OrientedReadId orientedReadId = anchorPair.orientedReadIds[i];
+        const auto& positionsAB = positions[i];
+
+        const Journey journey = journeys[orientedReadId];
+
+        const auto& positionsA = positionsAB.first;
+        const auto& positionsB = positionsAB.second;
+        const auto positionInJourneyA = positionsA.positionInJourney;
+        const auto positionInJourneyB = positionsB.positionInJourney;
+
+        if(html) {
+            html << "<tr><th class=centered>" << orientedReadId;
+        }
+        for(auto position=positionInJourneyA+1; position<positionInJourneyB; position++) {
+            const AnchorId anchorId = journey[position];
+            anchorIds.push_back(anchorId);
+            html << "<td class=centered>" << anchorIdToString(journey[position]);
+        }
+    }
+    deduplicate(anchorIds);
+    const uint64_t anchorCount = anchorIds.size();
+
+    if(html) {
+        html << "</table>"
+            "<p>Found " << anchorCount << " distinct anchors.";
+    }
+
+    // Create a bit vector for each OrienteRead, with a bit for each AnchorId.
+    // The bit is set if the OrientedRead visits that AnchorId.
+    using BitVector = boost::dynamic_bitset<uint64_t>;
+    vector<BitVector> bitVectors(orientedReadCount);
+    for(uint64_t i=0; i<orientedReadCount; i++) {
+        const OrientedReadId orientedReadId = anchorPair.orientedReadIds[i];
+        const auto& positionsAB = positions[i];
+
+        const Journey journey = journeys[orientedReadId];
+
+        const auto& positionsA = positionsAB.first;
+        const auto& positionsB = positionsAB.second;
+        const auto positionInJourneyA = positionsA.positionInJourney;
+        const auto positionInJourneyB = positionsB.positionInJourney;
+
+        BitVector& bitVector = bitVectors[i];
+        bitVector.resize(anchorCount);
+
+        for(auto position=positionInJourneyA+1; position<positionInJourneyB; position++) {
+            const AnchorId anchorId = journey[position];
+            const auto it = std::lower_bound(anchorIds.begin(), anchorIds.end(), anchorId);
+            SHASTA_ASSERT(it != anchorIds.end());
+            SHASTA_ASSERT(*it == anchorId);
+            const uint64_t bitPosition = it - anchorIds.begin();
+            bitVector.set(bitPosition);
+        }
+    }
+
+    // Write out the bit vectors.
+    if(html) {
+        html << "<h3>OrientedReadId/AnchorId matrix</h3><p><table>";
+        for(uint64_t i=0; i<orientedReadCount; i++) {
+            const OrientedReadId orientedReadId = anchorPair.orientedReadIds[i];
+            const BitVector& bitVector = bitVectors[i];
+            html << "<tr>";
+            for(uint64_t j=0; j<anchorCount; j++) {
+                const AnchorId anchorId = anchorIds[j];
+                const bool bitValue = bitVector[j];
+                html << "<td class=centered";
+                if(bitValue) {
+                    html << " style='background-color:Green'";
+                }
+                html <<
+                    " title='" << orientedReadId << " " << anchorIdToString(anchorId) << "'"
+                    ">" << int(bitValue);
+            }
+        }
+        html << "</table>";
+    }
+
+
+    // Compute a matrix of Jaccard similarities and a matrix of Hamming distances.
+    vector< vector<double> > jaccard(orientedReadCount, vector<double>(orientedReadCount));
+    vector< vector<uint64_t> > hamming(orientedReadCount, vector<uint64_t>(orientedReadCount));
+    for(uint64_t i0=0; i0<orientedReadCount; i0++) {
+        jaccard[i0][i0] = 1.;
+        hamming[i0][i0] = 0;
+        const BitVector& bitVector0 = bitVectors[i0];
+        const uint64_t n0 = bitVector0.count();
+        for(uint64_t i1=i0+1; i1<orientedReadCount; i1++) {
+            const BitVector& bitVector1 = bitVectors[i1];
+            const uint64_t n1 = bitVector1.count();
+            const uint64_t intersectionCount = (bitVector0 & bitVector1).count();
+            const uint64_t unionCount = n0 + n1 - intersectionCount;
+            const double j = (unionCount == 0) ? 0. : double(intersectionCount) / double(unionCount);
+            jaccard[i0][i1] = j;
+            jaccard[i1][i0] = j;
+            const uint64_t h = (bitVector0 ^ bitVector1).count();
+            hamming[i0][i1] = h;
+            hamming[i1][i0] = h;
+        }
+    }
+
+
+
+    // Write out the Jaccard matrix and the Hamming distance matrix.
+    if(html) {
+        html << "<h3>Jaccard similarity matrix</h3><p><table>";
+        for(uint64_t i0=0; i0<orientedReadCount; i0++) {
+            const OrientedReadId orientedReadId0 = anchorPair.orientedReadIds[i0];
+            html << "<tr>";
+            for(uint64_t i1=0; i1<orientedReadCount; i1++) {
+                const OrientedReadId orientedReadId1 = anchorPair.orientedReadIds[i1];
+                const double j = jaccard[i0][i1];
+                const double H = j / 3.;
+                const string color = hslToRgbString(H, 0.75, 0.5);
+                html << "<td class=centered style='background-color:" << color <<
+                    "' title='" << orientedReadId0 << " " << orientedReadId1 <<
+                    "'>" << std::fixed << std::setprecision(2) << j;
+            }
+        }
+        html << "</table>";
+
+
+        html << "<h3>Hamming distance matrix</h3><p><table>";
+        for(uint64_t i0=0; i0<orientedReadCount; i0++) {
+            const OrientedReadId orientedReadId0 = anchorPair.orientedReadIds[i0];
+            html << "<tr>";
+            for(uint64_t i1=0; i1<orientedReadCount; i1++) {
+                const OrientedReadId orientedReadId1 = anchorPair.orientedReadIds[i1];
+                html << "<td class=centered title='" <<
+                    orientedReadId0 << " " << orientedReadId1 <<
+                    "'>" << hamming[i0][i1];
+            }
+        }
+        html << "</table>";
+    }
+
+
+    // Create a similarity graph with a vertex for each oriented read.
+    // Jaccard values not smaller than minJaccard generate an edge.
+    using SimilarityGraph = boost::adjacency_list<
+        boost::vecS,
+        boost::vecS,
+        boost::undirectedS>;
+    SimilarityGraph similarityGraph(orientedReadCount);
+    for(uint64_t i0=0; i0<orientedReadCount; i0++) {
+        for(uint64_t i1=i0+1; i1<orientedReadCount; i1++) {
+            if(jaccard[i0][i1] >= minJaccard) {
+                add_edge(i0, i1, similarityGraph);
+            }
+        }
+    }
+
+
+
+    // Display the similarity graph.
+    if(html) {
+
+        // Write it out in Graphviz format.
+        const string uuid = to_string(boost::uuids::random_generator()());
+        const string dotFileName = tmpDirectory() + uuid + ".dot";
+        ofstream dot(dotFileName);
+        dot << "graph SimilarityGraph {\n";
+        for(uint64_t i=0; i<orientedReadCount; i++) {
+            const OrientedReadId orientedReadId = anchorPair.orientedReadIds[i];
+            dot << i << " [label=\"" << orientedReadId << "\" tooltip=\"" << orientedReadId << "\"];\n";
+        }
+        BGL_FORALL_EDGES(e, similarityGraph, SimilarityGraph) {
+            const uint64_t i0 = source(e, similarityGraph);
+            const uint64_t i1 = target(e, similarityGraph);
+            dot << i0 << "--" << i1 << ";\n";
+        }
+        dot << "}\n";
+        dot.close();
+
+        // Use graphviz to compute the layout.
+        const string svgFileName = dotFileName + ".svg";
+        const string command = "sfdp -T svg " + dotFileName + " -o " + svgFileName +
+            " -Nshape=rectangle -Nstyle=filled -Goverlap=false -Gsplines=true"
+            " -Nfillcolor=lightgreen -Gbgcolor=gray95";
+        const int timeout = 30;
+        bool timeoutTriggered = false;
+        bool signalOccurred = false;
+        int returnCode = 0;
+        runCommandWithTimeout(command, timeout, timeoutTriggered, signalOccurred, returnCode);
+        if(signalOccurred) {
+            html << "Error during graph layout. Command was<br>" << endl;
+            html << command;
+        }
+        if(timeoutTriggered) {
+            html << "Timeout during graph layout." << endl;
+        }
+        if(returnCode!=0 ) {
+            html << "Error during graph layout. Command was<br>" << endl;
+            html << command;
+        }
+        std::filesystem::remove(dotFileName);
+
+        // Write the svg to html.
+        html << "<h3>Similarity graph</h3>"
+            "<p>Jaccard similarity threshold is " << minJaccard <<
+            "<p><div style='display:inline-block'>";
+        ifstream svgFile(svgFileName);
+        html << svgFile.rdbuf();
+        svgFile.close();
+        html << "</div>";
+
+        // Remove the .svg file.
+        std::filesystem::remove(svgFileName);
+     }
+
 }

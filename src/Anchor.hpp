@@ -145,6 +145,16 @@ public:
         double aDrift,
         double bDrift) const;
 
+    // Cluster oriented reads in an anchor pair using their journey
+    // portions between AnchorIdA and AnchorIdB.
+    // Output to html if it is open.
+    void clusterAnchorPairOrientedReads(
+        const AnchorPair&,
+        const Journeys&,
+        double minJaccard,
+        ostream& html) const;
+
+
     void writeCoverageHistogram() const;
 
     MemoryMapped::VectorOfVectors<AnchorMarkerInfo, uint64_t> anchorMarkerInfos;
