@@ -2,6 +2,7 @@
 #include "Anchor.hpp"
 #include "color.hpp"
 #include "deduplicate.hpp"
+#include "hcsClustering.hpp"
 #include "html.hpp"
 #include "invalid.hpp"
 #include "Journeys.hpp"
@@ -1252,16 +1253,30 @@ void Anchors::clusterAnchorPairOrientedReads(
 
     // Create a similarity graph with a vertex for each oriented read.
     // Jaccard values not smaller than minJaccard generate an edge.
+    class SimilarityGraphVertex {
+    public:
+        uint64_t clusterId = invalid<uint64_t>;
+    };
     using SimilarityGraph = boost::adjacency_list<
         boost::vecS,
         boost::vecS,
-        boost::undirectedS>;
+        boost::undirectedS,
+        SimilarityGraphVertex>;
     SimilarityGraph similarityGraph(orientedReadCount);
     for(uint64_t i0=0; i0<orientedReadCount; i0++) {
         for(uint64_t i1=i0+1; i1<orientedReadCount; i1++) {
             if(jaccard[i0][i1] >= minJaccard) {
                 add_edge(i0, i1, similarityGraph);
             }
+        }
+    }
+
+    // Clustering of the similarity graph.
+    vector< vector<uint64_t> > clusters;
+    hcsClustering(similarityGraph, clusters);
+    for(uint64_t clusterId=0; clusterId<clusters.size(); clusterId++) {
+        for(const SimilarityGraph::vertex_descriptor v: clusters[clusterId]) {
+            similarityGraph[v].clusterId = clusterId;
         }
     }
 
@@ -1277,7 +1292,9 @@ void Anchors::clusterAnchorPairOrientedReads(
         dot << "graph SimilarityGraph {\n";
         for(uint64_t i=0; i<orientedReadCount; i++) {
             const OrientedReadId orientedReadId = anchorPair.orientedReadIds[i];
-            dot << i << " [label=\"" << orientedReadId << "\" tooltip=\"" << orientedReadId << "\"];\n";
+            const string color = randomHslColor(similarityGraph[i].clusterId, 0.9, 0.5);
+            dot << i << " [label=\"" << orientedReadId << "\\n" << similarityGraph[i].clusterId << "\""
+                " fillcolor=\"" << color << "\"];\n";
         }
         BGL_FORALL_EDGES(e, similarityGraph, SimilarityGraph) {
             const uint64_t i0 = source(e, similarityGraph);
@@ -1291,7 +1308,7 @@ void Anchors::clusterAnchorPairOrientedReads(
         const string svgFileName = dotFileName + ".svg";
         const string command = "sfdp -T svg " + dotFileName + " -o " + svgFileName +
             " -Nshape=rectangle -Nstyle=filled -Goverlap=false -Gsplines=true"
-            " -Nfillcolor=lightgreen -Gbgcolor=gray95";
+            " -Gbgcolor=gray95";
         const int timeout = 30;
         bool timeoutTriggered = false;
         bool signalOccurred = false;
@@ -1322,5 +1339,6 @@ void Anchors::clusterAnchorPairOrientedReads(
         // Remove the .svg file.
         std::filesystem::remove(svgFileName);
      }
+
 
 }
