@@ -3,6 +3,7 @@
 #include "Assembler.hpp"
 #include "AssemblerOptions.hpp"
 #include "AssemblyGraphPostprocessor.hpp"
+#include "color.hpp"
 #include "deduplicate.hpp"
 #include "Journeys.hpp"
 #include "LocalAnchorGraph.hpp"
@@ -15,6 +16,7 @@ using namespace shasta;
 
 // Boost libraries.
 #include <boost/algorithm/string.hpp>
+#include <boost/dynamic_bitset.hpp>
 #include <boost/graph/iteration_macros.hpp>
 #include <boost/tokenizer.hpp>
 
@@ -548,6 +550,7 @@ void Assembler::exploreAnchorPair(const vector<string>& request, ostream& html)
     }
 
 
+
     // Analyze the journeys between these anchors.
     {
         html << "<h3>Analysis of journeys between these two anchors</h3>";
@@ -614,6 +617,113 @@ void Assembler::exploreAnchorPair(const vector<string>& request, ostream& html)
         html << "</table>";
 
 
+
+        // Create a bit vector for each OrienteRead, with a bit for each AnchorId.
+        // The bit is set if the OrientedRead visits that AnchorId.
+        using BitVector = boost::dynamic_bitset<uint64_t>;
+        vector<BitVector> matrix(anchorPair.orientedReadIds.size());
+        for(uint64_t i=0; i<anchorPair.orientedReadIds.size(); i++) {
+            const OrientedReadId orientedReadId = anchorPair.orientedReadIds[i];
+            const auto& positionsAB = positions[i];
+
+            const Journey journey = journeys()[orientedReadId];
+
+            const auto& positionsA = positionsAB.first;
+            const auto& positionsB = positionsAB.second;
+            const auto positionInJourneyA = positionsA.positionInJourney;
+            const auto positionInJourneyB = positionsB.positionInJourney;
+
+            BitVector& bitVector = matrix[i];
+            bitVector.resize(anchorIds.size());
+
+            for(auto position=positionInJourneyA+1; position<positionInJourneyB; position++) {
+                const AnchorId anchorId = journey[position];
+                const auto it = std::lower_bound(anchorIds.begin(), anchorIds.end(), anchorId);
+                SHASTA_ASSERT(it != anchorIds.end());
+                SHASTA_ASSERT(*it == anchorId);
+                const uint64_t bitPosition = it - anchorIds.begin();
+                bitVector.set(bitPosition);
+            }
+        }
+
+        html << "<p>Jaccard similarities of oriented read pairs.<table>";
+        for(uint64_t i0=0; i0<anchorPair.orientedReadIds.size(); i0++) {
+            const BitVector& bitVector0 = matrix[i0];
+            const uint64_t n0 = bitVector0.count();
+            html << "<tr><th class=centered>" << anchorPair.orientedReadIds[i0];
+            for(uint64_t i1=0; i1<anchorPair.orientedReadIds.size(); i1++) {
+                const BitVector& bitVector1 = matrix[i1];
+                const uint64_t n1 = bitVector1.count();
+                const uint64_t intersectionCount = (bitVector0 & bitVector1).count();
+                const uint64_t unionCount = n0 + n1 - intersectionCount;
+                const double Jaccard = double(intersectionCount) / double(unionCount);
+                const double H = Jaccard / 3.;
+                const string color = hslToRgbString(H, 0.75, 0.5);
+                html << "<td class=centered style='background-color:" << color;
+                html << "'>" << std::fixed << std::setprecision(2) << Jaccard;
+            }
+        }
+        html << "</table>";
+    }
+
+
+
+    // Analyze the marker k-mers encountered by each oriented read.
+    {
+        vector< vector<Kmer> > orientedReadsKmers(anchorPair.size());
+        vector<Kmer> allKmers;
+        for(uint64_t i=0; i<anchorPair.size(); i++) {
+            const OrientedReadId orientedReadId = anchorPair.orientedReadIds[i];
+            const auto& positionsAB = positions[i];
+
+            const auto& positionsA = positionsAB.first;
+            const auto& positionsB = positionsAB.second;
+            const uint32_t ordinalA = positionsA.ordinal;
+            const uint32_t ordinalB = positionsB.ordinal;
+
+            for(uint32_t ordinal=ordinalA+1; ordinal<ordinalB; ordinal++) {
+                const Kmer kmer = markers().getKmer(orientedReadId, ordinal);
+                orientedReadsKmers[i].push_back(kmer);
+                allKmers.push_back(kmer);
+            }
+        }
+        deduplicate(allKmers);
+        cout << "Found " << allKmers.size() << " distinct k-mers." << endl;
+
+        // Create bit vectors for each oriented read. A bit is set
+        // if the read contains the given k-mers.
+        using BitVector = boost::dynamic_bitset<uint64_t>;
+        vector<BitVector> matrix(anchorPair.orientedReadIds.size());
+        for(uint64_t i=0; i<anchorPair.orientedReadIds.size(); i++) {
+            BitVector& bitVector = matrix[i];
+            bitVector.resize(allKmers.size());
+            for(const Kmer& kmer: orientedReadsKmers[i]) {
+                const auto it = std::lower_bound(allKmers.begin(), allKmers.end(), kmer);
+                SHASTA_ASSERT(it != allKmers.end());
+                SHASTA_ASSERT(*it == kmer);
+                const uint64_t bitPosition = it - allKmers.begin();
+                bitVector.set(bitPosition);
+            }
+        }
+
+        html << "<h3>Jaccard similarities of marker k-mers</h3><pr><table>";
+        for(uint64_t i0=0; i0<anchorPair.orientedReadIds.size(); i0++) {
+            const BitVector& bitVector0 = matrix[i0];
+            const uint64_t n0 = orientedReadsKmers[i0].size();
+            html << "<tr>";
+            for(uint64_t i1=0; i1<anchorPair.orientedReadIds.size(); i1++) {
+                const BitVector& bitVector1 = matrix[i1];
+                const uint64_t n1 = orientedReadsKmers[i1].size();
+                const uint64_t intersectionCount = (bitVector0 & bitVector1).count();
+                const uint64_t unionCount = n0 + n1 - intersectionCount;
+                const double Jaccard = double(intersectionCount) / double(unionCount);
+                const double H = Jaccard / 3.;
+                const string color = hslToRgbString(H, 0.75, 0.5);
+                html << "<td class=centered style='background-color:" << color;
+                html << "'>" << std::fixed << std::setprecision(2) << Jaccard;
+            }
+        }
+        html << "</table>";
     }
 
 

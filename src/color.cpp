@@ -63,6 +63,23 @@ std::array<double, 3> shasta::hslToRgb(double H, double S, double L)
 
 
 
+string shasta::hslToRgbString(double H, double S, double L)
+{
+    using std::format;
+    const array<double, 3> rgb = hslToRgb(H, S, L);
+
+    // Normalize to 255 and construct the RGB string.
+    string s = "#";
+    for(const double value: rgb) {
+        const int iValue = min(255, int(value * 255.));
+        s.append(format("{:02x}", iValue));
+    }
+
+    return s;
+}
+
+
+
 // Generate a RGB color string #RRGGBB corresponding to a HSL
 // color with a random hue computed by hashing the given id
 // and the given SL values.

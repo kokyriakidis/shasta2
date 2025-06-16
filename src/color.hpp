@@ -12,6 +12,9 @@ namespace shasta {
     // https://en.wikipedia.org/wiki/HSL_and_HSV#HSL_to_RGB
     array<double, 3> hslToRgb(double H, double S, double L);
 
+    // Same, but returns a string of the form #RRGGBB.
+    string hslToRgbString(double H, double S, double L);
+
     // Generate a RGB color string #RRGGBB corresponding to a HSL
     // color with a random hue computed by hashing the given id
     // and the given SL values.
