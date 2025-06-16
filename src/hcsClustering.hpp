@@ -71,18 +71,17 @@ public:
     // Map vertex descriptors of the InputGraph to vertex descriptors of the WorkGraph.
     std::map<typename InputGraph::vertex_descriptor, typename WorkGraph::vertex_descriptor> vertexMap;
 
-    void hcsClustering(vector< vector<typename WorkGraph::vertex_descriptor> >& componentClusters) const
+    void hcsClustering(vector< vector<typename InputGraph::vertex_descriptor> >& clusters) const
     {
-        // For now return a single cluster consisting of the entire WorkGraph.
-        componentClusters.clear();
-        componentClusters.emplace_back();
-        auto& componentCluster = componentClusters.front();
+        // For now just generate a single cluster consisting of the entire WorkGraph.
+        clusters.emplace_back();
+        vector<typename InputGraph::vertex_descriptor>& cluster = clusters.back();
         typename WorkGraph::vertex_iterator it, itEnd;
         tie(it, itEnd) = boost::vertices(*this);
         for(; it!=itEnd; ++it) {
             const uint64_t w = *it;
             const typename InputGraph::vertex_descriptor v = (*this)[w];
-            componentCluster.push_back(v);
+            cluster.push_back(v);
         }
     }
 };
@@ -127,12 +126,6 @@ template<class InputGraph> void shasta::hcsClustering(
     clusters.clear();
     for(const vector<typename InputGraph::vertex_descriptor>& component: components) {
         const WorkGraph workGraph(inputGraph, component);
-        vector< vector<typename InputGraph::vertex_descriptor> > componentClusters;
-        workGraph.hcsClustering(componentClusters);
-
-        for(const auto& componentCluster: componentClusters) {
-            clusters.push_back(componentCluster);
-        }
-
+        workGraph.hcsClustering(clusters);
     }
 }
