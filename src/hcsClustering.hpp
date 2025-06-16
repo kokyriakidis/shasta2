@@ -1,5 +1,10 @@
 #pragma once
 
+// Suppress some warnings in Boost code.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wuninitialized"
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+
 // HCS clustering for an undirected graph.
 // https://en.wikipedia.org/wiki/HCS_clustering_algorithm
 // The min-cut steps uses stoer_wagner_min_cut
@@ -9,9 +14,14 @@
 
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/connected_components.hpp>
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wuninitialized"
 #include <boost/graph/stoer_wagner_min_cut.hpp>
+#pragma GCC diagnostic pop
 
 #include <cstdint.hpp>
+#include <iostream.hpp>
 #include <map>
 #include <tuple.hpp>
 #include <vector.hpp>
@@ -63,7 +73,11 @@ public:
                 const auto it1 = vertexMap.find(v1);
                 SHASTA_ASSERT(it1 != vertexMap.end());
                 const typename WorkGraph::vertex_descriptor w1 = it1->second;
-                boost::add_edge(w0, w1, *this);
+
+                // Don't add the edge twice.
+                if(w0 < w1) {
+                    boost::add_edge(w0, w1, *this);
+                }
             }
         }
     }
@@ -71,9 +85,45 @@ public:
     // Map vertex descriptors of the InputGraph to vertex descriptors of the WorkGraph.
     std::map<typename InputGraph::vertex_descriptor, typename WorkGraph::vertex_descriptor> vertexMap;
 
+
+
     void hcsClustering(vector< vector<typename InputGraph::vertex_descriptor> >& clusters) const
     {
+        // If just one vertex, generate a single cluster consisting of the entire WorkGraph.
+        if(boost::num_vertices(*this) < 2) {
+            addEntireGraphAsCluster(clusters);
+            return;
+        }
+
+        // Compute the minimum cut.
+        std::map<typename WorkGraph::vertex_descriptor, bool> parityMap;
+        boost::stoer_wagner_min_cut(
+            *this,
+            boost::make_static_property_map<typename WorkGraph::edge_descriptor>(1),
+            boost::parity_map(boost::make_assoc_property_map(parityMap)));
+
+        // Count the edges on the min cut.
+        uint64_t cutCount = 0;
+        typename WorkGraph::edge_iterator it, itEnd;
+        tie(it, itEnd) = boost::edges(*this);
+        for(; it!=itEnd; ++it) {
+            const typename WorkGraph::edge_descriptor e = *it;
+            const typename WorkGraph::vertex_descriptor v0 = boost::source(e, *this);
+            const typename WorkGraph::vertex_descriptor v1 = boost::target(e, *this);
+            if(parityMap[v0] != parityMap[v1]) {
+                 ++cutCount;
+            }
+        }
+        cout << "The min cut has " << cutCount << " edges." << endl;
+
         // For now just generate a single cluster consisting of the entire WorkGraph.
+        addEntireGraphAsCluster(clusters);
+    }
+
+
+
+    void addEntireGraphAsCluster(vector< vector<typename InputGraph::vertex_descriptor> >& clusters) const
+    {
         clusters.emplace_back();
         vector<typename InputGraph::vertex_descriptor>& cluster = clusters.back();
         typename WorkGraph::vertex_iterator it, itEnd;
@@ -84,6 +134,7 @@ public:
             cluster.push_back(v);
         }
     }
+
 };
 
 
@@ -98,11 +149,11 @@ template<class InputGraph> void shasta::hcsClustering(
 
     // Map the vertices to integers.
     uint64_t vertexIndex = 0;
-    std::map<typename InputGraph::vertex_descriptor, uint64_t> vertexMap;
+    std::map<typename InputGraph::vertex_descriptor, uint64_t> vertexIndexMap;
     typename InputGraph::vertex_iterator it, itEnd;
     tie(it, itEnd) = boost::vertices(inputGraph);
     for(; it!=itEnd; ++it) {
-        vertexMap.insert({*it, vertexIndex++});
+        vertexIndexMap.insert({*it, vertexIndex++});
     }
 
     // Compute connected components.
@@ -110,7 +161,7 @@ template<class InputGraph> void shasta::hcsClustering(
     const uint64_t componentCount = boost::connected_components(
         inputGraph,
         boost::make_assoc_property_map(componentMap),
-        boost::vertex_index_map(boost::make_assoc_property_map(vertexMap)));
+        boost::vertex_index_map(boost::make_assoc_property_map(vertexIndexMap)));
     vector< vector<typename InputGraph::vertex_descriptor> > components(componentCount);
     for(const auto& p: componentMap) {
         const typename InputGraph::vertex_descriptor v = p.first;
@@ -126,6 +177,12 @@ template<class InputGraph> void shasta::hcsClustering(
     clusters.clear();
     for(const vector<typename InputGraph::vertex_descriptor>& component: components) {
         const WorkGraph workGraph(inputGraph, component);
+        cout << "Working on a connected component with " << boost::num_vertices(workGraph) <<
+            " vertices and " << boost::num_edges(workGraph) << " edges." << endl;
+        SHASTA_ASSERT(boost::num_vertices(workGraph) == component.size());
         workGraph.hcsClustering(clusters);
     }
 }
+
+
+#pragma GCC diagnostic pop
