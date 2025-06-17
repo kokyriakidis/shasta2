@@ -82,12 +82,63 @@ public:
         }
     }
 
+
+
+    // Create the WorkGraph from one side of the min cut of another WorkGraph.
+    WorkGraph(
+        const WorkGraph& that,
+        std::map<typename WorkGraph::vertex_descriptor, bool>& parityMap,
+        bool side,
+        const InputGraph& inputGraph)
+    {
+        // Add vertices.
+        typename WorkGraph::vertex_iterator it, itEnd;
+        tie(it, itEnd) = boost::vertices(that);
+        for(; it!=itEnd; ++it) {
+            const typename WorkGraph::vertex_descriptor wOld = *it;
+            const auto it = parityMap.find(wOld);
+            SHASTA_ASSERT(it != parityMap.end());
+            if(it->second == side) {
+                const typename InputGraph::vertex_descriptor v = that[wOld];
+                const typename WorkGraph::vertex_descriptor wNew = boost::add_vertex(v, *this);
+                vertexMap.insert({v, wNew});
+            }
+        }
+
+        // Add edges.
+        tie(it, itEnd) = boost::vertices(*this);
+        for(; it!=itEnd; ++it) {
+            const typename WorkGraph::vertex_descriptor w0 = *it;
+            const typename InputGraph::vertex_descriptor v = (*this)[w0];
+
+            // Loop over the out-edges of v in the InputGraph.
+            typename InputGraph::out_edge_iterator it1, it1End;
+            tie(it1, it1End) = boost::out_edges(v, inputGraph);
+            for(; it1!=it1End; ++it1) {
+                const typename InputGraph::edge_descriptor e = *it1;
+                const typename InputGraph::vertex_descriptor v1 = boost::target(e, inputGraph);
+                const auto it2 = vertexMap.find(v1);
+                if(it2 != vertexMap.end()) {
+                    const typename WorkGraph::vertex_descriptor w1 = it2->second;
+                    if(w0 < w1) {
+                        boost::add_edge(w0, w1, *this);
+                    }
+                }
+            }
+        }
+
+    }
+
+
+
     // Map vertex descriptors of the InputGraph to vertex descriptors of the WorkGraph.
     std::map<typename InputGraph::vertex_descriptor, typename WorkGraph::vertex_descriptor> vertexMap;
 
 
 
-    void hcsClustering(vector< vector<typename InputGraph::vertex_descriptor> >& clusters) const
+    void hcsClustering(
+        const InputGraph& inputGraph,
+        vector< vector<typename InputGraph::vertex_descriptor> >& clusters) const
     {
         // If just one vertex, generate a single cluster consisting of the entire WorkGraph.
         if(boost::num_vertices(*this) < 2) {
@@ -116,8 +167,21 @@ public:
         }
         cout << "The min cut has " << cutCount << " edges." << endl;
 
-        // For now just generate a single cluster consisting of the entire WorkGraph.
-        addEntireGraphAsCluster(clusters);
+
+        // If this is a highly connected subgraph, add it as a cluster.
+        if(2 * cutCount > num_vertices(*this)) {
+            addEntireGraphAsCluster(clusters);
+        } else {
+
+            // This is not a highly connected subgraph.
+            // Construct two new WorkGraphs, one for each side of the min cut.
+            // Then do hcsClustering on both of them.
+            for(uint64_t side=0; side<2; side++) {
+                WorkGraph newWorkGraph(*this, parityMap, side==0, inputGraph);
+                newWorkGraph.hcsClustering(inputGraph, clusters);
+            }
+        }
+
     }
 
 
@@ -180,7 +244,7 @@ template<class InputGraph> void shasta::hcsClustering(
         cout << "Working on a connected component with " << boost::num_vertices(workGraph) <<
             " vertices and " << boost::num_edges(workGraph) << " edges." << endl;
         SHASTA_ASSERT(boost::num_vertices(workGraph) == component.size());
-        workGraph.hcsClustering(clusters);
+        workGraph.hcsClustering(inputGraph, clusters);
     }
 }
 
