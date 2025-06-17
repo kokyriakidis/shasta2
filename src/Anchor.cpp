@@ -1227,7 +1227,7 @@ void Anchors::clusterAnchorPairOrientedReads(
                 const OrientedReadId orientedReadId1 = anchorPair.orientedReadIds[i1];
                 const double j = jaccard[i0][i1];
                 const double H = j / 3.;
-                const string color = hslToRgbString(H, 0.75, 0.5);
+                const string color = hslToRgbString(H, 0.5, 0.5);
                 html << "<td class=centered style='background-color:" << color <<
                     "' title='" << orientedReadId0 << " " << orientedReadId1 <<
                     "'>" << std::fixed << std::setprecision(2) << j;
@@ -1292,7 +1292,7 @@ void Anchors::clusterAnchorPairOrientedReads(
         dot << "graph SimilarityGraph {\n";
         for(uint64_t i=0; i<orientedReadCount; i++) {
             const OrientedReadId orientedReadId = anchorPair.orientedReadIds[i];
-            const string color = randomHslColor(similarityGraph[i].clusterId, 1., 0.5);
+            const string color = hslToRgbString(double(similarityGraph[i].clusterId) / double(clusters.size()), 0.75, 0.6);
             dot << i << " [label=\"" << orientedReadId << "\\n" << similarityGraph[i].clusterId << "\""
                 " fillcolor=\"" << color << "\"];\n";
         }
