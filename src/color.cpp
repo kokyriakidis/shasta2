@@ -8,6 +8,7 @@ using namespace shasta;
 #include <array.hpp>
 #include <cmath>
 #include <format>
+// #include <iostream.hpp>
 #include <limits>
 #include <string.hpp>
 #include <utility.hpp>
@@ -39,26 +40,41 @@ std::array<double, 3> shasta::hslToRgb(double H, double S, double L)
     const double Hprime = 6 * H;
     const double X = C * (1 - fabs(fmod(Hprime, 2.) - 1.));
 
+    /*
+    cout << "HSL " << H << " " << S << " " << L << endl;
+    cout << "C " << C << endl;
+    cout << "H' " << Hprime << endl;
+    cout << "X " << X << endl;
+    */
+
+    array<double, 3> rgb;
     if(Hprime >= 0. and Hprime <1.) {
-        return {C, X, 0.};
-    }
+        rgb = {C, X, 0.};
+    } else
     if(Hprime >= 1. and Hprime <2.) {
-        return {X, C, 0.};
-    }
-    if(Hprime >= 2. and Hprime <3.) {
-        return {0., C, X};
-    }
-    if(Hprime >= 3. and Hprime <4.) {
-        return {0., X, C};
-    }
-    if(Hprime >= 4. and Hprime <5.) {
-        return {X, 0., C};
-    }
-    if(Hprime >= 5. and Hprime <6.) {
-        return {C, 0., X};
+        rgb = {X, C, 0.};
+    } else if(Hprime >= 2. and Hprime <3.) {
+        rgb = {0., C, X};
+    } else if(Hprime >= 3. and Hprime <4.) {
+        rgb = {0., X, C};
+    } else if(Hprime >= 4. and Hprime <5.) {
+        rgb = {X, 0., C};
+    } else if(Hprime >= 5. and Hprime <6.) {
+        rgb = {C, 0., X};
+    } else {
+        SHASTA_ASSERT(0);
     }
 
-    SHASTA_ASSERT(0);
+    // cout << "RGB1 " << rgb[0] << " " << rgb[1] << " " << rgb[2] << endl;
+
+    const double m = L - C / 2.;
+    // cout << "m " << m << endl;
+    for(uint64_t i=0; i<3; i++) {
+        rgb[i] += m;
+    }
+    // cout << "RGB " << rgb[0] << " " << rgb[1] << " " << rgb[2] << endl;
+
+    return rgb;
 }
 
 
