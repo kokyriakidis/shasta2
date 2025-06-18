@@ -35,16 +35,6 @@ using namespace pybind11;
 
 PYBIND11_MODULE(shasta2, shasta2Module)
 {
-    // Class AssemblerOptions::AssemblyGraphOptions.
-    class_<AssemblerOptions::AssemblyGraphOptions>(shasta2Module, "AssemblyGraphOptions")
-        .def_readonly("detangleMinCommonCoverage", &AssemblerOptions::AssemblyGraphOptions::detangleMinCommonCoverage)
-        .def_readonly("detangleLowCoverageThreshold", &AssemblerOptions::AssemblyGraphOptions::detangleLowCoverageThreshold)
-        .def_readonly("detangleHighCoverageThreshold", &AssemblerOptions::AssemblyGraphOptions::detangleHighCoverageThreshold)
-        .def_readonly("detangleEpsilon", &AssemblerOptions::AssemblyGraphOptions::detangleEpsilon)
-        .def_readonly("detangleMaxLogP", &AssemblerOptions::AssemblyGraphOptions::detangleMaxLogP)
-        .def_readonly("detangleMinLogPDelta", &AssemblerOptions::AssemblyGraphOptions::detangleMinLogPDelta)
-        ;
-
     // Class AssemblerOptions.
     class_<AssemblerOptions>(shasta2Module, "AssemblerOptions")
 
@@ -58,7 +48,12 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def_readonly("maxAnchorCoverage", &AssemblerOptions::maxAnchorCoverage)
         .def_readonly("minAnchorGraphEdgeCoverageNear", &AssemblerOptions::minAnchorGraphEdgeCoverageNear)
         .def_readonly("minAnchorGraphEdgeCoverageFar", &AssemblerOptions::minAnchorGraphEdgeCoverageFar)
-        .def_readonly("assemblyGraphOptions", &AssemblerOptions::assemblyGraphOptions)
+        .def_readonly("detangleMinCommonCoverage", &AssemblerOptions::detangleMinCommonCoverage)
+        .def_readonly("detangleLowCoverageThreshold", &AssemblerOptions::detangleLowCoverageThreshold)
+        .def_readonly("detangleHighCoverageThreshold", &AssemblerOptions::detangleHighCoverageThreshold)
+        .def_readonly("detangleEpsilon", &AssemblerOptions::detangleEpsilon)
+        .def_readonly("detangleMaxLogP", &AssemblerOptions::detangleMaxLogP)
+        .def_readonly("detangleMinLogPDelta", &AssemblerOptions::detangleMinLogPDelta)
         ;
 
     // Class Assembler.

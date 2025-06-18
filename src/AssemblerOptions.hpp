@@ -55,18 +55,14 @@ public:
 
     uint64_t bubbleCleanupMinCommonCount = 6;
 
-    class AssemblyGraphOptions {
-    public:
+    // Options that control detangling.
+    uint64_t detangleMinCommonCoverage = 3;
+    uint64_t detangleLowCoverageThreshold = 1;
+    uint64_t detangleHighCoverageThreshold = 4;
+    double detangleEpsilon = 0.05;
+    double detangleMaxLogP = 30.;
+    double detangleMinLogPDelta = 10.;
 
-        // Options that control detangling.
-        uint64_t detangleMinCommonCoverage = 3;
-        uint64_t detangleLowCoverageThreshold = 1;
-        uint64_t detangleHighCoverageThreshold = 4;
-        double detangleEpsilon = 0.05;
-        double detangleMaxLogP = 30.;
-        double detangleMinLogPDelta = 10.;
-    };
-    AssemblyGraphOptions assemblyGraphOptions;
     uint64_t pruneLength = 50000;
 
     class LocalAssemblyOptions {

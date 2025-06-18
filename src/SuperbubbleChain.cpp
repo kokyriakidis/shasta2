@@ -135,7 +135,7 @@ void SuperbubbleChain::phase(
                 edgeSet1.edges,
                 assemblyGraph.assemblerOptions.aDrift,
                 assemblyGraph.assemblerOptions.bDrift);
-            tangleMatrix.gTest(assemblyGraph.assemblerOptions.assemblyGraphOptions.detangleEpsilon);
+            tangleMatrix.gTest(assemblyGraph.assemblerOptions.detangleEpsilon);
 
             SHASTA_ASSERT(not tangleMatrix.hypotheses.empty());
             const auto& bestHypothesis = tangleMatrix.hypotheses.front();
@@ -148,8 +148,8 @@ void SuperbubbleChain::phase(
             }
             const double deltaLogP = secondBestG - bestG;
             bool isGood =
-                (bestG <= assemblyGraph.assemblerOptions.assemblyGraphOptions.detangleMaxLogP) and
-                (deltaLogP >= assemblyGraph.assemblerOptions.assemblyGraphOptions.detangleMinLogPDelta);
+                (bestG <= assemblyGraph.assemblerOptions.detangleMaxLogP) and
+                (deltaLogP >= assemblyGraph.assemblerOptions.detangleMinLogPDelta);
 
             if(debug) {
                 cout << "Edge sets " << index0 << " " << index1 << endl;

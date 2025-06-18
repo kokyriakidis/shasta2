@@ -163,15 +163,15 @@ void AssemblyGraph::run(uint64_t threadCount)
     createTangleTemplates();
     /*
     SimpleDetangler detangler(
-        assemblerOptions.assemblyGraphOptions.detangleMinCommonCoverage,
-        assemblerOptions.assemblyGraphOptions.detangleLowCoverageThreshold,
-        assemblerOptions.assemblyGraphOptions.detangleHighCoverageThreshold);
+        assemblerOptions.detangleMinCommonCoverage,
+        assemblerOptions.detangleLowCoverageThreshold,
+        assemblerOptions.detangleHighCoverageThreshold);
     */
     LikelihoodRatioDetangler detangler(
-        assemblerOptions.assemblyGraphOptions.detangleMinCommonCoverage,
-        assemblerOptions.assemblyGraphOptions.detangleEpsilon,
-        assemblerOptions.assemblyGraphOptions.detangleMaxLogP,
-        assemblerOptions.assemblyGraphOptions.detangleMinLogPDelta);
+        assemblerOptions.detangleMinCommonCoverage,
+        assemblerOptions.detangleEpsilon,
+        assemblerOptions.detangleMaxLogP,
+        assemblerOptions.detangleMinLogPDelta);
     detangle(maxIterationCount, detangler);
     write("D");
 

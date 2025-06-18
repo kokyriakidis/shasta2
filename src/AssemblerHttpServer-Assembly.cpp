@@ -775,7 +775,7 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
     HttpServer::getParameterValue(request, "exits", exitsString);
     boost::trim(exitsString);
 
-    double epsilon = httpServerData.assemblerOptions->assemblyGraphOptions.detangleEpsilon;
+    double epsilon = httpServerData.assemblerOptions->detangleEpsilon;
     HttpServer::getParameterValue(request, "epsilon", epsilon);
 
 
@@ -912,7 +912,7 @@ void Assembler::exploreVertexTangle(const vector<string>& request, ostream& html
     string segmentName;;
     HttpServer::getParameterValue(request, "segmentName", segmentName);
 
-    double epsilon = httpServerData.assemblerOptions->assemblyGraphOptions.detangleEpsilon;
+    double epsilon = httpServerData.assemblerOptions->detangleEpsilon;
     HttpServer::getParameterValue(request, "epsilon", epsilon);
 
     // Start the form.
@@ -998,7 +998,7 @@ void Assembler::exploreEdgeTangle(const vector<string>& request, ostream& html)
     string segmentName;;
     HttpServer::getParameterValue(request, "segmentName", segmentName);
 
-    double epsilon = httpServerData.assemblerOptions->assemblyGraphOptions.detangleEpsilon;
+    double epsilon = httpServerData.assemblerOptions->detangleEpsilon;
     HttpServer::getParameterValue(request, "epsilon", epsilon);
 
     // Start the form.

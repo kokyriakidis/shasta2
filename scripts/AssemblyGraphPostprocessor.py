@@ -4,7 +4,6 @@ from shasta2 import *
 
 openPerformanceLog("Python-performance.log")
 assemblerOptions = AssemblerOptions()
-assemblyGraphOptions = assemblerOptions.assemblyGraphOptions
 
 # Create the Assembler and access what we need.
 assembler = Assembler()
@@ -20,10 +19,10 @@ assemblyGraph.phaseSuperbubbleChains(10)
 
 """
 detangler = ChiSquareDetangler(
-    assemblyGraphOptions.detangleMinCommonCoverage,
-    assemblyGraphOptions.detangleEpsilon,
-    assemblyGraphOptions.detangleMaxLogP,
-    assemblyGraphOptions.detangleMinLogPDelta)
+    assemblerOptions.detangleMinCommonCoverage,
+    assemblerOptions.detangleEpsilon,
+    assemblerOptions.detangleMaxLogP,
+    assemblerOptions.detangleMinLogPDelta)
 detangler.debug = True  
 assemblyGraph.detangleVertices(detangler)
 assemblyGraph.compress()
