@@ -752,7 +752,7 @@ AssemblyGraphPostprocessor& Assembler::getAssemblyGraph(
     auto it = assemblyGraphTable.find(assemblyStage);
     if(it == assemblyGraphTable.end()) {
         shared_ptr<AssemblyGraphPostprocessor> p =
-            make_shared<AssemblyGraphPostprocessor>(anchors(), assemblerOptions, assemblyStage);
+            make_shared<AssemblyGraphPostprocessor>(anchors(), journeys(), assemblerOptions, assemblyStage);
         tie(it, ignore) = assemblyGraphTable.insert(make_pair(assemblyStage, p));
     }
     return *(it->second);

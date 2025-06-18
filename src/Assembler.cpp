@@ -222,6 +222,7 @@ void Assembler::createAssemblyGraph(
     // Create the AssemblyGraph.
     AssemblyGraph assemblyGraph(
         anchors(),
+        journeys(),
         *anchorGraphPointer,
         options);
     anchorGraphPointer = 0;

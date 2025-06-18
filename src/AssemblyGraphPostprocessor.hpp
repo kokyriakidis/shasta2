@@ -20,6 +20,7 @@ class shasta::AssemblyGraphPostprocessor : public AssemblyGraph {
 public:
     AssemblyGraphPostprocessor(
         const Anchors&,
+        const Journeys&,
         const AssemblerOptions&,
         const string& assemblyStage);
 

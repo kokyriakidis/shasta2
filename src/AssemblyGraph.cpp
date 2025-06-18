@@ -44,11 +44,13 @@ template class MultithreadedObject<AssemblyGraph>;
 // Initial construction from the AnchorGraph.
 AssemblyGraph::AssemblyGraph(
     const Anchors& anchors,
+    const Journeys& journeys,
     const AnchorGraph& anchorGraph,
     const AssemblerOptions& assemblerOptions) :
     MappedMemoryOwner(anchors),
     MultithreadedObject<AssemblyGraph>(*this),
     anchors(anchors),
+    journeys(journeys),
     assemblerOptions(assemblerOptions)
 {
     AssemblyGraph& assemblyGraph = *this;
@@ -127,11 +129,13 @@ AssemblyGraph::AssemblyGraph(
 // Deserialize constructor.
 AssemblyGraph::AssemblyGraph(
     const Anchors& anchors,
+    const Journeys& journeys,
     const AssemblerOptions& assemblerOptions,
     const string& stage) :
     MappedMemoryOwner(anchors),
     MultithreadedObject<AssemblyGraph>(*this),
     anchors(anchors),
+    journeys(journeys),
     assemblerOptions(assemblerOptions)
 {
     load(stage);
@@ -1681,6 +1685,188 @@ void AssemblyGraph::phaseSuperbubbleChains(uint64_t maxDistance)
         superbubbleChain.phase(*this, superbubbleChainId);
     }
 
+}
+
+
+// Simplify Superbubbles by turning them into bubbles via clustering
+// of oriented read journeys.
+void AssemblyGraph::simplifySuperbubbles()
+{
+    const uint64_t maxDistance = 10;
+    const uint64_t minCoverage = 4;
+
+    cout << "AssemblyGraph::simplifySuperbubbles begins." << endl;
+
+    // Find the superbubbles, then remove superbubbles that are entirely
+    // contained in another superbubble.
+    vector<Superbubble> superbubbles;
+    findSuperbubbles(maxDistance, superbubbles);
+    removeContainedSuperbubbles(superbubbles);
+
+    // Count the number of true Superbubbles, excluding bubbles.
+    uint64_t count = 0;
+    for(const Superbubble& superbubble: superbubbles) {
+        if(not superbubble.isBubble()) {
+            ++count;
+        }
+    }
+    cout << "Found " << superbubbles.size() << " superbubbles of which " <<
+        count << " are not simple bubbles." << endl;
+
+    for(const Superbubble& superbubble: superbubbles) {
+        if(not superbubble.isBubble()) {
+            simplifySuperbubble(superbubble, minCoverage);
+        }
+    }
+
+    cout << "AssemblyGraph::simplifySuperbubbles ends." << endl;
+}
+
+
+
+void AssemblyGraph::simplifySuperbubble(
+    const Superbubble& superbubble,
+    uint64_t minCoverage)
+{
+    AssemblyGraph& assemblyGraph = *this;
+    const bool debug = true;
+
+    const AnchorId anchorIdA = assemblyGraph[superbubble.sourceVertex].anchorId;
+    const AnchorId anchorIdB = assemblyGraph[superbubble.targetVertex].anchorId;
+
+#if 0
+    if(anchorIdToString(anchorIdA) != "396938-") {
+        return;
+    }
+#endif
+
+    if(debug) {
+        cout << "Working on a superbubble consisting of the following " <<
+            superbubble.internalEdges.size() << " edges:" << endl;
+        for(const edge_descriptor e: superbubble.internalEdges) {
+            cout << assemblyGraph[e].id << " ";
+        }
+        cout << endl;
+    }
+
+    // Create an AnchorPair between anchorIdA and anchorIdB
+    // using all oriented reads in common between anchorIdA and anchorIdB.
+    AnchorPair anchorPair(anchors, anchorIdA, anchorIdB, false);
+
+    if(debug) {
+        cout << "The initial anchor pair has " << anchorPair.orientedReadIds.size() <<
+            " oriented reads." << endl;
+    }
+
+    // We only want to use OrientedReadIds that appear at least once in the internal
+    // edges of the superbubble.
+    vector<OrientedReadId> allowedOrientedReadIds;
+    for(const edge_descriptor e: superbubble.internalEdges) {
+        const AssemblyGraphEdge& edge = assemblyGraph[e];
+        for(const AssemblyGraphEdgeStep& step: edge) {
+            const AnchorPair& stepAnchorPair = step.anchorPair;
+            copy(stepAnchorPair.orientedReadIds.begin(), stepAnchorPair.orientedReadIds.end(),
+                back_inserter(allowedOrientedReadIds));
+        }
+    }
+    deduplicate(allowedOrientedReadIds);
+    if(debug) {
+        cout << "The internal edges of the superbubble contain " <<
+            allowedOrientedReadIds.size() << " oriented reads." << endl;
+    }
+
+    // Only keep OrientedReadIds in the allowed set.
+    vector<OrientedReadId> newOrientedReadIds;
+    std::set_intersection(
+        anchorPair.orientedReadIds.begin(), anchorPair.orientedReadIds.end(),
+        allowedOrientedReadIds.begin(), allowedOrientedReadIds.end(),
+        back_inserter(newOrientedReadIds));
+    anchorPair.orientedReadIds.swap(newOrientedReadIds);
+
+    if(debug) {
+        cout << "The final anchor pair has " << anchorPair.orientedReadIds.size() <<
+            " oriented reads." << endl;
+    }
+
+    // Cluster the oriented reads in the AnchorPair.
+    vector<AnchorPair> newAnchorPairs;
+    anchorPair.splitByClustering(anchors, journeys, assemblerOptions.clusteringMinJaccard, newAnchorPairs);
+
+
+
+    if(debug) {
+        cout << "Found " << newAnchorPairs.size() << " split AnchorPairs with sizes:";
+        for(const AnchorPair& newAnchorPair: newAnchorPairs) {
+            cout << " " << newAnchorPair.orientedReadIds.size();
+        }
+        cout << endl;
+
+#if 0
+        // Also write out assembled sequences.
+        for(uint64_t i=0; i<newAnchorPairs.size(); i++) {
+            const AnchorPair& newAnchorPair = newAnchorPairs[i];
+            ostream html(0);
+            LocalAssembly2 localAssembly(
+                anchors, html, false,
+                assemblerOptions.aDrift,
+                assemblerOptions.bDrift,
+                newAnchorPair);
+            localAssembly.run(false, assemblerOptions.localAssemblyOptions.maxAbpoaLength);
+            vector<shasta::Base> sequence;
+            localAssembly.getSequence(sequence);
+            cout << ">" << i << endl;
+            copy(sequence.begin(), sequence.end(), ostream_iterator<shasta::Base>(cout));
+            cout << endl;
+        }
+#endif
+    }
+
+    // Only keep the ones with coverage at least minCoverage.
+    for(uint64_t i=0; i<newAnchorPairs.size(); i++) {
+        if(newAnchorPairs[i].orientedReadIds.size() < minCoverage) {
+            newAnchorPairs.resize(i);
+            break;
+        }
+    }
+
+    if(debug) {
+        cout << "Kept " << newAnchorPairs.size() << " split AnchorPairs with sizes:";
+        for(const AnchorPair& newAnchorPair: newAnchorPairs) {
+            cout << " " << newAnchorPair.orientedReadIds.size();
+        }
+        cout << endl;
+    }
+
+    // We replace the Superbubble with a bubble created using these new AnchorPairs.
+    // Each of the new AnchorPairs we kept will generate a branch of the new bubble.
+    for(const AnchorPair& newAnchorPair: newAnchorPairs) {
+        const uint64_t offset = newAnchorPair.getAverageOffset(anchors);
+        edge_descriptor e;
+        bool edgeWasAdded;
+        tie(e, edgeWasAdded) = add_edge(
+            superbubble.sourceVertex, superbubble.targetVertex,
+            AssemblyGraphEdge(nextEdgeId++), assemblyGraph);
+        AssemblyGraphEdge& edge = assemblyGraph[e];
+        edge.emplace_back(newAnchorPair, offset);
+        if(debug) {
+            cout << "Created new edge " << edge.id << endl;
+        }
+    }
+
+    // Now we can remove all the internal edges of the Superbubble.
+    for(const edge_descriptor e: superbubble.internalEdges) {
+        if(debug) {
+            cout << "Removed edge " << assemblyGraph[e].id << endl;
+        }
+        boost::remove_edge(e, assemblyGraph);
+    }
+
+    // Also remove the internal vertices of the Superbubble.
+    for(const vertex_descriptor v: superbubble.internalVertices) {
+        SHASTA_ASSERT(in_degree(v, assemblyGraph) == 0);
+        SHASTA_ASSERT(out_degree(v, assemblyGraph) == 0);
+        boost::remove_vertex(v, assemblyGraph);
+    }
 }
 
 

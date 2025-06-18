@@ -128,12 +128,14 @@ public:
     // Initial construction from the AnchorGraph.
     AssemblyGraph(
         const Anchors&,
+        const Journeys&,
         const AnchorGraph&,
         const AssemblerOptions&);
 
     // Deserialize constructor.
     AssemblyGraph(
         const Anchors&,
+        const Journeys&,
         const AssemblerOptions&,
         const string& stage);
 
@@ -141,6 +143,7 @@ public:
     void run(uint64_t threadCount);
 
     const Anchors& anchors;
+    const Journeys& journeys;
     uint64_t nextVertexId = 0;
     uint64_t nextEdgeId = 0;
     const AssemblerOptions& assemblerOptions;
@@ -226,6 +229,11 @@ public:
 
     void writeSuperbubbleChains(const vector<SuperbubbleChain>&, const string& fileName) const;
     void writeSuperbubbleChainsForBandage(const vector<SuperbubbleChain>&, const string& fileName) const;
+
+    // Simplify Superbubbles by turning them into bubbles via clustering
+    // of oriented read journeys.
+    void simplifySuperbubbles();
+    void simplifySuperbubble(const Superbubble&, uint64_t minCoverage);
 
     // Phasing of SuperbubbleChains.
     void phaseSuperbubbleChains(uint64_t maxDistance);
