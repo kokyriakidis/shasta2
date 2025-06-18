@@ -21,7 +21,6 @@
 #pragma GCC diagnostic pop
 
 #include <cstdint.hpp>
-#include <iostream.hpp>
 #include <map>
 #include <tuple.hpp>
 #include <vector.hpp>
@@ -165,7 +164,6 @@ public:
                  ++cutCount;
             }
         }
-        cout << "The min cut has " << cutCount << " edges." << endl;
 
 
         // If this is a highly connected subgraph, add it as a cluster.
@@ -241,8 +239,6 @@ template<class InputGraph> void shasta::hcsClustering(
     clusters.clear();
     for(const vector<typename InputGraph::vertex_descriptor>& component: components) {
         const WorkGraph workGraph(inputGraph, component);
-        cout << "Working on a connected component with " << boost::num_vertices(workGraph) <<
-            " vertices and " << boost::num_edges(workGraph) << " edges." << endl;
         SHASTA_ASSERT(boost::num_vertices(workGraph) == component.size());
         workGraph.hcsClustering(inputGraph, clusters);
     }
