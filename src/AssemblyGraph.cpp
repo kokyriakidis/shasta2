@@ -611,7 +611,7 @@ uint64_t AssemblyGraph::bubbleCleanupIteration(uint64_t threadCount)
         const AnchorPair bridgeAnchorPair(anchors, anchorId0, anchorId1, false);
 
         // If coverage of the bridgeAnchorPair is sufficient, add this bubble to our list of candidates.
-        if(bridgeAnchorPair.orientedReadIds.size() >= assemblerOptions.assemblyGraphOptions.bubbleCleanupMinCommonCount) {
+        if(bridgeAnchorPair.orientedReadIds.size() >= assemblerOptions.bubbleCleanupMinCommonCount) {
             candidateBubbles.push_back(make_pair(bubble, bridgeAnchorPair));
         }
 

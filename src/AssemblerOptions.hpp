@@ -53,9 +53,10 @@ public:
     double aDrift = 300.;
     double bDrift = 0.01;
 
+    uint64_t bubbleCleanupMinCommonCount = 6;
+
     class AssemblyGraphOptions {
     public:
-        uint64_t bubbleCleanupMinCommonCount = 6;
 
         uint64_t transitiveReductionThreshold = 10000;
         uint64_t transitiveReductionA = 200;

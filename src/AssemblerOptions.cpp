@@ -111,8 +111,8 @@ void AssemblerOptions::addOptions()
         "Constant factor for offset consistency."
         )->capture_default_str();
 
-     add_option("--assembly-graph-bubble-cleanup-min-common-count",
-        assemblyGraphOptions.bubbleCleanupMinCommonCount,
+     add_option("--bubble-cleanup-min-common-count",
+        bubbleCleanupMinCommonCount,
         "Minimum number of common oriented reads for bubble cleanup."
         )->capture_default_str();
 
