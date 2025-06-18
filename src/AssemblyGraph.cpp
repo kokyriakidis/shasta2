@@ -163,6 +163,10 @@ void AssemblyGraph::run(uint64_t threadCount)
     compress();
     write("C");
 
+    // Simplify superbubbles.
+    simplifySuperbubbles();
+    write("D");
+
     // Detangling.
     createTangleTemplates();
     /*
@@ -177,7 +181,7 @@ void AssemblyGraph::run(uint64_t threadCount)
         assemblerOptions.detangleMaxLogP,
         assemblerOptions.detangleMinLogPDelta);
     detangle(maxIterationCount, detangler);
-    write("D");
+    write("E");
 
     // Sequence assembly.
     assembleAll(threadCount);
@@ -1692,15 +1696,13 @@ void AssemblyGraph::phaseSuperbubbleChains(uint64_t maxDistance)
 // of oriented read journeys.
 void AssemblyGraph::simplifySuperbubbles()
 {
-    const uint64_t maxDistance = 10;
-    const uint64_t minCoverage = 4;
 
     cout << "AssemblyGraph::simplifySuperbubbles begins." << endl;
 
     // Find the superbubbles, then remove superbubbles that are entirely
     // contained in another superbubble.
     vector<Superbubble> superbubbles;
-    findSuperbubbles(maxDistance, superbubbles);
+    findSuperbubbles(assemblerOptions.findSuperbubblesMaxDistance, superbubbles);
     removeContainedSuperbubbles(superbubbles);
 
     // Count the number of true Superbubbles, excluding bubbles.
@@ -1715,7 +1717,7 @@ void AssemblyGraph::simplifySuperbubbles()
 
     for(const Superbubble& superbubble: superbubbles) {
         if(not superbubble.isBubble()) {
-            simplifySuperbubble(superbubble, minCoverage);
+            simplifySuperbubble(superbubble, assemblerOptions.simplifySuperbubbleMinCoverage);
         }
     }
 

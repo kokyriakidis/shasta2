@@ -56,6 +56,9 @@ public:
     uint64_t bubbleCleanupMinCommonCount = 6;
     double clusteringMinJaccard = 0.7;
 
+    uint64_t findSuperbubblesMaxDistance = 10;
+    uint64_t simplifySuperbubbleMinCoverage = 4;
+
     // Options that control detangling.
     uint64_t detangleMinCommonCoverage = 3;
     uint64_t detangleLowCoverageThreshold = 1;

@@ -121,6 +121,16 @@ void AssemblerOptions::addOptions()
        "Minimum Jaccard similarity for oriented read clustering."
        )->capture_default_str();
 
+    add_option("--find-superbubbles-max-distance",
+        findSuperbubblesMaxDistance,
+       "Maximum distance (number of BFS edges) when finding superbubbles."
+       )->capture_default_str();
+
+    add_option("--simplify-superbubble-min-coverage",
+        simplifySuperbubbleMinCoverage,
+       "Minimum coverage when simplifying superbubbles."
+       )->capture_default_str();
+
     add_option("--detangle-min-common-coverage",
         detangleMinCommonCoverage,
         "Minimum common coverage for detangling."
