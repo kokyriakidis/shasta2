@@ -116,21 +116,6 @@ void AssemblerOptions::addOptions()
         "Minimum number of common oriented reads for bubble cleanup."
         )->capture_default_str();
 
-    add_option("--assembly-graph-transitive-reduction-threshold",
-        assemblyGraphOptions.transitiveReductionThreshold,
-        "Length threshold for transitive reduction of the assembly graph."
-        )->capture_default_str();
-
-    add_option("--assembly-graph-transitive-reduction-a",
-        assemblyGraphOptions.transitiveReductionA,
-        "a-value for transitive reduction of the assembly graph."
-        )->capture_default_str();
-
-    add_option("--assembly-graph-transitive-reduction-b",
-        assemblyGraphOptions.transitiveReductionB,
-        "b-value for transitive reduction of the assembly graph."
-        )->capture_default_str();
-
     add_option("--detangle-min-common-coverage",
         assemblyGraphOptions.detangleMinCommonCoverage,
         "Minimum common coverage for detangling."

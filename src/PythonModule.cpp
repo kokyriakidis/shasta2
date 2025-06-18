@@ -37,9 +37,6 @@ PYBIND11_MODULE(shasta2, shasta2Module)
 {
     // Class AssemblerOptions::AssemblyGraphOptions.
     class_<AssemblerOptions::AssemblyGraphOptions>(shasta2Module, "AssemblyGraphOptions")
-        .def_readonly("transitiveReductionThreshold", &AssemblerOptions::AssemblyGraphOptions::transitiveReductionThreshold)
-        .def_readonly("transitiveReductionA", &AssemblerOptions::AssemblyGraphOptions::transitiveReductionA)
-        .def_readonly("transitiveReductionB", &AssemblerOptions::AssemblyGraphOptions::transitiveReductionB)
         .def_readonly("detangleMinCommonCoverage", &AssemblerOptions::AssemblyGraphOptions::detangleMinCommonCoverage)
         .def_readonly("detangleLowCoverageThreshold", &AssemblerOptions::AssemblyGraphOptions::detangleLowCoverageThreshold)
         .def_readonly("detangleHighCoverageThreshold", &AssemblerOptions::AssemblyGraphOptions::detangleHighCoverageThreshold)
