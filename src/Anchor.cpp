@@ -1085,7 +1085,7 @@ AnchorPair Anchors::bridge(
 
     // Split z into AnchorPairs with consistent offsets.
     vector<AnchorPair> splitAnchorPairs;
-    z.split(*this, aDrift, bDrift, splitAnchorPairs);
+    z.splitByOffsets(*this, aDrift, bDrift, splitAnchorPairs);
 
     // Return the one with the most coverage.
     return splitAnchorPairs.front();

@@ -506,7 +506,7 @@ void Assembler::exploreAnchorPair(const vector<string>& request, ostream& html)
     // See if this AnchorPair can be split.
     {
         vector<AnchorPair> newAnchorPairs;
-        anchorPair.split(anchors(),
+        anchorPair.splitByOffsets(anchors(),
             httpServerData.assemblerOptions->aDrift,
             httpServerData.assemblerOptions->bDrift,
             newAnchorPairs);

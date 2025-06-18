@@ -309,7 +309,7 @@ void LocalAssembly2::gatherOrientedReads(
     // Split this AnchorPair into AnchorPairs with consistent offsets
     // and only use the larger one.
     vector<AnchorPair> splitAnchorPairs;
-    anchorPairBeforeSplitting.split(anchors, aDrift, bDrift, splitAnchorPairs);
+    anchorPairBeforeSplitting.splitByOffsets(anchors, aDrift, bDrift, splitAnchorPairs);
     const AnchorPair& anchorPair = splitAnchorPairs.front();
 
     const uint64_t n = anchorPair.orientedReadIds.size();

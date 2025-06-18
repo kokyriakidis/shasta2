@@ -122,7 +122,7 @@ AnchorGraph::AnchorGraph(
 
                 // We have to split this AnchorPair into consistent AnchorPairs,
                 // then generate a new edge for each (a set of parallel edges).
-                anchorPair.split(anchors, aDrift, bDrift, newAnchorPairs);
+                anchorPair.splitByOffsets(anchors, aDrift, bDrift, newAnchorPairs);
 
                 // cout << "Generating " << newAnchorPairs.size() << " parallel edges for " <<
                 //    anchorIdToString(anchorIdA) << " -> " << anchorIdToString(anchorPair.anchorIdB) << endl;
@@ -571,7 +571,7 @@ bool AnchorGraph::searchForward(
             AnchorPair anchorPair(anchors, startAnchorId, anchorId0, false);
 
             // Split it to make it consistent.
-            anchorPair.split(anchors, aDrift, bDrift, newAnchorPairs);
+            anchorPair.splitByOffsets(anchors, aDrift, bDrift, newAnchorPairs);
             const AnchorPair& consistentAnchorPair = newAnchorPairs.front();
             const uint64_t offset = consistentAnchorPair.getAverageOffset(anchors);
             const uint64_t coverage = consistentAnchorPair.orientedReadIds.size();
@@ -718,7 +718,7 @@ bool AnchorGraph::searchBackward(
             AnchorPair anchorPair(anchors, anchorId0, startAnchorId, false);
 
             // Split it to make it consistent.
-            anchorPair.split(anchors, aDrift, bDrift, newAnchorPairs);
+            anchorPair.splitByOffsets(anchors, aDrift, bDrift, newAnchorPairs);
             const AnchorPair& consistentAnchorPair = newAnchorPairs.front();
             const uint64_t offset = consistentAnchorPair.getAverageOffset(anchors);
             const uint64_t coverage = consistentAnchorPair.orientedReadIds.size();

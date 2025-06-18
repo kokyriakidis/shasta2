@@ -490,7 +490,7 @@ void AnchorPair::getOffsets(
 // In the resulting AnchorPairs, if the position offsets are sorted in
 // increasing order, any two adjacent offsets D0 and D1
 // will satisfy D1 - D0 <= aDrift + bDrift * (D0 + D1) / 2.
-void AnchorPair::split(
+void AnchorPair::splitByOffsets(
     const Anchors& anchors,
     double aDrift,
     double bDrift,
