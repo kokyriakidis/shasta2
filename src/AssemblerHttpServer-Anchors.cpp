@@ -558,7 +558,8 @@ void Assembler::exploreAnchorPair(const vector<string>& request, ostream& html)
 
 
     // Cluster oriented reads on this AnchorPair.
-    anchors().clusterAnchorPairOrientedReads(anchorPair, journeys(), clusteringMinJaccard, html);
+    vector< vector<uint64_t> > clusters;
+    anchors().clusterAnchorPairOrientedReads(anchorPair, journeys(), clusteringMinJaccard, clusters, html);
 
 
     // The code below was moved to Anchors::clusterAnchorPairOrientedReads.

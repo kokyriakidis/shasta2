@@ -148,10 +148,14 @@ public:
     // Cluster oriented reads in an anchor pair using their journey
     // portions between AnchorIdA and AnchorIdB.
     // Output to html if it is open.
+    // Returns clusters in order of decreasing length.
+    // Each cluster contains indices in AnchoirPair::orientedReadIds
+    // of the OrientedReadIds that belong to that cluster.
     void clusterAnchorPairOrientedReads(
         const AnchorPair&,
         const Journeys&,
         double clusteringMinJaccard,
+        vector< vector<uint64_t> >& clusters,
         ostream& html) const;
 
 

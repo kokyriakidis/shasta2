@@ -10,6 +10,7 @@
 #include "MarkerKmers.hpp"
 #include "Markers.hpp"
 #include "orderPairs.hpp"
+#include "orderVectors.hpp"
 #include "performanceLog.hpp"
 #include "Reads.hpp"
 #include "runCommandWithTimeout.hpp"
@@ -1096,10 +1097,14 @@ AnchorPair Anchors::bridge(
 // Cluster oriented reads in an anchor pair using their journey
 // portions between AnchorIdA and AnchorIdB.
 // Output to html if it is open.
+// Returns clusters in order of decreasing length.
+// Each cluster contains indices in AnchoirPair::orientedReadIds
+// of the OrientedReadIds that belong to that cluster.
 void Anchors::clusterAnchorPairOrientedReads(
     const AnchorPair& anchorPair,
     const Journeys& journeys,
     double clusteringMinJaccard,
+    vector< vector<uint64_t> >& clusters,
     ostream& html) const
 {
     const uint64_t orientedReadCount = anchorPair.size();
@@ -1272,8 +1277,8 @@ void Anchors::clusterAnchorPairOrientedReads(
     }
 
     // Clustering of the similarity graph.
-    vector< vector<uint64_t> > clusters;
     hcsClustering(similarityGraph, clusters);
+    sort(clusters.begin(), clusters.end(), OrderVectorsByDecreasingSize<uint64_t>());
     for(uint64_t clusterId=0; clusterId<clusters.size(); clusterId++) {
         for(const SimilarityGraph::vertex_descriptor v: clusters[clusterId]) {
             similarityGraph[v].clusterId = clusterId;

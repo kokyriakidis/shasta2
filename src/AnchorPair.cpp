@@ -615,3 +615,35 @@ uint64_t AnchorPair::countCommon(const AnchorPair& y) const
     return n;
 
 }
+
+
+
+// Split the AnchorPair using clustering of the oriented read journey portions
+// within this AnchorPair.
+// The new AnchorPairs are sorted by decreasing size.
+void AnchorPair::splitByClustering(
+    const Anchors& anchors,
+    const Journeys& journeys,
+    double clusteringMinJaccard,
+    vector<AnchorPair>& newAnchorPairs
+    ) const
+{
+    std::ostream html(0);
+    vector< vector<uint64_t> > clusters;
+    anchors.clusterAnchorPairOrientedReads(*this, journeys, clusteringMinJaccard, clusters, html);
+
+    // Create an AnchorPair for each cluster.
+    // The clusters are sorted by decreasing size, and so the new AnchorPairs will
+    // also be sorted by decreasing size.
+    newAnchorPairs.clear();
+    newAnchorPairs.reserve(clusters.size());
+    for(const vector<uint64_t>& cluster: clusters) {
+        newAnchorPairs.emplace_back();
+        AnchorPair& newAnchorPair = newAnchorPairs.back();
+        newAnchorPair.anchorIdA = anchorIdA;
+        newAnchorPair.anchorIdB = anchorIdB;
+        for(const uint64_t i: cluster) {
+            newAnchorPair.orientedReadIds.push_back(orientedReadIds[i]);
+        }
+    }
+}

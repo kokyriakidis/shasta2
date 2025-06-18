@@ -147,6 +147,16 @@ public:
         vector<AnchorPair>&
         ) const;
 
+    // Split the AnchorPair using clustering of the oriented read journey portions
+    // within this AnchorPair.
+    // The new AnchorPairs are sorted by decreasing size.
+    void splitByClustering(
+        const Anchors&,
+        const Journeys&,
+        double clusteringMinJaccard,
+        vector<AnchorPair>&
+        ) const;
+
     // This returns true if a call to split with the same arguments would not split this Anchor.
     // The last two arguments are work vectors added as arguments for performance.
     bool isConsistent(
