@@ -1099,7 +1099,7 @@ AnchorPair Anchors::bridge(
 void Anchors::clusterAnchorPairOrientedReads(
     const AnchorPair& anchorPair,
     const Journeys& journeys,
-    double minJaccard,
+    double clusteringMinJaccard,
     ostream& html) const
 {
     const uint64_t orientedReadCount = anchorPair.size();
@@ -1265,7 +1265,7 @@ void Anchors::clusterAnchorPairOrientedReads(
     SimilarityGraph similarityGraph(orientedReadCount);
     for(uint64_t i0=0; i0<orientedReadCount; i0++) {
         for(uint64_t i1=i0+1; i1<orientedReadCount; i1++) {
-            if(jaccard[i0][i1] >= minJaccard) {
+            if(jaccard[i0][i1] >= clusteringMinJaccard) {
                 add_edge(i0, i1, similarityGraph);
             }
         }
@@ -1329,7 +1329,7 @@ void Anchors::clusterAnchorPairOrientedReads(
 
         // Write the svg to html.
         html << "<h3>Similarity graph</h3>"
-            "<p>Jaccard similarity threshold is " << minJaccard <<
+            "<p>Jaccard similarity threshold is " << clusteringMinJaccard <<
             "<p><div style='display:inline-block'>";
         ifstream svgFile(svgFileName);
         html << svgFile.rdbuf();

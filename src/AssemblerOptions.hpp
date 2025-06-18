@@ -54,6 +54,7 @@ public:
     double bDrift = 0.01;
 
     uint64_t bubbleCleanupMinCommonCount = 6;
+    double clusteringMinJaccard = 0.7;
 
     // Options that control detangling.
     uint64_t detangleMinCommonCoverage = 3;

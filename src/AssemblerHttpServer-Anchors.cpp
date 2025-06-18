@@ -334,12 +334,15 @@ void Assembler::exploreAnchorPair(const vector<string>& request, ostream& html)
     const bool showSequence = HttpServer::getParameterValue(request,
         "showSequence", showSequenceString);
 
+    double clusteringMinJaccard = httpServerData.assemblerOptions->clusteringMinJaccard;
+    HttpServer::getParameterValue(request, "clusteringMinJaccard", clusteringMinJaccard);
+
     // Write the form.
     html << "<form><table>";
 
     html <<
         "<tr><th class=left>Anchor A"
-        "<td class=centered><input type=text name=anchorIdAString required";
+        "<td class=centered><input type=text name=anchorIdAString required style='text-align:center'";
     if(anchorIdAStringIsPresent) {
         html << " value='" << anchorIdAString + "'";
     }
@@ -349,7 +352,7 @@ void Assembler::exploreAnchorPair(const vector<string>& request, ostream& html)
 
     html <<
         "<tr><th class=left>Anchor B"
-        "<td class=centered><input type=text name=anchorIdBString required";
+        "<td class=centered><input type=text name=anchorIdBString required style='text-align:center'";
     if(anchorIdBStringIsPresent) {
         html << " value='" << anchorIdBString + "'";
     }
@@ -366,6 +369,10 @@ void Assembler::exploreAnchorPair(const vector<string>& request, ostream& html)
         "<td class=centered><input type=checkbox name=showSequence" <<
         (showSequence ? " checked" : "") <<
         ">"
+
+        "<tr><th>Minimum Jaccard similarity for oriented read clustering"
+        "<td class=centered><input type=text name=clusteringMinJaccard style='text-align:center' "
+        "value='" << clusteringMinJaccard << "'>"
 
         "</table>"
         "<input type=submit value='Get anchor pair information'>"
@@ -551,8 +558,7 @@ void Assembler::exploreAnchorPair(const vector<string>& request, ostream& html)
 
 
     // Cluster oriented reads on this AnchorPair.
-    const double minJaccard = 0.7;
-    anchors().clusterAnchorPairOrientedReads(anchorPair, journeys(), minJaccard, html);
+    anchors().clusterAnchorPairOrientedReads(anchorPair, journeys(), clusteringMinJaccard, html);
 
 
     // The code below was moved to Anchors::clusterAnchorPairOrientedReads.

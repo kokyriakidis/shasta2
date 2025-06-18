@@ -151,7 +151,7 @@ public:
     void clusterAnchorPairOrientedReads(
         const AnchorPair&,
         const Journeys&,
-        double minJaccard,
+        double clusteringMinJaccard,
         ostream& html) const;
 
 
