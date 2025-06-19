@@ -1662,12 +1662,12 @@ void AssemblyGraph::writeSuperbubbleChainsForBandage(
 
 
 
-void AssemblyGraph::phaseSuperbubbleChains(uint64_t maxDistance)
+void AssemblyGraph::phaseSuperbubbleChains()
 {
 
     // Find superbubbles.
     vector<Superbubble> superbubbles;
-    findSuperbubbles(maxDistance, superbubbles);
+    findSuperbubbles(assemblerOptions.findSuperbubblesMaxDistance, superbubbles);
     removeContainedSuperbubbles(superbubbles);
     cout << "Found " << superbubbles.size() << " non-overlapping superbubbles." << endl;
     writeSuperbubbles(superbubbles, "Superbubbles.csv");
@@ -1681,9 +1681,9 @@ void AssemblyGraph::phaseSuperbubbleChains(uint64_t maxDistance)
     writeSuperbubbleChainsForBandage(superbubbleChains, "SuperbubbleChains-Bandage.csv");
 
     // Phase them.
-    for(uint64_t superbubbleChainId=0; superbubbleChainId<superbubbles.size(); superbubbleChainId++) {
-        if(superbubbleChainId != 174) {
-            continue;           // For debugging.
+    for(uint64_t superbubbleChainId=0; superbubbleChainId<superbubbleChains.size(); superbubbleChainId++) {
+        if(superbubbleChainId != 30) {
+            // continue;
         }
         SuperbubbleChain& superbubbleChain = superbubbleChains[superbubbleChainId];
         superbubbleChain.phase(*this, superbubbleChainId);

@@ -1,5 +1,6 @@
 #include "SuperbubbleChain.hpp"
 #include "AssemblerOptions.hpp"
+#include "PhasingGraph.hpp"
 #include "TangleMatrix.hpp"
 using namespace shasta;
 
@@ -12,177 +13,137 @@ void SuperbubbleChain::phase(
     AssemblyGraph& assemblyGraph,
     uint64_t superbubbleChainId)
 {
+    SuperbubbleChain& superbubbleChain = *this;
     const bool debug = true;
-    const uint64_t m = 3;
+
+    const uint64_t m = 2;
 
     if(debug) {
         cout << "Phasing superbubble chain " << superbubbleChainId << endl;
     }
 
-
-    // An EdgeSet consists of one of the following:
-    // - The internal edges of a non-trivial bubble.
-    // - The source edges of a superbubble.
-    // - The target edges of a superbubble.
-    // To make sure all EdgeSets are disjoint,
-    // we don't generate EdgeSets for superbubbles in which
-    // some source edges are also target edges.
-    // We will phase EdgeSets relative to each other.
-    class EdgeSet {
-    public:
-
-        // Ths position in the SuperbubbleChain of the Superbubble (can be a Bubble)
-        // that generated this edge set.
-        uint64_t position;
-
-        bool isInSuperbubble;
-        bool isSuperbubbleTarget;
-
-        vector<edge_descriptor> edges;
-    };
-
-
-
-    // Generate the EdgeSets.
-    vector<EdgeSet> edgeSets;
+    // Create the PhasingGraph and generate its vertices.
+    PhasingGraph phasingGraph;
     for(uint64_t position=0; position<size(); position++) {
-        Superbubble& superbubble = (*this)[position];
+        const Superbubble& bubble = superbubbleChain[position];
+        if(not bubble.isBubble() or bubble.isTrivial()) {
+            continue;
+        }
+        phasingGraph.addVertex(position);
+    }
 
-        if(superbubble.isBubble()) {
-            if(not superbubble.isTrivial()) {
-                edgeSets.emplace_back();
-                EdgeSet& edgeSet = edgeSets.back();
-                edgeSet.position = position;
-                edgeSet.isInSuperbubble = false;
-                edgeSet.isSuperbubbleTarget = false;
-                edgeSet.edges = superbubble.internalEdges;
+
+    // Loop over close pairs of Superbubbles that consist of a single
+    // non-trivial bubble. Eaqch pair that can be phased
+    // generates an edge of the PhasingGraph.
+    for(uint64_t position0=0; position0<size(); position0++) {
+        const Superbubble& bubble0 = superbubbleChain[position0];
+        if(not bubble0.isBubble() or bubble0.isTrivial()) {
+            continue;
+        }
+        uint64_t n0 = 0;
+        for(uint64_t position1=position0+1; position1<size(); position1++) {
+            const Superbubble& bubble1 = superbubbleChain[position1];
+            if(not bubble1.isBubble() or bubble1.isTrivial()) {
+                continue;
+            }
+            if(n0 > m) {
+                continue;
+            }
+            ++n0;
+            if(false) {
+                cout << "Working on bubbles at positions " << position0 << " " << position1 << endl;
             }
 
-        } else {
 
-            // Check if the source and target edges intersect.
-            bool edgesIntersect = false;
-            for(const edge_descriptor e: superbubble.sourceEdges) {
-                if(target(e, assemblyGraph) == superbubble.targetVertex) {
-                    edgesIntersect = true;
-                    break;
+            // Create a TangleMatrix between these two bubbles.
+            TangleMatrix tangleMatrix(assemblyGraph,
+                bubble0.internalEdges,
+                bubble1.internalEdges,
+                assemblyGraph.assemblerOptions.aDrift,
+                assemblyGraph.assemblerOptions.bDrift);
+
+            // Do the Likely hood rato test (G test).
+            const bool success = tangleMatrix.gTest(assemblyGraph.assemblerOptions.detangleEpsilon);
+
+            if(not success) {
+                if(debug) {
+                    cout << "Likelihood ratio test was not successful." << endl;
+                }
+                continue;
+            }
+
+            if(false) {
+                cout << "Best hypothesis " << tangleMatrix.hypotheses.front().G;
+                if(tangleMatrix.hypotheses.size() > 1) {
+                    cout << ", second best hypothesis " << tangleMatrix.hypotheses[1].G;
+                }
+                cout << endl;
+            }
+
+            // Check if the best hypothesis satisfies our options.
+            const double bestG = tangleMatrix.hypotheses.front().G;
+            if(bestG > assemblyGraph.assemblerOptions.detangleMaxLogP) {
+                if(false) {
+                    cout << "Best hypothesis G is too high." << endl;
+                }
+                continue;
+            }
+            if(tangleMatrix.hypotheses.size() > 1) {
+                const double secondBestG = tangleMatrix.hypotheses[1].G;
+                if(secondBestG - bestG < assemblyGraph.assemblerOptions.detangleMinLogPDelta) {
+                    if(false) {
+                        cout << "Second best hypothesis G is too low." << endl;
+                    }
+                    continue;
                 }
             }
 
-            if(not edgesIntersect) {
-
-                // Generate an EdgeSet for the source edges of this Superbubble.
-                edgeSets.emplace_back();
-                EdgeSet& sourceEdgeSet = edgeSets.back();
-                sourceEdgeSet.position = position;
-                sourceEdgeSet.isInSuperbubble = true;
-                sourceEdgeSet.isSuperbubbleTarget = false;
-                sourceEdgeSet.edges = superbubble.sourceEdges;
-
-                // Generate an EdgeSet for the target edges of this Superbubble.
-                edgeSets.emplace_back();
-                EdgeSet& targetEdgeSet = edgeSets.back();
-                targetEdgeSet.position = position;
-                targetEdgeSet.isInSuperbubble = true;
-                targetEdgeSet.isSuperbubbleTarget = true;
-                targetEdgeSet.edges = superbubble.targetEdges;
-
-            }
+            phasingGraph.addEdge(position0, position1);
         }
     }
 
-    // Write the EdgeSets.
     if(debug) {
-        for(uint64_t edgeSetId=0; edgeSetId<edgeSets.size(); edgeSetId++) {
-            const EdgeSet& edgeSet = edgeSets[edgeSetId];
+        cout << "This superbubble chain has " << num_vertices(phasingGraph) <<
+            " non-trivial bubbles." << endl;
+        cout << "The phasing graph has " << num_vertices(phasingGraph) <<
+            " vertices and " << num_edges(phasingGraph) << " edges." << endl;
+    }
 
-            cout << "EdgeSet " << edgeSetId << ": ";
-            if(edgeSet.isInSuperbubble) {
-                if(edgeSet.isSuperbubbleTarget) {
-                    cout << "Target edges of superbubble at position " << edgeSet.position << ":";
-                } else {
-                    cout << "Source edges of superbubble at position " << edgeSet.position << ":";
-                }
-            } else {
-                cout << "Internal edges of bubble at position " << edgeSet.position << ":";
-            }
+    if(num_vertices(phasingGraph) < 2) {
+        if(debug) {
+            cout << "There is nothing to phase." << endl;
+        }
+        return;
+    }
 
-            for(const edge_descriptor e: edgeSet.edges) {
-                cout << " " << assemblyGraph[e].id;
+    // Remove isolated vertices.
+    const uint64_t removedIsolatedVertexCount = phasingGraph.removeIsolatedVertices();
+    if(debug) {
+        cout << removedIsolatedVertexCount << " isolated vertices were removed." << endl;
+    }
+    if(num_vertices(phasingGraph) < 2) {
+        return;
+    }
+
+    // Compute connected components.
+    phasingGraph.computeConnectedComponents();
+    if(debug) {
+        if(phasingGraph.components.size() == 1) {
+            cout << "The phasing graph has a single connected component of size " <<
+                phasingGraph.components.front().size() << " vertices." << endl;
+        } else {
+            cout << "The phasing graph has " << phasingGraph.components.size() <<
+                " connected components of sizes";
+            for(const vector<uint64_t>& component: phasingGraph.components) {
+                cout << " " << component.size();
             }
             cout << endl;
         }
     }
 
-
-
-
-
-    // Phase pairs of EdgeSets.
-    // Only consider pairs of edge sets whose index differs by no more than m.
-    ofstream dot("PhasingGraph.dot");
-    dot << "digraph PhasingGraph {" << endl;
-    for(uint64_t index0=0; index0<edgeSets.size(); index0++) {
-        const EdgeSet& edgeSet0 = edgeSets[index0];
-
-        for(uint64_t index1=index0+1; index1<min(index0+m+1, edgeSets.size()); index1++) {
-            const EdgeSet& edgeSet1 = edgeSets[index1];
-
-            // Create a TangleMatrix between these two edge sets.
-            TangleMatrix tangleMatrix(
-                assemblyGraph,
-                edgeSet0.edges,
-                edgeSet1.edges,
-                assemblyGraph.assemblerOptions.aDrift,
-                assemblyGraph.assemblerOptions.bDrift);
-            tangleMatrix.gTest(assemblyGraph.assemblerOptions.detangleEpsilon);
-
-            SHASTA_ASSERT(not tangleMatrix.hypotheses.empty());
-            const auto& bestHypothesis = tangleMatrix.hypotheses.front();
-
-            // Figure out if this pair gives us usable information.
-            const double bestG = bestHypothesis.G;
-            double secondBestG = std::numeric_limits<double>::max();
-            if(tangleMatrix.hypotheses.size() > 1) {
-                secondBestG = tangleMatrix.hypotheses[1].G;
-            }
-            const double deltaLogP = secondBestG - bestG;
-            bool isGood =
-                (bestG <= assemblyGraph.assemblerOptions.detangleMaxLogP) and
-                (deltaLogP >= assemblyGraph.assemblerOptions.detangleMinLogPDelta);
-
-            if(debug) {
-                cout << "Edge sets " << index0 << " " << index1 << endl;
-                cout << "Best hypothesis:" << endl;
-                for(const auto& row: bestHypothesis.connectivityMatrix) {
-                    for(const auto value: row) {
-                        cout << value << " ";
-                    }
-                    cout << endl;
-                }
-                cout << "logP " << bestHypothesis.G;
-                if(tangleMatrix.hypotheses.size() > 1) {
-                    cout << ", delta loGP " << tangleMatrix.hypotheses[1].G - bestHypothesis.G;
-                }
-                cout << (isGood ? " good" : " bad");
-                cout << endl;
-            }
-
-            if(isGood) {
-                dot << index0 << "->" << index1 << " [label=\"" <<
-                    std::fixed << std::setprecision(1) << deltaLogP;
-                for(const auto& row: bestHypothesis.connectivityMatrix) {
-                    dot << "\\n";
-                    for(const auto value: row) {
-                        dot << value << " ";
-                    }
-                }
-                dot << "\"];" << endl;
-            }
-
-        }
-
+    if(debug) {
+        phasingGraph.writeGraphviz("PhasingGraph-" + to_string(superbubbleChainId) + ".dot");
     }
-    dot << "}" << endl;
 
 }

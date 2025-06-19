@@ -236,7 +236,7 @@ public:
     void simplifySuperbubble(const Superbubble&, uint64_t minCoverage);
 
     // Phasing of SuperbubbleChains.
-    void phaseSuperbubbleChains(uint64_t maxDistance);
+    void phaseSuperbubbleChains();
 
 
 

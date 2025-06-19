@@ -73,7 +73,7 @@ public:
         return ploidyAtSource;
     }
 
-    bool isTrivial()
+    bool isTrivial() const
     {
         return internalVertices.empty() and internalEdges.size() == 1;
     }

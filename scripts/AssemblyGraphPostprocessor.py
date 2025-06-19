@@ -12,6 +12,5 @@ assembler.accessAnchors()
 assembler.accessJourneys()
 
 # Get the assemblyGraph3Postprocessor at a chosen assembly stage.
-assemblyGraph = assembler.getAssemblyGraph("C", assemblerOptions)
-assemblyGraph.simplifySuperbubbles()
-assemblyGraph.write("X")
+assemblyGraph = assembler.getAssemblyGraph("D", assemblerOptions)
+assemblyGraph.phaseSuperbubbleChains()
