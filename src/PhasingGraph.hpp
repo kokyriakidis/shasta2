@@ -12,6 +12,7 @@ the corresponding bubbles can be phased relative to each other.
 
 // Shasta.
 #include "invalid.hpp"
+#include "TangleMatrix.hpp"
 
 // Boost libraries.
 #include <boost/graph/adjacency_list.hpp>
@@ -48,6 +49,11 @@ public:
     // The component this vertex belongs to.
     uint64_t componentId = invalid<uint64_t>;
 
+    // Length of longest path from a source vertex to this vertex.
+    // Used when computing longest paths.
+    uint64_t pathLength = invalid<uint64_t>;
+
+
     PhasingGraphVertex(uint64_t position) : position(position) {}
 };
 
@@ -55,6 +61,11 @@ public:
 
 class shasta::PhasingGraphEdge {
 public:
+    bool isShortestPathEdge = false;
+    TangleMatrix::Hypothesis bestHypothesis;
+
+    PhasingGraphEdge(const TangleMatrix::Hypothesis& bestHypothesis) :
+        bestHypothesis(bestHypothesis) {}
 };
 
 
@@ -63,16 +74,23 @@ class shasta::PhasingGraph: public PhasingGraphBaseClass {
 public:
 
     void addVertex(uint64_t position);
-    void addEdge(uint64_t position0, uint64_t position1);
+    void addEdge(
+        uint64_t position0,
+        uint64_t position1,
+        const TangleMatrix::Hypothesis& bestHypothesis);
 
     // Remove isolated vertices and return the number of such vertices that were removed.
     uint64_t removeIsolatedVertices();
 
     // Compute connected components consisting of at least two vertices.
-    // Each connected component is a vector of positions in the SuperbubbleChain.
+    // Each connected component is a sorted vector of positions in the SuperbubbleChain.
     // They are returned sorted by decreasing size.
     vector< vector<uint64_t> > components;
     void computeConnectedComponents();
+
+    // Find the longest path in each connected component.
+    vector< vector<edge_descriptor> > longestPaths;
+    void findLongestPaths();
 
     void writeGraphviz(const string& fileName) const;
 

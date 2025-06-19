@@ -1689,6 +1689,8 @@ void AssemblyGraph::phaseSuperbubbleChains()
         superbubbleChain.phase(*this, superbubbleChainId);
     }
 
+    compress();
+
 }
 
 

@@ -74,7 +74,7 @@ public:
     class Hypothesis {
     public:
         vector< vector<bool> > connectivityMatrix;
-        double G;
+        double G = invalid<double>;
 
         Hypothesis(
             const vector< vector<bool> >& connectivityMatrix,
@@ -83,7 +83,9 @@ public:
             G(G)
             {}
 
-        // Sort by G2.
+        Hypothesis() {}
+
+        // Sort by G.
         bool operator<(const Hypothesis& that) const {
             return G < that.G;
         }

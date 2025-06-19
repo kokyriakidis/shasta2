@@ -10,6 +10,7 @@ using namespace shasta;
 #include <boost/pending/disjoint_sets.hpp>
 
 // Standard library.
+#include <algorithm.hpp>
 #include <fstream.hpp>
 #include <iostream.hpp>
 
@@ -32,7 +33,10 @@ void PhasingGraph::addVertex(uint64_t position)
 
 
 
-void PhasingGraph::addEdge(uint64_t position0, uint64_t position1)
+void PhasingGraph::addEdge(
+    uint64_t position0,
+    uint64_t position1,
+    const TangleMatrix::Hypothesis& bestHypothesis)
 {
     SHASTA_ASSERT(position0 < vertexTable.size());
     const vertex_descriptor v0 = vertexTable[position0];
@@ -42,7 +46,7 @@ void PhasingGraph::addEdge(uint64_t position0, uint64_t position1)
     const vertex_descriptor v1 = vertexTable[position1];
     SHASTA_ASSERT(v1 != null_vertex());
 
-    boost::add_edge(v0, v1, *this);
+    boost::add_edge(v0, v1, PhasingGraphEdge(bestHypothesis), *this);
 }
 
 
@@ -57,7 +61,10 @@ void PhasingGraph::writeGraphviz(const string& fileName) const
     BGL_FORALL_VERTICES(v, phasingGraph, PhasingGraph) {
         const PhasingGraphVertex& vertex = phasingGraph[v];
         const string color = hslToRgbString(double(vertex.componentId) / double(components.size()), 0.75, 0.6);
-        dot << vertex.position << " [label=\"" << vertex.position << "\\n" << vertex.componentId << "\""
+        dot << vertex.position << " [label=\"" <<
+            vertex.position << "\\n" <<
+            vertex.componentId << "\\n" <<
+            vertex.pathLength << "\""
             " style=filled fillcolor=\"" << color << "\"];\n";
     }
 
@@ -66,7 +73,11 @@ void PhasingGraph::writeGraphviz(const string& fileName) const
         const vertex_descriptor v1 = target(e, phasingGraph);
 
         dot << phasingGraph[v0].position << "->";
-        dot << phasingGraph[v1].position << ";\n";
+        dot << phasingGraph[v1].position;
+        if(phasingGraph[e].isShortestPathEdge) {
+            dot << " [color=DarkOrange]";
+        }
+        dot << ";\n";
     }
 
     dot << "}\n";
@@ -97,7 +108,7 @@ uint64_t PhasingGraph::removeIsolatedVertices()
 
 
 // Compute connected components consisting of at least two vertices.
-// Each connected component is a vector of positions in the SuperbubbleChain.
+// Each connected component is a sorted vector of positions in the SuperbubbleChain.
 // They are returned sorted by decreasing size.
 void PhasingGraph::computeConnectedComponents()
 {
@@ -151,6 +162,100 @@ void PhasingGraph::computeConnectedComponents()
             SHASTA_ASSERT(v != null_vertex());
             phasingGraph[v].componentId = componentId;
         }
+    }
+
+}
+
+
+
+// Find the longest path in each connected component.
+// We exploit the fact that the PhasingGraph is acyclic and
+// topologically sorted by constuction.
+// https://en.wikipedia.org/wiki/Longest_path_problem#Acyclic_graphs
+void PhasingGraph::findLongestPaths()
+{
+    PhasingGraph& phasingGraph = *this;
+
+    // For all vertices, compute the maximum path length from a source vertex.
+    for(uint64_t position0=0; position0<vertexTable.size(); position0++) {
+        const vertex_descriptor v0 = vertexTable[position0];
+        if(v0 == null_vertex()) {
+            continue;
+        }
+
+        PhasingGraphVertex& vertex0 = phasingGraph[v0];
+        if(in_degree(v0, phasingGraph) == 0) {
+            vertex0.pathLength = 0;
+        }
+
+        const uint64_t pathLength0 = vertex0.pathLength;
+        const uint64_t pathLength1 = pathLength0 + 1;
+
+        BGL_FORALL_OUTEDGES(v0, e, phasingGraph, PhasingGraph) {
+            const vertex_descriptor v1 = target(e, phasingGraph);
+            PhasingGraphVertex& vertex1 = phasingGraph[v1];
+
+            if(vertex1.pathLength == invalid<uint64_t>) {
+                vertex1.pathLength = pathLength1;
+            } else {
+                vertex1.pathLength = max(vertex1.pathLength, pathLength1);
+            }
+
+        }
+    }
+
+
+
+    // Now we can compute the longest path in each connected component.
+    longestPaths.resize(components.size());
+    for(uint64_t componentId=0; componentId<components.size(); componentId++) {
+        const vector<uint64_t>& component = components[componentId];
+        vector<edge_descriptor>& path = longestPaths[componentId];
+
+        // Find a vertex with the largest pathLength. This will be
+        // the last vertex of our path.
+        uint64_t maxPathLength = 0;
+        vertex_descriptor vLast = null_vertex();
+        for(const uint64_t position: component) {
+            const vertex_descriptor v = vertexTable[position];
+            const PhasingGraphVertex& vertex = phasingGraph[v];
+            SHASTA_ASSERT(v != null_vertex());
+
+            if(vLast == null_vertex()) {
+                vLast = v;
+                maxPathLength = vertex.pathLength;
+            } else {
+                if(vertex.pathLength > maxPathLength) {
+                    vLast = v;
+                    maxPathLength = vertex.pathLength;
+                }
+            }
+        }
+
+        cout << "Maximum path length for component " << componentId <<
+            " is " << maxPathLength << " at vertex " << phasingGraph[vLast].position << endl;
+
+        // Now we can construct the path walking back from vLast.
+        vertex_descriptor v1 = vLast;
+        while(in_degree(v1, phasingGraph) > 0) {
+            const PhasingGraphVertex& vertex1 = phasingGraph[v1];
+            const uint64_t pathLength1 = vertex1.pathLength;
+            const uint64_t pathLength0 = pathLength1 - 1;
+            bool found = false;
+            BGL_FORALL_INEDGES(v1, e, phasingGraph, PhasingGraph) {
+                const vertex_descriptor v0 = source(e, phasingGraph);
+                if(phasingGraph[v0].pathLength == pathLength0) {
+                    phasingGraph[e].isShortestPathEdge = true;
+                    path.push_back(e);
+                    v1 = v0;
+                    found = true;
+                    break;
+                }
+            }
+            SHASTA_ASSERT(found);
+        }
+        std::reverse(path.begin(), path.end());
+
     }
 
 }
