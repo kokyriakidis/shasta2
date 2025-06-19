@@ -85,6 +85,12 @@ public:
 
         Hypothesis() {}
 
+        // Return true if there is a single exit for each entrance.
+        bool isForwardInjective() const;
+
+        // Return true if there is a single entrance for exit entrance.
+        bool isBackwardInjective() const;
+
         // Sort by G.
         bool operator<(const Hypothesis& that) const {
             return G < that.G;

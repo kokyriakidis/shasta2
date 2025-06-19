@@ -101,7 +101,10 @@ void SuperbubbleChain::phase(
                 }
             }
 
-            phasingGraph.addEdge(position0, position1, tangleMatrix.hypotheses.front());
+            if( tangleMatrix.hypotheses.front().isForwardInjective() or
+                tangleMatrix.hypotheses.front().isBackwardInjective()) {
+                phasingGraph.addEdge(position0, position1, tangleMatrix.hypotheses.front());
+            }
         }
     }
 
