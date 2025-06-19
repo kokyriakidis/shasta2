@@ -146,12 +146,9 @@ bool TangleMatrix::gTest(double epsilon)
     const uint64_t entranceCount = entrances.size();
     const uint64_t exitCount = exits.size();
 
-    // Limit to a maximum of 9 tangle matrix entries.
-    // Excluding the trivial cases with one entrance or one exit,
-    // this allows the following combinations (and transposed):
-    // 2x2 2x3 2x4 3x3
+    // Limit to a maximum of 16 tangle matrix entries.
     const uint64_t totalTangleMatrixEntryCount = entranceCount * exitCount;
-    if(totalTangleMatrixEntryCount > 9) {
+    if(totalTangleMatrixEntryCount > 16) {
         return false;
     }
 
