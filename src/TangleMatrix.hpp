@@ -29,8 +29,8 @@ public:
 
     TangleMatrix(
         const AssemblyGraph&,
-        vector<edge_descriptor> entranceVertices,
-        vector<edge_descriptor> exitVertices,
+        vector<edge_descriptor> entranceEdges,
+        vector<edge_descriptor> exitEdges,
         double aDrift,
         double bDrift);
 
