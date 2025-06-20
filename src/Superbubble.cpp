@@ -59,13 +59,13 @@ void Superbubble::gatherEdges()
     BGL_FORALL_OUTEDGES(sourceVertex, e, assemblyGraph, AssemblyGraph) {
         sourceEdges.push_back(e);
     }
-    sort(sourceEdges.begin(), sourceEdges.end());
+    assemblyGraph.sortEdgeDescriptors(sourceEdges);
 
     // The target edges are the in-edges of the target vertex.
     BGL_FORALL_INEDGES(targetVertex, e, assemblyGraph, AssemblyGraph) {
         targetEdges.push_back(e);
     }
-    sort(targetEdges.begin(), targetEdges.end());
+    assemblyGraph.sortEdgeDescriptors(targetEdges);
 
     // The internal edges are the out-edges of the source plus the
     // out-edges of all internal vertices.
@@ -78,6 +78,7 @@ void Superbubble::gatherEdges()
         }
     }
     sort(internalEdges.begin(), internalEdges.end());
+    assemblyGraph.sortEdgeDescriptors(internalEdges);
 
 }
 

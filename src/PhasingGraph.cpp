@@ -12,7 +12,6 @@ using namespace shasta;
 // Standard library.
 #include <algorithm.hpp>
 #include <fstream.hpp>
-#include <iostream.hpp>
 
 
 
@@ -231,9 +230,6 @@ void PhasingGraph::findLongestPaths()
                 }
             }
         }
-
-        cout << "Maximum path length for component " << componentId <<
-            " is " << maxPathLength << " at vertex " << phasingGraph[vLast].position << endl;
 
         // Now we can construct the path walking back from vLast.
         vertex_descriptor v1 = vLast;

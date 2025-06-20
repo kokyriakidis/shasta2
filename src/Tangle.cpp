@@ -62,6 +62,7 @@ Tangle::Tangle(
             }
         }
     }
+    assemblyGraph.sortEdgeDescriptors(entranceEdges);
 
     // Find the exit edges.
     vector<edge_descriptor> exitEdges;
@@ -73,6 +74,7 @@ Tangle::Tangle(
             }
         }
     }
+    assemblyGraph.sortEdgeDescriptors(exitEdges);
 
     // Now we can create the TangleMatrix.
     tangleMatrix = make_shared<TangleMatrix>(
@@ -150,6 +152,7 @@ void Tangle::detangle()
         const vertex_descriptor v1 = newExitVertices[iExit];
 
         const AnchorPair& anchorPair = (*tangleMatrix).tangleMatrix[iEntrance][iExit];
+        SHASTA_ASSERT(anchorPair.orientedReadIds.size() > 0);
         const uint64_t offset = anchorPair.getAverageOffset(assemblyGraph.anchors);
 
         edge_descriptor e;

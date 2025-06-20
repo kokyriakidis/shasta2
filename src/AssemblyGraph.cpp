@@ -149,23 +149,25 @@ void AssemblyGraph::run(uint64_t threadCount)
     // AssemblyGraph& assemblyGraph = *this;
     const uint64_t maxIterationCount = 10;
 
-
     // Initial output.
     write("A");
 
     // Prune.
     prune(assemblerOptions.pruneLength);
     compress();
-    write("B");
 
-    // Bubble cleanup.
+    // Simplify Superbubbles and remove or simplify bubbles likely caused by errors.
+    simplifySuperbubbles();
     bubbleCleanup(threadCount);
     compress();
+    write("B");
+
+    // Phase SuperbubbleChains.
+    phaseSuperbubbleChains();
     write("C");
 
-    // Simplify superbubbles.
-    simplifySuperbubbles();
-    write("D");
+
+
 
     // Detangling.
     createTangleTemplates();
@@ -181,7 +183,9 @@ void AssemblyGraph::run(uint64_t threadCount)
         assemblerOptions.detangleMaxLogP,
         assemblerOptions.detangleMinLogPDelta);
     detangle(maxIterationCount, detangler);
-    write("E");
+    write("D");
+
+
 
     // Sequence assembly.
     assembleAll(threadCount);
@@ -433,6 +437,10 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
         assemblerOptions.aDrift,
         assemblerOptions.bDrift,
         step.anchorPair);
+    if(localAssembly.coverage() == 0) {
+        throw runtime_error("No coverage for local assembly at assembly graph edge " +
+            to_string(edge.id) + " step " + to_string(i));
+    }
     localAssembly.run(false, assemblerOptions.localAssemblyOptions.maxAbpoaLength);
     localAssembly.getSequence(step.sequence);
 }
@@ -1682,9 +1690,6 @@ void AssemblyGraph::phaseSuperbubbleChains()
 
     // Phase them.
     for(uint64_t superbubbleChainId=0; superbubbleChainId<superbubbleChains.size(); superbubbleChainId++) {
-        if(superbubbleChainId != 30) {
-            // continue;
-        }
         SuperbubbleChain& superbubbleChain = superbubbleChains[superbubbleChainId];
         superbubbleChain.phase(*this, superbubbleChainId);
     }
@@ -1733,16 +1738,10 @@ void AssemblyGraph::simplifySuperbubble(
     uint64_t minCoverage)
 {
     AssemblyGraph& assemblyGraph = *this;
-    const bool debug = true;
+    const bool debug = false;
 
     const AnchorId anchorIdA = assemblyGraph[superbubble.sourceVertex].anchorId;
     const AnchorId anchorIdB = assemblyGraph[superbubble.targetVertex].anchorId;
-
-#if 0
-    if(anchorIdToString(anchorIdA) != "396938-") {
-        return;
-    }
-#endif
 
     if(debug) {
         cout << "Working on a superbubble consisting of the following " <<
@@ -1881,6 +1880,7 @@ void AssemblyGraph::findSuperbubbleChains(
     ) const
 {
     // Index the superbubbles by their source and target vertex.
+    // FOR REPRODUCIBILITY WE SHOULD CHANGE THIS TO INDEX BY VERTEX ID INSTEAD.
     std::map<vertex_descriptor, vector<uint64_t> > mapBySource;
     std::map<vertex_descriptor, vector<uint64_t> > mapByTarget;
     for(uint64_t superbubbleId=0; superbubbleId<superbubbles.size(); superbubbleId++) {
@@ -2011,7 +2011,7 @@ void AssemblyGraph::findStrongComponents(
 
 // This creates a csv file that can be loaded in bandage to see
 // the strongly connected components.
-void  AssemblyGraph::colorStrongComponents() const
+void AssemblyGraph::colorStrongComponents() const
 {
     const AssemblyGraph& assemblyGraph = *this;
 
@@ -2039,3 +2039,21 @@ void  AssemblyGraph::colorStrongComponents() const
 
 }
 
+
+
+
+// Sort a vector of edge_descriptor by id.
+void AssemblyGraph::sortEdgeDescriptors(vector<edge_descriptor>& edgeDescriptors) const
+{
+
+    class SortHelper {
+    public:
+        SortHelper(const AssemblyGraph& assemblyGraph): assemblyGraph(assemblyGraph) {}
+        const AssemblyGraph& assemblyGraph;
+        bool operator()(edge_descriptor x, edge_descriptor y) const
+        {
+            return assemblyGraph[x].id < assemblyGraph[y].id;
+        }
+    };
+    sort(edgeDescriptors.begin(), edgeDescriptors.end(), SortHelper(*this));
+}

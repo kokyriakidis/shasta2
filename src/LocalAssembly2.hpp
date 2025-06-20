@@ -32,6 +32,11 @@ public:
         double bDrift,
         const AnchorPair&);
 
+    uint64_t coverage() const
+    {
+        return orientedReads.size();
+    }
+
     // After calling one of the above constructors, call run.
     void run(
         bool computeAlignment,

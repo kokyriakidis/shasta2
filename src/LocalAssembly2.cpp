@@ -32,6 +32,7 @@ LocalAssembly2::LocalAssembly2(
     debug(debugArgument)
 {
     gatherOrientedReads(anchorIdA, anchorIdB, aDrift, bDrift);
+    SHASTA_ASSERT(not orientedReads.empty());
 }
 
 

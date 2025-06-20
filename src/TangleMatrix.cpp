@@ -17,11 +17,13 @@ TangleMatrix::TangleMatrix(
         const AssemblyGraphEdge& edge = assemblyGraph[e];
         entrances.emplace_back(e, edge.back());
     }
+    assemblyGraph.sortEdgeDescriptors(entranceEdges);
 
     for(const edge_descriptor e: exitEdges) {
         const AssemblyGraphEdge& edge = assemblyGraph[e];
         exits.emplace_back(e, edge.front());
     }
+    assemblyGraph.sortEdgeDescriptors(exitEdges);
 
 
 

@@ -147,6 +147,10 @@ public:
     uint64_t nextVertexId = 0;
     uint64_t nextEdgeId = 0;
     const AssemblerOptions& assemblerOptions;
+
+    // Sort a vector of edge_descriptor by id.
+    void sortEdgeDescriptors(vector<edge_descriptor>&) const;
+
 private:
 
     void check() const;

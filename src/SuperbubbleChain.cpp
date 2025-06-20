@@ -16,9 +16,9 @@ void SuperbubbleChain::phase(
     uint64_t superbubbleChainId)
 {
     SuperbubbleChain& superbubbleChain = *this;
-    const bool debug = true;
+    const bool debug = false;
 
-    const uint64_t m = 2;
+    const uint64_t m = 6;
 
     if(debug) {
         cout << "Phasing superbubble chain " << superbubbleChainId << endl;
@@ -53,7 +53,7 @@ void SuperbubbleChain::phase(
                 continue;
             }
             ++n0;
-            if(false) {
+            if(debug) {
                 cout << "Working on bubbles at positions " << position0 << " " << position1 << endl;
             }
 
@@ -65,7 +65,17 @@ void SuperbubbleChain::phase(
                 assemblyGraph.assemblerOptions.aDrift,
                 assemblyGraph.assemblerOptions.bDrift);
 
-            // Do the Likely hood rato test (G test).
+            if(debug) {
+                cout << "Tangle matrix:" << endl;
+                for(uint64_t iEntrance=0; iEntrance<tangleMatrix.entrances.size(); iEntrance++) {
+                    for(uint64_t iExit=0; iExit<tangleMatrix.exits.size(); iExit++) {
+                        cout << tangleMatrix.tangleMatrix[iEntrance][iExit].orientedReadIds.size() << " ";
+                    }
+                    cout << endl;
+                }
+            }
+
+            // Do the likelyHood ratio test (G test).
             const bool success = tangleMatrix.gTest(assemblyGraph.assemblerOptions.detangleEpsilon);
 
             if(not success) {
@@ -75,7 +85,7 @@ void SuperbubbleChain::phase(
                 continue;
             }
 
-            if(false) {
+            if(debug) {
                 cout << "Best hypothesis " << tangleMatrix.hypotheses.front().G;
                 if(tangleMatrix.hypotheses.size() > 1) {
                     cout << ", second best hypothesis " << tangleMatrix.hypotheses[1].G;
@@ -104,6 +114,17 @@ void SuperbubbleChain::phase(
             if( tangleMatrix.hypotheses.front().isForwardInjective() or
                 tangleMatrix.hypotheses.front().isBackwardInjective()) {
                 phasingGraph.addEdge(position0, position1, tangleMatrix.hypotheses.front());
+
+                if(debug) {
+                    cout << "Added edge " << position0 << " " << position1 << endl;
+                    cout << "Connectivity matrix for the best hypothesis:" << endl;
+                    for(const auto& row: tangleMatrix.hypotheses.front().connectivityMatrix) {
+                        for(const bool c: row) {
+                            cout << int(c);
+                        }
+                        cout << endl;
+                    }
+                }
             }
         }
     }
@@ -157,7 +178,7 @@ void SuperbubbleChain::phase(
 
 
     // Loop over the longest paths. Each edge of a longest path generates a Tangle that can
-    // be detangled using the Hypothesis stored in the edge and its connectivty matrix.
+    // be detangled using the Hypothesis stored in the edge and its connectivity matrix.
     std::set<AssemblyGraph::vertex_descriptor> removedVertices;
     for(uint64_t componentId=0; componentId<phasingGraph.longestPaths.size(); componentId++) {
         const vector<PhasingGraph::edge_descriptor>& longestPath = phasingGraph.longestPaths[componentId];
@@ -173,6 +194,16 @@ void SuperbubbleChain::phase(
 
             if(debug) {
                 cout << "Detangling between bubbles at positions " << position0 << " " << position1 << endl;
+                cout << "Bubble at position " << position0 << ":";
+                for(const AssemblyGraph::edge_descriptor e: bubble0.internalEdges) {
+                    cout << " " << assemblyGraph[e].id;
+                }
+                cout << endl;
+                cout << "Bubble at position " << position1 << ":";
+                for(const AssemblyGraph::edge_descriptor e: bubble1.internalEdges) {
+                    cout << " " << assemblyGraph[e].id;
+                }
+                cout << endl;
             }
 
             // Create a Tangle consisting of:
@@ -209,14 +240,49 @@ void SuperbubbleChain::phase(
                 assemblyGraph.assemblerOptions.aDrift,
                 assemblyGraph.assemblerOptions.bDrift);
 
+            if(debug) {
+                cout << "Tangle matrix:" << endl;
+                for(uint64_t iEntrance=0; iEntrance<tangle.tangleMatrix->entrances.size(); iEntrance++) {
+                    for(uint64_t iExit=0; iExit<tangle.tangleMatrix->exits.size(); iExit++) {
+                        cout << tangle.tangleMatrix->tangleMatrix[iEntrance][iExit].orientedReadIds.size() << " ";
+                    }
+                    cout << endl;
+                }
+            }
+
+
+
             // Use the best hypothesis on this edge to detangle it.
-            const TangleMatrix::Hypothesis bestHypothesis = phasingGraph[e].bestHypothesis;
+            const TangleMatrix::Hypothesis& bestHypothesis = phasingGraph[e].bestHypothesis;
             const vector< vector<bool> >& connectivityMatrix = bestHypothesis.connectivityMatrix;
+            if(debug) {
+                cout << "Connectivity matrix for the best hypothesis:" << endl;
+                for(uint64_t iEntrance=0; iEntrance<tangle.tangleMatrix->entrances.size(); iEntrance++) {
+                    for(uint64_t iExit=0; iExit<tangle.tangleMatrix->exits.size(); iExit++) {
+                        cout << int(connectivityMatrix[iEntrance][iExit]);
+                    }
+                    cout << endl;
+                }
+            }
             for(uint64_t iEntrance=0; iEntrance<tangle.tangleMatrix->entrances.size(); iEntrance++) {
                 for(uint64_t iExit=0; iExit<tangle.tangleMatrix->exits.size(); iExit++) {
                     if(connectivityMatrix[iEntrance][iExit]) {
+                        if(debug) {
+                            cout << "Calling Tangle:: connect " << iEntrance << " " << iExit <<
+                                ", anchor pair coverage " <<
+                                tangle.tangleMatrix->tangleMatrix[iEntrance][iExit].orientedReadIds.size() << endl;
+                        }
                         tangle.connect(iEntrance, iExit);
                     }
+                }
+            }
+            if(debug) {
+                cout << "Again, Tangle matrix:" << endl;
+                for(uint64_t iEntrance=0; iEntrance<tangle.tangleMatrix->entrances.size(); iEntrance++) {
+                    for(uint64_t iExit=0; iExit<tangle.tangleMatrix->exits.size(); iExit++) {
+                        cout << tangle.tangleMatrix->tangleMatrix[iEntrance][iExit].orientedReadIds.size() << " ";
+                    }
+                    cout << endl;
                 }
             }
             tangle.detangle();
