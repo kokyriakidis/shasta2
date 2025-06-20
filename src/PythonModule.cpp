@@ -1,8 +1,8 @@
 #ifdef SHASTA_PYTHON_API
 
 // Shasta.
+#include "Anchor.hpp"
 #include "Assembler.hpp"
-#include "Options.hpp"
 #include "AssemblyGraphPostprocessor.hpp"
 #include "Base.hpp"
 #include "ChiSquareDetangler.hpp"
@@ -15,6 +15,7 @@
 #include "LongBaseSequence.hpp"
 #include "mappedCopy.hpp"
 #include "MultithreadedObject.hpp"
+#include "Options.hpp"
 #include "PermutationDetangler.hpp"
 #include "performanceLog.hpp"
 #include "ShortBaseSequence.hpp"
@@ -114,6 +115,8 @@ PYBIND11_MODULE(shasta2, shasta2Module)
           arg("threadCount") = 0)
       .def("accessJourneys",
           &Assembler::accessJourneys)
+      .def("readFollowing",
+          &Assembler::readFollowing)
 
       // AnchorGraph.
       .def("createAnchorGraph",
@@ -219,6 +222,14 @@ PYBIND11_MODULE(shasta2, shasta2Module)
     shasta2Module.def("globalMsaPython",
         globalMsaPython
         );
+    shasta2Module.def("anchorIdToString",
+        anchorIdToString
+        );
+    shasta2Module.def("anchorIdFromString",
+        anchorIdFromString
+        );
 }
 
 #endif
+
+

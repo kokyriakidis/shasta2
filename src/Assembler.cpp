@@ -185,6 +185,15 @@ void Assembler::accessJourneys()
 }
 
 
+AnchorId Assembler::readFollowing(
+    AnchorId anchorId,
+    uint64_t direction,
+    uint64_t minCommonCount) const
+{
+    return anchors().readFollowing(journeys(), anchorId, direction, minCommonCount);
+}
+
+
 
 void Assembler::createAnchorGraph(const Options& options)
 {

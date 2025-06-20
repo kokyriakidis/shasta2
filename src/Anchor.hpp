@@ -224,6 +224,14 @@ public:
         vector< pair<AnchorId, AnchorPairInfo> >&
         ) const;
 
+    // This is fast as it uses a priority queue.
+    AnchorId readFollowing(
+        const Journeys& journeys,
+        AnchorId,
+        uint64_t direction,                         // 0 = forward, 1 = backward
+        uint64_t minCommonCount
+        ) const;
+
 private:
 
     // Data and functions used when constructing the Anchors.

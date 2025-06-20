@@ -191,6 +191,11 @@ public:
     void createJourneys(uint64_t threadCount);
     void accessJourneys();
 
+    AnchorId readFollowing(
+        AnchorId,
+        uint64_t direction,
+        uint64_t minCommonCount) const;
+
 
     // AnchorGraph.
     shared_ptr<AnchorGraph> anchorGraphPointer;

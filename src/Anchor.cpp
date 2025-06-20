@@ -28,6 +28,7 @@ using namespace shasta;
 
 // Standard library.
 #include <cmath>
+#include <queue>
 
 // Explicit instantiation.
 #include "MultithreadedObject.tpp"
@@ -1346,4 +1347,173 @@ void Anchors::clusterAnchorPairOrientedReads(
      }
 
 
+}
+
+
+
+// This is fast as it uses a priority queue.
+AnchorId Anchors::readFollowing(
+    const Journeys& journeys,
+    AnchorId anchorId0,
+    uint64_t direction,                         // 0 = forward, 1 = backward
+    uint64_t minCommonCount
+    ) const
+{
+    const Anchor anchor0 = (*this)[anchorId0];
+
+
+
+    // Gather some information for each of the OrientedReadIds in anchorId0.
+    class Info {
+    public:
+        OrientedReadId orientedReadId;
+        span<const Marker> markers;
+        Journey journey;
+        uint64_t journeyPosition0;
+        uint64_t basePosition0;
+    };
+    vector<Info> infos;
+
+    for(const AnchorMarkerInfo& anchorMarkerInfo0: anchor0) {
+        const OrientedReadId orientedReadId = anchorMarkerInfo0.orientedReadId;
+        infos.emplace_back();
+
+        Info& info = infos.back();
+        info.orientedReadId = orientedReadId;
+        info.markers = markers[orientedReadId.getValue()];
+        info.journey = journeys[orientedReadId];
+        info.journeyPosition0 = anchorMarkerInfo0.positionInJourney;
+        const uint32_t ordinal0 = anchorMarkerInfo0.ordinal;
+        info.basePosition0 = info.markers[ordinal0].position;
+    }
+
+
+
+    // Maintain a priority queue with an entry for each oriented read.
+    // It is ordered by base offset.
+    class QueueItem {
+    public:
+        // The index of this OrientedReadId in the infos vector.
+        uint64_t orientedReadIdIndex;
+
+        // The next journey position for this OrientedReadId.
+        uint64_t journeyPosition1;
+
+        // The corresponding AnchorId.
+        AnchorId anchorId1;
+
+        // The corresponding offset relative to basePosition0 for this OrientedReadId.
+        uint64_t baseOffset1;
+
+        QueueItem(
+            uint64_t orientedReadIdIndex1,
+            uint64_t journeyPosition1,
+            AnchorId anchorId1,
+            uint64_t baseOffset1) :
+                orientedReadIdIndex(orientedReadIdIndex1),
+                journeyPosition1(journeyPosition1),
+                anchorId1(anchorId1),
+                baseOffset1(baseOffset1)
+            {}
+
+        bool operator<(const QueueItem& that) const {
+            return baseOffset1 > that.baseOffset1;
+        }
+    };
+    std::priority_queue<QueueItem> q;
+
+
+
+    // Initialize the priority queue.
+    for(uint64_t i=0; i<infos.size(); i++) {
+        const Info& info = infos[i];
+
+        // Increment or decrement the journey position.
+        // If this gets outside the journey, skip this oriented read.
+        uint64_t journeyPosition1 = info.journeyPosition0;
+        if(direction == 0) {
+            // We are moving forward.
+            ++journeyPosition1;
+            if(journeyPosition1 == info.journey.size()) {
+                // We are past the end of the journey.
+                continue;
+            }
+        } else {
+            // We are moving backward.
+            if(journeyPosition1 == 0) {
+                // We are at the beginning of the journey so we can't go back.
+                continue;
+            }
+            else {
+                --journeyPosition1;
+            }
+        }
+
+        const AnchorId anchorId1 = info.journey[journeyPosition1];
+        const uint32_t ordinal1 = getOrdinal(anchorId1, info.orientedReadId);
+        const uint64_t basePosition1 = info.markers[ordinal1].position;
+        const uint64_t baseOffset1 =
+            direction == 0 ?
+                basePosition1 - info.basePosition0 :
+                info.basePosition0 - basePosition1;
+
+        q.emplace(i, journeyPosition1, anchorId1, baseOffset1);
+    }
+
+
+
+    // Main loop.
+    // At each iteration we dequeue the QueueItem with the lowest baseOffset.
+    std::set<AnchorId> anchorIdsSeen;
+    while(not q.empty()) {
+        QueueItem item = q.top();
+        q.pop();
+
+        const AnchorId anchorId1 = item.anchorId1;
+        // cout << "Dequeued " << anchorIdToString(anchorId1) << " base offset " << item.baseOffset1 << endl;
+
+        if(not anchorIdsSeen.contains(anchorId1)) {
+            const uint64_t commonCount = direction == 0 ?
+                countCommon(anchorId0, anchorId1) :
+                countCommon(anchorId1, anchorId0);
+            // cout << "Common count " << commonCount << endl;
+            if(commonCount >= minCommonCount) {
+                return anchorId1;
+            }
+            anchorIdsSeen.insert(anchorId1);
+        }
+
+        // Update the QueueItem to point to the next or previous Journey entry,
+        // then requeue it.
+        const Info& info = infos[item.orientedReadIdIndex];
+        if(direction == 0) {
+            ++item.journeyPosition1;
+            if(item.journeyPosition1 == info.journey.size()) {
+                continue;
+            }
+        } else {
+            if(item.journeyPosition1 == 0) {
+                continue;
+            } else {
+                --item.journeyPosition1;
+            }
+        }
+
+        item.anchorId1 = info.journey[item.journeyPosition1];
+        const uint32_t ordinal1 = getOrdinal(item.anchorId1, info.orientedReadId);
+        const uint64_t basePosition1 = info.markers[ordinal1].position;
+
+        const uint64_t baseOffset1 = direction == 0 ?
+            basePosition1 - info.basePosition0 :
+            info.basePosition0 - basePosition1;
+        item.baseOffset1 = baseOffset1;
+        q.push(item);
+
+
+    }
+
+
+
+
+    return invalid<AnchorId>;
 }
