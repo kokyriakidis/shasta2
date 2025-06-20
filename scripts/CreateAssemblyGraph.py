@@ -3,10 +3,10 @@
 import shasta2
 
 shasta2.openPerformanceLog("Python-performance.log")
-assemblerOptions = shasta2.AssemblerOptions()
+options = shasta2.Options()
 assembler = shasta2.Assembler()
 assembler.accessMarkers()
 assembler.accessAnchors()
 assembler.accessJourneys()
 assembler.accessAnchorGraph()
-assembler.createAssemblyGraph(assemblerOptions, assemblerOptions.threadCount)
+assembler.createAssemblyGraph(options, options.threadCount)

@@ -3,9 +3,9 @@
 import shasta2
 
 shasta2.openPerformanceLog("Python-performance.log")
-assemblerOptions = shasta2.AssemblerOptions()
+options = shasta2.Options()
 assembler = shasta2.Assembler()
 assembler.accessMarkers()
 assembler.accessMarkerKmers()
-assembler.createAnchors(assemblerOptions.minAnchorCoverage, assemblerOptions.maxAnchorCoverage)
+assembler.createAnchors(options.minAnchorCoverage, options.maxAnchorCoverage)
 

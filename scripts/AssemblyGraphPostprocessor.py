@@ -3,7 +3,7 @@
 from shasta2 import *
 
 openPerformanceLog("Python-performance.log")
-assemblerOptions = AssemblerOptions()
+options = Options()
 
 # Create the Assembler and access what we need.
 assembler = Assembler()
@@ -12,5 +12,5 @@ assembler.accessAnchors()
 assembler.accessJourneys()
 
 # Get the assemblyGraph3Postprocessor at a chosen assembly stage.
-assemblyGraph = assembler.getAssemblyGraph("B", assemblerOptions)
+assemblyGraph = assembler.getAssemblyGraph("B", options)
 assemblyGraph.phaseSuperbubbleChains()
