@@ -153,7 +153,7 @@ void AssemblyGraph::run(uint64_t threadCount)
     write("A");
 
     // Prune.
-    prune(options.pruneLength);
+    prune();
     compress();
 
     // Simplify Superbubbles and remove or simplify bubbles likely caused by errors.
@@ -1145,7 +1145,7 @@ uint64_t AssemblyGraph::detangle(uint64_t maxIterationCount, Detangler& detangle
 
 
 
-void AssemblyGraph::prune(uint64_t pruneLength)
+void AssemblyGraph::prune()
 {
     AssemblyGraph& assemblyGraph = *this;
 
@@ -1161,7 +1161,7 @@ void AssemblyGraph::prune(uint64_t pruneLength)
             const uint64_t offset = assemblyGraph[e].offset();
 
             // If long enough, don't prune it.
-            if(offset > pruneLength) {
+            if(offset > options.pruneLength) {
                 continue;
             }
 
@@ -1418,14 +1418,13 @@ void AssemblyGraph::writeGraphviz(ostream& s, const TangleTemplate& g)
 // This finds all Superbubbles seen using the specified maxDistance.
 // Some pairs of Superbubble can intersect (that is, they can have common edges).
 void AssemblyGraph::findSuperbubbles(
-    uint64_t maxDistance,
     vector<Superbubble>& superbubbles) const
 {
     const AssemblyGraph& assemblyGraph = *this;
 
     vector< pair<vertex_descriptor, vertex_descriptor> > forwardPairs;
     BGL_FORALL_VERTICES(vA, assemblyGraph, AssemblyGraph) {
-        const vertex_descriptor vB = findConvergingVertex(assemblyGraph, vA, maxDistance);
+        const vertex_descriptor vB = findConvergingVertex(assemblyGraph, vA, options.findSuperbubblesMaxDistance);
         if(vB != null_vertex()) {
             forwardPairs.emplace_back(vA, vB);
             // cout << assemblyGraph[vA].id << "..." << assemblyGraph[vB].id << endl;
@@ -1437,7 +1436,7 @@ void AssemblyGraph::findSuperbubbles(
     const boost::reverse_graph<AssemblyGraph> reverseAssemblyGraph(assemblyGraph);
     vector< pair<vertex_descriptor, vertex_descriptor> > backwardPairs;
     BGL_FORALL_VERTICES(vA, assemblyGraph, AssemblyGraph) {
-        const vertex_descriptor vB = findConvergingVertex(reverseAssemblyGraph, vA, maxDistance);
+        const vertex_descriptor vB = findConvergingVertex(reverseAssemblyGraph, vA, options.findSuperbubblesMaxDistance);
         if(vB != null_vertex()) {
             backwardPairs.emplace_back(vB, vA);
             // cout << assemblyGraph[vA].id << "..." << assemblyGraph[vB].id << endl;
@@ -1675,7 +1674,7 @@ void AssemblyGraph::phaseSuperbubbleChains()
 
     // Find superbubbles.
     vector<Superbubble> superbubbles;
-    findSuperbubbles(options.findSuperbubblesMaxDistance, superbubbles);
+    findSuperbubbles(superbubbles);
     removeContainedSuperbubbles(superbubbles);
     cout << "Found " << superbubbles.size() << " non-overlapping superbubbles." << endl;
     writeSuperbubbles(superbubbles, "Superbubbles.csv");
@@ -1709,7 +1708,7 @@ void AssemblyGraph::simplifySuperbubbles()
     // Find the superbubbles, then remove superbubbles that are entirely
     // contained in another superbubble.
     vector<Superbubble> superbubbles;
-    findSuperbubbles(options.findSuperbubblesMaxDistance, superbubbles);
+    findSuperbubbles(superbubbles);
     removeContainedSuperbubbles(superbubbles);
 
     // Count the number of true Superbubbles, excluding bubbles.

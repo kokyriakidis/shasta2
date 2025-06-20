@@ -167,7 +167,7 @@ private:
     void bubbleCleanup(uint64_t threadCount);
     uint64_t bubbleCleanupIteration(uint64_t threadCount);
 
-    void prune(uint64_t pruneLength);
+    void prune();
 
 public:
     // Compress linear chains of edges into a single edge.
@@ -214,11 +214,9 @@ public:
     //   In the sequence, the target vertex of a Superbubble is the same
     //   as the source vertex of the next Superbubble in the SuperbubbleChain.
 
-    // This finds all Superbubbles seen using the specified maxDistance.
+    // This finds all Superbubbles seen using options.findSuperbubblesMaxDistance.
     // Some pairs of Superbubble can intersect (that is, they can have common edges).
-    void findSuperbubbles(
-        uint64_t maxDistance,
-        vector<Superbubble>&) const;
+    void findSuperbubbles(vector<Superbubble>&) const;
 
     // Remove Superbubbles that are entirely contained in a larger superbubble.
     void removeContainedSuperbubbles(vector<Superbubble>&) const;
