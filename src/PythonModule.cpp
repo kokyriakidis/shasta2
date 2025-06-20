@@ -2,7 +2,7 @@
 
 // Shasta.
 #include "Assembler.hpp"
-#include "AssemblerOptions.hpp"
+#include "Options.hpp"
 #include "AssemblyGraphPostprocessor.hpp"
 #include "Base.hpp"
 #include "ChiSquareDetangler.hpp"
@@ -35,25 +35,25 @@ using namespace pybind11;
 
 PYBIND11_MODULE(shasta2, shasta2Module)
 {
-    // Class AssemblerOptions.
-    class_<AssemblerOptions>(shasta2Module, "AssemblerOptions")
+    // Class Options.
+    class_<Options>(shasta2Module, "Options")
 
         // Constructor from the name of a configuration file.
         .def(pybind11::init<const string&>(),
             arg("configurationFileName") = "shasta2.conf")
-        .def_readonly("threadCount", &AssemblerOptions::threadCount)
-        .def_readonly("k", &AssemblerOptions::k)
-        .def_readonly("markerDensity", &AssemblerOptions::markerDensity)
-        .def_readonly("minAnchorCoverage", &AssemblerOptions::minAnchorCoverage)
-        .def_readonly("maxAnchorCoverage", &AssemblerOptions::maxAnchorCoverage)
-        .def_readonly("minAnchorGraphEdgeCoverageNear", &AssemblerOptions::minAnchorGraphEdgeCoverageNear)
-        .def_readonly("minAnchorGraphEdgeCoverageFar", &AssemblerOptions::minAnchorGraphEdgeCoverageFar)
-        .def_readonly("detangleMinCommonCoverage", &AssemblerOptions::detangleMinCommonCoverage)
-        .def_readonly("detangleLowCoverageThreshold", &AssemblerOptions::detangleLowCoverageThreshold)
-        .def_readonly("detangleHighCoverageThreshold", &AssemblerOptions::detangleHighCoverageThreshold)
-        .def_readonly("detangleEpsilon", &AssemblerOptions::detangleEpsilon)
-        .def_readonly("detangleMaxLogP", &AssemblerOptions::detangleMaxLogP)
-        .def_readonly("detangleMinLogPDelta", &AssemblerOptions::detangleMinLogPDelta)
+        .def_readonly("threadCount", &Options::threadCount)
+        .def_readonly("k", &Options::k)
+        .def_readonly("markerDensity", &Options::markerDensity)
+        .def_readonly("minAnchorCoverage", &Options::minAnchorCoverage)
+        .def_readonly("maxAnchorCoverage", &Options::maxAnchorCoverage)
+        .def_readonly("minAnchorGraphEdgeCoverageNear", &Options::minAnchorGraphEdgeCoverageNear)
+        .def_readonly("minAnchorGraphEdgeCoverageFar", &Options::minAnchorGraphEdgeCoverageFar)
+        .def_readonly("detangleMinCommonCoverage", &Options::detangleMinCommonCoverage)
+        .def_readonly("detangleLowCoverageThreshold", &Options::detangleLowCoverageThreshold)
+        .def_readonly("detangleHighCoverageThreshold", &Options::detangleHighCoverageThreshold)
+        .def_readonly("detangleEpsilon", &Options::detangleEpsilon)
+        .def_readonly("detangleMaxLogP", &Options::detangleMaxLogP)
+        .def_readonly("detangleMinLogPDelta", &Options::detangleMinLogPDelta)
         ;
 
     // Class Assembler.
@@ -124,7 +124,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
       // AssemblyGraph.
       .def("createAssemblyGraph",
           &Assembler::createAssemblyGraph,
-          arg("assemblerOptions"),
+          arg("options"),
           arg("threadCount") = 0)
       .def("getAssemblyGraph",
           &Assembler::getAssemblyGraph, return_value_policy::reference)

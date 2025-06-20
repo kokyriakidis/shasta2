@@ -2,7 +2,7 @@
 #include "AssemblyGraph.hpp"
 #include "Anchor.hpp"
 #include "AnchorGraph.hpp"
-#include "AssemblerOptions.hpp"
+#include "Options.hpp"
 #include "deduplicate.hpp"
 #include "Detangler.hpp"
 #include "ExactDetangler.hpp"
@@ -46,12 +46,12 @@ AssemblyGraph::AssemblyGraph(
     const Anchors& anchors,
     const Journeys& journeys,
     const AnchorGraph& anchorGraph,
-    const AssemblerOptions& assemblerOptions) :
+    const Options& options) :
     MappedMemoryOwner(anchors),
     MultithreadedObject<AssemblyGraph>(*this),
     anchors(anchors),
     journeys(journeys),
-    assemblerOptions(assemblerOptions)
+    options(options)
 {
     AssemblyGraph& assemblyGraph = *this;
 
@@ -130,13 +130,13 @@ AssemblyGraph::AssemblyGraph(
 AssemblyGraph::AssemblyGraph(
     const Anchors& anchors,
     const Journeys& journeys,
-    const AssemblerOptions& assemblerOptions,
+    const Options& options,
     const string& stage) :
     MappedMemoryOwner(anchors),
     MultithreadedObject<AssemblyGraph>(*this),
     anchors(anchors),
     journeys(journeys),
-    assemblerOptions(assemblerOptions)
+    options(options)
 {
     load(stage);
 }
@@ -153,7 +153,7 @@ void AssemblyGraph::run(uint64_t threadCount)
     write("A");
 
     // Prune.
-    prune(assemblerOptions.pruneLength);
+    prune(options.pruneLength);
     compress();
 
     // Simplify Superbubbles and remove or simplify bubbles likely caused by errors.
@@ -173,15 +173,15 @@ void AssemblyGraph::run(uint64_t threadCount)
     createTangleTemplates();
     /*
     SimpleDetangler detangler(
-        assemblerOptions.detangleMinCommonCoverage,
-        assemblerOptions.detangleLowCoverageThreshold,
-        assemblerOptions.detangleHighCoverageThreshold);
+        options.detangleMinCommonCoverage,
+        options.detangleLowCoverageThreshold,
+        options.detangleHighCoverageThreshold);
     */
     LikelihoodRatioDetangler detangler(
-        assemblerOptions.detangleMinCommonCoverage,
-        assemblerOptions.detangleEpsilon,
-        assemblerOptions.detangleMaxLogP,
-        assemblerOptions.detangleMinLogPDelta);
+        options.detangleMinCommonCoverage,
+        options.detangleEpsilon,
+        options.detangleMaxLogP,
+        options.detangleMinLogPDelta);
     detangle(maxIterationCount, detangler);
     write("D");
 
@@ -434,14 +434,14 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
     ofstream html;  // Not open, so no html output takes place.
     LocalAssembly2 localAssembly(
         anchors, html, false,
-        assemblerOptions.aDrift,
-        assemblerOptions.bDrift,
+        options.aDrift,
+        options.bDrift,
         step.anchorPair);
     if(localAssembly.coverage() == 0) {
         throw runtime_error("No coverage for local assembly at assembly graph edge " +
             to_string(edge.id) + " step " + to_string(i));
     }
-    localAssembly.run(false, assemblerOptions.localAssemblyOptions.maxAbpoaLength);
+    localAssembly.run(false, options.localAssemblyOptions.maxAbpoaLength);
     localAssembly.getSequence(step.sequence);
 }
 
@@ -627,7 +627,7 @@ uint64_t AssemblyGraph::bubbleCleanupIteration(uint64_t threadCount)
         const AnchorPair bridgeAnchorPair(anchors, anchorId0, anchorId1, false);
 
         // If coverage of the bridgeAnchorPair is sufficient, add this bubble to our list of candidates.
-        if(bridgeAnchorPair.orientedReadIds.size() >= assemblerOptions.bubbleCleanupMinCommonCount) {
+        if(bridgeAnchorPair.orientedReadIds.size() >= options.bubbleCleanupMinCommonCount) {
             candidateBubbles.push_back(make_pair(bubble, bridgeAnchorPair));
         }
 
@@ -651,11 +651,11 @@ uint64_t AssemblyGraph::bubbleCleanupIteration(uint64_t threadCount)
         // Construct the bridge AnchorPair.
         const AnchorPair bridgeAnchorPair = anchors.bridge(
             anchorPair0, anchorPair1,
-            assemblerOptions.aDrift,
-            assemblerOptions.bDrift);
+            options.aDrift,
+            options.bDrift);
 
         // If coverage of the bridgeAnchorPair is sufficient, add this bubble to our list of candidates.
-        if(bridgeAnchorPair.orientedReadIds.size() >= assemblerOptions.assemblyGraphOptions.bubbleCleanupMinCommonCount) {
+        if(bridgeAnchorPair.orientedReadIds.size() >= options.assemblyGraphOptions.bubbleCleanupMinCommonCount) {
             candidateBubbles.push_back(make_pair(bubble, bridgeAnchorPair));
         }
 #endif
@@ -1046,8 +1046,8 @@ uint64_t AssemblyGraph::detangle(
         // Attempt detangling for the tangle defined by these vertices.
         ++attemptCount;
         Tangle tangle(assemblyGraph, tangleVertices,
-            assemblerOptions.aDrift,
-            assemblerOptions.bDrift);
+            options.aDrift,
+            options.bDrift);
         if(debug) {
             const TangleMatrix& tangleMatrix = *(tangle.tangleMatrix);
             cout << "Tangle with " << tangleMatrix.entrances.size() << " entrances and " <<
@@ -1675,7 +1675,7 @@ void AssemblyGraph::phaseSuperbubbleChains()
 
     // Find superbubbles.
     vector<Superbubble> superbubbles;
-    findSuperbubbles(assemblerOptions.findSuperbubblesMaxDistance, superbubbles);
+    findSuperbubbles(options.findSuperbubblesMaxDistance, superbubbles);
     removeContainedSuperbubbles(superbubbles);
     cout << "Found " << superbubbles.size() << " non-overlapping superbubbles." << endl;
     writeSuperbubbles(superbubbles, "Superbubbles.csv");
@@ -1709,7 +1709,7 @@ void AssemblyGraph::simplifySuperbubbles()
     // Find the superbubbles, then remove superbubbles that are entirely
     // contained in another superbubble.
     vector<Superbubble> superbubbles;
-    findSuperbubbles(assemblerOptions.findSuperbubblesMaxDistance, superbubbles);
+    findSuperbubbles(options.findSuperbubblesMaxDistance, superbubbles);
     removeContainedSuperbubbles(superbubbles);
 
     // Count the number of true Superbubbles, excluding bubbles.
@@ -1724,7 +1724,7 @@ void AssemblyGraph::simplifySuperbubbles()
 
     for(const Superbubble& superbubble: superbubbles) {
         if(not superbubble.isBubble()) {
-            simplifySuperbubble(superbubble, assemblerOptions.simplifySuperbubbleMinCoverage);
+            simplifySuperbubble(superbubble, options.simplifySuperbubbleMinCoverage);
         }
     }
 
@@ -1793,7 +1793,7 @@ void AssemblyGraph::simplifySuperbubble(
 
     // Cluster the oriented reads in the AnchorPair.
     vector<AnchorPair> newAnchorPairs;
-    anchorPair.splitByClustering(anchors, journeys, assemblerOptions.clusteringMinJaccard, newAnchorPairs);
+    anchorPair.splitByClustering(anchors, journeys, options.clusteringMinJaccard, newAnchorPairs);
 
 
 
@@ -1811,10 +1811,10 @@ void AssemblyGraph::simplifySuperbubble(
             ostream html(0);
             LocalAssembly2 localAssembly(
                 anchors, html, false,
-                assemblerOptions.aDrift,
-                assemblerOptions.bDrift,
+                options.aDrift,
+                options.bDrift,
                 newAnchorPair);
-            localAssembly.run(false, assemblerOptions.localAssemblyOptions.maxAbpoaLength);
+            localAssembly.run(false, options.localAssemblyOptions.maxAbpoaLength);
             vector<shasta::Base> sequence;
             localAssembly.getSequence(sequence);
             cout << ">" << i << endl;

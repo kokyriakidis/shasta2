@@ -32,7 +32,7 @@ namespace shasta {
 
     class AnchorGraph;
     class Anchors;
-    class AssemblerOptions;
+    class Options;
     class Detangler;
     class Superbubble;
     class SuperbubbleChain;
@@ -130,13 +130,13 @@ public:
         const Anchors&,
         const Journeys&,
         const AnchorGraph&,
-        const AssemblerOptions&);
+        const Options&);
 
     // Deserialize constructor.
     AssemblyGraph(
         const Anchors&,
         const Journeys&,
-        const AssemblerOptions&,
+        const Options&,
         const string& stage);
 
     // Detangle, phase, assemble sequence, output.
@@ -146,7 +146,7 @@ public:
     const Journeys& journeys;
     uint64_t nextVertexId = 0;
     uint64_t nextEdgeId = 0;
-    const AssemblerOptions& assemblerOptions;
+    const Options& options;
 
     // Sort a vector of edge_descriptor by id.
     void sortEdgeDescriptors(vector<edge_descriptor>&) const;

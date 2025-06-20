@@ -1,7 +1,7 @@
 
 // Shasta.
 #include "Assembler.hpp"
-#include "AssemblerOptions.hpp"
+#include "Options.hpp"
 #include "filesystem.hpp"
 #include "performanceLog.hpp"
 #include "Tee.hpp"
@@ -44,10 +44,10 @@ namespace shasta {
         void setupSegmentFaultHandler();
 
         // Functions that implement --command keywords
-        void assemble(const AssemblerOptions&, int argumentCount, char** arguments);
-        void saveBinaryData(const AssemblerOptions&);
-        void cleanupBinaryData(const AssemblerOptions&);
-        void explore(const AssemblerOptions&);
+        void assemble(const Options&, int argumentCount, char** arguments);
+        void saveBinaryData(const Options&);
+        void cleanupBinaryData(const Options&);
+        void explore(const Options&);
         void listCommands();
 
         const std::set<string> commands = {
@@ -131,16 +131,16 @@ void shasta::main::main(int argumentCount, char** arguments)
     setupSegmentFaultHandler();
 
     // Parse command line options and the configuration file, if one was specified.
-    AssemblerOptions assemblerOptions(argumentCount, arguments);
-    if(assemblerOptions.isHelp) {
+    Options options(argumentCount, arguments);
+    if(options.isHelp) {
         return;
     }
 
 
     // Check that we have a valid command.
-    auto it = commands.find(assemblerOptions.command);
+    auto it = commands.find(options.command);
     if(it ==commands.end()) {
-        const string message = "Invalid command " + assemblerOptions.command;
+        const string message = "Invalid command " + options.command;
         listCommands();
         throw runtime_error(message);
     }
@@ -148,19 +148,19 @@ void shasta::main::main(int argumentCount, char** arguments)
 
 
     // Execute the requested command.
-    if(assemblerOptions.command == "assemble") {
-        assemble(assemblerOptions, argumentCount, arguments);
+    if(options.command == "assemble") {
+        assemble(options, argumentCount, arguments);
         return;
-    } else if(assemblerOptions.command == "cleanupBinaryData") {
-        cleanupBinaryData(assemblerOptions);
+    } else if(options.command == "cleanupBinaryData") {
+        cleanupBinaryData(options);
         return;
-    } else if(assemblerOptions.command == "saveBinaryData") {
-        saveBinaryData(assemblerOptions);
+    } else if(options.command == "saveBinaryData") {
+        saveBinaryData(options);
         return;
-    } else if(assemblerOptions.command == "explore") {
-        explore(assemblerOptions);
+    } else if(options.command == "explore") {
+        explore(options);
         return;
-    } else if(assemblerOptions.command == "listCommands") {
+    } else if(options.command == "listCommands") {
         listCommands();
         return;
     }
@@ -175,25 +175,25 @@ void shasta::main::main(int argumentCount, char** arguments)
 
 // Implementation of --command assemble.
 void shasta::main::assemble(
-    const AssemblerOptions& assemblerOptions,
+    const Options& options,
     int argumentCount, char** arguments)
 {
-    SHASTA_ASSERT(assemblerOptions.command == "assemble");
+    SHASTA_ASSERT(options.command == "assemble");
 
 
     // Various checks for option validity.
 
     // Check --k.
-    if(assemblerOptions.k > 126) {
+    if(options.k > 126) {
         throw runtime_error("Invalid value specified for --k. "
             "Must be no more than 126");
     }
-    if((assemblerOptions.k % 2) == 1) {
+    if((options.k % 2) == 1) {
         throw runtime_error("Invalid value specified for --k. Must be even.");
     }
 
     // Check that we have at least one input file.
-    if(assemblerOptions.inputFileNames.empty()) {
+    if(options.inputFileNames.empty()) {
         throw runtime_error("Specify at least one input file "
             "using command line option --input.");
     }
@@ -203,7 +203,7 @@ void shasta::main::assemble(
     // Find absolute paths of the input files.
     // We will use them below after changing directory to the output directory.
     vector<string> inputFileAbsolutePaths;
-    for(const string& inputFileName: assemblerOptions.inputFileNames) {
+    for(const string& inputFileName: options.inputFileNames) {
         if(!std::filesystem::exists(inputFileName)) {
             throw runtime_error("Input file not found: " + inputFileName);
         }
@@ -216,24 +216,24 @@ void shasta::main::assemble(
 
 
     // Create the assembly directory. If it exists, stop.
-    bool exists = std::filesystem::exists(assemblerOptions.assemblyDirectory);
+    bool exists = std::filesystem::exists(options.assemblyDirectory);
     if (exists) {
         throw runtime_error(
-            assemblerOptions.assemblyDirectory +
+            options.assemblyDirectory +
             " already exists. Remove it first \n"
             "or use --assemblyDirectory to specify a different assembly directory."
         );
     } else {
-        SHASTA_ASSERT(std::filesystem::create_directory(assemblerOptions.assemblyDirectory));
+        SHASTA_ASSERT(std::filesystem::create_directory(options.assemblyDirectory));
     }
 
     // Make the assembly directory current.
-    std::filesystem::current_path(assemblerOptions.assemblyDirectory);
+    std::filesystem::current_path(options.assemblyDirectory);
 
     // Write a configuration to the assembly directory.
     {
         ofstream configurationFile("shasta2.conf");
-        assemblerOptions.write(configurationFile);
+        options.write(configurationFile);
     }
 
     // Open the performance log.
@@ -255,8 +255,8 @@ void shasta::main::assemble(
     size_t pageSize = 0;
     string dataDirectory;
     setupRunDirectory(
-        assemblerOptions.memoryMode,
-        assemblerOptions.memoryBacking,
+        options.memoryMode,
+        options.memoryBacking,
         pageSize,
         dataDirectory);
 
@@ -264,7 +264,7 @@ void shasta::main::assemble(
     Assembler assembler(dataDirectory, pageSize);
 
     // Run the assembly.
-    assembler.assemble(assemblerOptions, inputFileAbsolutePaths);
+    assembler.assemble(options, inputFileAbsolutePaths);
 
     cout << timestamp << "Assembly ends." << endl;
     performanceLog << timestamp << "Assembly ends." << endl;
@@ -424,20 +424,20 @@ void shasta::main::setupHugePages()
 // Implementation of --command saveBinaryData.
 // This copies Data to DataOnDisk.
 void shasta::main::saveBinaryData(
-    const AssemblerOptions& assemblerOptions)
+    const Options& options)
 {
-    SHASTA_ASSERT(assemblerOptions.command == "saveBinaryData");
+    SHASTA_ASSERT(options.command == "saveBinaryData");
 
     // Locate the Data directory.
     const string dataDirectory =
-        assemblerOptions.assemblyDirectory + "/Data";
+        options.assemblyDirectory + "/Data";
     if(!std::filesystem::exists(dataDirectory)) {
         throw runtime_error(dataDirectory + " does not exist, nothing done.");
     }
 
     // Check that the DataOnDisk directory does not exist.
     const string dataOnDiskDirectory =
-        assemblerOptions.assemblyDirectory + "/DataOnDisk";
+        options.assemblyDirectory + "/DataOnDisk";
     if(std::filesystem::exists(dataOnDiskDirectory)) {
         throw runtime_error(dataOnDiskDirectory + " already exists, nothing done.");
     }
@@ -456,13 +456,13 @@ void shasta::main::saveBinaryData(
 
 // Implementation of --command cleanupBinaryData.
 void shasta::main::cleanupBinaryData(
-    const AssemblerOptions& assemblerOptions)
+    const Options& options)
 {
-    SHASTA_ASSERT(assemblerOptions.command == "cleanupBinaryData");
+    SHASTA_ASSERT(options.command == "cleanupBinaryData");
 
     // Locate the Data directory.
     const string dataDirectory =
-        assemblerOptions.assemblyDirectory + "/Data";
+        options.assemblyDirectory + "/Data";
     if(!std::filesystem::exists(dataDirectory)) {
         cout << dataDirectory << " does not exist, nothing done." << endl;
         return;
@@ -480,9 +480,9 @@ void shasta::main::cleanupBinaryData(
     // If the DataOnDisk directory exists, create a symbolic link
     // Data->DataOnDisk.
     const string dataOnDiskDirectory =
-        assemblerOptions.assemblyDirectory + "/DataOnDisk";
+        options.assemblyDirectory + "/DataOnDisk";
     if(std::filesystem::exists(dataOnDiskDirectory)) {
-        std::filesystem::current_path(assemblerOptions.assemblyDirectory);
+        std::filesystem::current_path(options.assemblyDirectory);
         const string command = "ln -s DataOnDisk Data";
         ::system(command.c_str());
     }
@@ -491,17 +491,17 @@ void shasta::main::cleanupBinaryData(
 
 // Implementation of --command explore.
 void shasta::main::explore(
-    const AssemblerOptions& assemblerOptions)
+    const Options& options)
 {
 
     // Go to the assembly directory.
-    std::filesystem::current_path(assemblerOptions.assemblyDirectory);
+    std::filesystem::current_path(options.assemblyDirectory);
 
     // Check that we have the binary data.
     if(!std::filesystem::exists("Data")) {
         throw runtime_error("Binary directory \"Data\" not available "
         " in assembly directory " +
-        assemblerOptions.assemblyDirectory +
+        options.assemblyDirectory +
         ". Use \"--memoryMode filesystem\", possibly followed by "
         "\"--command saveBinaryData\" and \"--command cleanupBinaryData\" "
         "if you want to make sure the binary data are persistently available on disk."
@@ -515,20 +515,20 @@ void shasta::main::explore(
 
 
     // Access all available binary data.
-    assembler.httpServerData.assemblerOptions = &assemblerOptions;
+    assembler.httpServerData.options = &options;
     assembler.accessAllSoft();
 
 
     // Start the http server.
     bool localOnly;
     bool sameUserOnly;
-    if(assemblerOptions.exploreAccess == "user") {
+    if(options.exploreAccess == "user") {
         localOnly = true;
         sameUserOnly = true;
-    } else if(assemblerOptions.exploreAccess == "local") {
+    } else if(options.exploreAccess == "local") {
         localOnly = true;
         sameUserOnly = false;
-    } else if (assemblerOptions.exploreAccess == "unrestricted"){
+    } else if (options.exploreAccess == "unrestricted"){
         localOnly = false;
         sameUserOnly = false;
     } else {
@@ -537,7 +537,7 @@ void shasta::main::explore(
         );
     }
     assembler.explore(
-        assemblerOptions.port,
+        options.port,
         localOnly,
         sameUserOnly);
 }

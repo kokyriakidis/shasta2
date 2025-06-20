@@ -1,7 +1,7 @@
 #pragma once
 
 // Shasta.
-#include "AssemblerOptions.hpp"
+#include "Options.hpp"
 #include "HttpServer.hpp"
 #include "MappedMemoryOwner.hpp"
 #include "MemoryMappedObject.hpp"
@@ -97,7 +97,7 @@ public:
     // - The input file names are either absolute,
     //   or relative to the run directory, which is the current directory.
     void assemble(
-        const AssemblerOptions& assemblerOptions,
+        const Options& options,
         vector<string> inputFileNames);
 
 
@@ -194,13 +194,13 @@ public:
 
     // AnchorGraph.
     shared_ptr<AnchorGraph> anchorGraphPointer;
-    void createAnchorGraph(const AssemblerOptions&);
+    void createAnchorGraph(const Options&);
     void accessAnchorGraph();
 
 
     // AssemblyGraph.
     void createAssemblyGraph(
-        const AssemblerOptions&,
+        const Options&,
         uint64_t threadCount);
 
 
@@ -251,7 +251,7 @@ public:
             ostream&);
         std::map<string, ServerFunction> functionTable;
 
-        const AssemblerOptions* assemblerOptions = 0;
+        const Options* options = 0;
     };
     HttpServerData httpServerData;
 
@@ -284,7 +284,7 @@ public:
     // Get the AssemblyGraph for a given assembly stage.
     AssemblyGraphPostprocessor& getAssemblyGraph(
         const string& assemblyStage,
-        const AssemblerOptions&);
+        const Options&);
     std::map<string, shared_ptr<AssemblyGraphPostprocessor> > assemblyGraphTable;
 
 };

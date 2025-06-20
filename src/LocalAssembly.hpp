@@ -5,7 +5,7 @@
 
 // Shasta.
 #include "Anchor.hpp"
-#include "AssemblerOptions.hpp"
+#include "Options.hpp"
 #include "Base.hpp"
 #include "invalid.hpp"
 #include "ReadId.hpp"
@@ -129,7 +129,7 @@ public:
         AnchorId anchorIdB,
         uint64_t minVertexCoverage, // 0 = automatic
         const LocalAssemblyDisplayOptions&,
-        const AssemblerOptions::LocalAssemblyOptions&,
+        const Options::LocalAssemblyOptions&,
         bool useA = true,
         bool useB = true);
 

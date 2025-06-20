@@ -10,18 +10,18 @@
 #include "CLI/CLI.hpp"
 
 namespace shasta {
-    class AssemblerOptions;
+    class Options;
 }
 
 
-class shasta::AssemblerOptions : public CLI::App {
+class shasta::Options : public CLI::App {
 public:
 
     // Constructor from command line options.
-    AssemblerOptions(int argumentCount, char** arguments);
+    Options(int argumentCount, char** arguments);
 
     // Constructor from a configuration file.
-    AssemblerOptions(const string& fileName);
+    Options(const string& fileName);
 
     // Write a configuration file.
     void write(ostream&) const;

@@ -1,5 +1,5 @@
 // Shasta.
-#include "AssemblerOptions.hpp"
+#include "Options.hpp"
 using namespace shasta;
 
 // Standard library.
@@ -8,7 +8,7 @@ using namespace shasta;
 
 
 
-shasta::AssemblerOptions::AssemblerOptions(int argc, char** argv) :
+Options::Options(int argc, char** argv) :
     CLI::App("Shasta2. Under development.")
 {
     allow_config_extras(false);
@@ -32,7 +32,7 @@ shasta::AssemblerOptions::AssemblerOptions(int argc, char** argv) :
 
 
 
-void AssemblerOptions::addOptions()
+void Options::addOptions()
 {
     add_option("--input", inputFileNames,
         "Input fasta or fastq files (uncompressed)."
@@ -217,7 +217,7 @@ void AssemblerOptions::addOptions()
 
 
 // Constructor from a configuration file.
-AssemblerOptions::AssemblerOptions(const string& fileName)
+Options::Options(const string& fileName)
 {
 
     allow_config_extras(false);
@@ -245,7 +245,7 @@ AssemblerOptions::AssemblerOptions(const string& fileName)
 
 
 
-void AssemblerOptions::write(ostream& s) const
+void Options::write(ostream& s) const
 {
     s << config_to_str(true,true);
 }

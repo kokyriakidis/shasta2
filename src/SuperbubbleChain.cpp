@@ -1,5 +1,5 @@
 #include "SuperbubbleChain.hpp"
-#include "AssemblerOptions.hpp"
+#include "Options.hpp"
 #include "deduplicate.hpp"
 #include "PhasingGraph.hpp"
 #include "Tangle.hpp"
@@ -62,8 +62,8 @@ void SuperbubbleChain::phase(
             TangleMatrix tangleMatrix(assemblyGraph,
                 bubble0.internalEdges,
                 bubble1.internalEdges,
-                assemblyGraph.assemblerOptions.aDrift,
-                assemblyGraph.assemblerOptions.bDrift);
+                assemblyGraph.options.aDrift,
+                assemblyGraph.options.bDrift);
 
             if(debug) {
                 cout << "Tangle matrix:" << endl;
@@ -76,7 +76,7 @@ void SuperbubbleChain::phase(
             }
 
             // Do the likelyHood ratio test (G test).
-            const bool success = tangleMatrix.gTest(assemblyGraph.assemblerOptions.detangleEpsilon);
+            const bool success = tangleMatrix.gTest(assemblyGraph.options.detangleEpsilon);
 
             if(not success) {
                 if(debug) {
@@ -95,7 +95,7 @@ void SuperbubbleChain::phase(
 
             // Check if the best hypothesis satisfies our options.
             const double bestG = tangleMatrix.hypotheses.front().G;
-            if(bestG > assemblyGraph.assemblerOptions.detangleMaxLogP) {
+            if(bestG > assemblyGraph.options.detangleMaxLogP) {
                 if(false) {
                     cout << "Best hypothesis G is too high." << endl;
                 }
@@ -103,7 +103,7 @@ void SuperbubbleChain::phase(
             }
             if(tangleMatrix.hypotheses.size() > 1) {
                 const double secondBestG = tangleMatrix.hypotheses[1].G;
-                if(secondBestG - bestG < assemblyGraph.assemblerOptions.detangleMinLogPDelta) {
+                if(secondBestG - bestG < assemblyGraph.options.detangleMinLogPDelta) {
                     if(false) {
                         cout << "Second best hypothesis G is too low." << endl;
                     }
@@ -237,8 +237,8 @@ void SuperbubbleChain::phase(
 
             // Create the tangle from these vertices.
             Tangle tangle(assemblyGraph, tangleVertices,
-                assemblyGraph.assemblerOptions.aDrift,
-                assemblyGraph.assemblerOptions.bDrift);
+                assemblyGraph.options.aDrift,
+                assemblyGraph.options.bDrift);
 
             if(debug) {
                 cout << "Tangle matrix:" << endl;

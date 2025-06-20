@@ -1,7 +1,7 @@
 #include "Assembler.hpp"
 #include "Anchor.hpp"
 #include "AnchorGraph.hpp"
-#include "AssemblerOptions.hpp"
+#include "Options.hpp"
 #include "AssemblyGraph.hpp"
 #include "Journeys.hpp"
 #include "KmerCheckerFactory.hpp"
@@ -64,11 +64,11 @@ Assembler::Assembler(const string& largeDataFileNamePrefix) :
 // - The input file names are either absolute,
 //   or relative to the run directory, which is the current directory.
 void Assembler::assemble(
-    const AssemblerOptions& assemblerOptions,
+    const Options& options,
     vector<string> inputFileNames)
 {
     // Adjust the number of threads, if necessary.
-    uint64_t threadCount = assemblerOptions.threadCount;
+    uint64_t threadCount = options.threadCount;
     if(threadCount == 0) {
         threadCount = std::thread::hardware_concurrency();
     }
@@ -76,25 +76,25 @@ void Assembler::assemble(
 
     addReads(
         inputFileNames,
-        assemblerOptions.minReadLength,
+        options.minReadLength,
         threadCount);
     createReadLengthDistribution();
 
-    createKmerChecker(assemblerOptions.k, assemblerOptions.markerDensity, threadCount);
+    createKmerChecker(options.k, options.markerDensity, threadCount);
     createMarkers(threadCount);
     createMarkerKmers(threadCount);
     createAnchors(
-        assemblerOptions.minAnchorCoverage,
-        assemblerOptions.maxAnchorCoverage,
-        assemblerOptions.maxAnchorHomopolymerLength,
+        options.minAnchorCoverage,
+        options.maxAnchorCoverage,
+        options.maxAnchorHomopolymerLength,
         threadCount);
 
     createJourneys(threadCount);
     journeys().writeAnchorGapsByRead(reads(), markers(), anchors());
 
-    createAnchorGraph(assemblerOptions);
+    createAnchorGraph(options);
 
-    createAssemblyGraph(assemblerOptions, threadCount);
+    createAssemblyGraph(options, threadCount);
 }
 
 
@@ -186,7 +186,7 @@ void Assembler::accessJourneys()
 
 
 
-void Assembler::createAnchorGraph(const AssemblerOptions& options)
+void Assembler::createAnchorGraph(const Options& options)
 {
     // Adjust the number of threads, if necessary.
     uint64_t threadCount = options.threadCount;
@@ -210,7 +210,7 @@ void Assembler::createAnchorGraph(const AssemblerOptions& options)
 
 
 void Assembler::createAssemblyGraph(
-    const AssemblerOptions& options,
+    const Options& options,
     uint64_t threadCount)
 {
     // Adjust the numbers of threads, if necessary.

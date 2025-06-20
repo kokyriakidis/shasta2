@@ -21,7 +21,7 @@ public:
     AssemblyGraphPostprocessor(
         const Anchors&,
         const Journeys&,
-        const AssemblerOptions&,
+        const Options&,
         const string& assemblyStage);
 
     // Map from edge id to edge_descriptor.

@@ -26,7 +26,7 @@ void Assembler::exploreLocalAssembly(
     html << "<h2>LocalAssembly</h2>";
 
     const auto& localAssemblyOptions =
-        httpServerData.assemblerOptions->localAssemblyOptions;
+        httpServerData.options->localAssemblyOptions;
 
     LocalAssemblyDisplayOptions options(html);
 
@@ -225,7 +225,7 @@ void Assembler::exploreSegments(
     // Get the AssemblyGraph for this assembly stage.
     const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
         assemblyStage,
-        *httpServerData.assemblerOptions);
+        *httpServerData.options);
 
     html <<
         "<h2>Assembly graph at stage " << assemblyStage << " </h2>"
@@ -390,7 +390,7 @@ void Assembler::exploreSegment(
     // Get the AssemblyGraph for this assembly stage.
     const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
         assemblyStage,
-        *httpServerData.assemblerOptions);
+        *httpServerData.options);
 
     // Find the AssemblyGraphEdge corresponding to the requested segment.
     auto it = assemblyGraph.edgeMap.find(segmentId);
@@ -699,7 +699,7 @@ void Assembler::exploreSegmentStep(
     // Get the AssemblyGraph for this assembly stage.
     const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
         assemblyStage,
-        *httpServerData.assemblerOptions);
+        *httpServerData.options);
 
     // Find the AssemblyGraphEdge corresponding to the requested segment.
     auto it = assemblyGraph.edgeMap.find(segmentId);
@@ -726,10 +726,10 @@ void Assembler::exploreSegmentStep(
     // Do the local assembly for this step.
     LocalAssembly2 localAssembly(
         anchors(), html, debug,
-        httpServerData.assemblerOptions->aDrift,
-        httpServerData.assemblerOptions->bDrift,
+        httpServerData.options->aDrift,
+        httpServerData.options->bDrift,
         edge[stepId].anchorPair);
-    localAssembly.run(showAlignment, httpServerData.assemblerOptions->localAssemblyOptions.maxAbpoaLength);
+    localAssembly.run(showAlignment, httpServerData.options->localAssemblyOptions.maxAbpoaLength);
 
 
 
@@ -747,12 +747,12 @@ void Assembler::exploreSegmentStep(
 
 AssemblyGraphPostprocessor& Assembler::getAssemblyGraph(
     const string& assemblyStage,
-    const AssemblerOptions& assemblerOptions)
+    const Options& options)
 {
     auto it = assemblyGraphTable.find(assemblyStage);
     if(it == assemblyGraphTable.end()) {
         shared_ptr<AssemblyGraphPostprocessor> p =
-            make_shared<AssemblyGraphPostprocessor>(anchors(), journeys(), assemblerOptions, assemblyStage);
+            make_shared<AssemblyGraphPostprocessor>(anchors(), journeys(), options, assemblyStage);
         tie(it, ignore) = assemblyGraphTable.insert(make_pair(assemblyStage, p));
     }
     return *(it->second);
@@ -775,7 +775,7 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
     HttpServer::getParameterValue(request, "exits", exitsString);
     boost::trim(exitsString);
 
-    double epsilon = httpServerData.assemblerOptions->detangleEpsilon;
+    double epsilon = httpServerData.options->detangleEpsilon;
     HttpServer::getParameterValue(request, "epsilon", epsilon);
 
 
@@ -830,7 +830,7 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
     // Get the AssemblyGraph for this assembly stage.
     const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
         assemblyStage,
-        *httpServerData.assemblerOptions);
+        *httpServerData.options);
 
 
 
@@ -893,8 +893,8 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
 
     // Create the TangleMatrix.
     TangleMatrix tangleMatrix(assemblyGraph, entrances, exits,
-        httpServerData.assemblerOptions->aDrift,
-        httpServerData.assemblerOptions->bDrift);
+        httpServerData.options->aDrift,
+        httpServerData.options->bDrift);
     tangleMatrix.gTest(epsilon);
     tangleMatrix.writeHtml(assemblyGraph, html);
 }
@@ -912,7 +912,7 @@ void Assembler::exploreVertexTangle(const vector<string>& request, ostream& html
     string segmentName;;
     HttpServer::getParameterValue(request, "segmentName", segmentName);
 
-    double epsilon = httpServerData.assemblerOptions->detangleEpsilon;
+    double epsilon = httpServerData.options->detangleEpsilon;
     HttpServer::getParameterValue(request, "epsilon", epsilon);
 
     // Start the form.
@@ -963,7 +963,7 @@ void Assembler::exploreVertexTangle(const vector<string>& request, ostream& html
     // Get the AssemblyGraph for this assembly stage.
     AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
         assemblyStage,
-        *httpServerData.assemblerOptions);
+        *httpServerData.options);
 
     // Find the AssemblyGraphEdge corresponding to the requested segment.
     auto it = assemblyGraph.edgeMap.find(segmentId);
@@ -978,8 +978,8 @@ void Assembler::exploreVertexTangle(const vector<string>& request, ostream& html
 
     // Create a Tangle at the target of this vertex.
     const Tangle tangle(assemblyGraph, target(e, assemblyGraph),
-        httpServerData.assemblerOptions->aDrift,
-        httpServerData.assemblerOptions->bDrift);
+        httpServerData.options->aDrift,
+        httpServerData.options->bDrift);
     tangle.tangleMatrix->gTest(epsilon);
 
     // Write out the TangleMatrix.
@@ -998,7 +998,7 @@ void Assembler::exploreEdgeTangle(const vector<string>& request, ostream& html)
     string segmentName;;
     HttpServer::getParameterValue(request, "segmentName", segmentName);
 
-    double epsilon = httpServerData.assemblerOptions->detangleEpsilon;
+    double epsilon = httpServerData.options->detangleEpsilon;
     HttpServer::getParameterValue(request, "epsilon", epsilon);
 
     // Start the form.
@@ -1050,7 +1050,7 @@ void Assembler::exploreEdgeTangle(const vector<string>& request, ostream& html)
     // Get the AssemblyGraph for this assembly stage.
     AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
         assemblyStage,
-        *httpServerData.assemblerOptions);
+        *httpServerData.options);
 
     // Find the AssemblyGraphEdge corresponding to the requested segment.
     auto it = assemblyGraph.edgeMap.find(segmentId);
@@ -1065,8 +1065,8 @@ void Assembler::exploreEdgeTangle(const vector<string>& request, ostream& html)
 
     // Create a Tangle at this edge.
     const Tangle tangle(assemblyGraph, e,
-        httpServerData.assemblerOptions->aDrift,
-        httpServerData.assemblerOptions->bDrift);
+        httpServerData.options->aDrift,
+        httpServerData.options->bDrift);
     tangle.tangleMatrix->gTest(epsilon);
 
     // Write out the TangleMatrix.
@@ -1093,7 +1093,7 @@ void Assembler::exploreLocalAssembly1(
     string showAlignmentString;
     const bool showAlignment = getParameterValue(request, "showAlignment", showAlignmentString);
 
-    uint64_t maxAbpoaLength = httpServerData.assemblerOptions->localAssemblyOptions.maxAbpoaLength;
+    uint64_t maxAbpoaLength = httpServerData.options->localAssemblyOptions.maxAbpoaLength;
     getParameterValue(request, "maxAbpoaLength", maxAbpoaLength);
 
 
@@ -1189,7 +1189,7 @@ void Assembler::exploreLocalAssembly2(
     string debugString;
     const bool debug = getParameterValue(request, "debug", debugString);
 
-    uint64_t maxAbpoaLength = httpServerData.assemblerOptions->localAssemblyOptions.maxAbpoaLength;
+    uint64_t maxAbpoaLength = httpServerData.options->localAssemblyOptions.maxAbpoaLength;
     getParameterValue(request, "maxAbpoaLength", maxAbpoaLength);
 
 
@@ -1283,10 +1283,10 @@ void Assembler::exploreLocalAssembly2(
         anchors(),
         html,
         debug,
-        httpServerData.assemblerOptions->aDrift,
-        httpServerData.assemblerOptions->bDrift,
+        httpServerData.options->aDrift,
+        httpServerData.options->bDrift,
         anchorIdA, anchorIdB);
-    localAssembly.run(showAlignment, httpServerData.assemblerOptions->localAssemblyOptions.maxAbpoaLength);
+    localAssembly.run(showAlignment, httpServerData.options->localAssemblyOptions.maxAbpoaLength);
 
 
 

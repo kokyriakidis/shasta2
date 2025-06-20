@@ -12,9 +12,9 @@ using namespace shasta;
 AssemblyGraphPostprocessor::AssemblyGraphPostprocessor(
     const Anchors& anchors,
     const Journeys& journeys,
-    const AssemblerOptions& assemblerOptions,
+    const Options& options,
     const string& assemblyStage) :
-    AssemblyGraph(anchors, journeys, assemblerOptions, assemblyStage)
+    AssemblyGraph(anchors, journeys, options, assemblyStage)
 {
     const AssemblyGraph& assemblyGraph = *this;
 

@@ -1,7 +1,7 @@
 // Shasta.
 #include "Anchor.hpp"
 #include "Assembler.hpp"
-#include "AssemblerOptions.hpp"
+#include "Options.hpp"
 #include "AssemblyGraphPostprocessor.hpp"
 #include "color.hpp"
 #include "deduplicate.hpp"
@@ -142,7 +142,7 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
         // Get the AssemblyGraph for this assembly stage.
         const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
             assemblyStage,
-            *httpServerData.assemblerOptions);
+            *httpServerData.options);
         const auto annotations = assemblyGraph.getAnnotations(anchorId);
 
         html << "<h2>Assembly graph annotations at assembly stage " << assemblyStage << "</h2>";
@@ -334,7 +334,7 @@ void Assembler::exploreAnchorPair(const vector<string>& request, ostream& html)
     const bool showSequence = HttpServer::getParameterValue(request,
         "showSequence", showSequenceString);
 
-    double clusteringMinJaccard = httpServerData.assemblerOptions->clusteringMinJaccard;
+    double clusteringMinJaccard = httpServerData.options->clusteringMinJaccard;
     HttpServer::getParameterValue(request, "clusteringMinJaccard", clusteringMinJaccard);
 
     // Write the form.
@@ -507,8 +507,8 @@ void Assembler::exploreAnchorPair(const vector<string>& request, ostream& html)
     {
         vector<AnchorPair> newAnchorPairs;
         anchorPair.splitByOffsets(anchors(),
-            httpServerData.assemblerOptions->aDrift,
-            httpServerData.assemblerOptions->bDrift,
+            httpServerData.options->aDrift,
+            httpServerData.options->bDrift,
             newAnchorPairs);
 
         if(newAnchorPairs.size() > 1) {
@@ -1122,7 +1122,7 @@ void Assembler::exploreLocalAnchorGraph(
     if(displayOptions.vertexColoring == "byAssemblyAnnotations") {
         const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
             displayOptions.assemblyStage,
-            *httpServerData.assemblerOptions);
+            *httpServerData.options);
         assemblyGraphPointer = &assemblyGraph;
     }
 
