@@ -1151,7 +1151,7 @@ void AssemblyGraph::prune()
 
     vector<vertex_descriptor> verticesToBeRemoved;
     vector<edge_descriptor> edgesToBeRemoved;
-    while(true) {
+    for(uint64_t iteration=0; iteration<options.pruneIterationCount; iteration++) {
 
         // Edge pruning for this iteration.
         edgesToBeRemoved.clear();

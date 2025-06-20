@@ -68,6 +68,7 @@ public:
     double detangleMinLogPDelta = 10.;
 
     uint64_t pruneLength = 50000;
+    uint64_t pruneIterationCount = 3;
 
     class LocalAssemblyOptions {
     public:
