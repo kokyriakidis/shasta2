@@ -32,40 +32,6 @@ template class MultithreadedObject<AnchorGraph>;
 
 
 
-
-AnchorGraph::AnchorGraph(
-    const Anchors& anchors,
-    const Journeys& journeys,
-    uint64_t minEdgeCoverage) :
-    AnchorGraphBaseClass(anchors.size()),
-    MappedMemoryOwner(anchors),
-    MultithreadedObject<AnchorGraph>(*this)
-{
-    AnchorGraph& anchorGraph = *this;
-
-    const uint64_t anchorCount = anchors.size();
-    for(AnchorId anchorId=0; anchorId<anchorCount; anchorId++) {
-        add_vertex(anchorGraph);
-    }
-
-    vector<AnchorPair> anchorPairs;
-    for(AnchorId anchorIdA=0; anchorIdA<anchorCount; anchorIdA++) {
-        AnchorPair::createChildren(anchors, journeys, anchorIdA, minEdgeCoverage, anchorPairs);
-
-        for(const AnchorPair& anchorPair: anchorPairs) {
-            const uint64_t offset = anchorPair.getAverageOffset(anchors);
-            add_edge(anchorIdA, anchorPair.anchorIdB,
-                AnchorGraphEdge(anchorPair, offset, nextEdgeId++), anchorGraph);
-        }
-    }
-
-    cout << "The anchor graph has " << num_vertices(*this) <<
-        " vertices and " << num_edges(*this) << " edges." << endl;
-
-}
-
-
-
 // Constructor that splits edges that have an AnchorPair
 // with inconsistent offsets, and also does local search to
 // eliminate dead ends where possible.
