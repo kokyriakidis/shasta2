@@ -148,9 +148,6 @@ public:
     uint64_t nextEdgeId = 0;
     const Options& options;
 
-    // Sort a vector of edge_descriptor by id.
-    void sortEdgeDescriptors(vector<edge_descriptor>&) const;
-
 private:
 
     void check() const;
@@ -173,6 +170,20 @@ public:
     // Compress linear chains of edges into a single edge.
     void compress();
 
+    // Class to order vertices or edges by id.
+    class OrderById {
+    public:
+        OrderById(const AssemblyGraph& assemblyGraph): assemblyGraph(assemblyGraph) {}
+        const AssemblyGraph& assemblyGraph;
+        bool operator()(vertex_descriptor x, vertex_descriptor y) const
+        {
+            return assemblyGraph[x].id < assemblyGraph[y].id;
+        }
+        bool operator()(edge_descriptor x, edge_descriptor y) const
+        {
+            return assemblyGraph[x].id < assemblyGraph[y].id;
+        }
+    };
 
 
     // Detangling.

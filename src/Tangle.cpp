@@ -62,7 +62,7 @@ Tangle::Tangle(
             }
         }
     }
-    assemblyGraph.sortEdgeDescriptors(entranceEdges);
+    sort(entranceEdges.begin(), entranceEdges.end(), AssemblyGraph::OrderById(assemblyGraph));
 
     // Find the exit edges.
     vector<edge_descriptor> exitEdges;
@@ -74,7 +74,7 @@ Tangle::Tangle(
             }
         }
     }
-    assemblyGraph.sortEdgeDescriptors(exitEdges);
+    sort(exitEdges.begin(), exitEdges.end(), AssemblyGraph::OrderById(assemblyGraph));
 
     // Now we can create the TangleMatrix.
     tangleMatrix = make_shared<TangleMatrix>(

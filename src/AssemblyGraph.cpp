@@ -147,7 +147,7 @@ AssemblyGraph::AssemblyGraph(
 void AssemblyGraph::run(uint64_t threadCount)
 {
     // AssemblyGraph& assemblyGraph = *this;
-    // const uint64_t maxIterationCount = 10;
+    const uint64_t detangleMaxIterationCount = 10;
 
     // Initial output.
     write("A");
@@ -158,20 +158,20 @@ void AssemblyGraph::run(uint64_t threadCount)
 
     // Simplify Superbubbles and remove or simplify bubbles likely caused by errors.
     simplifySuperbubbles();
+    write("B");
     bubbleCleanup(threadCount);
     compress();
-    write("B");
+    write("C");
 
     // Phase SuperbubbleChains.
     phaseSuperbubbleChains();
-    write("C");
+    write("D");
 
 
 
-#if 0
     // Detangling.
-    createTangleTemplates();
     /*
+    createTangleTemplates();
     SimpleDetangler detangler(
         options.detangleMinCommonCoverage,
         options.detangleLowCoverageThreshold,
@@ -182,9 +182,8 @@ void AssemblyGraph::run(uint64_t threadCount)
         options.detangleEpsilon,
         options.detangleMaxLogP,
         options.detangleMinLogPDelta);
-    detangle(maxIterationCount, detangler);
-    write("D");
-#endif
+    detangle(detangleMaxIterationCount, detangler);
+    write("E");
 
 
     // Sequence assembly.
@@ -953,6 +952,7 @@ uint64_t AssemblyGraph::detangleEdgesIteration(Detangler& detangler)
     BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
         const vertex_descriptor v0 = source(e, assemblyGraph);
         const vertex_descriptor v1 = target(e, assemblyGraph);
+        // const bool isTrueTangleEdge = (out_degree(v0, assemblyGraph) == 1) and (in_degree(v1, assemblyGraph) == 1);
         detanglingCandidates.emplace_back(vector<vertex_descriptor>({v0, v1}));
     }
 
@@ -1136,9 +1136,9 @@ uint64_t AssemblyGraph::detangle(uint64_t maxIterationCount, Detangler& detangle
 
     const uint64_t verticesChangeCount = detangleVertices(maxIterationCount, detangler);
     const uint64_t edgesChangeCount = detangleEdges(maxIterationCount, detangler);
-    const uint64_t templateChangeCount = detangleTemplates(maxIterationCount, detangler);
+    // const uint64_t templateChangeCount = detangleTemplates(maxIterationCount, detangler);
 
-    const uint64_t changeCount = verticesChangeCount + edgesChangeCount + templateChangeCount;
+    const uint64_t changeCount = verticesChangeCount + edgesChangeCount; // + templateChangeCount;
 
     return changeCount;
 }
@@ -1466,6 +1466,8 @@ void AssemblyGraph::findSuperbubbles(
 // Remove Superbubbles that are entirely contained in a larger superbubble.
 void AssemblyGraph::removeContainedSuperbubbles(vector<Superbubble>& superbubbles) const
 {
+    const AssemblyGraph& assemblyGraph = *this;
+
     // Find pairs of intersecting superbubbles.
     // Two superbubbles intersect if they have one or more internal edges in common.
     std::map<edge_descriptor, vector<uint64_t> > m;
@@ -1505,7 +1507,8 @@ void AssemblyGraph::removeContainedSuperbubbles(vector<Superbubble>& superbubble
         std::set_intersection(
             internalEdges0.begin(), internalEdges0.end(),
             internalEdges1.begin(), internalEdges1.end(),
-            back_inserter(commonEdges)
+            back_inserter(commonEdges),
+            AssemblyGraph::OrderById(assemblyGraph)
             );
 
         if(commonEdges.size() == internalEdges0.size()) {
@@ -1515,8 +1518,19 @@ void AssemblyGraph::removeContainedSuperbubbles(vector<Superbubble>& superbubble
             // cout << "Superbubble " << superbubbleId1 << " is contained in superbubble " << superbubbleId0 << endl;
             superbubblesToBeRemoved.push_back(superbubbleId1);
         } else {
-            // cout << "Superbubbles " << superbubbleId0 << " and " << superbubbleId1 << " intersect." << endl;
-            // This should never happen, but just in case we cout remove both of them.
+            cout << "Superbubbles " << superbubbleId0 << " and " << superbubbleId1 << " intersect." << endl;
+            cout << "Superbubbles " << superbubbleId0 << " has " << internalEdges0.size() << " internal edges:";
+            for(const edge_descriptor e: internalEdges0) {
+                cout << " " << assemblyGraph[e].id;
+            }
+            cout << endl;
+            cout << "Superbubbles " << superbubbleId1 << " has " << internalEdges1.size() << " internal edges:";
+            for(const edge_descriptor e: internalEdges1) {
+                cout << " " << assemblyGraph[e].id;
+            }
+            cout << endl;
+            cout << "Found " << commonEdges.size() << " common edges." << endl;
+            // This should never happen, but just in case we remove both of them.
             SHASTA_ASSERT(0);
             // superbubblesToBeRemoved.push_back(superbubbleId0);
             // superbubblesToBeRemoved.push_back(superbubbleId1);
@@ -1675,6 +1689,7 @@ void AssemblyGraph::phaseSuperbubbleChains()
     // Find superbubbles.
     vector<Superbubble> superbubbles;
     findSuperbubbles(superbubbles);
+    writeSuperbubbles(superbubbles, "Superbubbles-WithOverlaps.csv");
     removeContainedSuperbubbles(superbubbles);
     cout << "Found " << superbubbles.size() << " non-overlapping superbubbles." << endl;
     writeSuperbubbles(superbubbles, "Superbubbles.csv");
@@ -1737,10 +1752,11 @@ void AssemblyGraph::simplifySuperbubble(
     uint64_t minCoverage)
 {
     AssemblyGraph& assemblyGraph = *this;
-    const bool debug = false;
 
     const AnchorId anchorIdA = assemblyGraph[superbubble.sourceVertex].anchorId;
     const AnchorId anchorIdB = assemblyGraph[superbubble.targetVertex].anchorId;
+
+    const bool debug = false; // anchorIdToString(anchorIdA) == "401281+";
 
     if(debug) {
         cout << "Working on a superbubble consisting of the following " <<
@@ -1837,6 +1853,14 @@ void AssemblyGraph::simplifySuperbubble(
             cout << " " << newAnchorPair.orientedReadIds.size();
         }
         cout << endl;
+    }
+
+    // If there are no AnchorPairs with sufficient coverage, we can't simplify this Superbubble.
+    if(newAnchorPairs.empty()) {
+        if(debug) {
+            cout << "This superbubble cannot be simplified because there are no usable anchor pairs." << endl;
+        }
+        return;
     }
 
     // We replace the Superbubble with a bubble created using these new AnchorPairs.
@@ -2038,21 +2062,3 @@ void AssemblyGraph::colorStrongComponents() const
 
 }
 
-
-
-
-// Sort a vector of edge_descriptor by id.
-void AssemblyGraph::sortEdgeDescriptors(vector<edge_descriptor>& edgeDescriptors) const
-{
-
-    class SortHelper {
-    public:
-        SortHelper(const AssemblyGraph& assemblyGraph): assemblyGraph(assemblyGraph) {}
-        const AssemblyGraph& assemblyGraph;
-        bool operator()(edge_descriptor x, edge_descriptor y) const
-        {
-            return assemblyGraph[x].id < assemblyGraph[y].id;
-        }
-    };
-    sort(edgeDescriptors.begin(), edgeDescriptors.end(), SortHelper(*this));
-}

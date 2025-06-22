@@ -28,7 +28,7 @@ public:
     vertex_descriptor sourceVertex;
     vertex_descriptor targetVertex;
 
-    // The internal vertices are stored sorted so we can do binary searches on it.
+    // The internal vertices are stored sorted by id so we can do binary searches on it.
     // They do not include the source and target vertices.
     vector<vertex_descriptor> internalVertices;
     void gatherInternalVertices();
@@ -36,14 +36,14 @@ public:
         return std::binary_search(internalVertices.begin(), internalVertices.end(), v);
     }
 
-    // The source edges are the out-edges of the source vertex, stored sorted.
-    // The target edges are the in-edges of the target vertex, stored sorted.
+    // The source edges are the out-edges of the source vertex, stored sorted by id.
+    // The target edges are the in-edges of the target vertex, stored sorted by id.
     // All source and target edges are also stored in the internalEdges vector.
     // An edge can be at the same time a source and edge and a target edge.
     vector<edge_descriptor> sourceEdges;
     vector<edge_descriptor> targetEdges;
 
-    // The internal edges are stored sorted.
+    // The internal edges are stored sorted by id.
     // They include the source and target edges.
     vector<edge_descriptor> internalEdges;
 
