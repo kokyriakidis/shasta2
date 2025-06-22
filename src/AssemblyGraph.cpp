@@ -147,7 +147,7 @@ AssemblyGraph::AssemblyGraph(
 void AssemblyGraph::run(uint64_t threadCount)
 {
     // AssemblyGraph& assemblyGraph = *this;
-    const uint64_t maxIterationCount = 10;
+    // const uint64_t maxIterationCount = 10;
 
     // Initial output.
     write("A");
@@ -168,7 +168,7 @@ void AssemblyGraph::run(uint64_t threadCount)
 
 
 
-
+#if 0
     // Detangling.
     createTangleTemplates();
     /*
@@ -184,7 +184,7 @@ void AssemblyGraph::run(uint64_t threadCount)
         options.detangleMinLogPDelta);
     detangle(maxIterationCount, detangler);
     write("D");
-
+#endif
 
 
     // Sequence assembly.

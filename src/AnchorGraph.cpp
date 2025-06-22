@@ -32,9 +32,8 @@ template class MultithreadedObject<AnchorGraph>;
 
 
 
-// Constructor that splits edges that have an AnchorPair
-// with inconsistent offsets, and also does local search to
-// eliminate dead ends where possible.
+// Constructor that generates edges between AnchorIds that are
+//immediately adjacent in one or more Journeys.
 AnchorGraph::AnchorGraph(
     const Anchors& anchors,
     const Journeys& journeys,
@@ -343,6 +342,97 @@ AnchorGraph::AnchorGraph(
         aDrift, bDrift,
         minEdgeCoverageNear, minEdgeCoverageFar, maxDistance, threadCount);
 #endif
+}
+
+
+
+// Constructor that uses read following.
+AnchorGraph::AnchorGraph(
+    const Anchors& anchors,
+    const Journeys& journeys,
+    uint64_t minEdgeCoverage,
+    double aDrift,
+    double bDrift,
+    uint64_t /* threadCount */) :
+    MappedMemoryOwner(anchors),
+    MultithreadedObject<AnchorGraph>(*this)
+{
+    AnchorGraph& anchorGraph = *this;
+
+    // Create the vertices, one for each AnchorId.
+    // In the AnchorGraph, vertex_descriptors are AnchorIds.
+    const uint64_t anchorCount = anchors.size();
+    for(AnchorId anchorId=0; anchorId<anchorCount; anchorId++) {
+        add_vertex(anchorGraph);
+    }
+
+    // Work vectors for the loop below.
+    vector<AnchorPair> anchorPairs;
+    vector<AnchorPair> newAnchorPairs;
+    vector< pair<AnchorPair::Positions, AnchorPair::Positions> > positions;
+    vector<uint64_t> offsets;
+
+    // Create the edges using read following.
+    for(uint64_t direction=0; direction<2; direction++) {
+        for(AnchorId anchorId0=0; anchorId0<anchorCount; anchorId0++) {
+            const AnchorId anchorId1 = anchors.readFollowing(journeys, anchorId0, direction, minEdgeCoverage);
+            if(anchorId1 == invalid<AnchorId>) {
+                continue;
+            }
+
+            AnchorId anchorIdA = anchorId0;
+            AnchorId anchorIdB = anchorId1;
+            if(direction == 1) {
+                std::swap(anchorIdA, anchorIdB);
+            }
+
+            bool edgeExists = false;
+            tie(ignore, edgeExists) = boost::edge(anchorIdA, anchorIdB, anchorGraph);
+            if(edgeExists) {
+                continue;
+            }
+
+            // Create an AnchorPair with the common oriented reads between
+            // anchorIdA and anchorIdB.
+            const AnchorPair anchorPair(anchors, anchorIdA, anchorIdB, false);
+
+
+
+            // If the AnchorPair is consistent, generate a single edge.
+            if(anchorPair.isConsistent(anchors, aDrift, bDrift, positions, offsets)) {
+                const uint64_t offset = anchorPair.getAverageOffset(anchors);
+                edge_descriptor e;
+                tie(e, ignore) = add_edge(anchorIdA, anchorIdB,
+                            AnchorGraphEdge(anchorPair, offset, nextEdgeId++), anchorGraph);
+                anchorGraph[e].useForAssembly = true;
+            }
+
+
+
+            // If the AnchorPair is not consistent, split it and generate one or more edges.
+            else {
+
+                // We have to split this AnchorPair into consistent AnchorPairs,
+                // then generate a new edge for each (a set of parallel edges).
+                anchorPair.splitByOffsets(anchors, aDrift, bDrift, newAnchorPairs);
+
+                for(const AnchorPair& anchorPair: newAnchorPairs) {
+                    if(anchorPair.orientedReadIds.size() >= minEdgeCoverage) {
+                        const uint64_t offset = anchorPair.getAverageOffset(anchors);
+                        edge_descriptor e;
+                        tie(e, ignore) = add_edge(anchorIdA, anchorPair.anchorIdB,
+                            AnchorGraphEdge(anchorPair, offset, nextEdgeId++), anchorGraph);
+                        anchorGraph[e].useForAssembly = true;
+                        anchorGraph[e].isParallelEdge = true;
+                    }
+                }
+
+            }
+        }
+    }
+    cout << "The anchor graph has " << num_vertices(*this) <<
+        " vertices and " << num_edges(*this) << " edges." << endl;
+
 }
 
 

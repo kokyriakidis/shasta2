@@ -204,11 +204,19 @@ void Assembler::createAnchorGraph(const Options& options)
     }
 
     // Generate an AnchorGraph in which all edges have consistent offsets.
+#if 0
     anchorGraphPointer = make_shared<AnchorGraph>(
         anchors(), journeys(), readLengthDistribution(),
         options.minAnchorGraphEdgeCoverageNear,
         options.minAnchorGraphEdgeCoverageFar,
-		options.anchorGraphEdgeCoverageFractionThreshold,
+        options.anchorGraphEdgeCoverageFractionThreshold,
+        options.aDrift,
+        options.bDrift,
+        threadCount);
+#endif
+    anchorGraphPointer = make_shared<AnchorGraph>(
+        anchors(), journeys(),
+        options.minAnchorGraphEdgeCoverageNear,
         options.aDrift,
         options.bDrift,
         threadCount);

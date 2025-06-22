@@ -80,9 +80,8 @@ class shasta::AnchorGraph :
     public MultithreadedObject<AnchorGraph> {
 public:
 
-    // Constructor that splits edges that have an AnchorPair
-    // with inconsistent offsets, and also does local search to
-    // eliminate dead ends where possible.
+    // Constructor that generates edges between AnchorIds that are
+    //immediately adjacent in one or more Journeys.
     AnchorGraph(
         const Anchors&,
         const Journeys&,
@@ -90,6 +89,15 @@ public:
         uint64_t minEdgeCoverageNear,
         uint64_t minEdgeCoverageFar,
 		double coverageFractionThreshold,
+        double aDrift,
+        double bDrift,
+        uint64_t threadCount);
+
+    // Constructor that uses read following.
+    AnchorGraph(
+        const Anchors&,
+        const Journeys&,
+        uint64_t minEdgeCoverage,
         double aDrift,
         double bDrift,
         uint64_t threadCount);
