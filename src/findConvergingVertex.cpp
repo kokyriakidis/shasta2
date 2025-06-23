@@ -16,34 +16,36 @@ void shasta::testFindConvergingVertex()
 
     // Create the vertices.
     vector<vertex_descriptor> v;
-    for(uint64_t i=0; i<7; i++) {
+    for(uint64_t i=0; i<10; i++) {
         v.push_back(add_vertex(i, graph));
     }
 
     // Create the edges.
     add_edge(v[0], v[1], graph);
     add_edge(v[1], v[2], graph);
-    add_edge(v[1], v[3], graph);
-    add_edge(v[2], v[5], graph);
-    add_edge(v[3], v[2], graph);
+    add_edge(v[2], v[3], graph);
     add_edge(v[3], v[4], graph);
-    add_edge(v[4], v[2], graph);
     add_edge(v[4], v[5], graph);
     add_edge(v[5], v[6], graph);
-    // add_edge(v[5], v[1], graph);    // Loop edge
+    add_edge(v[6], v[7], graph);
+    add_edge(v[7], v[8], graph);
+    add_edge(v[1], v[9], graph);
+    add_edge(v[9], v[2], graph);
+    add_edge(v[5], v[9], graph);
+    add_edge(v[3], v[6], graph);
 
     for(const vertex_descriptor vA: v) {
-        if(graph[vA] != 1) {
+        if(graph[vA] != 3) {
             // continue;
         }
+        cout << "Starting at " << graph[vA] << endl;
 
-        const vertex_descriptor vB = findConvergingVertex(graph, vA, 6);
+        const vertex_descriptor vB = findConvergingVertexGeneral(graph, vA, 10);
 
-        cout << "Starting at " << graph[vA] << ": ";
         if(vB == Graph::null_vertex()) {
-            cout << "not found." << endl;
+            cout << "Not found." << endl;
         } else {
-            cout << "found " << graph[vB] << endl;
+            cout << "Found " << graph[vB] << endl;
         }
 
     }
