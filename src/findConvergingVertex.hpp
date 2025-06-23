@@ -235,54 +235,62 @@ template<class Graph> typename Graph::vertex_descriptor shasta::findConvergingVe
 // Three graphs are involved here:
 // - The input Graph.
 // - The LocalGraph created by the BFS.
-// - The CondensedGraph created by condensing strongly connected components of gL.
+// - The CondensedGraph created by condensing strongly connected components of the LocalGraph.
 // No suffix = Graph
 // L suffix = LocalGraph
 // C suffix = CondensedGraph
 template<class Graph> typename Graph::vertex_descriptor shasta::findConvergingVertexGeneral(
     const Graph& graph,
-    typename Graph::vertex_descriptor vA,
+    typename Graph::vertex_descriptor vStart,
     uint64_t maxDistance)
 {
-    using V = typename Graph::vertex_descriptor;
-    using Rational = boost::rational<uint64_t>;
 
-    // Create the LocalGraph.
+    // Do a BFS to create the LocalGraph.
+    using V = typename Graph::vertex_descriptor;
     class LocalGraphVertex {
     public:
         V v = Graph::null_vertex();
         uint64_t distance = invalid<uint64_t>;
     };
-    using LocalSubgraph = boost::adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS, LocalGraphVertex>;
-    const LocalSubgraph localSubgraph = createLocalSubgraph<Graph, LocalSubgraph>(graph, vA, maxDistance);
-    const typename LocalSubgraph::vertex_descriptor lvA = 0;
-    SHASTA_ASSERT(localSubgraph[lvA].v == vA);
+    using LocalGraph = boost::adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS, LocalGraphVertex>;
+    using VL = typename LocalGraph::vertex_descriptor;
+    const LocalGraph localGraph = createLocalSubgraph<Graph, LocalGraph>(graph, vStart, maxDistance);
+
+    // Sanity check.
+    const VL vLStart = 0;
+    SHASTA_ASSERT(localGraph[vLStart].v == vStart);
 
 
-    // Create the condensed graph, in which each strongly connected component is collapsed
+
+    // Create the CondensedGraph, in which each strongly connected component is collapsed
     // into a single vertex.
-    class CondensedLocalSubgraphVertex {
+    using Rational = boost::rational<uint64_t>;
+    class CondensedGraphVertex {
     public:
-        vector<typename LocalSubgraph::vertex_descriptor> vertices;
+        vector<VL> vertices;
         Rational flow = 0;
     };
-    using CondensedLocalSubgraph =
-        boost::adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS, CondensedLocalSubgraphVertex>;
-    std::map<typename LocalSubgraph::vertex_descriptor, typename CondensedLocalSubgraph::vertex_descriptor> vertexMap;
-    CondensedLocalSubgraph condensedLocalSubgraph =
-        createCondensedGraph<LocalSubgraph, CondensedLocalSubgraph>(localSubgraph, vertexMap);
+    using CondensedGraph =
+        boost::adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS, CondensedGraphVertex>;
+    using VC = typename CondensedGraph::vertex_descriptor;
+    std::map<VL, VC> vertexMap;
+    CondensedGraph condensedGraph = createCondensedGraph<LocalGraph, CondensedGraph>(localGraph, vertexMap);
+
+
 
     // If our starting vertex is in a non-trivial connected component, just return null_vertex().
-    const typename CondensedLocalSubgraph::vertex_descriptor clvA = vertexMap[lvA];
-    const auto& condensedVertexA = condensedLocalSubgraph[clvA];
-    if(condensedVertexA.vertices.size() > 1) {
+    const VC vCStart = vertexMap[vLStart];
+    const CondensedGraphVertex& condensedVertexStart = condensedGraph[vCStart];
+    if(condensedVertexStart.vertices.size() > 1) {
         return Graph::null_vertex();
     }
 
-    // Do a topological sort of the CondensedLocalGraph.
-    vector<typename CondensedLocalSubgraph::vertex_descriptor> topologicalOrder;
+
+
+    // Do a topological sort of the CondensedGraph.
+    vector<VC> topologicalOrder;
     try {
-        boost::topological_sort(condensedLocalSubgraph, back_inserter(topologicalOrder));
+        boost::topological_sort(condensedGraph, back_inserter(topologicalOrder));
     } catch(const boost::not_a_dag&) {
         // This cannot happen because the condensed local subgraph is guaranteed
         // to be acyclic.
@@ -292,41 +300,40 @@ template<class Graph> typename Graph::vertex_descriptor shasta::findConvergingVe
 
     // Sanity check on the topological ordering.
     // We already checked that the start vertex is not in a non-trivial
-    // strong component. So it must correspond to the first CondensedSubgraph vertex
+    // strong component. So it must correspond to the first CondensedGraph vertex
     // in topological order.
-    SHASTA_ASSERT(topologicalOrder.size() == num_vertices(condensedLocalSubgraph));
-    const typename CondensedLocalSubgraph::vertex_descriptor cvStart = topologicalOrder.front();
-    const auto& condensedStartVertex = condensedLocalSubgraph[cvStart];
-    SHASTA_ASSERT(condensedStartVertex.vertices.size() == 1);
-    const typename LocalSubgraph::vertex_descriptor lv = condensedStartVertex.vertices.front();
-    const V v = localSubgraph[lv].v;
-    SHASTA_ASSERT(v == vA);
+    SHASTA_ASSERT(topologicalOrder.size() == num_vertices(condensedGraph));
+    SHASTA_ASSERT(topologicalOrder.front() == vCStart);
 
 
 
     // Compute flow in topological order.
-    condensedLocalSubgraph[topologicalOrder.front()].flow = 1;
+    condensedGraph[topologicalOrder.front()].flow = 1;
     for(uint64_t i=1; i<topologicalOrder.size(); i++) {
-        const typename CondensedLocalSubgraph::vertex_descriptor cv1 = topologicalOrder[i];
-        CondensedLocalSubgraphVertex&  condensedLocalSubgraphVertex1 = condensedLocalSubgraph[cv1];
-        condensedLocalSubgraphVertex1.flow = 0;
+        const VC vC1 = topologicalOrder[i];
+        CondensedGraphVertex&  condensedGraphVertex1 = condensedGraph[vC1];
+        condensedGraphVertex1.flow = 0;
 
-        BGL_FORALL_INEDGES_T(cv1, e, condensedLocalSubgraph, CondensedLocalSubgraph){
-            const typename CondensedLocalSubgraph::vertex_descriptor cv0 = source(e, condensedLocalSubgraph);
-            condensedLocalSubgraphVertex1.flow += condensedLocalSubgraph[cv0].flow / out_degree(cv0, condensedLocalSubgraph);
+        BGL_FORALL_INEDGES_T(vC1, e, condensedGraph, CondensedGraph){
+            const VC vC0 = source(e, condensedGraph);
+            condensedGraphVertex1.flow += condensedGraph[vC0].flow / out_degree(vC0, condensedGraph);
         }
     }
+
+
 
     // Find the first vertex, in topological order, that has flow equal to 1
     // and corresponds to a single vertex of the LocalSubgraph and the original Graph.
     for(uint64_t i=1; i<topologicalOrder.size(); i++) {
-        const auto cv = topologicalOrder[i];
-        const auto& condensedVertex = condensedLocalSubgraph[cv];
+        const VC vC = topologicalOrder[i];
+        const auto& condensedVertex = condensedGraph[vC];
         if(condensedVertex.flow == 1 and condensedVertex.vertices.size() == 1) {
-            const auto lv = condensedVertex.vertices.front();
-            return localSubgraph[lv].v;
+            const VL vL = condensedVertex.vertices.front();
+            return localGraph[vL].v;
         }
     }
 
+
+    // Not found.
     return Graph::null_vertex();
 }

@@ -24,20 +24,16 @@ void shasta::testFindConvergingVertex()
     add_edge(v[0], v[1], graph);
     add_edge(v[1], v[2], graph);
     add_edge(v[2], v[3], graph);
-    add_edge(v[3], v[4], graph);
-    add_edge(v[4], v[5], graph);
-    add_edge(v[5], v[6], graph);
+    add_edge(v[2], v[4], graph);
+    add_edge(v[3], v[5], graph);
+    add_edge(v[4], v[6], graph);
+    add_edge(v[5], v[7], graph);
     add_edge(v[6], v[7], graph);
     add_edge(v[7], v[8], graph);
-    add_edge(v[1], v[9], graph);
-    add_edge(v[9], v[2], graph);
-    add_edge(v[5], v[9], graph);
-    add_edge(v[3], v[6], graph);
+    add_edge(v[8], v[9], graph);
+    add_edge(v[6], v[3], graph);    // Loop edge
 
     for(const vertex_descriptor vA: v) {
-        if(graph[vA] != 3) {
-            // continue;
-        }
         cout << "Starting at " << graph[vA] << endl;
 
         const vertex_descriptor vB = findConvergingVertexGeneral(graph, vA, 10);
