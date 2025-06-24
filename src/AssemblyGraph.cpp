@@ -1424,10 +1424,15 @@ void AssemblyGraph::findSuperbubbles(
 
     vector< pair<vertex_descriptor, vertex_descriptor> > forwardPairs;
     BGL_FORALL_VERTICES(vA, assemblyGraph, AssemblyGraph) {
+        if(hasSelfEdge(vA)) {
+            continue;
+        }
         const vertex_descriptor vB = findConvergingVertexGeneral(assemblyGraph, vA, options.findSuperbubblesMaxDistance);
         if(vB != null_vertex()) {
-            forwardPairs.emplace_back(vA, vB);
-            // cout << assemblyGraph[vA].id << "..." << assemblyGraph[vB].id << endl;
+            if(not hasSelfEdge(vB)) {
+                forwardPairs.emplace_back(vA, vB);
+                // cout << assemblyGraph[vA].id << "..." << assemblyGraph[vB].id << endl;
+            }
         }
     }
     sort(forwardPairs.begin(), forwardPairs.end());
@@ -1436,10 +1441,15 @@ void AssemblyGraph::findSuperbubbles(
     const boost::reverse_graph<AssemblyGraph> reverseAssemblyGraph(assemblyGraph);
     vector< pair<vertex_descriptor, vertex_descriptor> > backwardPairs;
     BGL_FORALL_VERTICES(vA, assemblyGraph, AssemblyGraph) {
+        if(hasSelfEdge(vA)) {
+            continue;
+        }
         const vertex_descriptor vB = findConvergingVertexGeneral(reverseAssemblyGraph, vA, options.findSuperbubblesMaxDistance);
         if(vB != null_vertex()) {
-            backwardPairs.emplace_back(vB, vA);
-            // cout << assemblyGraph[vA].id << "..." << assemblyGraph[vB].id << endl;
+            if(not hasSelfEdge(vB)) {
+                backwardPairs.emplace_back(vB, vA);
+                // cout << assemblyGraph[vA].id << "..." << assemblyGraph[vB].id << endl;
+            }
         }
     }
     sort(backwardPairs.begin(), backwardPairs.end());
@@ -1563,6 +1573,16 @@ void AssemblyGraph::writeSuperbubbles(
 
     for(uint64_t id=0; id<superbubbles.size(); id++) {
         const Superbubble& superbubble = superbubbles[id];
+
+        for(const auto& e: superbubble.sourceEdges) {
+            cout << "Source edge " << assemblyGraph[e].id << endl;
+        }
+        for(const auto& e: superbubble.targetEdges) {
+            cout << "Target edge " << assemblyGraph[e].id << endl;
+        }
+        for(const auto& e: superbubble.internalEdges) {
+            cout << "Internal edge " << assemblyGraph[e].id << endl;
+        }
 
         csv << id << ",";
 

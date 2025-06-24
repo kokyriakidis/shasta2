@@ -15,6 +15,9 @@
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/serialization/vector.hpp>
 
+// Standard library.
+#include <tuple.hpp>
+
 
 namespace shasta {
 
@@ -184,6 +187,13 @@ public:
             return assemblyGraph[x].id < assemblyGraph[y].id;
         }
     };
+
+    bool hasSelfEdge(vertex_descriptor v) const
+    {
+        bool edgeExists = false;
+        tie(ignore, edgeExists) = boost::edge(v, v, *this);
+        return edgeExists;
+    }
 
 
     // Detangling.
