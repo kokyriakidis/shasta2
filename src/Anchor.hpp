@@ -229,7 +229,9 @@ public:
         const Journeys& journeys,
         AnchorId,
         uint64_t direction,                         // 0 = forward, 1 = backward
-        uint64_t minCommonCount
+        uint64_t minCommonCount,
+        double aDrift,
+        double bDrift
         ) const;
 
 private:

@@ -188,9 +188,12 @@ void Assembler::accessJourneys()
 AnchorId Assembler::readFollowing(
     AnchorId anchorId,
     uint64_t direction,
-    uint64_t minCommonCount) const
+    uint64_t minCommonCount,
+    double aDrift,
+    double bDrift
+    ) const
 {
-    return anchors().readFollowing(journeys(), anchorId, direction, minCommonCount);
+    return anchors().readFollowing(journeys(), anchorId, direction, minCommonCount, aDrift, bDrift);
 }
 
 

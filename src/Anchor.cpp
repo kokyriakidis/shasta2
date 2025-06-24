@@ -1356,9 +1356,16 @@ AnchorId Anchors::readFollowing(
     const Journeys& journeys,
     AnchorId anchorId0,
     uint64_t direction,                         // 0 = forward, 1 = backward
-    uint64_t minCommonCount
+    uint64_t minCommonCount,
+    double aDrift,
+    double bDrift
     ) const
 {
+    const bool debug = false;
+    if(debug) {
+        cout << "Read following begins for " << anchorIdToString(anchorId0) << " direction " << direction << endl;
+    }
+
     const Anchor anchor0 = (*this)[anchorId0];
 
 
@@ -1460,7 +1467,10 @@ AnchorId Anchors::readFollowing(
         q.emplace(i, journeyPosition1, anchorId1, baseOffset1);
     }
 
-
+    // Work vectors used below.
+    vector< pair<AnchorPair::Positions, AnchorPair::Positions> > positions;
+    vector<uint64_t> offsets;
+    vector<AnchorPair> newAnchorPairs;
 
     // Main loop.
     // At each iteration we dequeue the QueueItem with the lowest baseOffset.
@@ -1470,15 +1480,46 @@ AnchorId Anchors::readFollowing(
         q.pop();
 
         const AnchorId anchorId1 = item.anchorId1;
-        // cout << "Dequeued " << anchorIdToString(anchorId1) << " base offset " << item.baseOffset1 << endl;
+        if(debug) {
+            cout << "Dequeued " << anchorIdToString(anchorId1) << " base offset " << item.baseOffset1 << endl;
+        }
 
         if(not anchorIdsSeen.contains(anchorId1)) {
-            const uint64_t commonCount = direction == 0 ?
-                countCommon(anchorId0, anchorId1) :
-                countCommon(anchorId1, anchorId0);
-            // cout << "Common count " << commonCount << endl;
+            AnchorId anchorIdA = anchorId0;
+            AnchorId anchorIdB = anchorId1;
+            if(direction == 1) {
+                swap(anchorIdA, anchorIdB);
+            }
+            const uint64_t commonCount = countCommon(anchorIdA, anchorIdB);
+            if(debug) {
+                cout << "Common count " << commonCount << endl;
+            }
+
             if(commonCount >= minCommonCount) {
-                return anchorId1;
+                // We have enough coverage, but we have to split it if necessary.
+                const AnchorPair anchorPair(*this, anchorIdA, anchorIdB, false);
+                if(anchorPair.isConsistent(*this, aDrift, bDrift, positions, offsets)) {
+                    // We have enough coverage and is consistent.
+                    if(debug) {
+                        cout << "Read following ends, found " << anchorIdToString(anchorId1) << endl;
+                    }
+                    return anchorId1;
+                }
+                // This AnchorPair does not have consistent offsets. We have to split it.
+                // We have to split this AnchorPair into consistent AnchorPairs,
+                // then generate a new edge for each (a set of parallel edges).
+                anchorPair.splitByOffsets(*this, aDrift, bDrift, newAnchorPairs);
+
+                for(const AnchorPair& anchorPair: newAnchorPairs) {
+                    if(anchorPair.orientedReadIds.size() >= minCommonCount) {
+                        // This split pair has enough coverage.
+                        if(debug) {
+                            cout << "Read following ends, found " << anchorIdToString(anchorId1) << endl;
+                        }
+                        return anchorId1;
+                    }
+                }
+                // If after split no AnchorPair has sufficient coverage, keep looking.
             }
             anchorIdsSeen.insert(anchorId1);
         }
@@ -1514,6 +1555,9 @@ AnchorId Anchors::readFollowing(
 
 
 
+    if(debug) {
+        cout << "Read following ends, no anchor found." << endl;
+    }
 
     return invalid<AnchorId>;
 }

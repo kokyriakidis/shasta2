@@ -375,7 +375,7 @@ AnchorGraph::AnchorGraph(
     // Create the edges using read following.
     for(uint64_t direction=0; direction<2; direction++) {
         for(AnchorId anchorId0=0; anchorId0<anchorCount; anchorId0++) {
-            const AnchorId anchorId1 = anchors.readFollowing(journeys, anchorId0, direction, minEdgeCoverage);
+            const AnchorId anchorId1 = anchors.readFollowing(journeys, anchorId0, direction, minEdgeCoverage, aDrift, bDrift);
             if(anchorId1 == invalid<AnchorId>) {
                 continue;
             }
