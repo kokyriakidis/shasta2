@@ -1718,8 +1718,6 @@ void AssemblyGraph::phaseSuperbubbleChains()
 void AssemblyGraph::simplifySuperbubbles()
 {
 
-    cout << "AssemblyGraph::simplifySuperbubbles begins." << endl;
-
     // Find the superbubbles, then remove superbubbles that are entirely
     // contained in another superbubble.
     vector<Superbubble> superbubbles;
@@ -1742,7 +1740,6 @@ void AssemblyGraph::simplifySuperbubbles()
         }
     }
 
-    cout << "AssemblyGraph::simplifySuperbubbles ends." << endl;
 }
 
 
