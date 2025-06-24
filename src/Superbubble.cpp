@@ -18,8 +18,37 @@ Superbubble::Superbubble(
     sourceVertex(sourceVertex),
     targetVertex(targetVertex)
 {
+
     gatherInternalVertices();
     gatherEdges();
+
+#if 0
+    cout << "Created a Superbubble with source vertex " << assemblyGraph[sourceVertex].id <<
+        ", target vertex " << assemblyGraph[targetVertex].id << endl;
+
+    cout << "There are " << internalVertices.size() << " internal vertices:";
+    for(const vertex_descriptor v: internalVertices) {
+        cout << " " << assemblyGraph[v].id;
+    }
+    cout << endl;
+
+    cout << "There are " << sourceEdges.size() << " source edges:";
+    for(const edge_descriptor e: sourceEdges) {
+        cout << " " << assemblyGraph[e].id;
+    }
+    cout << endl;
+
+    cout << "There are " << targetEdges.size() << " target edges:";
+    for(const edge_descriptor e: targetEdges) {
+        cout << " " << assemblyGraph[e].id;
+    }
+    cout << endl;
+    cout << "There are " << internalEdges.size() << " internal edges:";
+    for(const edge_descriptor e: internalEdges) {
+        cout << " " << assemblyGraph[e].id;
+    }
+    cout << endl;
+#endif
 }
 
 
