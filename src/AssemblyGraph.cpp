@@ -1574,6 +1574,7 @@ void AssemblyGraph::writeSuperbubbles(
     for(uint64_t id=0; id<superbubbles.size(); id++) {
         const Superbubble& superbubble = superbubbles[id];
 
+#if 0
         for(const auto& e: superbubble.sourceEdges) {
             cout << "Source edge " << assemblyGraph[e].id << endl;
         }
@@ -1583,6 +1584,7 @@ void AssemblyGraph::writeSuperbubbles(
         for(const auto& e: superbubble.internalEdges) {
             cout << "Internal edge " << assemblyGraph[e].id << endl;
         }
+#endif
 
         csv << id << ",";
 
