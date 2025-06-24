@@ -1756,7 +1756,7 @@ void AssemblyGraph::simplifySuperbubble(
     const AnchorId anchorIdA = assemblyGraph[superbubble.sourceVertex].anchorId;
     const AnchorId anchorIdB = assemblyGraph[superbubble.targetVertex].anchorId;
 
-    const bool debug = false; // anchorIdToString(anchorIdA) == "401281+";
+    const bool debug = false;
 
     if(debug) {
         cout << "Working on a superbubble consisting of the following " <<
