@@ -84,20 +84,21 @@ void PhasingGraph::writeGraphviz(const string& fileName) const
 
 
 
-// Remove isolated vertices and return the number of such vertices that were removed.
-uint64_t PhasingGraph::removeIsolatedVertices()
+// Remove low degree vertices and return the number of such vertices that were removed.
+uint64_t PhasingGraph::removeLowDegreeVertices(uint64_t minDegree)
 {
     PhasingGraph& phasingGraph = *this;
 
     vector<vertex_descriptor> verticesToBeRemoved;
     BGL_FORALL_VERTICES(v, phasingGraph, PhasingGraph) {
-        if((in_degree(v, phasingGraph) == 0) and (out_degree(v, phasingGraph)== 0)) {
+        if(in_degree(v, phasingGraph) + out_degree(v, phasingGraph) < minDegree) {
             verticesToBeRemoved.push_back(v);
         }
     }
 
     for(const vertex_descriptor v: verticesToBeRemoved) {
         vertexTable[phasingGraph[v].position] = null_vertex();
+        boost::clear_vertex(v, phasingGraph);
         boost::remove_vertex(v, phasingGraph);
     }
 

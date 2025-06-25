@@ -19,6 +19,7 @@ void SuperbubbleChain::phase(
     const bool debug = false;
 
     const uint64_t m = 6;
+    const uint64_t minDegree = 2;
 
     if(debug) {
         cout << "Phasing superbubble chain " << superbubbleChainId << endl;
@@ -136,19 +137,16 @@ void SuperbubbleChain::phase(
             " vertices and " << num_edges(phasingGraph) << " edges." << endl;
     }
 
+    // Remove low degree vertices.
+    const uint64_t removedVertexCount = phasingGraph.removeLowDegreeVertices(minDegree);
+    if(debug) {
+        cout << removedVertexCount << " low degree vertices were removed." << endl;
+    }
+
     if(num_vertices(phasingGraph) < 2) {
         if(debug) {
             cout << "There is nothing to phase." << endl;
         }
-        return;
-    }
-
-    // Remove isolated vertices.
-    const uint64_t removedIsolatedVertexCount = phasingGraph.removeIsolatedVertices();
-    if(debug) {
-        cout << removedIsolatedVertexCount << " isolated vertices were removed." << endl;
-    }
-    if(num_vertices(phasingGraph) < 2) {
         return;
     }
 
