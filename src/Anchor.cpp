@@ -1361,7 +1361,7 @@ AnchorId Anchors::readFollowing(
     double bDrift
     ) const
 {
-    const bool debug = false;
+    const bool debug = (anchorIdToString(anchorId0) == "258469+") and (direction == 1);
     if(debug) {
         cout << "Read following begins for " << anchorIdToString(anchorId0) << " direction " << direction << endl;
     }
@@ -1560,4 +1560,163 @@ AnchorId Anchors::readFollowing(
     }
 
     return invalid<AnchorId>;
+}
+
+
+
+// A more sophisticated version of read following with a minimum offset guarantee.
+// It finds the AnchorPair with minimum offset among all AnchorPairs that
+// satisfy the following:
+// - If direction is 0, they start at anchorId0. If direction is 1, they end at anchorId0.
+// - They have consistent offsets using the given values of aDrift, bDrift.
+// - They have at least minCommonCount oriented reads.
+// This returns false if no solution is found.
+bool Anchors::readFollowing(
+    const Journeys& journeys,
+    AnchorId anchorId0,
+    uint64_t direction,                         // 0 = forward, 1 = backward
+    uint64_t minCommonCount,
+    double aDrift,
+    double bDrift,
+    AnchorPair& bestAnchorPair, // Filled in only when returning true.
+    uint32_t& bestOffset        // Filled in only when returning true.
+    ) const
+{
+    const Anchor anchor0 = (*this)[anchorId0];
+    const uint64_t orientedReadCount0 = anchor0.size();
+    const int64_t deltaPositionInJourney = (direction == 0) ? 1 : -1;
+
+    bestOffset = std::numeric_limits<uint32_t>::max();
+
+    // Work vectors used below.
+    vector< pair<AnchorPair::Positions, AnchorPair::Positions> > positions;
+    vector<uint64_t> offsets;
+    vector<AnchorPair> splitAnchorPairs;
+
+    // Store some information for all the oriented reads on Anchor0.
+    class OrientedReadInfo {
+    public:
+        OrientedReadId orientedReadId;
+        span<const Marker> markers;
+        Journey journey;
+        int64_t nextPositionInJourney;    // This must be signed.
+        uint32_t basePosition0;
+    };
+    vector<OrientedReadInfo> orientedReadInfos(orientedReadCount0);
+    for(uint64_t i=0; i<orientedReadCount0; i++) {
+        const AnchorMarkerInfo& anchorMarkerInfo = anchor0[i];
+        OrientedReadInfo& orientedReadInfo = orientedReadInfos[i];
+        const OrientedReadId orientedReadId = anchorMarkerInfo.orientedReadId;
+
+        orientedReadInfo.orientedReadId = orientedReadId;
+
+        orientedReadInfo.markers = markers[orientedReadId.getValue()];
+        orientedReadInfo.journey = journeys[orientedReadId];
+
+        int64_t positionInJourney0 = anchorMarkerInfo.positionInJourney;
+        orientedReadInfo.nextPositionInJourney = positionInJourney0 + deltaPositionInJourney;
+
+        const uint32_t ordinal0 = anchorMarkerInfo.ordinal;
+        orientedReadInfo.basePosition0 = orientedReadInfo.markers[ordinal0].position;
+    }
+
+    // A set of all the AnchorIds we already considered.
+    std::set<AnchorId> anchorIdsSeen;
+
+    // Iterate over steps in which we restrict ourselves
+    // to solutions with offset <= maxCurrentOffset.
+    // If we don't find a solution, double the maxCurrentOffset.
+    uint32_t maxCurrentOffset = 100;
+    while(true) {
+
+        // The number of new AnchorIds considered at this iteration.
+        uint64_t iterationAnchorIdCount = 0;
+
+        // If the offset is <= maxCurrentOffset, at least one of the oriented
+        // reads must have offset <= maxCurrentOffset. This limits the
+        // journey portions we have to consider.
+
+        for(uint64_t i=0; i<orientedReadCount0; i++) {
+            OrientedReadInfo& orientedReadInfo = orientedReadInfos[i];
+
+            // Loop over journey positions for this read.
+            while(true) {
+                if(direction == 0 and orientedReadInfo.nextPositionInJourney >= int64_t(orientedReadInfo.journey.size())) {
+                    break;
+                }
+                if(direction == 1 and orientedReadInfo.nextPositionInJourney < 0) {
+                    break;
+                }
+                const AnchorId anchorId1 = orientedReadInfo.journey[orientedReadInfo.nextPositionInJourney];
+
+                // If we already saw anchorId1, do nothing.
+                if(anchorIdsSeen.contains(anchorId1)) {
+                    continue;
+                }
+
+                const uint32_t ordinal1 = getOrdinal(anchorId1, orientedReadInfo.orientedReadId);
+                const uint32_t position1 = orientedReadInfo.markers[ordinal1].position;
+
+                // Check if we are outside the journey portion of interest for this maxCurrentOffset.
+                if((direction == 0) and (position1 - orientedReadInfo.basePosition0 > maxCurrentOffset)) {
+                    break;
+                }
+                if((direction == 1) and (orientedReadInfo.basePosition0 - position1 > maxCurrentOffset)) {
+                    break;
+                }
+
+                anchorIdsSeen.insert(anchorId1);
+                ++iterationAnchorIdCount;
+
+                // Try an AnchorPair with this anchorId1.
+                const AnchorPair anchorPair(*this, anchorId0, anchorId1, false);
+                if(anchorPair.orientedReadIds.size() >= minCommonCount) {
+
+                    // We have enough coverage.
+
+                    if(anchorPair.isConsistent(*this, aDrift, bDrift, positions, offsets)) {
+                        const uint32_t offset = anchorPair.getAverageOffset(*this);
+                        if(offset < bestOffset) {
+                            bestOffset = offset;
+                            bestAnchorPair = anchorPair;
+                        }
+                    } else {
+
+                        // We have enough coverage but we have to split this AnchorPair.
+                        anchorPair.splitByOffsets(*this, aDrift, bDrift, splitAnchorPairs);
+                        for(const AnchorPair& splitAnchorPair: splitAnchorPairs) {
+                            if(anchorPair.orientedReadIds.size() >= minCommonCount) {
+                                const uint32_t offset = splitAnchorPair.getAverageOffset(*this);
+                                if(offset < bestOffset) {
+                                    bestOffset = offset;
+                                    bestAnchorPair = splitAnchorPair;
+                                }
+                            }
+                        }
+                    }
+                }
+
+
+                // Point to the next position in the journey of this oriented read.
+                orientedReadInfo.nextPositionInJourney += deltaPositionInJourney;
+            }
+
+        }
+
+        // If we have a bestOffset, we are done.
+        if(bestOffset < std::numeric_limits<uint32_t>::max()) {
+            return true;
+        }
+
+        // If this iteration did not discover any new AnchorIds, stop
+        // the iteration and return false;
+        if(iterationAnchorIdCount == 0) {
+            break;
+        }
+
+        maxCurrentOffset *= 2;
+    }
+
+
+    return false;
 }

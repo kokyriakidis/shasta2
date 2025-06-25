@@ -234,6 +234,28 @@ public:
         double bDrift
         ) const;
 
+
+
+    // A more sophisticated version of read following with a minimum offset guarantee.
+    // It finds the AnchorPair with minimum offset among all AnchorPairs that
+    // satisfy the following:
+    // - If direction is 0, they start at anchorId0. If direction is 1, they end at anchorId0.
+    // - They have consistent offsets using the given values of aDrift, bDrift.
+    // - They have at least minCommonCount oriented reads.
+    // This returns false if no solution is found.
+    bool readFollowing(
+        const Journeys& journeys,
+        AnchorId anchorId0,
+        uint64_t direction,                         // 0 = forward, 1 = backward
+        uint64_t minCommonCount,
+        double aDrift,
+        double bDrift,
+        AnchorPair& anchorPair, // Filled in only when returning true.
+        uint32_t& offset        // Filled in only when returning true.
+        ) const;
+
+
+
 private:
 
     // Data and functions used when constructing the Anchors.
