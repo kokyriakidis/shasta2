@@ -2,7 +2,7 @@
 #include "AssemblyGraph.hpp"
 #include "Anchor.hpp"
 #include "AnchorGraph.hpp"
-#include "Options.hpp"
+#include "copyNumber.hpp"
 #include "deduplicate.hpp"
 #include "Detangler.hpp"
 #include "ExactDetangler.hpp"
@@ -13,6 +13,7 @@
 #include "LikelihoodRatioDetangler.hpp"
 #include "LocalAssembly2.hpp"
 #include "MurmurHash2.hpp"
+#include "Options.hpp"
 #include "performanceLog.hpp"
 #include "rle.hpp"
 #include "SimpleDetangler.hpp"
@@ -603,6 +604,9 @@ uint64_t AssemblyGraph::bubbleCleanupIteration(uint64_t threadCount)
 {
     AssemblyGraph& assemblyGraph = *this;
 
+    const uint64_t maxRepeatPeriod = 4;
+
+
     // Find all bubbles.
     vector<Bubble> allBubbles;
     findBubbles(allBubbles);
@@ -722,9 +726,14 @@ uint64_t AssemblyGraph::bubbleCleanupIteration(uint64_t threadCount)
             }
 
             removeBubble = allRleSequenceAreEqual;
+        }
 
-
-
+        // For a diploid bubble, also remove it if the two sides
+        // differ just by a copy number in a repeat with short period.
+        if(sequences.size() == 2) {
+            if(isCopyNumberDifference(sequences[0], sequences[1], maxRepeatPeriod)) {
+                removeBubble = true;
+            }
         }
 
 
