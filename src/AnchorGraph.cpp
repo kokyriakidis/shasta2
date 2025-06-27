@@ -366,6 +366,26 @@ AnchorGraph::AnchorGraph(
         add_vertex(anchorGraph);
     }
 
+    // Create the edges using read following.
+    createEdges1(anchors, journeys, minEdgeCoverage, aDrift, bDrift);
+
+    cout << "The anchor graph has " << num_vertices(*this) <<
+        " vertices and " << num_edges(*this) << " edges." << endl;
+
+}
+
+
+
+void AnchorGraph::createEdges1(
+    const Anchors& anchors,
+    const Journeys& journeys,
+    uint64_t minEdgeCoverage,
+    double aDrift,
+    double bDrift)
+{
+    AnchorGraph& anchorGraph = *this;
+    const uint64_t anchorCount = anchors.size();
+
     // Work vectors for the loop below.
     vector<AnchorPair> anchorPairs;
     vector<AnchorPair> newAnchorPairs;
@@ -430,9 +450,19 @@ AnchorGraph::AnchorGraph(
             }
         }
     }
-    cout << "The anchor graph has " << num_vertices(*this) <<
-        " vertices and " << num_edges(*this) << " edges." << endl;
 
+}
+
+
+
+void AnchorGraph::createEdges2(
+    const Anchors& /* anchors */,
+    const Journeys& /* journeys */,
+    uint64_t /* minEdgeCoverage */,
+    double /* aDrift */,
+    double /* bDrift */)
+{
+    SHASTA_ASSERT(0);
 }
 
 

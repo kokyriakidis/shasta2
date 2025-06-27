@@ -107,6 +107,19 @@ public:
 
     uint64_t nextEdgeId = 0;
 
+    void createEdges1(
+        const Anchors&,
+        const Journeys&,
+        uint64_t minEdgeCoverage,
+        double aDrift,
+        double bDrift);
+    void createEdges2(
+        const Anchors&,
+        const Journeys&,
+        uint64_t minEdgeCoverage,
+        double aDrift,
+        double bDrift);
+
     // Dijkstra search.
     // This performs a shortest path search starting at the specified AnchorId
     // and stops when it finds a consistent AnchorPair that
