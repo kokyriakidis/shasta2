@@ -1676,7 +1676,7 @@ bool Anchors::readFollowing(
 
                     if(anchorPair.isConsistent(*this, aDrift, bDrift, positions, offsets)) {
                         const uint32_t offset = anchorPair.getAverageOffset(*this);
-                        if(offset < bestOffset) {
+                        if((offset < maxCurrentOffset) and (offset < bestOffset)) {
                             bestOffset = offset;
                             bestAnchorPair = anchorPair;
                         }
@@ -1687,7 +1687,7 @@ bool Anchors::readFollowing(
                         for(const AnchorPair& splitAnchorPair: splitAnchorPairs) {
                             if(anchorPair.orientedReadIds.size() >= minCommonCount) {
                                 const uint32_t offset = splitAnchorPair.getAverageOffset(*this);
-                                if(offset < bestOffset) {
+                                if((offset < maxCurrentOffset) and (offset < bestOffset)) {
                                     bestOffset = offset;
                                     bestAnchorPair = splitAnchorPair;
                                 }
@@ -1714,6 +1714,7 @@ bool Anchors::readFollowing(
             break;
         }
 
+        // Otherwise, double the maxCurrentOffset and try again.
         maxCurrentOffset *= 2;
     }
 
