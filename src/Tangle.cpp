@@ -93,6 +93,8 @@ void Tangle::connect(uint64_t iEntrance, uint64_t iExit) {
 
 void Tangle::detangle()
 {
+    const bool debug = false;
+
     // Make a copy of each entrance edge, with the target vertex replaced by a new vertex
     // with the same AnchorId.
     vector<vertex_descriptor> newEntranceVertices;
@@ -160,12 +162,26 @@ void Tangle::detangle()
         AssemblyGraphEdge& edge = assemblyGraph[e];
 
         edge.push_back(AssemblyGraphEdgeStep(anchorPair, offset));
+
+        if(debug) {
+            cout << "Created edge " << edge.id << " to connect entrances " << iEntrance << " " << iExit << endl;
+        }
     }
 
     // Now we can remove all the tangle vertices and their edges.
     // This also removes the old entrances and exits.
     removedVertices = tangleVertices;
     for(const vertex_descriptor v: tangleVertices) {
+        if(debug) {
+            cout << "Removing for detangling:";
+            BGL_FORALL_INEDGES(v, e, assemblyGraph, AssemblyGraph) {
+                cout << " " << assemblyGraph[e].id;
+            }
+            BGL_FORALL_OUTEDGES(v, e, assemblyGraph, AssemblyGraph) {
+                cout << " " << assemblyGraph[e].id;
+            }
+            cout << endl;
+        }
         clear_vertex(v, assemblyGraph);
         remove_vertex(v, assemblyGraph);
     }
