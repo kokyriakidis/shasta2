@@ -54,6 +54,18 @@ bool LikelihoodRatioDetangler::operator()(Tangle& tangle, bool doDetangle)
             }
             cout << endl;
         }
+
+#if 0
+        if( (tangleMatrix.entrances.size() == 2) and
+            (tangleMatrix.exits.size() == 2) and
+            (tangle.assemblyGraph[tangleMatrix.entrances[0].e].id == 33053) and
+            (tangle.assemblyGraph[tangleMatrix.entrances[1].e].id == 98033) and
+            (tangle.assemblyGraph[tangleMatrix.exits    [0].e].id == 13086) and
+            (tangle.assemblyGraph[tangleMatrix.exits    [1].e].id == 97642)) {
+            tangle.assemblyGraph.write("Y");
+        }
+#endif
+
     }
 
     // Check common coverage on all entrances and exits.
@@ -153,6 +165,9 @@ bool LikelihoodRatioDetangler::operator()(Tangle& tangle, bool doDetangle)
         for(uint64_t iExit=0; iExit<exitCount; iExit++) {
             if(bestConnectivityMatrix[iEntrance][iExit]) {
                 tangle.connect(iEntrance, iExit);
+                if(debug) {
+                    cout << "Connecting for detangling: " << iEntrance << " " << iExit << endl;
+                }
             }
         }
     }
