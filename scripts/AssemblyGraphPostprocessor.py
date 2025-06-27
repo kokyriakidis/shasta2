@@ -11,6 +11,16 @@ assembler.accessMarkers()
 assembler.accessAnchors()
 assembler.accessJourneys()
 
-# Get the assemblyGraph3Postprocessor at a chosen assembly stage.
+"""
 assemblyGraph = assembler.getAssemblyGraph("C", options)
 assemblyGraph.phaseSuperbubbleChains()
+"""
+
+assemblyGraph = assembler.getAssemblyGraph("D", options)
+detangler = LikelihoodRatioDetangler(
+    options.detangleMinCommonCoverage,
+    options.detangleEpsilon,
+    options.detangleMaxLogP,
+    options.detangleMinLogPDelta)
+assemblyGraph.detangle(10, detangler);
+assemblyGraph.write("X")

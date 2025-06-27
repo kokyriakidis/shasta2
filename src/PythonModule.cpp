@@ -12,6 +12,7 @@
 #include "extractKmer128.hpp"
 #include "findConvergingVertex.hpp"
 #include "globalMsa.hpp"
+#include "LikelihoodRatioDetangler.hpp"
 #include "LongBaseSequence.hpp"
 #include "mappedCopy.hpp"
 #include "MultithreadedObject.hpp"
@@ -138,6 +139,12 @@ PYBIND11_MODULE(shasta2, shasta2Module)
     class_<AssemblyGraph>(shasta2Module, "AssemblyGraph")
         .def("detangleVertices", &AssemblyGraph::detangleVertices)
         .def("detangleEdges", &AssemblyGraph::detangleEdges)
+        .def("detangle",
+            (
+                uint64_t (AssemblyGraph::*)
+                (uint64_t, Detangler&)
+            )
+            &AssemblyGraph::detangle)
         .def("compress", &AssemblyGraph::compress)
         .def("assembleAll", &AssemblyGraph::assembleAll)
         .def("phaseSuperbubbleChains", &AssemblyGraph::phaseSuperbubbleChains)
@@ -167,7 +174,9 @@ PYBIND11_MODULE(shasta2, shasta2Module)
     class_<ChiSquareDetangler>(shasta2Module, "ChiSquareDetangler", pybind11::base<Detangler>())
         .def(init<uint64_t, double, double, double>())
         ;
-
+    class_<LikelihoodRatioDetangler>(shasta2Module, "LikelihoodRatioDetangler", pybind11::base<Detangler>())
+        .def(init<uint64_t, double, double, double>())
+        ;
 
 
     // Non-member functions exposed to Python.
