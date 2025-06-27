@@ -1361,7 +1361,7 @@ AnchorId Anchors::readFollowing(
     double bDrift
     ) const
 {
-    const bool debug = (anchorIdToString(anchorId0) == "258469+") and (direction == 1);
+    const bool debug = false; // (anchorIdToString(anchorId0) == "258469+") and (direction == 1);
     if(debug) {
         cout << "Read following begins for " << anchorIdToString(anchorId0) << " direction " << direction << endl;
     }
