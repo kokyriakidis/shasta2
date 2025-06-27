@@ -1582,11 +1582,15 @@ bool Anchors::readFollowing(
     uint32_t& bestOffset        // Filled in only when returning true.
     ) const
 {
+    const bool debug = false;
+    if(debug) {
+        cout << "Read following begins for " << anchorIdToString(anchorId0) << " direction " << direction << endl;
+    }
+
     const Anchor anchor0 = (*this)[anchorId0];
     const uint64_t orientedReadCount0 = anchor0.size();
     const int64_t deltaPositionInJourney = (direction == 0) ? 1 : -1;
 
-    bestOffset = std::numeric_limits<uint32_t>::max();
 
     // Work vectors used below.
     vector< pair<AnchorPair::Positions, AnchorPair::Positions> > positions;
@@ -1599,7 +1603,7 @@ bool Anchors::readFollowing(
         OrientedReadId orientedReadId;
         span<const Marker> markers;
         Journey journey;
-        int64_t nextPositionInJourney;    // This must be signed.
+        int64_t firstPositionInJourney;    // This must be signed.
         uint32_t basePosition0;
     };
     vector<OrientedReadInfo> orientedReadInfos(orientedReadCount0);
@@ -1614,73 +1618,134 @@ bool Anchors::readFollowing(
         orientedReadInfo.journey = journeys[orientedReadId];
 
         int64_t positionInJourney0 = anchorMarkerInfo.positionInJourney;
-        orientedReadInfo.nextPositionInJourney = positionInJourney0 + deltaPositionInJourney;
+        orientedReadInfo.firstPositionInJourney = positionInJourney0 + deltaPositionInJourney;
 
         const uint32_t ordinal0 = anchorMarkerInfo.ordinal;
         orientedReadInfo.basePosition0 = orientedReadInfo.markers[ordinal0].position;
     }
 
-    // A set of all the AnchorIds we already considered.
-    std::set<AnchorId> anchorIdsSeen;
+    if(debug) {
+        cout << "Using " << orientedReadCount0 << " oriented reads." << endl;
+    }
+
 
     // Iterate over steps in which we restrict ourselves
     // to solutions with offset <= maxCurrentOffset.
     // If we don't find a solution, double the maxCurrentOffset.
     uint32_t maxCurrentOffset = 100;
     while(true) {
-
-        // The number of new AnchorIds considered at this iteration.
-        uint64_t iterationAnchorIdCount = 0;
+        if(debug) {
+            cout << "Starting iteration with maxCurrentOffset = " << maxCurrentOffset << endl;
+        }
 
         // If the offset is <= maxCurrentOffset, at least one of the oriented
         // reads must have offset <= maxCurrentOffset. This limits the
         // journey portions we have to consider.
 
+        // Count the number of reads that have reached the end of their journey.
+        uint64_t endOfJourneyCount = 0;
+
+        // A set of all the AnchorIds we already considered at this iteration.
+        std::set<AnchorId> anchorIdsSeen;
+
+        bestOffset = std::numeric_limits<uint32_t>::max();
+
         for(uint64_t i=0; i<orientedReadCount0; i++) {
             OrientedReadInfo& orientedReadInfo = orientedReadInfos[i];
+            if(debug) {
+                cout << "Working with " << orientedReadInfo.orientedReadId << endl;
+            }
 
             // Loop over journey positions for this read.
-            while(true) {
-                if(direction == 0 and orientedReadInfo.nextPositionInJourney >= int64_t(orientedReadInfo.journey.size())) {
+            for(int64_t positionInJourney=orientedReadInfo.firstPositionInJourney; /* Check later */ ;
+                positionInJourney += deltaPositionInJourney) {
+                if(debug) {
+                    cout << "Working on journey position " << positionInJourney << endl;
+                }
+                if(direction == 0 and positionInJourney >= int64_t(orientedReadInfo.journey.size())) {
+                    if(debug) {
+                        cout << "Reached the end of the journey." << endl;
+                    }
+                    ++endOfJourneyCount;
                     break;
                 }
-                if(direction == 1 and orientedReadInfo.nextPositionInJourney < 0) {
+                if(direction == 1 and positionInJourney < 0) {
+                    if(debug) {
+                        cout << "Reached the end of the journey." << endl;
+                    }
+                    ++endOfJourneyCount;
                     break;
                 }
-                const AnchorId anchorId1 = orientedReadInfo.journey[orientedReadInfo.nextPositionInJourney];
+                const AnchorId anchorId1 = orientedReadInfo.journey[positionInJourney];
 
                 // If we already saw anchorId1, do nothing.
                 if(anchorIdsSeen.contains(anchorId1)) {
+                    if(debug) {
+                        cout << "Found " << anchorIdToString(anchorId1) << ", already encountered before." << endl;
+                    }
                     continue;
                 }
+                if(debug) {
+                    cout << "Found new anchor " << anchorIdToString(anchorId1) << "." << endl;
+                }
+                anchorIdsSeen.insert(anchorId1);
 
                 const uint32_t ordinal1 = getOrdinal(anchorId1, orientedReadInfo.orientedReadId);
                 const uint32_t position1 = orientedReadInfo.markers[ordinal1].position;
 
                 // Check if we are outside the journey portion of interest for this maxCurrentOffset.
                 if((direction == 0) and (position1 - orientedReadInfo.basePosition0 > maxCurrentOffset)) {
+                    if(debug) {
+                        cout << "Offset is larger than current maxCurrentOffset." << endl;
+                    }
                     break;
                 }
                 if((direction == 1) and (orientedReadInfo.basePosition0 - position1 > maxCurrentOffset)) {
+                    if(debug) {
+                        cout << "Offset is larger than current maxCurrentOffset." << endl;
+                    }
                     break;
                 }
 
-                anchorIdsSeen.insert(anchorId1);
-                ++iterationAnchorIdCount;
+                if(debug) {
+                    cout << "Found " << anchorIdToString(anchorId1) << endl;
+                }
+
 
                 // Try an AnchorPair with this anchorId1.
-                const AnchorPair anchorPair(*this, anchorId0, anchorId1, false);
+                AnchorId anchorIdA = anchorId0;
+                AnchorId anchorIdB = anchorId1;
+                if(direction == 1) {
+                    swap(anchorIdA, anchorIdB);
+                }
+                const AnchorPair anchorPair(*this, anchorIdA, anchorIdB, false);
                 if(anchorPair.orientedReadIds.size() >= minCommonCount) {
 
                     // We have enough coverage.
+                    if(debug) {
+                        cout << "Coverage is sufficient." << endl;
+                    }
 
                     if(anchorPair.isConsistent(*this, aDrift, bDrift, positions, offsets)) {
                         const uint32_t offset = anchorPair.getAverageOffset(*this);
+                        if(debug) {
+                            cout << "AnchorPair is consistent with offset " << offset << endl;
+                        }
                         if((offset < maxCurrentOffset) and (offset < bestOffset)) {
                             bestOffset = offset;
                             bestAnchorPair = anchorPair;
+                            if(debug) {
+                                cout << "This is the best AnchorPair found so far." << endl;
+                            }
                         }
                     } else {
+
+                        if(debug) {
+                            if(debug) {
+                                cout << "AnchorPair is not consistent and we have to split it." << endl;
+                            }
+
+                        }
 
                         // We have enough coverage but we have to split this AnchorPair.
                         anchorPair.splitByOffsets(*this, aDrift, bDrift, splitAnchorPairs);
@@ -1694,23 +1759,38 @@ bool Anchors::readFollowing(
                             }
                         }
                     }
+                } else {
+                    if(debug) {
+                        cout << "Coverage is not sufficient." << endl;
+                    }
+
                 }
 
-
-                // Point to the next position in the journey of this oriented read.
-                orientedReadInfo.nextPositionInJourney += deltaPositionInJourney;
             }
 
         }
 
         // If we have a bestOffset, we are done.
         if(bestOffset < std::numeric_limits<uint32_t>::max()) {
+            if(debug) {
+                cout << "Success, best AnchorPair is " <<
+                    anchorIdToString(bestAnchorPair.anchorIdA) << " " <<
+                    anchorIdToString(bestAnchorPair.anchorIdB) << endl;
+            }
             return true;
         }
 
-        // If this iteration did not discover any new AnchorIds, stop
+        if(debug) {
+            cout << "Iteration with maxCurrentOffset was not successful." << endl;
+
+        }
+
+        // If all reads have reached the end of their journey, stop
         // the iteration and return false;
-        if(iterationAnchorIdCount == 0) {
+        if(endOfJourneyCount == orientedReadInfos.size()) {
+            if(debug) {
+                cout << "All oriented reads have reached the end of their journey." << endl;
+            }
             break;
         }
 
@@ -1719,5 +1799,8 @@ bool Anchors::readFollowing(
     }
 
 
+    if(debug) {
+        cout << "Read following was not successful for " << anchorIdToString(anchorId0) << " direction " << direction << endl;
+    }
     return false;
 }

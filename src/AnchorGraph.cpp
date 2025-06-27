@@ -367,7 +367,7 @@ AnchorGraph::AnchorGraph(
     }
 
     // Create the edges using read following.
-    createEdges1(anchors, journeys, minEdgeCoverage, aDrift, bDrift);
+    createEdges2(anchors, journeys, minEdgeCoverage, aDrift, bDrift);
 
     cout << "The anchor graph has " << num_vertices(*this) <<
         " vertices and " << num_edges(*this) << " edges." << endl;
@@ -456,13 +456,48 @@ void AnchorGraph::createEdges1(
 
 
 void AnchorGraph::createEdges2(
-    const Anchors& /* anchors */,
-    const Journeys& /* journeys */,
-    uint64_t /* minEdgeCoverage */,
-    double /* aDrift */,
-    double /* bDrift */)
+    const Anchors& anchors,
+    const Journeys& journeys,
+    uint64_t minEdgeCoverage,
+    double aDrift,
+    double bDrift)
 {
-    SHASTA_ASSERT(0);
+    AnchorGraph& anchorGraph = *this;
+    const uint64_t anchorCount = anchors.size();
+
+    // Create the edges using read following.
+    AnchorPair anchorPair;
+    uint32_t offset;
+    for(uint64_t direction=0; direction<2; direction++) {
+        for(AnchorId anchorId0=0; anchorId0<anchorCount; anchorId0++) {
+
+            // Do read following.
+            // If successful, this finds a consistent AnchorPair
+            // so we don't have to worry about splitting it.
+            const bool found = anchors.readFollowing(
+                journeys, anchorId0, direction,
+                minEdgeCoverage, aDrift, bDrift,
+                anchorPair, offset);
+
+            // Not successful, do nothing.
+            if(not found) {
+                continue;
+            }
+
+            // If the edge already exists, do nothing.
+            bool edgeExists = false;
+            tie(ignore, edgeExists) = boost::edge(anchorPair.anchorIdA, anchorPair.anchorIdB, anchorGraph);
+            if(edgeExists) {
+                continue;
+            }
+
+            // We don't already have this edge. Add it.
+            edge_descriptor e;
+            tie(e, ignore) = add_edge(anchorPair.anchorIdA, anchorPair.anchorIdB,
+                AnchorGraphEdge(anchorPair, offset, nextEdgeId++), anchorGraph);
+            anchorGraph[e].useForAssembly = true;
+        }
+    }
 }
 
 
