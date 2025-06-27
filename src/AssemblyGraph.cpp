@@ -772,6 +772,7 @@ uint64_t AssemblyGraph::bubbleCleanupIteration(uint64_t threadCount)
 void AssemblyGraph::compress()
 {
     AssemblyGraph& assemblyGraph = *this;
+    const bool debug = false;
 
     // Find linear chains of 2 or more edges.
     vector< std::list<edge_descriptor> > chains;
@@ -797,6 +798,14 @@ void AssemblyGraph::compress()
         for(const edge_descriptor e: chain) {
             const AssemblyGraphEdge& edge = assemblyGraph[e];
             copy(edge.begin(), edge.end(), back_inserter(edgeNew));
+        }
+
+        if(debug) {
+            cout << "Compress";
+            for(const edge_descriptor e: chain) {
+                cout << " " << assemblyGraph[e].id;
+            }
+            cout << " into " << edgeNew.id << endl;
         }
 
         // Now we can remove the edges of the chain and its internal vertices.
@@ -961,8 +970,10 @@ uint64_t AssemblyGraph::detangleEdgesIteration(Detangler& detangler)
     BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
         const vertex_descriptor v0 = source(e, assemblyGraph);
         const vertex_descriptor v1 = target(e, assemblyGraph);
-        // const bool isTrueTangleEdge = (out_degree(v0, assemblyGraph) == 1) and (in_degree(v1, assemblyGraph) == 1);
-        detanglingCandidates.emplace_back(vector<vertex_descriptor>({v0, v1}));
+        const bool isTrueTangleEdge = (out_degree(v0, assemblyGraph) == 1) and (in_degree(v1, assemblyGraph) == 1);
+        if(isTrueTangleEdge) {
+            detanglingCandidates.emplace_back(vector<vertex_descriptor>({v0, v1}));
+        }
     }
 
     // Do the detangling.
