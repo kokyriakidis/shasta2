@@ -365,3 +365,60 @@ bool TangleMatrix::Hypothesis::isBackwardInjective() const
     return true;
 
 }
+
+
+
+// Read following on the entrances/exits.
+void TangleMatrix::readFollowing(const AssemblyGraph& assemblyGraph)
+{
+    const bool debug = true;
+    readFollowingMap.clear();
+
+    for(uint64_t iEntrance=0; iEntrance<entrances.size(); iEntrance++) {
+        const auto& entrance = entrances[iEntrance];
+        const AssemblyGraph::edge_descriptor e = entrance.e;
+        const AssemblyGraphEdge& edge = assemblyGraph[e];
+        for(uint64_t stepId=0; stepId<edge.size(); stepId++) {
+            const AssemblyGraphEdgeStep& step = edge[stepId];
+            const AnchorPair& anchorPair = step.anchorPair;
+            for(const OrientedReadId orientedReadId: anchorPair.orientedReadIds) {
+                StepIdentifier stepIdentifier;
+                stepIdentifier.iEntrance = iEntrance;
+                stepIdentifier.stepId = stepId;
+                readFollowingMap[orientedReadId].push_back(stepIdentifier);
+            }
+        }
+    }
+
+    for(uint64_t iExit=0; iExit<exits.size(); iExit++) {
+        const auto& exit = exits[iExit];
+        const AssemblyGraph::edge_descriptor e = exit.e;
+        const AssemblyGraphEdge& edge = assemblyGraph[e];
+        for(uint64_t stepId=0; stepId<edge.size(); stepId++) {
+            const AssemblyGraphEdgeStep& step = edge[stepId];
+            const AnchorPair& anchorPair = step.anchorPair;
+            for(const OrientedReadId orientedReadId: anchorPair.orientedReadIds) {
+                StepIdentifier stepIdentifier;
+                stepIdentifier.iExit = iExit;
+                stepIdentifier.stepId = stepId;
+                readFollowingMap[orientedReadId].push_back(stepIdentifier);
+            }
+        }
+    }
+
+    if(debug) {
+        for(const auto& p: readFollowingMap) {
+            const OrientedReadId orientedReadId = p.first;
+            const vector<StepIdentifier>& stepIdentifiers = p.second;
+            cout << "Occurrences of " << orientedReadId << ":" << endl;
+            for(const StepIdentifier& stepIdentifier: stepIdentifiers) {
+                if(stepIdentifier.iExit == invalid<uint64_t>) {
+                    cout << "In-" << stepIdentifier.iEntrance << "-" << stepIdentifier.stepId << " ";
+                } else {
+                    cout << "Out-" << stepIdentifier.iExit << "-" << stepIdentifier.stepId << " ";
+                }
+            }
+            cout << endl;
+        }
+    }
+}

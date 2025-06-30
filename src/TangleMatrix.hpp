@@ -98,4 +98,16 @@ public:
     };
     vector<Hypothesis> hypotheses;
     bool gTest(double epsilon);
+
+
+
+    // Read following on the entrances/exits.
+    class StepIdentifier {
+    public:
+        uint64_t iEntrance = invalid<uint64_t>;
+        uint64_t iExit = invalid<uint64_t>;
+        uint64_t stepId;
+    };
+    std::map<OrientedReadId, vector<StepIdentifier> > readFollowingMap;
+    void readFollowing(const AssemblyGraph&);
 };
