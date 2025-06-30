@@ -142,7 +142,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def("detangle",
             (
                 uint64_t (AssemblyGraph::*)
-                (uint64_t, Detangler&)
+                (uint64_t, uint64_t, Detangler&)
             )
             &AssemblyGraph::detangle)
         .def("compress", &AssemblyGraph::compress)

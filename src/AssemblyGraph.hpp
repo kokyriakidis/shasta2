@@ -207,15 +207,23 @@ public:
     uint64_t detangleVerticesIteration(Detangler&);
     uint64_t detangleVertices(uint64_t maxIterationCount, Detangler&);
 
-    uint64_t detangleEdgesIteration(Detangler&);
-    uint64_t detangleEdges(uint64_t maxIterationCount, Detangler&);
+    uint64_t detangleEdgesIteration(
+        uint64_t maxEdgeLength,
+        Detangler&);
+    uint64_t detangleEdges(
+        uint64_t maxIterationCount,
+        uint64_t maxEdgeLength,
+        Detangler&);
 
     uint64_t detangleTemplateIteration(uint64_t templateId, Detangler&);
     uint64_t detangleTemplate(uint64_t templateId, uint64_t maxIterationCount, Detangler&);
     uint64_t detangleTemplates(uint64_t maxIterationCount, Detangler&);
 
     // High level detangling function.
-    uint64_t detangle(uint64_t maxIterationCount, Detangler&);
+    uint64_t detangle(
+        uint64_t maxIterationCount,
+        uint64_t maxEdgeLength,
+        Detangler&);
 
 
 

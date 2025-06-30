@@ -171,19 +171,12 @@ void AssemblyGraph::run(uint64_t threadCount)
 
 
     // Detangling.
-    /*
-    createTangleTemplates();
-    SimpleDetangler detangler(
-        options.detangleMinCommonCoverage,
-        options.detangleLowCoverageThreshold,
-        options.detangleHighCoverageThreshold);
-    */
     LikelihoodRatioDetangler detangler(
         options.detangleMinCommonCoverage,
         options.detangleEpsilon,
         options.detangleMaxLogP,
         options.detangleMinLogPDelta);
-    detangle(detangleMaxIterationCount, detangler);
+    detangle(detangleMaxIterationCount, std::numeric_limits<uint64_t>::max(), detangler);
     write("E");
 
 
@@ -938,12 +931,15 @@ uint64_t AssemblyGraph::detangleVerticesIteration(Detangler& detangler)
 
 
 
-uint64_t AssemblyGraph::detangleEdges(uint64_t maxIterationCount, Detangler& detangler)
+uint64_t AssemblyGraph::detangleEdges(
+    uint64_t maxIterationCount,
+    uint64_t maxEdgeLength,
+    Detangler& detangler)
 {
     uint64_t changeCount = 0;
 
     for(uint64_t iteration=0; iteration<maxIterationCount; iteration++) {
-        const uint64_t iterationChangeCount = detangleEdgesIteration(detangler);
+        const uint64_t iterationChangeCount = detangleEdgesIteration(maxEdgeLength, detangler);
         if(iterationChangeCount > 0) {
             changeCount += iterationChangeCount;
             compress();
@@ -959,7 +955,9 @@ uint64_t AssemblyGraph::detangleEdges(uint64_t maxIterationCount, Detangler& det
 
 
 
-uint64_t AssemblyGraph::detangleEdgesIteration(Detangler& detangler)
+uint64_t AssemblyGraph::detangleEdgesIteration(
+    uint64_t maxEdgeLength,
+    Detangler& detangler)
 {
     AssemblyGraph& assemblyGraph = *this;
     // cout << "Edge detangling begins." << endl;
@@ -971,7 +969,7 @@ uint64_t AssemblyGraph::detangleEdgesIteration(Detangler& detangler)
         const vertex_descriptor v0 = source(e, assemblyGraph);
         const vertex_descriptor v1 = target(e, assemblyGraph);
         const bool isTrueTangleEdge = (out_degree(v0, assemblyGraph) == 1) and (in_degree(v1, assemblyGraph) == 1);
-        if(isTrueTangleEdge) {
+        if(isTrueTangleEdge and assemblyGraph[e].offset() <= maxEdgeLength) {
             detanglingCandidates.emplace_back(vector<vertex_descriptor>({v0, v1}));
         }
     }
@@ -1151,11 +1149,14 @@ bool AssemblyGraph::detangleIteration(Detangler& detangler)
 
 
 
-uint64_t AssemblyGraph::detangle(uint64_t maxIterationCount, Detangler& detangler)
+uint64_t AssemblyGraph::detangle(
+    uint64_t maxIterationCount,
+    uint64_t maxEdgeLength,
+    Detangler& detangler)
 {
 
     const uint64_t verticesChangeCount = detangleVertices(maxIterationCount, detangler);
-    const uint64_t edgesChangeCount = detangleEdges(maxIterationCount, detangler);
+    const uint64_t edgesChangeCount = detangleEdges(maxIterationCount, maxEdgeLength, detangler);
     // const uint64_t templateChangeCount = detangleTemplates(maxIterationCount, detangler);
 
     const uint64_t changeCount = verticesChangeCount + edgesChangeCount; // + templateChangeCount;

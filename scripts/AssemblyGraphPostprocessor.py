@@ -22,5 +22,5 @@ detangler = LikelihoodRatioDetangler(
     options.detangleEpsilon,
     options.detangleMaxLogP,
     options.detangleMinLogPDelta)
-assemblyGraph.detangle(10, detangler);
+assemblyGraph.detangle(10, 1000000000, detangler);
 assemblyGraph.write("X")
