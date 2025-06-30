@@ -107,6 +107,8 @@ public:
     uint64_t sequenceLength() const;
     void getSequence(vector<Base>&) const;
 
+    double averageCoverage() const;
+
     template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
     {
         ar & boost::serialization::base_object< vector<AssemblyGraphEdgeStep> >(*this);

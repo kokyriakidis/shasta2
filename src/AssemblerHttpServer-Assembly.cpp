@@ -232,15 +232,18 @@ void Assembler::exploreSegments(
         "<p>The assembly graph at stage " << assemblyStage <<
         " has " << num_edges(assemblyGraph) << " edges (segments)." << endl;
 
-    html << "<table><tr><th>Vertex<br>(segment)<br>id<th>Number<br>of<br>steps<th>Estimated<br>length<th>Actual<br>length";
+    html << "<table><tr><th>Vertex<br>(segment)<br>id<th>Number<br>of<br>steps"
+        "<th>Average<br>coverage<th>Estimated<br>length<th>Actual<br>length";
 
     BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
         const AssemblyGraphEdge& edge = assemblyGraph[e];
+        const uint64_t coverage = uint64_t(std::round(edge.averageCoverage()));
         const string url = "exploreSegment?assemblyStage=" + assemblyStage + "&segmentName=" + to_string(edge.id);
         html <<
             "<tr>"
             "<td class=centered><a href='" << url << "'>" << edge.id << "</a>"
             "<td class=centered>" << edge.size() <<
+            "<td class=centered>" << coverage <<
             "<td class=centered>" << edge.offset() <<
             "<td class=centered>";
         if(edge.wasAssembled) {

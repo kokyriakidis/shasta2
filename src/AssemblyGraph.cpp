@@ -2101,3 +2101,15 @@ void AssemblyGraph::colorStrongComponents() const
 
 }
 
+
+
+
+double AssemblyGraphEdge::averageCoverage() const
+{
+    uint64_t sum = 0;
+    for(const AssemblyGraphEdgeStep& step: *this) {
+        sum += step.anchorPair.orientedReadIds.size();
+    }
+
+    return double(sum) / double(size());
+}
