@@ -166,7 +166,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def(init<uint64_t>())
         ;
     class_<SimpleDetangler>(shasta2Module, "SimpleDetangler", pybind11::base<Detangler>())
-        .def(init<uint64_t, uint64_t, uint64_t>())
+        .def(init<uint64_t, uint64_t>())
         ;
     class_<PermutationDetangler>(shasta2Module, "PermutationDetangler", pybind11::base<Detangler>())
         .def(init<uint64_t, double, double, double>())

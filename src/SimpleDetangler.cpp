@@ -11,18 +11,6 @@ bool SimpleDetangler::operator()(Tangle& tangle, bool doDetangle)
 {
     const TangleMatrix& tangleMatrix = *(tangle.tangleMatrix);
 
-    // Check common coverage on all entrances and exits.
-    for(const auto& entrance: tangleMatrix.entrances) {
-        if(entrance.commonCoverage < minCommonCoverage) {
-            return false;
-        }
-    }
-    for(const auto& exit: tangleMatrix.exits) {
-        if(exit.commonCoverage < minCommonCoverage) {
-            return false;
-        }
-    }
-
     const uint64_t entranceCount = tangleMatrix.entrances.size();
     const uint64_t exitCount = tangleMatrix.exits.size();
 
@@ -74,62 +62,20 @@ bool SimpleDetangler::operator()(Tangle& tangle, bool doDetangle)
         }
     }
 
-    // If we have ambiguous entries, give up.
+    // If we have ambiguous elements, don't do anything.
     if(not ambiguousEntries.empty()) {
         if(debug) {
-            cout << "Not detangling because ambiguous entries are present." << endl;
+            cout << "Not detangling because the tangle matrix has ambiguous elements." << endl;
         }
         return false;
     }
 
-    // If all entrances are connected to all exits, don't do it.
-    if(significantEntries.size() == tangleMatrix.entrances.size() * tangleMatrix.exits.size()) {
+    // If there are no insignificant elements, don't do anything.
+    if(insignificantEntries.empty()) {
         if(debug) {
-            cout << "Not detangling because all entrances are connected to all exits." << endl;
+            cout << "Not detangling because the tangle matrix has no insignificant elements." << endl;
         }
         return false;
-    }
-
-    // If there are no significant entries, don't detangle.
-    if(significantEntries.empty()) {
-        if(debug) {
-            cout << "Not detangling because no significant entries are present." << endl;
-        }
-        return false;
-    }
-
-    // Check that each entrance will get a connection with at least one exit.
-    for(uint64_t iEntrance=0; iEntrance<tangleMatrix.entrances.size(); iEntrance++) {
-        bool isGood = false;
-        for(const auto& p: significantEntries) {
-            if(p.first == iEntrance) {
-                isGood = true;
-                break;
-            }
-        }
-        if(not isGood) {
-            if(debug) {
-                cout << "Not detangling because not all entrances are connected to at least one exit." << endl;
-            }
-            return false;
-        }
-    }
-
-    // Check that each exit will get a connection with at least one entrance.
-    for(uint64_t iExit=0; iExit<tangleMatrix.exits.size(); iExit++) {
-        bool isGood = false;
-        for(const auto& p: significantEntries) {
-            if(p.second == iExit) {
-                isGood = true;
-                break;
-            }
-        }
-        if(not isGood) {
-            if(debug) {
-                cout << "Not detangling because not all exits are connected to at least one enrance." << endl;
-            }
-            return false;
-        }
     }
 
     // All good, detangle using the significant entries.
