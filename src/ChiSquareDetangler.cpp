@@ -24,7 +24,7 @@ ChiSquareDetangler::ChiSquareDetangler(
 
 
 
-bool ChiSquareDetangler::operator()(Tangle& tangle, bool doDetangle)
+bool ChiSquareDetangler::operator()(Tangle& tangle)
 {
     const TangleMatrix& tangleMatrix = *(tangle.tangleMatrix);
     const uint64_t entranceCount = tangleMatrix.entrances.size();
@@ -369,7 +369,7 @@ bool ChiSquareDetangler::operator()(Tangle& tangle, bool doDetangle)
         }
     }
 
-    // Store the connect pairs and, if requested, detangle.
+    // Store the connect pairs and detangle.
     vector< vector<bool> >& bestConnectivityMatrix = table.front().second;
     for(uint64_t iEntrance=0; iEntrance<entranceCount; iEntrance++) {
         for(uint64_t iExit=0; iExit<exitCount; iExit++) {
@@ -378,9 +378,7 @@ bool ChiSquareDetangler::operator()(Tangle& tangle, bool doDetangle)
             }
         }
     }
-    if(doDetangle) {
-        tangle.detangle();
-    }
+    tangle.detangle();
 
     return true;
 }

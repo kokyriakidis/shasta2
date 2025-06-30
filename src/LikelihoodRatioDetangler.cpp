@@ -21,7 +21,7 @@ LikelihoodRatioDetangler::LikelihoodRatioDetangler(
 
 
 
-bool LikelihoodRatioDetangler::operator()(Tangle& tangle, bool doDetangle)
+bool LikelihoodRatioDetangler::operator()(Tangle& tangle)
 {
     TangleMatrix& tangleMatrix = *(tangle.tangleMatrix);
     const uint64_t entranceCount = tangleMatrix.entrances.size();
@@ -160,7 +160,7 @@ bool LikelihoodRatioDetangler::operator()(Tangle& tangle, bool doDetangle)
 
 
 
-    // Store the connect pairs and, if requested, detangle.
+    // Store the connect pairs and detangle.
     for(uint64_t iEntrance=0; iEntrance<entranceCount; iEntrance++) {
         for(uint64_t iExit=0; iExit<exitCount; iExit++) {
             if(bestConnectivityMatrix[iEntrance][iExit]) {
@@ -171,9 +171,7 @@ bool LikelihoodRatioDetangler::operator()(Tangle& tangle, bool doDetangle)
             }
         }
     }
-    if(doDetangle) {
-        tangle.detangle();
-    }
+    tangle.detangle();
 
     return true;
 }

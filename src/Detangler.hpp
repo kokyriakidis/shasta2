@@ -12,9 +12,9 @@ public:
     // - If detangling is not possible, returns false and stores nothing in the Tangle.
     // - If detangling is possible:
     //   * It calls Tangle::connect to store in the Tangle the entrance/exit pairs to be connected.
-    //   * If doDetangle is true, it calls Tangle::detangle.
+    //   * It calls Tangle::detangle.
     //   * It returns true.
-    virtual bool operator()(Tangle&, bool doDetangle) = 0;
+    virtual bool operator()(Tangle&) = 0;
 
     bool debug = false;
 };

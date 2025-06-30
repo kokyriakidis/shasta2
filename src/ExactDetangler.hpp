@@ -14,6 +14,6 @@ namespace shasta {
 // This has a tendency to generate breaks in the assembly.
 class shasta::ExactDetangler : public Detangler {
 public:
-    bool operator()(Tangle&, bool doDetangle);
+    bool operator()(Tangle&);
 
 };

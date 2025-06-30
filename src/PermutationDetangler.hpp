@@ -11,7 +11,7 @@ namespace shasta {
 
 class shasta::PermutationDetangler : public Detangler {
 public:
-    bool operator()(Tangle&, bool doDetangle);
+    bool operator()(Tangle&);
 
     PermutationDetangler(
         uint64_t minCommonCoverage,

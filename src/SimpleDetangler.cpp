@@ -7,7 +7,7 @@ using namespace shasta;
 
 
 
-bool SimpleDetangler::operator()(Tangle& tangle, bool doDetangle)
+bool SimpleDetangler::operator()(Tangle& tangle)
 {
     const TangleMatrix& tangleMatrix = *(tangle.tangleMatrix);
 
@@ -86,10 +86,7 @@ bool SimpleDetangler::operator()(Tangle& tangle, bool doDetangle)
     if(debug) {
         cout << "Detangling." << endl;
     }
-
-    if(doDetangle) {
-        tangle.detangle();
-    }
+    tangle.detangle();
 
     return true;
 }

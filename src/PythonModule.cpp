@@ -138,7 +138,9 @@ PYBIND11_MODULE(shasta2, shasta2Module)
 
     class_<AssemblyGraph>(shasta2Module, "AssemblyGraph")
         .def("detangleVertices", &AssemblyGraph::detangleVertices)
+        .def("detangleVerticesIteration", &AssemblyGraph::detangleVerticesIteration)
         .def("detangleEdges", &AssemblyGraph::detangleEdges)
+        .def("detangleEdgesIteration", &AssemblyGraph::detangleEdgesIteration)
         .def("detangle",
             (
                 uint64_t (AssemblyGraph::*)

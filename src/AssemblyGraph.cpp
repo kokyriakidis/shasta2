@@ -968,8 +968,16 @@ uint64_t AssemblyGraph::detangleEdgesIteration(
     BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
         const vertex_descriptor v0 = source(e, assemblyGraph);
         const vertex_descriptor v1 = target(e, assemblyGraph);
-        const bool isTrueTangleEdge = (out_degree(v0, assemblyGraph) == 1) and (in_degree(v1, assemblyGraph) == 1);
-        if(isTrueTangleEdge and assemblyGraph[e].offset() <= maxEdgeLength) {
+
+        const bool isTangleEdge =
+            (in_degree(v0, assemblyGraph) > 1) and
+            (out_degree(v0, assemblyGraph) == 1) and
+            (in_degree(v1, assemblyGraph) == 1) and
+            (out_degree(v1, assemblyGraph) > 1);
+
+        const bool isShort = assemblyGraph[e].offset() <= maxEdgeLength;
+
+        if(isTangleEdge and isShort) {
             detanglingCandidates.emplace_back(vector<vertex_descriptor>({v0, v1}));
         }
     }
@@ -1091,7 +1099,7 @@ uint64_t AssemblyGraph::detangle(
             cout << endl;
         }
 
-        const bool success = detangler(tangle, true);
+        const bool success = detangler(tangle);
         if(success) {
             if(debug) {
                 cout << "Detangle was successful." << endl;
