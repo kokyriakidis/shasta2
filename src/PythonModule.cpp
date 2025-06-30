@@ -153,6 +153,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def("simplifySuperbubbles", &AssemblyGraph::simplifySuperbubbles)
         .def("colorStrongComponents", &AssemblyGraph::colorStrongComponents)
         .def("write", &AssemblyGraphPostprocessor::write)
+        .def("computeJourneys", &AssemblyGraphPostprocessor::computeJourneys)
         ;
 
     class_<AssemblyGraphPostprocessor>(shasta2Module, "AssemblyGraphPostprocessor",

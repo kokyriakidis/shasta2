@@ -10,6 +10,7 @@
 #include "findConvergingVertex.hpp"
 #include "color.hpp"
 #include "inducedSubgraphIsomorphisms.hpp"
+#include "Journeys.hpp"
 #include "LikelihoodRatioDetangler.hpp"
 #include "LocalAssembly2.hpp"
 #include "MurmurHash2.hpp"
@@ -148,7 +149,7 @@ AssemblyGraph::AssemblyGraph(
 void AssemblyGraph::run(uint64_t threadCount)
 {
     // AssemblyGraph& assemblyGraph = *this;
-    const uint64_t detangleMaxIterationCount = 10;
+    // const uint64_t detangleMaxIterationCount = 10;
 
     // Initial output.
     write("A");
@@ -169,7 +170,7 @@ void AssemblyGraph::run(uint64_t threadCount)
     write("D");
 
 
-
+#if 0
     // Detangling.
     LikelihoodRatioDetangler detangler(
         options.detangleMinCommonCoverage,
@@ -178,7 +179,7 @@ void AssemblyGraph::run(uint64_t threadCount)
         options.detangleMinLogPDelta);
     detangle(detangleMaxIterationCount, std::numeric_limits<uint64_t>::max(), detangler);
     write("E");
-
+#endif
 
     // Sequence assembly.
     assembleAll(threadCount);
@@ -2121,4 +2122,94 @@ double AssemblyGraphEdge::averageCoverage() const
     }
 
     return double(sum) / double(size());
+}
+
+
+
+// Compute oriented read journeys in the AssemblyGraph.
+void AssemblyGraph::computeJourneys() const
+{
+    const uint64_t orientedReadCount = journeys.size();
+
+    const AssemblyGraph& assemblyGraph = *this;
+
+    class AssemblyGraphJourneyEntry {
+    public:
+        edge_descriptor e;
+        uint64_t stepId;
+
+        // These are positions in the standard Journeys on the Anchors.
+        uint64_t positionInJourneyA;
+        uint64_t positionInJourneyB;
+
+        bool operator<(const AssemblyGraphJourneyEntry& that) const {
+            return positionInJourneyA < that.positionInJourneyA;
+        }
+    };
+    vector< vector<AssemblyGraphJourneyEntry> > assemblyGraphJourneys(orientedReadCount);
+
+
+    // Loop over AssemblyGrapg edges.
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        const AssemblyGraphEdge& edge = assemblyGraph[e];
+
+        // Loop over steps of this edge.
+        for(uint64_t stepId=0; stepId<edge.size(); stepId++) {
+            const AssemblyGraphEdgeStep& step = edge[stepId];
+
+            // Locate the anchors for this step.
+            const AnchorPair& anchorPair = step.anchorPair;
+            const AnchorId anchorIdA = anchorPair.anchorIdA;
+            const AnchorId anchorIdB = anchorPair.anchorIdB;
+            const Anchor anchorA = anchors[anchorIdA];
+            const Anchor anchorB = anchors[anchorIdB];
+
+            // Loop over OrientedReadIds of this step.
+            auto itA = anchorA.begin();
+            auto itB = anchorB.begin();
+            for(const OrientedReadId orientedReadId: anchorPair.orientedReadIds) {
+
+                // Locate this OrientedReadId in the two anchors.
+                for(; (itA != anchorA.end()) and (itA->orientedReadId != orientedReadId); ++itA) {}
+                SHASTA_ASSERT(itA != anchorA.end());
+                SHASTA_ASSERT(itA->orientedReadId == orientedReadId);
+                const AnchorMarkerInfo& infoA = *itA;
+                for(; (itB != anchorB.end()) and (itB->orientedReadId != orientedReadId); ++itB) {}
+                SHASTA_ASSERT(itB != anchorB.end());
+                const AnchorMarkerInfo& infoB = *itB;
+                SHASTA_ASSERT(itB->orientedReadId == orientedReadId);
+
+                const uint32_t positionInJourneyA = infoA.positionInJourney;
+                const uint32_t positionInJourneyB = infoB.positionInJourney;
+
+                AssemblyGraphJourneyEntry entry;
+                entry.e = e;
+                entry.stepId = stepId;
+                entry.positionInJourneyA = positionInJourneyA;
+                entry.positionInJourneyB = positionInJourneyB;
+
+                assemblyGraphJourneys[orientedReadId.getValue()].push_back(entry);
+
+            }
+
+        }
+    }
+
+    for(vector<AssemblyGraphJourneyEntry>& v: assemblyGraphJourneys) {
+        sort(v.begin(), v.end());
+    }
+
+    ofstream csv("AssemblyGraphJourneys.csv");
+    csv << "OrientedReadId,Segment,Step,PositionInJourneyA,PositionInJourneyB\n";
+    for(ReadId orientedReadIdValue=0; orientedReadIdValue<orientedReadCount; orientedReadIdValue++) {
+        const OrientedReadId orientedReadId = OrientedReadId::fromValue(orientedReadIdValue);
+        const vector<AssemblyGraphJourneyEntry>& assemblyGraphJourney = assemblyGraphJourneys[orientedReadIdValue];
+        for(const AssemblyGraphJourneyEntry& entry: assemblyGraphJourney) {
+            csv << orientedReadId << ",";
+            csv << assemblyGraph[entry.e].id << ",";
+            csv << entry.stepId << ",";
+            csv << entry.positionInJourneyA << ",";
+            csv << entry.positionInJourneyB << "\n";
+        }
+    }
 }

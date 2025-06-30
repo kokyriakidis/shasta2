@@ -27,7 +27,7 @@ assemblyGraph.detangle(10, 1000000000, detangler);
 assemblyGraph.write("X")
 """
 
-
+"""
 assemblyGraph = assembler.getAssemblyGraph("E", options)
 detangler = SimpleDetangler(1, 2)
 
@@ -63,4 +63,10 @@ detangledEdgeCount = assemblyGraph.detangleEdgesIteration(edgeLengthThreshold, d
 print(detangledEdgeCount, "successful edge detagling operations.")
 assemblyGraph.compress()
 assemblyGraph.write("E4")
+"""
+
+assemblyGraph = assembler.getAssemblyGraph("D", options)
+assemblyGraph.computeJourneys()
+
+
 

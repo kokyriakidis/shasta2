@@ -237,6 +237,9 @@ public:
 
 public:
 
+    // Compute oriented read journeys in the AssemblyGraph.
+    void computeJourneys() const;
+
 
     // Superbubbles and SuperbubbleChains.
     // - A Superbubble is a Tangle in which all entrance edges are into
