@@ -20,6 +20,7 @@ void SuperbubbleChain::phase(
 
     const uint64_t m = 6;
     const uint64_t minDegree = 2;
+    const uint64_t minPhaseCoverage = 3;
 
     if(debug) {
         cout << "Phasing superbubble chain " << superbubbleChainId << endl;
@@ -76,7 +77,7 @@ void SuperbubbleChain::phase(
                 }
             }
 
-            // Do the likelyHood ratio test (G test).
+            // Do the likelihood ratio test (G test).
             const bool success = tangleMatrix.gTest(assemblyGraph.options.detangleEpsilon);
 
             if(not success) {
@@ -95,7 +96,8 @@ void SuperbubbleChain::phase(
             }
 
             // Check if the best hypothesis satisfies our options.
-            const double bestG = tangleMatrix.hypotheses.front().G;
+            const auto& bestHypothesis = tangleMatrix.hypotheses.front();
+            const double bestG = bestHypothesis.G;
             if(bestG > assemblyGraph.options.detangleMaxLogP) {
                 if(false) {
                     cout << "Best hypothesis G is too high." << endl;
@@ -112,9 +114,30 @@ void SuperbubbleChain::phase(
                 }
             }
 
+            // Also check that all the connections implied by the best hypothesis
+            // would have coverage at least minPhaseCoverage.
+            bool hasLowCoverage = false;
+            for(uint64_t iEntrance=0; iEntrance<tangleMatrix.entrances.size(); iEntrance++) {
+                for(uint64_t iExit=0; iExit<tangleMatrix.exits.size(); iExit++) {
+                    if(bestHypothesis.connectivityMatrix[iEntrance][iExit]) {
+                        if(tangleMatrix.tangleMatrix[iEntrance][iExit].orientedReadIds.size() < minPhaseCoverage) {
+                            hasLowCoverage = true;
+                        }
+                    }
+                }
+            }
+            if(hasLowCoverage) {
+                if(debug) {
+                    cout << "Discarded because it would generate a connection with low coverage." << endl;
+                }
+                continue;
+            }
+
+
+
             if( tangleMatrix.hypotheses.front().isForwardInjective() or
                 tangleMatrix.hypotheses.front().isBackwardInjective()) {
-                phasingGraph.addEdge(position0, position1, tangleMatrix.hypotheses.front());
+                phasingGraph.addEdge(position0, position1, bestHypothesis);
 
                 if(debug) {
                     cout << "Added edge " << position0 << " " << position1 << endl;
