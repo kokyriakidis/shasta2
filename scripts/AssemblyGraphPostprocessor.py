@@ -66,7 +66,7 @@ assemblyGraph.write("E4")
 """
 
 assemblyGraph = assembler.getAssemblyGraph("D", options)
-assemblyGraph.computeJourneys()
+assemblyGraph.testSearch()
 
 
 

@@ -138,6 +138,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
 
     class_<AssemblyGraph>(shasta2Module, "AssemblyGraph")
         .def("detangleVertices", &AssemblyGraph::detangleVertices)
+        .def("detangleVertices", &AssemblyGraph::detangleVertices)
         .def("detangleVerticesIteration", &AssemblyGraph::detangleVerticesIteration)
         .def("detangleEdges", &AssemblyGraph::detangleEdges)
         .def("detangleEdgesIteration", &AssemblyGraph::detangleEdgesIteration)
@@ -154,6 +155,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def("colorStrongComponents", &AssemblyGraph::colorStrongComponents)
         .def("write", &AssemblyGraphPostprocessor::write)
         .def("computeJourneys", &AssemblyGraphPostprocessor::computeJourneys)
+        .def("testSearch", &AssemblyGraphPostprocessor::testSearch)
         ;
 
     class_<AssemblyGraphPostprocessor>(shasta2Module, "AssemblyGraphPostprocessor",

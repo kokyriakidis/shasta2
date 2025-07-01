@@ -2213,3 +2213,118 @@ void AssemblyGraph::computeJourneys() const
         }
     }
 }
+
+
+
+// Search starting at a given edge (segment) and moving in the specified direction.
+void AssemblyGraph::search(
+    edge_descriptor eStart,
+    uint64_t direction) const
+{
+    const AssemblyGraph& assemblyGraph = *this;
+
+    const bool debug = true;
+
+    // Create the SearchGraph
+    SearchGraph searchGraph;
+    const SearchGraph::vertex_descriptor svStart = add_vertex(SearchGraphVertex(eStart), searchGraph);
+    std::map<AssemblyGraph::edge_descriptor, SearchGraph::vertex_descriptor> vertexMap;
+    vertexMap.insert({eStart, svStart});
+
+    // Work vectors.
+    vector<AssemblyGraph::edge_descriptor> eStartVector(1, eStart);
+    vector<AssemblyGraph::edge_descriptor> adjacentEdges;
+
+    // Initialize a BFS.
+    std::queue<SearchGraph::vertex_descriptor> q;
+    q.push(svStart);
+
+    // Main BFS loop.
+    while(not q.empty()) {
+
+        // Dequeue a SearchGraph vertex, which corresponds to an AssemblyGraph edge.
+        const SearchGraph::vertex_descriptor sv0 = q.front();
+        q.pop();
+        const AssemblyGraph::edge_descriptor e0 = searchGraph[sv0].e;
+        if(debug) {
+            cout << "Dequeued " << assemblyGraph[e0].id << endl;
+        }
+
+        // Find adjacent edges in the specified direction.
+        const vertex_descriptor v0 = (direction == 0) ? target(e0, assemblyGraph) : source(e0, assemblyGraph);
+        adjacentEdges.clear();
+        if(direction == 0) {
+            BGL_FORALL_OUTEDGES(v0, e1, assemblyGraph, AssemblyGraph) {
+                adjacentEdges.push_back(e1);
+            }
+        } else {
+            BGL_FORALL_INEDGES(v0, e1, assemblyGraph, AssemblyGraph) {
+                adjacentEdges.push_back(e1);
+            }
+        }
+
+        // Compute a TangleMatrix between the start edge and these edges.
+        TangleMatrix tangleMatrix(
+            assemblyGraph,
+            eStartVector,
+            adjacentEdges,
+            options.aDrift,
+            options.bDrift);
+
+
+        if(debug) {
+            cout << "Tangle matrix:" << endl;
+            for(uint64_t i=0; i<adjacentEdges.size(); i++) {
+                const AssemblyGraph::edge_descriptor e1 = adjacentEdges[i];
+                const uint64_t tangleMatrixCoverage = tangleMatrix.tangleMatrix[0][i].orientedReadIds.size();
+                cout << assemblyGraph[e1].id << " " << tangleMatrixCoverage << endl;
+            }
+        }
+
+
+        // Enqueue the segments with non-zero tangle matrix.
+        for(uint64_t i=0; i<adjacentEdges.size(); i++) {
+            const uint64_t tangleMatrixCoverage = tangleMatrix.tangleMatrix[0][i].orientedReadIds.size();
+            if(tangleMatrixCoverage == 0) {
+                continue;
+            }
+            const AssemblyGraph::edge_descriptor e1 = adjacentEdges[i];
+
+            // Get the SearchGraph vertex corresponding to this AssemblyGraph edge, creating it
+            // if necessary.
+            SearchGraph::vertex_descriptor sv1;
+            auto it = vertexMap.find(e1);
+            if(it == vertexMap.end()) {
+                sv1 = add_vertex(SearchGraphVertex(e1), searchGraph);
+                vertexMap.insert({e1, sv1});
+                q.push(sv1);
+            } else {
+                sv1 = it->second;
+            }
+            add_edge(sv0, sv1, SearchGraphEdge(tangleMatrixCoverage), searchGraph);
+        }
+    }
+}
+
+
+
+void AssemblyGraph::testSearch() const
+{
+    const AssemblyGraph& assemblyGraph = *this;
+
+    const uint64_t edgeId = 45808;
+    const uint64_t direction = 0;
+
+    edge_descriptor eStart;
+    bool found = false;
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        if(assemblyGraph[e].id == edgeId) {
+            eStart = e;
+            found = true;
+            break;
+        }
+    }
+    SHASTA_ASSERT(found);
+
+    search(eStart, direction);
+}
