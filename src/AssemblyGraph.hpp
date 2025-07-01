@@ -175,6 +175,8 @@ public:
     // Compress linear chains of edges into a single edge.
     void compress();
 
+
+
     // Class to order vertices or edges by id.
     class OrderById {
     public:
@@ -188,7 +190,22 @@ public:
         {
             return assemblyGraph[x].id < assemblyGraph[y].id;
         }
+
+        // Also order pairs of edges.
+        using EdgePair = pair<edge_descriptor, edge_descriptor>;
+        bool operator()(const EdgePair& x,const EdgePair& y) const
+        {
+            if(assemblyGraph[x.first].id < assemblyGraph[y.first].id) {
+                return true;
+            }
+            if(assemblyGraph[x.first].id > assemblyGraph[y.first].id) {
+                return false;
+            }
+            return assemblyGraph[x.second].id < assemblyGraph[y.second].id;
+        }
     };
+
+
 
     bool hasSelfEdge(vertex_descriptor v) const
     {
@@ -242,7 +259,7 @@ public:
 
 
 
-    // Search starting at a given edge (segment) and moving in the specified direction.
+    // Simple search starting at a given edge (segment) and moving in the specified direction.
     void search(
         edge_descriptor,
         uint64_t direction) const;
@@ -263,7 +280,15 @@ public:
         SearchGraphEdge> {
         public:
     };
-    void testSearch() const;
+
+
+
+    // More systematic search functionality that uses an index.
+    void findEdgePairs(uint64_t minCoverage);
+    std::map<edge_descriptor, vector<edge_descriptor> > edgePairsBySource;
+    std::map<edge_descriptor, vector<edge_descriptor> > edgePairsByTarget;
+    void testSearch(uint64_t edgeId, uint64_t direction, uint64_t minCoverage) const;
+
 
 
     // Superbubbles and SuperbubbleChains.

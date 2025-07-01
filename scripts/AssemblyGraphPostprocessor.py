@@ -65,8 +65,19 @@ assemblyGraph.compress()
 assemblyGraph.write("E4")
 """
 
+"""
 assemblyGraph = assembler.getAssemblyGraph("D", options)
-assemblyGraph.testSearch()
+assemblyGraph.search()
+"""
+
+assemblyGraph = assembler.getAssemblyGraph("Z", options)
+detangler = LikelihoodRatioDetangler(
+    options.detangleMinCommonCoverage,
+    options.detangleEpsilon,
+    options.detangleMaxLogP,
+    options.detangleMinLogPDelta)
+detangler.debug = True
+detangledEdgeCount = assemblyGraph.detangleEdgesIteration(1000000000, detangler);
 
 
 

@@ -16,6 +16,7 @@
 #include "MurmurHash2.hpp"
 #include "Options.hpp"
 #include "performanceLog.hpp"
+#include "Reads.hpp"
 #include "rle.hpp"
 #include "SimpleDetangler.hpp"
 #include "Superbubble.hpp"
@@ -149,7 +150,7 @@ AssemblyGraph::AssemblyGraph(
 void AssemblyGraph::run(uint64_t threadCount)
 {
     // AssemblyGraph& assemblyGraph = *this;
-    // const uint64_t detangleMaxIterationCount = 10;
+    const uint64_t detangleMaxIterationCount = 10;
 
     // Initial output.
     write("A");
@@ -168,7 +169,6 @@ void AssemblyGraph::run(uint64_t threadCount)
     // Phase SuperbubbleChains.
     phaseSuperbubbleChains();
     write("D");
-
 
 #if 0
     // Detangling.
@@ -2308,23 +2308,146 @@ void AssemblyGraph::search(
 
 
 
-void AssemblyGraph::testSearch() const
+// More systematic search functionality that uses indexes.
+void AssemblyGraph::findEdgePairs(uint64_t minCoverage)
 {
     const AssemblyGraph& assemblyGraph = *this;
 
-    const uint64_t edgeId = 45808;
-    const uint64_t direction = 0;
+    const ReadId readCount = anchors.reads.readCount();
+    const ReadId orientedReadCount = 2 * readCount;
+    const OrderById orderById(*this);
 
-    edge_descriptor eStart;
+    // Create an index that will be used for searches.
+    // index[orientedReadId.getValue()] will contain the edges that
+    // have orientedReadId in the AnchorPair of their first step.
+    // Edge descriptors in the index are sorted using OrderById.
+    vector< vector<edge_descriptor> > searchIndex(orientedReadCount);
+
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        const AssemblyGraphEdge& edge = assemblyGraph[e];
+        const AssemblyGraphEdgeStep& firstStep = edge.front();
+        const AnchorPair& anchorPair = firstStep.anchorPair;
+        for(const OrientedReadId orientedReadId: anchorPair.orientedReadIds) {
+            searchIndex[orientedReadId.getValue()].push_back(e);
+        }
+    }
+    for(auto& v: searchIndex) {
+        sort(v.begin(), v.end(), orderById);
+    }
+
+
+
+    // Now do a search from the last step of each edge.
+    vector<edge_descriptor> currentEdges;
+    vector<uint64_t> count;
+    edgePairsBySource.clear();
+    edgePairsByTarget.clear();
+    BGL_FORALL_EDGES(e0, assemblyGraph, AssemblyGraph) {
+        const AssemblyGraphEdge& edge0 = assemblyGraph[e0];
+        const AssemblyGraphEdgeStep& lastStep = edge0.back();
+
+        currentEdges.clear();
+        const AnchorPair& anchorPair = lastStep.anchorPair;
+        for(const OrientedReadId orientedReadId: anchorPair.orientedReadIds) {
+            const vector<edge_descriptor>& v = searchIndex[orientedReadId.getValue()];
+            for(const edge_descriptor e1: v) {
+                currentEdges.push_back(e1);
+            }
+        }
+        deduplicateAndCountWithThreshold(currentEdges, count, minCoverage);
+
+        for(const edge_descriptor e1: currentEdges) {
+            edgePairsBySource[e0].push_back(e1);
+            edgePairsByTarget[e1].push_back(e0);
+        }
+    }
+
+    // Sort the pairs we found for each edge.
+    for(auto& p:edgePairsBySource) {
+        auto& v = p.second;
+        sort(v.begin(), v.end(), orderById);
+    }
+    for(auto& p:edgePairsByTarget) {
+        auto& v = p.second;
+        sort(v.begin(), v.end(), orderById);
+    }
+
+}
+
+
+
+void AssemblyGraph::testSearch(uint64_t edgeId0, uint64_t direction, uint64_t minCoverage) const
+{
+    const AssemblyGraph& assemblyGraph = *this;
+    OrderById orderById(*this);
+
+
+    edge_descriptor e0;
     bool found = false;
     BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
-        if(assemblyGraph[e].id == edgeId) {
-            eStart = e;
+        if(assemblyGraph[e].id == edgeId0) {
+            e0 = e;
             found = true;
             break;
         }
     }
-    SHASTA_ASSERT(found);
+    if(not found) {
+        cout << "Edge with id " << edgeId0 << " does not exist." << endl;
+        return;
+    }
 
-    search(eStart, direction);
+    std::map<edge_descriptor, vector<edge_descriptor> >::const_iterator it;
+    if(direction == 0) {
+        it = edgePairsBySource.find(e0);
+        SHASTA_ASSERT(it != edgePairsBySource.end());
+    } else {
+        it = edgePairsByTarget.find(e0);
+        SHASTA_ASSERT(it != edgePairsByTarget.end());
+    }
+    const vector<edge_descriptor> e1s = it->second;
+    cout << "Found " << e1s.size() << " edges." << endl;
+
+
+
+
+    // Compute the AnchorPairs between e0 and each of these e1.
+    vector<edge_descriptor> e1sGood;
+    for(const edge_descriptor e1: e1s) {
+        edge_descriptor eA = e0;
+        edge_descriptor eB = e1;
+        if(direction == 1) {
+            std::swap(eA, eB);
+        }
+
+        const AnchorPair bridgeAnchorPair = anchors.bridge(
+            assemblyGraph[eA].back().anchorPair,
+            assemblyGraph[eB].front().anchorPair,
+            options.aDrift,
+            options.bDrift);
+        if(bridgeAnchorPair.orientedReadIds.size() >= minCoverage) {
+            e1sGood.push_back(e1);
+        }
+    }
+    cout << "Found " << e1sGood.size() << " good edges." << endl;
+
+
+
+    // Write a csv file that can be loaded in Bandage.
+    ofstream csv("Search.csv");
+    csv << "Id,Color\n";
+    BGL_FORALL_EDGES(e1, assemblyGraph, AssemblyGraph) {
+        csv << assemblyGraph[e1].id << ",";
+        if(e1 == e0) {
+            csv << "Red";
+        } else {
+            const auto it = std::lower_bound(e1sGood.begin(), e1sGood.end(), e1, orderById);
+            if((it != e1s.end()) and (*it == e1)) {
+                csv << "Green";
+            } else {
+                csv << "Grey";
+            }
+        }
+        csv << endl;
+    }
+
 }
