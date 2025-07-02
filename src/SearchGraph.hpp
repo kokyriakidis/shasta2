@@ -43,6 +43,12 @@ public:
     // for each non-trivial connected component.
     void computeConnectedComponents(vector<SearchGraph>&) const;
 
+    // This removes out-edges of vertices with out_degree > 1
+    // and in-edges of vertices with in-degree > 1.
+    // After this operation, the SearchGraph consists of a set
+    // of linear chains.
+    void removeBranches();
+
 private:
     const AssemblyGraph& assemblyGraph;
     std::map<AssemblyGraph::edge_descriptor, vertex_descriptor> vertexMap;

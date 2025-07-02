@@ -1,5 +1,6 @@
 // Shasta.
 #include "SearchGraph.hpp"
+#include "deduplicate.hpp"
 using namespace shasta;
 
 // Boost libraries.
@@ -200,3 +201,33 @@ SearchGraph::SearchGraph(
 
 }
 
+
+
+
+// This removes out-edges of vertices with out_degree > 1
+// and in-edges of vertices with in-degree > 1.
+// After this operation, the SearchGraph consists of a set
+// of linear chains.
+void SearchGraph::removeBranches()
+{
+    SearchGraph& searchGraph = *this;
+
+    vector<edge_descriptor> edgesToBeRemoved;
+    BGL_FORALL_VERTICES(v, searchGraph, SearchGraph) {
+        if(out_degree(v, searchGraph) > 1) {
+            BGL_FORALL_OUTEDGES(v, e, searchGraph, SearchGraph) {
+                edgesToBeRemoved.push_back(e);
+            }
+        }
+        if(in_degree(v, searchGraph) > 1) {
+            BGL_FORALL_INEDGES(v, e, searchGraph, SearchGraph) {
+                edgesToBeRemoved.push_back(e);
+            }
+        }
+    }
+    deduplicate(edgesToBeRemoved);
+
+    for(const edge_descriptor e: edgesToBeRemoved) {
+        boost::remove_edge(e, searchGraph);
+    }
+}

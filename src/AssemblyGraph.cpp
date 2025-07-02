@@ -2624,18 +2624,34 @@ void AssemblyGraph::testLocalSearch(
 void AssemblyGraph::createSearchGraph(uint64_t minCoverage) const
 {
     using shasta::SearchGraph;
+    const AssemblyGraph& assemblyGraph = *this;
 
+    // Create the SearchGraph.
     SearchGraph searchGraph(*this, minCoverage);
 
+    // Compute connected components.
     vector<SearchGraph> components;
     searchGraph.computeConnectedComponents(components);
-    cout << "Found " << components.size() <<
-        " non-trivial connected components of the search graph." << endl;
+
+
 
     // Process each connected component separately.
+    ofstream csv("SearchGraph-Chains.csv");
+    vector< vector<vertex_descriptor> > chains;
     for(uint64_t componentId=0; componentId<components.size(); componentId++) {
         SearchGraph& component = components[componentId];
         transitiveReductionAny(component);
+        component.removeBranches();
         component.writeGraphviz("SearchGraph-" + to_string(componentId) + ".dot");
+
+        findLinearVertexChains(component, chains);
+        for(const vector<vertex_descriptor>& chain: chains) {
+            csv << componentId << ",";
+            for(const vertex_descriptor v: chain) {
+                const AssemblyGraph::edge_descriptor e = searchGraph[v].e;
+                csv << assemblyGraph[e].id << ",";
+            }
+            csv << "\n";
+        }
     }
 }
