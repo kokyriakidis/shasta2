@@ -18,6 +18,7 @@
 #include "performanceLog.hpp"
 #include "Reads.hpp"
 #include "rle.hpp"
+#include "SearchGraph.hpp"
 #include "SimpleDetangler.hpp"
 #include "Superbubble.hpp"
 #include "SuperbubbleChain.hpp"
@@ -2621,48 +2622,6 @@ void AssemblyGraph::testLocalSearch(
 
 void AssemblyGraph::createSearchGraph(uint64_t minCoverage) const
 {
-    const AssemblyGraph& assemblyGraph = *this;
-    const OrderById orderById(assemblyGraph);
-
-    using EdgePair = pair<edge_descriptor, edge_descriptor>;
-    vector<EdgePair> forwardPairs;
-    vector<EdgePair> backwardPairs;
-
-    vector<edge_descriptor> localEdges;
-    BGL_FORALL_EDGES(e0, assemblyGraph, AssemblyGraph) {
-        forwardLocalSearch(e0, minCoverage, localEdges);
-        for(const edge_descriptor e1: localEdges) {
-            forwardPairs.push_back({e0, e1});
-        }
-        backwardLocalSearch(e0, minCoverage, localEdges);
-        for(const edge_descriptor e1: localEdges) {
-            backwardPairs.push_back({e1, e0});
-        }
-    }
-    cout << "Found " << forwardPairs.size() << " forward pairs and " <<
-        backwardPairs.size() << " backward pairs." << endl;
-
-    sort(forwardPairs.begin(), forwardPairs.end(), orderById);
-    sort(backwardPairs.begin(), backwardPairs.end(), orderById);
-
-    vector<EdgePair> bidirectionalPairs;
-    std::set_intersection(
-        forwardPairs.begin(), forwardPairs.end(),
-        backwardPairs.begin(), backwardPairs.end(),
-        back_inserter(bidirectionalPairs),
-        orderById);
-    cout << "Found " << bidirectionalPairs.size() << " bidirectional pairs." << endl;
-
-
-
-    // The bidirectional pairs define the search graph.
-    // Write them out in Graphviz format.
-    ofstream dot("SearchGraph.dot");
-    dot << "digraph SearchGraph {\n";
-    for(const EdgePair& edgePair: bidirectionalPairs) {
-        const edge_descriptor e0 = edgePair.first;
-        const edge_descriptor e1 = edgePair.second;
-        dot << assemblyGraph[e0].id << "->" << assemblyGraph[e1].id << "\n";
-    }
-    dot << "}\n";
+    shasta::SearchGraph searchGraph(*this, minCoverage);
+    searchGraph.writeGraphviz("SearchGraph.dot");
 }
