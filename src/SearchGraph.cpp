@@ -1,10 +1,10 @@
 // Shasta.
 #include "SearchGraph.hpp"
-#include "transitiveReduction.hpp"
 using namespace shasta;
 
 // Boost libraries.
 #include <boost/graph/iteration_macros.hpp>
+#include <boost/pending/disjoint_sets.hpp>
 
 // Standard library.
 #include <fstream.hpp>
@@ -18,7 +18,6 @@ SearchGraph::SearchGraph(
 {
     createVertices();
     createEdges(minCoverage);
-    transitiveReductionAny(*this);
 
     cout << "The search graph has " << num_vertices(*this) <<
         " vertices and " << num_edges(*this) << " edges" << endl;
@@ -113,3 +112,91 @@ void SearchGraph::writeGraphviz(ostream& s) const
 
     s << "}\n";
 }
+
+
+
+// This computes connected components and creates a new SearchGraph
+// for each non-trivial connected component.
+void SearchGraph::computeConnectedComponents(vector<SearchGraph>& components) const
+{
+    const SearchGraph& searchGraph  = *this;
+
+    // Map vertices to integer.
+    std::map<vertex_descriptor, uint64_t> indexMap;
+    uint64_t vertexIndex = 0;
+    BGL_FORALL_VERTICES(v, searchGraph, SearchGraph) {
+        indexMap.insert({v, vertexIndex++});
+    }
+    const uint64_t vertexCount = indexMap.size();
+
+    // Initialize the disjoint sets.
+    vector<uint64_t> rank(vertexCount);
+    vector<uint64_t> parent(vertexCount);
+    boost::disjoint_sets<uint64_t*, uint64_t*> disjointSets(&rank[0], &parent[0]);
+    for(uint64_t i=0; i<vertexCount; i++) {
+        disjointSets.make_set(i);
+    }
+
+    // Compute connected components.
+    BGL_FORALL_EDGES(e, searchGraph, SearchGraph) {
+        const vertex_descriptor v0 = source(e, searchGraph);
+        const vertex_descriptor v1 = target(e, searchGraph);
+        const uint64_t index0 = indexMap[v0];
+        const uint64_t index1 = indexMap[v1];
+        disjointSets.union_set(index0, index1);
+    }
+
+    // Gather the vertices in each connected component.
+    vector < vector<vertex_descriptor> > componentTable(vertexCount);
+    BGL_FORALL_VERTICES(v, searchGraph, SearchGraph) {
+        const uint64_t index = indexMap[v];
+        const uint64_t componentId = disjointSets.find_set(index);
+        componentTable[componentId].push_back(v);
+    }
+
+
+
+    // Create and store a new SearchGraph for each non-trivial connected components.
+    components.clear();
+    for(const vector<vertex_descriptor>& componentVertices: componentTable) {
+        if(componentVertices.size() > 1) {
+            components.emplace_back(*this, componentVertices);
+        }
+    }
+}
+
+
+// Construction from connected component of the SearchGraph.
+SearchGraph::SearchGraph(
+    const SearchGraph& searchGraph,
+    const vector<vertex_descriptor>& componentVertices) :
+    assemblyGraph(searchGraph.assemblyGraph)
+{
+    SearchGraph& component = *this;
+
+    // Add the vertices.
+    for(const vertex_descriptor vGlobal: componentVertices) {
+        const AssemblyGraph::edge_descriptor e = searchGraph[vGlobal].e;
+        const vertex_descriptor v = add_vertex(SearchGraphVertex(e), component);
+        vertexMap.insert({e, v});
+    }
+
+    // Add the edges.
+    for(const vertex_descriptor v0Global: componentVertices) {
+        const AssemblyGraph::edge_descriptor e0 = searchGraph[v0Global].e;
+        const auto it0 = vertexMap.find(e0);
+        SHASTA_ASSERT(it0 != vertexMap.end());
+        const vertex_descriptor v0 = it0->second;
+        BGL_FORALL_OUTEDGES(v0Global, eGlobal, searchGraph, SearchGraph) {
+            const vertex_descriptor v1Global = target(eGlobal, searchGraph);
+            const AssemblyGraph::edge_descriptor e1 = searchGraph[v1Global].e;
+            const auto it1 = vertexMap.find(e1);
+            SHASTA_ASSERT(it1 != vertexMap.end());
+            const vertex_descriptor v1 = it1->second;
+            add_edge(v0, v1, component);
+        }
+    }
+
+
+}
+

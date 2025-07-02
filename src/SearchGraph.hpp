@@ -20,6 +20,7 @@ public:
     AssemblyGraph::edge_descriptor e;
 
     SearchGraphVertex(AssemblyGraph::edge_descriptor e) : e(e) {}
+    SearchGraphVertex() {}
 };
 
 
@@ -27,12 +28,20 @@ public:
 class shasta::SearchGraph : public SearchGraphBaseClass {
 public:
 
+    // Initial construction from the AssemblyGraph.
     SearchGraph(
         const AssemblyGraph&,
         uint64_t minCoverage);
 
+    // Construction from connected component of the SearchGraph.
+    SearchGraph(const SearchGraph&, const vector<vertex_descriptor>&);
+
     void writeGraphviz(const string& fileName) const;
     void writeGraphviz(ostream&) const;
+
+    // This computes connected components and creates a new SearchGraph
+    // for each non-trivial connected component.
+    void computeConnectedComponents(vector<SearchGraph>&) const;
 
 private:
     const AssemblyGraph& assemblyGraph;

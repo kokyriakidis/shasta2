@@ -24,6 +24,7 @@
 #include "SuperbubbleChain.hpp"
 #include "Tangle.hpp"
 #include "TangleMatrix.hpp"
+#include "transitiveReduction.hpp"
 #include "TrivialDetangler.hpp"
 using namespace shasta;
 
@@ -2622,6 +2623,19 @@ void AssemblyGraph::testLocalSearch(
 
 void AssemblyGraph::createSearchGraph(uint64_t minCoverage) const
 {
-    shasta::SearchGraph searchGraph(*this, minCoverage);
-    searchGraph.writeGraphviz("SearchGraph.dot");
+    using shasta::SearchGraph;
+
+    SearchGraph searchGraph(*this, minCoverage);
+
+    vector<SearchGraph> components;
+    searchGraph.computeConnectedComponents(components);
+    cout << "Found " << components.size() <<
+        " non-trivial connected components of the search graph." << endl;
+
+    // Process each connected component separately.
+    for(uint64_t componentId=0; componentId<components.size(); componentId++) {
+        SearchGraph& component = components[componentId];
+        transitiveReductionAny(component);
+        component.writeGraphviz("SearchGraph-" + to_string(componentId) + ".dot");
+    }
 }
