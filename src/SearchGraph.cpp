@@ -1,5 +1,6 @@
 // Shasta.
 #include "SearchGraph.hpp"
+#include "transitiveReduction.hpp"
 using namespace shasta;
 
 // Boost libraries.
@@ -17,7 +18,10 @@ SearchGraph::SearchGraph(
 {
     createVertices();
     createEdges(minCoverage);
+    transitiveReductionAny(*this);
 
+    cout << "The search graph has " << num_vertices(*this) <<
+        " vertices and " << num_edges(*this) << " edges" << endl;
 }
 
 
@@ -53,8 +57,6 @@ void SearchGraph::createEdges(uint64_t minCoverage)
             backwardPairs.push_back({e1, e0});
         }
     }
-    cout << "Found " << forwardPairs.size() << " forward pairs and " <<
-        backwardPairs.size() << " backward pairs." << endl;
 
 
 
@@ -69,7 +71,6 @@ void SearchGraph::createEdges(uint64_t minCoverage)
         backwardPairs.begin(), backwardPairs.end(),
         back_inserter(bidirectionalPairs),
         orderById);
-    cout << "Found " << bidirectionalPairs.size() << " bidirectional pairs." << endl;
 
 
 
