@@ -150,7 +150,7 @@ AssemblyGraph::AssemblyGraph(
 void AssemblyGraph::run(uint64_t threadCount)
 {
     // AssemblyGraph& assemblyGraph = *this;
-    const uint64_t detangleMaxIterationCount = 10;
+    // const uint64_t detangleMaxIterationCount = 10;
 
     // Initial output.
     write("A");
@@ -2451,3 +2451,169 @@ void AssemblyGraph::testSearch(uint64_t edgeId0, uint64_t direction, uint64_t mi
     }
 
 }
+
+
+
+// Local search that continues as long as we have only one way to move.
+void AssemblyGraph::forwardLocalSearch(
+    edge_descriptor eStart,
+    uint64_t minCoverage,
+    vector<edge_descriptor>& edges) const
+{
+    const bool debug = false;
+    const AssemblyGraph& assemblyGraph = *this;
+
+    edges.clear();
+    edge_descriptor e0 = eStart;
+
+    vector<edge_descriptor> entrances(1, eStart);
+    vector<edge_descriptor> exits;
+
+    // Main iteration.
+    while(true) {
+        const vertex_descriptor v0 = target(e0, assemblyGraph);
+        exits.clear();
+        BGL_FORALL_OUTEDGES(v0, e1, assemblyGraph, AssemblyGraph) {
+            exits.push_back(e1);
+        }
+
+        TangleMatrix tangleMatrix(assemblyGraph, entrances, exits, options.aDrift, options.bDrift);
+
+        if(debug) {
+            cout << "Starting from " << assemblyGraph[e0].id << " found:" << endl;
+            for(uint64_t iExit=0; iExit<exits.size(); iExit++) {
+                cout << assemblyGraph[exits[iExit]].id << " " <<
+                    tangleMatrix.tangleMatrix[0][iExit].orientedReadIds.size() << endl;
+            }
+        }
+
+        // Count the exits with coverage at least minCoverage.
+        uint64_t goodExitCount = 0;
+        for(uint64_t iExit=0; iExit<exits.size(); iExit++) {
+            if(tangleMatrix.tangleMatrix[0][iExit].orientedReadIds.size() >= minCoverage) {
+                ++goodExitCount;
+            }
+        }
+
+        // Only keep going if we have exactly one good exit.
+        if(goodExitCount != 1) {
+            return;
+        }
+
+        // Find the one and only good exit.
+        edge_descriptor e1;
+        for(uint64_t iExit=0; iExit<exits.size(); iExit++) {
+            if(tangleMatrix.tangleMatrix[0][iExit].orientedReadIds.size() >= minCoverage) {
+                e1 = exits[iExit];
+                break;
+            }
+        }
+
+        // Add it to our output edges and continue from here.
+        edges.push_back(e1);
+        e0 = e1;
+    }
+}
+
+
+
+void AssemblyGraph::backwardLocalSearch(
+    edge_descriptor eStart,
+    uint64_t minCoverage,
+    vector<edge_descriptor>& edges) const
+{
+    const bool debug = false;
+    const AssemblyGraph& assemblyGraph = *this;
+
+    edges.clear();
+    edge_descriptor e0 = eStart;
+
+    vector<edge_descriptor> entrances;
+    vector<edge_descriptor> exits(1, eStart);
+
+    // Main iteration.
+    while(true) {
+        const vertex_descriptor v0 = source(e0, assemblyGraph);
+        entrances.clear();
+        BGL_FORALL_INEDGES(v0, e1, assemblyGraph, AssemblyGraph) {
+            entrances.push_back(e1);
+        }
+
+        TangleMatrix tangleMatrix(assemblyGraph, entrances, exits, options.aDrift, options.bDrift);
+
+        if(debug) {
+            cout << "Starting from " << assemblyGraph[e0].id << " found:" << endl;
+            for(uint64_t iEntrance=0; iEntrance<entrances.size(); iEntrance++) {
+                cout << assemblyGraph[entrances[iEntrance]].id << " " <<
+                    tangleMatrix.tangleMatrix[iEntrance][0].orientedReadIds.size() << endl;
+            }
+        }
+
+        // Count the enrances with coverage at least minCoverage.
+        uint64_t goodEntranceCount = 0;
+        for(uint64_t iEntrance=0; iEntrance<entrances.size(); iEntrance++) {
+            if(tangleMatrix.tangleMatrix[iEntrance][0].orientedReadIds.size() >= minCoverage) {
+                ++goodEntranceCount;
+            }
+        }
+
+        // Only keep going if we have exactly one good entrance.
+        if(goodEntranceCount != 1) {
+            return;
+        }
+
+        // Find the one and only good entrance.
+        edge_descriptor e1;
+        for(uint64_t iEntrance=0; iEntrance<entrances.size(); iEntrance++) {
+            if(tangleMatrix.tangleMatrix[iEntrance][0].orientedReadIds.size() >= minCoverage) {
+                e1 = entrances[iEntrance];
+                break;
+            }
+        }
+
+        // Add it to our output edges and continue from here.
+        edges.push_back(e1);
+        e0 = e1;
+    }
+}
+
+
+
+void AssemblyGraph::testLocalSearch(
+    uint64_t edgeIdStart,
+    uint64_t direction,
+    uint64_t minCoverage) const
+{
+    const AssemblyGraph& assemblyGraph = *this;
+    OrderById orderById(*this);
+
+    edge_descriptor eStart;
+    bool found = false;
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        if(assemblyGraph[e].id == edgeIdStart) {
+            eStart = e;
+            found = true;
+            break;
+        }
+    }
+    if(not found) {
+        cout << "Edge with id " << edgeIdStart << " does not exist." << endl;
+        return;
+    }
+
+    vector<edge_descriptor> edges;
+    if(direction == 0) {
+        forwardLocalSearch(eStart, minCoverage, edges);
+    } else {
+        backwardLocalSearch(eStart, minCoverage, edges);
+    }
+
+    cout << "Found " << edges.size() << " edges:" << endl;
+    for(const edge_descriptor e: edges) {
+        cout << assemblyGraph[e].id << " ";
+    }
+    cout << endl;
+
+
+}
+

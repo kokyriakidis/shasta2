@@ -20,9 +20,8 @@ assembler.accessAnchors()
 assembler.accessJourneys()
 
 
-assemblyGraph = assembler.getAssemblyGraph("D", options)
-assemblyGraph.findEdgePairs(arguments.minCoverage)
-assemblyGraph.testSearch(arguments.edgeId0, arguments.direction, arguments.minCoverage);
+assemblyGraph = assembler.getAssemblyGraph("Z", options)
+assemblyGraph.testLocalSearch(arguments.edgeId0, arguments.direction, arguments.minCoverage);
 
 
 
