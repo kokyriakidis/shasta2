@@ -295,6 +295,7 @@ public:
         vector<edge_descriptor>&
     ) const;
     void testLocalSearch(uint64_t id, uint64_t direction, uint64_t minCoverage) const;
+    void createSearchGraph(uint64_t minCoverage) const;
 
 
 

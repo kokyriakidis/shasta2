@@ -157,6 +157,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def("findEdgePairs", &AssemblyGraph::findEdgePairs)
         .def("testSearch", &AssemblyGraph::testSearch)
         .def("testLocalSearch", &AssemblyGraph::testLocalSearch)
+        .def("createSearchGraph", &AssemblyGraph::createSearchGraph)
         ;
 
     class_<AssemblyGraphPostprocessor>(shasta2Module, "AssemblyGraphPostprocessor",
