@@ -23,5 +23,8 @@ assembler.accessJourneys()
 assemblyGraph = assembler.getAssemblyGraph("Z", options)
 # assemblyGraph.testLocalSearch(arguments.edgeId0, arguments.direction, arguments.minCoverage);
 assemblyGraph.createSearchGraph(arguments.minCoverage)
+assemblyGraph.assembleAll(0);
+assemblyGraph.write("X");
+assemblyGraph.writeFasta("X");
 
 

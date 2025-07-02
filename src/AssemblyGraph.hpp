@@ -120,6 +120,15 @@ public:
     {
         vector<AssemblyGraphEdgeStep>::swap(that);
     }
+
+    AnchorId firstAnchorId() const
+    {
+        return front().anchorPair.anchorIdA;
+    }
+    AnchorId lastAnchorId() const
+    {
+        return back().anchorPair.anchorIdB;
+    }
 };
 
 
@@ -295,7 +304,7 @@ public:
         vector<edge_descriptor>&
     ) const;
     void testLocalSearch(uint64_t id, uint64_t direction, uint64_t minCoverage) const;
-    void createSearchGraph(uint64_t minCoverage) const;
+    void createSearchGraph(uint64_t minCoverage);
 
 
 
@@ -355,10 +364,10 @@ public:
 
     // Output.
     void write(const string& stage);
+    void writeFasta(const string& stage) const;
 private:
     void writeGfa(const string& fileName) const;
     void writeGfa(ostream&) const;
-    void writeFasta(const string& stage) const;
     void writeGraphviz(const string& fileName) const;
     void writeGraphviz(ostream&) const;
 

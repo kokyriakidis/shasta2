@@ -2621,10 +2621,10 @@ void AssemblyGraph::testLocalSearch(
 
 
 
-void AssemblyGraph::createSearchGraph(uint64_t minCoverage) const
+void AssemblyGraph::createSearchGraph(uint64_t minCoverage)
 {
     using shasta::SearchGraph;
-    const AssemblyGraph& assemblyGraph = *this;
+    AssemblyGraph& assemblyGraph = *this;
 
     // Create the SearchGraph.
     SearchGraph searchGraph(*this, minCoverage);
@@ -2637,16 +2637,90 @@ void AssemblyGraph::createSearchGraph(uint64_t minCoverage) const
 
     // Process each connected component separately.
     ofstream csv("SearchGraph-Chains.csv");
+    ofstream csvBandage("SearchGraph-Bandage.csv");
+    csvBandage << "Segment,Color\n";
     vector< vector<vertex_descriptor> > chains;
     for(uint64_t componentId=0; componentId<components.size(); componentId++) {
         SearchGraph& component = components[componentId];
         transitiveReductionAny(component);
         component.removeBranches();
-        component.writeGraphviz("SearchGraph-" + to_string(componentId) + ".dot");
+        // component.writeGraphviz("SearchGraph-" + to_string(componentId) + ".dot");
 
         findLinearVertexChains(component, chains);
+
+        // For each chain, generate a new AssemblyGraphEdge,
+        // without connecting it to the rest of the AssemblyGraph for now.
         for(const vector<vertex_descriptor>& chain: chains) {
-            csv << componentId << ",";
+            if(chain.size() < 2) {
+                continue;
+            }
+
+            // Get some information about the first and last AssemblyGraph edge in the chain.
+            const SearchGraph::vertex_descriptor sv0 = chain.front();
+            const SearchGraph::vertex_descriptor sv1 = chain.back();
+            const edge_descriptor e0 = component[sv0].e;
+            const edge_descriptor e1 = component[sv1].e;
+
+            const vertex_descriptor v0 = source(e0, assemblyGraph);
+            const vertex_descriptor v1 = target(e1, assemblyGraph);
+
+#if 0
+            // Create new vertices for the new AssemblyGraphEdge, so it
+            // will stay isolated from the rest of the AssemblyGraph for now.
+            const AssemblyGraphEdge& edge0 = assemblyGraph[e0];
+            const AssemblyGraphEdge& edge1 = assemblyGraph[e1];
+            const AnchorId anchorId0 = edge0.firstAnchorId();
+            const AnchorId anchorId1 = edge1.lastAnchorId();
+            const vertex_descriptor v0 = add_vertex(AssemblyGraphVertex(anchorId0, nextVertexId++), assemblyGraph);
+            const vertex_descriptor v1 = add_vertex(AssemblyGraphVertex(anchorId1, nextVertexId++), assemblyGraph);
+#endif
+
+            // Create the new AssemblyGraphEdge.
+            edge_descriptor eNew;
+            tie(eNew, ignore) = add_edge(v0, v1, AssemblyGraphEdge(nextEdgeId++), assemblyGraph);
+            AssemblyGraphEdge& edgeNew = assemblyGraph[eNew];
+            csvBandage << edgeNew.id << ",Red\n";
+
+
+
+            // Concatenate the AssemblyGraphEdges of the chain, adding bridge steps where needed.
+            for(uint64_t i=0; i<chain.size(); i++) {
+                const SearchGraph::vertex_descriptor v = chain[i];
+                const edge_descriptor e = component[v].e;
+                const AssemblyGraphEdge& edge = assemblyGraph[e];
+
+                // If necessary, add an AssemblyGraphEdgeStep to bridge.
+                if(i != 0) {
+                    const SearchGraph::vertex_descriptor vPrevious = chain[i - 1];
+                    const edge_descriptor ePrevious = component[vPrevious].e;
+                    const AssemblyGraphEdge& edgePrevious = assemblyGraph[ePrevious];
+                    const AnchorId anchorIdPrevious = edgePrevious.lastAnchorId();
+                    const AnchorId anchorIdNext = edge.firstAnchorId();
+                    if(anchorIdPrevious != anchorIdNext) {
+                        const AnchorPair bridgeAnchorPair = anchors.bridge(
+                            edgePrevious.back().anchorPair,
+                            edge.front().anchorPair,
+                            options.aDrift, options.bDrift);
+                        const uint64_t offset = bridgeAnchorPair.getAverageOffset(anchors);
+                        edgeNew.push_back(AssemblyGraphEdgeStep(bridgeAnchorPair, offset));
+                    }
+                }
+
+                // Now we can append this edge to the new edge.
+                copy(edge.begin(), edge.end(), back_inserter(edgeNew));
+
+            }
+
+            // Now remoive the edges of the chain.
+            for(const SearchGraph::vertex_descriptor sv: chain) {
+                const edge_descriptor e = component[sv].e;
+                boost::remove_edge(e, assemblyGraph);
+            }
+
+
+
+            // Write this chain to the csv file.
+            csv << edgeNew.id << ",";
             for(const vertex_descriptor v: chain) {
                 const AssemblyGraph::edge_descriptor e = searchGraph[v].e;
                 csv << assemblyGraph[e].id << ",";
