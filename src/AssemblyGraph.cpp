@@ -152,7 +152,7 @@ AssemblyGraph::AssemblyGraph(
 void AssemblyGraph::run(uint64_t threadCount)
 {
     // AssemblyGraph& assemblyGraph = *this;
-    // const uint64_t detangleMaxIterationCount = 10;
+    const uint64_t detangleMaxIterationCount = 10;
 
     // Initial output.
     write("A");
@@ -172,7 +172,6 @@ void AssemblyGraph::run(uint64_t threadCount)
     phaseSuperbubbleChains();
     write("D");
 
-#if 0
     // Detangling.
     LikelihoodRatioDetangler detangler(
         options.detangleMinCommonCoverage,
@@ -181,7 +180,6 @@ void AssemblyGraph::run(uint64_t threadCount)
         options.detangleMinLogPDelta);
     detangle(detangleMaxIterationCount, std::numeric_limits<uint64_t>::max(), detangler);
     write("E");
-#endif
 
     // Sequence assembly.
     assembleAll(threadCount);
