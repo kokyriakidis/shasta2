@@ -180,6 +180,7 @@ void AssemblyGraph::run(uint64_t threadCount)
         options.detangleMaxLogP,
         options.detangleMinLogPDelta);
     detangle(detangleMaxIterationCount, std::numeric_limits<uint64_t>::max(), detangler);
+    computeJourneys();
     write("E");
 
     // Sequence assembly.
@@ -2128,12 +2129,14 @@ double AssemblyGraphEdge::averageCoverage() const
 
 
 // Compute oriented read journeys in the AssemblyGraph.
-void AssemblyGraph::computeJourneys() const
+void AssemblyGraph::computeJourneys()
 {
     const uint64_t orientedReadCount = journeys.size();
 
-    const AssemblyGraph& assemblyGraph = *this;
+    AssemblyGraph& assemblyGraph = *this;
 
+
+    // Compute uncompressed journeys for all oriented reads.
     class AssemblyGraphJourneyEntry {
     public:
         edge_descriptor e;
@@ -2144,13 +2147,13 @@ void AssemblyGraph::computeJourneys() const
         uint64_t positionInJourneyB;
 
         bool operator<(const AssemblyGraphJourneyEntry& that) const {
-            return positionInJourneyA < that.positionInJourneyA;
+            return positionInJourneyA + positionInJourneyB <
+                that.positionInJourneyA + that.positionInJourneyB;
         }
     };
     vector< vector<AssemblyGraphJourneyEntry> > assemblyGraphJourneys(orientedReadCount);
 
-
-    // Loop over AssemblyGrapg edges.
+    // Loop over AssemblyGraph edges.
     BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
         const AssemblyGraphEdge& edge = assemblyGraph[e];
 
@@ -2196,23 +2199,138 @@ void AssemblyGraph::computeJourneys() const
         }
     }
 
+
+    // Sort the journeys.
     for(vector<AssemblyGraphJourneyEntry>& v: assemblyGraphJourneys) {
         sort(v.begin(), v.end());
     }
 
-    ofstream csv("AssemblyGraphJourneys.csv");
-    csv << "OrientedReadId,Segment,Step,PositionInJourneyA,PositionInJourneyB\n";
+
+
+    // Create the compressed journeys.
+    // Here, we only consider transitions between AssemblyGraph edges.
+    compressedJourneys.clear();
+    compressedJourneys.resize(orientedReadCount);
     for(ReadId orientedReadIdValue=0; orientedReadIdValue<orientedReadCount; orientedReadIdValue++) {
-        const OrientedReadId orientedReadId = OrientedReadId::fromValue(orientedReadIdValue);
         const vector<AssemblyGraphJourneyEntry>& assemblyGraphJourney = assemblyGraphJourneys[orientedReadIdValue];
-        for(const AssemblyGraphJourneyEntry& entry: assemblyGraphJourney) {
-            csv << orientedReadId << ",";
-            csv << assemblyGraph[entry.e].id << ",";
-            csv << entry.stepId << ",";
-            csv << entry.positionInJourneyA << ",";
-            csv << entry.positionInJourneyB << "\n";
+        vector<edge_descriptor>& compressedJourney = compressedJourneys[orientedReadIdValue];
+
+        for(uint64_t i1=0; i1<assemblyGraphJourney.size(); i1++) {
+            const AssemblyGraphJourneyEntry& entry1 = assemblyGraphJourney[i1];
+            const edge_descriptor e1 = entry1.e;
+
+            if(i1 == 0) {
+                compressedJourney.push_back(e1);
+            } else {
+                const uint64_t i0 = i1 - 1;
+                const AssemblyGraphJourneyEntry& entry0 = assemblyGraphJourney[i0];
+                const edge_descriptor e0 = entry0.e;
+                if(e1 != e0) {
+                    compressedJourney.push_back(e1);
+                }
+            }
         }
     }
+
+
+
+    // Store in each AssemblyGraphEdge the OrientedReadIds that visit
+    // the edge and at least one other edge.
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        assemblyGraph[e].transitioningOrientedReadIds.clear();
+        for(ReadId orientedReadIdValue=0; orientedReadIdValue<orientedReadCount; orientedReadIdValue++) {
+            const OrientedReadId orientedReadId = OrientedReadId::fromValue(orientedReadIdValue);
+            const vector<edge_descriptor>& compressedJourney = compressedJourneys[orientedReadIdValue];
+            if(compressedJourney.size() < 2) {
+                continue;
+            }
+            for(const edge_descriptor e: compressedJourney) {
+                assemblyGraph[e].transitioningOrientedReadIds.push_back(orientedReadId);
+            }
+        }
+    }
+
+
+
+    // Write out the compressed journeys.
+    {
+        ofstream csv("AssemblyGraphCompressedJourneys.csv");
+        for(ReadId orientedReadIdValue=0; orientedReadIdValue<orientedReadCount; orientedReadIdValue++) {
+            const OrientedReadId orientedReadId = OrientedReadId::fromValue(orientedReadIdValue);
+            const vector<edge_descriptor>& compressedJourney = compressedJourneys[orientedReadIdValue];
+            csv << orientedReadId << ",";
+            for(const edge_descriptor e: compressedJourney) {
+                csv << assemblyGraph[e].id << ",";
+            }
+            csv << "\n";
+        }
+    }
+
+
+#if 0
+    {
+        ofstream csv("AssemblyGraphJourneys.csv");
+        csv << "OrientedReadId,Segment,Step,PositionInJourneyA,PositionInJourneyB\n";
+        for(ReadId orientedReadIdValue=0; orientedReadIdValue<orientedReadCount; orientedReadIdValue++) {
+            const OrientedReadId orientedReadId = OrientedReadId::fromValue(orientedReadIdValue);
+            const vector<AssemblyGraphJourneyEntry>& assemblyGraphJourney = assemblyGraphJourneys[orientedReadIdValue];
+            for(const AssemblyGraphJourneyEntry& entry: assemblyGraphJourney) {
+                csv << orientedReadId << ",";
+                csv << assemblyGraph[entry.e].id << ",";
+                csv << entry.stepId << ",";
+                csv << entry.positionInJourneyA << ",";
+                csv << entry.positionInJourneyB << "\n";
+            }
+        }
+    }
+
+    {
+        ofstream csv("AssemblyGraphJourneySummaries.csv");
+        for(ReadId orientedReadIdValue=0; orientedReadIdValue<orientedReadCount; orientedReadIdValue++) {
+            const OrientedReadId orientedReadId = OrientedReadId::fromValue(orientedReadIdValue);
+            const vector<AssemblyGraphJourneyEntry>& assemblyGraphJourney = assemblyGraphJourneys[orientedReadIdValue];
+            if(assemblyGraphJourney.size() < 2) {
+                continue;
+            }
+            csv << orientedReadId << ",";
+            for(uint64_t i1=0; i1<assemblyGraphJourney.size(); i1++) {
+                const AssemblyGraphJourneyEntry& entry1 = assemblyGraphJourney[i1];
+                const edge_descriptor e1 = entry1.e;
+                if(i1 == 0) {
+                    csv << assemblyGraph[e1].id << ",";
+                } else {
+                    const uint64_t i0 = i1 - 1;
+                    const AssemblyGraphJourneyEntry& entry0 = assemblyGraphJourney[i0];
+                    const edge_descriptor e0 = entry0.e;
+                    if(e1 != e0) {
+                        csv << assemblyGraph[e1].id << ",";
+                    }
+                }
+            }
+            csv << "\n";
+        }
+    }
+#endif
+}
+
+
+
+void AssemblyGraph::computeExtendedTangleMatrix(
+    vector<edge_descriptor>& entrances,
+    vector<edge_descriptor>& exits,
+    vector< vector<uint64_t> >& tangleMatrix
+    ) const
+{
+    const bool debug = true;
+    SHASTA_ASSERT(not compressedJourneys.empty());
+    tangleMatrix.resize(entrances.size(), vector<uint64_t>(entrances.size(), 0));
+
+    if(debug) {
+        cout << "Computing an extended tangle matrix with " << entrances.size() <<
+            " entrances and " << exits.size() << " exits." << endl;
+    }
+
+
 }
 
 

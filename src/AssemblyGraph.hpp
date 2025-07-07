@@ -13,6 +13,7 @@
 
 // Boost libraries.
 #include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/adj_list_serialize.hpp>
 #include <boost/serialization/vector.hpp>
 
 // Standard library.
@@ -44,7 +45,7 @@ namespace shasta {
 
 
 
-// Tha AnchorId of a vertex is the last AnchorId of the last AnchorPair
+// The AnchorId of a vertex is the last AnchorId of the last AnchorPair
 // of all incoming edges and the first AnchorId of the first AnchorPair
 // of each outgoing edge.
 // When the AssemblyGraph is initially created from the AnchorGraph,
@@ -98,6 +99,12 @@ class shasta::AssemblyGraphEdge : public vector<AssemblyGraphEdgeStep> {
 public:
     uint64_t id = invalid<uint64_t>;
     bool wasAssembled = false;
+
+    // A call to computeJourneys will store here the distinct OrientedReadIds
+    // that visit this edge and that also visit at least one other edge.
+    // They are stored sorted.
+    // This is useful for detangling.
+    vector<OrientedReadId> transitioningOrientedReadIds;
 
     AssemblyGraphEdge(uint64_t id = invalid<uint64_t>) : id(id) {}
 
@@ -263,8 +270,19 @@ public:
 
 public:
 
-    // Compute oriented read journeys in the AssemblyGraph.
-    void computeJourneys() const;
+    // Compute compressed journeys in the AssemblyGraph.
+    // The compressed journey of an oriented read
+    // is the sequence of assembly graph edges it visits.
+    void computeJourneys();
+    vector< vector<edge_descriptor> > compressedJourneys;
+
+    // Use the compressedJourneys and the transitioningOrientedReadIds
+    // stored in the AssemblyGraphEdges to compute an extended tangle matrix.
+    void computeExtendedTangleMatrix(
+        vector<edge_descriptor>& entrances,
+        vector<edge_descriptor>& exits,
+        vector< vector<uint64_t> > & tangleMatrix
+        ) const;
 
 
 

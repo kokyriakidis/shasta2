@@ -900,6 +900,14 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
         httpServerData.options->bDrift);
     tangleMatrix.gTest(epsilon);
     tangleMatrix.writeHtml(assemblyGraph, html);
+
+
+
+    // Also use the compressedJourneys to compute an extended tangle matrix.
+    if(not assemblyGraph.compressedJourneys.empty()) {
+        vector< vector<uint64_t> > extendedTangleMatrix;
+        assemblyGraph.computeExtendedTangleMatrix(entrances, exits, extendedTangleMatrix);
+    }
 }
 
 

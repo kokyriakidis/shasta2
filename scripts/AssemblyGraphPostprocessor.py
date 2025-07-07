@@ -70,6 +70,7 @@ assemblyGraph = assembler.getAssemblyGraph("D", options)
 assemblyGraph.search()
 """
 
+"""
 assemblyGraph = assembler.getAssemblyGraph("Z", options)
 detangler = LikelihoodRatioDetangler(
     options.detangleMinCommonCoverage,
@@ -78,6 +79,7 @@ detangler = LikelihoodRatioDetangler(
     options.detangleMinLogPDelta)
 detangler.debug = True
 detangledEdgeCount = assemblyGraph.detangleEdgesIteration(1000000000, detangler);
+"""
 
-
-
+assemblyGraph = assembler.getAssemblyGraph("B", options)
+assemblyGraph.computeJourneys()
