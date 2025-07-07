@@ -1750,7 +1750,7 @@ bool Anchors::readFollowing(
                         // We have enough coverage but we have to split this AnchorPair.
                         anchorPair.splitByOffsets(*this, aDrift, bDrift, splitAnchorPairs);
                         for(const AnchorPair& splitAnchorPair: splitAnchorPairs) {
-                            if(anchorPair.orientedReadIds.size() >= minCommonCount) {
+                            if(splitAnchorPair.orientedReadIds.size() >= minCommonCount) {
                                 const uint32_t offset = splitAnchorPair.getAverageOffset(*this);
                                 if((offset < maxCurrentOffset) and (offset < bestOffset)) {
                                     bestOffset = offset;
