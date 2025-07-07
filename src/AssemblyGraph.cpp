@@ -173,6 +173,7 @@ void AssemblyGraph::run(uint64_t threadCount)
     write("D");
 
     // Detangling.
+    createTangleTemplates();
     LikelihoodRatioDetangler detangler(
         options.detangleMinCommonCoverage,
         options.detangleEpsilon,
@@ -1166,9 +1167,9 @@ uint64_t AssemblyGraph::detangle(
 
     const uint64_t verticesChangeCount = detangleVertices(maxIterationCount, detangler);
     const uint64_t edgesChangeCount = detangleEdges(maxIterationCount, maxEdgeLength, detangler);
-    // const uint64_t templateChangeCount = detangleTemplates(maxIterationCount, detangler);
+    const uint64_t templateChangeCount = detangleTemplates(maxIterationCount, detangler);
 
-    const uint64_t changeCount = verticesChangeCount + edgesChangeCount; // + templateChangeCount;
+    const uint64_t changeCount = verticesChangeCount + edgesChangeCount + templateChangeCount;
 
     return changeCount;
 }
@@ -2772,12 +2773,11 @@ void AssemblyGraph::createSearchGraph(
 
             }
 
-            // Now remoive the edges of the chain.
+            // Now remove the edges of the chain.
             for(const SearchGraph::vertex_descriptor sv: chain) {
                 const edge_descriptor e = component[sv].e;
                 boost::remove_edge(e, assemblyGraph);
             }
-
 
 
             // Write this chain to the csv file.
