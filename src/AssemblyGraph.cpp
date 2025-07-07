@@ -2511,6 +2511,21 @@ void AssemblyGraph::forwardLocalSearch(
             }
         }
 
+        // Check for loops.
+        if(e1 == eStart) {
+            break;
+        }
+        bool loopDetected = false;
+        for(const edge_descriptor e: edges) {
+            if(e == e1) {
+                loopDetected = true;
+                break;
+            }
+        }
+        if(loopDetected) {
+            break;
+        }
+
         // Add it to our output edges and continue from here.
         edges.push_back(e1);
         e0 = e1;
@@ -2573,6 +2588,21 @@ void AssemblyGraph::backwardLocalSearch(
             }
         }
 
+        // Check for loops.
+        if(e1 == eStart) {
+            break;
+        }
+        bool loopDetected = false;
+        for(const edge_descriptor e: edges) {
+            if(e == e1) {
+                loopDetected = true;
+                break;
+            }
+        }
+        if(loopDetected) {
+            break;
+        }
+
         // Add it to our output edges and continue from here.
         edges.push_back(e1);
         e0 = e1;
@@ -2632,6 +2662,7 @@ void AssemblyGraph::createSearchGraph(uint64_t minCoverage)
     // Compute connected components.
     vector<SearchGraph> components;
     searchGraph.computeConnectedComponents(components);
+    cout << "Found " << components.size() << " non-trivial connected components of the SearchGraph." << endl;
 
 
 
@@ -2641,6 +2672,7 @@ void AssemblyGraph::createSearchGraph(uint64_t minCoverage)
     csvBandage << "Segment,Color\n";
     vector< vector<vertex_descriptor> > chains;
     for(uint64_t componentId=0; componentId<components.size(); componentId++) {
+        cout << "Working on component " << componentId << " of " << components.size() << endl;
         SearchGraph& component = components[componentId];
         transitiveReductionAny(component);
         component.removeBranches();
