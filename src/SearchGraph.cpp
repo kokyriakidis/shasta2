@@ -14,11 +14,12 @@ using namespace shasta;
 
 SearchGraph::SearchGraph(
     const AssemblyGraph& assemblyGraph,
-    uint64_t minCoverage) :
+    uint64_t lowCoverageThreshold,
+    uint64_t highCoverageThreshold) :
     assemblyGraph(assemblyGraph)
 {
     createVertices();
-    createEdges(minCoverage);
+    createEdges(lowCoverageThreshold, highCoverageThreshold);
 
     cout << "The search graph has " << num_vertices(*this) <<
         " vertices and " << num_edges(*this) << " edges" << endl;
@@ -37,7 +38,9 @@ void SearchGraph::createVertices()
 
 
 
-void SearchGraph::createEdges(uint64_t minCoverage)
+void SearchGraph::createEdges(
+    uint64_t lowCoverageThreshold,
+    uint64_t highCoverageThreshold)
 {
     SearchGraph& searchGraph = *this;
 
@@ -48,11 +51,11 @@ void SearchGraph::createEdges(uint64_t minCoverage)
 
     vector<edge_descriptor> localEdges;
     BGL_FORALL_EDGES(e0, assemblyGraph, AssemblyGraph) {
-        assemblyGraph.forwardLocalSearch(e0, minCoverage, localEdges);
+        assemblyGraph.forwardLocalSearch(e0, lowCoverageThreshold, highCoverageThreshold, localEdges);
         for(const edge_descriptor e1: localEdges) {
             forwardPairs.push_back({e0, e1});
         }
-        assemblyGraph.backwardLocalSearch(e0, minCoverage, localEdges);
+        assemblyGraph.backwardLocalSearch(e0, lowCoverageThreshold, highCoverageThreshold, localEdges);
         for(const edge_descriptor e1: localEdges) {
             backwardPairs.push_back({e1, e0});
         }

@@ -31,7 +31,8 @@ public:
     // Initial construction from the AssemblyGraph.
     SearchGraph(
         const AssemblyGraph&,
-        uint64_t minCoverage);
+        uint64_t lowCoverageThreshold,
+        uint64_t highCoverageThreshold);
 
     // Construction from connected component of the SearchGraph.
     SearchGraph(const SearchGraph&, const vector<vertex_descriptor>&);
@@ -54,6 +55,8 @@ private:
     std::map<AssemblyGraph::edge_descriptor, vertex_descriptor> vertexMap;
 
     void createVertices();
-    void createEdges(uint64_t minCoverage);
+    void createEdges(
+        uint64_t lowCoverageThreshold,
+        uint64_t highCoverageThreshold);
 
 };

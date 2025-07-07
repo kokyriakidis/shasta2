@@ -2459,7 +2459,8 @@ void AssemblyGraph::testSearch(uint64_t edgeId0, uint64_t direction, uint64_t mi
 // Local search that continues as long as we have only one way to move.
 void AssemblyGraph::forwardLocalSearch(
     edge_descriptor eStart,
-    uint64_t minCoverage,
+    uint64_t lowCoverageThreshold,
+    uint64_t highCoverageThreshold,
     vector<edge_descriptor>& edges) const
 {
     const bool debug = false;
@@ -2489,23 +2490,36 @@ void AssemblyGraph::forwardLocalSearch(
             }
         }
 
-        // Count the exits with coverage at least minCoverage.
-        uint64_t goodExitCount = 0;
+        // Counts exits by type.
+        // Significant: coverage >= highCoverageThreshold
+        // Insignificant: coverage <= lowCoverageThreshold
+        // Ambiguous: lowCoverageThreshold< coverage < highCoverageThreshold.
+        uint64_t significantCount = 0;
+        uint64_t insignificantCount = 0;
+        uint64_t ambiguousCount = 0;
         for(uint64_t iExit=0; iExit<exits.size(); iExit++) {
-            if(tangleMatrix.tangleMatrix[0][iExit].orientedReadIds.size() >= minCoverage) {
-                ++goodExitCount;
+            const uint64_t coverage = tangleMatrix.tangleMatrix[0][iExit].orientedReadIds.size();
+            if(coverage <= lowCoverageThreshold) {
+                ++insignificantCount;
+            } else if(coverage >= highCoverageThreshold) {
+                ++significantCount;
+            } else {
+                ++ambiguousCount;
             }
         }
 
-        // Only keep going if we have exactly one good exit.
-        if(goodExitCount != 1) {
+        // Only keep going if we have exactly one significant exit and no ambiguous exits.
+        if(significantCount != 1) {
+            return;
+        }
+        if(ambiguousCount > 0) {
             return;
         }
 
-        // Find the one and only good exit.
+        // Find the one and only significant exit.
         edge_descriptor e1;
         for(uint64_t iExit=0; iExit<exits.size(); iExit++) {
-            if(tangleMatrix.tangleMatrix[0][iExit].orientedReadIds.size() >= minCoverage) {
+            if(tangleMatrix.tangleMatrix[0][iExit].orientedReadIds.size() >= highCoverageThreshold) {
                 e1 = exits[iExit];
                 break;
             }
@@ -2536,7 +2550,8 @@ void AssemblyGraph::forwardLocalSearch(
 
 void AssemblyGraph::backwardLocalSearch(
     edge_descriptor eStart,
-    uint64_t minCoverage,
+    uint64_t lowCoverageThreshold,
+    uint64_t highCoverageThreshold,
     vector<edge_descriptor>& edges) const
 {
     const bool debug = false;
@@ -2566,23 +2581,36 @@ void AssemblyGraph::backwardLocalSearch(
             }
         }
 
-        // Count the enrances with coverage at least minCoverage.
-        uint64_t goodEntranceCount = 0;
+        // Counts exits by type.
+        // Significant: coverage >= highCoverageThreshold
+        // Insignificant: coverage <= lowCoverageThreshold
+        // Ambiguous: lowCoverageThreshold< coverage < highCoverageThreshold.
+        uint64_t significantCount = 0;
+        uint64_t insignificantCount = 0;
+        uint64_t ambiguousCount = 0;
         for(uint64_t iEntrance=0; iEntrance<entrances.size(); iEntrance++) {
-            if(tangleMatrix.tangleMatrix[iEntrance][0].orientedReadIds.size() >= minCoverage) {
-                ++goodEntranceCount;
+            const uint64_t coverage = tangleMatrix.tangleMatrix[iEntrance][0].orientedReadIds.size();
+            if(coverage <= lowCoverageThreshold) {
+                ++insignificantCount;
+            } else if(coverage >= highCoverageThreshold) {
+                ++significantCount;
+            } else {
+                ++ambiguousCount;
             }
         }
 
-        // Only keep going if we have exactly one good entrance.
-        if(goodEntranceCount != 1) {
+        // Only keep going if we have exactly one significant exit and no ambiguous exits.
+        if(significantCount != 1) {
+            return;
+        }
+        if(ambiguousCount > 0) {
             return;
         }
 
         // Find the one and only good entrance.
         edge_descriptor e1;
         for(uint64_t iEntrance=0; iEntrance<entrances.size(); iEntrance++) {
-            if(tangleMatrix.tangleMatrix[iEntrance][0].orientedReadIds.size() >= minCoverage) {
+            if(tangleMatrix.tangleMatrix[iEntrance][0].orientedReadIds.size() >= highCoverageThreshold) {
                 e1 = entrances[iEntrance];
                 break;
             }
@@ -2614,7 +2642,8 @@ void AssemblyGraph::backwardLocalSearch(
 void AssemblyGraph::testLocalSearch(
     uint64_t edgeIdStart,
     uint64_t direction,
-    uint64_t minCoverage) const
+    uint64_t lowCoverageThreshold,
+    uint64_t highCoverageThreshold) const
 {
     const AssemblyGraph& assemblyGraph = *this;
     OrderById orderById(*this);
@@ -2635,9 +2664,9 @@ void AssemblyGraph::testLocalSearch(
 
     vector<edge_descriptor> edges;
     if(direction == 0) {
-        forwardLocalSearch(eStart, minCoverage, edges);
+        forwardLocalSearch(eStart, lowCoverageThreshold, highCoverageThreshold, edges);
     } else {
-        backwardLocalSearch(eStart, minCoverage, edges);
+        backwardLocalSearch(eStart, lowCoverageThreshold, highCoverageThreshold, edges);
     }
 
     cout << "Found " << edges.size() << " edges:" << endl;
@@ -2651,13 +2680,15 @@ void AssemblyGraph::testLocalSearch(
 
 
 
-void AssemblyGraph::createSearchGraph(uint64_t minCoverage)
+void AssemblyGraph::createSearchGraph(
+    uint64_t lowCoverageThreshold,
+    uint64_t highCoverageThreshold)
 {
     using shasta::SearchGraph;
     AssemblyGraph& assemblyGraph = *this;
 
     // Create the SearchGraph.
-    SearchGraph searchGraph(*this, minCoverage);
+    SearchGraph searchGraph(*this, lowCoverageThreshold, highCoverageThreshold);
 
     // Compute connected components.
     vector<SearchGraph> components;
