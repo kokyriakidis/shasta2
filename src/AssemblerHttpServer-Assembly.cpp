@@ -1,6 +1,7 @@
 // Shasta.
 #include "Assembler.hpp"
 #include "AssemblyGraphPostprocessor.hpp"
+#include "GTest.hpp"
 #include "LocalAssembly.hpp"
 #include "LocalAssembly1.hpp"
 #include "LocalAssembly2.hpp"
@@ -894,6 +895,13 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
         }
     }
 
+    // Sort the entrances and exits by id.
+    const AssemblyGraph::OrderById orderById(assemblyGraph);
+    sort(entrances.begin(), entrances.end(), orderById);
+    sort(exits.begin(), exits.end(), orderById);
+
+
+
     // Create the TangleMatrix.
     TangleMatrix tangleMatrix(assemblyGraph, entrances, exits,
         httpServerData.options->aDrift,
@@ -901,6 +909,30 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
     tangleMatrix.gTest(epsilon);
     tangleMatrix.writeHtml(assemblyGraph, html);
 
+
+#if 0
+    // Test class GTest.
+    {
+        vector< vector<uint64_t> > tangleMatrixCoverage(entrances.size(), vector<uint64_t>(exits.size(), 0));
+        for(uint64_t i=0; i<entrances.size(); i++) {
+            for(uint64_t j=0; j<exits.size(); j++) {
+                tangleMatrixCoverage[i][j] = tangleMatrix.tangleMatrix[i][j].size();
+            }
+        }
+        const GTest gTest(tangleMatrixCoverage, epsilon);
+
+        for(uint64_t h=0; h<min(2UL, gTest.hypotheses.size()); h++) {
+            const GTest::Hypothesis& hypothesis = gTest.hypotheses[h];
+            const vector< vector<bool > >& connectivityMatrix = hypothesis.connectivityMatrix;
+            for(uint64_t i=0; i<entrances.size(); i++) {
+                for(uint64_t j=0; j<exits.size(); j++) {
+                    cout << int(connectivityMatrix[i][j]);
+                }
+            }
+            cout << " " << hypothesis.G << endl;
+        }
+    }
+#endif
 
 
     // Also use the compressedJourneys to compute an extended tangle matrix.
