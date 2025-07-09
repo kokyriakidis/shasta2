@@ -748,6 +748,152 @@ void Assembler::exploreSegmentStep(
 
 
 
+void Assembler::exploreBridgeSegmentSteps(
+    const vector<string>& request,
+    ostream& html)
+{
+    // Get the options from the request.
+    string assemblyStage;
+    HttpServer::getParameterValue(request, "assemblyStage", assemblyStage);
+    boost::trim(assemblyStage);
+
+    string segmentNameA;
+    HttpServer::getParameterValue(request, "segmentNameA", segmentNameA);
+    boost::trim(segmentNameA);
+
+    uint64_t offsetA = 0;
+    HttpServer::getParameterValue(request, "offsetA", offsetA);
+
+    string segmentNameB;
+    HttpServer::getParameterValue(request, "segmentNameB", segmentNameB);
+    boost::trim(segmentNameB);
+
+    uint64_t offsetB = 0;
+    HttpServer::getParameterValue(request, "offsetB", offsetB);
+
+
+
+    // Start the form.
+    html << "<h2>Bridge between segment steps</h2><form><table>";
+
+    html <<
+        "<tr>"
+        "<th class=left>Assembly stage"
+        "<td class=centered colspan=2><input type=text name=assemblyStage style='text-align:center' required";
+    if(not assemblyStage.empty()) {
+        html << " value='" << assemblyStage + "'";
+    }
+    html << " size=10>";
+
+    html <<
+        "<tr>"
+        "<th class=left>Step A"
+        "<td class=left>Segment <input type=text name=segmentNameA style='text-align:center' required";
+    if(not segmentNameA.empty()) {
+        html << " value='" << segmentNameA + "'";
+    }
+    html <<
+        ">"
+        "<td class=left>Offset from last step <input type=text name=offsetA style='text-align:center' required"
+        " value='" << offsetA << "'"
+        ">";
+
+    html <<
+        "<tr>"
+        "<th class=left>Step B"
+        "<td class=left>Segment <input type=text name=segmentNameB style='text-align:center' required";
+    if(not segmentNameB.empty()) {
+        html << " value='" << segmentNameB + "'";
+    }
+    html <<
+        ">"
+        "<td class=left>Offset from last step <input type=text name=offsetB style='text-align:center' required"
+        " value='" << offsetB << "'"
+        ">";
+
+    // End the form.
+    html <<
+        "</table>"
+        "<input type=submit value='Compute'>"
+        "</form>";
+
+    if(segmentNameA.empty() or segmentNameB.empty()) {
+        return;
+    }
+
+    // Get the AssemblyGraph for this assembly stage.
+    const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
+        assemblyStage,
+        *httpServerData.options);
+
+    // Get the segment ids.
+    uint64_t segmentIdA = invalid<uint64_t>;
+    try {
+        segmentIdA = std::stol(segmentNameA);
+    } catch(exception&) {
+    }
+    if(segmentIdA == invalid<uint64_t>) {
+        html << "Segment name must be a number.";
+        return;
+    }
+    uint64_t segmentIdB = invalid<uint64_t>;
+    try {
+        segmentIdB = std::stol(segmentNameB);
+    } catch(exception&) {
+    }
+    if(segmentIdB == invalid<uint64_t>) {
+        html << "Segment name must be a number.";
+        return;
+    }
+
+
+
+    // Find the AssemblyGraphEdges corresponding to the requested segments.
+    auto itA = assemblyGraph.edgeMap.find(segmentIdA);
+    if(itA == assemblyGraph.edgeMap.end()) {
+        html << "<p>Assembly graph at stage " << assemblyStage <<
+            " does not have segment " << segmentIdA;
+        return;
+    }
+    const AssemblyGraph::edge_descriptor eA = itA->second;
+    const AssemblyGraphEdge& edgeA = assemblyGraph[eA];
+
+    auto itB = assemblyGraph.edgeMap.find(segmentIdB);
+    if(itB == assemblyGraph.edgeMap.end()) {
+        html << "<p>Assembly graph at stage " << assemblyStage <<
+            " does not have segment " << segmentIdB;
+        return;
+    }
+    const AssemblyGraph::edge_descriptor eB = itB->second;
+    const AssemblyGraphEdge& edgeB = assemblyGraph[eB];
+
+
+    // Get the steps and the AnchorPairs.
+    if(offsetA > edgeA.size()) {
+        html << "Offset for segment " << segmentIdA <<
+            " is too large. Segment has " << edgeA.size() << " steps.";
+        return;
+    }
+    if(offsetB > edgeB.size()) {
+        html << "Offset for segment " << segmentIdB <<
+            " is too large. Segment has " << edgeB.size() << " steps.";
+        return;
+    }
+    const AssemblyGraphEdgeStep& stepA = edgeA[edgeA.size() - 1 - offsetA];
+    const AssemblyGraphEdgeStep& stepB = edgeB[offsetB];
+    const AnchorPair& anchorPairA = stepA.anchorPair;
+    const AnchorPair& anchorPairB = stepB.anchorPair;
+
+    // Compute the bridge AnchorPair.
+    const AnchorPair bridgeAnchorPair = anchors().bridge(
+        anchorPairA, anchorPairB,
+        httpServerData.options->aDrift,
+        httpServerData.options->bDrift);
+    html << "<p>" << anchorPairA.size() << " " << anchorPairB.size() << " " << bridgeAnchorPair.size();
+
+}
+
+
 
 AssemblyGraphPostprocessor& Assembler::getAssemblyGraph(
     const string& assemblyStage,
