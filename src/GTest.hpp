@@ -21,6 +21,7 @@ namespace shasta {
 class shasta::GTest {
 public:
     GTest(const vector< vector<uint64_t> >& tangleMatrix, double epsilon);
+    bool success = false;
 
     void writeHtml(ostream&) const;
 

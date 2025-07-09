@@ -34,6 +34,7 @@ shasta::GTest::GTest(
     // Limit to a maximum of 16 tangle matrix entries.
     const uint64_t totalTangleMatrixEntryCount = entranceCount * exitCount;
     if(totalTangleMatrixEntryCount > 16) {
+        success = false;
         return;
     }
 
@@ -208,6 +209,7 @@ shasta::GTest::GTest(
     }
 
     sort(hypotheses.begin(), hypotheses.end());
+    success = not hypotheses.empty();
 }
 
 

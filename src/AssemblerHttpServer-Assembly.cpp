@@ -1025,10 +1025,19 @@ void Assembler::exploreVertexTangle(const vector<string>& request, ostream& html
     const Tangle tangle(assemblyGraph, target(e, assemblyGraph),
         httpServerData.options->aDrift,
         httpServerData.options->bDrift);
-    tangle.tangleMatrix->gTest(epsilon);
-
-    // Write out the TangleMatrix.
     tangle.tangleMatrix->writeHtml(assemblyGraph, html);
+
+    // Likelihood ratio test (G test).
+    vector< vector<uint64_t> > tangleMatrixCoverage(
+        tangle.tangleMatrix->entrances.size(),
+        vector<uint64_t>(tangle.tangleMatrix->exits.size(), 0));
+    for(uint64_t i=0; i<tangle.tangleMatrix->entrances.size(); i++) {
+        for(uint64_t j=0; j<tangle.tangleMatrix->exits.size(); j++) {
+            tangleMatrixCoverage[i][j] = tangle.tangleMatrix->tangleMatrix[i][j].size();
+        }
+    }
+    const GTest gTest(tangleMatrixCoverage, epsilon);
+    gTest.writeHtml(html);
 
 }
 
@@ -1112,10 +1121,19 @@ void Assembler::exploreEdgeTangle(const vector<string>& request, ostream& html)
     const Tangle tangle(assemblyGraph, e,
         httpServerData.options->aDrift,
         httpServerData.options->bDrift);
-    tangle.tangleMatrix->gTest(epsilon);
-
-    // Write out the TangleMatrix.
     tangle.tangleMatrix->writeHtml(assemblyGraph, html);
+
+    // Likelihood ratio test (G test).
+    vector< vector<uint64_t> > tangleMatrixCoverage(
+        tangle.tangleMatrix->entrances.size(),
+        vector<uint64_t>(tangle.tangleMatrix->exits.size(), 0));
+    for(uint64_t i=0; i<tangle.tangleMatrix->entrances.size(); i++) {
+        for(uint64_t j=0; j<tangle.tangleMatrix->exits.size(); j++) {
+            tangleMatrixCoverage[i][j] = tangle.tangleMatrix->tangleMatrix[i][j].size();
+        }
+    }
+    const GTest gTest(tangleMatrixCoverage, epsilon);
+    gTest.writeHtml(html);
 }
 
 
