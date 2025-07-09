@@ -2209,6 +2209,7 @@ void AssemblyGraph::computeJourneys()
 
     // Create the compressed journeys.
     // Here, we only consider transitions between AssemblyGraph edges.
+    // Compressed journeys consisting of only one edge are considered empty.
     compressedJourneys.clear();
     compressedJourneys.resize(orientedReadCount);
     for(ReadId orientedReadIdValue=0; orientedReadIdValue<orientedReadCount; orientedReadIdValue++) {
@@ -2230,6 +2231,9 @@ void AssemblyGraph::computeJourneys()
                 }
             }
         }
+        if(compressedJourney.size() == 1) {
+            compressedJourney.clear();
+        }
     }
 
 
@@ -2238,16 +2242,16 @@ void AssemblyGraph::computeJourneys()
     // the edge and at least one other edge.
     BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
         assemblyGraph[e].transitioningOrientedReadIds.clear();
-        for(ReadId orientedReadIdValue=0; orientedReadIdValue<orientedReadCount; orientedReadIdValue++) {
-            const OrientedReadId orientedReadId = OrientedReadId::fromValue(orientedReadIdValue);
-            const vector<edge_descriptor>& compressedJourney = compressedJourneys[orientedReadIdValue];
-            if(compressedJourney.size() < 2) {
-                continue;
-            }
-            for(const edge_descriptor e: compressedJourney) {
-                assemblyGraph[e].transitioningOrientedReadIds.push_back(orientedReadId);
-            }
+    }
+    for(ReadId orientedReadIdValue=0; orientedReadIdValue<orientedReadCount; orientedReadIdValue++) {
+        const OrientedReadId orientedReadId = OrientedReadId::fromValue(orientedReadIdValue);
+        const vector<edge_descriptor>& compressedJourney = compressedJourneys[orientedReadIdValue];
+        for(const edge_descriptor e: compressedJourney) {
+            assemblyGraph[e].transitioningOrientedReadIds.push_back(orientedReadId);
         }
+    }
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        deduplicate(assemblyGraph[e].transitioningOrientedReadIds);
     }
 
 
@@ -2321,16 +2325,216 @@ void AssemblyGraph::computeExtendedTangleMatrix(
     vector< vector<uint64_t> >& tangleMatrix
     ) const
 {
-    const bool debug = true;
+    const AssemblyGraph& assemblyGraph = *this;
+
+    const bool debug = false;
     SHASTA_ASSERT(not compressedJourneys.empty());
     tangleMatrix.resize(entrances.size(), vector<uint64_t>(entrances.size(), 0));
 
     if(debug) {
-        cout << "Computing an extended tangle matrix with " << entrances.size() <<
-            " entrances and " << exits.size() << " exits." << endl;
+        cout << "Extended tangle matrix computation begins." << endl;
+
+        cout << entrances.size() << " entrances:" << endl;
+        for(uint64_t i=0; i<entrances.size(); i++) {
+            cout << assemblyGraph[entrances[i]].id << " ";
+        }
+        cout << endl;
+
+        cout << exits.size() << " exits:" << endl;
+        for(uint64_t i=0; i<exits.size(); i++) {
+            cout << assemblyGraph[exits[i]].id << " ";
+        }
+        cout << endl;
+
+        for(uint64_t i=0; i<entrances.size(); i++) {
+            cout << "Entrance " << assemblyGraph[entrances[i]].id << " has " << assemblyGraph[entrances[i]].transitioningOrientedReadIds.size() <<
+                " total oriented reads:" << endl;
+            for(const OrientedReadId orientedReadId: assemblyGraph[entrances[i]].transitioningOrientedReadIds) {
+                cout << orientedReadId << " ";
+            }
+            cout << endl;
+        }
+        for(uint64_t i=0; i<exits.size(); i++) {
+            cout << "Exit " << assemblyGraph[exits[i]].id << " has " << assemblyGraph[exits[i]].transitioningOrientedReadIds.size() <<
+                " total oriented reads:" << endl;
+            for(const OrientedReadId orientedReadId: assemblyGraph[exits[i]].transitioningOrientedReadIds) {
+                cout << orientedReadId << " ";
+            }
+            cout << endl;
+        }
     }
 
 
+
+    // An OrientedReadId can occur in more than one entrance.
+    // Gather all entrance OrientedReadIds together, then assign each
+    // OrientedReadId to the entrance in which it last appears.
+
+    // Gather them all.
+    vector<OrientedReadId> allEntranceOrientedReadIds;
+    for(uint64_t i=0; i<entrances.size(); i++) {
+        const vector<OrientedReadId>& entranceOrientedReadIds = assemblyGraph[entrances[i]].transitioningOrientedReadIds;
+        copy(entranceOrientedReadIds.begin(), entranceOrientedReadIds.end(), back_inserter(allEntranceOrientedReadIds));
+    }
+    deduplicate(allEntranceOrientedReadIds);
+
+    // Assign each of them to one entrance.
+    vector< vector<OrientedReadId> > entranceOrientedReadIds(entrances.size());
+    for(const OrientedReadId orientedReadId: allEntranceOrientedReadIds) {
+        const vector<edge_descriptor>& compressedJourney = compressedJourneys[orientedReadId.getValue()];
+
+        // Walk the compressedJourney backward until we find an entrance.
+        bool found = false;
+        for(auto it=compressedJourney.rbegin(); it!=compressedJourney.rend(); ++it) {
+            const edge_descriptor e = *it;
+            for(uint64_t i=0; i<entrances.size(); i++) {
+                const auto jt = std::find(entrances.begin(), entrances.end(), e);
+                if(jt != entrances.end()) {
+                    entranceOrientedReadIds[jt - entrances.begin()].push_back(orientedReadId);
+                    found = true;
+                    break;
+                }
+            }
+            if(found) {
+                break;
+            }
+        }
+        SHASTA_ASSERT(found);
+    }
+
+
+
+    // Similarly for exits.
+    // An OrientedReadId can occur in more than one exit.
+    // Gather all exit OrientedReadIds together, then assign each
+    // OrientedReadId to the exit in which it first appears.
+
+    // Gather them all.
+    vector<OrientedReadId> allExitOrientedReadIds;
+    for(uint64_t i=0; i<exits.size(); i++) {
+        const vector<OrientedReadId>& exitOrientedReadIds = assemblyGraph[exits[i]].transitioningOrientedReadIds;
+        copy(exitOrientedReadIds.begin(), exitOrientedReadIds.end(), back_inserter(allExitOrientedReadIds));
+    }
+    deduplicate(allExitOrientedReadIds);
+
+    // Assign each of them to one exit.
+    vector< vector<OrientedReadId> > exitOrientedReadIds(exits.size());
+    for(const OrientedReadId orientedReadId: allExitOrientedReadIds) {
+        const vector<edge_descriptor>& compressedJourney = compressedJourneys[orientedReadId.getValue()];
+
+        // Walk the compressedJourney forward until we find an exit.
+        bool found = false;
+        for(auto it=compressedJourney.begin(); it!=compressedJourney.end(); ++it) {
+            const edge_descriptor e = *it;
+            for(uint64_t i=0; i<exits.size(); i++) {
+                const auto jt = std::find(exits.begin(), exits.end(), e);
+                if(jt != exits.end()) {
+                    exitOrientedReadIds[jt - exits.begin()].push_back(orientedReadId);
+                    found = true;
+                    break;
+                }
+            }
+            if(found) {
+                break;
+            }
+        }
+        SHASTA_ASSERT(found);
+    }
+
+
+
+    if(debug) {
+        for(uint64_t i=0; i<entrances.size(); i++) {
+            cout << "Entrance " << assemblyGraph[entrances[i]].id << " has " <<
+                entranceOrientedReadIds[i].size() <<
+                " usable oriented reads:" << endl;
+            for(const OrientedReadId orientedReadId: entranceOrientedReadIds[i]) {
+                cout << orientedReadId << " ";
+            }
+            cout << endl;
+        }
+        for(uint64_t i=0; i<exits.size(); i++) {
+            cout << "Exit " << assemblyGraph[exits[i]].id << " has " <<
+                exitOrientedReadIds[i].size() <<
+                " usable oriented reads:" << endl;
+            for(const OrientedReadId orientedReadId: exitOrientedReadIds[i]) {
+                cout << orientedReadId << " ";
+            }
+            cout << endl;
+        }
+    }
+
+
+    // Work vectors used below.
+    vector<OrientedReadId> common;
+    vector<OrientedReadId> work;
+
+
+
+    // Loop over entrance/exit pairs.
+    for(uint64_t iEntrance=0; iEntrance<entrances.size(); iEntrance++) {
+        const auto& orientedReadIdsEntrance = entranceOrientedReadIds[iEntrance];
+        for(uint64_t iExit=0; iExit<exits.size(); iExit++) {
+            const auto& orientedReadIdsExit = exitOrientedReadIds[iExit];
+
+            if(debug) {
+                cout << "Working on entrance/exit pair " << assemblyGraph[entrances[iEntrance]].id << " " <<
+                    assemblyGraph[exits[iExit]].id << endl;
+            }
+
+
+
+            // Find common oriented reads between this entrance/exit pair.
+            common.clear();
+            std::set_intersection(
+                orientedReadIdsEntrance.begin(), orientedReadIdsEntrance.end(),
+                orientedReadIdsExit.begin(), orientedReadIdsExit.end(),
+                back_inserter(common));
+            if(debug) {
+                cout << common.size() << " common oriented reads." << endl;
+            }
+
+
+
+            // Take out oriented reads for which the last occurrence of the entrance
+            // in the compressed journey follows the first occurrence of the exit.
+            work.clear();
+            for(const OrientedReadId orientedReadId: common) {
+                const vector<edge_descriptor>& compressedJourney = compressedJourneys[orientedReadId.getValue()];
+
+                // Find the last position of the entrance in the compressed journey of this read.
+                auto itEntrance = std::find(compressedJourney.rbegin(), compressedJourney.rend(), entrances[iEntrance]);
+                SHASTA_ASSERT(itEntrance != compressedJourney.rend());
+                const uint64_t positionEntrance = compressedJourney.size() - 1 - (itEntrance - compressedJourney.rbegin());
+
+                // Find the first position of the exit in the compressed journey of this read.
+                auto itExit = std::find(compressedJourney.begin(), compressedJourney.end(), exits[iExit]);
+                SHASTA_ASSERT(itExit != compressedJourney.end());
+                const uint64_t positionExit = itExit - compressedJourney.begin();
+
+                if(false) {
+                    cout << "In the compressed journey of " << orientedReadId << ":" << endl;
+                    cout << "    This entrance last occurs at position " << positionEntrance << endl;
+                    cout << "    This exit first occurs at position " << positionExit << endl;
+                }
+
+                if(positionEntrance >= positionExit) {
+                    if(debug) {
+                        cout << orientedReadId << " removed due to order violation." << endl;
+                    }
+                } else {
+                    work.push_back(orientedReadId);
+                }
+            }
+            common = work;
+            if(debug) {
+                cout << "After removing oriented reads with order violations: " <<
+                    common.size() << " common oriented reads." << endl;
+            }
+
+            tangleMatrix[iEntrance][iExit] = common.size();
+        }
+    }
 }
 
 

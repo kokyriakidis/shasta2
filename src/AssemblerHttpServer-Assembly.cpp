@@ -831,7 +831,7 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
     }
 
     // Get the AssemblyGraph for this assembly stage.
-    const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
+    AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
         assemblyStage,
         *httpServerData.options);
 
@@ -904,10 +904,21 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
 
 
     // Also use the compressedJourneys to compute an extended tangle matrix.
-    if(not assemblyGraph.compressedJourneys.empty()) {
-        vector< vector<uint64_t> > extendedTangleMatrix;
-        assemblyGraph.computeExtendedTangleMatrix(entrances, exits, extendedTangleMatrix);
+    if(assemblyGraph.compressedJourneys.empty()) {
+        assemblyGraph.computeJourneys();
     }
+    vector< vector<uint64_t> > extendedTangleMatrix;
+    assemblyGraph.computeExtendedTangleMatrix(entrances, exits, extendedTangleMatrix);
+
+    html << "<h2>Extended tangle matrix</h2>";
+    html << "<table>";
+    for(uint64_t iEntrance=0; iEntrance<entrances.size(); iEntrance++) {
+        html << "<tr>";
+        for(uint64_t iExit=0; iExit<exits.size(); iExit++) {
+            html << "<td class=centered>" << extendedTangleMatrix[iEntrance][iExit];
+        }
+    }
+    html << "</table>";
 }
 
 
