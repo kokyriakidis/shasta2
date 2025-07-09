@@ -6,6 +6,7 @@ using namespace shasta;
 // Standard library.
 #include <algorithm.hpp>
 #include <cmath>
+#include <iomanip>
 #include <iostream.hpp>
 #include <numeric>
 
@@ -15,7 +16,7 @@ shasta::GTest::GTest(
     const vector< vector<uint64_t> >& tangleMatrix,
     double epsilon)
 {
-    const bool debug = true;
+    const bool debug = false;
 
     // Get the number of entrances.
     // This is the number of rows in the tangle matrix.
@@ -207,4 +208,36 @@ shasta::GTest::GTest(
     }
 
     sort(hypotheses.begin(), hypotheses.end());
+}
+
+
+
+void GTest::writeHtml(ostream& html) const
+{
+    html <<
+        "<h3>G test</h3>"
+        "<table><tr>"
+        "<th>Connectivity<br>matrix"
+        "<th>G<br>(dB)";
+
+    for(const auto& hypothesis: hypotheses) {
+        const vector< vector<bool> >& connectivityMatrix = hypothesis.connectivityMatrix;
+
+        html << "<tr><td style='display: flex; align-items: center; justify-content: center;'>";
+
+        html << "<table>";
+        for(uint64_t i=0; i<connectivityMatrix.size(); i++) {
+            html << "<tr>";
+            for(uint64_t j=0; j<connectivityMatrix[i].size(); j++) {
+                html << "<td class=centered>" << hypothesis.connectivityMatrix[i][j];
+            }
+        }
+        html << "</table>";
+
+        html <<
+            "<td class=centered>" << std::fixed << std::setprecision(1) << hypothesis.G;
+
+    }
+
+    html << "</table>";
 }

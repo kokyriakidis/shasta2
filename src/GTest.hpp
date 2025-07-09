@@ -5,6 +5,7 @@
 
 // Standard library.
 #include <cstdint.hpp>
+#include <iosfwd.hpp>
 #include <vector.hpp>
 
 
@@ -20,6 +21,8 @@ namespace shasta {
 class shasta::GTest {
 public:
     GTest(const vector< vector<uint64_t> >& tangleMatrix, double epsilon);
+
+    void writeHtml(ostream&) const;
 
     class Hypothesis {
     public:

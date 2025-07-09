@@ -906,33 +906,19 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
     TangleMatrix tangleMatrix(assemblyGraph, entrances, exits,
         httpServerData.options->aDrift,
         httpServerData.options->bDrift);
-    tangleMatrix.gTest(epsilon);
     tangleMatrix.writeHtml(assemblyGraph, html);
 
 
-#if 0
-    // Test class GTest.
-    {
-        vector< vector<uint64_t> > tangleMatrixCoverage(entrances.size(), vector<uint64_t>(exits.size(), 0));
-        for(uint64_t i=0; i<entrances.size(); i++) {
-            for(uint64_t j=0; j<exits.size(); j++) {
-                tangleMatrixCoverage[i][j] = tangleMatrix.tangleMatrix[i][j].size();
-            }
-        }
-        const GTest gTest(tangleMatrixCoverage, epsilon);
-
-        for(uint64_t h=0; h<min(2UL, gTest.hypotheses.size()); h++) {
-            const GTest::Hypothesis& hypothesis = gTest.hypotheses[h];
-            const vector< vector<bool > >& connectivityMatrix = hypothesis.connectivityMatrix;
-            for(uint64_t i=0; i<entrances.size(); i++) {
-                for(uint64_t j=0; j<exits.size(); j++) {
-                    cout << int(connectivityMatrix[i][j]);
-                }
-            }
-            cout << " " << hypothesis.G << endl;
+    // Likelihood ratio test (G test).
+    vector< vector<uint64_t> > tangleMatrixCoverage(entrances.size(), vector<uint64_t>(exits.size(), 0));
+    for(uint64_t i=0; i<entrances.size(); i++) {
+        for(uint64_t j=0; j<exits.size(); j++) {
+            tangleMatrixCoverage[i][j] = tangleMatrix.tangleMatrix[i][j].size();
         }
     }
-#endif
+    const GTest gTest(tangleMatrixCoverage, epsilon);
+    gTest.writeHtml(html);
+
 
 
     // Also use the compressedJourneys to compute an extended tangle matrix.
@@ -951,6 +937,11 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
         }
     }
     html << "</table>";
+
+    {
+        GTest gTest(extendedTangleMatrix, epsilon);
+        gTest.writeHtml(html);
+    }
 }
 
 
