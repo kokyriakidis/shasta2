@@ -67,6 +67,17 @@ public:
     // It contains the "bridge" AnchorPair between each entrance and exit.
     vector < vector<AnchorPair> > tangleMatrix;
 
+    void getTangleMatrixCoverage(vector< vector<uint64_t> >& tangleMatrixCoverage) const
+    {
+        tangleMatrixCoverage.resize(entrances.size(), vector<uint64_t>(exits.size()));
+        for(uint64_t i=0; i<entrances.size(); i++) {
+            for(uint64_t j=0; j<exits.size(); j++) {
+                tangleMatrixCoverage[i][j] = tangleMatrix[i][j].size();
+            }
+        }
+    }
+
+
 
 
     // Likelihood ratio test of the tangle matrix (G test).

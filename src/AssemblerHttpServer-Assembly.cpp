@@ -910,12 +910,8 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
 
 
     // Likelihood ratio test (G test).
-    vector< vector<uint64_t> > tangleMatrixCoverage(entrances.size(), vector<uint64_t>(exits.size(), 0));
-    for(uint64_t i=0; i<entrances.size(); i++) {
-        for(uint64_t j=0; j<exits.size(); j++) {
-            tangleMatrixCoverage[i][j] = tangleMatrix.tangleMatrix[i][j].size();
-        }
-    }
+    vector< vector<uint64_t> > tangleMatrixCoverage;
+    tangleMatrix.getTangleMatrixCoverage(tangleMatrixCoverage);
     const GTest gTest(tangleMatrixCoverage, epsilon);
     gTest.writeHtml(html);
 
@@ -1028,14 +1024,8 @@ void Assembler::exploreVertexTangle(const vector<string>& request, ostream& html
     tangle.tangleMatrix->writeHtml(assemblyGraph, html);
 
     // Likelihood ratio test (G test).
-    vector< vector<uint64_t> > tangleMatrixCoverage(
-        tangle.tangleMatrix->entrances.size(),
-        vector<uint64_t>(tangle.tangleMatrix->exits.size(), 0));
-    for(uint64_t i=0; i<tangle.tangleMatrix->entrances.size(); i++) {
-        for(uint64_t j=0; j<tangle.tangleMatrix->exits.size(); j++) {
-            tangleMatrixCoverage[i][j] = tangle.tangleMatrix->tangleMatrix[i][j].size();
-        }
-    }
+    vector< vector<uint64_t> > tangleMatrixCoverage;
+    tangle.tangleMatrix->getTangleMatrixCoverage(tangleMatrixCoverage);
     const GTest gTest(tangleMatrixCoverage, epsilon);
     gTest.writeHtml(html);
 
@@ -1124,14 +1114,8 @@ void Assembler::exploreEdgeTangle(const vector<string>& request, ostream& html)
     tangle.tangleMatrix->writeHtml(assemblyGraph, html);
 
     // Likelihood ratio test (G test).
-    vector< vector<uint64_t> > tangleMatrixCoverage(
-        tangle.tangleMatrix->entrances.size(),
-        vector<uint64_t>(tangle.tangleMatrix->exits.size(), 0));
-    for(uint64_t i=0; i<tangle.tangleMatrix->entrances.size(); i++) {
-        for(uint64_t j=0; j<tangle.tangleMatrix->exits.size(); j++) {
-            tangleMatrixCoverage[i][j] = tangle.tangleMatrix->tangleMatrix[i][j].size();
-        }
-    }
+    vector< vector<uint64_t> > tangleMatrixCoverage;
+    tangle.tangleMatrix->getTangleMatrixCoverage(tangleMatrixCoverage);
     const GTest gTest(tangleMatrixCoverage, epsilon);
     gTest.writeHtml(html);
 }
