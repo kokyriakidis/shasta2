@@ -12,7 +12,7 @@ the corresponding bubbles can be phased relative to each other.
 
 // Shasta.
 #include "invalid.hpp"
-#include "TangleMatrix.hpp"
+#include "GTest.hpp"
 
 // Boost libraries.
 #include <boost/graph/adjacency_list.hpp>
@@ -62,9 +62,9 @@ public:
 class shasta::PhasingGraphEdge {
 public:
     bool isShortestPathEdge = false;
-    TangleMatrix::Hypothesis bestHypothesis;
+    GTest::Hypothesis bestHypothesis;
 
-    PhasingGraphEdge(const TangleMatrix::Hypothesis& bestHypothesis) :
+    PhasingGraphEdge(const GTest::Hypothesis& bestHypothesis) :
         bestHypothesis(bestHypothesis) {}
 };
 
@@ -77,7 +77,7 @@ public:
     void addEdge(
         uint64_t position0,
         uint64_t position1,
-        const TangleMatrix::Hypothesis& bestHypothesis);
+        const GTest::Hypothesis& bestHypothesis);
 
     // Remove low degree vertices and return the number of such vertices that were removed.
     uint64_t removeLowDegreeVertices(uint64_t minDegree);

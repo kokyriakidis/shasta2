@@ -35,7 +35,7 @@ void PhasingGraph::addVertex(uint64_t position)
 void PhasingGraph::addEdge(
     uint64_t position0,
     uint64_t position1,
-    const TangleMatrix::Hypothesis& bestHypothesis)
+    const GTest::Hypothesis& bestHypothesis)
 {
     SHASTA_ASSERT(position0 < vertexTable.size());
     const vertex_descriptor v0 = vertexTable[position0];

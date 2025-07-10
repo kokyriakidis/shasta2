@@ -243,3 +243,48 @@ void GTest::writeHtml(ostream& html) const
 
     html << "</table>";
 }
+
+
+
+// Return true if there is a single exit for each entrance.
+bool GTest::Hypothesis::isForwardInjective() const
+{
+    const uint64_t entranceCount = connectivityMatrix.size();
+    const uint64_t exitCount = connectivityMatrix.front().size();
+
+    for(uint64_t iEntrance=0; iEntrance<entranceCount; iEntrance++) {
+        uint64_t count = 0;
+        for(uint64_t iExit=0; iExit<exitCount; iExit++) {
+            if(connectivityMatrix[iEntrance][iExit]) {
+                ++count;
+            }
+        }
+        if(count != 1) {
+            return false;
+        }
+    }
+    return true;
+}
+
+
+
+// Return true if there is a single entrance for exit entrance.
+bool GTest::Hypothesis::isBackwardInjective() const
+{
+    const uint64_t entranceCount = connectivityMatrix.size();
+    const uint64_t exitCount = connectivityMatrix.front().size();
+
+    for(uint64_t iExit=0; iExit<exitCount; iExit++) {
+        uint64_t count = 0;
+        for(uint64_t iEntrance=0; iEntrance<entranceCount; iEntrance++) {
+            if(connectivityMatrix[iEntrance][iExit]) {
+                ++count;
+            }
+        }
+        if(count != 1) {
+            return false;
+        }
+    }
+    return true;
+
+}

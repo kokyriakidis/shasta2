@@ -1,6 +1,7 @@
 #include "SuperbubbleChain.hpp"
-#include "Options.hpp"
 #include "deduplicate.hpp"
+#include "GTest.hpp"
+#include "Options.hpp"
 #include "PhasingGraph.hpp"
 #include "Tangle.hpp"
 #include "TangleMatrix.hpp"
@@ -78,9 +79,10 @@ void SuperbubbleChain::phase(
             }
 
             // Do the likelihood ratio test (G test).
-            const bool success = tangleMatrix.gTest(assemblyGraph.options.detangleEpsilon);
-
-            if(not success) {
+            vector< vector<uint64_t> > tangleMatrixCoverage;
+            tangleMatrix.getTangleMatrixCoverage(tangleMatrixCoverage);
+            GTest gTest(tangleMatrixCoverage, assemblyGraph.options.detangleEpsilon);
+            if(not gTest.success) {
                 if(debug) {
                     cout << "Likelihood ratio test was not successful." << endl;
                 }
@@ -88,15 +90,15 @@ void SuperbubbleChain::phase(
             }
 
             if(debug) {
-                cout << "Best hypothesis " << tangleMatrix.hypotheses.front().G;
-                if(tangleMatrix.hypotheses.size() > 1) {
-                    cout << ", second best hypothesis " << tangleMatrix.hypotheses[1].G;
+                cout << "Best hypothesis " << gTest.hypotheses.front().G;
+                if(gTest.hypotheses.size() > 1) {
+                    cout << ", second best hypothesis " << gTest.hypotheses[1].G;
                 }
                 cout << endl;
             }
 
             // Check if the best hypothesis satisfies our options.
-            const auto& bestHypothesis = tangleMatrix.hypotheses.front();
+            const auto& bestHypothesis = gTest.hypotheses.front();
             const double bestG = bestHypothesis.G;
             if(bestG > assemblyGraph.options.detangleMaxLogP) {
                 if(false) {
@@ -104,8 +106,8 @@ void SuperbubbleChain::phase(
                 }
                 continue;
             }
-            if(tangleMatrix.hypotheses.size() > 1) {
-                const double secondBestG = tangleMatrix.hypotheses[1].G;
+            if(gTest.hypotheses.size() > 1) {
+                const double secondBestG = gTest.hypotheses[1].G;
                 if(secondBestG - bestG < assemblyGraph.options.detangleMinLogPDelta) {
                     if(false) {
                         cout << "Second best hypothesis G is too low." << endl;
@@ -135,14 +137,14 @@ void SuperbubbleChain::phase(
 
 
 
-            if( tangleMatrix.hypotheses.front().isForwardInjective() or
-                tangleMatrix.hypotheses.front().isBackwardInjective()) {
+            if( gTest.hypotheses.front().isForwardInjective() or
+                gTest.hypotheses.front().isBackwardInjective()) {
                 phasingGraph.addEdge(position0, position1, bestHypothesis);
 
                 if(debug) {
                     cout << "Added edge " << position0 << " " << position1 << endl;
                     cout << "Connectivity matrix for the best hypothesis:" << endl;
-                    for(const auto& row: tangleMatrix.hypotheses.front().connectivityMatrix) {
+                    for(const auto& row: gTest.hypotheses.front().connectivityMatrix) {
                         for(const bool c: row) {
                             cout << int(c);
                         }
@@ -274,7 +276,7 @@ void SuperbubbleChain::phase(
 
 
             // Use the best hypothesis on this edge to detangle it.
-            const TangleMatrix::Hypothesis& bestHypothesis = phasingGraph[e].bestHypothesis;
+            const GTest::Hypothesis& bestHypothesis = phasingGraph[e].bestHypothesis;
             const vector< vector<bool> >& connectivityMatrix = bestHypothesis.connectivityMatrix;
             if(debug) {
                 cout << "Connectivity matrix for the best hypothesis:" << endl;
