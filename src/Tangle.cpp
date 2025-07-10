@@ -81,7 +81,7 @@ Tangle::Tangle(
 
     // Now we can create the TangleMatrix.
     tangleMatrix = make_shared<TangleMatrix>(
-        assemblyGraph, entranceEdges, exitEdges, 0, aDrift, bDrift);
+        assemblyGraph, entranceEdges, exitEdges, maxTrim, aDrift, bDrift);
 }
 
 
@@ -99,37 +99,38 @@ void Tangle::detangle()
     const bool debug = false;
 
     // Make a copy of each entrance edge, with the target vertex replaced by a new vertex
-    // with the same AnchorId.
+    // with the same AnchorId. Remove trim steps at its end.
     vector<vertex_descriptor> newEntranceVertices;
     for(const auto& entrance: tangleMatrix->entrances) {
         const edge_descriptor eOld = entrance.e;
         const vertex_descriptor v0Old = source(eOld, assemblyGraph);
         AssemblyGraphEdge& edgeOld = assemblyGraph[eOld];
-        const AnchorId lastAnchorId = edgeOld.back().anchorPair.anchorIdB;
+        const AnchorId lastAnchorId = edgeOld[edgeOld.size() - 1 - entrance.trim].anchorPair.anchorIdB;
 
         // Create the new vertex.
         const vertex_descriptor v1 = add_vertex(
             AssemblyGraphVertex(lastAnchorId, assemblyGraph.nextVertexId++), assemblyGraph);
         newEntranceVertices.push_back(v1);
 
-        // Create the new edge, with the same steps and id as the old one.
+        // Create the new edge, with the same steps and id as the old one except for the last trim removed.
         edge_descriptor eNew;
         tie(eNew, ignore) = add_edge(v0Old, v1, AssemblyGraphEdge(edgeOld.id), assemblyGraph);
         AssemblyGraphEdge& edgeNew = assemblyGraph[eNew];
         edgeNew.swapSteps(edgeOld);
         edgeNew.wasAssembled = edgeOld.wasAssembled;
+        edgeNew.resize(edgeNew.size() - entrance.trim);
     }
 
 
 
     // Make a copy of each exit edge, with the source vertex replaced by a new vertex
-    // with the same AnchorId.
+    // with the same AnchorId. Remove trim steps at its beginning.
     vector<vertex_descriptor> newExitVertices;
     for(const auto& exit: tangleMatrix->exits) {
         const edge_descriptor eOld = exit.e;
         const vertex_descriptor v1Old = target(eOld, assemblyGraph);
         AssemblyGraphEdge& edgeOld = assemblyGraph[eOld];
-        const AnchorId firstAnchorId = edgeOld.front().anchorPair.anchorIdA;
+        const AnchorId firstAnchorId = edgeOld[exit.trim].anchorPair.anchorIdA;
 
         // Create the new vertex.
         const vertex_descriptor v0 = add_vertex(
@@ -140,8 +141,8 @@ void Tangle::detangle()
         edge_descriptor eNew;
         tie(eNew, ignore) = add_edge(v0, v1Old, AssemblyGraphEdge(edgeOld.id), assemblyGraph);
         AssemblyGraphEdge& edgeNew = assemblyGraph[eNew];
-        edgeNew.swapSteps(edgeOld);
         edgeNew.wasAssembled = edgeOld.wasAssembled;
+        copy(edgeOld.begin() + exit.trim, edgeOld.end(), back_inserter(edgeNew));
     }
 
 

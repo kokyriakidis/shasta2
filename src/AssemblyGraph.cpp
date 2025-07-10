@@ -1049,6 +1049,7 @@ uint64_t AssemblyGraph::detangle(
 {
     const bool debug = false;
     // detangler.debug = true;
+    const uint64_t maxTrim = 0;
 
     AssemblyGraph& assemblyGraph = *this;
 
@@ -1075,7 +1076,7 @@ uint64_t AssemblyGraph::detangle(
         // Attempt detangling for the tangle defined by these vertices.
         ++attemptCount;
         Tangle tangle(assemblyGraph, tangleVertices,
-            0,
+            maxTrim,
             options.aDrift,
             options.bDrift);
         if(debug) {
