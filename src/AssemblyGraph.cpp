@@ -173,7 +173,7 @@ void AssemblyGraph::run(uint64_t threadCount)
     write("D");
 
     // Detangling.
-    createTangleTemplates();
+    // createTangleTemplates();
     LikelihoodRatioDetangler detangler(
         options.detangleMinCommonCoverage,
         options.detangleEpsilon,
@@ -1050,7 +1050,7 @@ uint64_t AssemblyGraph::detangle(
 {
     const bool debug = false;
     // detangler.debug = true;
-    const uint64_t maxTrim = 0;
+    const uint64_t maxTrim = 3;
 
     AssemblyGraph& assemblyGraph = *this;
 
@@ -1171,9 +1171,9 @@ uint64_t AssemblyGraph::detangle(
 
     const uint64_t verticesChangeCount = detangleVertices(maxIterationCount, detangler);
     const uint64_t edgesChangeCount = detangleEdges(maxIterationCount, maxEdgeLength, detangler);
-    const uint64_t templateChangeCount = detangleTemplates(maxIterationCount, detangler);
+    // const uint64_t templateChangeCount = detangleTemplates(maxIterationCount, detangler);
 
-    const uint64_t changeCount = verticesChangeCount + edgesChangeCount + templateChangeCount;
+    const uint64_t changeCount = verticesChangeCount + edgesChangeCount; // + templateChangeCount;
 
     return changeCount;
 }
