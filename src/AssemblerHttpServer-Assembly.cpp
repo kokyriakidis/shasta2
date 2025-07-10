@@ -761,15 +761,15 @@ void Assembler::exploreBridgeSegmentSteps(
     HttpServer::getParameterValue(request, "segmentNameA", segmentNameA);
     boost::trim(segmentNameA);
 
-    uint64_t offsetA = 0;
-    HttpServer::getParameterValue(request, "offsetA", offsetA);
+    uint64_t trimA = 0;
+    HttpServer::getParameterValue(request, "trimA", trimA);
 
     string segmentNameB;
     HttpServer::getParameterValue(request, "segmentNameB", segmentNameB);
     boost::trim(segmentNameB);
 
-    uint64_t offsetB = 0;
-    HttpServer::getParameterValue(request, "offsetB", offsetB);
+    uint64_t trimB = 0;
+    HttpServer::getParameterValue(request, "trimB", trimB);
 
 
 
@@ -788,28 +788,28 @@ void Assembler::exploreBridgeSegmentSteps(
     html <<
         "<tr>"
         "<th class=left>Step A"
-        "<td class=left>Segment <input type=text name=segmentNameA style='text-align:center' required";
+        "<td class=left>Segment <input type=text size=8 name=segmentNameA style='text-align:center' required";
     if(not segmentNameA.empty()) {
         html << " value='" << segmentNameA + "'";
     }
     html <<
         ">"
-        "<td class=left>Offset from last step <input type=text name=offsetA style='text-align:center' required"
-        " value='" << offsetA << "'"
-        ">";
+        "<td class=left>Trim <input type=text size=8 name=trimA style='text-align:center' required"
+        " value='" << trimA << "'"
+        "> steps at end";
 
     html <<
         "<tr>"
         "<th class=left>Step B"
-        "<td class=left>Segment <input type=text name=segmentNameB style='text-align:center' required";
+        "<td class=left>Segment <input type=text size=8 name=segmentNameB style='text-align:center' required";
     if(not segmentNameB.empty()) {
         html << " value='" << segmentNameB + "'";
     }
     html <<
         ">"
-        "<td class=left>Offset from last step <input type=text name=offsetB style='text-align:center' required"
-        " value='" << offsetB << "'"
-        ">";
+        "<td class=left>Trim <input type=text size=8 name=trimB style='text-align:center' required"
+        " value='" << trimB << "'"
+        "> steps at beginning";
 
     // End the form.
     html <<
@@ -869,18 +869,18 @@ void Assembler::exploreBridgeSegmentSteps(
 
 
     // Get the steps and the AnchorPairs.
-    if(offsetA > edgeA.size()) {
-        html << "Offset for segment " << segmentIdA <<
+    if(trimA >= edgeA.size()) {
+        html << "Trim for segment " << segmentIdA <<
             " is too large. Segment has " << edgeA.size() << " steps.";
         return;
     }
-    if(offsetB > edgeB.size()) {
-        html << "Offset for segment " << segmentIdB <<
+    if(trimB >= edgeB.size()) {
+        html << "Trim for segment " << segmentIdB <<
             " is too large. Segment has " << edgeB.size() << " steps.";
         return;
     }
-    const AssemblyGraphEdgeStep& stepA = edgeA[edgeA.size() - 1 - offsetA];
-    const AssemblyGraphEdgeStep& stepB = edgeB[offsetB];
+    const AssemblyGraphEdgeStep& stepA = edgeA[edgeA.size() - 1 - trimA];
+    const AssemblyGraphEdgeStep& stepB = edgeB[trimB];
     const AnchorPair& anchorPairA = stepA.anchorPair;
     const AnchorPair& anchorPairB = stepB.anchorPair;
 
