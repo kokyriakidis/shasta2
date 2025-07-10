@@ -1,7 +1,6 @@
 // Shasta.
 #include "LikelihoodRatioDetangler.hpp"
-// #include "Base.hpp"
-// #include "orderPairs.hpp"
+#include "GTest.hpp"
 #include "Tangle.hpp"
 #include "TangleMatrix.hpp"
 using namespace shasta;
@@ -54,18 +53,6 @@ bool LikelihoodRatioDetangler::operator()(Tangle& tangle)
             }
             cout << endl;
         }
-
-#if 0
-        if( (tangleMatrix.entrances.size() == 2) and
-            (tangleMatrix.exits.size() == 2) and
-            (tangle.assemblyGraph[tangleMatrix.entrances[0].e].id == 33053) and
-            (tangle.assemblyGraph[tangleMatrix.entrances[1].e].id == 98033) and
-            (tangle.assemblyGraph[tangleMatrix.exits    [0].e].id == 13086) and
-            (tangle.assemblyGraph[tangleMatrix.exits    [1].e].id == 97642)) {
-            tangle.assemblyGraph.write("Y");
-        }
-#endif
-
     }
 
     // Check common coverage on all entrances and exits.
@@ -87,9 +74,12 @@ bool LikelihoodRatioDetangler::operator()(Tangle& tangle)
     }
 
     // Run the likelihood ratio test.
-    if(not tangleMatrix.gTest(epsilon)) {
+    vector< vector<uint64_t> > tangleMatrixCoverage;
+    tangleMatrix.getTangleMatrixCoverage(tangleMatrixCoverage);
+    GTest gTest(tangleMatrixCoverage, epsilon);
+    if(not gTest.success) {
         if(debug) {
-            cout << "Not detangling because the tangle matrix is too big." << endl;
+            cout << "Not detangling because the G-test failed." << endl;
         }
         return false;
     }
@@ -98,7 +88,7 @@ bool LikelihoodRatioDetangler::operator()(Tangle& tangle)
 
 
     // If the best G is not good enough, do nothing.
-    const double bestG = tangleMatrix.hypotheses.front().G;
+    const double bestG = gTest.hypotheses.front().G;
     if(bestG > maxLogP) {
         if(debug) {
             cout << "Not detangling because the best G is too large." << endl;
@@ -107,8 +97,8 @@ bool LikelihoodRatioDetangler::operator()(Tangle& tangle)
     }
 
     // Also check the second best G.
-    if(tangleMatrix.hypotheses.size() >= 2) {
-        const double secondBestG = tangleMatrix.hypotheses[1].G;
+    if(gTest.hypotheses.size() >= 2) {
+        const double secondBestG = gTest.hypotheses[1].G;
         const double GDelta = secondBestG - bestG;
         if(GDelta < minLogPDelta) {
             if(debug) {
@@ -117,7 +107,7 @@ bool LikelihoodRatioDetangler::operator()(Tangle& tangle)
             return false;
         }
     }
-    const vector< vector<bool> >& bestConnectivityMatrix = tangleMatrix.hypotheses.front().connectivityMatrix;
+    const vector< vector<bool> >& bestConnectivityMatrix = gTest.hypotheses.front().connectivityMatrix;
 
 
 
@@ -136,7 +126,7 @@ bool LikelihoodRatioDetangler::operator()(Tangle& tangle)
         }
     }
 
-    // Figure out if the best connectivity matrix is backward injective (only one enytrance for each exit).
+    // Figure out if the best connectivity matrix is backward injective (only one entrance for each exit).
     bool isBackwardInjective = true;
     for(uint64_t iExit=0; iExit<exitCount; iExit++) {
         uint64_t count = 0;
