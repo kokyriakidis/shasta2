@@ -43,6 +43,10 @@ public:
         public:
         edge_descriptor e;
 
+        // The number of steps that were trimmed at the end of an entrance
+        // or at the beginning of an exit.
+        uint64_t trim;
+
         // The last step of this AssemblyGraphEdge (for an Entrance).
         // The first step of this AssemblyGraphEdge (for an Exit).
         const AssemblyGraphEdgeStep& step;
@@ -53,8 +57,9 @@ public:
 
         EntranceOrExit(
             edge_descriptor e,
+            uint64_t trim,
             const AssemblyGraphEdgeStep& step) :
-            e(e), step(step) {}
+            e(e), trim(trim), step(step) {}
 
         uint64_t coverage() const
         {

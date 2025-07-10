@@ -925,6 +925,9 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
     HttpServer::getParameterValue(request, "exits", exitsString);
     boost::trim(exitsString);
 
+    uint64_t maxTrim = 0;
+    HttpServer::getParameterValue(request, "maxTrim", maxTrim);
+
     double epsilon = httpServerData.options->detangleEpsilon;
     HttpServer::getParameterValue(request, "epsilon", epsilon);
 
@@ -962,6 +965,10 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
         html << " value='" << exitsString << "'";
     }
     html << " size=30>";
+
+    html << "<tr><th class=left>Maximum number of trimmed steps"
+        "<td class=centered>"
+        "<input type=text name=maxTrim style='text-align:center' value='" << maxTrim << "'>";
 
     html << "<tr><th class=left>Epsilon for G-test evaluation"
         "<td class=centered>"
@@ -1050,7 +1057,7 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
 
     // Create the TangleMatrix.
     TangleMatrix tangleMatrix(assemblyGraph, entrances, exits,
-        0,
+        maxTrim,
         httpServerData.options->aDrift,
         httpServerData.options->bDrift);
     tangleMatrix.writeHtml(assemblyGraph, html);

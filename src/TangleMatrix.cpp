@@ -17,13 +17,45 @@ TangleMatrix::TangleMatrix(
     sort(entranceEdges.begin(), entranceEdges.end(), AssemblyGraph::OrderById(assemblyGraph));
     for(const edge_descriptor e: entranceEdges) {
         const AssemblyGraphEdge& edge = assemblyGraph[e];
-        entrances.emplace_back(e, edge.back());
+
+        // Among the last maxTrim steps, pick the one with the best coverage.
+        uint64_t bestStepId = invalid<uint64_t>;
+        uint64_t bestTrim = invalid<uint64_t>;
+        uint64_t bestCoverage = 0;
+        for(uint64_t trim=0; trim<=min(maxTrim, edge.size() - 1); trim++) {
+            const uint64_t stepId = edge.size() - 1 - trim;
+            const uint64_t coverage = edge[stepId].anchorPair.size();
+            if(coverage > bestCoverage) {
+                bestStepId = stepId;
+                bestTrim = trim;
+                bestCoverage = coverage;
+            }
+        }
+
+        entrances.emplace_back(e, bestTrim, edge[bestStepId]);
     }
+
+
 
     sort(exitEdges.begin(), exitEdges.end(), AssemblyGraph::OrderById(assemblyGraph));
     for(const edge_descriptor e: exitEdges) {
         const AssemblyGraphEdge& edge = assemblyGraph[e];
-        exits.emplace_back(e, edge.front());
+
+        // Among the first maxTrim steps, pick the one with the best coverage.
+        uint64_t bestStepId = invalid<uint64_t>;
+        uint64_t bestTrim = invalid<uint64_t>;
+        uint64_t bestCoverage = 0;
+        for(uint64_t trim=0; trim<=min(maxTrim, edge.size() - 1); trim++) {
+            const uint64_t stepId = trim;
+            const uint64_t coverage = edge[stepId].anchorPair.size();
+            if(coverage > bestCoverage) {
+                bestStepId = stepId;
+                bestTrim = trim;
+                bestCoverage = coverage;
+            }
+        }
+
+        exits.emplace_back(e, bestTrim, edge[bestStepId]);
     }
 
 
