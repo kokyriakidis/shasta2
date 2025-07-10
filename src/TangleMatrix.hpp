@@ -31,6 +31,7 @@ public:
         const AssemblyGraph&,
         vector<edge_descriptor> entranceEdges,
         vector<edge_descriptor> exitEdges,
+        uint64_t maxTrim,
         double aDrift,
         double bDrift);
 

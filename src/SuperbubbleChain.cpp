@@ -65,6 +65,7 @@ void SuperbubbleChain::phase(
             TangleMatrix tangleMatrix(assemblyGraph,
                 bubble0.internalEdges,
                 bubble1.internalEdges,
+                0,
                 assemblyGraph.options.aDrift,
                 assemblyGraph.options.bDrift);
 

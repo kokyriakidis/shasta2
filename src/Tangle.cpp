@@ -78,7 +78,7 @@ Tangle::Tangle(
 
     // Now we can create the TangleMatrix.
     tangleMatrix = make_shared<TangleMatrix>(
-        assemblyGraph, entranceEdges, exitEdges, aDrift, bDrift);
+        assemblyGraph, entranceEdges, exitEdges, 0, aDrift, bDrift);
 }
 
 

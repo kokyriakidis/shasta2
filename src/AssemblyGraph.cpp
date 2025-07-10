@@ -2591,6 +2591,7 @@ void AssemblyGraph::search(
             assemblyGraph,
             eStartVector,
             adjacentEdges,
+            0,
             options.aDrift,
             options.bDrift);
 
@@ -2801,7 +2802,7 @@ void AssemblyGraph::forwardLocalSearch(
             exits.push_back(e1);
         }
 
-        TangleMatrix tangleMatrix(assemblyGraph, entrances, exits, options.aDrift, options.bDrift);
+        TangleMatrix tangleMatrix(assemblyGraph, entrances, exits, 0, options.aDrift, options.bDrift);
 
         if(debug) {
             cout << "Starting from " << assemblyGraph[e0].id << " found:" << endl;
@@ -2892,7 +2893,7 @@ void AssemblyGraph::backwardLocalSearch(
             entrances.push_back(e1);
         }
 
-        TangleMatrix tangleMatrix(assemblyGraph, entrances, exits, options.aDrift, options.bDrift);
+        TangleMatrix tangleMatrix(assemblyGraph, entrances, exits, 0, options.aDrift, options.bDrift);
 
         if(debug) {
             cout << "Starting from " << assemblyGraph[e0].id << " found:" << endl;

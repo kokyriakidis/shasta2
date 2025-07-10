@@ -1050,6 +1050,7 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
 
     // Create the TangleMatrix.
     TangleMatrix tangleMatrix(assemblyGraph, entrances, exits,
+        0,
         httpServerData.options->aDrift,
         httpServerData.options->bDrift);
     tangleMatrix.writeHtml(assemblyGraph, html);
