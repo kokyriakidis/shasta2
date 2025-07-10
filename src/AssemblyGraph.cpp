@@ -1075,6 +1075,7 @@ uint64_t AssemblyGraph::detangle(
         // Attempt detangling for the tangle defined by these vertices.
         ++attemptCount;
         Tangle tangle(assemblyGraph, tangleVertices,
+            0,
             options.aDrift,
             options.bDrift);
         if(debug) {

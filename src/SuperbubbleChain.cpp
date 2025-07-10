@@ -261,6 +261,7 @@ void SuperbubbleChain::phase(
 
             // Create the tangle from these vertices.
             Tangle tangle(assemblyGraph, tangleVertices,
+                0,
                 assemblyGraph.options.aDrift,
                 assemblyGraph.options.bDrift);
 

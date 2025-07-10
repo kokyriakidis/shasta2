@@ -1173,6 +1173,7 @@ void Assembler::exploreVertexTangle(const vector<string>& request, ostream& html
 
     // Create a Tangle at the target of this vertex.
     const Tangle tangle(assemblyGraph, target(e, assemblyGraph),
+        0,
         httpServerData.options->aDrift,
         httpServerData.options->bDrift);
     tangle.tangleMatrix->writeHtml(assemblyGraph, html);
@@ -1263,6 +1264,7 @@ void Assembler::exploreEdgeTangle(const vector<string>& request, ostream& html)
 
     // Create a Tangle at this edge.
     const Tangle tangle(assemblyGraph, e,
+        0,
         httpServerData.options->aDrift,
         httpServerData.options->bDrift);
     tangle.tangleMatrix->writeHtml(assemblyGraph, html);

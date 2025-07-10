@@ -23,6 +23,7 @@ public:
     Tangle(
         AssemblyGraph&,
         const vector<vertex_descriptor>&,
+        uint64_t maxTrim,
         double aDrift,
         double bDrift);
 
@@ -30,6 +31,7 @@ public:
     Tangle(
         AssemblyGraph&,
         vertex_descriptor,
+        uint64_t maxTrim,
         double aDrift,
         double bDrift);
 
@@ -37,6 +39,7 @@ public:
     Tangle(
         AssemblyGraph&,
         edge_descriptor,
+        uint64_t maxTrim,
         double aDrift,
         double bDrift);
 

@@ -16,11 +16,12 @@ using namespace shasta;
 Tangle::Tangle(
     AssemblyGraph& assemblyGraph,
     vertex_descriptor v,
+    uint64_t maxTrim,
     double aDrift,
     double bDrift) :
     Tangle(assemblyGraph,
         vector<vertex_descriptor>(1, v),
-        aDrift, bDrift)
+        maxTrim, aDrift, bDrift)
 {
 }
 
@@ -30,11 +31,12 @@ Tangle::Tangle(
 Tangle::Tangle(
     AssemblyGraph& assemblyGraph,
     edge_descriptor e,
+    uint64_t maxTrim,
     double aDrift,
     double bDrift) :
     Tangle(assemblyGraph,
         vector<vertex_descriptor>({source(e, assemblyGraph), target(e, assemblyGraph)}),
-        aDrift, bDrift)
+        maxTrim, aDrift, bDrift)
 {
 }
 
@@ -44,6 +46,7 @@ Tangle::Tangle(
 Tangle::Tangle(
     AssemblyGraph& assemblyGraph,
     const vector<vertex_descriptor>& tangleVerticesArgument,
+    uint64_t maxTrim,
     double aDrift,
     double bDrift) :
     assemblyGraph(assemblyGraph),
