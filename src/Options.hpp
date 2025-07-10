@@ -59,6 +59,11 @@ public:
     uint64_t findSuperbubblesMaxDistance = 10;
     uint64_t simplifySuperbubbleMinCoverage = 4;
 
+    // Options that control phasing.
+    uint64_t phasingDistance = 12;
+    uint64_t phasingMinDegree = 2;
+    uint64_t phasingMinCoverage = 4;
+
     // Options that control detangling.
     uint64_t detangleMinCommonCoverage = 3;
     uint64_t detangleLowCoverageThreshold = 1;

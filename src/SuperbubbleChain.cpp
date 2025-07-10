@@ -19,9 +19,9 @@ void SuperbubbleChain::phase(
     SuperbubbleChain& superbubbleChain = *this;
     const bool debug = false;
 
-    const uint64_t m = 6;
-    const uint64_t minDegree = 2;
-    const uint64_t minPhaseCoverage = 3;
+    const uint64_t phasingDistance = assemblyGraph.options.phasingDistance;
+    const uint64_t phasingMinDegree = assemblyGraph.options.phasingMinDegree;
+    const uint64_t phasingMinCoverage = assemblyGraph.options.phasingMinCoverage;
 
     if(debug) {
         cout << "Phasing superbubble chain " << superbubbleChainId << endl;
@@ -52,7 +52,7 @@ void SuperbubbleChain::phase(
             if(not bubble1.isBubble() or bubble1.isTrivial()) {
                 continue;
             }
-            if(n0 > m) {
+            if(n0 > phasingDistance) {
                 continue;
             }
             ++n0;
@@ -123,7 +123,7 @@ void SuperbubbleChain::phase(
             for(uint64_t iEntrance=0; iEntrance<tangleMatrix.entrances.size(); iEntrance++) {
                 for(uint64_t iExit=0; iExit<tangleMatrix.exits.size(); iExit++) {
                     if(bestHypothesis.connectivityMatrix[iEntrance][iExit]) {
-                        if(tangleMatrix.tangleMatrix[iEntrance][iExit].orientedReadIds.size() < minPhaseCoverage) {
+                        if(tangleMatrix.tangleMatrix[iEntrance][iExit].orientedReadIds.size() < phasingMinCoverage) {
                             hasLowCoverage = true;
                         }
                     }
@@ -164,7 +164,7 @@ void SuperbubbleChain::phase(
     }
 
     // Remove low degree vertices.
-    const uint64_t removedVertexCount = phasingGraph.removeLowDegreeVertices(minDegree);
+    const uint64_t removedVertexCount = phasingGraph.removeLowDegreeVertices(phasingMinDegree);
     if(debug) {
         cout << removedVertexCount << " low degree vertices were removed." << endl;
     }
