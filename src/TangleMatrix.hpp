@@ -79,39 +79,6 @@ public:
 
 
 
-
-    // Likelihood ratio test of the tangle matrix (G test).
-    // https://en.wikipedia.org/wiki/G-test
-    class Hypothesis {
-    public:
-        vector< vector<bool> > connectivityMatrix;
-        double G = invalid<double>;
-
-        Hypothesis(
-            const vector< vector<bool> >& connectivityMatrix,
-            double G) :
-            connectivityMatrix(connectivityMatrix),
-            G(G)
-            {}
-
-        Hypothesis() {}
-
-        // Return true if there is a single exit for each entrance.
-        bool isForwardInjective() const;
-
-        // Return true if there is a single entrance for exit entrance.
-        bool isBackwardInjective() const;
-
-        // Sort by G.
-        bool operator<(const Hypothesis& that) const {
-            return G < that.G;
-        }
-    };
-    vector<Hypothesis> hypotheses;
-    bool gTest(double epsilon);
-
-
-
     // Read following on the entrances/exits.
     class StepIdentifier {
     public:
