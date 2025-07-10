@@ -178,7 +178,8 @@ void AssemblyGraph::run(uint64_t threadCount)
         options.detangleMinCommonCoverage,
         options.detangleEpsilon,
         options.detangleMaxLogP,
-        options.detangleMinLogPDelta);
+        options.detangleMinLogPDelta,
+        options.detangleHighCoverageThreshold);
     detangle(detangleMaxIterationCount, std::numeric_limits<uint64_t>::max(), detangler);
     computeJourneys();
     write("E");

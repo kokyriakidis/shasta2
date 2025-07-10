@@ -11,11 +11,13 @@ LikelihoodRatioDetangler::LikelihoodRatioDetangler(
     uint64_t minCommonCoverage,
     const double epsilon,
     const double maxLogP,
-    const double minLogPDelta):
+    const double minLogPDelta,
+    uint64_t detangleHighCoverageThreshold):
     minCommonCoverage(minCommonCoverage),
     epsilon(epsilon),
     maxLogP(maxLogP),
-    minLogPDelta(minLogPDelta)
+    minLogPDelta(minLogPDelta),
+    detangleHighCoverageThreshold(detangleHighCoverageThreshold)
 {}
 
 
@@ -148,6 +150,21 @@ bool LikelihoodRatioDetangler::operator()(Tangle& tangle)
         return false;
     }
 
+    // If detangling would generate a connection with coverage
+    // less than uint64_t detangleHighCoverageThreshold, don't detangle.
+    for(uint64_t iEntrance=0; iEntrance<entranceCount; iEntrance++) {
+        for(uint64_t iExit=0; iExit<exitCount; iExit++) {
+            if(bestConnectivityMatrix[iEntrance][iExit]) {
+                if(tangleMatrixCoverage[iEntrance][iExit] < detangleHighCoverageThreshold) {
+                    if(debug) {
+                        cout << "Not detangling to avoid generating an assembly step "
+                            "with coverage " << tangleMatrixCoverage[iEntrance][iExit] << endl;
+                    }
+                    return false;
+                }
+            }
+        }
+    }
 
 
     // Store the connect pairs and detangle.

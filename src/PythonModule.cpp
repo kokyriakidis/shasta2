@@ -183,7 +183,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def(init<uint64_t, double, double, double>())
         ;
     class_<LikelihoodRatioDetangler>(shasta2Module, "LikelihoodRatioDetangler", pybind11::base<Detangler>())
-        .def(init<uint64_t, double, double, double>())
+        .def(init<uint64_t, double, double, double, uint64_t>())
         ;
 
 
