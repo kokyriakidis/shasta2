@@ -161,6 +161,12 @@ void Options::addOptions()
         "High coverage threshold for detangling."
         )->capture_default_str();
 
+    add_option("--detangle-max-trim",
+        detangleMaxTrim,
+        "Maximum trim for detangling (number of assembly steps)."
+        )->capture_default_str();
+
+
     add_option("--detangle-epsilon",
         detangleEpsilon,
         "Epsilon value for chi-square detangling."
