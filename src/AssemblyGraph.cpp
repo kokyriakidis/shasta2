@@ -973,15 +973,17 @@ uint64_t AssemblyGraph::detangleEdgesIteration(
         const vertex_descriptor v0 = source(e, assemblyGraph);
         const vertex_descriptor v1 = target(e, assemblyGraph);
 
-        const bool isTangleEdge =
-            (in_degree(v0, assemblyGraph) > 1) and
-            (out_degree(v0, assemblyGraph) == 1) and
-            (in_degree(v1, assemblyGraph) == 1) and
-            (out_degree(v1, assemblyGraph) > 1);
+        const uint64_t in0 = in_degree(v0, assemblyGraph);
+        const uint64_t out0 = out_degree(v0, assemblyGraph);
+        const uint64_t in1 = in_degree(v1, assemblyGraph);
+        const uint64_t out1 = out_degree(v1, assemblyGraph);
+
+        const bool isTangleEdge = (in0 > 1) and (out0 == 1) and (in1 == 1) and (out1 > 1);
+        // const bool isCrossEdge = (in0 == 1) and (out0 == 2) and (in1 == 2) and (out1 == 1);
 
         const bool isShort = assemblyGraph[e].offset() <= maxEdgeLength;
 
-        if(isTangleEdge and isShort) {
+        if(isShort and isTangleEdge) {
             detanglingCandidates.emplace_back(vector<vertex_descriptor>({v0, v1}));
         }
     }
