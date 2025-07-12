@@ -149,7 +149,7 @@ AssemblyGraph::AssemblyGraph(
 
 
 // Detangle, phase, assemble sequence, output.
-void AssemblyGraph::run(uint64_t threadCount)
+void AssemblyGraph::run()
 {
     // AssemblyGraph& assemblyGraph = *this;
     const uint64_t detangleMaxIterationCount = 10;
@@ -164,7 +164,7 @@ void AssemblyGraph::run(uint64_t threadCount)
     // Simplify Superbubbles and remove or simplify bubbles likely caused by errors.
     simplifySuperbubbles();
     write("B");
-    bubbleCleanup(threadCount);
+    bubbleCleanup();
     compress();
     write("C");
 
@@ -185,7 +185,7 @@ void AssemblyGraph::run(uint64_t threadCount)
     write("E");
 
     // Sequence assembly.
-    assembleAll(threadCount);
+    assembleAll();
     write("Z");
     writeFasta("Z");
 }
@@ -380,14 +380,9 @@ void AssemblyGraph::writeGraphviz(ostream& dot) const
 
 
 // Assemble sequence for all edges.
-void AssemblyGraph::assembleAll(uint64_t threadCount)
+void AssemblyGraph::assembleAll()
 {
     performanceLog << timestamp << "Sequence assembly begins." << endl;
-
-    // Adjust the numbers of threads, if necessary.
-    if(threadCount == 0) {
-        threadCount = std::thread::hardware_concurrency();
-    }
 
     const AssemblyGraph& assemblyGraph = *this;
 
@@ -395,7 +390,7 @@ void AssemblyGraph::assembleAll(uint64_t threadCount)
     BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
         edgesToBeAssembled.push_back(e);
     }
-    assemble(threadCount);
+    assemble();
     edgesToBeAssembled.clear();
 
     performanceLog << timestamp << "Sequence assembly ends." << endl;
@@ -404,11 +399,11 @@ void AssemblyGraph::assembleAll(uint64_t threadCount)
 
 
 // Assemble sequence for the specified edge.
-void AssemblyGraph::assemble(edge_descriptor e, uint64_t threadCount)
+void AssemblyGraph::assemble(edge_descriptor e)
 {
     edgesToBeAssembled.clear();
     edgesToBeAssembled.push_back(e);
-    assemble(threadCount);
+    assemble();
 }
 
 
@@ -447,7 +442,7 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
 // Assemble sequence for all edges in the edgesToBeAssembled vector.
 // This fills in the stepsToBeAssembled with all steps of those edges,
 // then assembles each of the steps in parallel.
-void AssemblyGraph::assemble(uint64_t threadCount)
+void AssemblyGraph::assemble()
 {
     AssemblyGraph& assemblyGraph = *this;
 
@@ -461,7 +456,7 @@ void AssemblyGraph::assemble(uint64_t threadCount)
 
     const uint64_t batchCount = 1;
     setupLoadBalancing(stepsToBeAssembled.size(), batchCount);
-    runThreads(&AssemblyGraph::assembleThreadFunction, threadCount);
+    runThreads(&AssemblyGraph::assembleThreadFunction, options.threadCount);
 
     // Mark them as assembled.
     for(const edge_descriptor e: edgesToBeAssembled) {
@@ -590,14 +585,14 @@ void AssemblyGraph::findBubbles(vector<Bubble>& bubbles) const
 
 
 
-void AssemblyGraph::bubbleCleanup(uint64_t threadCount)
+void AssemblyGraph::bubbleCleanup()
 {
-    while(bubbleCleanupIteration(threadCount) > 0);
+    while(bubbleCleanupIteration() > 0);
 }
 
 
 
-uint64_t AssemblyGraph::bubbleCleanupIteration(uint64_t threadCount)
+uint64_t AssemblyGraph::bubbleCleanupIteration()
 {
     AssemblyGraph& assemblyGraph = *this;
 
@@ -630,35 +625,6 @@ uint64_t AssemblyGraph::bubbleCleanupIteration(uint64_t threadCount)
         if(bridgeAnchorPair.orientedReadIds.size() >= options.bubbleCleanupMinCommonCount) {
             candidateBubbles.push_back(make_pair(bubble, bridgeAnchorPair));
         }
-
-
-#if 0
-        // This is the old code that assumes that the bubble is preceded/followed by a
-        // single segment.
-        SHASTA_ASSERT(in_degree(v0, assemblyGraph) == 1);
-        SHASTA_ASSERT(out_degree(v1, assemblyGraph) == 1);
-
-        in_edge_iterator it0;
-        tie(it0, ignore) = in_edges(v0, assemblyGraph);
-        const edge_descriptor e0 = *it0;
-        const AnchorPair& anchorPair0 = assemblyGraph[e0].back().anchorPair;
-
-        out_edge_iterator it1;
-        tie(it1, ignore) = out_edges(v1, assemblyGraph);
-        const edge_descriptor e1 = *it1;
-        const AnchorPair& anchorPair1 = assemblyGraph[e1].front().anchorPair;
-
-        // Construct the bridge AnchorPair.
-        const AnchorPair bridgeAnchorPair = anchors.bridge(
-            anchorPair0, anchorPair1,
-            options.aDrift,
-            options.bDrift);
-
-        // If coverage of the bridgeAnchorPair is sufficient, add this bubble to our list of candidates.
-        if(bridgeAnchorPair.orientedReadIds.size() >= options.assemblyGraphOptions.bubbleCleanupMinCommonCount) {
-            candidateBubbles.push_back(make_pair(bubble, bridgeAnchorPair));
-        }
-#endif
     }
     cout << candidateBubbles.size() << " bubbles are candidate for removal." << endl;
 
@@ -673,7 +639,7 @@ uint64_t AssemblyGraph::bubbleCleanupIteration(uint64_t threadCount)
             }
         }
     }
-    assemble(threadCount);
+    assemble();
 
 
 

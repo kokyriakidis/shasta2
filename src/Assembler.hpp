@@ -207,9 +207,7 @@ public:
 
 
     // AssemblyGraph.
-    void createAssemblyGraph(
-        const Options&,
-        uint64_t threadCount);
+    void createAssemblyGraph(const Options&);
 
 
 

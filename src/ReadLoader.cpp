@@ -33,8 +33,6 @@ ReadLoader::ReadLoader(
 {
     performanceLog << timestamp << "Loading reads from " << fileName << endl;
 
-    adjustThreadCount();
-
     // Get the file extension.
     string extension;
     try {
@@ -65,14 +63,6 @@ ReadLoader::ReadLoader(
 // This is required because unique_ptr has a type completeness requirement
 // during destruction.
 ReadLoader::~ReadLoader() = default;
-
-
-void ReadLoader::adjustThreadCount()
-{
-    if(threadCount == 0) {
-        threadCount = std::thread::hardware_concurrency();
-    }
-}
 
 
 

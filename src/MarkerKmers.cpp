@@ -28,11 +28,6 @@ MarkerKmers::MarkerKmers(
 {
     performanceLog << timestamp << "Marker k-mer creation begins." << endl;
 
-    // Adjust the numbers of threads, if necessary.
-    if(threadCount == 0) {
-        threadCount = std::thread::hardware_concurrency();
-    }
-
     // Figure out the number of buckets in the hash table.
     // It will contain one entry for each pairs of marker,
     // because we only store canonical k-mers.

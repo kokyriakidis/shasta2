@@ -47,7 +47,6 @@ private:
     // Reading is done single-threaded as there is usually no benefit
     // frm multithreaded reading.
     size_t threadCount;
-    void adjustThreadCount();
 
     // Information that we can use to create temporary
     // memory mapped binary data structures.

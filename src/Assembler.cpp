@@ -67,34 +67,29 @@ void Assembler::assemble(
     const Options& options,
     vector<string> inputFileNames)
 {
-    // Adjust the number of threads, if necessary.
-    uint64_t threadCount = options.threadCount;
-    if(threadCount == 0) {
-        threadCount = std::thread::hardware_concurrency();
-    }
-    cout << "Number of threads: " << threadCount << endl;
+    cout << "Number of threads: " << options.threadCount << endl;
 
     addReads(
         inputFileNames,
         options.minReadLength,
-        threadCount);
+        options.threadCount);
     createReadLengthDistribution();
 
-    createKmerChecker(options.k, options.markerDensity, threadCount);
-    createMarkers(threadCount);
-    createMarkerKmers(threadCount);
+    createKmerChecker(options.k, options.markerDensity, options.threadCount);
+    createMarkers(options.threadCount);
+    createMarkerKmers(options.threadCount);
     createAnchors(
         options.minAnchorCoverage,
         options.maxAnchorCoverage,
         options.maxAnchorHomopolymerLength,
-        threadCount);
+        options.threadCount);
 
-    createJourneys(threadCount);
+    createJourneys(options.threadCount);
     journeys().writeAnchorGapsByRead(reads(), markers(), anchors());
 
     createAnchorGraph(options);
 
-    createAssemblyGraph(options, threadCount);
+    createAssemblyGraph(options);
 }
 
 
@@ -104,14 +99,10 @@ void Assembler::assemble(
 void Assembler::createKmerChecker(
     uint64_t k,
     double markerDensity,
-    uint64_t threadCount)
+    uint64_t /* threadCount */) // To permit future multithreaded KmerChecker constructors.
 {
-    if(threadCount == 0) {
-        threadCount = std::thread::hardware_concurrency();
-    }
 
     assemblerInfo->k = k;
-
     kmerChecker = KmerCheckerFactory::createNew(
         k,
         markerDensity,
@@ -133,11 +124,6 @@ void Assembler::createAnchors(
     uint64_t maxHomopolymerLength,
     uint64_t threadCount)
 {
-    // Adjust the numbers of threads, if necessary.
-    if(threadCount == 0) {
-        threadCount = std::thread::hardware_concurrency();
-    }
-
     anchorsPointer = make_shared<Anchors>(
         MappedMemoryOwner(*this),
         reads(),
@@ -163,11 +149,6 @@ void Assembler::accessAnchors(bool writeAccess)
 void Assembler::createJourneys(uint64_t threadCount)
 {
     const MappedMemoryOwner& mappedMemoryOwner = *this;
-
-    // Adjust the numbers of threads, if necessary.
-    if(threadCount == 0) {
-        threadCount = std::thread::hardware_concurrency();
-    }
 
     journeysPointer = make_shared<Journeys>(
         2 * reads().readCount(),
@@ -200,14 +181,10 @@ AnchorId Assembler::readFollowing(
 
 void Assembler::createAnchorGraph(const Options& options)
 {
-    // Adjust the number of threads, if necessary.
-    uint64_t threadCount = options.threadCount;
-    if(threadCount == 0) {
-        threadCount = std::thread::hardware_concurrency();
-    }
 
-    // Generate an AnchorGraph in which all edges have consistent offsets.
+
 #if 0
+    // Old constructor.
     anchorGraphPointer = make_shared<AnchorGraph>(
         anchors(), journeys(), readLengthDistribution(),
         options.minAnchorGraphEdgeCoverageNear,
@@ -222,32 +199,21 @@ void Assembler::createAnchorGraph(const Options& options)
         options.minAnchorGraphEdgeCoverageNear,
         options.aDrift,
         options.bDrift,
-        threadCount);
+        options.threadCount);
     anchorGraphPointer->save();
 
 }
 
 
 
-void Assembler::createAssemblyGraph(
-    const Options& options,
-    uint64_t threadCount)
+void Assembler::createAssemblyGraph(const Options& options)
 {
-    // Adjust the numbers of threads, if necessary.
-    if(threadCount == 0) {
-        threadCount = std::thread::hardware_concurrency();
-    }
-
-
-    // Create the AssemblyGraph.
     AssemblyGraph assemblyGraph(
         anchors(),
         journeys(),
         *anchorGraphPointer,
         options);
-    anchorGraphPointer = 0;
-    assemblyGraph.run(threadCount);
-
+    assemblyGraph.run();
 }
 
 

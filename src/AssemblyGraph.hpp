@@ -161,7 +161,7 @@ public:
         const string& stage);
 
     // Detangle, phase, assemble sequence, output.
-    void run(uint64_t threadCount);
+    void run();
 
     const Anchors& anchors;
     const Journeys& journeys;
@@ -182,8 +182,8 @@ private:
         vector<edge_descriptor> edges;
     };
     void findBubbles(vector<Bubble>&) const;
-    void bubbleCleanup(uint64_t threadCount);
-    uint64_t bubbleCleanupIteration(uint64_t threadCount);
+    void bubbleCleanup();
+    uint64_t bubbleCleanupIteration();
 
     void prune();
 
@@ -404,11 +404,11 @@ private:
 
     // Assemble sequence for all edges.
 public:
-    void assembleAll(uint64_t threadCount);
+    void assembleAll();
 private:
 
     // Assemble sequence for the specified edge.
-    void assemble(edge_descriptor, uint64_t threadCount);
+    void assemble(edge_descriptor);
 
     // Assemble sequence for step i of the specified edge.
     // This is the lowest level sequence assembly function and is not multithreaded.
@@ -418,7 +418,7 @@ private:
     // Assemble sequence for all edges in the edgesToBeAssembled vector.
     // This fills in the stepsToBeAssembled with all steps of those edges,
     // then assembles each of the steps in parallel.
-    void assemble(uint64_t threadCount);
+    void assemble();
     void assembleThreadFunction(uint64_t threadId);
     vector<edge_descriptor> edgesToBeAssembled;
     vector< pair<edge_descriptor, uint64_t> > stepsToBeAssembled;

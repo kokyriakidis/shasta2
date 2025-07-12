@@ -33,12 +33,6 @@ Markers::Markers(
     const uint64_t readCount = reads->readCount();
     performanceLog << timestamp << "Finding markers begins." << endl;
 
-    // Adjust the numbers of threads, if necessary.
-    if(threadCount == 0) {
-        threadCount = std::thread::hardware_concurrency();
-    }
-
-
     const size_t batchSize = 100;
     beginPass1(2 * readCount);
     setupLoadBalancing(readCount, batchSize);

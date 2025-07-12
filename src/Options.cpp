@@ -5,6 +5,7 @@ using namespace shasta;
 // Standard library.
 #include <array.hpp>
 #include "stdexcept.hpp"
+#include <thread>
 
 
 
@@ -27,6 +28,11 @@ Options::Options(int argc, char** argv) :
          } else {
              throw runtime_error("Error parsing options.");
          }
+    }
+
+    // Adjust the numbers of threads, if necessary.
+    if(threadCount == 0) {
+        threadCount = std::thread::hardware_concurrency();
     }
 }
 
@@ -266,6 +272,11 @@ Options::Options(const string& fileName)
     } catch(const CLI::ParseError& e) {
          exit(e);
          throw runtime_error("Error parsing options.");
+    }
+
+    // Adjust the numbers of threads, if necessary.
+    if(threadCount == 0) {
+        threadCount = std::thread::hardware_concurrency();
     }
 }
 
