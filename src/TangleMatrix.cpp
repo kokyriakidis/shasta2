@@ -13,6 +13,7 @@ TangleMatrix::TangleMatrix(
     double aDrift,
     double bDrift)
 {
+    const bool debug = false;
 
     sort(entranceEdges.begin(), entranceEdges.end(), AssemblyGraph::OrderById(assemblyGraph));
     for(const edge_descriptor e: entranceEdges) {
@@ -33,6 +34,9 @@ TangleMatrix::TangleMatrix(
         }
 
         entrances.emplace_back(e, bestTrim, edge[bestStepId]);
+        if(debug) {
+            cout << "Entrance " << assemblyGraph[e].id << ": chose step " << bestStepId << " coverage " << bestCoverage << endl;
+        }
     }
 
 
@@ -56,6 +60,9 @@ TangleMatrix::TangleMatrix(
         }
 
         exits.emplace_back(e, bestTrim, edge[bestStepId]);
+        if(debug) {
+            cout << "Exit " << assemblyGraph[e].id << ": chose step " << bestStepId << " coverage " << bestCoverage << endl;
+        }
     }
 
 
