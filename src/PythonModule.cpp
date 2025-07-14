@@ -124,6 +124,8 @@ PYBIND11_MODULE(shasta2, shasta2Module)
           &Assembler::createAnchorGraph)
       .def("accessAnchorGraph",
           &Assembler::accessAnchorGraph)
+      .def("createSimpleAnchorGraph",
+          &Assembler::createSimpleAnchorGraph)
 
       // AssemblyGraph.
       .def("createAssemblyGraph",

@@ -200,10 +200,20 @@ public:
         ) const;
 
 
+
     // AnchorGraph.
     shared_ptr<AnchorGraph> anchorGraphPointer;
     void createAnchorGraph(const Options&);
     void accessAnchorGraph();
+
+    // The "simple" AnchorGraph.
+    // It has edges between AnchorIds that are immediately adjacent in one or more Journeys,
+    // without coverage limitations and without any splitting.
+    // This is only used for debugging, not for assembly.
+    shared_ptr<AnchorGraph> simpleAnchorGraphPointer;
+    void createSimpleAnchorGraph();
+    void accessSimpleAnchorGraph();
+
 
 
     // AssemblyGraph.

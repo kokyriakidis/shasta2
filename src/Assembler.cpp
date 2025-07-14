@@ -200,8 +200,16 @@ void Assembler::createAnchorGraph(const Options& options)
         options.aDrift,
         options.bDrift,
         options.threadCount);
-    anchorGraphPointer->save();
+    anchorGraphPointer->save("AnchorGraph");
 
+}
+
+
+
+void Assembler::createSimpleAnchorGraph()
+{
+    simpleAnchorGraphPointer = make_shared<AnchorGraph>(anchors(), journeys());
+    simpleAnchorGraphPointer->save("SimpleAnchorGraph");
 }
 
 
@@ -221,5 +229,13 @@ void Assembler::createAssemblyGraph(const Options& options)
 void Assembler::accessAnchorGraph()
 {
     const MappedMemoryOwner& mappedMemoryOwner = *this;
-    anchorGraphPointer = make_shared<AnchorGraph>(mappedMemoryOwner);
+    anchorGraphPointer = make_shared<AnchorGraph>(mappedMemoryOwner, "AnchorGraph");
+}
+
+
+
+void Assembler::accessSimpleAnchorGraph()
+{
+    const MappedMemoryOwner& mappedMemoryOwner = *this;
+    simpleAnchorGraphPointer = make_shared<AnchorGraph>(mappedMemoryOwner, "SimpleAnchorGraph");
 }

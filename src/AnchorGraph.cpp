@@ -346,6 +346,45 @@ AnchorGraph::AnchorGraph(
 
 
 
+// Constructor that generates the "simple anchor graph".
+// It creates edges between AnchorIds that are immediately adjacent in one or more Journeys,
+// without coverage limitations and without any splitting.
+// This is only used for debugging, not for assembly.
+AnchorGraph::AnchorGraph(
+    const Anchors& anchors,
+    const Journeys& journeys) :
+    MappedMemoryOwner(anchors),
+    MultithreadedObject<AnchorGraph>(*this)
+{
+    AnchorGraph& anchorGraph = *this;
+
+    // Create the vertices, one for each AnchorId.
+    // In the AnchorGraph, vertex_descriptors are AnchorIds.
+    const uint64_t anchorCount = anchors.size();
+    for(AnchorId anchorId=0; anchorId<anchorCount; anchorId++) {
+        add_vertex(anchorGraph);
+    }
+
+    // Loop over possible source vertices to create edges.
+    nextEdgeId = 0;
+    vector<AnchorPair> anchorPairs;
+    for(AnchorId anchorIdA=0; anchorIdA<anchorCount; anchorIdA++) {
+        AnchorPair::createChildren(anchors, journeys, anchorIdA, 0, anchorPairs);
+        for(const AnchorPair& anchorPair: anchorPairs) {
+            const uint64_t offset = anchorPair.getAverageOffset(anchors);
+            edge_descriptor e;
+            tie(e, ignore) = add_edge(anchorIdA, anchorPair.anchorIdB,
+                AnchorGraphEdge(anchorPair, offset, nextEdgeId++), anchorGraph);
+            anchorGraph[e].useForAssembly = true;
+        }
+    }
+
+    cout << "The simple anchor graph has " << num_vertices(*this) <<
+        " vertices and " << num_edges(*this) << " edges." << endl;
+}
+
+
+
 // Constructor that uses read following.
 AnchorGraph::AnchorGraph(
     const Anchors& anchors,
@@ -503,11 +542,11 @@ void AnchorGraph::createEdges2(
 
 
 // Constructor from binary data.
-AnchorGraph::AnchorGraph(const MappedMemoryOwner& mappedMemoryOwner) :
+AnchorGraph::AnchorGraph(const MappedMemoryOwner& mappedMemoryOwner, const string& name) :
     MappedMemoryOwner(mappedMemoryOwner),
     MultithreadedObject<AnchorGraph>(*this)
 {
-    load();
+    load(name);
 }
 
 
@@ -528,7 +567,7 @@ void AnchorGraph::load(istream& s)
 
 
 
-void AnchorGraph::save() const
+void AnchorGraph::save(const string& name) const
 {
     // If not using persistent binary data, do nothing.
     if(largeDataFileNamePrefix.empty()) {
@@ -541,9 +580,8 @@ void AnchorGraph::save() const
     const string dataString = s.str();
 
     // Now save the string to binary data.
-    const string name = largeDataName("AnchorGraph");
     MemoryMapped::Vector<char> data;
-    data.createNew(name, largeDataPageSize);
+    data.createNew(largeDataName(name), largeDataPageSize);
     data.resize(dataString.size());
     const char* begin = dataString.data();
     const char* end = begin + dataString.size();
@@ -552,15 +590,14 @@ void AnchorGraph::save() const
 
 
 
-void AnchorGraph::load()
+void AnchorGraph::load(const string& name)
 {
     // Access the binary data.
     MemoryMapped::Vector<char> data;
     try {
-        const string name = largeDataName("AnchorGraph");
-        data.accessExistingReadOnly(name);
+        data.accessExistingReadOnly(largeDataName(name));
     } catch (std::exception&) {
-        throw runtime_error("AnchorGraph is not available.");
+        throw runtime_error(name + " is not available.");
     }
     const string dataString(data.begin(), data.size());
 
@@ -569,7 +606,7 @@ void AnchorGraph::load()
     try {
         load(s);
     } catch(std::exception& e) {
-        throw runtime_error(string("Error reading AnchorGraph: ") + e.what());
+        throw runtime_error(string("Error reading " + name + ": ") + e.what());
     }
 }
 

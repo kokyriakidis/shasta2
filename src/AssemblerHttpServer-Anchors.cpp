@@ -1033,6 +1033,10 @@ void Assembler::exploreLocalAnchorGraph(
     uint64_t minCoverage = 1;
     HttpServer::getParameterValue(request, "minCoverage", minCoverage);
 
+    string useSimpleAnchorGraphString;
+    bool useSimpleAnchorGraph = HttpServer::getParameterValue(request,
+        "useSimpleAnchorGraph", useSimpleAnchorGraphString);
+
     string includeEdgesNotMarkedForAssemblyString;
     bool includeEdgesNotMarkedForAssembly = HttpServer::getParameterValue(request,
         "includeEdgesNotMarkedForAssembly", includeEdgesNotMarkedForAssemblyString);
@@ -1070,6 +1074,15 @@ void Assembler::exploreLocalAnchorGraph(
         "<td class=centered>"
         "<input type=text name=minCoverage style='text-align:center' required size=8 value=" <<
         minCoverage << ">";
+
+    if(simpleAnchorGraphPointer) {
+        html << "<tr>"
+            "<th class=left>Use the simple AnchorGraph"
+            "<td class=centered>"
+            "<input type=checkbox name=useSimpleAnchorGraph" <<
+            (useSimpleAnchorGraph ? " checked" : "") <<
+            ">";
+    }
 
     html << "<tr>"
         "<th class=left>Include edges not marked for use in assembly"
@@ -1112,9 +1125,8 @@ void Assembler::exploreLocalAnchorGraph(
     }
     deduplicate(anchorIds);
 
-    // Access the global AnchorGraph.
-    SHASTA_ASSERT(anchorGraphPointer);
-    const AnchorGraph& anchorGraph = *anchorGraphPointer;
+    // Access the AnchorGraph we are going to use.
+    const AnchorGraph& anchorGraph = useSimpleAnchorGraph ? *simpleAnchorGraphPointer : *anchorGraphPointer;
 
 
     // If needed, get the AssemblyGraph for this assembly stage.

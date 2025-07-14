@@ -80,18 +80,23 @@ class shasta::AnchorGraph :
     public MultithreadedObject<AnchorGraph> {
 public:
 
-    // Constructor that generates edges between AnchorIds that are
-    //immediately adjacent in one or more Journeys.
+    // Old constructor to be removed.
     AnchorGraph(
         const Anchors&,
         const Journeys&,
         const ReadLengthDistribution&,
         uint64_t minEdgeCoverageNear,
         uint64_t minEdgeCoverageFar,
-		double coverageFractionThreshold,
+        double coverageFractionThreshold,
         double aDrift,
         double bDrift,
         uint64_t threadCount);
+
+    // Constructor that generates the "simple anchor graph".
+    // It creates edges between AnchorIds that are immediately adjacent in one or more Journeys,
+    // without coverage limitations and without any splitting.
+    // This is only used for debugging, not for assembly.
+    AnchorGraph(const Anchors&, const Journeys&);
 
     // Constructor that uses read following.
     AnchorGraph(
@@ -103,7 +108,7 @@ public:
         uint64_t threadCount);
 
     // Constructor from binary data.
-    AnchorGraph(const MappedMemoryOwner&);
+    AnchorGraph(const MappedMemoryOwner&, const string& name);
 
     uint64_t nextEdgeId = 0;
 
@@ -214,7 +219,7 @@ public:
     void load(istream&);
 
     // These do save/load to/from mapped memory.
-    void save() const;
-    void load();
+    void save(const string& name) const;
+    void load(const string& name);
 };
 
