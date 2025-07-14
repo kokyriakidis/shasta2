@@ -254,6 +254,17 @@ public:
         uint32_t& offset        // Filled in only when returning true.
         ) const;
 
+    // Same, but can find more than one AnchorPair.
+    void readFollowing(
+        const Journeys& journeys,
+        AnchorId anchorId0,
+        uint64_t direction,                         // 0 = forward, 1 = backward
+        uint64_t minCommonCount,
+        double aDrift,
+        double bDrift,
+        vector< pair<AnchorPair, uint32_t> >&   // AnchorPairs and offsets.
+        ) const;
+
 
 
 private:

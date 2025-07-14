@@ -647,3 +647,11 @@ void AnchorPair::splitByClustering(
         }
     }
 }
+
+
+
+bool AnchorPair::contains(OrientedReadId orientedReadId) const
+{
+    const auto it = std::lower_bound(orientedReadIds.begin(), orientedReadIds.end(), orientedReadId);
+    return it != orientedReadIds.end() and (*it == orientedReadId);
+}

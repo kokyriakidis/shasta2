@@ -172,6 +172,8 @@ public:
     // Remove from the AnchorPair OrientedReadIds that have negative offsets.
     void removeNegativeOffsets(const Anchors&);
 
+    bool contains(OrientedReadId) const;
+
     template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
     {
         ar & anchorIdA;

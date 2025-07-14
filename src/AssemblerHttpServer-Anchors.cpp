@@ -173,6 +173,57 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
         }
     }
 
+    html <<
+        "<tr><th class=left>Forward read following<br>(multiple)"
+        "<td class=centered>";
+    {
+        vector< pair<AnchorPair, uint32_t> > anchorPairs;
+        anchors().readFollowing(
+            journeys(), anchorId, 0,
+            httpServerData.options->minAnchorGraphEdgeCoverage,
+            httpServerData.options->aDrift,
+            httpServerData.options->bDrift,
+            anchorPairs);
+        for(uint64_t i=0; i<anchorPairs.size(); i++) {
+            const auto& p = anchorPairs[i];
+            const AnchorPair& anchorPair = p.first;
+            const uint32_t offset = p.second;
+            const string s = anchorIdToString(anchorPair.anchorIdB);
+            html <<
+                "<a href='exploreAnchor?anchorIdString=" << HttpServer::urlEncode(s) << "'>" << s << "</a>"
+                ", coverage " << anchorPair.size() <<
+                ", offset " << offset;
+            if(i != anchorPairs.size() - 1) {
+                html << "<br>";
+            }
+        }
+    }
+
+    html <<
+        "<tr><th class=left>Backward read following<br>(multiple)"
+        "<td class=centered>";
+    {
+        vector< pair<AnchorPair, uint32_t> > anchorPairs;
+        anchors().readFollowing(
+            journeys(), anchorId, 1,
+            httpServerData.options->minAnchorGraphEdgeCoverage,
+            httpServerData.options->aDrift,
+            httpServerData.options->bDrift,
+            anchorPairs);
+        for(uint64_t i=0; i<anchorPairs.size(); i++) {
+            const auto& p = anchorPairs[i];
+            const AnchorPair& anchorPair = p.first;
+            const uint32_t offset = p.second;
+            const string s = anchorIdToString(anchorPair.anchorIdA);
+            html <<
+                "<a href='exploreAnchor?anchorIdString=" << HttpServer::urlEncode(s) << "'>" << s << "</a>"
+                ", coverage " << anchorPair.size() <<
+                ", offset " << offset;
+            if(i != anchorPairs.size() - 1) {
+                html << "<br>";
+            }
+        }
+    }
 
     html << "</table>";
 
