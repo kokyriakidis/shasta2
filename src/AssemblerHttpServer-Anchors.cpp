@@ -131,6 +131,48 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
 
     }
 
+    html <<
+        "<tr><th class=left>Forward read following"
+        "<td class=centered>";
+    {
+        AnchorPair anchorPair;
+        uint32_t offset;
+        const bool found = anchors().readFollowing(
+            journeys(), anchorId, 0,
+            httpServerData.options->minAnchorGraphEdgeCoverage,
+            httpServerData.options->aDrift,
+            httpServerData.options->bDrift,
+            anchorPair, offset);
+        if(found) {
+            const string s = anchorIdToString(anchorPair.anchorIdB);
+            html <<
+                "<a href='exploreAnchor?anchorIdString=" << HttpServer::urlEncode(s) << "'>" << s << "</a>"
+                ", coverage " << anchorPair.size() <<
+                ", offset " << offset;
+        }
+    }
+
+    html <<
+        "<tr><th class=left>Backward read following"
+        "<td class=centered>";
+    {
+        AnchorPair anchorPair;
+        uint32_t offset;
+        const bool found = anchors().readFollowing(
+            journeys(), anchorId, 1,
+            httpServerData.options->minAnchorGraphEdgeCoverage,
+            httpServerData.options->aDrift,
+            httpServerData.options->bDrift,
+            anchorPair, offset);
+        if(found) {
+            const string s = anchorIdToString(anchorPair.anchorIdA);
+            html <<
+                "<a href='exploreAnchor?anchorIdString=" << HttpServer::urlEncode(s) << "'>" << s << "</a>"
+                ", coverage " << anchorPair.size() <<
+                ", offset " << offset;
+        }
+    }
+
 
     html << "</table>";
 
