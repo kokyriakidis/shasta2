@@ -16,16 +16,17 @@ assemblyGraph = assembler.getAssemblyGraph("C", options)
 assemblyGraph.phaseSuperbubbleChains()
 """
 
-"""
-assemblyGraph = assembler.getAssemblyGraph("D", options)
+
+assemblyGraph = assembler.getAssemblyGraph("A", options)
 detangler = LikelihoodRatioDetangler(
     options.detangleMinCommonCoverage,
     options.detangleEpsilon,
     options.detangleMaxLogP,
-    options.detangleMinLogPDelta)
+    options.detangleMinLogPDelta,
+    options.detangleHighCoverageThreshold)
 assemblyGraph.detangle(10, 1000000000, detangler);
 assemblyGraph.write("X")
-"""
+
 
 """
 assemblyGraph = assembler.getAssemblyGraph("E", options)
@@ -81,5 +82,7 @@ detangler.debug = True
 detangledEdgeCount = assemblyGraph.detangleEdgesIteration(1000000000, detangler);
 """
 
+"""
 assemblyGraph = assembler.getAssemblyGraph("B", options)
 assemblyGraph.computeJourneys()
+"""
