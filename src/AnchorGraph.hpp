@@ -107,6 +107,12 @@ public:
         uint64_t minEdgeCoverage,
         double aDrift,
         double bDrift);
+    void createEdges3(
+        const Anchors&,
+        const Journeys&,
+        uint64_t minEdgeCoverage,
+        double aDrift,
+        double bDrift);
 
     // Dijkstra search.
     // This performs a shortest path search starting at the specified AnchorId

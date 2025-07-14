@@ -92,7 +92,7 @@ AnchorGraph::AnchorGraph(
     }
 
     // Create the edges using read following.
-    createEdges2(anchors, journeys, minEdgeCoverage, aDrift, bDrift);
+    createEdges3(anchors, journeys, minEdgeCoverage, aDrift, bDrift);
 
     cout << "The anchor graph has " << num_vertices(*this) <<
         " vertices and " << num_edges(*this) << " edges." << endl;
@@ -221,6 +221,51 @@ void AnchorGraph::createEdges2(
             tie(e, ignore) = add_edge(anchorPair.anchorIdA, anchorPair.anchorIdB,
                 AnchorGraphEdge(anchorPair, offset, nextEdgeId++), anchorGraph);
             anchorGraph[e].useForAssembly = true;
+        }
+    }
+}
+
+
+
+void AnchorGraph::createEdges3(
+    const Anchors& anchors,
+    const Journeys& journeys,
+    uint64_t minEdgeCoverage,
+    double aDrift,
+    double bDrift)
+{
+    AnchorGraph& anchorGraph = *this;
+    const uint64_t anchorCount = anchors.size();
+
+    // Create the edges using read following.
+    vector<pair<AnchorPair, uint32_t> > anchorPairs;    // AnchorPairs with offsets.
+    for(uint64_t direction=0; direction<2; direction++) {
+        for(AnchorId anchorId0=0; anchorId0<anchorCount; anchorId0++) {
+
+            // Do read following.
+            anchors.readFollowing(
+                journeys, anchorId0, direction,
+                minEdgeCoverage, aDrift, bDrift,
+                anchorPairs);
+
+            // Loop over the AnchorPairs that were found.
+            for(const auto& p: anchorPairs) {
+                const AnchorPair& anchorPair = p.first;
+                const uint32_t offset = p.second;
+
+                // If the edge already exists, do nothing.
+                bool edgeExists = false;
+                tie(ignore, edgeExists) = boost::edge(anchorPair.anchorIdA, anchorPair.anchorIdB, anchorGraph);
+                if(edgeExists) {
+                    continue;
+                }
+
+                // We don't already have this edge. Add it.
+                edge_descriptor e;
+                tie(e, ignore) = add_edge(anchorPair.anchorIdA, anchorPair.anchorIdB,
+                    AnchorGraphEdge(anchorPair, offset, nextEdgeId++), anchorGraph);
+                anchorGraph[e].useForAssembly = true;
+            }
         }
     }
 }

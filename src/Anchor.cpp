@@ -2057,6 +2057,9 @@ void Anchors::readFollowing(
                     }
                 }
                 orientedReadInfos.swap(newOrientedReadInfos);
+                if(orientedReadInfos.size() < minCommonCount) {
+                    return;
+                }
                 break;
             }
 
