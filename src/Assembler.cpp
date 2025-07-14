@@ -184,7 +184,7 @@ void Assembler::createAnchorGraph(const Options& options)
 
     anchorGraphPointer = make_shared<AnchorGraph>(
         anchors(), journeys(),
-        options.minAnchorGraphEdgeCoverageNear,
+        options.minAnchorGraphEdgeCoverage,
         options.aDrift,
         options.bDrift,
         options.threadCount);

@@ -46,9 +46,7 @@ public:
     uint64_t minAnchorCoverage = 10;
     uint64_t maxAnchorCoverage = 60;
     uint64_t maxAnchorHomopolymerLength = 10;
-    uint64_t minAnchorGraphEdgeCoverageNear = 10;
-    uint64_t minAnchorGraphEdgeCoverageFar = 3;
-    double anchorGraphEdgeCoverageFractionThreshold = 0.6;
+    uint64_t minAnchorGraphEdgeCoverage = 6;
 
     double aDrift = 300.;
     double bDrift = 0.01;
@@ -73,9 +71,11 @@ public:
     double detangleMaxLogP = 30.;
     double detangleMinLogPDelta = 10.;
 
+    // Options that control pruning.
     uint64_t pruneLength = 50000;
     uint64_t pruneIterationCount = 3;
 
+    // Local assembly options.
     class LocalAssemblyOptions {
     public:
 
