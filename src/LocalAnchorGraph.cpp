@@ -344,8 +344,6 @@ void LocalAnchorGraph::writeGraphviz(
 				color = "Orange";
 			} else if(edgeG.addedAtDeadEnd) {
 				color = "Magenta";
-			} else if(edgeG.inSmallComponent) {
-				color = "Pink";
 			} else if(not edgeG.useForAssembly) {
 				color = "GreenYellow";
 			}
@@ -1033,8 +1031,6 @@ void LocalAnchorGraph::writeEdges(
 				color = "Orange";
 			} else if(edgeG.addedAtDeadEnd) {
 				color = "Magenta";
-			} else if(edgeG.inSmallComponent) {
-				color = "Pink";
 			} else if(not edgeG.useForAssembly) {
 				color = "GreenYellow";
 			}

@@ -4,8 +4,6 @@
 // and each edge corresponds to an AnchorPair.
 // It uses boost::vecS as its second template argument,
 // and as a result its vertex descriptors are AnchorIds.
-// The AnchorGraph is not stored. It is used to create
-// the initial Assembly graph and then discarded.
 
 // Shasta.
 #include "Anchor.hpp"
@@ -48,10 +46,7 @@ public:
     uint64_t id = invalid<uint64_t>;
     bool isParallelEdge = false;
     bool useForAssembly = false;
-    bool inSmallComponent = false;
     bool addedAtDeadEnd = false;
-    bool lowCoverage1 = false;
-    bool lowCoverage2 = false;
 
     AnchorGraphEdge(const AnchorPair& anchorPair, uint64_t offset, uint64_t id) :
         anchorPair(anchorPair),
@@ -79,18 +74,6 @@ class shasta::AnchorGraph :
     public MappedMemoryOwner,
     public MultithreadedObject<AnchorGraph> {
 public:
-
-    // Old constructor to be removed.
-    AnchorGraph(
-        const Anchors&,
-        const Journeys&,
-        const ReadLengthDistribution&,
-        uint64_t minEdgeCoverageNear,
-        uint64_t minEdgeCoverageFar,
-        double coverageFractionThreshold,
-        double aDrift,
-        double bDrift,
-        uint64_t threadCount);
 
     // Constructor that generates the "simple anchor graph".
     // It creates edges between AnchorIds that are immediately adjacent in one or more Journeys,

@@ -182,18 +182,6 @@ AnchorId Assembler::readFollowing(
 void Assembler::createAnchorGraph(const Options& options)
 {
 
-
-#if 0
-    // Old constructor.
-    anchorGraphPointer = make_shared<AnchorGraph>(
-        anchors(), journeys(), readLengthDistribution(),
-        options.minAnchorGraphEdgeCoverageNear,
-        options.minAnchorGraphEdgeCoverageFar,
-        options.anchorGraphEdgeCoverageFractionThreshold,
-        options.aDrift,
-        options.bDrift,
-        threadCount);
-#endif
     anchorGraphPointer = make_shared<AnchorGraph>(
         anchors(), journeys(),
         options.minAnchorGraphEdgeCoverageNear,
