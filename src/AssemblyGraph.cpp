@@ -288,6 +288,7 @@ void AssemblyGraph::writeGfa(ostream& gfa) const
     vector<shasta::Base> sequence;
     BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
         const AssemblyGraphEdge& edge = assemblyGraph[e];
+        const double coverage = edge.averageCoverage();
 
         // Record type.
         gfa << "S\t";
@@ -299,12 +300,16 @@ void AssemblyGraph::writeGfa(ostream& gfa) const
         if(edge.wasAssembled) {
             edge.getSequence(sequence);
             copy(sequence.begin(), sequence.end(), ostream_iterator<shasta::Base>(gfa));
-            gfa << "\t";
-            gfa << "LN:i:" << sequence.size() << "\n";
+            const uint64_t length = sequence.size();
+            gfa << "\tLN:i:" << length;
+            gfa << "\tRC:i:" << uint64_t(std::round(coverage * double(length)));
+            gfa << "\n";
 
         } else {
-            gfa << "*\t";
-            gfa << "LN:i:" << edge.offset() << "\n";
+            const uint64_t offset = edge.offset();
+            gfa << "*\tLN:i:" << offset;
+            gfa << "\tRC:i:" << uint64_t(std::round(coverage * double(offset)));
+            gfa << "\n";
         }
     }
 
