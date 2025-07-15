@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 project(shasta2Executable)
 
 # C++ dialect.
-add_definitions(-std=c++20)
+add_definitions(-std=c++23)
 
 # Compilation warnings.
 add_definitions(-Wall -Wconversion -Wno-unused-result -Wno-trigraphs -Wno-psabi -Wunused-parameter -Wno-unused-function)
