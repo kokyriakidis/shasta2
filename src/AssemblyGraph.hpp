@@ -397,6 +397,8 @@ private:
     void writeGfa(ostream&) const;
     void writeGraphviz(const string& fileName) const;
     void writeGraphviz(ostream&) const;
+    void writeCsv(const string& fileName) const;
+    void writeCsv(ostream&) const;
 
 
 

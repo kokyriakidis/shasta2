@@ -245,6 +245,7 @@ void AssemblyGraph::write(const string& stage)
     save(stage);
     writeGfa("AssemblyGraph-" + stage + ".gfa");
     writeGraphviz("AssemblyGraph-" + stage + ".dot");
+    writeCsv("AssemblyGraph-" + stage + ".csv");
 }
 
 
@@ -1412,6 +1413,38 @@ void AssemblyGraph::writeGraphviz(ostream& s, const TangleTemplate& g)
     }
 
     s << "}\n";
+}
+
+
+
+// Write a csv file that can be loaded in Bandage.
+void AssemblyGraph::writeCsv(const string& fileName) const
+{
+    ofstream csv(fileName);
+    writeCsv(csv);
+}
+
+
+
+// Write a csv file that can be loaded in Bandage.
+void AssemblyGraph::writeCsv(ostream& csv) const
+{
+    const AssemblyGraph& assemblyGraph = *this;
+
+    csv << "Segment,Number of steps,Average coverage,Estimated length,Actual length\n";
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        const AssemblyGraphEdge& edge = assemblyGraph[e];
+        const uint64_t coverage = uint64_t(std::round(edge.averageCoverage()));
+        csv <<
+            edge.id << "," <<
+            edge.size() << "," <<
+            coverage << "," <<
+            edge.offset() << ",";
+        if(edge.wasAssembled) {
+            csv << edge.sequenceLength();
+        }
+        csv << ",\n";
+    }
 }
 
 
