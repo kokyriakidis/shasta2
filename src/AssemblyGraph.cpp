@@ -184,6 +184,12 @@ void AssemblyGraph::run()
     computeJourneys();
     write("E");
 
+    // After detangling we need another step of bubble cleanup because the detangling
+    // created bubbles that were previously hidden.
+    bubbleCleanup();
+    compress();
+    write("F");
+
     // Sequence assembly.
     assembleAll();
     write("Z");
