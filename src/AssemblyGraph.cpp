@@ -184,8 +184,8 @@ void AssemblyGraph::run()
     computeJourneys();
     write("E");
 
-    // After detangling we need another step of bubble cleanup because the detangling
-    // created bubbles that were previously hidden.
+    // After detangling we need another step of bubble/superbubble cleanup.
+    simplifySuperbubbles();
     bubbleCleanup();
     compress();
     write("F");
