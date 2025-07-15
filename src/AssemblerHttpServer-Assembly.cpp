@@ -405,6 +405,7 @@ void Assembler::exploreSegment(
     }
     const AssemblyGraph::edge_descriptor e = it->second;
     const AssemblyGraphEdge& edge = assemblyGraph[e];
+    const uint64_t coverage = uint64_t(std::round(edge.averageCoverage()));
 
 
 
@@ -416,6 +417,7 @@ void Assembler::exploreSegment(
         "<tr><th class=left>First anchor<td class = centered>" << anchorIdToString(edge.front().anchorPair.anchorIdA) <<
         "<tr><th class=left>Last anchor<td class = centered>" << anchorIdToString(edge.back().anchorPair.anchorIdB) <<
         "<tr><th class=left>Number of steps<td class = centered>" << edge.size() <<
+        "<tr><th class=left>Average coverage<td class = centered>" << coverage <<
         "<tr><th class=left>Estimated length<td class = centered>" << edge.offset() <<
         "<tr><th class=left>Assembled<td class = centered>" << (edge.wasAssembled ? "Yes" : "No");
     if(edge.wasAssembled) {
