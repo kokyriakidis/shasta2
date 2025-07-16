@@ -371,7 +371,7 @@ public:
     // Simplify Superbubbles by turning them into bubbles via clustering
     // of oriented read journeys.
     void simplifySuperbubbles();
-    void simplifySuperbubble(const Superbubble&, uint64_t minCoverage);
+    void simplifySuperbubble(const Superbubble&, uint64_t minCoverage, uint64_t maxOffset);
 
     // Phasing of SuperbubbleChains.
     void phaseSuperbubbleChains();

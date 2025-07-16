@@ -11,12 +11,13 @@ assembler.accessMarkers()
 assembler.accessAnchors()
 assembler.accessJourneys()
 
-"""
-assemblyGraph = assembler.getAssemblyGraph("C", options)
-assemblyGraph.phaseSuperbubbleChains()
-"""
+
+assemblyGraph = assembler.getAssemblyGraph("E", options)
+assemblyGraph.simplifySuperbubbles()
+assemblyGraph.write("EE")
 
 
+"""
 assemblyGraph = assembler.getAssemblyGraph("A", options)
 detangler = LikelihoodRatioDetangler(
     options.detangleMinCommonCoverage,
@@ -26,7 +27,7 @@ detangler = LikelihoodRatioDetangler(
     options.detangleHighCoverageThreshold)
 assemblyGraph.detangle(10, 1000000000, detangler);
 assemblyGraph.write("X")
-
+"""
 
 """
 assemblyGraph = assembler.getAssemblyGraph("E", options)

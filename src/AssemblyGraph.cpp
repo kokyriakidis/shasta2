@@ -1803,7 +1803,9 @@ void AssemblyGraph::simplifySuperbubbles()
 
     for(const Superbubble& superbubble: superbubbles) {
         if(not superbubble.isBubble()) {
-            simplifySuperbubble(superbubble, options.simplifySuperbubbleMinCoverage);
+            simplifySuperbubble(superbubble,
+                options.simplifySuperbubbleMinCoverage,
+                options.simplifySuperbubbleMaxOffset);
         }
     }
 
@@ -1813,14 +1815,15 @@ void AssemblyGraph::simplifySuperbubbles()
 
 void AssemblyGraph::simplifySuperbubble(
     const Superbubble& superbubble,
-    uint64_t minCoverage)
+    uint64_t minCoverage,
+    uint64_t maxOffset)
 {
     AssemblyGraph& assemblyGraph = *this;
 
     const AnchorId anchorIdA = assemblyGraph[superbubble.sourceVertex].anchorId;
     const AnchorId anchorIdB = assemblyGraph[superbubble.targetVertex].anchorId;
 
-    const bool debug = false;
+    const bool debug = true;
 
     if(debug) {
         cout << "Working on a superbubble consisting of the following " <<
@@ -1875,13 +1878,12 @@ void AssemblyGraph::simplifySuperbubble(
     anchorPair.splitByClustering(anchors, journeys, options.clusteringMinJaccard, newAnchorPairs);
 
 
-
     if(debug) {
-        cout << "Found " << newAnchorPairs.size() << " split AnchorPairs with sizes:";
+        cout << "Found " << newAnchorPairs.size() << " split AnchorPairs:" << endl;
         for(const AnchorPair& newAnchorPair: newAnchorPairs) {
-            cout << " " << newAnchorPair.orientedReadIds.size();
+            cout << "AnchorPair with coverage " << newAnchorPair.orientedReadIds.size() <<
+                ", offset " << newAnchorPair.getAverageOffset(anchors) << endl;
         }
-        cout << endl;
 
 #if 0
         // Also write out assembled sequences.
@@ -1925,6 +1927,18 @@ void AssemblyGraph::simplifySuperbubble(
             cout << "This superbubble cannot be simplified because there are no usable anchor pairs." << endl;
         }
         return;
+    }
+
+    // If any of these AnchorPairs have a long offset, don't do it.
+    // This only works well for small superbubbles, and for long superbubbles
+    // it can destroy correct sequence.
+    for(const AnchorPair& newAnchorPair: newAnchorPairs) {
+        if(newAnchorPair.getAverageOffset(anchors) > maxOffset) {
+            if(debug) {
+                cout << "Skipping this superbubble due to large offset." << endl;
+            }
+            return;
+        }
     }
 
     // We replace the Superbubble with a bubble created using these new AnchorPairs.

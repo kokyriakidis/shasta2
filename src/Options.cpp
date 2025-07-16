@@ -129,6 +129,11 @@ void Options::addOptions()
        "Minimum coverage when simplifying superbubbles."
        )->capture_default_str();
 
+    add_option("--simplify-superbubble-max-offset",
+        simplifySuperbubbleMaxOffset,
+       "Maximum offset when simplifying superbubbles."
+       )->capture_default_str();
+
     add_option("--phasing-distance",
         phasingDistance,
        "Maximum bubble-bubble distance (number of edges) for phasing."
