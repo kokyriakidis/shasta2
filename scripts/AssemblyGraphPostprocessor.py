@@ -12,9 +12,9 @@ assembler.accessAnchors()
 assembler.accessJourneys()
 
 
-assemblyGraph = assembler.getAssemblyGraph("E", options)
-assemblyGraph.simplifySuperbubbles()
-assemblyGraph.write("EE")
+assemblyGraph = assembler.getAssemblyGraph("Z", options)
+assemblyGraph.countOrientedReadStepsBySegment()
+assemblyGraph.writeOrientedReadStepCountsBySegment()
 
 
 """

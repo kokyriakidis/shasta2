@@ -100,11 +100,12 @@ public:
     uint64_t id = invalid<uint64_t>;
     bool wasAssembled = false;
 
-    // A call to computeJourneys will store here the distinct OrientedReadIds
+    // A call to countOrientedReadStepsBySegment will store here the distinct OrientedReadIds
     // that visit this edge and that also visit at least one other edge.
-    // They are stored sorted.
-    // This is useful for detangling.
-    vector<OrientedReadId> transitioningOrientedReadIds;
+    // They are stored sorted, each with the number of steps in this edge
+    // in which the OrientedReadId appears.
+    // This is used to compute extended tangle matrices.
+    vector< pair<OrientedReadId, uint64_t> > transitioningOrientedReadIds;
 
     AssemblyGraphEdge(uint64_t id = invalid<uint64_t>) : id(id) {}
 
@@ -276,13 +277,39 @@ public:
     void computeJourneys();
     vector< vector<edge_descriptor> > compressedJourneys;
 
-    // Use the compressedJourneys and the transitioningOrientedReadIds
+
+
+    // Count how many times each OrientedReadId appears in each segment.
+    void countOrientedReadStepsBySegment();
+    void writeOrientedReadStepCountsBySegment();
+    class OrientedReadSegments {
+    public:
+        edge_descriptor e;
+        uint64_t stepCount;
+        OrientedReadSegments(edge_descriptor e, uint64_t stepCount) :
+            e(e), stepCount(stepCount) {}
+    };
+    class OrientedReadSegmentsOrderById {
+    public:
+        OrientedReadSegmentsOrderById(const AssemblyGraph& assemblyGraph): assemblyGraph(assemblyGraph) {}
+        const AssemblyGraph& assemblyGraph;
+        bool operator()(const OrientedReadSegments& x, const OrientedReadSegments& y) const
+        {
+            return assemblyGraph[x.e].id < assemblyGraph[y.e].id;
+        }
+    };
+    // Indexed by OrientedReadId::getValue()
+    // For each OrientedReadId, the segments are ordered by segment id.
+    vector< vector<OrientedReadSegments> > orientedReadSegments;
+
+    // Use the orientedReadSegments and the transitioningOrientedReadIds
     // stored in the AssemblyGraphEdges to compute an extended tangle matrix.
     void computeExtendedTangleMatrix(
         vector<edge_descriptor>& entrances,
         vector<edge_descriptor>& exits,
-        vector< vector<uint64_t> > & tangleMatrix
+        vector< vector<double> > & tangleMatrix
         ) const;
+
 
 
 
