@@ -2394,7 +2394,7 @@ void AssemblyGraph::computeExtendedTangleMatrix(
 {
     const AssemblyGraph& assemblyGraph = *this;
     SHASTA_ASSERT(not orientedReadSegments.empty());
-    const bool debug = true;
+    const bool debug = false;
 
 
 
