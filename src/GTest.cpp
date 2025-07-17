@@ -12,10 +12,35 @@ using namespace shasta;
 
 
 
-shasta::GTest::GTest(
-    const vector< vector<uint64_t> >& tangleMatrix,
+GTest::GTest(const vector< vector<double> >& tangleMatrix, double epsilon)
+{
+    run(tangleMatrix, epsilon);
+}
+
+
+
+GTest::GTest(
+    const vector< vector<uint64_t> >& tangleMatrixInteger,
     double epsilon)
 {
+    // Make a copy of the tangle matrix that stores double instead of uint64_t.
+    vector< vector<double> > tangleMatrixDouble;
+    for(const vector<uint64_t>& rowInteger: tangleMatrixInteger) {
+        vector<double> rowDouble;
+        for(const uint64_t valueInteger: rowInteger) {
+            rowDouble.push_back(double(valueInteger));
+        }
+        tangleMatrixDouble.push_back(rowDouble);
+    }
+
+    run(tangleMatrixDouble, epsilon);
+}
+
+
+
+void GTest::run(const vector< vector<double> >& tangleMatrix, double epsilon)
+{
+
     const bool debug = false;
 
     // Get the number of entrances.
@@ -41,20 +66,20 @@ shasta::GTest::GTest(
     // Compute common coverage for each entrance and for each exit.
     // Common coverage for an entrance is the sum the tangle matrix row for that entrance.
     // Common coverage for an exit is the sum the tangle matrix column for that exit.
-    uint64_t totalCommonCoverage = 0;
-    vector<uint64_t> entranceCommonCoverage(entranceCount, 0UL);
-    vector<uint64_t> exitCommonCoverage(exitCount, 0UL);
+    double totalCommonCoverage = 0;
+    vector<double> entranceCommonCoverage(entranceCount, 0UL);
+    vector<double> exitCommonCoverage(exitCount, 0UL);
     for(uint64_t i=0; i<entranceCount; i++) {
         for(uint64_t j=0; j<exitCount; j++) {
-            const uint64_t coverage = tangleMatrix[i][j];
+            const double coverage = tangleMatrix[i][j];
             totalCommonCoverage += coverage;
             entranceCommonCoverage[i] += coverage;
             exitCommonCoverage[j] += coverage;
         }
     }
-    SHASTA_ASSERT(std::accumulate(entranceCommonCoverage.begin(), entranceCommonCoverage.end(), 0UL) ==
+    SHASTA_ASSERT(std::accumulate(entranceCommonCoverage.begin(), entranceCommonCoverage.end(), 0.) ==
         totalCommonCoverage);
-    SHASTA_ASSERT(std::accumulate(exitCommonCoverage.begin(), exitCommonCoverage.end(), 0UL) ==
+    SHASTA_ASSERT(std::accumulate(exitCommonCoverage.begin(), exitCommonCoverage.end(), 0.) ==
         totalCommonCoverage);
 
     // Compute what the tangle matrix would be under entirely random assumptions.
@@ -62,9 +87,9 @@ shasta::GTest::GTest(
     for(uint64_t i=0; i<entranceCount; i++) {
         for(uint64_t j=0; j<exitCount; j++) {
             randomTangleMatrix[i][j] =
-                double(entranceCommonCoverage[i]) *
-                double(exitCommonCoverage[j]) /
-                double(totalCommonCoverage);
+                entranceCommonCoverage[i] *
+                exitCommonCoverage[j] /
+                totalCommonCoverage;
         }
     }
 
@@ -123,7 +148,7 @@ shasta::GTest::GTest(
                     idealTangleMatrixA[i][j] = 0.;
                 }
             } else {
-                const double value = double(entranceCommonCoverage[i]) / double(nonZeroCount);
+                const double value = entranceCommonCoverage[i] / double(nonZeroCount);
                 for(uint64_t j=0; j<exitCount; j++) {
                     if(connectivityMatrix[i][j]) {
                         idealTangleMatrixA[i][j] = value;
@@ -147,7 +172,7 @@ shasta::GTest::GTest(
                     idealTangleMatrixB[i][j] = 0.;
                 }
             } else {
-                const double value = double(exitCommonCoverage[j]) / double(nonZeroCount);
+                const double value = exitCommonCoverage[j] / double(nonZeroCount);
                 for(uint64_t i=0; i<entranceCount; i++) {
                     if(connectivityMatrix[i][j]) {
                         idealTangleMatrixB[i][j] = value;
@@ -190,7 +215,7 @@ shasta::GTest::GTest(
         double G = 0.;
         for(uint64_t i=0; i<entranceCount; i++) {
             for(uint64_t j=0; j<exitCount; j++) {
-                const double actualCoverage = double(tangleMatrix[i][j]);
+                const double actualCoverage = tangleMatrix[i][j];
                 if(actualCoverage > 0.) {
                     const double expectedCoverage = expectedTangleMatrix[i][j];
                     G += actualCoverage * log10(actualCoverage / expectedCoverage);

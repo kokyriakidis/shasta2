@@ -1073,7 +1073,7 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
 
 
 
-    // Also use the compressedJourneys to compute an extended tangle matrix.
+    // Also compute an extended tangle matrix.
     if(assemblyGraph.orientedReadSegments.empty()) {
         assemblyGraph.countOrientedReadStepsBySegment();
     }
@@ -1085,17 +1085,15 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
     for(uint64_t iEntrance=0; iEntrance<entrances.size(); iEntrance++) {
         html << "<tr>";
         for(uint64_t iExit=0; iExit<exits.size(); iExit++) {
-            html << "<td class=centered>" << std::fixed << std::setprecision(2) << extendedTangleMatrix[iEntrance][iExit];
+            html << "<td class=centered>" << std::fixed << std::setprecision(1) << extendedTangleMatrix[iEntrance][iExit];
         }
     }
     html << "</table>";
 
-#if 0
     {
         GTest gTest(extendedTangleMatrix, epsilon);
         gTest.writeHtml(html);
     }
-#endif
 }
 
 
