@@ -24,7 +24,8 @@ detangler = LikelihoodRatioDetangler(
     options.detangleEpsilon,
     options.detangleMaxLogP,
     options.detangleMinLogPDelta,
-    options.detangleHighCoverageThreshold)
+    options.detangleHighCoverageThreshold,
+    False)
 assemblyGraph.detangle(10, 1000000000, detangler);
 assemblyGraph.write("X")
 """
@@ -78,7 +79,8 @@ detangler = LikelihoodRatioDetangler(
     options.detangleMinCommonCoverage,
     options.detangleEpsilon,
     options.detangleMaxLogP,
-    options.detangleMinLogPDelta)
+    options.detangleMinLogPDelta,
+    False)
 detangler.debug = True
 detangledEdgeCount = assemblyGraph.detangleEdgesIteration(1000000000, detangler);
 """

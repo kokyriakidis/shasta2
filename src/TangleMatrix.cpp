@@ -154,7 +154,7 @@ void TangleMatrix::writeHtml(
 // Read following on the entrances/exits.
 void TangleMatrix::readFollowing(const AssemblyGraph& assemblyGraph)
 {
-    const bool debug = true;
+    const bool debug = false;
     readFollowingMap.clear();
 
     for(uint64_t iEntrance=0; iEntrance<entrances.size(); iEntrance++) {

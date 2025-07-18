@@ -68,4 +68,6 @@ public:
         return std::binary_search(tangleVertices.begin(), tangleVertices.end(), v, AssemblyGraph::OrderById(assemblyGraph));
     }
 
+    void computeExtendedTangleMatrix(vector< vector<double> >&) const;
+
 };

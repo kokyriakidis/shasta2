@@ -12,12 +12,14 @@ LikelihoodRatioDetangler::LikelihoodRatioDetangler(
     const double epsilon,
     const double maxLogP,
     const double minLogPDelta,
-    uint64_t detangleHighCoverageThreshold):
+    uint64_t detangleHighCoverageThreshold,
+    bool useExtendedTangleMatrix):
     minCommonCoverage(minCommonCoverage),
     epsilon(epsilon),
     maxLogP(maxLogP),
     minLogPDelta(minLogPDelta),
-    detangleHighCoverageThreshold(detangleHighCoverageThreshold)
+    detangleHighCoverageThreshold(detangleHighCoverageThreshold),
+    useExtendedTangleMatrix(useExtendedTangleMatrix)
 {}
 
 
@@ -75,17 +77,27 @@ bool LikelihoodRatioDetangler::operator()(Tangle& tangle)
         }
     }
 
-    // Run the likelihood ratio test.
     vector< vector<uint64_t> > tangleMatrixCoverage;
     tangleMatrix.getTangleMatrixCoverage(tangleMatrixCoverage);
-    GTest gTest(tangleMatrixCoverage, epsilon);
+
+
+
+    // Run the likelihood ratio test.
+    shared_ptr<GTest> gTestPointer;
+    if(useExtendedTangleMatrix) {
+        vector< vector<double> > extendedTangleMatrix;
+        tangle.computeExtendedTangleMatrix(extendedTangleMatrix);
+        gTestPointer = make_shared<GTest>(extendedTangleMatrix, epsilon);
+    } else {
+        gTestPointer = make_shared<GTest>(tangleMatrixCoverage, epsilon);
+    }
+    const GTest& gTest = *gTestPointer;
     if(not gTest.success) {
         if(debug) {
             cout << "Not detangling because the G-test failed." << endl;
         }
         return false;
     }
-
 
 
 

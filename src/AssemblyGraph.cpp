@@ -174,12 +174,14 @@ void AssemblyGraph::run()
 
     // Detangling.
     // createTangleTemplates();
+    const bool useExtendedTangleMatrix = true;
     LikelihoodRatioDetangler detangler(
         options.detangleMinCommonCoverage,
         options.detangleEpsilon,
         options.detangleMaxLogP,
         options.detangleMinLogPDelta,
-        options.detangleHighCoverageThreshold);
+        options.detangleHighCoverageThreshold,
+        useExtendedTangleMatrix);
     detangle(detangleMaxIterationCount, std::numeric_limits<uint64_t>::max(), detangler);
     write("E");
 
@@ -1030,6 +1032,7 @@ uint64_t AssemblyGraph::detangle(
     const bool debug = false;
 
     AssemblyGraph& assemblyGraph = *this;
+    countOrientedReadStepsBySegment();
 
     std::set<vertex_descriptor> removedVertices;
     uint64_t attemptCount = 0;
@@ -1102,6 +1105,7 @@ uint64_t AssemblyGraph::detangle(
     // cout << "Attempted detangling for " << attemptCount << " tangles." << endl;
     // cout << "Detangling was successful for " << successCount << " tangles." << endl;
 
+    clearOrientedReadStepsBySegment();
 
 
     return successCount;
@@ -2350,6 +2354,21 @@ void AssemblyGraph::countOrientedReadStepsBySegment()
 }
 
 
+
+void AssemblyGraph::clearOrientedReadStepsBySegment()
+{
+    AssemblyGraph& assemblyGraph = *this;
+
+    orientedReadSegments.clear();
+
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        AssemblyGraphEdge& edge = assemblyGraph[e];
+        edge.transitioningOrientedReadIds.clear();
+    }
+}
+
+
+
 void AssemblyGraph::writeOrientedReadStepCountsBySegment()
 {
     const AssemblyGraph& assemblyGraph = *this;
@@ -2546,12 +2565,12 @@ void AssemblyGraph::computeExtendedTangleMatrix(
 
     if(debug) {
         cout << "Extended tangle matrix:" << endl;
-    }
-    for(uint64_t i=0; i<entrances.size(); i++) {
-        for(uint64_t j=0; j<exits.size(); j++) {
-            cout << tangleMatrix[i][j] << " ";
+        for(uint64_t i=0; i<entrances.size(); i++) {
+            for(uint64_t j=0; j<exits.size(); j++) {
+                cout << tangleMatrix[i][j] << " ";
+            }
+            cout << endl;
         }
-        cout << endl;
     }
 }
 
@@ -2786,7 +2805,7 @@ void AssemblyGraph::search(
 {
     const AssemblyGraph& assemblyGraph = *this;
 
-    const bool debug = true;
+    const bool debug = false;
 
     // Create the SearchGraph
     SearchGraph searchGraph;

@@ -281,6 +281,7 @@ public:
 
     // Count how many times each OrientedReadId appears in each segment.
     void countOrientedReadStepsBySegment();
+    void clearOrientedReadStepsBySegment();
     void writeOrientedReadStepCountsBySegment();
     class OrientedReadSegments {
     public:

@@ -77,10 +77,6 @@ void GTest::run(const vector< vector<double> >& tangleMatrix, double epsilon)
             exitCommonCoverage[j] += coverage;
         }
     }
-    SHASTA_ASSERT(std::accumulate(entranceCommonCoverage.begin(), entranceCommonCoverage.end(), 0.) ==
-        totalCommonCoverage);
-    SHASTA_ASSERT(std::accumulate(exitCommonCoverage.begin(), exitCommonCoverage.end(), 0.) ==
-        totalCommonCoverage);
 
     // Compute what the tangle matrix would be under entirely random assumptions.
     vector< vector<double> > randomTangleMatrix(entranceCount, vector<double>(exitCount, 0.));

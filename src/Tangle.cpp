@@ -190,3 +190,20 @@ void Tangle::detangle()
         remove_vertex(v, assemblyGraph);
     }
 }
+
+
+
+void Tangle::computeExtendedTangleMatrix(
+    vector< vector<double> >& extendedTangleMatrix) const
+{
+    vector<edge_descriptor> entranceEdges;
+    for(const auto& entrance: tangleMatrix->entrances) {
+        entranceEdges.push_back(entrance.e);
+    }
+    vector<edge_descriptor> exitEdges;
+    for(const auto& exit: tangleMatrix->exits) {
+        exitEdges.push_back(exit.e);
+    }
+
+    assemblyGraph.computeExtendedTangleMatrix(entranceEdges, exitEdges, extendedTangleMatrix);
+}
