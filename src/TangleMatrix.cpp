@@ -15,7 +15,7 @@ TangleMatrix::TangleMatrix(
 {
     const bool debug = false;
 
-    sort(entranceEdges.begin(), entranceEdges.end(), AssemblyGraph::OrderById(assemblyGraph));
+    SHASTA_ASSERT(std::ranges::is_sorted(entranceEdges, AssemblyGraph::OrderById(assemblyGraph)));
     for(const edge_descriptor e: entranceEdges) {
         const AssemblyGraphEdge& edge = assemblyGraph[e];
 
@@ -41,7 +41,7 @@ TangleMatrix::TangleMatrix(
 
 
 
-    sort(exitEdges.begin(), exitEdges.end(), AssemblyGraph::OrderById(assemblyGraph));
+    SHASTA_ASSERT(std::ranges::is_sorted(exitEdges, AssemblyGraph::OrderById(assemblyGraph)));
     for(const edge_descriptor e: exitEdges) {
         const AssemblyGraphEdge& edge = assemblyGraph[e];
 

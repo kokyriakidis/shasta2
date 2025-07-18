@@ -65,7 +65,7 @@ public:
     vector<vertex_descriptor> tangleVertices;
     bool isTangleVertex(vertex_descriptor v) const
     {
-        return std::binary_search(tangleVertices.begin(), tangleVertices.end(), v);
+        return std::binary_search(tangleVertices.begin(), tangleVertices.end(), v, AssemblyGraph::OrderById(assemblyGraph));
     }
 
 };

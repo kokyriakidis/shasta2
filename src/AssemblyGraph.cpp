@@ -2386,6 +2386,8 @@ void AssemblyGraph::writeOrientedReadStepCountsBySegment()
     }
 }
 
+
+
 void AssemblyGraph::computeExtendedTangleMatrix(
     vector<edge_descriptor>& entrances,
     vector<edge_descriptor>& exits,
@@ -2395,6 +2397,9 @@ void AssemblyGraph::computeExtendedTangleMatrix(
     const AssemblyGraph& assemblyGraph = *this;
     SHASTA_ASSERT(not orientedReadSegments.empty());
     const bool debug = false;
+
+    SHASTA_ASSERT(std::ranges::is_sorted(entrances, OrderById(assemblyGraph)));
+    SHASTA_ASSERT(std::ranges::is_sorted(exits, OrderById(assemblyGraph)));
 
 
 

@@ -53,7 +53,7 @@ Tangle::Tangle(
     tangleVertices(tangleVerticesArgument)
 {
     // Sort the tangleVertices so we can do binary searches in it using isTangleVertex.
-    sort(tangleVertices.begin(), tangleVertices.end());
+    sort(tangleVertices.begin(), tangleVertices.end(), AssemblyGraph::OrderById(assemblyGraph));
 
     // Find the entrance edges.
     vector<edge_descriptor> entranceEdges;
