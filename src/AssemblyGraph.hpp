@@ -186,9 +186,9 @@ private:
     void bubbleCleanup();
     uint64_t bubbleCleanupIteration();
 
+public:
     void prune();
 
-public:
     // Compress linear chains of edges into a single edge.
     void compress();
 

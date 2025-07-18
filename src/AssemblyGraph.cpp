@@ -185,11 +185,15 @@ void AssemblyGraph::run()
     detangle(detangleMaxIterationCount, std::numeric_limits<uint64_t>::max(), detangler);
     write("E");
 
-    // After detangling we need another step of bubble/superbubble cleanup.
+    // After detangling we need another step of pruning and bubble/superbubble cleanup.
+    prune();
+    compress();
     simplifySuperbubbles();
     bubbleCleanup();
+    phaseSuperbubbleChains();
     compress();
     write("F");
+
 
     // Sequence assembly.
     assembleAll();
@@ -1775,6 +1779,7 @@ void AssemblyGraph::phaseSuperbubbleChains()
     // Phase them.
     countOrientedReadStepsBySegment();
     for(uint64_t superbubbleChainId=0; superbubbleChainId<superbubbleChains.size(); superbubbleChainId++) {
+        cout << "Phasing superbubble chain " << superbubbleChainId << endl;
         SuperbubbleChain& superbubbleChain = superbubbleChains[superbubbleChainId];
         superbubbleChain.phase(*this, superbubbleChainId);
     }
