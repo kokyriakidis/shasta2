@@ -18,6 +18,7 @@ void SuperbubbleChain::phase(
 {
     SuperbubbleChain& superbubbleChain = *this;
     const bool debug = false;
+    const bool useExtendedTangleMatrix = true;
 
     const uint64_t phasingDistance = assemblyGraph.options.phasingDistance;
     const uint64_t phasingMinDegree = assemblyGraph.options.phasingMinDegree;
@@ -80,9 +81,25 @@ void SuperbubbleChain::phase(
             }
 
             // Do the likelihood ratio test (G test).
-            vector< vector<uint64_t> > tangleMatrixCoverage;
-            tangleMatrix.getTangleMatrixCoverage(tangleMatrixCoverage);
-            GTest gTest(tangleMatrixCoverage, assemblyGraph.options.detangleEpsilon);
+            shared_ptr<GTest> gTestPointer;
+            if(useExtendedTangleMatrix) {
+                vector<edge_descriptor> entranceEdges;
+                for(const auto& entrance: tangleMatrix.entrances) {
+                    entranceEdges.push_back(entrance.e);
+                }
+                vector<edge_descriptor> exitEdges;
+                for(const auto& exit: tangleMatrix.exits) {
+                    exitEdges.push_back(exit.e);
+                }
+                vector< vector<double> > extendedTangleMatrix;
+                assemblyGraph.computeExtendedTangleMatrix(entranceEdges, exitEdges, extendedTangleMatrix);
+                gTestPointer = make_shared<GTest>(extendedTangleMatrix, assemblyGraph.options.detangleEpsilon);
+            } else {
+                vector< vector<uint64_t> > tangleMatrixCoverage;
+                tangleMatrix.getTangleMatrixCoverage(tangleMatrixCoverage);
+                gTestPointer = make_shared<GTest>(tangleMatrixCoverage, assemblyGraph.options.detangleEpsilon);
+            }
+            const GTest& gTest = *gTestPointer;
             if(not gTest.success) {
                 if(debug) {
                     cout << "Likelihood ratio test was not successful." << endl;

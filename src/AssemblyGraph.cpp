@@ -1773,10 +1773,12 @@ void AssemblyGraph::phaseSuperbubbleChains()
     writeSuperbubbleChainsForBandage(superbubbleChains, "SuperbubbleChains-Bandage.csv");
 
     // Phase them.
+    countOrientedReadStepsBySegment();
     for(uint64_t superbubbleChainId=0; superbubbleChainId<superbubbleChains.size(); superbubbleChainId++) {
         SuperbubbleChain& superbubbleChain = superbubbleChains[superbubbleChainId];
         superbubbleChain.phase(*this, superbubbleChainId);
     }
+    clearOrientedReadStepsBySegment();
 
     compress();
 
