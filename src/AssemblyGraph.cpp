@@ -1,15 +1,17 @@
 // Shasta.
 #include "AssemblyGraph.hpp"
+#include "abpoaWrapper.hpp"
 #include "Anchor.hpp"
 #include "AnchorGraph.hpp"
+#include "color.hpp"
 #include "copyNumber.hpp"
 #include "deduplicate.hpp"
 #include "Detangler.hpp"
 #include "ExactDetangler.hpp"
 #include "findLinearChains.hpp"
 #include "findConvergingVertex.hpp"
-#include "color.hpp"
 #include "inducedSubgraphIsomorphisms.hpp"
+#include "isPeriodic.hpp"
 #include "Journeys.hpp"
 #include "LikelihoodRatioDetangler.hpp"
 #include "LocalAssembly2.hpp"
@@ -575,6 +577,7 @@ void AssemblyGraph::findBubbles(vector<Bubble>& bubbles) const
                 bubble.v0 = v0;
                 bubble.v1 = v1;
                 bubble.edges = edges;
+                std::ranges::sort(bubble.edges, OrderById(assemblyGraph));
                 bubbles.push_back(bubble);
             }
         }
@@ -663,8 +666,11 @@ uint64_t AssemblyGraph::bubbleCleanupIteration()
     // Now that we have sequence for the candidate bubbles, we can decide
     // which ones should be removed.
     uint64_t removedCount = 0;
+    // const vector<uint64_t> minRepeatCount = {0, 4, 4, 4, 4, 4, 4};
+    // vector< pair<uint64_t, uint64_t> > similarPairs;
     for(const auto& p: candidateBubbles) {
         const Bubble& bubble = p.first;
+        // analyzeBubble(bubble, minRepeatCount, similarPairs);
 
         // Gather the sequences of all the sides of this bubble
         vector< vector<shasta::Base> > sequences;
@@ -744,6 +750,265 @@ uint64_t AssemblyGraph::bubbleCleanupIteration()
         removedCount << " were actually removed." << endl;
 
     return removedCount;
+}
+
+
+
+// Analyze a Bubble.
+// This assumes that the edges of the Bubble are assembled.
+// for each pair of bubble edges, it computes an alignment of
+// the corresponding sequences. If the sequences of the two edges are
+// "similar", the indexes of those Bubble edges are stored in the similarPairs vector.
+// Two sequences are defined to be "similar" if they are likely to be
+// identical except for sequencing errors using the criteria detailed below.
+// Two sequences of two edges are considered similar
+// if they differ only by copy numbers in repeats of short period.
+// The minRepeatCount defines the criteria for that:
+// - minRepeatCount[0] is ignored.
+// - minRepeatCount[1] is the minimum homopolymer length for differences
+//   in the length of a homopolymer run. If the difference occurs
+//   in a homopolymer run of at least this length, the two sequences are "similar".
+// - Similarly, minRepeatCount[p] defines the minimum length
+//   (number of repear units of period p) for a repeat with
+//   with period p. If the difference occurs in a repeat with p or
+//   more units, the two sequences are "similar".
+//   For example, if minRepeatCount[2] is 3, differences in lengths
+//   of repeats with period 2 a longer than 3 units (6 bases)
+//   are considered "similar".
+// Note that if any mismatches are present, the two sequences are never considered to be similar.
+bool AssemblyGraph::analyzeBubble(
+    const Bubble& bubble,
+    const vector<uint64_t> minRepeatCount,
+    vector< pair<uint64_t, uint64_t> >& similarPairs
+    ) const
+{
+    const AssemblyGraph& assemblyGraph = *this;
+    using shasta::Base;
+
+    const bool debug = false; // (assemblyGraph[bubble.edges.front()].id == 88479);
+    if(debug) {
+        cout << "Analyzing bubble";
+        for (const edge_descriptor e: bubble.edges) {
+            cout << " " << assemblyGraph[e].id;
+        }
+        cout << endl;
+    }
+
+    SHASTA_ASSERT(bubble.edges.size() > 1);
+
+    // Gather the sequences of all the sides of this bubble
+    vector< vector<Base> > sequences;
+    for(const edge_descriptor e: bubble.edges) {
+        sequences.emplace_back();
+        SHASTA_ASSERT(assemblyGraph[e].wasAssembled);
+        assemblyGraph[e].getSequence(sequences.back());
+    }
+
+    if(debug) {
+        cout << "Bubble sequences:" << endl;
+        for(uint64_t i=0; i<bubble.edges.size(); i++) {
+            const edge_descriptor e = bubble.edges[i];
+            const AssemblyGraphEdge& edge = assemblyGraph[e];
+            cout << ">" << edge.id <<  " " << sequences[i].size() << endl;
+            copy(sequences[i], ostream_iterator<Base>(cout));
+            cout << endl;
+        }
+    }
+
+
+    // Vectors used in the loop below.
+    vector< vector<Base> > sequencesToBeAligned(2);
+    vector< pair<Base, uint64_t> > consensus;
+    vector< vector<AlignedBase> > alignment;
+    vector<AlignedBase> alignedConsensus;
+
+
+    // Loop over pairs of bubble edges.
+    similarPairs.clear();
+    for(uint64_t i0=0; i0<bubble.edges.size()-1; i0++) {
+        const vector<Base>& sequence0 = sequences[i0];
+        sequencesToBeAligned[0] = sequence0;
+        for(uint64_t i1=i0+1; i1<bubble.edges.size(); i1++) {
+            const vector<Base>& sequence1 = sequences[i1];
+            sequencesToBeAligned[1] = sequence1;
+            if(debug) {
+                cout << "Checking " << assemblyGraph[bubble.edges[i0]].id <<
+                    " against " << assemblyGraph[bubble.edges[i1]].id << endl;
+            }
+
+            // Align their sequences using abpoa.
+            abpoa(sequencesToBeAligned, consensus, alignment, alignedConsensus, true);
+            SHASTA_ASSERT(alignment.size() == 2);
+            const uint64_t alignmentLength = alignment[0].size();
+            SHASTA_ASSERT(alignment[1].size() == alignmentLength);
+
+            if(debug) {
+                cout << "Alignment:" << endl;
+                for(uint64_t i=0; i<2; i++) {
+                    std::ranges::copy(alignment[i], ostream_iterator<AlignedBase>(cout));
+                    cout << endl;
+                }
+                for(uint64_t j=0; j<alignmentLength; j++) {
+                    const char c = (alignment[0][j] == alignment[1][j]) ? ' ' : '*';
+                    cout << c;
+                }
+                cout << endl;
+            }
+
+            // If there are any mismatches, the two sequences are not "similar".
+            bool mismatchesArePresent = false;
+            for(uint64_t j=0; j<alignmentLength; j++) {
+                const AlignedBase b0 = alignment[0][j];
+                const AlignedBase b1 = alignment[1][j];
+                if((not b0.isGap()) and (not b1.isGap()) and (b0 != b1)) {
+                    mismatchesArePresent = true;
+                    break;
+                }
+            }
+            if(mismatchesArePresent) {
+                if(debug) {
+                    cout << "Mismatches are present." << endl;
+                }
+                continue;
+            }
+
+            if(debug) {
+                cout << "Mismatches are not present, checking indels." << endl;
+            }
+
+            bool isSimilarPair = true;
+            for(uint64_t j=0; j<2; j++) {
+                if(debug) {
+                    cout << "Checking deletions in " <<
+                        (j==0 ? assemblyGraph[bubble.edges[i0]].id : assemblyGraph[bubble.edges[i1]].id) << endl;
+                }
+                const vector<AlignedBase>& alignmentRowA = alignment[j];
+                const vector<AlignedBase>& alignmentRowB = alignment[1 - j];
+
+                // Loop over streaks of gaps in alignmentRowA.
+                for(uint64_t streakBegin=0; streakBegin<alignmentLength;) {
+                    if(not alignmentRowA[streakBegin].isGap()) {
+                        ++streakBegin;
+                        continue;
+                    }
+                    uint64_t streakEnd = streakBegin + 1;
+                    for(; streakEnd<alignmentLength; ++streakEnd) {
+                        if(not alignmentRowA[streakEnd].isGap()) {
+                            break;
+                        }
+                    }
+                    const uint64_t streakLength = streakEnd - streakBegin;
+                    if(debug) {
+                        cout << "Found a streak of deletions at positions " << streakBegin << " " << streakEnd << endl;
+                        cout << "The deleted sequence is ";
+                        for(uint64_t position=streakBegin; position!=streakEnd; position++) {
+                            cout << alignmentRowB[position];
+                        }
+                        cout << endl;
+                    }
+
+                    // Check all allowed periods.
+                    for(uint64_t period=1; period<minRepeatCount.size(); period++) {
+                        if(period > streakLength) {
+                            break;
+                        }
+                        if(debug) {
+                            cout << "Checking period " << period << endl;
+                        }
+                        if(not isPeriodic(alignmentRowB.begin()+streakBegin, alignmentRowB.begin()+streakEnd, period)) {
+                            if(debug) {
+                                cout << "The deleted sequence does not have period " << period << endl;
+                            }
+                            continue;   // Continue the loop over periods.
+                        }
+
+                        // The deleted sequence has this period. Get the first copy of it.
+                        const uint64_t periodicSequenceBegin = streakBegin;
+
+                        // See how many times this repeats on the right.
+                        uint64_t copyNumberOnRight = 1;
+                        for(; ; ++copyNumberOnRight) {
+                            bool copyIsIntact = true;
+                            for(uint64_t i=0; i<period; i++) {
+                                const uint64_t shiftedPosition = periodicSequenceBegin + i + period * copyNumberOnRight;
+                                if(shiftedPosition >= alignmentLength) {
+                                    copyIsIntact = false;
+                                    break;
+                                }
+                                if(alignmentRowB[shiftedPosition] != alignmentRowB[periodicSequenceBegin + i]) {
+                                    copyIsIntact = false;
+                                    break;
+                                }
+                            }
+                            if(not copyIsIntact) {
+                                break;
+                            }
+                        }
+                        --copyNumberOnRight;
+                        if(debug) {
+                            cout << "Found " << copyNumberOnRight << " copies on the right of the deletion." << endl;
+                        }
+
+                        // See how many times this repeats on the left.
+                        uint64_t copyNumberOnLeft = 1;
+                        for(; ; ++copyNumberOnLeft) {
+                            bool copyIsIntact = true;
+                            if(period > periodicSequenceBegin) {
+                                copyIsIntact = false;
+                            } else {
+                                for(uint64_t i=0; i<period; i++) {
+                                    const uint64_t shiftedPosition = periodicSequenceBegin + i - period * copyNumberOnLeft;
+                                    if(alignmentRowB[shiftedPosition] != alignmentRowB[periodicSequenceBegin + i]) {
+                                        copyIsIntact = false;
+                                        break;
+                                    }
+                                }
+                            }
+                            if(not copyIsIntact) {
+                                break;
+                            }
+                        }
+                        --copyNumberOnLeft;
+                        if(debug) {
+                            cout << "Found " << copyNumberOnLeft << " copies on the left of the deletion." << endl;
+                        }
+
+                        const uint64_t totalCopyNumber = copyNumberOnRight + copyNumberOnLeft + streakLength / period;
+                        if(debug) {
+                            cout << "Found a total " << totalCopyNumber << " copies of this repeat of period " << period << endl;
+                        }
+
+                        if(totalCopyNumber < minRepeatCount[period]) {
+                            isSimilarPair = false;
+                            break;
+                        }
+
+                        if(not isSimilarPair) {
+                            break;
+                        }
+                    }
+
+
+                    // Prepare for the next iteration of the loop.
+                    streakBegin = streakEnd;
+                }
+
+                if(not isSimilarPair) {
+                    break;
+                }
+            }
+
+            if(isSimilarPair) {
+                similarPairs.push_back({i0, i1});
+                if(debug) {
+                    cout << "*** Added to similar pairs: " << assemblyGraph[bubble.edges[i0]].id <<
+                        " " << assemblyGraph[bubble.edges[i1]].id << endl;
+                }
+            }
+        }
+    }
+
+    return false;
 }
 
 

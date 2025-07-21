@@ -11,10 +11,14 @@ assembler.accessMarkers()
 assembler.accessAnchors()
 assembler.accessJourneys()
 
-
+"""
 assemblyGraph = assembler.getAssemblyGraph("E", options)
 assemblyGraph.phaseSuperbubbleChains()
 assemblyGraph.write("EE")
+"""
+
+assemblyGraph = assembler.getAssemblyGraph("B", options)
+assemblyGraph.bubbleCleanupIteration();
 
 
 """

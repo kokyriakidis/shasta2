@@ -184,9 +184,40 @@ private:
     };
     void findBubbles(vector<Bubble>&) const;
     void bubbleCleanup();
-    uint64_t bubbleCleanupIteration();
+
+
+
+    // Analyze a Bubble.
+    // This assumes that the edges of the Bubble are assembled.
+    // for each pair of bubble edges, it computes an alignment of
+    // the corresponding sequences. If the sequences of the two edges are
+    // "similar", the indexes of those Bubble edges are stored in the similarPairs vector.
+    // Two sequences are defined to be "similar" if they are likely to be
+    // identical except for sequencing errors using the criteria detailed below.
+    // Two sequences of two edges are considered similar
+    // if they differ only by copy numbers in repeats of short period.
+    // The minRepeatCount defines the criteria for that:
+    // - minRepeatCount[0] is ignored.
+    // - minRepeatCount[1] is the minimum homopolymer length for differences
+    //   in the length of a homopolymer run. If the difference occurs
+    //   in a homopolymer run of at least this length, the two sequences are "similar".
+    // - Similarly, minRepeatCount[p] defines the minimum length
+    //   (number of repear units of period p) for a repeat with
+    //   with period p. If the difference occurs in a repeat with p or
+    //   more units, the two sequences are "similar".
+    //   For example, if minRepeatCount[2] is 3, differences in lengths
+    //   of repeats with period 2 a longer than 3 units (6 bases)
+    //   are considered "similar".
+    // Note that if any mismatches are present, the two sequences are never considered to be similar.
+    bool analyzeBubble(
+        const Bubble&,
+        const vector<uint64_t> minRepeatCount,
+        vector< pair<uint64_t, uint64_t> >& similarPairs
+        ) const;
 
 public:
+    uint64_t bubbleCleanupIteration();
+
     void prune();
 
     // Compress linear chains of edges into a single edge.

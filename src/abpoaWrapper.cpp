@@ -102,6 +102,7 @@ void shasta::abpoa(
 
     // Store the alignment.
     const uint64_t alignmentLength = abc->msa_len;
+    alignment.clear();
     alignment.resize(n, vector<AlignedBase>(alignmentLength));
     for(uint64_t i=0; i<n; i++) {
         for(uint64_t j=0; j<alignmentLength; j++) {
