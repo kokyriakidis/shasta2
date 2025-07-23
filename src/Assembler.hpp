@@ -163,6 +163,10 @@ public:
     void createMarkerKmers(uint64_t threadCount);
     void accessMarkerKmers();
 
+    // Compute marker error rates for each read by counting the
+    // marker k-mers with frequency 1.
+    void computeMarkerErrorRates() const;
+
 
 
     // Anchors.

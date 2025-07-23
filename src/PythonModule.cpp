@@ -97,6 +97,8 @@ PYBIND11_MODULE(shasta2, shasta2Module)
             arg("threadCount") = 0)
         .def("accessMarkerKmers",
             &Assembler::accessMarkerKmers)
+        .def("computeMarkerErrorRates",
+            &Assembler::computeMarkerErrorRates)
 
         // Anchors.
        .def("createAnchors",
