@@ -166,7 +166,7 @@ void AssemblyGraph::run()
     // Simplify Superbubbles and remove or simplify bubbles likely caused by errors.
     simplifySuperbubbles();
     write("B");
-    bubbleCleanup();
+    bubbleCleanup0();
     compress();
     write("C");
 
@@ -191,7 +191,7 @@ void AssemblyGraph::run()
     prune();
     compress();
     simplifySuperbubbles();
-    bubbleCleanup();
+    bubbleCleanup0();
     phaseSuperbubbleChains();
     compress();
     write("F");
@@ -605,14 +605,14 @@ void AssemblyGraph::findBubbles(vector<Bubble>& bubbles) const
 
 
 
-void AssemblyGraph::bubbleCleanup()
+void AssemblyGraph::bubbleCleanup0()
 {
-    while(bubbleCleanupIteration() > 0);
+    while(bubbleCleanupIteration0() > 0);
 }
 
 
 
-uint64_t AssemblyGraph::bubbleCleanupIteration()
+uint64_t AssemblyGraph::bubbleCleanupIteration0()
 {
     AssemblyGraph& assemblyGraph = *this;
 
@@ -750,6 +750,20 @@ uint64_t AssemblyGraph::bubbleCleanupIteration()
         removedCount << " were actually removed." << endl;
 
     return removedCount;
+}
+
+
+
+void AssemblyGraph::bubbleCleanup1()
+{
+    SHASTA_ASSERT(0);
+}
+
+
+
+uint64_t AssemblyGraph::bubbleCleanupIteration1()
+{
+    SHASTA_ASSERT(0);
 }
 
 

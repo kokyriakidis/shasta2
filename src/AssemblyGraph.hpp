@@ -183,8 +183,12 @@ private:
         vector<edge_descriptor> edges;
     };
     void findBubbles(vector<Bubble>&) const;
-    void bubbleCleanup();
-
+public:
+    void bubbleCleanup0();
+    uint64_t bubbleCleanupIteration0();
+    void bubbleCleanup1();
+    uint64_t bubbleCleanupIteration1();
+private:
 
 
     // Analyze a Bubble.
@@ -216,7 +220,6 @@ private:
         ) const;
 
 public:
-    uint64_t bubbleCleanupIteration();
 
     void prune();
 
