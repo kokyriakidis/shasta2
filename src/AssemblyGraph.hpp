@@ -189,6 +189,7 @@ public:
     void bubbleCleanup1();
     uint64_t bubbleCleanupIteration1();
 private:
+    bool bubbleCleanup1(const Bubble&);
 
 
     // Analyze a Bubble.

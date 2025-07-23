@@ -51,6 +51,7 @@ public:
     double aDrift = 300.;
     double bDrift = 0.01;
 
+    uint64_t bubbleCleanupMaxBubbleLength = 10000;
     uint64_t bubbleCleanupMinCommonCount = 6;
     double clusteringMinJaccard = 0.7;
 

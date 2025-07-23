@@ -1,3 +1,6 @@
+// Must include this first due to some Boost include file problem.
+#include <boost/pending/disjoint_sets.hpp>
+
 // Shasta.
 #include "AssemblyGraph.hpp"
 #include "abpoaWrapper.hpp"
@@ -166,7 +169,7 @@ void AssemblyGraph::run()
     // Simplify Superbubbles and remove or simplify bubbles likely caused by errors.
     simplifySuperbubbles();
     write("B");
-    bubbleCleanup0();
+    bubbleCleanup1();
     compress();
     write("C");
 
@@ -191,7 +194,7 @@ void AssemblyGraph::run()
     prune();
     compress();
     simplifySuperbubbles();
-    bubbleCleanup0();
+    bubbleCleanup1();
     phaseSuperbubbleChains();
     compress();
     write("F");
@@ -756,14 +759,281 @@ uint64_t AssemblyGraph::bubbleCleanupIteration0()
 
 void AssemblyGraph::bubbleCleanup1()
 {
-    SHASTA_ASSERT(0);
+    while(bubbleCleanupIteration1() > 0);
 }
 
 
 
 uint64_t AssemblyGraph::bubbleCleanupIteration1()
 {
-    SHASTA_ASSERT(0);
+    AssemblyGraph& assemblyGraph = *this;
+
+    // Find all bubbles.
+    vector<Bubble> allBubbles;
+    findBubbles(allBubbles);
+    cout << "Found " << allBubbles.size() << " bubbles." << endl;
+
+    // Find candidate bubbles.
+    // These are the ones in which no branch has offset greater than
+    // options.bubbleCleanupMaxBubbleLength.
+    vector<Bubble> candidateBubbles;
+    for(const Bubble& bubble: allBubbles) {
+
+        bool hasLongBranch = false;
+        for(const edge_descriptor e: bubble.edges) {
+            if(assemblyGraph[e].offset() > options.bubbleCleanupMaxBubbleLength) {
+                hasLongBranch = true;
+                break;
+            }
+        }
+
+        if(not hasLongBranch) {
+            candidateBubbles.push_back(bubble);
+        }
+    }
+    cout << candidateBubbles.size() << " bubbles are candidate for clean up." << endl;
+
+    // Assemble sequence for all the edges of these bubbles.
+    edgesToBeAssembled.clear();
+    for(const Bubble& bubble: candidateBubbles) {
+        for(const edge_descriptor e: bubble.edges) {
+            if(not assemblyGraph[e].wasAssembled) {
+                edgesToBeAssembled.push_back(e);
+            }
+        }
+    }
+    assemble();
+
+
+    uint64_t modifiedCount = 0;
+    for(const Bubble& bubble: candidateBubbles) {
+        if(bubbleCleanup1(bubble)) {
+            ++modifiedCount;
+        }
+    }
+    cout << "Bubble cleanup modified " << modifiedCount << " bubbles." << endl;
+
+    return modifiedCount;
+}
+
+
+
+bool AssemblyGraph::bubbleCleanup1(const Bubble& bubble)
+{
+    // EXPOSE WHEN CODE STABILIZES.
+    const vector<uint64_t> minRepeatCount = {0, 4, 4, 4, 4, 4, 4};
+
+    AssemblyGraph& assemblyGraph = *this;
+    const uint64_t ploidy = bubble.edges.size();
+
+    const bool debug = false; // (assemblyGraph[bubble.edges.front()].id)== 130581;
+    if(debug) {
+        cout << "Attempting cleanup for bubble";
+        for(uint64_t i=0; i<ploidy; i++) {
+            const edge_descriptor e = bubble.edges[i];
+            cout << " (" << i << " " << assemblyGraph[e].id << ")";
+        }
+        cout << endl;
+    }
+
+    // Find which pairs of branches in the bubble have similar sequence
+    // as defined by the minRepeatCount vector.
+    // See analyzeBubble for more information.
+    vector< pair<uint64_t, uint64_t> > similarPairs;
+    analyzeBubble(bubble, minRepeatCount, similarPairs);
+
+    // If no similar pairs were found, leave this bubble alone.
+    if(similarPairs.empty()) {
+        if(debug) {
+            cout << "No similar branch sequences were found. Nothing done for this bubble." << endl;
+        }
+        return false;
+    }
+
+    if(debug) {
+        cout << "These pairs of branches have similar sequence:" << endl;
+        for(const auto& p: similarPairs) {
+            const uint64_t i0 = p.first;
+            const uint64_t i1 = p.second;
+            cout << i0 << " " << i1 << " " << assemblyGraph[bubble.edges[i0]].id <<
+                " " << assemblyGraph[bubble.edges[i1]].id << endl;
+        }
+    }
+
+    // Find the OrientedReadIds that appear in all the steps of each branch of the bubble.
+    vector< vector<OrientedReadId> > allOrientedReadIds(ploidy);
+    for(uint64_t i=0; i<ploidy; i++) {
+        const AssemblyGraphEdge& edge = assemblyGraph[bubble.edges[i]];
+        for(const auto& step: edge) {
+            std::ranges::copy(step.anchorPair.orientedReadIds, back_inserter(allOrientedReadIds[i]));
+        }
+        deduplicate(allOrientedReadIds[i]);
+        if(debug) {
+            cout << "Branch " << i << " has " << allOrientedReadIds[i].size() <<
+                " total oriented read ids." << endl;
+        }
+    }
+
+#if 0
+    // Gather all OrientedReadIds that appear in exactly one of the branches.
+    vector<OrientedReadId> unambiguousOrientedReadIdsAllBranches;
+    for(const auto& v: allOrientedReadIds) {
+        std::ranges::copy(v, back_inserter(unambiguousOrientedReadIdsAllBranches));
+    }
+    deduplicateAndCountAndKeepUnique(unambiguousOrientedReadIdsAllBranches);
+
+    // The unambiguous OrientedReadIds for each branch are the intersection
+    // of unambiguousOrientedReadIdsAllBranches with allOrientedReadIds for that branch.
+    vector< vector<OrientedReadId> > unambiguousOrientedReadIds(bubble.edges.size());
+    for(uint64_t i=0; i<ploidy; i++) {
+        std::ranges::set_intersection(
+            unambiguousOrientedReadIdsAllBranches,
+            allOrientedReadIds[i],
+            back_inserter(unambiguousOrientedReadIds[i]));
+        if(debug) {
+            cout << "Branch " << i << " has " << unambiguousOrientedReadIds[i].size() <<
+                " unambiguous oriented read ids." << endl;
+        }
+    }
+#endif
+
+    // Create an AnchorPair between the source and target of this bubble.
+    const AnchorId anchorId0 = assemblyGraph[bubble.v0].anchorId;
+    const AnchorId anchorId1 = assemblyGraph[bubble.v1].anchorId;
+    const AnchorPair bubbleAnchorPair(anchors, anchorId0, anchorId1, false);
+
+    // The usable OrientedReadIds for each branch are the intersection of
+    // allOrientedReads for the branch with the OrientedReadIds in the bubbleAnchorPair.
+    vector< vector<OrientedReadId> > usableOrientedReadIds(ploidy);
+    for(uint64_t i=0; i<ploidy; i++) {
+        std::ranges::set_intersection(
+            bubbleAnchorPair.orientedReadIds,
+            allOrientedReadIds[i],
+            back_inserter(usableOrientedReadIds[i]));
+        if(debug) {
+            cout << "Branch " << i << " has " << usableOrientedReadIds[i].size() <<
+                " usable oriented read ids." << endl;
+        }
+    }
+
+
+
+    // Compute groups of similar branches. Each group will generate a new branch.
+    // This uses a disjoint sets data structure created from the similarPairs vector,
+    // except for some common special cases.
+    vector< vector<uint64_t> > branchGroups;
+    if(ploidy == 2) {
+
+        SHASTA_ASSERT(similarPairs.size() == 1);    // We already checked that is is not empty.
+        // Create a single branch group that includes both branches.
+        branchGroups.push_back({0, 1});
+
+    } else if(similarPairs.size() == (ploidy * (ploidy - 1)) / 2) {
+
+        // Create a single branch group that includes all branches.
+        branchGroups.resize(1);
+        for(uint64_t i=0; i<ploidy; i++) {
+            branchGroups.front().push_back(i);
+        }
+
+    } else {
+
+        // Initialize the disjoint sets data structure.
+        vector<uint64_t> rank(ploidy);
+        vector<uint64_t> parent(ploidy);
+        boost::disjoint_sets<uint64_t*, uint64_t*> disjointSets(&rank[0], &parent[0]);
+        for(uint64_t i=0; i<ploidy; i++) {
+            disjointSets.make_set(i);
+        }
+
+        // Connect the similar pairs.
+        for(const auto& p: similarPairs) {
+            disjointSets.union_set(p.first, p.second);
+        }
+
+        // Gather the branches in each group.
+        vector< vector<uint64_t> > groups(ploidy);
+        for(uint64_t i=0; i<ploidy; i++) {
+            groups[disjointSets.find_set(i)].push_back(i);
+        }
+
+        // Each of the non-empty ones generates a branch group.
+        for(const auto& group: groups) {
+            if(not group.empty()) {
+                branchGroups.push_back(group);
+            }
+        }
+    }
+
+    if(debug) {
+        cout << "Found the following similar groups:" << endl;
+        for(const auto& branchGroup: branchGroups) {
+            for(const uint64_t i: branchGroup) {
+                cout << i << " ";
+            }
+            cout << endl;
+        }
+    }
+
+
+
+    // Each branch group generates a new branch, if it has enough coverage.
+    for(const auto& branchGroup: branchGroups) {
+
+        // If this branch group consists of a single branch, don't do anything.
+        if(branchGroup.size() == 1) {
+            continue;
+        }
+
+        if(debug) {
+            cout << "Working on branch group";
+            for(const uint64_t i: branchGroup) {
+                cout << " " << i;
+            }
+            cout << endl;
+        }
+
+        // Create an AnchorPair using all of the usableOrientedReadIds
+        // for the branches in this group.
+        AnchorPair newAnchorPair;
+        newAnchorPair.anchorIdA = anchorId0;
+        newAnchorPair.anchorIdB = anchorId1;
+        for(const uint64_t i: branchGroup) {
+            std::ranges::copy(usableOrientedReadIds[i], back_inserter(newAnchorPair.orientedReadIds));
+        }
+        deduplicate(newAnchorPair.orientedReadIds);
+        if(debug) {
+            cout << "The new branch has coverage " << newAnchorPair.size() << endl;
+        }
+
+        if(newAnchorPair.size() < options.bubbleCleanupMinCommonCount) {
+            if(debug) {
+                cout << "Coverage for this branch group is too low, no new branch generated." << endl;
+            }
+            continue;
+        }
+
+        edge_descriptor e;
+        tie(e, ignore) = add_edge(bubble.v0, bubble.v1, AssemblyGraphEdge(nextEdgeId++), assemblyGraph);
+        AssemblyGraphEdge& edge = assemblyGraph[e];
+        edge.emplace_back(newAnchorPair, newAnchorPair.getAverageOffset(anchors));
+        if(debug) {
+            cout << "Generated a new branch " << edge.id << " by combining the branches in this group." << endl;
+        }
+
+        // Now we can delete the old branches in this group.
+        for(const uint64_t i: branchGroup) {
+            if(debug) {
+                cout << "Removing " << assemblyGraph[bubble.edges[i]].id << endl;
+            }
+            boost::remove_edge(bubble.edges[i], assemblyGraph);
+        }
+    }
+
+    SHASTA_ASSERT(out_degree(bubble.v0, assemblyGraph) > 0);
+    SHASTA_ASSERT(in_degree(bubble.v1, assemblyGraph) > 0);
+
+    return true;
 }
 
 
@@ -799,7 +1069,7 @@ bool AssemblyGraph::analyzeBubble(
     const AssemblyGraph& assemblyGraph = *this;
     using shasta::Base;
 
-    const bool debug = false; // (assemblyGraph[bubble.edges.front()].id == 88479);
+    const bool debug = false; // (assemblyGraph[bubble.edges.front()].id == 130581);
     if(debug) {
         cout << "Analyzing bubble";
         for (const edge_descriptor e: bubble.edges) {
@@ -2058,7 +2328,6 @@ void AssemblyGraph::phaseSuperbubbleChains()
     // Phase them.
     countOrientedReadStepsBySegment();
     for(uint64_t superbubbleChainId=0; superbubbleChainId<superbubbleChains.size(); superbubbleChainId++) {
-        cout << "Phasing superbubble chain " << superbubbleChainId << endl;
         SuperbubbleChain& superbubbleChain = superbubbleChains[superbubbleChainId];
         superbubbleChain.phase(*this, superbubbleChainId);
     }

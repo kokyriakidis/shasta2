@@ -109,6 +109,11 @@ void Options::addOptions()
         "Constant factor for offset consistency."
         )->capture_default_str();
 
+    add_option("--bubble-cleanup-max-bubble-length",
+       bubbleCleanupMaxBubbleLength,
+       "Maximum bubble length for bubble cleanup."
+       )->capture_default_str();
+
     add_option("--bubble-cleanup-min-common-count",
        bubbleCleanupMinCommonCount,
        "Minimum number of common oriented reads for bubble cleanup."

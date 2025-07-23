@@ -18,7 +18,8 @@ assemblyGraph.write("EE")
 """
 
 assemblyGraph = assembler.getAssemblyGraph("B", options)
-assemblyGraph.bubbleCleanupIteration();
+assemblyGraph.bubbleCleanupIteration1()
+assemblyGraph.write("BB")
 
 
 """
