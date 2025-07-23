@@ -46,8 +46,10 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def_readonly("threadCount", &Options::threadCount)
         .def_readonly("k", &Options::k)
         .def_readonly("markerDensity", &Options::markerDensity)
+        .def_readonly("maxMarkerErrorRate", &Options::maxMarkerErrorRate)
         .def_readonly("minAnchorCoverage", &Options::minAnchorCoverage)
         .def_readonly("maxAnchorCoverage", &Options::maxAnchorCoverage)
+        .def_readonly("maxAnchorHomopolymerLength", &Options::maxAnchorHomopolymerLength)
         .def_readonly("minAnchorGraphEdgeCoverage", &Options::minAnchorGraphEdgeCoverage)
         .def_readonly("detangleMinCommonCoverage", &Options::detangleMinCommonCoverage)
         .def_readonly("detangleLowCoverageThreshold", &Options::detangleLowCoverageThreshold)
@@ -92,9 +94,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
             arg("threadCount") = 0)
 
          // Marker k-mers.
-        .def("createMarkerKmers",
-            &Assembler::createMarkerKmers,
-            arg("threadCount") = 0)
+        .def("createMarkerKmers", &Assembler::createMarkerKmers)
         .def("accessMarkerKmers",
             &Assembler::accessMarkerKmers)
         .def("computeMarkerErrorRates",

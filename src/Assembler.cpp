@@ -77,7 +77,7 @@ void Assembler::assemble(
 
     createKmerChecker(options.k, options.markerDensity, options.threadCount);
     createMarkers(options.threadCount);
-    createMarkerKmers(options.threadCount);
+    createMarkerKmers(options.maxMarkerErrorRate, options.threadCount);
     createAnchors(
         options.minAnchorCoverage,
         options.maxAnchorCoverage,

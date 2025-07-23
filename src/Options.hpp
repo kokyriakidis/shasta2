@@ -43,6 +43,8 @@ public:
     uint64_t k = 60;
     double markerDensity = 0.05;
 
+    double maxMarkerErrorRate = 0.5;
+
     uint64_t minAnchorCoverage = 10;
     uint64_t maxAnchorCoverage = 60;
     uint64_t maxAnchorHomopolymerLength = 10;

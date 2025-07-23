@@ -85,6 +85,10 @@ void Options::addOptions()
         "Marker density."
         )->capture_default_str();
 
+    add_option("--max-marker-error-rate", maxMarkerErrorRate,
+        "Maximum marker error rate. Reads with a higher marker error rate are not used."
+        )->capture_default_str();
+
     add_option("--min-anchor-coverage", minAnchorCoverage,
         "Minimum anchor coverage."
         )->capture_default_str();

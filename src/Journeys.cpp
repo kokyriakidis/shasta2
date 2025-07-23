@@ -29,6 +29,11 @@ Journeys::Journeys(
 {
     performanceLog << timestamp << "Journeys creation begins." << endl;
 
+    // Adjust the numbers of threads, if necessary.
+    if(threadCount == 0) {
+        threadCount = std::thread::hardware_concurrency();
+    }
+
     const uint64_t anchorCount = anchorsPointer->size();
     const uint64_t anchorBatchCount = 1000;
     const uint64_t orientedReadBatchCount = 1000;

@@ -34,6 +34,7 @@ public:
         uint64_t k,
         const MappedMemoryOwner&,
         const Reads&,
+        const vector<bool>& useRead,
         const Markers& markers,
         uint64_t threadCount);
 
@@ -46,6 +47,12 @@ public:
     bool isOpen() const
     {
         return markerInfos.isOpen() and kmerInfos.isOpen();
+    }
+
+    void remove()
+    {
+        markerInfos.remove();
+        kmerInfos.remove();
     }
 
     uint64_t getFrequency(const Kmer&) const;
@@ -76,6 +83,7 @@ private:
     // Constructor arguments.
     uint64_t k;
     const Reads& reads;
+    const vector<bool>* useReadPointer;
     const Markers& markers;
 
     // A function object class that sorts MarkerInfo objects by Kmer.

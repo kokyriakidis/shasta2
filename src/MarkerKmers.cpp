@@ -18,12 +18,14 @@ MarkerKmers::MarkerKmers(
     uint64_t k,
     const MappedMemoryOwner& mappedMemoryOwner,
     const Reads& reads,
+    const vector<bool>& useRead,
     const Markers& markers,
     uint64_t threadCount) :
     MappedMemoryOwner(mappedMemoryOwner),
     MultithreadedObject<MarkerKmers>(*this),
     k(k),
     reads(reads),
+    useReadPointer(&useRead),
     markers(markers)
 {
     performanceLog << timestamp << "Marker k-mer creation begins." << endl;
@@ -62,7 +64,10 @@ MarkerKmers::MarkerKmers(
     runThreads(&MarkerKmers::fillKmerInfosPass2, threadCount);
     kmerInfos.endPass2(false, true);
 
-    SHASTA_ASSERT(2 * markerInfos.totalSize() == markers.totalSize());
+    // This is no longer true because only a subset of the reads
+    // (the ones with low marker error rate) are used to
+    // create marker kmers.
+    // SHASTA_ASSERT(2 * markerInfos.totalSize() == markers.totalSize());
 
     writeFrequencyHistogram();
     performanceLog << timestamp << "Marker k-mer creation ends." << endl;
@@ -104,12 +109,17 @@ void MarkerKmers::gatherMarkersPass2(uint64_t /* threadId */)
 
 void MarkerKmers::gatherMarkersPass12(uint64_t pass)
 {
+    const vector<bool>& useRead = *useReadPointer;
+
     // Loop over all batches assigned to this thread.
     uint64_t begin, end;
     while(getNextBatch(begin, end)) {
 
         // Loop over all reads assigned to this batch.
         for(ReadId readId=ReadId(begin); readId!=ReadId(end); ++readId) {
+            if(not useRead[readId]) {
+                continue;
+            }
 
             // Get the sequence for this read (without reverse complementing).
             const LongBaseSequenceView readSequence = reads.getRead(readId);
@@ -157,6 +167,7 @@ void MarkerKmers::gatherMarkersPass12(uint64_t pass)
 
     }
 }
+
 
 
 // Get the Kmer corresponding to a given MarkerInfo.
@@ -443,7 +454,6 @@ void MarkerKmers::writeFrequencyHistogram() const
             csv << coverage << "," << frequency << "," << count << ",\n";
         }
     }
-    SHASTA_ASSERT(2 * totalCount == markers.totalSize());
 
     const uint64_t n1 = histogram[1];
     const double kmerErrorRate = double(n1) / double(totalCount);

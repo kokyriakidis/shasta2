@@ -17,7 +17,7 @@ void SuperbubbleChain::phase(
     uint64_t superbubbleChainId)
 {
     SuperbubbleChain& superbubbleChain = *this;
-    const bool debug = false;
+    const bool debug = false; // (superbubbleChainId == 18);
     const bool useExtendedTangleMatrix = true;
 
     const uint64_t phasingDistance = assemblyGraph.options.phasingDistance;

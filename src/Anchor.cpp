@@ -849,6 +849,11 @@ Anchors::Anchors(
 
     performanceLog << timestamp << "Anchor creation begins." << endl;
 
+    // Adjust the numbers of threads, if necessary.
+    if(threadCount == 0) {
+        threadCount = std::thread::hardware_concurrency();
+    }
+
     // Store arguments so all threads can see them.
     ConstructData& data = constructData;
     data.minAnchorCoverage = minAnchorCoverage;

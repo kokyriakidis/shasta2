@@ -160,12 +160,19 @@ public:
     // The MarkerKmers keep track of the locations in the oriented reads
     // where each marker k-mer appears.
     shared_ptr<MarkerKmers> markerKmers;
-    void createMarkerKmers(uint64_t threadCount);
+    void createMarkerKmers(double maxMarkerErrorRate, uint64_t threadCount);
     void accessMarkerKmers();
 
     // Compute marker error rates for each read by counting the
     // marker k-mers with frequency 1.
-    void computeMarkerErrorRates() const;
+    void computeMarkerErrorRates(
+        const vector<bool>& useRead,
+        vector<uint64_t>& frequencyOneMarkerCount) const;
+    void writeMarkerErrorRates(
+        const vector<bool>& useRead,
+        const vector<uint64_t>& frequencyOneMarkerCount,
+        const string& fileName) const;
+
 
 
 

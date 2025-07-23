@@ -7,5 +7,5 @@ options = shasta2.Options()
 assembler = shasta2.Assembler()
 assembler.accessMarkers()
 assembler.accessMarkerKmers()
-assembler.createAnchors(options.minAnchorCoverage, options.maxAnchorCoverage)
+assembler.createAnchors(options.minAnchorCoverage, options.maxAnchorCoverage, options.maxAnchorHomopolymerLength, 0)
 
