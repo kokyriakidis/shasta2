@@ -43,6 +43,7 @@ void Assembler::fillServerFunctionTable()
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreLocalAssembly);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreLocalAssembly1);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreLocalAssembly2);
+    SHASTA_ADD_TO_FUNCTION_TABLE(exploreSimilarSequences);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreLocalAnchorGraph);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreSegments);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreSegment);
@@ -234,6 +235,7 @@ void Assembler::writeNavigation(ostream& html) const
         {"LocaAssembly", "exploreLocalAssembly"},
         {"LocaAssembly1", "exploreLocalAssembly1"},
         {"LocaAssembly2", "exploreLocalAssembly2"},
+        {"Sequence similarity", "exploreSimilarSequences"},
         });
 
     html << "</ul>";

@@ -1,5 +1,6 @@
 // Shasta.
 #include "Assembler.hpp"
+#include "areSimilarSequences.hpp"
 #include "AssemblyGraphPostprocessor.hpp"
 #include "GTest.hpp"
 #include "LocalAssembly.hpp"
@@ -1498,4 +1499,55 @@ void Assembler::exploreLocalAssembly2(
     ofstream fasta("LocalAssembly.fasta");
     fasta << ">LocalAssembly " << sequence.size() << endl;
     copy(sequence.begin(), sequence.end(), ostream_iterator<Base>(fasta));
+}
+
+
+
+void Assembler::exploreSimilarSequences(const vector<string>& request, ostream& html)
+{
+    // Get the options from the request.
+    string sequence0String;
+    HttpServer::getParameterValue(request, "sequence0", sequence0String);
+    boost::trim(sequence0String);
+
+    string sequence1String;
+    HttpServer::getParameterValue(request, "sequence1", sequence1String);
+    boost::trim(sequence1String);
+
+    // Write the form.
+    html <<
+        "<h2>Similar sequences</h2><form>"
+        "<table>"
+        "<tr>"
+        "<th class=left>First sequence"
+        "<td class=centered><input type=text name=sequence0 style='text-align:center;font-family:monospace' required size=100"
+        " value='" << sequence0String << "'>"
+        "<tr>"
+        "<th class=left>Second sequence"
+        "<td class=centered><input type=text name=sequence1 style='text-align:center;font-family:monospace' required size=100"
+        " value='" << sequence1String << "'>"
+        "</table>"
+        "<input type=submit value='Analyze'>"
+        "</form>";
+
+    if(sequence0String.empty() or sequence1String.empty()) {
+        return;
+    }
+
+    // Fill in the Base sequences.
+    vector<Base> sequence0;
+    for(const char c: sequence0String) {
+        sequence0.push_back(Base::fromCharacter(c));
+    }
+    vector<Base> sequence1;
+    for(const char c: sequence1String) {
+        sequence1.push_back(Base::fromCharacter(c));
+    }
+
+    // EXPOSE WHEN CODE STABILIZES.
+    const vector<uint64_t> minRepeatCount = {0, 4, 4, 4, 4, 4, 4};
+    const bool areSimilar = areSimilarSequences(sequence0, sequence1, minRepeatCount, html);
+    if(areSimilar) {
+        html << "<p>These sequence are similar and their differences are likely caused by sequencing errors.";
+    }
 }
