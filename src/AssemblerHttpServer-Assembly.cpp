@@ -1545,7 +1545,7 @@ void Assembler::exploreSimilarSequences(const vector<string>& request, ostream& 
     }
 
     // EXPOSE WHEN CODE STABILIZES.
-    const vector<uint64_t> minRepeatCount = {0, 4, 4, 4, 4, 4, 4};
+    const vector<uint64_t> minRepeatCount = {0, 2, 2, 2, 2, 2, 2};
     const bool areSimilar = areSimilarSequences(sequence0, sequence1, minRepeatCount, html);
     if(areSimilar) {
         html << "<p>These sequence are similar and their differences are likely caused by sequencing errors.";
