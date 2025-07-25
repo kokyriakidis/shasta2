@@ -1823,7 +1823,7 @@ void Anchors::readFollowing(
     vector< pair<AnchorPair, uint32_t> >&  anchorPairs  // AnchorPairs and offsets.
     ) const
 {
-    const bool debug = false;
+    const bool debug = false; // ((anchorIdToString(anchorId0) == "415771+") and (direction==1));
     if(debug) {
         cout << "Read following begins for " << anchorIdToString(anchorId0) << " direction " << direction << endl;
     }
@@ -1911,12 +1911,16 @@ void Anchors::readFollowing(
             uint32_t bestOffset = std::numeric_limits<uint32_t>::max();
             for(uint64_t i=0; i<orientedReadInfos.size(); i++) {
                 OrientedReadInfo& orientedReadInfo = orientedReadInfos[i];
+                if(debug) {
+                    cout << "Working on " << orientedReadInfo.orientedReadId << endl;
+                }
 
                 // Loop over journey positions for this read.
                 for(int64_t positionInJourney=orientedReadInfo.firstPositionInJourney; /* Check later */ ;
                     positionInJourney += deltaPositionInJourney) {
                     if(debug) {
-                        cout << "Working on journey position " << positionInJourney << endl;
+                        cout << "Working on " << orientedReadInfo.orientedReadId <<
+                            " journey position " << positionInJourney << endl;
                     }
                     if(direction == 0 and positionInJourney >= int64_t(orientedReadInfo.journey.size())) {
                         if(debug) {
@@ -2052,7 +2056,10 @@ void Anchors::readFollowing(
                 if(debug) {
                     cout << "Success, best AnchorPair is " <<
                         anchorIdToString(bestAnchorPair.anchorIdA) << " " <<
-                        anchorIdToString(bestAnchorPair.anchorIdB) << endl;
+                        anchorIdToString(bestAnchorPair.anchorIdB) <<
+                        ", coverage " << bestAnchorPair.size() <<
+                        ", offset " << bestOffset <<
+                        endl;
                 }
 
                 vector<OrientedReadInfo> newOrientedReadInfos;
