@@ -1,16 +1,31 @@
 // Shasta.
 #include "AnchorPair.hpp"
 #include "Anchor.hpp"
+#include "approximateTopologicalSort.hpp"
+#include "deduplicate.hpp"
+#include "html.hpp"
+#include "HttpServer.hpp"
+#include "Journeys.hpp"
 #include "Markers.hpp"
 #include "orderPairs.hpp"
+#include "runCommandWithTimeout.hpp"
+#include "tmpDirectory.hpp"
 #include "Reads.hpp"
 using namespace shasta;
 
 // Boost libraries.
+#include <boost/dynamic_bitset.hpp>
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/iteration_macros.hpp>
+#include <boost/graph/topological_sort.hpp>
 #include <boost/iterator/function_output_iterator.hpp>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
 
 // Standard library.
-#include "stdexcept.hpp"
+#include <fstream.hpp>
+#include <stdexcept.hpp>
 
 
 
@@ -654,4 +669,307 @@ bool AnchorPair::contains(OrientedReadId orientedReadId) const
 {
     const auto it = std::lower_bound(orientedReadIds.begin(), orientedReadIds.end(), orientedReadId);
     return it != orientedReadIds.end() and (*it == orientedReadId);
+}
+
+
+
+// Return the url for the exploreAnchorPair1 page for this AnchorPair.
+string AnchorPair::url() const
+{
+    string s =
+        "exploreAnchorPair1?"
+        "anchorIdAString=" + HttpServer::urlEncode(anchorIdToString(anchorIdA)) +
+        "&anchorIdBString=" + HttpServer::urlEncode(anchorIdToString(anchorIdB)) +
+        "&orientedReadIdsString=";
+
+    for(const OrientedReadId orientedReadId: orientedReadIds) {
+        s += orientedReadId.getString();
+        s += ",";
+    }
+
+    return s;
+}
+
+
+
+void AnchorPair::writeSummaryHtml(ostream& html, const Anchors& anchors) const
+{
+    const uint64_t offset = getAverageOffset(anchors);
+    html <<
+        "<table>"
+        "<tr><th>Anchor A<td class=centered>" << anchorIdToString(anchorIdA) <<
+        "<tr><th>Anchor B<td class=centered>" << anchorIdToString(anchorIdB) <<
+        "<tr><th>Coverage<td class=centered>" << size() <<
+        "<tr><th>Average offset<td class=centered>" << offset <<
+        "</table>";
+}
+
+
+void AnchorPair::writeOrientedReadIdsHtml(ostream& html, const Anchors& anchors) const
+{
+    vector< pair<Positions, Positions> > positions;
+    get(anchors, positions);
+
+    html <<
+        "<p>"
+        "<table>"
+        "<tr><th>Oriented<br>read id"
+        "<th>Position<br>in journey<br>A<th>Position<br>in journey<br>B<th>Journey<br>offset"
+        "<th>OrdinalA<th>OrdinalB<th>Ordinal<br>offset"
+        "<th>A middle<br>position"
+        "<th>B middle<br>position"
+        "<th>Sequence<br>length";
+
+    for(uint64_t i=0; i<size(); i++) {
+        const OrientedReadId orientedReadId = orientedReadIds[i];
+        const auto& positionsAB = positions[i];
+
+        const auto& positionsA = positionsAB.first;
+        const auto& positionsB = positionsAB.second;
+
+        html <<
+            "<tr>"
+            "<td class=centered>" << orientedReadId <<
+            "<td class=centered>" << positionsA.positionInJourney <<
+            "<td class=centered>" << positionsB.positionInJourney <<
+            "<td class=centered>" << positionsB.positionInJourney - positionsA.positionInJourney <<
+            "<td class=centered>" << positionsA.ordinal <<
+            "<td class=centered>" << positionsB.ordinal <<
+            "<td class=centered>" << positionsB.ordinal - positionsA.ordinal <<
+            "<td class=centered>" << positionsA.basePosition <<
+            "<td class=centered>" << positionsB.basePosition <<
+            "<td class=centered>" << positionsB.basePosition - positionsA.basePosition;
+    }
+    html << "</table>";
+
+}
+
+
+
+void AnchorPair::writeJourneysHtml(
+    ostream& html,
+    const Anchors& anchors,
+    const Journeys& journeys) const
+{
+    vector< pair<Positions, Positions> > positions;
+    get(anchors, positions);
+
+    vector<AnchorId> anchorIds;
+    for(uint64_t i=0; i<size(); i++) {
+        anchorIds.push_back(anchorIdA);
+        anchorIds.push_back(anchorIdB);
+    }
+
+    html << "<table>";
+
+    for(uint64_t i=0; i<size(); i++) {
+        const OrientedReadId orientedReadId = orientedReadIds[i];
+        const auto& positionsAB = positions[i];
+
+        const Journey& journey = journeys[orientedReadId];
+
+        const auto& positionsA = positionsAB.first;
+        const auto& positionsB = positionsAB.second;
+        const auto positionInJourneyA = positionsA.positionInJourney;
+        const auto positionInJourneyB = positionsB.positionInJourney;
+
+        if(html) {
+            html << "<tr><th class=centered>" << orientedReadId;
+        }
+        for(auto position=positionInJourneyA+1; position<positionInJourneyB; position++) {
+            const AnchorId anchorId = journey[position];
+            anchorIds.push_back(anchorId);
+            html << "<td class=centered>" << anchorIdToString(anchorId);
+        }
+    }
+
+    html << "</table>";
+
+
+
+    // Also create a local simple anchor graph by following the journeys.
+    vector<uint64_t> count;
+    deduplicateAndCount(anchorIds, count);
+    class Vertex {
+    public:
+        AnchorId anchorId;
+        uint64_t localCoverage;
+        uint64_t color = 0;
+        uint64_t rank = 0;
+    };
+    class Edge {
+    public:
+        uint64_t localCoverage = 0;
+        bool isDagEdge = false;
+    };
+    using Graph = boost::adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS, Vertex, Edge>;
+    Graph graph;
+
+    // Vertices.
+    for(uint64_t i=0; i<anchorIds.size(); i++) {
+        add_vertex(Vertex({anchorIds[i], count[i]}), graph);
+    }
+
+    // Edges.
+    for(uint64_t i=0; i<size(); i++) {
+        const OrientedReadId orientedReadId = orientedReadIds[i];
+        const auto& positionsAB = positions[i];
+
+        const Journey& journey = journeys[orientedReadId];
+
+        const auto& positionsA = positionsAB.first;
+        const auto& positionsB = positionsAB.second;
+        const auto positionInJourneyA = positionsA.positionInJourney;
+        const auto positionInJourneyB = positionsB.positionInJourney;
+
+        for(auto position=positionInJourneyA+1; position<=positionInJourneyB; position++) {
+            const AnchorId anchorId1 = journey[position];
+            const AnchorId anchorId0 = journey[position-1];
+            const uint64_t i0 = std::ranges::find(anchorIds, anchorId0) - anchorIds.begin();
+            const uint64_t i1 = std::ranges::find(anchorIds, anchorId1) - anchorIds.begin();
+            Graph::edge_descriptor e;
+            bool edgeExists = false;
+            tie(e, edgeExists) = edge(i0, i1, graph);
+            if(not edgeExists) {
+                tie(e, edgeExists) = add_edge(i0, i1, graph);
+                SHASTA_ASSERT(edgeExists);
+            }
+            ++graph[e].localCoverage;
+        }
+    }
+
+    // Do an approximate topological sort so the graph output is easier to look at.
+    vector< pair<Graph::edge_descriptor, uint64_t> > edgeTable;
+    BGL_FORALL_EDGES(e, graph, Graph) {
+        edgeTable.emplace_back(e, graph[e].localCoverage);
+    }
+    std::ranges::sort(edgeTable, OrderPairsBySecondOnlyGreater<Graph::edge_descriptor, uint64_t>());
+    vector<Graph::edge_descriptor> edgesByCoverage;
+    for(const auto& p: edgeTable) {
+        edgesByCoverage.push_back(p.first);
+    }
+    approximateTopologicalSort(graph, edgesByCoverage);
+    vector< pair<Graph::vertex_descriptor, uint64_t> > vertexTable;
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        vertexTable.emplace_back(v, graph[v].rank);
+    }
+    std::ranges::sort(vertexTable, OrderPairsBySecondOnly<Graph::vertex_descriptor, uint64_t>());
+
+
+
+    // Create matrix with a bit for each (OrienteRead, AnchorId) pair..
+    // The bit is set if the OrientedRead visits that AnchorId.
+    using BitVector = boost::dynamic_bitset<uint64_t>;
+    vector<BitVector> bitVectors(size());
+    for(uint64_t j=0; j<size(); j++) {
+        const OrientedReadId orientedReadId = orientedReadIds[j];
+        const auto& positionsAB = positions[j];
+
+        const Journey journey = journeys[orientedReadId];
+
+        const auto& positionsA = positionsAB.first;
+        const auto& positionsB = positionsAB.second;
+        const auto positionInJourneyA = positionsA.positionInJourney;
+        const auto positionInJourneyB = positionsB.positionInJourney;
+
+        BitVector& bitVector = bitVectors[j];
+        bitVector.resize(anchorIds.size());
+
+        for(auto position=positionInJourneyA; position<=positionInJourneyB; position++) {
+            const AnchorId anchorId = journey[position];
+            const auto it = std::lower_bound(anchorIds.begin(), anchorIds.end(), anchorId);
+            SHASTA_ASSERT(it != anchorIds.end());
+            SHASTA_ASSERT(*it == anchorId);
+            const uint64_t bitPosition = it - anchorIds.begin();
+            bitVector.set(bitPosition);
+        }
+    }
+
+
+
+    // Write a matrix showing which OrientedReadIds visit which AnchorIds.
+    // The AnchorIds are sorted using the above topological order.
+    html <<
+        "<p><table>"
+        "<tr><th>Oriented<br>read<br>id";
+    for(const auto& p: vertexTable) {
+        const uint64_t i = p.first;
+        html << "<th>" << anchorIdToString(anchorIds[i]);
+    }
+    for(uint64_t j=0; j<size(); j++) {
+        const OrientedReadId orientedReadId = orientedReadIds[j];
+        const BitVector& bitVector = bitVectors[j];
+        html << "<tr><th>" << orientedReadId;
+        for(const auto& p: vertexTable) {
+            const uint64_t i = p.first;
+            const bool bitValue = bitVector[i];
+            html << "<td class=centered";
+            if(bitValue) {
+                html << " style='background-color:LightGreen'";
+            }
+            html << ">";
+            html << int(bitValue);
+        }
+    }
+    html << "</table>";
+
+
+    // Write out the simple local anchor graph.
+    // Write it out in graphviz format.
+    const string uuid = to_string(boost::uuids::random_generator()());
+    const string dotFileName = tmpDirectory() + uuid + ".dot";
+    ofstream dot(dotFileName);
+    dot << "digraph SimpleLocalAnchorGraph {\n";
+    for(const auto& p: vertexTable) {
+        const uint64_t i = p.first;
+        dot << i << " [label=\"" << anchorIdToString(anchorIds[i]) << "\\n" << count[i] << "\"];\n";
+    }
+    BGL_FORALL_EDGES(e, graph, Graph) {
+        const uint64_t i0 = source(e, graph);
+        const uint64_t i1 = target(e, graph);
+        const Edge& edge = graph[e];
+        dot << i0 << "->" << i1 << " [label=\"" << edge.localCoverage << "\"];\n";
+    }
+    dot << "}\n";
+    dot.close();
+
+
+
+    // Use graphviz to compute the layout.
+    const string svgFileName = dotFileName + ".svg";
+    string command = "dot -T svg " + dotFileName + " -o " + svgFileName +" -Nshape=rectangle" ;
+    const int timeout = 30;
+    bool timeoutTriggered = false;
+    bool signalOccurred = false;
+    int returnCode = 0;
+    runCommandWithTimeout(command, timeout, timeoutTriggered, signalOccurred, returnCode);
+    if(signalOccurred) {
+        html << "Error during graph layout. Command was<br>" << endl;
+        html << command;
+        return;
+    }
+    if(timeoutTriggered) {
+        html << "Timeout during graph layout." << endl;
+        return;
+    }
+    if(returnCode!=0 ) {
+        html << "Error during graph layout. Command was<br>" << endl;
+        html << command;
+        return;
+    }
+    std::filesystem::remove(dotFileName);
+
+    // Write the svg to html.
+    html << "<h3>Simple local anchor graph</h3>"
+        "<div style='border:solid;border-color:grey;display:inline-block'>";
+    ifstream svgFile(svgFileName);
+    html << svgFile.rdbuf();
+    svgFile.close();
+    html << "</div>";
+
+    // Remove the .svg file.
+    std::filesystem::remove(svgFileName);
+
+    // Add drag and zoom.
+    addSvgDragAndZoom(html);
 }

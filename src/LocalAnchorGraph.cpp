@@ -366,9 +366,7 @@ void LocalAnchorGraph::writeGraphviz(
         s << " [";
 
         // URL
-        s << "URL=\"exploreAnchorPair?"
-            "anchorIdAString=" << HttpServer::urlEncode(anchorId0String) << "&"
-            "anchorIdBString=" << HttpServer::urlEncode(anchorId1String) << "\"";
+        s << "URL=\"" + anchorPair.url() + "\"";
 
         // Tooltip.
         s << " tooltip="
@@ -1046,9 +1044,12 @@ void LocalAnchorGraph::writeEdges(
         }
 
         // Hyperlink.
+        html << "\n<a href='" << anchorPair.url() << "'>";
+        /*
         html << "\n<a href='exploreAnchorPair?"
             "anchorIdAString=" << HttpServer::urlEncode(anchorIdString0) << "&"
             "anchorIdBString=" << HttpServer::urlEncode(anchorIdString1) << "'>";
+        */
 
         html <<
             "\n<line x1='" << x0 << "' y1='" << y0 <<

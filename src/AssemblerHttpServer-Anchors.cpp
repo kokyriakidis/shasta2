@@ -847,7 +847,51 @@ void Assembler::exploreAnchorPair(const vector<string>& request, ostream& html)
 
 }
 
+void Assembler::exploreAnchorPair1(const vector<string>& request, ostream& html)
+{
 
+    // Get the parameters for the request
+    string anchorIdAString;
+    HttpServer::getParameterValue(request, "anchorIdAString", anchorIdAString);
+    boost::trim(anchorIdAString);
+
+    string anchorIdBString;
+    HttpServer::getParameterValue(request, "anchorIdBString", anchorIdBString);
+    boost::trim(anchorIdBString);
+
+    string orientedReadIdsString;
+    HttpServer::getParameterValue(request, "orientedReadIdsString", orientedReadIdsString);
+    boost::trim(orientedReadIdsString);
+
+
+
+    // Construct the AnchorPair.
+    AnchorPair anchorPair;
+
+    // AnchorIds.
+    anchorPair.anchorIdA = anchorIdFromString(anchorIdAString);
+    anchorPair.anchorIdB = anchorIdFromString(anchorIdBString);
+    SHASTA_ASSERT(anchorPair.anchorIdA != invalid<AnchorId>);
+    SHASTA_ASSERT(anchorPair.anchorIdB != invalid<AnchorId>);
+    SHASTA_ASSERT(anchorPair.anchorIdA < anchors().size());
+    SHASTA_ASSERT(anchorPair.anchorIdB < anchors().size());
+
+    // OrientedReadIds.
+    boost::tokenizer< boost::char_separator<char> > tokenizer(orientedReadIdsString, boost::char_separator<char>(","));
+    for(const string& orientedReadIdString: tokenizer) {
+        const OrientedReadId orientedReadId = OrientedReadId(orientedReadIdString);
+        anchorPair.orientedReadIds.push_back(orientedReadId);
+    }
+
+
+    // Output to html.
+    html << "<h2>Anchor pair</h2>";
+    anchorPair.writeSummaryHtml(html, anchors());
+    html << "<h3>Oriented reads</h3>";
+    anchorPair.writeOrientedReadIdsHtml(html, anchors());
+    html << "<h3>Journey portions within this anchor pair</h3>";
+    anchorPair.writeJourneysHtml(html, anchors(), journeys());
+}
 
 
 
