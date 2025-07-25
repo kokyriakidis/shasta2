@@ -895,6 +895,96 @@ void Assembler::exploreAnchorPair1(const vector<string>& request, ostream& html)
 
 
 
+void Assembler::exploreAnchorPair2(const vector<string>& request, ostream& html)
+{
+    // Get the parameters for the request
+    string anchorIdAString;
+    const bool anchorIdAStringIsPresent = HttpServer::getParameterValue(request, "anchorIdAString", anchorIdAString);
+    boost::trim(anchorIdAString);
+    string anchorIdBString;
+    const bool anchorIdBStringIsPresent = HttpServer::getParameterValue(request, "anchorIdBString", anchorIdBString);
+    boost::trim(anchorIdBString);
+
+    string adjacentInJourneyString;
+    const bool adjacentInJourney = HttpServer::getParameterValue(request,
+        "adjacentInJourney", adjacentInJourneyString);
+
+
+
+    // Write the form.
+    html << "<form><table>";
+
+    html <<
+        "<tr><th class=left>Anchor A"
+        "<td class=centered><input type=text name=anchorIdAString required style='text-align:center'";
+    if(anchorIdAStringIsPresent) {
+        html << " value='" << anchorIdAString + "'";
+    }
+    html <<
+        " size=8 title='Enter an anchor id between 0 and " <<
+        anchors().size() / 2 - 1 << " followed by + or -.'><br>";
+
+    html <<
+        "<tr><th class=left>Anchor B"
+        "<td class=centered><input type=text name=anchorIdBString required style='text-align:center'";
+    if(anchorIdBStringIsPresent) {
+        html << " value='" << anchorIdBString + "'";
+    }
+    html <<
+        " size=8 title='Enter an anchor id between 0 and " <<
+        anchors().size() / 2 - 1 << " followed by + or -.'><br>"
+
+        "<tr><th>Adjacent in journey"
+        "<td class=centered><input type=checkbox name=adjacentInJourney" <<
+        (adjacentInJourney ? " checked" : "") <<
+        ">"
+
+        "</table>"
+        "<input type=submit value='Get anchor pair information'>"
+        "</form>";
+
+
+
+    // Check the AnchorIds
+    if(not (anchorIdAStringIsPresent and anchorIdBStringIsPresent)) {
+        return;
+    }
+    const AnchorId anchorIdA = anchorIdFromString(anchorIdAString);
+    const AnchorId anchorIdB = anchorIdFromString(anchorIdBString);
+
+    if((anchorIdA == invalid<AnchorId>) or (anchorIdA >= anchors().size())) {
+        html << "<p>Invalid anchor id " << anchorIdAString << ". Must be a number between 0 and " <<
+            anchors().size() / 2 - 1 << " followed by + or -.";
+        return;
+    }
+
+    if((anchorIdB == invalid<AnchorId>) or (anchorIdB >= anchors().size())) {
+        html << "<p>Invalid anchor id " << anchorIdBString << " .Must be a number between 0 and " <<
+            anchors().size() / 2 - 1 << " followed by + or -.";
+        return;
+    }
+
+    if(anchorIdA == anchorIdB) {
+        html << "Specify two distinct anchors.";
+        return;
+    }
+
+
+
+    // Create a AnchorPair from these two anchors.
+    const AnchorPair anchorPair(anchors(), anchorIdA, anchorIdB, adjacentInJourney);
+
+    // Output to html.
+    html << "<h2>Anchor pair</h2>";
+    anchorPair.writeSummaryHtml(html, anchors());
+    html << "<h3>Oriented reads</h3>";
+    anchorPair.writeOrientedReadIdsHtml(html, anchors());
+    html << "<h3>Journey portions within this anchor pair</h3>";
+    anchorPair.writeJourneysHtml(html, anchors(), journeys());
+}
+
+
+
 void Assembler::exploreJourney(const vector<string>& request, ostream& html)
 {
 
