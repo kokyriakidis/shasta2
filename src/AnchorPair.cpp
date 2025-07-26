@@ -9,6 +9,7 @@
 #include "Markers.hpp"
 #include "orderPairs.hpp"
 #include "runCommandWithTimeout.hpp"
+#include "shastaLapack.hpp"
 #include "tmpDirectory.hpp"
 #include "Reads.hpp"
 using namespace shasta;
@@ -710,6 +711,7 @@ void AnchorPair::writeOrientedReadIdsHtml(ostream& html, const Anchors& anchors)
     vector< pair<Positions, Positions> > positions;
     get(anchors, positions);
 
+    html << "<h3>Oriented reads</h3>";
     html <<
         "<p>"
         "<table>"
@@ -760,6 +762,7 @@ void AnchorPair::writeJourneysHtml(
         anchorIds.push_back(anchorIdB);
     }
 
+    html << "<h3>Journey portions within this anchor pair</h3>";
     html << "<table>";
 
     for(uint64_t i=0; i<size(); i++) {
@@ -890,6 +893,7 @@ void AnchorPair::writeJourneysHtml(
     // Write a matrix showing which OrientedReadIds visit which AnchorIds.
     // The AnchorIds are sorted using the above topological order.
     html <<
+        "<h3>Oriented read / anchor matrix</h3>"
         "<p><table>"
         "<tr><th>Oriented<br>read<br>id";
     for(const auto& p: vertexTable) {
@@ -912,6 +916,91 @@ void AnchorPair::writeJourneysHtml(
         }
     }
     html << "</table>";
+
+
+
+    // Try a SVD of that matrix.
+    {
+        // Prepare the arguments for dgesvd_.
+        char JOBU = 'A';
+        char JOBVT = 'A';
+        int M = int(size());
+        int N = int(anchorIds.size());
+        SHASTA_ASSERT(M > 0);
+        SHASTA_ASSERT(N > 0);
+        vector<double> A(M * N);
+        int LDA = M;
+        vector<double> S(min(M, N));
+        vector<double> U(M * M);
+        int LDU = M;
+        vector<double> VT(N * N);
+        int LDVT = N;
+        int LWORK = 10 * max(M, N);
+        vector<double> WORK(LWORK);
+        int INFO = 0;
+
+        // Fill in the A matrix using the bitVector.
+        uint64_t index = 0;
+        for(int J=0; J<N; J++) {
+            for(int I=0; I<M; I++) {
+                A[index++] = double(bitVectors[I][J]);
+            }
+        }
+
+        // Compute the SVD.
+        dgesvd_(&JOBU, &JOBVT, M, N, &A[0], LDA, &S[0], &U[0], LDU, &VT[0], LDVT, &WORK[0], LWORK, INFO);
+
+        // Left singular vectors.
+        html << std::fixed << std::setprecision(3);
+        const double minSingularValue = 0.1;
+        html <<
+            "<h3>Left singular vectors</h3><table>"
+            "<tr><th>Singular<br>value";
+        for(uint64_t j=0; j<min(size(), anchorIds.size()); j++) {
+            if(S[j] < minSingularValue) {
+                break;
+            }
+            html << "<th>" << S[j];
+        }
+        html << "\n";
+        for(uint64_t i=0; i<size(); i++) {
+            const OrientedReadId orientedReadId = orientedReadIds[i];
+            html << "<tr><th>" << orientedReadId;
+            for(uint64_t j=0; j<min(size(), anchorIds.size()); j++) {
+                if(S[j] < minSingularValue) {
+                    break;
+                }
+                html << "<td class=centered>" << U[i + j * size()];
+            }
+            html << "\n";
+        }
+        html << "</table>";
+
+        // Right singular vectors.
+        html <<
+            "<h3>Right singular vectors</h3><table>"
+            "<tr><th>Singular<br>value";
+        for(uint64_t j=0; j<min(size(), anchorIds.size()); j++) {
+            if(S[j] < minSingularValue) {
+                break;
+            }
+            html << "<th>" << S[j];
+        }
+        html << "\n";
+        for(const auto& p: vertexTable) {
+            const uint64_t j = p.first;
+            html << "<tr><th>" << anchorIdToString(anchorIds[j]);
+            for(uint64_t i=0; i<min(size(), anchorIds.size()); i++) {
+                if(S[i] < minSingularValue) {
+                    break;
+                }
+                html << "<td class=centered>" << VT[i + j * anchorIds.size()];
+            }
+            html << "\n";
+        }
+        html << "</table>";
+    }
+
 
 
     // Write out the simple local anchor graph.
