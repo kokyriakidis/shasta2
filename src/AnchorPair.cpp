@@ -919,7 +919,9 @@ void AnchorPair::writeJourneysHtml(
 
 
 
-    // Try a SVD of that matrix.
+
+    // Try a SVD of that matrix, shifting each column so that
+    // it has zero average.
     {
         // Prepare the arguments for dgesvd_.
         char JOBU = 'A';
@@ -942,25 +944,44 @@ void AnchorPair::writeJourneysHtml(
         // Fill in the A matrix using the bitVector.
         uint64_t index = 0;
         for(int J=0; J<N; J++) {
+            uint64_t oneBitCount = 0;
             for(int I=0; I<M; I++) {
-                A[index++] = double(bitVectors[I][J]);
+                if(bitVectors[I][J]) {
+                    ++oneBitCount;
+                }
+            }
+            const double columnAverage = double(oneBitCount) / double(size());
+            for(int I=0; I<M; I++) {
+                A[index++] = double(bitVectors[I][J]) - columnAverage;
             }
         }
 
         // Compute the SVD.
         dgesvd_(&JOBU, &JOBVT, M, N, &A[0], LDA, &S[0], &U[0], LDU, &VT[0], LDVT, &WORK[0], LWORK, INFO);
 
-        // Left singular vectors.
+        // Singular values.
+        const double minSingularValue = 1.;
         html << std::fixed << std::setprecision(3);
-        const double minSingularValue = 0.1;
         html <<
-            "<h3>Left singular vectors</h3><table>"
-            "<tr><th>Singular<br>value";
+            "<h3>Singular values</h3><table>";
         for(uint64_t j=0; j<min(size(), anchorIds.size()); j++) {
             if(S[j] < minSingularValue) {
                 break;
             }
-            html << "<th>" << S[j];
+            html << "<tr><td class=centered>" << j << "<td class=centered>" << S[j];
+        }
+        html << "</table>";
+
+
+        // Left singular vectors.
+        html <<
+            "<h3>Left singular vectors</h3><table>"
+            "<tr><th>Oriented<br>read<br>id";
+        for(uint64_t j=0; j<min(size(), anchorIds.size()); j++) {
+            if(S[j] < minSingularValue) {
+                break;
+            }
+            html << "<th>L" << j;
         }
         html << "\n";
         for(uint64_t i=0; i<size(); i++) {
@@ -979,12 +1000,12 @@ void AnchorPair::writeJourneysHtml(
         // Right singular vectors.
         html <<
             "<h3>Right singular vectors</h3><table>"
-            "<tr><th>Singular<br>value";
+            "<tr><th>Anchor";
         for(uint64_t j=0; j<min(size(), anchorIds.size()); j++) {
             if(S[j] < minSingularValue) {
                 break;
             }
-            html << "<th>" << S[j];
+            html << "<th>R" << j;
         }
         html << "\n";
         for(const auto& p: vertexTable) {
