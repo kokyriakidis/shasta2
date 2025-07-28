@@ -2,7 +2,9 @@
 #include "AnchorPair.hpp"
 #include "Anchor.hpp"
 #include "approximateTopologicalSort.hpp"
+#include "color.hpp"
 #include "deduplicate.hpp"
+#include "hcsClustering.hpp"
 #include "html.hpp"
 #include "HttpServer.hpp"
 #include "Journeys.hpp"
@@ -1020,7 +1022,63 @@ void AnchorPair::writeJourneysHtml(
             html << "\n";
         }
         html << "</table>";
+
+
+         // Compute pair distances between oriented reads using the first two scaled left vectors.
+        const span<double> X(U.data(), size());
+        const span<double> Y(U.data() + size(), size());
+        html << "<h3>Pair distances using the first two scaled eft vectors</h3><table>"
+            "<tr><th>";
+        using DistanceGraph = boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS, uint64_t>;
+        DistanceGraph distanceGraph(size());
+        for(uint64_t i=0; i<size(); i++) {
+            html << "<th>" << orientedReadIds[i];
+        }
+        for(uint64_t i0=0; i0<size(); i0++) {
+            const double x0 = X[i0];
+            const double y0 = Y[i0];
+            html << "<tr><th>" << orientedReadIds[i0];
+            for(uint64_t i1=0; i1<size(); i1++) {
+                const double x1 = X[i1];
+                const double y1 = Y[i1];
+                const double dx = (x1 - x0) * S[0];
+                const double dy = (y1 - y0) * S[1];
+                const double distance = sqrt(dx * dx + dy * dy);
+                html << "<td class=centered>" << distance;
+                if((i0 < i1) and (distance < 1.)) {
+                    add_edge(i0, i1, distanceGraph);
+                }
+            }
+        }
+        html << "</table>";
+
+        // Write out the distance graph, coloring by cluster.
+        vector< vector<uint64_t> > clusters;
+        hcsClustering(distanceGraph, clusters);
+        for(uint64_t clusterId=0; clusterId<clusters.size(); clusterId++) {
+            const vector<uint64_t>& cluster = clusters[clusterId];
+            for(const uint64_t i: cluster) {
+                distanceGraph[i] = clusterId;
+            }
+        }
+        ofstream dot("SvdDistances.dot");
+        dot << "graph G {\n";
+        for(uint64_t i=0; i<size(); i++) {
+            const OrientedReadId orientedReadId = orientedReadIds[i];
+            const uint64_t clusterId = distanceGraph[i];
+            const string color = hslToRgbString(double(clusterId) / double(clusters.size()), 0.75, 0.6);
+            dot << i << " [label=\"" << orientedReadId << "\\n" << clusterId << "\""
+                " fillcolor=\"" << color << "\"];\n";
+        }
+        BGL_FORALL_EDGES(e, distanceGraph, DistanceGraph) {
+            const uint64_t i0 = source(e, distanceGraph);
+            const uint64_t i1 = target(e, distanceGraph);
+            dot << i0 << "--" << i1 << ";\n";
+        }
+        dot << "}\n";
     }
+
+
 
 
 
