@@ -181,6 +181,7 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
         anchors().readFollowing(
             journeys(), anchorId, 0,
             httpServerData.options->minAnchorGraphEdgeCoverage,
+            httpServerData.options->minAnchorGraphContinueReadFollowingCount,
             httpServerData.options->aDrift,
             httpServerData.options->bDrift,
             anchorPairs);
@@ -207,6 +208,7 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
         anchors().readFollowing(
             journeys(), anchorId, 1,
             httpServerData.options->minAnchorGraphEdgeCoverage,
+            httpServerData.options->minAnchorGraphContinueReadFollowingCount,
             httpServerData.options->aDrift,
             httpServerData.options->bDrift,
             anchorPairs);

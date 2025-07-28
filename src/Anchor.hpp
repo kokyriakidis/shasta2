@@ -260,6 +260,7 @@ public:
         AnchorId anchorId0,
         uint64_t direction,                         // 0 = forward, 1 = backward
         uint64_t minCommonCount,
+        uint64_t minContinueReadFollowingCount,
         double aDrift,
         double bDrift,
         vector< pair<AnchorPair, uint32_t> >&   // AnchorPairs and offsets.

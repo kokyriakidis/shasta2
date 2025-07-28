@@ -105,6 +105,10 @@ void Options::addOptions()
         "Minimum anchor graph edge coverage."
         )->capture_default_str();
 
+    add_option("--min-anchor-graph-continue-read-following-count", minAnchorGraphContinueReadFollowingCount,
+        "Coverage threshold to continue read following during anchor graph edge creation."
+        )->capture_default_str();
+
     add_option("--a-drift", aDrift,
         "Constant allowed offset for offset consistency."
         )->capture_default_str();

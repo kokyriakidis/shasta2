@@ -86,6 +86,7 @@ public:
         const Anchors&,
         const Journeys&,
         uint64_t minEdgeCoverage,
+        uint64_t minContinueReadFollowingCount,
         double aDrift,
         double bDrift,
         uint64_t threadCount);
@@ -111,6 +112,7 @@ public:
         const Anchors&,
         const Journeys&,
         uint64_t minEdgeCoverage,
+        uint64_t minContinueReadFollowingCount,
         double aDrift,
         double bDrift);
 

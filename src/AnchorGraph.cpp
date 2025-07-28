@@ -76,6 +76,7 @@ AnchorGraph::AnchorGraph(
     const Anchors& anchors,
     const Journeys& journeys,
     uint64_t minEdgeCoverage,
+    uint64_t minContinueReadFollowingCount,
     double aDrift,
     double bDrift,
     uint64_t /* threadCount */) :
@@ -92,7 +93,7 @@ AnchorGraph::AnchorGraph(
     }
 
     // Create the edges using read following.
-    createEdges3(anchors, journeys, minEdgeCoverage, aDrift, bDrift);
+    createEdges3(anchors, journeys, minEdgeCoverage, minContinueReadFollowingCount, aDrift, bDrift);
 
     cout << "The anchor graph has " << num_vertices(*this) <<
         " vertices and " << num_edges(*this) << " edges." << endl;
@@ -231,6 +232,7 @@ void AnchorGraph::createEdges3(
     const Anchors& anchors,
     const Journeys& journeys,
     uint64_t minEdgeCoverage,
+    uint64_t minContinueReadFollowingCount,
     double aDrift,
     double bDrift)
 {
@@ -245,7 +247,7 @@ void AnchorGraph::createEdges3(
             // Do read following.
             anchors.readFollowing(
                 journeys, anchorId0, direction,
-                minEdgeCoverage, aDrift, bDrift,
+                minEdgeCoverage, minContinueReadFollowingCount, aDrift, bDrift,
                 anchorPairs);
 
             // Loop over the AnchorPairs that were found.
