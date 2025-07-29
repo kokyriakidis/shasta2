@@ -244,9 +244,10 @@ public:
     string url() const;
 
     // Html output.
+    void writeAllHtml(ostream&, const Anchors&, const Journeys&) const;
     void writeSummaryHtml(ostream&, const Anchors&) const;
     void writeOrientedReadIdsHtml(ostream&, const Anchors&) const;
-    void writeJourneysHtml(ostream&, const Anchors&, const Journeys&) const;
+    void writeJourneysAndClustersHtml(ostream&, const Anchors&, const Journeys&) const;
     void writeSimpleLocalAnchorGraphHtml(ostream&, const Anchors&, const Journeys&) const;
 
     template<class Archive> void serialize(Archive& ar, unsigned int /* version */)

@@ -752,6 +752,19 @@ string AnchorPair::url() const
 
 
 
+void AnchorPair::writeAllHtml(
+    ostream& html,
+    const Anchors& anchors,
+    const Journeys& journeys) const
+{
+    writeSummaryHtml(html, anchors);
+    writeOrientedReadIdsHtml(html, anchors);
+    writeJourneysAndClustersHtml(html, anchors, journeys);
+    writeSimpleLocalAnchorGraphHtml(html, anchors, journeys);
+}
+
+
+
 void AnchorPair::writeSummaryHtml(ostream& html, const Anchors& anchors) const
 {
     const uint64_t offset = getAverageOffset(anchors);
@@ -763,6 +776,7 @@ void AnchorPair::writeSummaryHtml(ostream& html, const Anchors& anchors) const
         "<tr><th>Average offset<td class=centered>" << offset <<
         "</table>";
 }
+
 
 
 void AnchorPair::writeOrientedReadIdsHtml(ostream& html, const Anchors& anchors) const
@@ -807,7 +821,7 @@ void AnchorPair::writeOrientedReadIdsHtml(ostream& html, const Anchors& anchors)
 
 
 
-void AnchorPair::writeJourneysHtml(
+void AnchorPair::writeJourneysAndClustersHtml(
     ostream& html,
     const Anchors& anchors,
     const Journeys& journeys) const
@@ -1141,33 +1155,10 @@ void AnchorPair::writeJourneysHtml(
         dot.close();
         const double timeout = 30.;
         const string options = "-Nshape=rectangle -Nstyle=filled -Goverlap=false -Gsplines=true -Gbgcolor=gray95";
-        html << "<h3>Local simple anchor graph</h3><p>";
+        html << "<h3>Distance graph</h3><p>";
         graphvizToHtml(dotFileName, "sfdp", timeout, options, html);
     }
 
-
-
-    // Display the simple local anchor graph.
-    const string uuid = to_string(boost::uuids::random_generator()());
-    const string dotFileName = tmpDirectory() + uuid + ".dot";
-    ofstream dot(dotFileName);
-    dot << "digraph SimpleLocalAnchorGraph {\n";
-    for(const auto& p: vertexTable) {
-        const uint64_t i = p.first;
-        dot << i << " [label=\"" << anchorIdToString(anchorIds[i]) << "\\n" << count[i] << "\"];\n";
-    }
-    BGL_FORALL_EDGES(e, graph, Graph) {
-        const uint64_t i0 = source(e, graph);
-        const uint64_t i1 = target(e, graph);
-        const Edge& edge = graph[e];
-        dot << i0 << "->" << i1 << " [label=\"" << edge.localCoverage << "\"];\n";
-    }
-    dot << "}\n";
-    dot.close();
-    const double timeout = 30.;
-    const string options = "-Nshape=rectangle -Gbgcolor=gray95";
-    html << "<h3>Local simple anchor graph</h3><p>";
-    graphvizToHtml(dotFileName, "dot", timeout, options, html);
 }
 
 
@@ -1214,7 +1205,6 @@ AnchorPair::SimpleLocalAnchorGraph::SimpleLocalAnchorGraph(
     vector<AnchorId> anchorIds;
     vector<uint64_t> localCoverage;
     anchorPair.getAllAnchorIdsAndLocalCoverage(journeys, positionsInJourney, anchorIds, localCoverage);
-    cout << "BBB " << anchorIds.size() << " " << localCoverage.size() << endl;
     SHASTA_ASSERT(anchorIds.size() == localCoverage.size());
     for(uint64_t i=0; i<anchorIds.size(); i++) {
         add_vertex(SimpleLocalAnchorGraphVertex(anchorIds[i], localCoverage[i]), graph);
@@ -1279,12 +1269,6 @@ void AnchorPair::SimpleLocalAnchorGraph::approximateTopologicalSort()
     for(const auto& p: vertexTable) {
         approximateTopologicalOrder.push_back(p.first);
     }
-
-    cout << "Topological order:";
-    for(const vertex_descriptor v: approximateTopologicalOrder) {
-        cout << " " << anchorIdToString(graph[v].anchorId);
-    }
-    cout << endl;
 }
 
 

@@ -888,11 +888,7 @@ void Assembler::exploreAnchorPair1(const vector<string>& request, ostream& html)
 
     // Output to html.
     html << "<h2>Anchor pair</h2>";
-    anchorPair.writeSummaryHtml(html, anchors());
-    html << "<h3>Oriented reads</h3>";
-    anchorPair.writeOrientedReadIdsHtml(html, anchors());
-    html << "<h3>Journey portions within this anchor pair</h3>";
-    anchorPair.writeJourneysHtml(html, anchors(), journeys());
+    anchorPair.writeAllHtml(html, anchors(), journeys());
 }
 
 
@@ -978,10 +974,7 @@ void Assembler::exploreAnchorPair2(const vector<string>& request, ostream& html)
 
     // Output to html.
     html << "<h2>Anchor pair</h2>";
-    anchorPair.writeSummaryHtml(html, anchors());
-    anchorPair.writeOrientedReadIdsHtml(html, anchors());
-    anchorPair.writeJourneysHtml(html, anchors(), journeys());
-    anchorPair.writeSimpleLocalAnchorGraphHtml(html, anchors(), journeys());
+    anchorPair.writeAllHtml(html, anchors(), journeys());
 }
 
 
