@@ -2,6 +2,7 @@
 #include "Anchor.hpp"
 #include "color.hpp"
 #include "deduplicate.hpp"
+#include "graphvizToHtml.hpp"
 #include "hcsClustering.hpp"
 #include "html.hpp"
 #include "invalid.hpp"
@@ -1315,41 +1316,11 @@ void Anchors::clusterAnchorPairOrientedReads(
         dot << "}\n";
         dot.close();
 
-        // Use graphviz to compute the layout.
-        const string svgFileName = dotFileName + ".svg";
-        const string command = "sfdp -T svg " + dotFileName + " -o " + svgFileName +
-            " -Nshape=rectangle -Nstyle=filled -Goverlap=false -Gsplines=true"
-            " -Gbgcolor=gray95";
-        const int timeout = 30;
-        bool timeoutTriggered = false;
-        bool signalOccurred = false;
-        int returnCode = 0;
-        runCommandWithTimeout(command, timeout, timeoutTriggered, signalOccurred, returnCode);
-        if(signalOccurred) {
-            html << "Error during graph layout. Command was<br>" << endl;
-            html << command;
-        }
-        if(timeoutTriggered) {
-            html << "Timeout during graph layout." << endl;
-        }
-        if(returnCode!=0 ) {
-            html << "Error during graph layout. Command was<br>" << endl;
-            html << command;
-        }
-        std::filesystem::remove(dotFileName);
-
-        // Write the svg to html.
-        html << "<h3>Similarity graph</h3>"
-            "<p>Jaccard similarity threshold is " << clusteringMinJaccard <<
-            "<p><div style='display:inline-block'>";
-        ifstream svgFile(svgFileName);
-        html << svgFile.rdbuf();
-        svgFile.close();
-        html << "</div>";
-
-        // Remove the .svg file.
-        std::filesystem::remove(svgFileName);
-     }
+        // Send it to htmk in svg format.
+        const double timeout = 30.;
+        const string options = "-Nshape=rectangle -Nstyle=filled -Goverlap=false -Gsplines=true -Gbgcolor=gray95";
+        graphvizToHtml(dotFileName, "sfdp", timeout, options, html);
+    }
 
 
 }
