@@ -4,12 +4,14 @@
 #include "approximateTopologicalSort.hpp"
 #include "color.hpp"
 #include "deduplicate.hpp"
+#include "graphvizToHtml.hpp"
 #include "hcsClustering.hpp"
 #include "html.hpp"
 #include "HttpServer.hpp"
 #include "Journeys.hpp"
 #include "Markers.hpp"
 #include "orderPairs.hpp"
+#include "orderVectors.hpp"
 #include "runCommandWithTimeout.hpp"
 #include "shastaLapack.hpp"
 #include "tmpDirectory.hpp"
@@ -862,7 +864,7 @@ void AnchorPair::writeJourneysHtml(
 
 
 
-    // Create matrix with a bit for each (OrienteRead, AnchorId) pair..
+    // Create a matrix with a bit for each (OrienteRead, AnchorId) pair..
     // The bit is set if the OrientedRead visits that AnchorId.
     using BitVector = boost::dynamic_bitset<uint64_t>;
     vector<BitVector> bitVectors(size());
@@ -1027,7 +1029,7 @@ void AnchorPair::writeJourneysHtml(
          // Compute pair distances between oriented reads using the first two scaled left vectors.
         const span<double> X(U.data(), size());
         const span<double> Y(U.data() + size(), size());
-        html << "<h3>Pair distances using the first two scaled eft vectors</h3><table>"
+        html << "<h3>Pair distances using the first two scaled left vectors</h3><table>"
             "<tr><th>";
         using DistanceGraph = boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS, uint64_t>;
         DistanceGraph distanceGraph(size());
@@ -1052,16 +1054,21 @@ void AnchorPair::writeJourneysHtml(
         }
         html << "</table>";
 
-        // Write out the distance graph, coloring by cluster.
+
+
+        // Display the distance graph, coloring by cluster.
         vector< vector<uint64_t> > clusters;
         hcsClustering(distanceGraph, clusters);
+        sort(clusters.begin(), clusters.end(), OrderVectorsByDecreasingSize<uint64_t>());
         for(uint64_t clusterId=0; clusterId<clusters.size(); clusterId++) {
             const vector<uint64_t>& cluster = clusters[clusterId];
             for(const uint64_t i: cluster) {
                 distanceGraph[i] = clusterId;
             }
         }
-        ofstream dot("SvdDistances.dot");
+        const string uuid = to_string(boost::uuids::random_generator()());
+        const string dotFileName = tmpDirectory() + uuid + ".dot";
+        ofstream dot(dotFileName);
         dot << "graph G {\n";
         for(uint64_t i=0; i<size(); i++) {
             const OrientedReadId orientedReadId = orientedReadIds[i];
@@ -1076,14 +1083,16 @@ void AnchorPair::writeJourneysHtml(
             dot << i0 << "--" << i1 << ";\n";
         }
         dot << "}\n";
+        dot.close();
+        const double timeout = 30.;
+        const string options = "-Nshape=rectangle -Nstyle=filled -Goverlap=false -Gsplines=true -Gbgcolor=gray95";
+        html << "<h3>Local simple anchor graph</h3><p>";
+        graphvizToHtml(dotFileName, "sfdp", timeout, options, html);
     }
 
 
 
-
-
-    // Write out the simple local anchor graph.
-    // Write it out in graphviz format.
+    // Display the simple local anchor graph.
     const string uuid = to_string(boost::uuids::random_generator()());
     const string dotFileName = tmpDirectory() + uuid + ".dot";
     ofstream dot(dotFileName);
@@ -1100,44 +1109,8 @@ void AnchorPair::writeJourneysHtml(
     }
     dot << "}\n";
     dot.close();
-
-
-
-    // Use graphviz to compute the layout.
-    const string svgFileName = dotFileName + ".svg";
-    string command = "dot -T svg " + dotFileName + " -o " + svgFileName +" -Nshape=rectangle" ;
-    const int timeout = 30;
-    bool timeoutTriggered = false;
-    bool signalOccurred = false;
-    int returnCode = 0;
-    runCommandWithTimeout(command, timeout, timeoutTriggered, signalOccurred, returnCode);
-    if(signalOccurred) {
-        html << "Error during graph layout. Command was<br>" << endl;
-        html << command;
-        return;
-    }
-    if(timeoutTriggered) {
-        html << "Timeout during graph layout." << endl;
-        return;
-    }
-    if(returnCode!=0 ) {
-        html << "Error during graph layout. Command was<br>" << endl;
-        html << command;
-        return;
-    }
-    std::filesystem::remove(dotFileName);
-
-    // Write the svg to html.
-    html << "<h3>Simple local anchor graph</h3>"
-        "<div style='border:solid;border-color:grey;display:inline-block'>";
-    ifstream svgFile(svgFileName);
-    html << svgFile.rdbuf();
-    svgFile.close();
-    html << "</div>";
-
-    // Remove the .svg file.
-    std::filesystem::remove(svgFileName);
-
-    // Add drag and zoom.
-    addSvgDragAndZoom(html);
+    const double timeout = 30.;
+    const string options = "-Nshape=rectangle -Gbgcolor=gray95";
+    html << "<h3>Local simple anchor graph</h3><p>";
+    graphvizToHtml(dotFileName, "dot", timeout, options, html);
 }
