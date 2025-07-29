@@ -274,6 +274,61 @@ void AnchorPair::getOrdinals(
 
 
 
+// Just return the journey positions.
+void AnchorPair::getPositionsInJourneys(
+    const Anchors& anchors,
+    vector< pair<uint32_t, uint32_t> >& positionsInJourneys) const
+{
+    positionsInJourneys.clear();
+
+    const Anchor anchorA = anchors[anchorIdA];
+    const Anchor anchorB = anchors[anchorIdB];
+
+    const auto beginA = anchorA.begin();
+    const auto beginB = anchorB.begin();
+    const auto endA = anchorA.end();
+    const auto endB = anchorB.end();
+
+    auto itA = beginA;
+    auto itB = beginB;
+    auto it = orientedReadIds.begin();
+    const auto itEnd = orientedReadIds.end();
+    while(itA != endA and itB != endB and it != itEnd) {
+
+        if(itA->orientedReadId < itB->orientedReadId) {
+            ++itA;
+            continue;
+        }
+
+        if(itB->orientedReadId < itA->orientedReadId) {
+            ++itB;
+            continue;
+        }
+
+        // We found a common OrientedReadId.
+        const OrientedReadId orientedReadId = itA->orientedReadId;
+        SHASTA_ASSERT(orientedReadId == itB->orientedReadId);
+
+        // Only process is this is one of our OrientedReadIds;
+        if(orientedReadId == *it) {
+            ++it;
+
+            const uint32_t positionInJourneyA = itA->positionInJourney;
+            const uint32_t positionInJourneyB = itB->positionInJourney;
+
+            positionsInJourneys.push_back(make_pair(positionInJourneyA, positionInJourneyB));
+        }
+
+        ++itA;
+        ++itB;
+    }
+
+    SHASTA_ASSERT(it == orientedReadIds.end());
+
+}
+
+
+
 // This finds AnchorPairs as follows:
 // - anchorIdA is as specified.
 // - Coverage is at least minCoverage.
@@ -1113,4 +1168,233 @@ void AnchorPair::writeJourneysHtml(
     const string options = "-Nshape=rectangle -Gbgcolor=gray95";
     html << "<h3>Local simple anchor graph</h3><p>";
     graphvizToHtml(dotFileName, "dot", timeout, options, html);
+}
+
+
+
+void AnchorPair::writeSimpleLocalAnchorGraphHtml(
+    ostream& html,
+    const Anchors& anchors,
+    const Journeys& journeys) const
+{
+    // Create the SimpleLocalAnchorGraph.
+    using Graph = SimpleLocalAnchorGraph;
+    Graph graph(anchors, journeys, *this);
+
+    // Write it out in Graphviz format.
+    const string uuid = to_string(boost::uuids::random_generator()());
+    const string dotFileName = tmpDirectory() + uuid + ".dot";
+    graph.writeGraphviz(dotFileName);
+
+    // Display it in html in svg format.
+    const double timeout = 30.;
+    const string options = "-Nshape=rectangle -Nstyle=filled -Nfillcolor=pink -Gbgcolor=gray95";
+    html << "<h3>Local simple anchor graph</h3><p>";
+    graphvizToHtml(dotFileName, "dot", timeout, options, html);
+}
+
+
+
+AnchorPair::SimpleLocalAnchorGraph::SimpleLocalAnchorGraph(
+    const Anchors& anchors,
+    const Journeys& journeys,
+    const AnchorPair& anchorPair)
+{
+    using Graph = SimpleLocalAnchorGraph;
+    Graph& graph = *this;
+
+    // Get the positions of anchorIdA and anchorIdB in the journeys
+    // of the OrientedReadIds of this AnchorPair.
+    vector< pair<uint32_t, uint32_t> > positionsInJourney;
+    anchorPair.getPositionsInJourneys(anchors, positionsInJourney);
+
+
+    // Create the vertices.
+    // Vertex descriptors are the same as indexes into the AnchorIds vector.
+    vector<AnchorId> anchorIds;
+    vector<uint64_t> localCoverage;
+    anchorPair.getAllAnchorIdsAndLocalCoverage(journeys, positionsInJourney, anchorIds, localCoverage);
+    cout << "BBB " << anchorIds.size() << " " << localCoverage.size() << endl;
+    SHASTA_ASSERT(anchorIds.size() == localCoverage.size());
+    for(uint64_t i=0; i<anchorIds.size(); i++) {
+        add_vertex(SimpleLocalAnchorGraphVertex(anchorIds[i], localCoverage[i]), graph);
+    }
+
+    // Create the edges.
+    for(uint64_t i=0; i<anchorPair.size(); i++) {
+        const OrientedReadId orientedReadId = anchorPair.orientedReadIds[i];
+        const Journey& journey = journeys[orientedReadId];
+
+        const auto& positionsInJourneyAB = positionsInJourney[i];
+        const auto positionInJourneyA = positionsInJourneyAB.first;
+        const auto positionInJourneyB = positionsInJourneyAB.second;
+
+        for(auto position=positionInJourneyA+1; position<=positionInJourneyB; position++) {
+            const AnchorId anchorId1 = journey[position];
+            const AnchorId anchorId0 = journey[position-1];
+            const uint64_t i0 = std::ranges::find(anchorIds, anchorId0) - anchorIds.begin();
+            const uint64_t i1 = std::ranges::find(anchorIds, anchorId1) - anchorIds.begin();
+            Graph::edge_descriptor e;
+            bool edgeExists = false;
+            tie(e, edgeExists) = edge(i0, i1, graph);
+            if(not edgeExists) {
+                tie(e, edgeExists) = boost::add_edge(i0, i1, graph);
+                SHASTA_ASSERT(edgeExists);
+            }
+            ++graph[e].localCoverage;
+        }
+    }
+
+    approximateTopologicalSort();
+    SHASTA_ASSERT(graph[approximateTopologicalOrder.front()].anchorId == anchorPair.anchorIdA);
+    SHASTA_ASSERT(graph[approximateTopologicalOrder.back()].anchorId == anchorPair.anchorIdB);
+}
+
+
+
+void AnchorPair::SimpleLocalAnchorGraph::approximateTopologicalSort()
+{
+    using Graph = SimpleLocalAnchorGraph;
+    Graph& graph = *this;
+
+    // Sort the edges by decreasing coverage.
+    vector< pair<Graph::edge_descriptor, uint64_t> > edgeTable;
+    BGL_FORALL_EDGES(e, graph, Graph) {
+        edgeTable.emplace_back(e, graph[e].localCoverage);
+    }
+    std::ranges::sort(edgeTable, OrderPairsBySecondOnlyGreater<Graph::edge_descriptor, uint64_t>());
+    vector<Graph::edge_descriptor> edgesByCoverage;
+    for(const auto& p: edgeTable) {
+        edgesByCoverage.push_back(p.first);
+    }
+
+    // Do an approximate topological sort using edges in this order.
+    shasta::approximateTopologicalSort(graph, edgesByCoverage);
+    vector< pair<Graph::vertex_descriptor, uint64_t> > vertexTable;
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        vertexTable.emplace_back(v, graph[v].rank);
+    }
+    std::ranges::sort(vertexTable, OrderPairsBySecondOnly<Graph::vertex_descriptor, uint64_t>());
+    approximateTopologicalOrder.clear();
+    for(const auto& p: vertexTable) {
+        approximateTopologicalOrder.push_back(p.first);
+    }
+
+    cout << "Topological order:";
+    for(const vertex_descriptor v: approximateTopologicalOrder) {
+        cout << " " << anchorIdToString(graph[v].anchorId);
+    }
+    cout << endl;
+}
+
+
+void AnchorPair::SimpleLocalAnchorGraph::writeGraphviz(const string& fileName) const
+{
+    ofstream dot(fileName);
+    writeGraphviz(dot);
+}
+
+
+
+void AnchorPair::SimpleLocalAnchorGraph::writeGraphviz(ostream& dot) const
+{
+    using Graph = SimpleLocalAnchorGraph;
+    const Graph& graph = *this;
+
+    dot << "digraph SimpleLocalAnchorGraph {\n";
+    for(const vertex_descriptor v: approximateTopologicalOrder) {
+        const SimpleLocalAnchorGraphVertex& vertex = graph[v];
+         dot << v << " [label=\"" << anchorIdToString(vertex.anchorId) << "\\n" << vertex.localCoverage << "\"];\n";
+    }
+    BGL_FORALL_EDGES(e, graph, Graph) {
+        const vertex_descriptor v0 = source(e, graph);
+        const vertex_descriptor v1 = target(e, graph);
+        const SimpleLocalAnchorGraphEdge& edge = graph[e];
+        dot << v0 << "->" << v1 << " [label=\"" << edge.localCoverage << "\"];\n";
+    }
+    dot << "}\n";
+
+}
+
+
+void AnchorPair::getAllAnchorIds(
+    const Journeys& journeys,
+    const vector< pair<uint32_t, uint32_t> >& positionsInJourneys,
+    vector<AnchorId>& anchorIds) const
+{
+    anchorIds.clear();
+
+    // Loop over OrientedReadIds in this AnchorPair.
+    for(uint64_t i=0; i<size(); i++) {
+        const OrientedReadId orientedReadId = orientedReadIds[i];
+        const Journey journey = journeys[orientedReadId];
+
+        // Get the positions in the journet of anchorIdA and anchorIdB.
+        const auto& p = positionsInJourneys[i];
+        const uint32_t positionInJourneyA = p.first;
+        const uint32_t positionInJourneyB = p.second;
+
+        // Loop over this portion of the journey, including anchorIdA and anchorIdB.
+        for(uint64_t position=positionInJourneyA; position<=positionInJourneyB; position++) {
+            anchorIds.push_back(journey[position]);
+        }
+    }
+
+    deduplicate(anchorIds);
+}
+
+
+
+void AnchorPair::getInternalAnchorIds(
+    const Journeys& journeys,
+    const vector< pair<uint32_t, uint32_t> >& positionsInJourneys,
+    vector<AnchorId>& anchorIds) const
+{
+    anchorIds.clear();
+
+    // Loop over OrientedReadIds in this AnchorPair.
+    for(uint64_t i=0; i<size(); i++) {
+        const OrientedReadId orientedReadId = orientedReadIds[i];
+        const Journey journey = journeys[orientedReadId];
+
+        // Get the positions in the journey of anchorIdA and anchorIdB.
+        const auto& p = positionsInJourneys[i];
+        const uint32_t positionInJourneyA = p.first;
+        const uint32_t positionInJourneyB = p.second;
+
+        // Loop over this portion of the journey, excluding anchorIdA and anchorIdB.
+        for(uint64_t position=positionInJourneyA+1; position<positionInJourneyB; position++) {
+            anchorIds.push_back(journey[position]);
+        }
+    }
+
+    deduplicate(anchorIds);
+}
+
+
+
+void AnchorPair::getAllAnchorIdsAndLocalCoverage(
+    const Journeys& journeys,
+    const vector< pair<uint32_t, uint32_t> >& positionsInJourneys,
+    vector<AnchorId>& anchorIds,
+    vector<uint64_t>& localCoverage) const
+{
+    // Loop over OrientedReadIds in this AnchorPair.
+    anchorIds.clear();
+    for(uint64_t i=0; i<size(); i++) {
+        const OrientedReadId orientedReadId = orientedReadIds[i];
+        const Journey journey = journeys[orientedReadId];
+
+        // Get the positions in the journet of anchorIdA and anchorIdB.
+        const auto& p = positionsInJourneys[i];
+        const uint32_t positionInJourneyA = p.first;
+        const uint32_t positionInJourneyB = p.second;
+        for(uint64_t position=positionInJourneyA; position<=positionInJourneyB; position++) {
+            anchorIds.push_back(journey[position]);
+        }
+    }
+
+    // Deduplicate and count.
+    deduplicateAndCount(anchorIds, localCoverage);
+
 }

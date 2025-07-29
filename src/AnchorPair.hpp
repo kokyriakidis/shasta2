@@ -5,6 +5,9 @@
 #include "ReadId.hpp"
 #include "shastaTypes.hpp"
 
+// Boost libraries.
+#include <boost/graph/adjacency_list.hpp>
+
 // Standard library.
 #include <cstdint.hpp>
 #include <utility.hpp>
@@ -136,6 +139,9 @@ public:
     // Just return the ordinals.
     void getOrdinals(const Anchors&, vector< pair<uint32_t, uint32_t> >&) const;
 
+    // Just return the positions in journeys.
+    void getPositionsInJourneys(const Anchors&, vector< pair<uint32_t, uint32_t> >&) const;
+
     // Split the AnchorPair into one or more AnchorPairs with consistent offsets.
     // In the resulting AnchorPairs, if the position offsets are sorted in
     // increasing order, any two adjacent offsets D0 and D1
@@ -174,6 +180,66 @@ public:
 
     bool contains(OrientedReadId) const;
 
+
+
+    // Various functions to get information about the AnchorIds present
+    // in the portions between anchorIdA and anchorIdB of the journeys
+    // of the OrientedReadIds in this AnchorPair.
+    // They all return vectors sorted by AnchorId.
+    // All = ancorIdA and anchorIdB are included.
+    // Internal = ancorIdA and anchorIdB are excluded.
+    // LocalCoverage = counting only the portions between anchorIdA and anchorIdB of the journeys
+    // of the OrientedReadIds in this AnchorPair.
+    void getAllAnchorIds(
+        const Journeys&,
+        const vector< pair<uint32_t, uint32_t> >& positionsInJourneys,
+        vector<AnchorId>&) const;
+    void getInternalAnchorIds(
+        const Journeys&,
+        const vector< pair<uint32_t, uint32_t> >& positionsInJourneys,
+        vector<AnchorId>&) const;
+    void getAllAnchorIdsAndLocalCoverage(
+        const Journeys&,
+        const vector< pair<uint32_t, uint32_t> >& positionsInJourneys,
+        vector<AnchorId>&,
+        vector<uint64_t>& localCoverage) const;
+
+
+
+    // A simple local anchor graph constructed using only the portions
+    // between anchorIdA and anchorIdB of the journeys
+    // of the OrientedReadIds in this AnchorPair.
+    class SimpleLocalAnchorGraphVertex {
+    public:
+        AnchorId anchorId = invalid<AnchorId>;
+        uint64_t localCoverage = invalid<uint64_t>;
+        uint64_t color = 0;     // Only used by approximateTopologicalSort.
+        uint64_t rank = 0;      // Only used by approximateTopologicalSort.
+        SimpleLocalAnchorGraphVertex(AnchorId anchorId, uint64_t localCoverage) :
+            anchorId(anchorId), localCoverage(localCoverage) {}
+        SimpleLocalAnchorGraphVertex() {}
+    };
+    class SimpleLocalAnchorGraphEdge {
+    public:
+        uint64_t localCoverage = 0;
+        bool isDagEdge = false; // Only used by approximateTopologicalSort.
+    };
+    class SimpleLocalAnchorGraph :
+        public boost::adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS,
+        SimpleLocalAnchorGraphVertex, SimpleLocalAnchorGraphEdge> {
+    public:
+        SimpleLocalAnchorGraph(const Anchors&, const Journeys&, const AnchorPair&);
+
+        // The vertex descriptors, sorted in approximate topological order.
+        void approximateTopologicalSort();
+        vector<vertex_descriptor> approximateTopologicalOrder;
+
+        void writeGraphviz(const string& fileName) const;
+        void writeGraphviz(ostream&) const;
+    };
+
+
+
     // Return the url for the exploreAnchorPair1 page for this AnchorPair.
     string url() const;
 
@@ -181,6 +247,7 @@ public:
     void writeSummaryHtml(ostream&, const Anchors&) const;
     void writeOrientedReadIdsHtml(ostream&, const Anchors&) const;
     void writeJourneysHtml(ostream&, const Anchors&, const Journeys&) const;
+    void writeSimpleLocalAnchorGraphHtml(ostream&, const Anchors&, const Journeys&) const;
 
     template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
     {

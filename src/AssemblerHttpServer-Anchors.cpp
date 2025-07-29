@@ -981,6 +981,7 @@ void Assembler::exploreAnchorPair2(const vector<string>& request, ostream& html)
     anchorPair.writeSummaryHtml(html, anchors());
     anchorPair.writeOrientedReadIdsHtml(html, anchors());
     anchorPair.writeJourneysHtml(html, anchors(), journeys());
+    anchorPair.writeSimpleLocalAnchorGraphHtml(html, anchors(), journeys());
 }
 
 
