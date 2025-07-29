@@ -1316,7 +1316,7 @@ void Anchors::clusterAnchorPairOrientedReads(
         dot << "}\n";
         dot.close();
 
-        // Send it to htmk in svg format.
+        // Send it to html in svg format.
         const double timeout = 30.;
         const string options = "-Nshape=rectangle -Nstyle=filled -Goverlap=false -Gsplines=true -Gbgcolor=gray95";
         graphvizToHtml(dotFileName, "sfdp", timeout, options, html);
