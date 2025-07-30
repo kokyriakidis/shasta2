@@ -781,7 +781,7 @@ void AnchorPair::clusteringMatrixSvd(
     Matrix& clusteringMatrix,
     vector<double>& singularValues,
     Matrix& leftSingularVectors,
-    Matrix& rightSingularVectors)
+    Matrix& rightSingularVectors) const
 {
     // Shift all the columns so they have zero average.
     for(uint64_t j=0; j<clusteringMatrix.size2(); j++) {
@@ -798,6 +798,50 @@ void AnchorPair::clusteringMatrixSvd(
     // Compute the SVD.
     dgesvd(clusteringMatrix, singularValues, leftSingularVectors, rightSingularVectors);
 
+}
+
+
+
+// Use the scaled left singular values to compute a distance matrix
+// between oriented reads.
+void AnchorPair::computeDistanceMatrix(
+    uint64_t singularValueCount,    // Only use the first singular values
+    const vector<double>& singularValues,
+    const Matrix& leftSingularVectors,
+    Matrix& distanceMatrix
+    ) const
+{
+    singularValueCount = min(singularValueCount, singularValues.size());
+
+    distanceMatrix.clear();
+    distanceMatrix.resize(size(), size());
+
+    vector<double> xA(singularValueCount);
+    vector<double> xB(singularValueCount);
+
+    for(uint64_t iA=0; iA<size(); iA++) {
+        distanceMatrix(iA, iA) = 0.;
+
+        for(uint64_t k=0; k<singularValueCount; k++) {
+            xA[k] = singularValues[k] * leftSingularVectors(iA, k);
+        }
+
+        for(uint64_t iB=iA+1; iB<size(); iB++) {
+
+            for(uint64_t k=0; k<singularValueCount; k++) {
+                xB[k] = singularValues[k] * leftSingularVectors(iB, k);
+            }
+
+            double distance = 0.;
+            for(uint64_t k=0; k<singularValueCount; k++) {
+                const double d = xB[k] - xA[k];
+                distance += d * d;
+            }
+            distance = sqrt(distance);
+            distanceMatrix(iA, iB) = distance;
+            distanceMatrix(iB, iA) = distance;
+        }
+    }
 }
 
 
@@ -871,11 +915,19 @@ void AnchorPair::writeAllHtml(
     clusteringMatrixSvd(clusteringMatrix, singularValues, leftSingularVectors, rightSingularVectors);
 
     // Write the SVD.
-    const uint64_t singularValueCountForOutput = 6;
+    const uint64_t singularValueCountForOutput = 2;
     writeClusteringMatrixSvd(html,
         internalAnchorIds, internalAnchorIdsInTopologicalOrder,
         singularValueCountForOutput,
         singularValues, leftSingularVectors, rightSingularVectors);
+
+    // Use the scaled left singular vectors to compute a distance matrix between OrientedReadIds.
+    const uint64_t singularValueCountForDistanceMatrix = 6;
+    Matrix distanceMatrix;
+    computeDistanceMatrix(singularValueCountForDistanceMatrix, singularValues, leftSingularVectors, distanceMatrix);
+
+    // Write out the distance matrix.
+    writeDistanceMatrixHtml(html, distanceMatrix);
 
     // Write the simple local anchor graph.
     writeSimpleLocalAnchorGraphHtml(html, simpleLocalAnchorGraph);
@@ -1117,6 +1169,30 @@ void AnchorPair::writeClusteringMatrixSvd(
         }
         html << "\n";
     }
+    html << "</table>";
+}
+
+
+
+void AnchorPair::writeDistanceMatrixHtml(
+    ostream& html,
+    const Matrix& distanceMatrix) const
+{
+
+    html << "<h3>DistanceMatrix</h3><table><tr><td>";
+    for(const OrientedReadId orientedReadId: orientedReadIds) {
+        html << "<th>" << orientedReadId;
+    }
+
+    for(uint64_t iA=0; iA<size(); iA++) {
+        const OrientedReadId orientedReadIdA = orientedReadIds[iA];
+        html << "<tr><th>" << orientedReadIdA;
+
+        for(uint64_t iB=0; iB<size(); iB++) {
+            html << "<td class=centered>" << distanceMatrix(iA, iB);
+        }
+    }
+
     html << "</table>";
 }
 

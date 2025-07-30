@@ -226,12 +226,20 @@ public:
         ) const;
 
     // Singular value decomposition of the clustering matrix.
-    static void clusteringMatrixSvd(
+    void clusteringMatrixSvd(
         Matrix& clusteringMatrix,
         vector<double>& singularValues,
         Matrix& leftSingularVectors,
-        Matrix& rightSingularVectors);
+        Matrix& rightSingularVectors) const;
 
+    // Use the scaled left singular values to compute a distance matrix
+    // between oriented reads.
+    void computeDistanceMatrix(
+        uint64_t singularValueCount,    // Only use the first singular values
+        const vector<double>& singularValues,
+        const Matrix& leftSingularVectors,
+        Matrix& distanceMatrix
+        ) const;
 
 
     // A simple local anchor graph constructed using only the portions
@@ -301,6 +309,9 @@ public:
         const vector<double>& singularValues,
         const Matrix& leftSingularVectors,
         const Matrix& rightSingularVectors) const;
+    void writeDistanceMatrixHtml(
+        ostream& html,
+        const Matrix& distanceMatrix) const;
 
     // Html output: obsolete code.
     void writeJourneysAndClustersHtml(ostream&, const Anchors&, const Journeys&) const;
