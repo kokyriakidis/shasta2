@@ -733,6 +733,49 @@ bool AnchorPair::contains(OrientedReadId orientedReadId) const
 
 
 
+void AnchorPair::computeClusteringMatrix(
+    const Journeys& journeys,
+    const vector< pair<uint32_t, uint32_t> >& positionsInJourneys,  // As computed by getPositionsInJourneys.
+    const vector<AnchorId>& internalAnchorIds,                      // As computed by getInternalAnchorIds.
+    ClusteringMatrix& clusteringMatrix
+    ) const
+{
+    // Initialize the ClusterMatrix to all zeros.
+    clusteringMatrix.resize(size(), internalAnchorIds.size());
+    for(uint64_t j=0; j<internalAnchorIds.size(); j++) {
+        for(uint64_t i=0; i<size(); i++) {
+            clusteringMatrix(i, j) = 0.;
+        }
+    }
+
+    // Loop over all OrientedReadIds to fill it in.
+    for(uint64_t i=0; i<size(); i++) {
+        const OrientedReadId orientedReadId = orientedReadIds[i];
+        const Journey journey = journeys[orientedReadId];
+
+        // Get the positions in the journey of anchorIdA and anchorIdB.
+        const auto& p = positionsInJourneys[i];
+        const uint32_t positionInJourneyA = p.first;
+        const uint32_t positionInJourneyB = p.second;
+
+        // Loop over this portion of the journey, excluding anchorIdA and anchorIdB.
+        for(uint64_t position=positionInJourneyA+1; position<positionInJourneyB; position++) {
+            const AnchorId anchorId = journey[position];
+
+            // Find the index of this AnchorId in internalAnchorIds.
+            const auto it = std::ranges::lower_bound(internalAnchorIds, anchorId);
+            SHASTA_ASSERT(it != internalAnchorIds.end());
+            SHASTA_ASSERT(*it == anchorId);
+            const uint64_t j = it - internalAnchorIds.begin();
+
+            // Set this element of the ClusteringMatrix.
+            clusteringMatrix(i, j) = 1.;
+        }
+    }
+}
+
+
+
 // Return the url for the exploreAnchorPair1 page for this AnchorPair.
 string AnchorPair::url() const
 {
@@ -757,16 +800,44 @@ void AnchorPair::writeAllHtml(
     const Anchors& anchors,
     const Journeys& journeys) const
 {
+    // Write the summary and oriented reads.
     writeSummaryHtml(html, anchors);
     writeOrientedReadIdsHtml(html, anchors);
 
+    // Get the positions of anchorIdA and anchorIdB in the
+    // journeys of all OrientedReadids.
     vector< pair<uint32_t, uint32_t> > positionsInJourneys;
     getPositionsInJourneys(anchors, positionsInJourneys);
+
+    // Write the journey portions between anchorIdA and anchorIdB.
     writeJourneysHtml(html, journeys, positionsInJourneys);
 
+    // Create the SimpleLocalAnchorGraph.
+    // We create it here to get the approximate topological order for AnchorIds,
+    // but we display it later.
+    SimpleLocalAnchorGraph simpleLocalAnchorGraph(anchors, journeys, *this);
+
+    // Get the internal AnchorIds.
+    vector<AnchorId> internalAnchorIds;
+    getInternalAnchorIds(journeys, positionsInJourneys, internalAnchorIds);
+
+    // Get the internal AnchorIds in topological order;
+    vector<AnchorId> internalAnchorIdsInTopologicalOrder;
+    simpleLocalAnchorGraph.getInternalAnchorIdsInTopologicalOrder(internalAnchorIdsInTopologicalOrder);
+
+    // Compute the clustering matrix.
+    ClusteringMatrix clusteringMatrix;
+    computeClusteringMatrix(journeys, positionsInJourneys, internalAnchorIds, clusteringMatrix);
+
+    // Write the clustering matrix, with the columns written in topological order.
+    writeClusteringMatrix(html, internalAnchorIds, internalAnchorIdsInTopologicalOrder, clusteringMatrix);
+
+    // Write the simple local anchor graph.
+    writeSimpleLocalAnchorGraphHtml(html, simpleLocalAnchorGraph);
+
+    // Obsolete code.
     html << "<h1>Output of obsolete code follows</h1>";
     writeJourneysAndClustersHtml(html, anchors, journeys);
-    writeSimpleLocalAnchorGraphHtml(html, anchors, journeys);
 }
 
 
@@ -852,6 +923,57 @@ void AnchorPair::writeJourneysHtml(
             html << "<td class=centered>" << anchorIdToString(anchorId);
         }
     }
+
+    html << "</table>";
+
+}
+
+
+
+void AnchorPair::writeClusteringMatrix(
+    ostream& html,
+    // The internalAnchorIds as computed by getInternalAnchorIds.
+    const vector<AnchorId>& internalAnchorIds,
+    // The same AnchorIds, in the order in which the corresponding columns should be written out
+    const vector<AnchorId>& internalAnchorIdsInOutputOrder,
+    const ClusteringMatrix& clusteringMatrix) const
+{
+
+    html <<
+        "<h3>Clustering matrix</h3>"
+        "<p><table>"
+        "<tr><th>Oriented<br>read<br>id";
+    for(const AnchorId anchorId: internalAnchorIdsInOutputOrder) {
+        html << "<th>" << anchorIdToString(anchorId);
+    }
+
+
+    // Each OrientedReadId generates a row of the table.
+    for(uint64_t i=0; i<size(); i++) {
+        const OrientedReadId orientedReadId = orientedReadIds[i];
+        html << "<tr><th>" << orientedReadId;
+
+        // Loop over the AnchorIds in topological order.
+        for(const AnchorId anchorId: internalAnchorIdsInOutputOrder) {
+
+            // Find the index of this anchor in internalAnchorIds.
+            // This is also the column index of the corresponding column
+            // in the clustering matrix.
+            auto it = std::ranges::lower_bound(internalAnchorIds, anchorId);
+            SHASTA_ASSERT(it != internalAnchorIds.end());
+            SHASTA_ASSERT(*it == anchorId);
+            const int64_t j = it - internalAnchorIds.begin();
+
+            html << "<td class=centered";
+            if(clusteringMatrix(i, j) > 0.) {
+                html << " style='background-color:LightGreen'>1";
+            } else {
+                html << ">0";
+            }
+        }
+    }
+
+
 
     html << "</table>";
 
@@ -1203,17 +1325,13 @@ void AnchorPair::writeJourneysAndClustersHtml(
 
 void AnchorPair::writeSimpleLocalAnchorGraphHtml(
     ostream& html,
-    const Anchors& anchors,
-    const Journeys& journeys) const
+    const SimpleLocalAnchorGraph& simpleLocalAnchorGraph) const
 {
-    // Create the SimpleLocalAnchorGraph.
-    using Graph = SimpleLocalAnchorGraph;
-    Graph graph(anchors, journeys, *this);
 
     // Write it out in Graphviz format.
     const string uuid = to_string(boost::uuids::random_generator()());
     const string dotFileName = tmpDirectory() + uuid + ".dot";
-    graph.writeGraphviz(dotFileName);
+    simpleLocalAnchorGraph.writeGraphviz(dotFileName);
 
     // Display it in html in svg format.
     const double timeout = 30.;
@@ -1308,6 +1426,23 @@ void AnchorPair::SimpleLocalAnchorGraph::approximateTopologicalSort()
         approximateTopologicalOrder.push_back(p.first);
     }
 }
+
+
+
+void AnchorPair::SimpleLocalAnchorGraph::getInternalAnchorIdsInTopologicalOrder(
+    vector<AnchorId>& internalAnchorIdsInTopologicalOrder) const
+{
+    const SimpleLocalAnchorGraph& graph = *this;
+
+    internalAnchorIdsInTopologicalOrder.clear();
+
+    // We only want internal AnchorIds, so we have to skip the first and last vertex.
+    for(uint64_t j=1; j<approximateTopologicalOrder.size()-1; j++) {
+        const vertex_descriptor v = approximateTopologicalOrder[j];
+        internalAnchorIdsInTopologicalOrder.push_back(graph[v].anchorId);
+    }
+}
+
 
 
 void AnchorPair::SimpleLocalAnchorGraph::writeGraphviz(const string& fileName) const
