@@ -217,13 +217,20 @@ public:
     // The cluster matrix is stores as a column-major matrix
     // (Fortran compatible storage layout) so it can be later used
     // for a Singular Value Decomposition (SVD) for clustering.
-    using ClusteringMatrix = boost::numeric::ublas::matrix<double, boost::numeric::ublas::column_major>;
+    using Matrix = boost::numeric::ublas::matrix<double, boost::numeric::ublas::column_major>;
     void computeClusteringMatrix(
         const Journeys&,
         const vector< pair<uint32_t, uint32_t> >& positionsInJourneys,  // As computed by getPositionsInJourneys.
         const vector<AnchorId>& internalAnchorIds,                      // As computed by getInternalAnchorIds.
-        ClusteringMatrix&
+        Matrix&
         ) const;
+
+    // Singular value decomposition of the clustering matrix.
+    static void clusteringMatrixSvd(
+        Matrix& clusteringMatrix,
+        vector<double>& singularValues,
+        Matrix& leftSingularVectors,
+        Matrix& rightSingularVectors);
 
 
 
@@ -283,7 +290,17 @@ public:
         const vector<AnchorId>& internalAnchorIds,
         // The same AnchorIds, in the order in which the corresponding columns should be written out
         const vector<AnchorId>& internalAnchorIdsInOutputOrder,
-        const ClusteringMatrix&) const;
+        const Matrix&) const;
+    void writeClusteringMatrixSvd(
+        ostream& html,
+        // The internalAnchorIds as computed by getInternalAnchorIds.
+        const vector<AnchorId>& internalAnchorIds,
+        // The same AnchorIds, in the order in which the corresponding columns should be written out
+        const vector<AnchorId>& internalAnchorIdsInOutputOrder,
+        uint64_t singularValueCount,    // Number of singular values/vectors to be writtten
+        const vector<double>& singularValues,
+        const Matrix& leftSingularVectors,
+        const Matrix& rightSingularVectors) const;
 
     // Html output: obsolete code.
     void writeJourneysAndClustersHtml(ostream&, const Anchors&, const Journeys&) const;

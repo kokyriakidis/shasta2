@@ -45,7 +45,9 @@ Lapack and Blas come with this license:
 
 *******************************************************************************/
 
+#include <boost/numeric/ublas/matrix.hpp>
 
+#include <vector.hpp>
 
 extern "C" void dgemv_(
     const char* TRANS,
@@ -89,5 +91,17 @@ extern "C" void dsyev_(
     const int& LWORK,
     int& INFO
     );
+
+
+namespace shasta {
+
+    // dgesvd wrapper for boost ublas matrix.
+    void dgesvd(
+        boost::numeric::ublas::matrix<double, boost::numeric::ublas::column_major>& A,
+        vector<double>& S,
+        boost::numeric::ublas::matrix<double, boost::numeric::ublas::column_major>& U,
+        boost::numeric::ublas::matrix<double, boost::numeric::ublas::column_major>& VT
+        );
+}
 
 #endif

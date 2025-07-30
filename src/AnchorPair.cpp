@@ -737,7 +737,7 @@ void AnchorPair::computeClusteringMatrix(
     const Journeys& journeys,
     const vector< pair<uint32_t, uint32_t> >& positionsInJourneys,  // As computed by getPositionsInJourneys.
     const vector<AnchorId>& internalAnchorIds,                      // As computed by getInternalAnchorIds.
-    ClusteringMatrix& clusteringMatrix
+    Matrix& clusteringMatrix
     ) const
 {
     // Initialize the ClusterMatrix to all zeros.
@@ -772,6 +772,32 @@ void AnchorPair::computeClusteringMatrix(
             clusteringMatrix(i, j) = 1.;
         }
     }
+}
+
+
+
+// Singular value decomposition of the clustering matrix.
+void AnchorPair::clusteringMatrixSvd(
+    Matrix& clusteringMatrix,
+    vector<double>& singularValues,
+    Matrix& leftSingularVectors,
+    Matrix& rightSingularVectors)
+{
+    // Shift all the columns so they have zero average.
+    for(uint64_t j=0; j<clusteringMatrix.size2(); j++) {
+        double sum = 0.;
+        for(uint64_t i=0; i<clusteringMatrix.size1(); i++) {
+            sum += clusteringMatrix(i, j);
+        }
+        const double average = sum / double(clusteringMatrix.size1());
+        for(uint64_t i=0; i<clusteringMatrix.size1(); i++) {
+            clusteringMatrix(i, j) -= average;
+        }
+    }
+
+    // Compute the SVD.
+    dgesvd(clusteringMatrix, singularValues, leftSingularVectors, rightSingularVectors);
+
 }
 
 
@@ -812,25 +838,44 @@ void AnchorPair::writeAllHtml(
     // Write the journey portions between anchorIdA and anchorIdB.
     writeJourneysHtml(html, journeys, positionsInJourneys);
 
+    // Get the internal AnchorIds.
+    vector<AnchorId> internalAnchorIds;
+    getInternalAnchorIds(journeys, positionsInJourneys, internalAnchorIds);
+
+    // If there are no internalAnchorIds, stop here.
+    if(internalAnchorIds.empty()) {
+        html << "<p>There are no anchors internal to these journey portions.";
+        return;
+    }
+
     // Create the SimpleLocalAnchorGraph.
     // We create it here to get the approximate topological order for AnchorIds,
     // but we display it later.
     SimpleLocalAnchorGraph simpleLocalAnchorGraph(anchors, journeys, *this);
-
-    // Get the internal AnchorIds.
-    vector<AnchorId> internalAnchorIds;
-    getInternalAnchorIds(journeys, positionsInJourneys, internalAnchorIds);
 
     // Get the internal AnchorIds in topological order;
     vector<AnchorId> internalAnchorIdsInTopologicalOrder;
     simpleLocalAnchorGraph.getInternalAnchorIdsInTopologicalOrder(internalAnchorIdsInTopologicalOrder);
 
     // Compute the clustering matrix.
-    ClusteringMatrix clusteringMatrix;
+    Matrix clusteringMatrix;
     computeClusteringMatrix(journeys, positionsInJourneys, internalAnchorIds, clusteringMatrix);
 
     // Write the clustering matrix, with the columns written in topological order.
     writeClusteringMatrix(html, internalAnchorIds, internalAnchorIdsInTopologicalOrder, clusteringMatrix);
+
+    // SVD of the clustering matrix.
+    vector<double> singularValues;
+    Matrix leftSingularVectors;
+    Matrix rightSingularVectors;
+    clusteringMatrixSvd(clusteringMatrix, singularValues, leftSingularVectors, rightSingularVectors);
+
+    // Write the SVD.
+    const uint64_t singularValueCountForOutput = 6;
+    writeClusteringMatrixSvd(html,
+        internalAnchorIds, internalAnchorIdsInTopologicalOrder,
+        singularValueCountForOutput,
+        singularValues, leftSingularVectors, rightSingularVectors);
 
     // Write the simple local anchor graph.
     writeSimpleLocalAnchorGraphHtml(html, simpleLocalAnchorGraph);
@@ -936,7 +981,7 @@ void AnchorPair::writeClusteringMatrix(
     const vector<AnchorId>& internalAnchorIds,
     // The same AnchorIds, in the order in which the corresponding columns should be written out
     const vector<AnchorId>& internalAnchorIdsInOutputOrder,
-    const ClusteringMatrix& clusteringMatrix) const
+    const Matrix& clusteringMatrix) const
 {
 
     html <<
@@ -977,6 +1022,102 @@ void AnchorPair::writeClusteringMatrix(
 
     html << "</table>";
 
+}
+
+
+
+void AnchorPair::writeClusteringMatrixSvd(
+    ostream& html,
+    // The internalAnchorIds as computed by getInternalAnchorIds.
+    const vector<AnchorId>& internalAnchorIds,
+    // The same AnchorIds, in the order in which the corresponding columns should be written out
+    const vector<AnchorId>& internalAnchorIdsInOutputOrder,
+    uint64_t singularValueCount, // Number of singular values/vectors to be written,
+    const vector<double>& singularValues,
+    const Matrix& leftSingularVectors,
+    const Matrix& rightSingularVectors) const
+{
+    // The actual number of singular values/vectors we will write out.
+    singularValueCount = min(singularValueCount, singularValues.size());
+
+    html << std::fixed << std::setprecision(3);
+
+    // Singular values.
+    html <<
+        "<h3>Singular values</h3><table>";
+    for(uint64_t j=0; j<singularValueCount; j++) {
+        html << "<tr><th>S<sub>" << j << "</sub><td class=centered>" << singularValues[j];
+    }
+    html << "</table>";
+
+
+
+    // Left singular vectors.
+    html <<
+        "<h3>Left singular vectors</h3><table>"
+        "<tr><th>Oriented<br>read<br>id";
+    for(uint64_t j=0; j<singularValueCount; j++) {
+        html << "<th>L<sub>" << j << "</sub>";
+    }
+    for(uint64_t j=0; j<singularValueCount; j++) {
+        html << "<th>S<sub>" << j << "</sub>L<sub>" << j << "</sub>";
+    }
+    html << "\n";
+    for(uint64_t i=0; i<size(); i++) {
+        const OrientedReadId orientedReadId = orientedReadIds[i];
+        html << "<tr><th>" << orientedReadId;
+
+        // Without scaling.
+        for(uint64_t j=0; j<singularValueCount; j++) {
+            html << "<td class=centered>" << leftSingularVectors(i, j);
+        }
+
+        // With scaling.
+        for(uint64_t j=0; j<singularValueCount; j++) {
+            html << "<td class=centered>" << singularValues[j] * leftSingularVectors(i, j);
+        }
+
+        html << "\n";
+    }
+    html << "</table>";
+
+
+
+    // Right singular vectors.
+    // The anchors are written in the order specified by internalAnchorIdsInOutputOrder.
+    html <<
+        "<h3>Right singular vectors</h3><table>"
+        "<tr><th>Anchor";
+    for(uint64_t j=0; j<singularValueCount; j++) {
+        html << "<th>R<sub>" << j << "</sub>";
+    }
+    for(uint64_t j=0; j<singularValueCount; j++) {
+        html << "<th>S<sub>" << j << "</sub>R<sub>" << j << "</sub>";
+    }
+    html << "\n";
+    for(const AnchorId anchorId: internalAnchorIdsInOutputOrder) {
+
+        // Find the index of this AnchorId in internalAnchorIds.
+        // This is also the index of the corresponding column in rightSingularValues.
+        const auto it = std::ranges::lower_bound(internalAnchorIds, anchorId);
+        SHASTA_ASSERT(it != internalAnchorIds.end());
+        SHASTA_ASSERT(*it == anchorId);
+        const uint64_t j = it - internalAnchorIds.begin();
+
+        html << "<tr><th>" << anchorIdToString(anchorId);
+
+        // Without scaling.
+        for(uint64_t i=0; i<singularValueCount; i++) {
+            html << "<td class=centered>" << rightSingularVectors(i, j);
+        }
+
+        // With scaling.
+        for(uint64_t i=0; i<singularValueCount; i++) {
+            html << "<td class=centered>" << singularValues[i] * rightSingularVectors(i, j);
+        }
+        html << "\n";
+    }
+    html << "</table>";
 }
 
 
