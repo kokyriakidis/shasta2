@@ -243,12 +243,23 @@ public:
     // Return the url for the exploreAnchorPair1 page for this AnchorPair.
     string url() const;
 
+
+
     // Html output.
     void writeAllHtml(ostream&, const Anchors&, const Journeys&) const;
     void writeSummaryHtml(ostream&, const Anchors&) const;
     void writeOrientedReadIdsHtml(ostream&, const Anchors&) const;
+    void writeJourneysHtml(
+        ostream&,
+        const Journeys&,
+        const vector< pair<uint32_t, uint32_t> >& positionsInJourneys   // As computed by getPositionsInJourneys.
+        ) const;
+
+    // Html output: obsolete code.
     void writeJourneysAndClustersHtml(ostream&, const Anchors&, const Journeys&) const;
     void writeSimpleLocalAnchorGraphHtml(ostream&, const Anchors&, const Journeys&) const;
+
+
 
     template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
     {

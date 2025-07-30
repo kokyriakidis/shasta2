@@ -759,6 +759,12 @@ void AnchorPair::writeAllHtml(
 {
     writeSummaryHtml(html, anchors);
     writeOrientedReadIdsHtml(html, anchors);
+
+    vector< pair<uint32_t, uint32_t> > positionsInJourneys;
+    getPositionsInJourneys(anchors, positionsInJourneys);
+    writeJourneysHtml(html, journeys, positionsInJourneys);
+
+    html << "<h1>Output of obsolete code follows</h1>";
     writeJourneysAndClustersHtml(html, anchors, journeys);
     writeSimpleLocalAnchorGraphHtml(html, anchors, journeys);
 }
@@ -815,6 +821,38 @@ void AnchorPair::writeOrientedReadIdsHtml(ostream& html, const Anchors& anchors)
             "<td class=centered>" << positionsB.basePosition <<
             "<td class=centered>" << positionsB.basePosition - positionsA.basePosition;
     }
+    html << "</table>";
+
+}
+
+
+
+void AnchorPair::writeJourneysHtml(
+    ostream& html,
+    const Journeys& journeys,
+    const vector< pair<uint32_t, uint32_t> >& positionsInJourneys   // As computed by getPositionsInJourneys.
+    ) const
+{
+    html << "<h3>Journey portions within this anchor pair</h3>";
+    html << "<table>";
+
+    for(uint64_t i=0; i<size(); i++) {
+        const OrientedReadId orientedReadId = orientedReadIds[i];
+        const Journey& journey = journeys[orientedReadId];
+
+        const auto& positionInJourney = positionsInJourneys[i];
+        const auto positionInJourneyA = positionInJourney.first;
+        const auto positionInJourneyB = positionInJourney.second;
+
+        if(html) {
+            html << "<tr><th class=centered>" << orientedReadId;
+        }
+        for(auto position=positionInJourneyA+1; position<positionInJourneyB; position++) {
+            const AnchorId anchorId = journey[position];
+            html << "<td class=centered>" << anchorIdToString(anchorId);
+        }
+    }
+
     html << "</table>";
 
 }
