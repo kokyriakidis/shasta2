@@ -241,6 +241,23 @@ public:
         Matrix& distanceMatrix
         ) const;
 
+    // Given the distance matrix, compute a similarity graph
+    // between OrientedReadIds in which each vertex represents an OrientedReadId and
+    // an edge is generated for OrientedReadId pairs
+    // with distance below the given threshold.
+    // Each vertex stores the id of the cluster it is assigned to.
+    class OrientedReadIdSimilarityGraph :
+        public boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS, uint64_t> {
+    public:
+        OrientedReadIdSimilarityGraph(const Matrix& distanceMatrix, double maxDistance);
+        vector< vector<vertex_descriptor> > clusters;
+        void writeHtml(ostream&, const vector<OrientedReadId>&) const;
+    private:
+        void writeGraphviz(const string& fileName, const vector<OrientedReadId>&) const;
+        void writeGraphviz(ostream&, const vector<OrientedReadId>&) const;
+    };
+    void writeClustersHtml(ostream&, const OrientedReadIdSimilarityGraph&) const;
+
 
     // A simple local anchor graph constructed using only the portions
     // between anchorIdA and anchorIdB of the journeys

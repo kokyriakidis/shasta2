@@ -846,6 +846,104 @@ void AnchorPair::computeDistanceMatrix(
 
 
 
+// Given the distance matrix, compute a similarity graph
+// between OrientedReadIds in which each vertex represents an OrientedReadId and
+// an edge is generated for OrientedReadId pairs
+// with distance below the given threshold.
+// Each vertex stores the id of the cluster it is assigned to.
+AnchorPair::OrientedReadIdSimilarityGraph::OrientedReadIdSimilarityGraph(
+    const Matrix& distanceMatrix,
+    double maxDistance)
+{
+    using Graph = OrientedReadIdSimilarityGraph;
+    Graph& graph = *this;
+
+    const uint64_t n = distanceMatrix.size1();
+    SHASTA_ASSERT(distanceMatrix.size2() == n);
+
+    for(uint64_t i=0; i<n; i++) {
+        add_vertex(graph);
+    }
+
+    for(uint64_t i=0; i<n; i++) {
+        for(uint64_t j=i+1; j<n; j++) {
+            if(distanceMatrix(i, j) <= maxDistance) {
+                add_edge(i, j, graph);
+            }
+        }
+    }
+
+    // Clustering.
+    hcsClustering(graph, clusters);
+
+    // Sort the clusters by decreasing size.
+    sort(clusters.begin(), clusters.end(), OrderVectorsByDecreasingSize<uint64_t>());
+
+    // Store the clusterId of each vertex.
+    for(uint64_t clusterId=0; clusterId<clusters.size(); clusterId++) {
+        const vector<vertex_descriptor>& cluster = clusters[clusterId];
+        for(const vertex_descriptor v: cluster) {
+            graph[v] = clusterId;
+        }
+    }
+}
+
+
+
+void AnchorPair::OrientedReadIdSimilarityGraph::writeGraphviz(
+    const string& fileName,
+    const vector<OrientedReadId>& orientedReadIds) const
+{
+    ofstream dot(fileName);
+    writeGraphviz(dot, orientedReadIds);
+}
+
+
+
+void AnchorPair::OrientedReadIdSimilarityGraph::writeGraphviz(
+    ostream& dot,
+    const vector<OrientedReadId>& orientedReadIds) const
+{
+    using Graph = OrientedReadIdSimilarityGraph;
+    const Graph& graph = *this;
+
+    dot << "graph G {\n";
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        const OrientedReadId orientedReadId = orientedReadIds[v];
+        const uint64_t clusterId = graph[v];
+        const string color = hslToRgbString(double(clusterId) / double(clusters.size()), 0.75, 0.6);
+        dot << v << " [label=\"" << orientedReadId << "\\n" << clusterId << "\""
+            " fillcolor=\"" << color << "\"];\n";
+    }
+    BGL_FORALL_EDGES(e, graph, Graph) {
+        const vertex_descriptor v0 = source(e, graph);
+        const vertex_descriptor v1 = target(e, graph);
+        dot << v0 << "--" << v1 << ";\n";
+    }
+    dot << "}\n";
+}
+
+
+
+void AnchorPair::OrientedReadIdSimilarityGraph::writeHtml(
+    ostream& html,
+    const vector<OrientedReadId>& orientedReadIds) const
+{
+
+    // Write it out in Graphviz format.
+    const string uuid = "abc"; //to_string(boost::uuids::random_generator()());
+    const string dotFileName = tmpDirectory() + uuid + ".dot";
+    writeGraphviz(dotFileName, orientedReadIds);
+
+    // Display it in html in svg format.
+    const double timeout = 30.;
+    const string options = "-Nshape=rectangle -Nstyle=filled -Goverlap=false -Gsplines=true -Gbgcolor=gray95";
+    html << "<h3>Oriented read similarity graph</h3><p>";
+    graphvizToHtml(dotFileName, "sfdp", timeout, options, html);
+}
+
+
+
 // Return the url for the exploreAnchorPair1 page for this AnchorPair.
 string AnchorPair::url() const
 {
@@ -915,19 +1013,28 @@ void AnchorPair::writeAllHtml(
     clusteringMatrixSvd(clusteringMatrix, singularValues, leftSingularVectors, rightSingularVectors);
 
     // Write the SVD.
-    const uint64_t singularValueCountForOutput = 2;
+    const uint64_t singularValueCountForOutput = 6;
     writeClusteringMatrixSvd(html,
         internalAnchorIds, internalAnchorIdsInTopologicalOrder,
         singularValueCountForOutput,
         singularValues, leftSingularVectors, rightSingularVectors);
 
     // Use the scaled left singular vectors to compute a distance matrix between OrientedReadIds.
-    const uint64_t singularValueCountForDistanceMatrix = 6;
+    const uint64_t singularValueCountForDistanceMatrix = 2;
     Matrix distanceMatrix;
     computeDistanceMatrix(singularValueCountForDistanceMatrix, singularValues, leftSingularVectors, distanceMatrix);
 
     // Write out the distance matrix.
     writeDistanceMatrixHtml(html, distanceMatrix);
+
+    // Use this distance matrix to compute a similarity graph between oriented reads,
+    // then write it out to html.
+    const double maxDistance = 1.;
+    const OrientedReadIdSimilarityGraph orientedReadIdSimilarityGraph(distanceMatrix, maxDistance);
+    orientedReadIdSimilarityGraph.writeHtml(html, orientedReadIds);
+
+    // Also write out the clusters.
+    writeClustersHtml(html, orientedReadIdSimilarityGraph);
 
     // Write the simple local anchor graph.
     writeSimpleLocalAnchorGraphHtml(html, simpleLocalAnchorGraph);
@@ -1179,7 +1286,7 @@ void AnchorPair::writeDistanceMatrixHtml(
     const Matrix& distanceMatrix) const
 {
 
-    html << "<h3>DistanceMatrix</h3><table><tr><td>";
+    html << "<h3>Distance matrix</h3><table><tr><td>";
     for(const OrientedReadId orientedReadId: orientedReadIds) {
         html << "<th>" << orientedReadId;
     }
@@ -1194,6 +1301,23 @@ void AnchorPair::writeDistanceMatrixHtml(
     }
 
     html << "</table>";
+}
+
+
+
+void AnchorPair::writeClustersHtml(
+    ostream& html, const OrientedReadIdSimilarityGraph& graph) const
+{
+    html << "<h3>Clusters</h3><table><tr><th>Id<th>Size";
+    for(uint64_t clusterId=0; clusterId<graph.clusters.size(); clusterId++) {
+        const auto& cluster = graph.clusters[clusterId];
+        html << "<tr><th>" << clusterId << "<th>" << cluster.size();
+        for(const uint64_t i: cluster) {
+            html << "<td class=centered>" << orientedReadIds[i];
+        }
+    }
+    html << "</table>";
+
 }
 
 
