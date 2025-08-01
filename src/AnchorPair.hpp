@@ -329,9 +329,6 @@ public:
     void writeDistanceMatrixHtml(
         ostream& html,
         const Matrix& distanceMatrix) const;
-
-    // Html output: obsolete code.
-    void writeJourneysAndClustersHtml(ostream&, const Anchors&, const Journeys&) const;
     void writeSimpleLocalAnchorGraphHtml(ostream&, const SimpleLocalAnchorGraph&) const;
 
 
