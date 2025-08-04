@@ -216,6 +216,8 @@ public:
     shared_ptr<AnchorGraph> anchorGraphPointer;
     void createAnchorGraph(const Options&);
     void accessAnchorGraph();
+    void saveAnchorGraph();
+    void anchorGraphTransitiveReduction(const Options&);
 
     // The "simple" AnchorGraph.
     // It has edges between AnchorIds that are immediately adjacent in one or more Journeys,

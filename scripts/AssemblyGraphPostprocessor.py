@@ -17,10 +17,11 @@ assemblyGraph.phaseSuperbubbleChains()
 assemblyGraph.write("EE")
 """
 
+"""
 assemblyGraph = assembler.getAssemblyGraph("B", options)
 assemblyGraph.bubbleCleanupIteration1()
 assemblyGraph.write("BB")
-
+"""
 
 """
 assemblyGraph.countOrientedReadStepsBySegment()
@@ -28,8 +29,7 @@ assemblyGraph.writeOrientedReadStepCountsBySegment()
 """
 
 
-"""
-assemblyGraph = assembler.getAssemblyGraph("A", options)
+assemblyGraph = assembler.getAssemblyGraph("Z", options)
 detangler = LikelihoodRatioDetangler(
     options.detangleMinCommonCoverage,
     options.detangleEpsilon,
@@ -37,9 +37,9 @@ detangler = LikelihoodRatioDetangler(
     options.detangleMinLogPDelta,
     options.detangleHighCoverageThreshold,
     False)
-assemblyGraph.detangle(10, 1000000000, detangler);
-assemblyGraph.write("X")
-"""
+detangler.debug = True
+assemblyGraph.detangleVerticesIteration(detangler);
+
 
 """
 assemblyGraph = assembler.getAssemblyGraph("E", options)

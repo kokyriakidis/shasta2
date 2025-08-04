@@ -88,6 +88,8 @@ void Assembler::assemble(
     journeys().writeAnchorGapsByRead(reads(), markers(), anchors());
 
     createAnchorGraph(options);
+    anchorGraphTransitiveReduction(options);
+    saveAnchorGraph();
 
     createAssemblyGraph(options);
 }
@@ -194,7 +196,6 @@ void Assembler::createAnchorGraph(const Options& options)
     anchorGraphPointer = make_shared<AnchorGraph>(
         anchors(), journeys(),
         options.minAnchorGraphEdgeCoverage);
-    anchorGraphPointer->save("AnchorGraph");
 
 }
 
@@ -226,6 +227,21 @@ void Assembler::accessAnchorGraph()
     anchorGraphPointer = make_shared<AnchorGraph>(mappedMemoryOwner, "AnchorGraph");
 }
 
+
+void Assembler::saveAnchorGraph()
+{
+    anchorGraphPointer->save("AnchorGraph");
+}
+
+
+
+void Assembler::anchorGraphTransitiveReduction(
+    const Options& options)
+{
+    anchorGraphPointer->transitiveReduction(
+        options.transitiveReductionMaxEdgeCoverage,
+        options.transitiveReductionMaxDistance);
+}
 
 
 void Assembler::accessSimpleAnchorGraph()

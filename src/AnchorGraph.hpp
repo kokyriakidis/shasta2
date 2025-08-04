@@ -56,6 +56,8 @@ public:
 
     AnchorGraphEdge() {}
 
+    uint64_t coverage() const {return anchorPair.size();}
+
     template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
     {
         ar & anchorPair;
@@ -112,6 +114,13 @@ public:
         uint64_t minContinueReadFollowingCount,
         double aDrift,
         double bDrift);
+
+    void transitiveReduction(
+        uint64_t transitiveReductionMaxEdgeCoverage,
+        uint64_t maxDistance);
+private:
+    bool transitiveReductionCanRemove(edge_descriptor, uint64_t transitiveReductionMaxDistance) const;
+public:
 
     // Dijkstra search.
     // This performs a shortest path search starting at the specified AnchorId
