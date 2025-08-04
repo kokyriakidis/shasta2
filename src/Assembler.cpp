@@ -182,6 +182,7 @@ AnchorId Assembler::readFollowing(
 void Assembler::createAnchorGraph(const Options& options)
 {
 
+    /*
     anchorGraphPointer = make_shared<AnchorGraph>(
         anchors(), journeys(),
         options.minAnchorGraphEdgeCoverage,
@@ -189,6 +190,10 @@ void Assembler::createAnchorGraph(const Options& options)
         options.aDrift,
         options.bDrift,
         options.threadCount);
+    */
+    anchorGraphPointer = make_shared<AnchorGraph>(
+        anchors(), journeys(),
+        options.minAnchorGraphEdgeCoverage);
     anchorGraphPointer->save("AnchorGraph");
 
 }
@@ -197,7 +202,7 @@ void Assembler::createAnchorGraph(const Options& options)
 
 void Assembler::createSimpleAnchorGraph()
 {
-    simpleAnchorGraphPointer = make_shared<AnchorGraph>(anchors(), journeys());
+    simpleAnchorGraphPointer = make_shared<AnchorGraph>(anchors(), journeys(), 1);
     simpleAnchorGraphPointer->save("SimpleAnchorGraph");
 }
 

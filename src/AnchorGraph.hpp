@@ -75,11 +75,8 @@ class shasta::AnchorGraph :
     public MultithreadedObject<AnchorGraph> {
 public:
 
-    // Constructor that generates the "simple anchor graph".
-    // It creates edges between AnchorIds that are immediately adjacent in one or more Journeys,
-    // without coverage limitations and without any splitting.
-    // This is only used for debugging, not for assembly.
-    AnchorGraph(const Anchors&, const Journeys&);
+    // Simple generation of edges.
+    AnchorGraph(const Anchors&, const Journeys&, uint64_t minEdgeCoverage);
 
     // Constructor that uses read following.
     AnchorGraph(

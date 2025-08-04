@@ -32,13 +32,11 @@ template class MultithreadedObject<AnchorGraph>;
 
 
 
-// Constructor that generates the "simple anchor graph".
-// It creates edges between AnchorIds that are immediately adjacent in one or more Journeys,
-// without coverage limitations and without any splitting.
-// This is only used for debugging, not for assembly.
+// Simple generation of edges.
 AnchorGraph::AnchorGraph(
     const Anchors& anchors,
-    const Journeys& journeys) :
+    const Journeys& journeys,
+    uint64_t minEdgeCoverage) :
     MappedMemoryOwner(anchors),
     MultithreadedObject<AnchorGraph>(*this)
 {
@@ -57,11 +55,13 @@ AnchorGraph::AnchorGraph(
     for(AnchorId anchorIdA=0; anchorIdA<anchorCount; anchorIdA++) {
         AnchorPair::createChildren(anchors, journeys, anchorIdA, 0, anchorPairs);
         for(const AnchorPair& anchorPair: anchorPairs) {
-            const uint64_t offset = anchorPair.getAverageOffset(anchors);
-            edge_descriptor e;
-            tie(e, ignore) = add_edge(anchorIdA, anchorPair.anchorIdB,
-                AnchorGraphEdge(anchorPair, offset, nextEdgeId++), anchorGraph);
-            anchorGraph[e].useForAssembly = true;
+            if(anchorPair.size() >= minEdgeCoverage) {
+                const uint64_t offset = anchorPair.getAverageOffset(anchors);
+                edge_descriptor e;
+                tie(e, ignore) = add_edge(anchorIdA, anchorPair.anchorIdB,
+                    AnchorGraphEdge(anchorPair, offset, nextEdgeId++), anchorGraph);
+                anchorGraph[e].useForAssembly = true;
+            }
         }
     }
 
