@@ -257,9 +257,9 @@ uint64_t AssemblyGraphEdge::offset() const
 
 void AssemblyGraph::write(const string& stage)
 {
-    cout << "Assembly graph at stage " << stage << " has " <<
-        num_vertices(*this) << " vertices and " <<
-        num_edges(*this) << " edges (segments)." << endl;
+    cout << "Stage " << stage << ": " <<
+        num_vertices(*this) << " vertices, " <<
+        num_edges(*this) << " edges. Next edge id is " << nextEdgeId << "." << endl;
 
     save(stage);
     writeGfa("AssemblyGraph-" + stage + ".gfa");
