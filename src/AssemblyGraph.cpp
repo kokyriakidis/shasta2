@@ -623,12 +623,14 @@ void AssemblyGraph::findBubbles(vector<Bubble>& bubbles) const
 
 void AssemblyGraph::bubbleCleanup()
 {
-    while(bubbleCleanupIteration() > 0);
+    vector< pair<vertex_descriptor, vertex_descriptor> > excludeList;
+    while(bubbleCleanupIteration(excludeList) > 0);
 }
 
 
 
-uint64_t AssemblyGraph::bubbleCleanupIteration()
+uint64_t AssemblyGraph::bubbleCleanupIteration(
+    vector< pair<vertex_descriptor, vertex_descriptor> >& excludeList)
 {
     performanceLog << timestamp << "Bubble cleanup iteration begins." << endl;
     AssemblyGraph& assemblyGraph = *this;
@@ -639,10 +641,15 @@ uint64_t AssemblyGraph::bubbleCleanupIteration()
     // cout << "Found " << allBubbles.size() << " bubbles." << endl;
 
     // Find candidate bubbles.
-    // These are the ones in which no branch has offset greater than
+    // These are the ones that are not in the exclude list and
+    // in which no branch has offset greater than
     // options.bubbleCleanupMaxBubbleLength.
     vector<Bubble> candidateBubbles;
     for(const Bubble& bubble: allBubbles) {
+
+        if(std::ranges::contains(excludeList, make_pair(bubble.v0, bubble.v1))) {
+            continue;
+        }
 
         bool hasLongBranch = false;
         for(const edge_descriptor e: bubble.edges) {
@@ -677,6 +684,12 @@ uint64_t AssemblyGraph::bubbleCleanupIteration()
         }
     }
     // cout << "Bubble cleanup modified " << modifiedCount << " bubbles." << endl;
+
+    // Update the excludeList.
+    for(const Bubble& bubble: candidateBubbles) {
+        excludeList.push_back(make_pair(bubble.v0, bubble.v1));
+    }
+    std::ranges::sort(excludeList);
 
     performanceLog << timestamp << "Bubble cleanup iteration ends." << endl;
     return modifiedCount;

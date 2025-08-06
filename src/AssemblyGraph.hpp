@@ -176,6 +176,7 @@ private:
 
     // Bubble cleanup.
     // A bubble is a set of parallel edges in the AssemblyGraph.
+    // The edges are sorted by id.
     class Bubble {
     public:
         vertex_descriptor v0;
@@ -185,7 +186,7 @@ private:
     void findBubbles(vector<Bubble>&) const;
 public:
     void bubbleCleanup();
-    uint64_t bubbleCleanupIteration();
+    uint64_t bubbleCleanupIteration(vector< pair<vertex_descriptor, vertex_descriptor> >& excludeList);
 private:
     bool bubbleCleanup(const Bubble&);
 
