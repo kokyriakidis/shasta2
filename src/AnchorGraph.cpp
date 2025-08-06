@@ -66,7 +66,7 @@ AnchorGraph::AnchorGraph(
         }
     }
 
-    cout << "The simple anchor graph has " << num_vertices(*this) <<
+    cout << "The anchor graph has " << num_vertices(*this) <<
         " vertices and " << num_edges(*this) << " edges." << endl;
 }
 
