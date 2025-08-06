@@ -165,46 +165,40 @@ void AssemblyGraph::run()
     // Initial output.
     write("A");
 
-    uint64_t changeCount = 0;
+    for(uint64_t iteration=0; iteration<3; iteration++) {
 
-    // Prune.
-    changeCount += prune();
-    changeCount += compress();
+        uint64_t changeCount = 0;
 
-    // Simplify Superbubbles and remove or simplify bubbles likely caused by errors.
-    changeCount += simplifySuperbubbles();
-    write("B");
-    changeCount += bubbleCleanup();
-    changeCount += compress();
-    write("C");
+        // Prune.
+        changeCount += prune();
+        changeCount += compress();
 
-    // Phase SuperbubbleChains.
-    changeCount += phaseSuperbubbleChains();
-    write("D");
+        // Simplify Superbubbles and remove or simplify bubbles likely caused by errors.
+        changeCount += simplifySuperbubbles();
+        write("B" + to_string(iteration));
+        changeCount += bubbleCleanup();
+        changeCount += compress();
+        write("C" + to_string(iteration));
 
-    // Detangling.
-    // createTangleTemplates();
-    const bool useExtendedTangleMatrix = true;
-    LikelihoodRatioDetangler detangler(
-        options.detangleMinCommonCoverage,
-        options.detangleEpsilon,
-        options.detangleMaxLogP,
-        options.detangleMinLogPDelta,
-        options.detangleHighCoverageThreshold,
-        useExtendedTangleMatrix);
-    changeCount += detangle(detangleMaxIterationCount, std::numeric_limits<uint64_t>::max(), detangler);
-    write("E");
+        // Phase SuperbubbleChains.
+        changeCount += phaseSuperbubbleChains();
+        write("D" + to_string(iteration));
 
-    // After detangling we need another step of pruning and bubble/superbubble cleanup.
-    changeCount += prune();
-    changeCount += compress();
-    changeCount += simplifySuperbubbles();
-    changeCount += bubbleCleanup();
-    changeCount += phaseSuperbubbleChains();
-    changeCount += compress();
-    write("F");
+        // Detangling.
+        // createTangleTemplates();
+        const bool useExtendedTangleMatrix = true;
+        LikelihoodRatioDetangler detangler(
+            options.detangleMinCommonCoverage,
+            options.detangleEpsilon,
+            options.detangleMaxLogP,
+            options.detangleMinLogPDelta,
+            options.detangleHighCoverageThreshold,
+            useExtendedTangleMatrix);
+        changeCount += detangle(detangleMaxIterationCount, std::numeric_limits<uint64_t>::max(), detangler);
+        write("E" + to_string(iteration));
 
-    cout << "Total change count " << changeCount << endl;
+        cout << "Total change count at iteration " << iteration << " was " << changeCount << endl;
+    }
 
 
     // Sequence assembly.
