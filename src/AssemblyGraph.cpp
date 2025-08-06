@@ -155,6 +155,8 @@ AssemblyGraph::AssemblyGraph(
 // Detangle, phase, assemble sequence, output.
 void AssemblyGraph::run()
 {
+    performanceLog << timestamp << "Assembly graph::run begins." << endl;
+
     // AssemblyGraph& assemblyGraph = *this;
     const uint64_t detangleMaxIterationCount = 10;
 
@@ -203,6 +205,8 @@ void AssemblyGraph::run()
     assembleAll();
     write("Z");
     writeFasta("Z");
+
+    performanceLog << timestamp << "Assembly graph::run ends." << endl;
 }
 
 
@@ -465,6 +469,8 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
 // then assembles each of the steps in parallel.
 void AssemblyGraph::assemble()
 {
+    performanceLog << timestamp << "Sequence assembly begins for " << edgesToBeAssembled.size() <<
+        " assembly graph edges." << endl;
     AssemblyGraph& assemblyGraph = *this;
 
     stepsToBeAssembled.clear();
@@ -486,6 +492,8 @@ void AssemblyGraph::assemble()
 
     edgesToBeAssembled.clear();
     stepsToBeAssembled.clear();
+
+    performanceLog << timestamp << "Sequence assembly ends." << endl;
 }
 
 
@@ -500,10 +508,13 @@ void AssemblyGraph::assembleThreadFunction(uint64_t /* threadId */)
 
         // Loop over all assembly steps assigned to this batch.
         for(uint64_t j=begin; j!=end; j++) {
+
+            /*
             if((j % 1000) == 0) {
                 std::lock_guard<std::mutex> lock(mutex);
                 performanceLog << timestamp << j << "/" << stepsToBeAssembled.size() << endl;
             }
+            */
 
             const auto& p = stepsToBeAssembled[j];
             const edge_descriptor e = p.first;
@@ -585,6 +596,7 @@ void AssemblyGraph::findBubbles(vector<Bubble>& bubbles) const
         }
     }
 
+#if 0
     cout << "Found " << bubbles.size() << " bubbles." << endl;
 
     // Count the bubbles for each ploidy.
@@ -602,7 +614,7 @@ void AssemblyGraph::findBubbles(vector<Bubble>& bubbles) const
             cout << "Ploidy " << ploidy << ": " << frequency << " bubbles." << endl;
         }
     }
-
+#endif
 }
 
 
@@ -616,12 +628,13 @@ void AssemblyGraph::bubbleCleanup()
 
 uint64_t AssemblyGraph::bubbleCleanupIteration()
 {
+    performanceLog << timestamp << "Bubble cleanup iteration begins." << endl;
     AssemblyGraph& assemblyGraph = *this;
 
     // Find all bubbles.
     vector<Bubble> allBubbles;
     findBubbles(allBubbles);
-    cout << "Found " << allBubbles.size() << " bubbles." << endl;
+    // cout << "Found " << allBubbles.size() << " bubbles." << endl;
 
     // Find candidate bubbles.
     // These are the ones in which no branch has offset greater than
@@ -641,7 +654,7 @@ uint64_t AssemblyGraph::bubbleCleanupIteration()
             candidateBubbles.push_back(bubble);
         }
     }
-    cout << candidateBubbles.size() << " bubbles are candidate for clean up." << endl;
+    // cout << candidateBubbles.size() << " bubbles are candidate for clean up." << endl;
 
     // Assemble sequence for all the edges of these bubbles.
     edgesToBeAssembled.clear();
@@ -661,8 +674,9 @@ uint64_t AssemblyGraph::bubbleCleanupIteration()
             ++modifiedCount;
         }
     }
-    cout << "Bubble cleanup modified " << modifiedCount << " bubbles." << endl;
+    // cout << "Bubble cleanup modified " << modifiedCount << " bubbles." << endl;
 
+    performanceLog << timestamp << "Bubble cleanup iteration ends." << endl;
     return modifiedCount;
 }
 
@@ -1358,6 +1372,7 @@ uint64_t AssemblyGraph::detangle(
     uint64_t maxEdgeLength,
     Detangler& detangler)
 {
+    performanceLog << timestamp << "AssemblyGraph::detangle begins." << endl;
 
     const uint64_t verticesChangeCount = detangleVertices(maxIterationCount, detangler);
     const uint64_t edgesChangeCount = detangleEdges(maxIterationCount, maxEdgeLength, detangler);
@@ -1365,6 +1380,7 @@ uint64_t AssemblyGraph::detangle(
 
     const uint64_t changeCount = verticesChangeCount + edgesChangeCount; // + templateChangeCount;
 
+    performanceLog << timestamp << "AssemblyGraph::detangle ends." << endl;
     return changeCount;
 }
 
@@ -1964,6 +1980,7 @@ void AssemblyGraph::writeSuperbubbleChainsForBandage(
 
 void AssemblyGraph::phaseSuperbubbleChains()
 {
+    performanceLog << timestamp << "AssemblyGraph::phaseSuperbubbleChains begins." << endl;
 
     // Find superbubbles.
     vector<Superbubble> superbubbles;
@@ -1991,7 +2008,9 @@ void AssemblyGraph::phaseSuperbubbleChains()
 
     compress();
 
+    performanceLog << timestamp << "AssemblyGraph::phaseSuperbubbleChains ends." << endl;
 }
+
 
 
 // Simplify Superbubbles by turning them into bubbles via clustering
