@@ -57,7 +57,7 @@ void Superbubble::gatherInternalVertices()
 {
     // Do a BFS starting at the sourceVertex and stopping at the targetVertex.
     std::queue<vertex_descriptor> q;
-    std::set<vertex_descriptor, AssemblyGraph::OrderById> internalVerticesSet{AssemblyGraph::OrderById(assemblyGraph)};
+    std::set<vertex_descriptor, AssemblyGraph::OrderById> internalVerticesSet(assemblyGraph.orderById);
     q.push(sourceVertex);
     while(not q.empty()) {
         const vertex_descriptor v0 = q.front();
@@ -88,13 +88,13 @@ void Superbubble::gatherEdges()
     BGL_FORALL_OUTEDGES(sourceVertex, e, assemblyGraph, AssemblyGraph) {
         sourceEdges.push_back(e);
     }
-    sort(sourceEdges.begin(), sourceEdges.end(), AssemblyGraph::OrderById(assemblyGraph));
+    sort(sourceEdges.begin(), sourceEdges.end(), assemblyGraph.orderById);
 
     // The target edges are the in-edges of the target vertex.
     BGL_FORALL_INEDGES(targetVertex, e, assemblyGraph, AssemblyGraph) {
         targetEdges.push_back(e);
     }
-    sort(targetEdges.begin(), targetEdges.end(), AssemblyGraph::OrderById(assemblyGraph));
+    sort(targetEdges.begin(), targetEdges.end(), assemblyGraph.orderById);
 
     // The internal edges are the out-edges of the source plus the
     // out-edges of all internal vertices.
@@ -106,7 +106,7 @@ void Superbubble::gatherEdges()
             internalEdges.push_back(e);
         }
     }
-    sort(internalEdges.begin(), internalEdges.end(), AssemblyGraph::OrderById(assemblyGraph));
+    sort(internalEdges.begin(), internalEdges.end(), assemblyGraph.orderById);
 
 }
 

@@ -64,16 +64,15 @@ void SearchGraph::createEdges(
 
 
     // Find edge pairs that appear in both directions.
-    const AssemblyGraph::OrderById orderById(assemblyGraph);
-    sort(forwardPairs.begin(), forwardPairs.end(), orderById);
-    sort(backwardPairs.begin(), backwardPairs.end(), orderById);
+    sort(forwardPairs.begin(), forwardPairs.end(), assemblyGraph.orderById);
+    sort(backwardPairs.begin(), backwardPairs.end(), assemblyGraph.orderById);
 
     vector<EdgePair> bidirectionalPairs;
     std::set_intersection(
         forwardPairs.begin(), forwardPairs.end(),
         backwardPairs.begin(), backwardPairs.end(),
         back_inserter(bidirectionalPairs),
-        orderById);
+        assemblyGraph.orderById);
 
 
 

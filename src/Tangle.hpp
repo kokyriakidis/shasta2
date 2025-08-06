@@ -61,11 +61,11 @@ public:
 
     AssemblyGraph& assemblyGraph;
 
-    // The Tangle vertices.
+    // The Tangle vertices, sorted by assemblyGraph.orderById.
     vector<vertex_descriptor> tangleVertices;
     bool isTangleVertex(vertex_descriptor v) const
     {
-        return std::binary_search(tangleVertices.begin(), tangleVertices.end(), v, AssemblyGraph::OrderById(assemblyGraph));
+        return std::binary_search(tangleVertices.begin(), tangleVertices.end(), v, assemblyGraph.orderById);
     }
 
     void computeExtendedTangleMatrix(vector< vector<double> >&) const;

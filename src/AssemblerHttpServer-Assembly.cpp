@@ -1021,7 +1021,7 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
         }
 
     }
-    std::ranges::sort(entrances, AssemblyGraph::OrderById(assemblyGraph));
+    std::ranges::sort(entrances, assemblyGraph.orderById);
 
 
 
@@ -1051,7 +1051,7 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
             exits.push_back(it->second);
         }
     }
-    std::ranges::sort(exits, AssemblyGraph::OrderById(assemblyGraph));
+    std::ranges::sort(exits, assemblyGraph.orderById);
 
 
 

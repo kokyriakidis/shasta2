@@ -234,6 +234,7 @@ public:
             return assemblyGraph[x.second].id < assemblyGraph[y.second].id;
         }
     };
+    const OrderById orderById;
 
 
 

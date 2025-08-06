@@ -60,7 +60,8 @@ AssemblyGraph::AssemblyGraph(
     MultithreadedObject<AssemblyGraph>(*this),
     anchors(anchors),
     journeys(journeys),
-    options(options)
+    options(options),
+    orderById(*this)
 {
     AssemblyGraph& assemblyGraph = *this;
 
@@ -145,7 +146,8 @@ AssemblyGraph::AssemblyGraph(
     MultithreadedObject<AssemblyGraph>(*this),
     anchors(anchors),
     journeys(journeys),
-    options(options)
+    options(options),
+    orderById(*this)
 {
     load(stage);
 }
@@ -590,7 +592,7 @@ void AssemblyGraph::findBubbles(vector<Bubble>& bubbles) const
                 bubble.v0 = v0;
                 bubble.v1 = v1;
                 bubble.edges = edges;
-                std::ranges::sort(bubble.edges, OrderById(assemblyGraph));
+                std::ranges::sort(bubble.edges, orderById);
                 bubbles.push_back(bubble);
             }
         }
@@ -1791,8 +1793,7 @@ void AssemblyGraph::removeContainedSuperbubbles(vector<Superbubble>& superbubble
             internalEdges0.begin(), internalEdges0.end(),
             internalEdges1.begin(), internalEdges1.end(),
             back_inserter(commonEdges),
-            AssemblyGraph::OrderById(assemblyGraph)
-            );
+            orderById);
 
         if(commonEdges.size() == internalEdges0.size()) {
             // cout << "Superbubble " << superbubbleId0 << " is contained in superbubble " << superbubbleId1 << endl;
@@ -2647,8 +2648,8 @@ void AssemblyGraph::computeExtendedTangleMatrix(
     SHASTA_ASSERT(not orientedReadSegments.empty());
     const bool debug = false;
 
-    SHASTA_ASSERT(std::ranges::is_sorted(entrances, OrderById(assemblyGraph)));
-    SHASTA_ASSERT(std::ranges::is_sorted(exits, OrderById(assemblyGraph)));
+    SHASTA_ASSERT(std::ranges::is_sorted(entrances, orderById));
+    SHASTA_ASSERT(std::ranges::is_sorted(exits, orderById));
 
 
 
@@ -3128,7 +3129,6 @@ void AssemblyGraph::findEdgePairs(uint64_t minCoverage)
 
     const ReadId readCount = anchors.reads.readCount();
     const ReadId orientedReadCount = 2 * readCount;
-    const OrderById orderById(*this);
 
     // Create an index that will be used for searches.
     // index[orientedReadId.getValue()] will contain the edges that
@@ -3192,7 +3192,6 @@ void AssemblyGraph::findEdgePairs(uint64_t minCoverage)
 void AssemblyGraph::testSearch(uint64_t edgeId0, uint64_t direction, uint64_t minCoverage) const
 {
     const AssemblyGraph& assemblyGraph = *this;
-    OrderById orderById(*this);
 
 
     edge_descriptor e0;
@@ -3457,7 +3456,6 @@ void AssemblyGraph::testLocalSearch(
     uint64_t highCoverageThreshold) const
 {
     const AssemblyGraph& assemblyGraph = *this;
-    OrderById orderById(*this);
 
     edge_descriptor eStart;
     bool found = false;

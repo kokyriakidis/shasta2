@@ -53,7 +53,7 @@ Tangle::Tangle(
     tangleVertices(tangleVerticesArgument)
 {
     // Sort the tangleVertices so we can do binary searches in it using isTangleVertex.
-    sort(tangleVertices.begin(), tangleVertices.end(), AssemblyGraph::OrderById(assemblyGraph));
+    sort(tangleVertices.begin(), tangleVertices.end(), assemblyGraph.orderById);
 
     // Find the entrance edges.
     vector<edge_descriptor> entranceEdges;
@@ -65,7 +65,7 @@ Tangle::Tangle(
             }
         }
     }
-    sort(entranceEdges.begin(), entranceEdges.end(), AssemblyGraph::OrderById(assemblyGraph));
+    sort(entranceEdges.begin(), entranceEdges.end(), assemblyGraph.orderById);
 
     // Find the exit edges.
     vector<edge_descriptor> exitEdges;
@@ -77,7 +77,7 @@ Tangle::Tangle(
             }
         }
     }
-    sort(exitEdges.begin(), exitEdges.end(), AssemblyGraph::OrderById(assemblyGraph));
+    sort(exitEdges.begin(), exitEdges.end(), assemblyGraph.orderById);
 
     // Now we can create the TangleMatrix.
     tangleMatrix = make_shared<TangleMatrix>(
