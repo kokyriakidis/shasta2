@@ -955,7 +955,7 @@ bool AnchorGraph::transitiveReductionCanRemove(
 
     // Do a forward BFS starting at v0, using edges
     // still marked as "use for assembly"
-    // with coverage greater than edgeCoverage
+    // with coverage not equal to edgeCoverage
     // and with maximum distance (number of edges)
     // equal to transitiveReductionMaxDistance.
     // If we encounter v1, return true.
@@ -986,7 +986,10 @@ bool AnchorGraph::transitiveReductionCanRemove(
             if(not edgeAB.useForAssembly) {
                 continue;
             }
-            if(edgeAB.coverage() <= edgeCoverage) {
+
+            // Don't rely on edges with the same coverage because they could
+            // be removed at this iteration.
+            if(edgeAB.coverage() == edgeCoverage) {
                 continue;
             }
 
