@@ -13,7 +13,7 @@ public:
     using vertex_descriptor = AssemblyGraph::vertex_descriptor;
     using edge_descriptor = AssemblyGraph::edge_descriptor;
 
-    void phase(AssemblyGraph&, uint64_t superbubbleChainId);
+    uint64_t phase(AssemblyGraph&, uint64_t superbubbleChainId);
 
 private:
 

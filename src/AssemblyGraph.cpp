@@ -165,19 +165,21 @@ void AssemblyGraph::run()
     // Initial output.
     write("A");
 
+    uint64_t changeCount = 0;
+
     // Prune.
-    prune();
-    compress();
+    changeCount += prune();
+    changeCount += compress();
 
     // Simplify Superbubbles and remove or simplify bubbles likely caused by errors.
-    simplifySuperbubbles();
+    changeCount += simplifySuperbubbles();
     write("B");
-    bubbleCleanup();
-    compress();
+    changeCount += bubbleCleanup();
+    changeCount += compress();
     write("C");
 
     // Phase SuperbubbleChains.
-    phaseSuperbubbleChains();
+    changeCount += phaseSuperbubbleChains();
     write("D");
 
     // Detangling.
@@ -190,17 +192,19 @@ void AssemblyGraph::run()
         options.detangleMinLogPDelta,
         options.detangleHighCoverageThreshold,
         useExtendedTangleMatrix);
-    detangle(detangleMaxIterationCount, std::numeric_limits<uint64_t>::max(), detangler);
+    changeCount += detangle(detangleMaxIterationCount, std::numeric_limits<uint64_t>::max(), detangler);
     write("E");
 
     // After detangling we need another step of pruning and bubble/superbubble cleanup.
-    prune();
-    compress();
-    simplifySuperbubbles();
-    bubbleCleanup();
-    phaseSuperbubbleChains();
-    compress();
+    changeCount += prune();
+    changeCount += compress();
+    changeCount += simplifySuperbubbles();
+    changeCount += bubbleCleanup();
+    changeCount += phaseSuperbubbleChains();
+    changeCount += compress();
     write("F");
+
+    cout << "Total change count " << changeCount << endl;
 
 
     // Sequence assembly.
@@ -621,10 +625,20 @@ void AssemblyGraph::findBubbles(vector<Bubble>& bubbles) const
 
 
 
-void AssemblyGraph::bubbleCleanup()
+uint64_t AssemblyGraph::bubbleCleanup()
 {
+    uint64_t modifiedCount = 0;
+
     vector< pair<vertex_descriptor, vertex_descriptor> > excludeList;
-    while(bubbleCleanupIteration(excludeList) > 0);
+    while(true) {
+        const uint64_t modifiedCountThisIteration = bubbleCleanupIteration(excludeList);
+        if(modifiedCountThisIteration == 0) {
+            break;
+        }
+        modifiedCount += modifiedCountThisIteration;
+    }
+
+    return modifiedCount;
 }
 
 
@@ -983,10 +997,11 @@ bool AssemblyGraph::analyzeBubble(
 
 
 // Compress linear chains of edges into a single edge.
-void AssemblyGraph::compress()
+uint64_t AssemblyGraph::compress()
 {
     AssemblyGraph& assemblyGraph = *this;
     const bool debug = false;
+    uint64_t compressCount = 0;
 
     // Find linear chains of 2 or more edges.
     vector< std::list<edge_descriptor> > chains;
@@ -1034,8 +1049,10 @@ void AssemblyGraph::compress()
             }
         }
 
+        ++compressCount;
     }
 
+    return compressCount;
 }
 
 
@@ -1115,7 +1132,7 @@ uint64_t AssemblyGraph::detangleVertices(uint64_t maxIterationCount, Detangler& 
         const uint64_t iterationChangeCount = detangleVerticesIteration(detangler);
         if(iterationChangeCount > 0) {
             changeCount += iterationChangeCount;
-            compress();
+            changeCount += compress();
             cout << "Detangle vertices iteration " << iteration << ": " << changeCount <<
                 " successful detangling operations." << endl;
         } else {
@@ -1163,7 +1180,7 @@ uint64_t AssemblyGraph::detangleEdges(
         const uint64_t iterationChangeCount = detangleEdgesIteration(maxEdgeLength, detangler);
         if(iterationChangeCount > 0) {
             changeCount += iterationChangeCount;
-            compress();
+            changeCount += compress();
             cout << "Detangle edges iteration " << iteration << ": " << iterationChangeCount <<
                 " successful detangling operations." << endl;
         } else {
@@ -1235,7 +1252,7 @@ uint64_t AssemblyGraph::detangleTemplate(
     for(uint64_t iteration=0; iteration<maxIterationCount; iteration++) {
         const uint64_t iterationChangeCount = detangleTemplateIteration(templateId, detangler);
         if(iterationChangeCount > 0) {
-            compress();
+            changeCount += compress();
             changeCount += iterationChangeCount;
             cout << "Detangle tangle template " << templateId << " iteration " << iteration << ": " << changeCount <<
                 " successful detangling operations." << endl;
@@ -1401,9 +1418,11 @@ uint64_t AssemblyGraph::detangle(
 
 
 
-void AssemblyGraph::prune()
+uint64_t AssemblyGraph::prune()
 {
     AssemblyGraph& assemblyGraph = *this;
+
+    uint64_t totalPruneCount = 0;
 
     vector<vertex_descriptor> verticesToBeRemoved;
     vector<edge_descriptor> edgesToBeRemoved;
@@ -1453,7 +1472,11 @@ void AssemblyGraph::prune()
         if(pruneCount == 0) {
             break;
         }
+
+        totalPruneCount += pruneCount;
     }
+
+    return totalPruneCount;
 }
 
 
@@ -1992,7 +2015,7 @@ void AssemblyGraph::writeSuperbubbleChainsForBandage(
 
 
 
-void AssemblyGraph::phaseSuperbubbleChains()
+uint64_t AssemblyGraph::phaseSuperbubbleChains()
 {
     performanceLog << timestamp << "AssemblyGraph::phaseSuperbubbleChains begins." << endl;
 
@@ -2014,22 +2037,25 @@ void AssemblyGraph::phaseSuperbubbleChains()
 
     // Phase them.
     countOrientedReadStepsBySegment();
+    uint64_t changeCount = 0;
     for(uint64_t superbubbleChainId=0; superbubbleChainId<superbubbleChains.size(); superbubbleChainId++) {
         SuperbubbleChain& superbubbleChain = superbubbleChains[superbubbleChainId];
-        superbubbleChain.phase(*this, superbubbleChainId);
+        changeCount += superbubbleChain.phase(*this, superbubbleChainId);
     }
     clearOrientedReadStepsBySegment();
 
-    compress();
+    changeCount += compress();
 
     performanceLog << timestamp << "AssemblyGraph::phaseSuperbubbleChains ends." << endl;
+
+    return changeCount;
 }
 
 
 
 // Simplify Superbubbles by turning them into bubbles via clustering
 // of oriented read journeys.
-void AssemblyGraph::simplifySuperbubbles()
+uint64_t AssemblyGraph::simplifySuperbubbles()
 {
 
     // Find the superbubbles, then remove superbubbles that are entirely
@@ -2048,19 +2074,24 @@ void AssemblyGraph::simplifySuperbubbles()
     cout << "Found " << superbubbles.size() << " superbubbles of which " <<
         count << " are not simple bubbles." << endl;
 
+    uint64_t simplifiedCount = 0;
     for(const Superbubble& superbubble: superbubbles) {
         if(not superbubble.isBubble()) {
-            simplifySuperbubble(superbubble,
+            const bool success = simplifySuperbubble(superbubble,
                 options.simplifySuperbubbleMinCoverage,
                 options.simplifySuperbubbleMaxOffset);
+            if(success) {
+                ++simplifiedCount;
+            }
         }
     }
 
+    return simplifiedCount;
 }
 
 
 
-void AssemblyGraph::simplifySuperbubble(
+bool AssemblyGraph::simplifySuperbubble(
     const Superbubble& superbubble,
     uint64_t minCoverage,
     uint64_t maxOffset)
@@ -2173,7 +2204,7 @@ void AssemblyGraph::simplifySuperbubble(
         if(debug) {
             cout << "This superbubble cannot be simplified because there are no usable anchor pairs." << endl;
         }
-        return;
+        return false;
     }
 
     // If any of these AnchorPairs have a long offset, don't do it.
@@ -2184,7 +2215,7 @@ void AssemblyGraph::simplifySuperbubble(
             if(debug) {
                 cout << "Skipping this superbubble due to large offset." << endl;
             }
-            return;
+            return false;
         }
     }
 
@@ -2218,6 +2249,8 @@ void AssemblyGraph::simplifySuperbubble(
         SHASTA_ASSERT(out_degree(v, assemblyGraph) == 0);
         boost::remove_vertex(v, assemblyGraph);
     }
+
+    return true;
 }
 
 

@@ -12,7 +12,7 @@ using namespace shasta;
 
 
 
-void SuperbubbleChain::phase(
+uint64_t SuperbubbleChain::phase(
     AssemblyGraph& assemblyGraph,
     uint64_t superbubbleChainId)
 {
@@ -190,7 +190,7 @@ void SuperbubbleChain::phase(
         if(debug) {
             cout << "There is nothing to phase." << endl;
         }
-        return;
+        return 0;
     }
 
     // Compute connected components.
@@ -216,7 +216,7 @@ void SuperbubbleChain::phase(
         phasingGraph.writeGraphviz("PhasingGraph-" + to_string(superbubbleChainId) + ".dot");
     }
 
-
+    uint64_t changeCount = 0;
 
     // Loop over the longest paths. Each edge of a longest path generates a Tangle that can
     // be detangled using the Hypothesis stored in the edge and its connectivity matrix.
@@ -328,6 +328,7 @@ void SuperbubbleChain::phase(
                 }
             }
             tangle.detangle();
+            ++changeCount;
 
             // Keep track of the vertices that were removed.
             for(vertex_descriptor v: tangle.removedVertices) {
@@ -337,4 +338,5 @@ void SuperbubbleChain::phase(
         }
     }
 
+    return changeCount;
 }

@@ -185,7 +185,7 @@ private:
     };
     void findBubbles(vector<Bubble>&) const;
 public:
-    void bubbleCleanup();
+    uint64_t bubbleCleanup();
     uint64_t bubbleCleanupIteration(vector< pair<vertex_descriptor, vertex_descriptor> >& excludeList);
 private:
     bool bubbleCleanup(const Bubble&);
@@ -201,10 +201,10 @@ private:
 
 public:
 
-    void prune();
+    uint64_t prune();
 
     // Compress linear chains of edges into a single edge.
-    void compress();
+    uint64_t compress();
 
 
 
@@ -413,11 +413,11 @@ public:
 
     // Simplify Superbubbles by turning them into bubbles via clustering
     // of oriented read journeys.
-    void simplifySuperbubbles();
-    void simplifySuperbubble(const Superbubble&, uint64_t minCoverage, uint64_t maxOffset);
+    uint64_t simplifySuperbubbles();
+    bool simplifySuperbubble(const Superbubble&, uint64_t minCoverage, uint64_t maxOffset);
 
     // Phasing of SuperbubbleChains.
-    void phaseSuperbubbleChains();
+    uint64_t phaseSuperbubbleChains();
 
 
 
