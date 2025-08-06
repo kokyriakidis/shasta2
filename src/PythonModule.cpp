@@ -143,7 +143,6 @@ PYBIND11_MODULE(shasta2, shasta2Module)
 
     class_<AssemblyGraph>(shasta2Module, "AssemblyGraph")
         .def("prune", &AssemblyGraph::prune)
-        .def("bubbleCleanupIteration0", &AssemblyGraph::bubbleCleanupIteration0)
         .def("bubbleCleanupIteration1", &AssemblyGraph::bubbleCleanupIteration1)
         .def("detangleVertices", &AssemblyGraph::detangleVertices)
         .def("detangleVerticesIteration", &AssemblyGraph::detangleVerticesIteration)

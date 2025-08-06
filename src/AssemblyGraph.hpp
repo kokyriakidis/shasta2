@@ -184,8 +184,6 @@ private:
     };
     void findBubbles(vector<Bubble>&) const;
 public:
-    void bubbleCleanup0();
-    uint64_t bubbleCleanupIteration0();
     void bubbleCleanup1();
     uint64_t bubbleCleanupIteration1();
 private:
