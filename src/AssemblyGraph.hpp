@@ -184,10 +184,10 @@ private:
     };
     void findBubbles(vector<Bubble>&) const;
 public:
-    void bubbleCleanup1();
-    uint64_t bubbleCleanupIteration1();
+    void bubbleCleanup();
+    uint64_t bubbleCleanupIteration();
 private:
-    bool bubbleCleanup1(const Bubble&);
+    bool bubbleCleanup(const Bubble&);
 
 
     // Analyze a Bubble and finds pairs of "similar" branches.

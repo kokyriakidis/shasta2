@@ -168,7 +168,7 @@ void AssemblyGraph::run()
     // Simplify Superbubbles and remove or simplify bubbles likely caused by errors.
     simplifySuperbubbles();
     write("B");
-    bubbleCleanup1();
+    bubbleCleanup();
     compress();
     write("C");
 
@@ -193,7 +193,7 @@ void AssemblyGraph::run()
     prune();
     compress();
     simplifySuperbubbles();
-    bubbleCleanup1();
+    bubbleCleanup();
     phaseSuperbubbleChains();
     compress();
     write("F");
@@ -607,14 +607,14 @@ void AssemblyGraph::findBubbles(vector<Bubble>& bubbles) const
 
 
 
-void AssemblyGraph::bubbleCleanup1()
+void AssemblyGraph::bubbleCleanup()
 {
-    while(bubbleCleanupIteration1() > 0);
+    while(bubbleCleanupIteration() > 0);
 }
 
 
 
-uint64_t AssemblyGraph::bubbleCleanupIteration1()
+uint64_t AssemblyGraph::bubbleCleanupIteration()
 {
     AssemblyGraph& assemblyGraph = *this;
 
@@ -657,7 +657,7 @@ uint64_t AssemblyGraph::bubbleCleanupIteration1()
 
     uint64_t modifiedCount = 0;
     for(const Bubble& bubble: candidateBubbles) {
-        if(bubbleCleanup1(bubble)) {
+        if(bubbleCleanup(bubble)) {
             ++modifiedCount;
         }
     }
@@ -668,7 +668,7 @@ uint64_t AssemblyGraph::bubbleCleanupIteration1()
 
 
 
-bool AssemblyGraph::bubbleCleanup1(const Bubble& bubble)
+bool AssemblyGraph::bubbleCleanup(const Bubble& bubble)
 {
     // EXPOSE WHEN CODE STABILIZES.
     const vector<uint64_t> minRepeatCount = {0, 2, 2, 2, 2, 2, 2};
