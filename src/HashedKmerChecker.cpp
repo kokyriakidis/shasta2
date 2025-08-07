@@ -12,15 +12,13 @@ using namespace shasta;
 
 
 
-// We must guarantee that if a KmerId if a marker
+// We must guarantee that if a Kmer if a marker
 // its reverse complement is also a marker.
 // To do this we check both.
-// This will usually require two calls to MurmurHash2,
-// but this is probably still faster than two cache misses
-// in the old k-mer table.
+// This will usually require two calls to MurmurHash2.
 bool HashedKmerChecker::isMarker(const Kmer& kmer) const
 {
-    // Check the KmerId.
+    // Check the Kmer.
     if(MurmurHash2(&kmer, sizeof(Kmer), 267457831) < hashThreshold) {
         return true;
     }
