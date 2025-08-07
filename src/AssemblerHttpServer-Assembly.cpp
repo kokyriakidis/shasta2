@@ -759,7 +759,7 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
 
 
     // Start the form.
-    html << "<h2>Assembly graph tangle matrix</h2><form>";
+    html << "<h2>Assembly graph tangle matrix (old)</h2><form>";
 
     html <<
         "<table>"
@@ -890,10 +890,146 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
     tangleMatrix.getTangleMatrixCoverage(tangleMatrixCoverage);
     const GTest gTest(tangleMatrixCoverage, epsilon);
     gTest.writeHtml(html);
+}
 
 
 
-    // Also compute an extended tangle matrix.
+void Assembler::exploreTangleMatrix1(const vector<string>& request, ostream& html)
+{
+    // Get the options from the request.
+    string assemblyStage;
+    HttpServer::getParameterValue(request, "assemblyStage", assemblyStage);
+    boost::trim(assemblyStage);
+
+    string entrancesString;
+    HttpServer::getParameterValue(request, "entrances", entrancesString);
+    boost::trim(entrancesString);
+
+    string exitsString;
+    HttpServer::getParameterValue(request, "exits", exitsString);
+    boost::trim(exitsString);
+
+    double epsilon = httpServerData.options->detangleEpsilon;
+    HttpServer::getParameterValue(request, "epsilon", epsilon);
+
+
+
+    // Start the form.
+    html << "<h2>Assembly graph tangle matrix (new)</h2><form>";
+
+    html <<
+        "<table>"
+        "<tr>"
+        "<th class=left>Assembly stage"
+        "<td class=centered><input type=text name=assemblyStage style='text-align:center' required";
+    if(not assemblyStage.empty()) {
+        html << " value='" << assemblyStage + "'";
+    }
+    html << " size=30>";
+
+    html <<
+        "<tr title='Enter assembly segment names separated by commas or spaces.'>"
+        "<th class=left>Entrances"
+        "<td class=centered>"
+        "<input type=text name=entrances style='text-align:center'";
+    if(not entrancesString.empty()) {
+        html << " value='" << entrancesString << "'";
+    }
+    html << " size=30>";
+
+    html <<
+        "<tr title='Enter assembly segment names separated by commas or spaces.'>"
+        "<th class=left>Exits"
+        "<td class=centered>"
+        "<input type=text name=exits style='text-align:center'";
+    if(not exitsString.empty()) {
+        html << " value='" << exitsString << "'";
+    }
+    html << " size=30>";
+
+    html << "<tr><th class=left>Epsilon for G-test evaluation"
+        "<td class=centered>"
+        "<input type=text name=epsilon style='text-align:center' value='" << epsilon << "'>";
+
+    // End the form.
+    html <<
+        "</table>"
+        "<input type=submit value='Compute tangle matrix'>"
+        "</form>";
+
+    if(entrancesString.empty() or exitsString.empty()) {
+        return;
+    }
+
+    // Get the AssemblyGraph for this assembly stage.
+    AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
+        assemblyStage,
+        *httpServerData.options);
+
+
+
+    // Find AssemblyGraph edges corresponding to the entrances.
+    vector<AssemblyGraph::edge_descriptor> entrances;
+    {
+        boost::tokenizer< boost::char_separator<char> > tokenizer(entrancesString, boost::char_separator<char>(", "));
+        for(const string& vertexIdString: tokenizer) {
+            uint64_t segmentId = invalid<uint64_t>;
+            try {
+                segmentId = std::stol(vertexIdString);
+            } catch(exception&) {
+            }
+            if(segmentId == invalid<uint64_t>) {
+                html << "Invalid segment " << vertexIdString << ". Must be a number.";
+                return;
+            }
+
+            // Find the AssemblyGraphEdge corresponding to the requested segment.
+            auto it = assemblyGraph.edgeMap.find(segmentId);
+            if(it == assemblyGraph.edgeMap.end()) {
+                html << "<p>Assembly graph at stage " << assemblyStage <<
+                    " does not have segment " << segmentId;
+                return;
+            }
+
+            entrances.push_back(it->second);
+        }
+
+    }
+    std::ranges::sort(entrances, assemblyGraph.orderById);
+
+
+
+    // Find AssemblyGraph edge corresponding to the exits.
+    vector<AssemblyGraph::edge_descriptor> exits;
+    {
+        boost::tokenizer< boost::char_separator<char> > tokenizer(exitsString, boost::char_separator<char>(", "));
+        for(const string& edgeIdString: tokenizer) {
+            uint64_t segmentId = invalid<uint64_t>;
+            try {
+                segmentId = std::stol(edgeIdString);
+            } catch(exception&) {
+            }
+            if(segmentId == invalid<uint64_t>) {
+                html << "Invalid segment " << edgeIdString << ". Must be a number.";
+                return;
+            }
+
+            // Find the AssemblyGraphEdge corresponding to the requested segment.
+            auto it = assemblyGraph.edgeMap.find(segmentId);
+            if(it == assemblyGraph.edgeMap.end()) {
+                html << "<p>Assembly graph at stage " << assemblyStage <<
+                    " does not have segment " << segmentId;
+                return;
+            }
+
+            exits.push_back(it->second);
+        }
+    }
+    std::ranges::sort(exits, assemblyGraph.orderById);
+
+
+
+    // Compute the extended tangle matrix.
     if(assemblyGraph.orientedReadSegments.empty()) {
         assemblyGraph.countOrientedReadStepsBySegment();
     }

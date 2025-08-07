@@ -2813,7 +2813,9 @@ void AssemblyGraph::computeExtendedTangleMatrix(
 
 
     if(html) {
-        html << std::setprecision(2) << "<h3>Extended tangle matrix</h3><table>"
+        html << std::setprecision(2) << "<h3>Extended tangle matrix</h3>"
+            "<h5>Oriented read contributions</h5>"
+            "<table>"
             "<tr><th>Oriented<br>read<br>id";
         for(uint64_t i=0; i<entrances.size(); i++) {
             html << "<th>Entrance<br>" << assemblyGraph[entrances[i]].id;
@@ -2839,7 +2841,7 @@ void AssemblyGraph::computeExtendedTangleMatrix(
             }
 
             // Write the contribution of this oriented read to the total tangle matrix.
-            html << "<td class=centered><table>";
+            html << "<td class=centered><table style='margin: 0 auto;'>";
 
             for(uint64_t i=0; i<entrances.size(); i++) {
                 html << "<tr>";
@@ -2890,7 +2892,7 @@ void AssemblyGraph::computeExtendedTangleMatrix(
 
 
     if(html) {
-        html << "<p><table><tr><th>";
+        html << "<h5>Total tangle matrix</h5><table><tr><th>";
         for(uint64_t j=0; j<exits.size(); j++) {
             html << "<th>" << assemblyGraph[exits[j]].id;
         }
