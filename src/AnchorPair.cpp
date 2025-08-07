@@ -703,7 +703,7 @@ void AnchorPair::splitByClustering(
     vector<AnchorPair>& newAnchorPairs
     ) const
 {
-    std::ostream html(0);
+    ostream html(0);
     vector< vector<uint64_t> > clusters;
     anchors.clusterAnchorPairOrientedReads(*this, journeys, clusteringMinJaccard, clusters, html);
 

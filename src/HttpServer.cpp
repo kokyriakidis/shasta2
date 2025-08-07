@@ -291,7 +291,7 @@ template<class T> void HttpServer::processRequest(T& s)
 void HttpServer::processPost(
     const vector<string>& requestLine,
     const string& postData,
-    std::ostream& s )
+    ostream& s )
 {
     // s << "HTTP/1.1 405 Method Not Allowed\r\n\r\n";
     cout << "***abc" << endl;
