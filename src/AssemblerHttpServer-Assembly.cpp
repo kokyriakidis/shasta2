@@ -3,8 +3,6 @@
 #include "areSimilarSequences.hpp"
 #include "AssemblyGraphPostprocessor.hpp"
 #include "GTest.hpp"
-#include "LocalAssembly.hpp"
-#include "LocalAssembly1.hpp"
 #include "LocalAssembly2.hpp"
 #include "Tangle.hpp"
 #include "TangleMatrix.hpp"
