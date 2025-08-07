@@ -6,6 +6,7 @@
 #include "LocalAssembly.hpp"
 #include "Tangle.hpp"
 #include "TangleMatrix.hpp"
+#include "TangleMatrix1.hpp"
 using namespace shasta;
 
 // Boost libraries.
@@ -1028,17 +1029,15 @@ void Assembler::exploreTangleMatrix1(const vector<string>& request, ostream& htm
     std::ranges::sort(exits, assemblyGraph.orderById);
 
 
-
-    // Compute the extended tangle matrix.
+    // Make sure we have the information we need.
     if(assemblyGraph.orientedReadSegments.empty()) {
         assemblyGraph.countOrientedReadStepsBySegment();
     }
-    vector< vector<double> > extendedTangleMatrix;
-    assemblyGraph.computeExtendedTangleMatrix(entrances, exits, extendedTangleMatrix, html);
-    {
-        GTest gTest(extendedTangleMatrix, epsilon);
-        gTest.writeHtml(html);
-    }
+
+    // Compute the tangle matrix.
+    const TangleMatrix1 tangleMatrix(assemblyGraph, entrances, exits, html);
+    GTest gTest(tangleMatrix.tangleMatrix, epsilon);
+    gTest.writeHtml(html);
 }
 
 
