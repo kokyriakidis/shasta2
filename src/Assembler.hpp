@@ -133,7 +133,7 @@ public:
 
 
 
-    // The KmerChecker is used to find out if a given KmerId is a marker.
+    // The KmerChecker is used to find out if a given Kmer is a marker.
     shared_ptr<KmerChecker> kmerChecker;
     public:
     void createKmerChecker(
