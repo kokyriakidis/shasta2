@@ -309,8 +309,6 @@ public:
     void exploreVertexTangle(const vector<string>&, ostream&);
     void exploreEdgeTangle(const vector<string>&, ostream&);
     void exploreTangleMatrix(const vector<string>&, ostream&);
-    void exploreLocalAssembly(const vector<string>&, ostream&);
-    void exploreLocalAssembly1(const vector<string>&, ostream&);
     void exploreLocalAssembly2(const vector<string>&, ostream&);
     void exploreSimilarSequences(const vector<string>&, ostream&);
 
