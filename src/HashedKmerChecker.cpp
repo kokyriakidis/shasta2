@@ -53,11 +53,11 @@ HashedKmerChecker::HashedKmerChecker(
 
     // Call:
     // - hashMax the maximum possible value of a hash
-    // - hashValue the hash value for a given KmerId
+    // - hashValue the hash value for a given Kmer
     // - hashValueRc the hash value for its reverse complement (for length k)
     // - p = hashThreshold / hashMax
 
-    // A KmerId is a marker if
+    // A Kmer is a marker if
     // Event A: hashValue < hashThreshold
     // OR
     // Event B: hashValueRc < hashThreshold

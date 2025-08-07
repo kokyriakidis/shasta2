@@ -67,10 +67,6 @@ public:
     Kmer getKmer(
         OrientedReadId,
         uint32_t ordinal) const;
-    KmerId getKmerId(
-        OrientedReadId,
-        uint32_t ordinal) const;
-
 
     // These are filled in by all constructors.
     size_t k;

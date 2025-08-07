@@ -197,13 +197,3 @@ Kmer Markers::getKmerStrand1(
     return kmer1;
 }
 
-
-
-// Get the marker KmerId for an oriented read and ordinal.
-KmerId Markers::getKmerId(
-    OrientedReadId orientedReadId,
-    uint32_t ordinal) const
-{
-    const Kmer kmer = getKmer(orientedReadId, ordinal);
-    return KmerId(kmer.id(k));
-}
