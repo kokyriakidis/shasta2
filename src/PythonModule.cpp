@@ -141,7 +141,8 @@ PYBIND11_MODULE(shasta2, shasta2Module)
 
 
 
-    class_<AssemblyGraph>(shasta2Module, "AssemblyGraph")
+    class_<AssemblyGraph> assemblyGraphClass(shasta2Module, "AssemblyGraph");
+    assemblyGraphClass
         .def("prune", &AssemblyGraph::prune)
         .def("bubbleCleanupIteration", &AssemblyGraph::bubbleCleanupIteration)
         .def("detangleVertices", &AssemblyGraph::detangleVertices)
@@ -170,8 +171,16 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def("createSearchGraph", &AssemblyGraph::createSearchGraph)
         ;
 
+    // Expose AssemblyGraph vertex_descriptor and edge_descriptor.
+    class_<AssemblyGraph::vertex_descriptor>
+        assemblyGraphVertexDescriptorClass(assemblyGraphClass, "AssemblyGraphVertexDescriptor");
+    class_<AssemblyGraph::edge_descriptor>
+        assemblyGraphEdgeDescriptorClass(assemblyGraphClass, "AssemblyGraphEdgeDescriptor");
+
     class_<AssemblyGraphPostprocessor>(shasta2Module, "AssemblyGraphPostprocessor",
-        pybind11::base<AssemblyGraph>());
+        pybind11::base<AssemblyGraph>())
+        .def_readonly("edgeMap", &AssemblyGraphPostprocessor::edgeMap)
+        ;
 
 
 
