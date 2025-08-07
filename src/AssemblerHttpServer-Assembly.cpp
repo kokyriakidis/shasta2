@@ -898,18 +898,7 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
         assemblyGraph.countOrientedReadStepsBySegment();
     }
     vector< vector<double> > extendedTangleMatrix;
-    assemblyGraph.computeExtendedTangleMatrix(entrances, exits, extendedTangleMatrix);
-
-    html << "<h2>Extended tangle matrix</h2>";
-    html << "<table>";
-    for(uint64_t iEntrance=0; iEntrance<entrances.size(); iEntrance++) {
-        html << "<tr>";
-        for(uint64_t iExit=0; iExit<exits.size(); iExit++) {
-            html << "<td class=centered>" << std::fixed << std::setprecision(1) << extendedTangleMatrix[iEntrance][iExit];
-        }
-    }
-    html << "</table>";
-
+    assemblyGraph.computeExtendedTangleMatrix(entrances, exits, extendedTangleMatrix, html);
     {
         GTest gTest(extendedTangleMatrix, epsilon);
         gTest.writeHtml(html);

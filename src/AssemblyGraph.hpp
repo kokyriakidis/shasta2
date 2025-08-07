@@ -323,7 +323,8 @@ public:
     void computeExtendedTangleMatrix(
         vector<edge_descriptor>& entrances,
         vector<edge_descriptor>& exits,
-        vector< vector<double> > & tangleMatrix
+        vector< vector<double> > & tangleMatrix,
+        ostream& html
         ) const;
 
 

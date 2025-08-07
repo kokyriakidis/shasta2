@@ -205,5 +205,6 @@ void Tangle::computeExtendedTangleMatrix(
         exitEdges.push_back(exit.e);
     }
 
-    assemblyGraph.computeExtendedTangleMatrix(entranceEdges, exitEdges, extendedTangleMatrix);
+    ostream html(0);
+    assemblyGraph.computeExtendedTangleMatrix(entranceEdges, exitEdges, extendedTangleMatrix, html);
 }

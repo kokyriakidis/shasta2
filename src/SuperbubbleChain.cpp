@@ -92,7 +92,8 @@ uint64_t SuperbubbleChain::phase(
                     exitEdges.push_back(exit.e);
                 }
                 vector< vector<double> > extendedTangleMatrix;
-                assemblyGraph.computeExtendedTangleMatrix(entranceEdges, exitEdges, extendedTangleMatrix);
+                ostream html(0);
+                assemblyGraph.computeExtendedTangleMatrix(entranceEdges, exitEdges, extendedTangleMatrix, html);
                 gTestPointer = make_shared<GTest>(extendedTangleMatrix, assemblyGraph.options.detangleEpsilon);
             } else {
                 vector< vector<uint64_t> > tangleMatrixCoverage;

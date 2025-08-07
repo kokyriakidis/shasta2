@@ -2681,7 +2681,8 @@ void AssemblyGraph::writeOrientedReadStepCountsBySegment()
 void AssemblyGraph::computeExtendedTangleMatrix(
     vector<edge_descriptor>& entrances,
     vector<edge_descriptor>& exits,
-    vector< vector<double> >& tangleMatrix
+    vector< vector<double> >& tangleMatrix,
+    ostream& html
     ) const
 {
     const AssemblyGraph& assemblyGraph = *this;
@@ -2811,6 +2812,48 @@ void AssemblyGraph::computeExtendedTangleMatrix(
 
 
 
+    if(html) {
+        html << std::setprecision(2) << "<h3>Extended tangle matrix</h3><table>"
+            "<tr><th>Oriented<br>read<br>id";
+        for(uint64_t i=0; i<entrances.size(); i++) {
+            html << "<th>Entrance<br>" << assemblyGraph[entrances[i]].id;
+        }
+        for(uint64_t i=0; i<exits.size(); i++) {
+            html << "<th>Exit<br>" << assemblyGraph[exits[i]].id;
+        }
+        html << "<th>Tangle<br>matrix";
+
+        // Loop over oriented reads that contribute to this tangle matrix.
+        for(const auto& p: m) {
+            const OrientedReadId orientedReadId = p.first;
+            const auto& info = p.second;
+            const double entranceSum = double(std::accumulate(info.entranceStepCount.begin(), info.entranceStepCount.end(), 0UL));
+            const double exitSum = double(std::accumulate(info.exitStepCount.begin(), info.exitStepCount.end(), 0UL));
+
+            html << "<tr><th>" << orientedReadId;
+            for(uint64_t i=0; i<entrances.size(); i++) {
+                html << "<td class=centered>" << info.entranceStepCount[i];
+            }
+            for(uint64_t i=0; i<exits.size(); i++) {
+                html << "<td class=centered>" << info.exitStepCount[i];
+            }
+
+            // Write the contribution of this oriented read to the total tangle matrix.
+            html << "<td class=centered><table>";
+
+            for(uint64_t i=0; i<entrances.size(); i++) {
+                html << "<tr>";
+                for(uint64_t j=0; j<exits.size(); j++) {
+                    html << "<td class=centered>" << double(info.entranceStepCount[i] * info.exitStepCount[j]) / (entranceSum * exitSum);
+                }
+            }
+            html << "</table>";
+        }
+        html << "</table>";
+    }
+
+
+
     // Compute the extended tangle matrix.
     tangleMatrix.clear();
     tangleMatrix.resize(entrances.size(), vector<double>(exits.size(), 0));
@@ -2842,6 +2885,24 @@ void AssemblyGraph::computeExtendedTangleMatrix(
             }
             cout << endl;
         }
+    }
+
+
+
+    if(html) {
+        html << "<p><table><tr><th>";
+        for(uint64_t j=0; j<exits.size(); j++) {
+            html << "<th>" << assemblyGraph[exits[j]].id;
+        }
+
+        for(uint64_t i=0; i<entrances.size(); i++) {
+            html << "<tr><th>" << assemblyGraph[entrances[i]].id;
+            for(uint64_t j=0; j<exits.size(); j++) {
+                html << "<td class=centered>" << tangleMatrix[i][j];
+            }
+        }
+
+        html << "</table>";
     }
 }
 
