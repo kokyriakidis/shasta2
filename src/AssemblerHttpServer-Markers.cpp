@@ -97,10 +97,8 @@ void Assembler::exploreReadMarkers(const vector<string>& request, ostream& html)
     std::map<Kmer, uint64_t> kmerFrequencyMap;
     for(uint64_t ordinal=0; ordinal<orientedReadMarkers.size(); ordinal++) {
         const Kmer kmer = markers().getKmer(orientedReadId, uint32_t(ordinal));
-        const KmerId kmerId = kmer.id(k);
         const Kmer rcKmer = kmer.reverseComplement(k);
-        const KmerId rcKmerId = rcKmer.id(k);
-        const Kmer canonicalKmer = (kmerId <= rcKmerId) ? kmer : rcKmer;
+        const Kmer& canonicalKmer = (kmer <= rcKmer) ? kmer : rcKmer;
         const auto it = kmerFrequencyMap.find(canonicalKmer);
         if(it == kmerFrequencyMap.end()) {
             kmerFrequencyMap.insert({canonicalKmer, 1});
