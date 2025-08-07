@@ -306,8 +306,6 @@ public:
     void exploreSegment(const vector<string>&, ostream&);
     void exploreSegmentStep(const vector<string>&, ostream&);
     void exploreBridgeSegmentSteps(const vector<string>&, ostream&);
-    void exploreVertexTangle(const vector<string>&, ostream&);
-    void exploreEdgeTangle(const vector<string>&, ostream&);
     void exploreTangleMatrix(const vector<string>&, ostream&);
     void exploreLocalAssembly(const vector<string>&, ostream&);
     void exploreSimilarSequences(const vector<string>&, ostream&);
