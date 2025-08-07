@@ -216,50 +216,7 @@ void Options::addOptions()
         "Maximum number of pruning iterations."
         )->capture_default_str();
 
-    add_option("--local-assembly-estimated-offset-ratio",
-        localAssemblyOptions.estimatedOffsetRatio,
-        "Estimated offset ratio for local assembly."
-        )->capture_default_str();
-
-    add_option("--local-assembly-vertex-sampling-rate", localAssemblyOptions.vertexSamplingRate,
-        "Vertex sampling rate for local assembly."
-        )->capture_default_str();
-
-    add_option("--local-assembly-match-score", localAssemblyOptions.matchScore,
-        "Match score for local assembly."
-        )->capture_default_str();
-
-    add_option("--local-assembly-mismatch-score", localAssemblyOptions.mismatchScore,
-        "Mismatch score for local assembly."
-        )->capture_default_str();
-
-    add_option("--local-assembly-gap-score", localAssemblyOptions.gapScore,
-        "Gap score for local assembly."
-        )->capture_default_str();
-
-    add_option("--local-assembly-max-skip-bases", localAssemblyOptions.maxSkipBases,
-        "Maximum skip in bases for local assembly."
-        )->capture_default_str();
-
-    add_option("--local-assembly-max-drift-ratio", localAssemblyOptions.maxDrift,
-        "Maximum drift ratio for local assembly."
-        )->capture_default_str();
-
-    add_option("--local-assembly-min-half-band", localAssemblyOptions.minHalfBand,
-        "Minimum half band, in markers, for local assembly."
-        )->capture_default_str();
-
-    add_option("--local-assembly-min-score-ratio", localAssemblyOptions.minScoreRatio,
-        "Score ratio threshold for discarding alignments\n"
-        "for local assembly."
-        )->capture_default_str();
-
-    add_option("--local-assembly-max-msa-length", localAssemblyOptions.maxMsaLength,
-        "Maximum length of a multiple sequence alignment\n"
-        "for local assembly."
-        )->capture_default_str();
-
-    add_option("--local-assembly-max-abpoa-length", localAssemblyOptions.maxAbpoaLength,
+    add_option("--max-abpoa-length", maxAbpoaLength,
         "Maximum MSA length for abpoa (switch to poasta above that)."
         )->capture_default_str();
 }

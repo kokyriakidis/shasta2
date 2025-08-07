@@ -458,7 +458,7 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
         throw runtime_error("No coverage for local assembly at assembly graph edge " +
             to_string(edge.id) + " step " + to_string(i));
     }
-    localAssembly.run(false, options.localAssemblyOptions.maxAbpoaLength);
+    localAssembly.run(false, options.maxAbpoaLength);
     localAssembly.getSequence(step.sequence);
 }
 
@@ -2167,7 +2167,7 @@ bool AssemblyGraph::simplifySuperbubble(
                 options.aDrift,
                 options.bDrift,
                 newAnchorPair);
-            localAssembly.run(false, options.localAssemblyOptions.maxAbpoaLength);
+            localAssembly.run(false, options.maxAbpoaLength);
             vector<shasta::Base> sequence;
             localAssembly.getSequence(sequence);
             cout << ">" << i << endl;

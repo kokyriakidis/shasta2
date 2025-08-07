@@ -558,7 +558,7 @@ void Assembler::exploreSegmentStep(
         httpServerData.options->aDrift,
         httpServerData.options->bDrift,
         edge[stepId].anchorPair);
-    localAssembly.run(showAlignment, httpServerData.options->localAssemblyOptions.maxAbpoaLength);
+    localAssembly.run(showAlignment, httpServerData.options->maxAbpoaLength);
 
 
 
@@ -1121,7 +1121,7 @@ void Assembler::exploreLocalAssembly(
     string debugString;
     const bool debug = getParameterValue(request, "debug", debugString);
 
-    uint64_t maxAbpoaLength = httpServerData.options->localAssemblyOptions.maxAbpoaLength;
+    uint64_t maxAbpoaLength = httpServerData.options->maxAbpoaLength;
     getParameterValue(request, "maxAbpoaLength", maxAbpoaLength);
 
 
@@ -1218,7 +1218,7 @@ void Assembler::exploreLocalAssembly(
         httpServerData.options->aDrift,
         httpServerData.options->bDrift,
         anchorIdA, anchorIdB);
-    localAssembly.run(showAlignment, httpServerData.options->localAssemblyOptions.maxAbpoaLength);
+    localAssembly.run(showAlignment, httpServerData.options->maxAbpoaLength);
 
 
 
