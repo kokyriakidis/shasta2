@@ -5,16 +5,16 @@
 #include <list>
 
 namespace shasta {
-    class LocalAssembly2;
+    class LocalAssembly;
     class AnchorPair;
 }
 
 
-class shasta::LocalAssembly2 {
+class shasta::LocalAssembly {
 public:
 
     // This constructor uses an AnchorPair between the two specified anchors.
-    LocalAssembly2(
+    LocalAssembly(
         const Anchors&,
         ostream& html,
         bool debug,
@@ -24,7 +24,7 @@ public:
         AnchorId anchorIdB);
 
     // This constructor uses the AnchorPair passed in.
-    LocalAssembly2(
+    LocalAssembly(
         const Anchors&,
         ostream& html,
         bool debug,

@@ -1,5 +1,5 @@
 // Shasta2
-#include "LocalAssembly2.hpp"
+#include "LocalAssembly.hpp"
 #include "abpoaWrapper.hpp"
 #include "AnchorPair.hpp"
 #include "deduplicate.hpp"
@@ -19,7 +19,7 @@ using namespace shasta;
 
 
 
-LocalAssembly2::LocalAssembly2(
+LocalAssembly::LocalAssembly(
     const Anchors& anchors,
     ostream& html,
     bool debugArgument,
@@ -37,7 +37,7 @@ LocalAssembly2::LocalAssembly2(
 
 
 
-LocalAssembly2::LocalAssembly2(
+LocalAssembly::LocalAssembly(
     const Anchors& anchors,
     ostream& html,
     bool debugArgument,
@@ -53,17 +53,15 @@ LocalAssembly2::LocalAssembly2(
 
 
 
-void LocalAssembly2::run(
+void LocalAssembly::run(
     bool computeAlignment,
     uint64_t maxAbpoaLength)
 {
-#if 1
     // Under some conditions (e. g. all sequences are identical) we can speed up the process.
     // This is the case most of the time.
     if(runFast(computeAlignment)) {
         return;
     }
-#endif
 
     // Iterate until alignMarkers is successful.
     // Each failed iteration removes one or more OrientedReads.
@@ -115,23 +113,10 @@ void LocalAssembly2::run(
 
 // This checks for shortcuts (e. g. all sequences are identical)
 // that can be used to run faster. It returns true if successful.
-bool LocalAssembly2::runFast(bool computeAlignment)
+bool LocalAssembly::runFast(bool computeAlignment)
 {
     SHASTA_ASSERT(not orientedReads.empty());
     const uint32_t kHalf = uint32_t(anchors.k / 2);
-
-#if 0
-    // Check if all the ordinal offsets are identical.
-    bool ordinalOffsetsAreIdentical = true;
-    const uint32_t ordinalOffset0 = orientedReads.front().ordinalOffset();
-    for(const OrientedRead& orientedRead: orientedReads) {
-        if(orientedRead.ordinalOffset() != ordinalOffset0) {
-            ordinalOffsetsAreIdentical = false;
-            break;
-        }
-    }
-#endif
-
 
     // Check if all the position offsets (sequence lengths) are identical.
     // We cannot use OrientedRead.sequenceLength() because we did not fill in
@@ -284,7 +269,7 @@ bool LocalAssembly2::runFast(bool computeAlignment)
 // We use all common oriented reads with positive ordinal offset
 // between anchorIdA and anchorIdB.
 // This does not fill in the markerInfos.
-void LocalAssembly2::gatherOrientedReads(
+void LocalAssembly::gatherOrientedReads(
     AnchorId anchorIdA,
     AnchorId anchorIdB,
     double aDrift,
@@ -300,7 +285,7 @@ void LocalAssembly2::gatherOrientedReads(
 
 
 
-void LocalAssembly2::gatherOrientedReads(
+void LocalAssembly::gatherOrientedReads(
     const AnchorPair& anchorPairBeforeSplitting,
     double aDrift,
     double bDrift)
@@ -335,7 +320,7 @@ void LocalAssembly2::gatherOrientedReads(
 
 // This gathers the marker k-mers of all reads and fills in
 // the kmers vector and the markerInfos of each OrientedRead.
-void LocalAssembly2::gatherKmers()
+void LocalAssembly::gatherKmers()
 {
     const uint64_t k = anchors.k;
 
@@ -385,7 +370,7 @@ void LocalAssembly2::gatherKmers()
 
 
 // This assumes that gatherKmers has already been called.
-void LocalAssembly2::writeOrientedReads()
+void LocalAssembly::writeOrientedReads()
 {
     html <<
         "<h3>Oriented reads portions used in this local assembly</h3>"
@@ -414,7 +399,7 @@ void LocalAssembly2::writeOrientedReads()
 }
 
 
-void LocalAssembly2::writeOrientedReadsFast() const
+void LocalAssembly::writeOrientedReadsFast() const
 {
     html <<
         "<h3>Oriented reads portions used in this local assembly</h3>"
@@ -439,7 +424,7 @@ void LocalAssembly2::writeOrientedReadsFast() const
 
 
 #if 0
-void LocalAssembly2::gatherOrientedReadsKmers()
+void LocalAssembly::gatherOrientedReadsKmers()
 {
     const uint64_t k = anchors.k;
 
@@ -483,7 +468,7 @@ void LocalAssembly2::gatherOrientedReadsKmers()
 
 
 
-void LocalAssembly2::writeOrientedReads() const
+void LocalAssembly::writeOrientedReads() const
 {
     html <<
         "<h3>Oriented read sequences</h3>"
@@ -516,7 +501,7 @@ void LocalAssembly2::writeOrientedReads() const
 
 
 
-void LocalAssembly2::gatherKmers()
+void LocalAssembly::gatherKmers()
 {
     kmers.clear();
     for(const OrientedRead& orientedRead: orientedReads) {
@@ -582,7 +567,7 @@ void LocalAssembly2::gatherKmers()
 
 
 
-void LocalAssembly2::alignMarkers()
+void LocalAssembly::alignMarkers()
 {
 
     // Start with two AlignedMarkers at A and B.
@@ -664,7 +649,7 @@ void LocalAssembly2::alignMarkers()
 
 
 
-void LocalAssembly2::split(
+void LocalAssembly::split(
     const AlignedMarkers& alignedMarkers0,
     const AlignedMarkers& alignedMarkers1,
     vector<AlignedMarkers>& newAlignedMarkers)
@@ -896,7 +881,7 @@ void LocalAssembly2::split(
 
 
 
-void LocalAssembly2::assemble(bool computeAlignment, uint64_t maxAbpoaLength)
+void LocalAssembly::assemble(bool computeAlignment, uint64_t maxAbpoaLength)
 {
     consensus.clear();
     if(computeAlignment) {
@@ -918,7 +903,7 @@ void LocalAssembly2::assemble(bool computeAlignment, uint64_t maxAbpoaLength)
 
 
 
-void LocalAssembly2::assemble(
+void LocalAssembly::assemble(
     bool computeAlignment,
     uint64_t maxAbpoaLength,
     uint64_t step)
@@ -1021,7 +1006,7 @@ void LocalAssembly2::assemble(
 
 
 
-void LocalAssembly2::writeConsensus(const vector< pair<Base, uint64_t> >& consensus) const
+void LocalAssembly::writeConsensus(const vector< pair<Base, uint64_t> >& consensus) const
 {
     html <<
         "<h4>Consensus</h4>"
@@ -1070,7 +1055,7 @@ void LocalAssembly2::writeConsensus(const vector< pair<Base, uint64_t> >& consen
 
 
 
-void LocalAssembly2::writeConsensus() const
+void LocalAssembly::writeConsensus() const
 {
     html <<
         "<h3>Consensus</h3>"
@@ -1120,7 +1105,7 @@ void LocalAssembly2::writeConsensus() const
 
 
 // Write the alignment for one step.
-void LocalAssembly2::writeAlignment(
+void LocalAssembly::writeAlignment(
     const vector< vector<Base> >& inputSequences,
     const vector< pair<Base, uint64_t> >& consensus,
     const vector< vector<AlignedBase> >& alignment,
@@ -1208,7 +1193,7 @@ void LocalAssembly2::writeAlignment(
 
 
 // Write the global alignment (all steps).
-void LocalAssembly2::writeAlignment()
+void LocalAssembly::writeAlignment()
 {
     html << "<h3>Alignment</h3>";
 
@@ -1301,7 +1286,7 @@ void LocalAssembly2::writeAlignment()
 
 
 
-void LocalAssembly2::getSequence(vector<Base>& sequence) const
+void LocalAssembly::getSequence(vector<Base>& sequence) const
 {
     sequence.clear();
     for(const auto& p: consensus) {

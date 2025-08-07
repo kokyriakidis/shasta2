@@ -309,7 +309,7 @@ public:
     void exploreVertexTangle(const vector<string>&, ostream&);
     void exploreEdgeTangle(const vector<string>&, ostream&);
     void exploreTangleMatrix(const vector<string>&, ostream&);
-    void exploreLocalAssembly2(const vector<string>&, ostream&);
+    void exploreLocalAssembly(const vector<string>&, ostream&);
     void exploreSimilarSequences(const vector<string>&, ostream&);
 
     // Get the AssemblyGraph for a given assembly stage.

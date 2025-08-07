@@ -42,7 +42,7 @@ void Assembler::fillServerFunctionTable()
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreAnchorPair2);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreJourney);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreReadFollowing);
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreLocalAssembly2);
+    SHASTA_ADD_TO_FUNCTION_TABLE(exploreLocalAssembly);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreSimilarSequences);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreLocalAnchorGraph);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreSegments);
@@ -233,7 +233,7 @@ void Assembler::writeNavigation(ostream& html) const
         {"Vertex tangle", "exploreVertexTangle"},
         {"Edge tangle", "exploreEdgeTangle"},
         {"Tangle matrix", "exploreTangleMatrix"},
-        {"LocalAssembly2", "exploreLocalAssembly2"},
+        {"Local assembly", "exploreLocalAssembly"},
         {"Sequence similarity", "exploreSimilarSequences"},
         });
 

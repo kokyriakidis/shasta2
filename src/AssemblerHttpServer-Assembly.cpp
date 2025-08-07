@@ -3,7 +3,7 @@
 #include "areSimilarSequences.hpp"
 #include "AssemblyGraphPostprocessor.hpp"
 #include "GTest.hpp"
-#include "LocalAssembly2.hpp"
+#include "LocalAssembly.hpp"
 #include "Tangle.hpp"
 #include "TangleMatrix.hpp"
 using namespace shasta;
@@ -553,7 +553,7 @@ void Assembler::exploreSegmentStep(
 
 
     // Do the local assembly for this step.
-    LocalAssembly2 localAssembly(
+    LocalAssembly localAssembly(
         anchors(), html, debug,
         httpServerData.options->aDrift,
         httpServerData.options->bDrift,
@@ -1100,11 +1100,11 @@ void Assembler::exploreEdgeTangle(const vector<string>& request, ostream& html)
 
 
 
-void Assembler::exploreLocalAssembly2(
+void Assembler::exploreLocalAssembly(
     const vector<string>& request,
     ostream& html)
 {
-    html << "<h2>LocalAssembly2</h2>";
+    html << "<h2>Local assembly</h2>";
 
     // Get the parameters for the request.
     string anchorIdAString;
@@ -1211,7 +1211,7 @@ void Assembler::exploreLocalAssembly2(
 
 
 
-    LocalAssembly2 localAssembly(
+    LocalAssembly localAssembly(
         anchors(),
         html,
         debug,

@@ -16,7 +16,7 @@
 #include "inducedSubgraphIsomorphisms.hpp"
 #include "Journeys.hpp"
 #include "LikelihoodRatioDetangler.hpp"
-#include "LocalAssembly2.hpp"
+#include "LocalAssembly.hpp"
 #include "MurmurHash2.hpp"
 #include "Options.hpp"
 #include "performanceLog.hpp"
@@ -447,9 +447,9 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
         return;
     }
 
-    // Run the LocalAssembly2.
+    // Run the LocalAssembly.
     ofstream html;  // Not open, so no html output takes place.
-    LocalAssembly2 localAssembly(
+    LocalAssembly localAssembly(
         anchors, html, false,
         options.aDrift,
         options.bDrift,
