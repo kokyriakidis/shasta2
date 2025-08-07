@@ -294,7 +294,10 @@ public:
 
 
 
-    // Count how many times each OrientedReadId appears in each segment.
+    // Count how many times each OrientedReadId appears in each segment
+    // and store in the orientedReadSegments.
+    // This also stores in each AssemblyGraphEdge::transitioningOrientedReadIds
+    // the OrientedReadIds that visit the edge and at least one other edge.
     void countOrientedReadStepsBySegment();
     void clearOrientedReadStepsBySegment();
     void writeOrientedReadStepCountsBySegment();
