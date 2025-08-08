@@ -5,6 +5,7 @@
 #include "PhasingGraph.hpp"
 #include "Tangle.hpp"
 #include "TangleMatrix.hpp"
+#include "TangleMatrix1.hpp"
 using namespace shasta;
 
 #include "algorithm.hpp"
@@ -93,8 +94,8 @@ uint64_t SuperbubbleChain::phase(
                 }
                 vector< vector<double> > extendedTangleMatrix;
                 ostream html(0);
-                assemblyGraph.computeExtendedTangleMatrix(entranceEdges, exitEdges, extendedTangleMatrix, html);
-                gTestPointer = make_shared<GTest>(extendedTangleMatrix, assemblyGraph.options.detangleEpsilon);
+                const TangleMatrix1 tangleMatrix1(assemblyGraph, entranceEdges, exitEdges, html);
+                gTestPointer = make_shared<GTest>(tangleMatrix1.tangleMatrix, assemblyGraph.options.detangleEpsilon);
             } else {
                 vector< vector<uint64_t> > tangleMatrixCoverage;
                 tangleMatrix.getTangleMatrixCoverage(tangleMatrixCoverage);
