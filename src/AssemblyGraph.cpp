@@ -1282,7 +1282,7 @@ uint64_t AssemblyGraph::detangle(
     const bool debug = false;
 
     AssemblyGraph& assemblyGraph = *this;
-    countOrientedReadStepsBySegment();
+    findOrientedReadEdgeInformation();
 
     std::set<vertex_descriptor> removedVertices;
     uint64_t attemptCount = 0;
@@ -1355,7 +1355,7 @@ uint64_t AssemblyGraph::detangle(
     // cout << "Attempted detangling for " << attemptCount << " tangles." << endl;
     // cout << "Detangling was successful for " << successCount << " tangles." << endl;
 
-    clearOrientedReadStepsBySegment();
+    clearOrientedReadEdgeInformation();
 
 
     return successCount;
@@ -2044,13 +2044,13 @@ uint64_t AssemblyGraph::phaseSuperbubbleChains()
     writeSuperbubbleChainsForBandage(superbubbleChains, "SuperbubbleChains-Bandage.csv");
 
     // Phase them.
-    countOrientedReadStepsBySegment();
+    findOrientedReadEdgeInformation();
     uint64_t changeCount = 0;
     for(uint64_t superbubbleChainId=0; superbubbleChainId<superbubbleChains.size(); superbubbleChainId++) {
         SuperbubbleChain& superbubbleChain = superbubbleChains[superbubbleChainId];
         changeCount += superbubbleChain.phase(*this, superbubbleChainId);
     }
-    clearOrientedReadStepsBySegment();
+    clearOrientedReadEdgeInformation();
 
     changeCount += compress();
 
@@ -2588,8 +2588,11 @@ void AssemblyGraph::computeJourneys()
 
 
 
-// Count how many times each OrientedReadId appears in each segment.
-void AssemblyGraph::countOrientedReadStepsBySegment()
+// Find appearances of each OrientedReadId in the AssemblyGraphSteps
+// of each AssemblyGraphEdge.
+// This also stores in each AssemblyGraphEdge::transitioningOrientedReadIds
+// the OrientedReadIds that visit the edge and at least one other edge.
+void AssemblyGraph::findOrientedReadEdgeInformation()
 {
     AssemblyGraph& assemblyGraph = *this;
     const uint64_t orientedReadCount = journeys.size();
@@ -2605,19 +2608,19 @@ void AssemblyGraph::countOrientedReadStepsBySegment()
         }
     }
 
-    // Deduplicate and count for each OrientedReadId, then store by segmentId.
-    orientedReadSegments.clear();
-    orientedReadSegments.resize(orientedReadCount);
-    OrientedReadSegmentsOrderById orientedReadSegmentsOrderById(assemblyGraph);
+    // Deduplicate and count for each OrientedReadId, then store ordered by segmentId.
+    orientedReadEdgeInformation.clear();
+    orientedReadEdgeInformation.resize(orientedReadCount);
+    OrientedReadEdgeInformationOrderById orientedReadEdgeInformationOrderById(assemblyGraph);
     vector<uint64_t> count;
     for(ReadId orientedReadIdValue=0; orientedReadIdValue<orientedReadCount; orientedReadIdValue++) {
-        vector<edge_descriptor>& v = edgesByOrientedReadId[orientedReadIdValue];
-        deduplicateAndCount(v, count);
-        for(uint64_t i=0; i<v.size(); i++) {
-            orientedReadSegments[orientedReadIdValue].emplace_back(v[i], count[i]);
+        vector<edge_descriptor>& x = edgesByOrientedReadId[orientedReadIdValue];
+        deduplicateAndCount(x, count);
+        vector<OrientedReadEdgeInformation>& y = orientedReadEdgeInformation[orientedReadIdValue];
+        for(uint64_t i=0; i<x.size(); i++) {
+            y.emplace_back(x[i], count[i]);
         }
-        sort(orientedReadSegments[orientedReadIdValue].begin(), orientedReadSegments[orientedReadIdValue].end(),
-            orientedReadSegmentsOrderById);
+        std::ranges::sort(y, orientedReadEdgeInformationOrderById);
     }
 
 
@@ -2629,10 +2632,10 @@ void AssemblyGraph::countOrientedReadStepsBySegment()
     }
     for(ReadId orientedReadIdValue=0; orientedReadIdValue<orientedReadCount; orientedReadIdValue++) {
         const OrientedReadId orientedReadId = OrientedReadId::fromValue(orientedReadIdValue);
-        const vector<OrientedReadSegments>& v = orientedReadSegments[orientedReadIdValue];
+        const vector<OrientedReadEdgeInformation>& v = orientedReadEdgeInformation[orientedReadIdValue];
         if(v.size() > 1) {
-            for(const OrientedReadSegments& s: v) {
-                assemblyGraph[s.e].transitioningOrientedReadIds.push_back(make_pair(orientedReadId, s.stepCount));
+            for(const OrientedReadEdgeInformation& info: v) {
+                assemblyGraph[info.e].transitioningOrientedReadIds.push_back(make_pair(orientedReadId, info.stepCount));
             }
         }
     }
@@ -2640,11 +2643,11 @@ void AssemblyGraph::countOrientedReadStepsBySegment()
 
 
 
-void AssemblyGraph::clearOrientedReadStepsBySegment()
+void AssemblyGraph::clearOrientedReadEdgeInformation()
 {
     AssemblyGraph& assemblyGraph = *this;
 
-    orientedReadSegments.clear();
+    orientedReadEdgeInformation.clear();
 
     BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
         AssemblyGraphEdge& edge = assemblyGraph[e];
@@ -2654,22 +2657,22 @@ void AssemblyGraph::clearOrientedReadStepsBySegment()
 
 
 
-void AssemblyGraph::writeOrientedReadStepCountsBySegment()
+void AssemblyGraph::writeOrientedReadEdgeInformation()
 {
     const AssemblyGraph& assemblyGraph = *this;
     const uint64_t orientedReadCount = journeys.size();
 
     {
-        ofstream csv("OrientedReadsStepCountBySegment.csv");
+        ofstream csv("OrientedReadEdgeInformaton.csv");
         csv << "OrientedReadId,SegmentId,StepCount,\n";
 
         for(ReadId orientedReadIdValue=0; orientedReadIdValue<orientedReadCount; orientedReadIdValue++) {
             const OrientedReadId orientedReadId = OrientedReadId::fromValue(orientedReadIdValue);
-            const vector<OrientedReadSegments>& v = orientedReadSegments[orientedReadIdValue];
-            for(const OrientedReadSegments s: v) {
+            const vector<OrientedReadEdgeInformation>& v = orientedReadEdgeInformation[orientedReadIdValue];
+            for(const OrientedReadEdgeInformation x: v) {
                 csv << orientedReadId << ",";
-                csv << assemblyGraph[s.e].id << ",";
-                csv << s.stepCount << ",\n";
+                csv << assemblyGraph[x.e].id << ",";
+                csv << x.stepCount << ",\n";
             }
         }
     }
@@ -2700,7 +2703,7 @@ void AssemblyGraph::computeExtendedTangleMatrix(
     ) const
 {
     const AssemblyGraph& assemblyGraph = *this;
-    SHASTA_ASSERT(not orientedReadSegments.empty());
+    SHASTA_ASSERT(not orientedReadEdgeInformation.empty());
     const bool debug = false;
 
     SHASTA_ASSERT(std::ranges::is_sorted(entrances, orderById));

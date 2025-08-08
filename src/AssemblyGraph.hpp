@@ -297,32 +297,36 @@ public:
 
 
 
-    // Count how many times each OrientedReadId appears in each segment
-    // and store in the orientedReadSegments.
-    // This also stores in each AssemblyGraphEdge::transitioningOrientedReadIds
+    // Find appearances of each OrientedReadId in the AssemblyGraphSteps
+    // of each AssemblyGraphEdge.
+    // This stores information for each OrientedReadId in
+    // orientedReadEdgeInformation (indexed by OrientedReadId::getValue).
+    // This also stores in the each AssemblyGraphEdge::transitioningOrientedReadIds
     // the OrientedReadIds that visit the edge and at least one other edge.
-    void countOrientedReadStepsBySegment();
-    void clearOrientedReadStepsBySegment();
-    void writeOrientedReadStepCountsBySegment();
-    class OrientedReadSegments {
+    void findOrientedReadEdgeInformation();
+    void clearOrientedReadEdgeInformation();
+    void writeOrientedReadEdgeInformation();
+    class OrientedReadEdgeInformation {
     public:
         edge_descriptor e;
         uint64_t stepCount;
-        OrientedReadSegments(edge_descriptor e, uint64_t stepCount) :
+        OrientedReadEdgeInformation(edge_descriptor e, uint64_t stepCount) :
             e(e), stepCount(stepCount) {}
     };
-    class OrientedReadSegmentsOrderById {
+    class OrientedReadEdgeInformationOrderById {
     public:
-        OrientedReadSegmentsOrderById(const AssemblyGraph& assemblyGraph): assemblyGraph(assemblyGraph) {}
+        OrientedReadEdgeInformationOrderById(const AssemblyGraph& assemblyGraph): assemblyGraph(assemblyGraph) {}
         const AssemblyGraph& assemblyGraph;
-        bool operator()(const OrientedReadSegments& x, const OrientedReadSegments& y) const
+        bool operator()(const OrientedReadEdgeInformation& x, const OrientedReadEdgeInformation& y) const
         {
-            return assemblyGraph[x.e].id < assemblyGraph[y.e].id;
+            return assemblyGraph.orderById(x.e, y.e);
         }
     };
     // Indexed by OrientedReadId::getValue()
-    // For each OrientedReadId, the segments are ordered by segment id.
-    vector< vector<OrientedReadSegments> > orientedReadSegments;
+    // For each OrientedReadId, the OrientedReadEdgeInformation are ordered by edge id.
+    vector< vector<OrientedReadEdgeInformation> > orientedReadEdgeInformation;
+
+
 
     // Use the orientedReadSegments and the transitioningOrientedReadIds
     // stored in the AssemblyGraphEdges to compute an extended tangle matrix.

@@ -1030,8 +1030,8 @@ void Assembler::exploreTangleMatrix1(const vector<string>& request, ostream& htm
 
 
     // Make sure we have the information we need.
-    if(assemblyGraph.orientedReadSegments.empty()) {
-        assemblyGraph.countOrientedReadStepsBySegment();
+    if(assemblyGraph.orientedReadEdgeInformation.empty()) {
+        assemblyGraph.findOrientedReadEdgeInformation();
     }
 
     // Compute the tangle matrix.

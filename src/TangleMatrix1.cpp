@@ -16,7 +16,7 @@ TangleMatrix1::TangleMatrix1(
     exits(exits)
 {
     // Sanity checks.
-    SHASTA_ASSERT(not assemblyGraph.orientedReadSegments.empty());
+    SHASTA_ASSERT(not assemblyGraph.orientedReadEdgeInformation.empty());
     SHASTA_ASSERT(std::ranges::is_sorted(entrances, assemblyGraph.orderById));
     SHASTA_ASSERT(std::ranges::is_sorted(exits, assemblyGraph.orderById));
 
