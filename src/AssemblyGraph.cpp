@@ -3498,3 +3498,93 @@ void AssemblyGraph::createSearchGraph(
         }
     }
 }
+
+
+// Gather information on the oriented reads that appear
+// in the AssemblyGraphSteps of an edge.
+void AssemblyGraph::gatherOrientedReadInformationOnEdge(
+    edge_descriptor e,
+    vector<OrientedReadEdgeInfo>& orientedReadEdgeInfos) const
+{
+    const AssemblyGraph& assemblyGraph = *this;
+    const AssemblyGraphEdge& edge = assemblyGraph[e];
+
+    // A work vector to store information on each appearance of an OrientedRead
+    // on a step of this edge.
+    class WorkInfo {
+    public:
+        OrientedReadId orientedReadId;
+        uint32_t positionInJourneyA;
+        uint32_t positionInJourneyB;
+        WorkInfo(
+            OrientedReadId orientedReadId,
+            uint32_t positionInJourneyA,
+            uint32_t positionInJourneyB) :
+            orientedReadId(orientedReadId),
+            positionInJourneyA(positionInJourneyA),
+            positionInJourneyB(positionInJourneyB)
+        {}
+        bool operator<(const WorkInfo& that) const
+        {
+            return orientedReadId < that.orientedReadId;
+        }
+    };
+    vector<WorkInfo> workInfos;
+
+
+
+    // Loop over steps of this edge.
+    for(const AssemblyGraphEdgeStep& step: edge) {
+        const AnchorPair& anchorPair = step.anchorPair;
+        const Anchor anchorA = anchors[anchorPair.anchorIdA];
+        const Anchor anchorB = anchors[anchorPair.anchorIdB];
+
+        // Triple loop over OrientedReadIds of anchorPair, anchorA, anchorB.
+        auto itA = anchorA.begin();
+        auto itB = anchorB.begin();
+        for(const OrientedReadId orientedReadId: anchorPair.orientedReadIds) {
+            while(itA->orientedReadId < orientedReadId) {
+                ++itA;
+                SHASTA_ASSERT(itA != anchorA.end());
+            }
+            SHASTA_ASSERT(itA->orientedReadId == orientedReadId);
+            while(itB->orientedReadId < orientedReadId) {
+                ++itB;
+                SHASTA_ASSERT(itB != anchorB.end());
+            }
+            SHASTA_ASSERT(itB->orientedReadId == orientedReadId);
+            workInfos.emplace_back(orientedReadId, itA->positionInJourney, itB->positionInJourney);
+        }
+    }
+
+    // Sort the WorkInfos by OrientedReadId.
+    sort(workInfos.begin(), workInfos.end());
+
+
+
+    // Each streak with the same OrientedReadId generates an OrientedReadEdgeInfo.
+    orientedReadEdgeInfos.clear();
+    for(auto streakBegin=workInfos.begin(); streakBegin!=workInfos.end(); /* Update later */) {
+        const OrientedReadId orientedReadId = streakBegin->orientedReadId;
+
+        auto streakEnd = streakBegin;
+        while((streakEnd!= workInfos.end()) and (streakEnd->orientedReadId == orientedReadId)) {
+            ++streakEnd;
+        }
+
+        // Loop over this streak.
+        OrientedReadEdgeInfo orientedReadEdgeInfo;
+        orientedReadEdgeInfo.orientedReadId = orientedReadId;
+        orientedReadEdgeInfo.stepCount = streakEnd - streakBegin;
+        orientedReadEdgeInfo.minPositionInJourney = std::numeric_limits<uint32_t>::max();
+        orientedReadEdgeInfo.maxPositionInJourney = std::numeric_limits<uint32_t>::max();
+        for(auto it=streakBegin; it!=streakEnd; it++) {
+            orientedReadEdgeInfo.minPositionInJourney = min(orientedReadEdgeInfo.minPositionInJourney, it->positionInJourneyA);
+            orientedReadEdgeInfo.maxPositionInJourney = max(orientedReadEdgeInfo.minPositionInJourney, it->positionInJourneyB);
+        }
+        orientedReadEdgeInfos.push_back(orientedReadEdgeInfo);
+
+        // Prepare to process the next streak.
+        streakBegin = streakEnd;
+    }
+}

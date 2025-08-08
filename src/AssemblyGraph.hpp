@@ -339,6 +339,23 @@ public:
 
 
 
+    // Gather information on the oriented reads that appear
+    // in the AssemblyGraphSteps of an edge.
+    class OrientedReadEdgeInfo {
+    public:
+        OrientedReadId orientedReadId;
+        uint64_t stepCount;
+        uint32_t minPositionInJourney;
+        uint32_t maxPositionInJourney;
+        bool operator<(const OrientedReadEdgeInfo& that) const
+        {
+            return orientedReadId < that.orientedReadId;
+        }
+    };
+    void gatherOrientedReadInformationOnEdge(
+        edge_descriptor,
+        vector<OrientedReadEdgeInfo>&) const;
+
 
     // Simple search starting at a given edge (segment) and moving in the specified direction.
     void search(

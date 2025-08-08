@@ -2,6 +2,7 @@
 #include "deduplicate.hpp"
 using namespace shasta;
 
+#include <fstream.hpp>
 #include <iomanip>
 
 
@@ -35,7 +36,7 @@ TangleMatrix1::TangleMatrix1(
 }
 
 
-
+#if 0
 void TangleMatrix1::gatherOrientedReads()
 {
     // Find transitioning orientedReads that appear in one or more entrances.
@@ -97,6 +98,104 @@ void TangleMatrix1::gatherOrientedReads()
         }
     }
 
+
+    // For each of the oriented reads, compute the contribution to the
+    // tangle matrix.
+    for(OrientedReadInfo& orientedReadInfo: orientedReadInfos) {
+        orientedReadInfo.computeTangleMatrix();
+    }
+}
+#endif
+
+
+
+void TangleMatrix1::gatherOrientedReads()
+{
+    const uint64_t entranceCount = entrances.size();
+    const uint64_t exitCount = exits.size();
+
+    // Gather AssemblyGraph::OrientedReadEdgeInfos for all entrances and exits.
+    vector< vector<AssemblyGraph::OrientedReadEdgeInfo> > entranceInfos(entranceCount);
+    for(uint64_t i=0; i<entranceCount; i++) {
+        assemblyGraph.gatherOrientedReadInformationOnEdge(
+            entrances[i],
+            entranceInfos[i]);
+    }
+    vector< vector<AssemblyGraph::OrientedReadEdgeInfo> > exitInfos(exitCount);
+    for(uint64_t i=0; i<exitCount; i++) {
+        assemblyGraph.gatherOrientedReadInformationOnEdge(
+            exits[i],
+            exitInfos[i]);
+    }
+
+    // Find orientedReads that appear in one or more entrances.
+    vector<OrientedReadId> entranceOrientedReadIds;
+    for(const auto& v: entranceInfos) {
+        for(const AssemblyGraph::OrientedReadEdgeInfo& info: v) {
+            entranceOrientedReadIds.push_back(info.orientedReadId);
+        }
+    }
+    deduplicate(entranceOrientedReadIds);
+
+    // Find orientedReads that appear in one or more exits.
+    vector<OrientedReadId> exitOrientedReadIds;
+    for(const auto& v: exitInfos) {
+        for(const AssemblyGraph::OrientedReadEdgeInfo& info: v) {
+            exitOrientedReadIds.push_back(info.orientedReadId);
+        }
+    }
+    deduplicate(exitOrientedReadIds);
+
+    // Find OrientedReadIds that appear in at least one entrance
+    // and at least one exit.
+    vector<OrientedReadId> orientedReadIds;
+    std::set_intersection(
+        entranceOrientedReadIds.begin(), entranceOrientedReadIds.end(),
+        exitOrientedReadIds.begin(), exitOrientedReadIds.end(),
+        back_inserter(orientedReadIds));
+
+
+
+    // Loop over these common OrientedReadIds.
+    // Maintain iterators into the entranceInfos and exitInfos.
+    orientedReadInfos.clear();
+    vector< vector<AssemblyGraph::OrientedReadEdgeInfo>::const_iterator > entranceInfoIterators(entranceCount);
+    for(uint64_t i=0; i<entranceCount; i++) {
+        entranceInfoIterators[i] = entranceInfos[i].begin();
+    }
+    vector< vector<AssemblyGraph::OrientedReadEdgeInfo>::const_iterator > exitInfoIterators(exitCount);
+    for(uint64_t i=0; i<exitCount; i++) {
+        exitInfoIterators[i] = exitInfos[i].begin();
+    }
+    for(const OrientedReadId orientedReadId: orientedReadIds) {
+        orientedReadInfos.emplace_back(orientedReadId, entranceCount, exitCount);
+        OrientedReadInfo& orientedReadInfo = orientedReadInfos.back();
+
+        for(uint64_t i=0; i<entranceCount; i++) {
+            auto& it = entranceInfoIterators[i];
+            while((it != entranceInfos[i].end()) and (it->orientedReadId < orientedReadId)) {
+                ++it;
+            }
+            if((it == entranceInfos[i].end()) or (it->orientedReadId != orientedReadId)) {
+                orientedReadInfo.entranceStepCount[i] = 0;
+            } else {
+                orientedReadInfo.entranceStepCount[i] = it->stepCount;
+            }
+        }
+
+        for(uint64_t i=0; i<exitCount; i++) {
+            auto& it = exitInfoIterators[i];
+            while((it != exitInfos[i].end()) and (it->orientedReadId < orientedReadId)) {
+                ++it;
+            }
+            if((it == exitInfos[i].end()) or (it->orientedReadId != orientedReadId)) {
+                orientedReadInfo.exitStepCount[i] = 0;
+            } else {
+                orientedReadInfo.exitStepCount[i] = it->stepCount;
+            }
+        }
+
+    }
 
     // For each of the oriented reads, compute the contribution to the
     // tangle matrix.
