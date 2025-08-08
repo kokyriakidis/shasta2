@@ -28,8 +28,6 @@ public:
     // Constructor from a single AssemblyGraph edge.
     Tangle1(AssemblyGraph&, edge_descriptor);
 
-private:
-
     AssemblyGraph& assemblyGraph;
 
     // All vectors of vertices and edges are stored sorted by id.
@@ -53,7 +51,11 @@ private:
     void findTangleEdges();
 
     // The tangle matrix constructed using the entrances and exits.
-    shared_ptr<TangleMatrix1> tangleMatrix;
+    shared_ptr<TangleMatrix1> tangleMatrixPointer;
+    const TangleMatrix1& tangleMatrix() const
+    {
+        return *tangleMatrixPointer;
+    }
 
     // Detangling instructions.
     // Each pair is (entranceIndex, exitIndex) that are to be connected
@@ -63,4 +65,13 @@ private:
     vector< pair<uint64_t, uint64_t> > connectList;
     void connect(uint64_t iEntrance, uint64_t iExit);
     void detangle();
+
+    void rerouteEntrances(vector<vertex_descriptor>& newEntranceVertices) const;
+    void rerouteExits(vector<vertex_descriptor>& newExitVertices) const;
+    void reconnect(
+        uint64_t iEntrance,
+        uint64_t iExit,
+        vertex_descriptor v0,
+        vertex_descriptor v1
+        ) const;
 };

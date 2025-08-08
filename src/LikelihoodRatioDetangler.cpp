@@ -2,7 +2,9 @@
 #include "LikelihoodRatioDetangler.hpp"
 #include "GTest.hpp"
 #include "Tangle.hpp"
+#include "Tangle1.hpp"
 #include "TangleMatrix.hpp"
+#include "TangleMatrix1.hpp"
 using namespace shasta;
 
 
@@ -194,3 +196,106 @@ bool LikelihoodRatioDetangler::operator()(Tangle& tangle)
 
     return true;
 }
+
+
+
+bool LikelihoodRatioDetangler::operator()(Tangle1& tangle)
+{
+    using edge_descriptor = AssemblyGraph::edge_descriptor;
+
+    const uint64_t entranceCount = tangle.entrances.size();
+    const uint64_t exitCount = tangle.exits.size();
+    const TangleMatrix1& tangleMatrix = tangle.tangleMatrix();
+
+    if(debug) {
+        cout << "Detangling begins for a tangle with " << entranceCount <<
+            " entrances and " << exitCount << " exits." << endl;
+
+        cout << "Entrances:";
+        for(const edge_descriptor e: tangle.entrances) {
+            cout << " " << tangle.assemblyGraph[e].id;
+        }
+        cout << endl;
+
+        cout << "Exits:";
+        for(const edge_descriptor e: tangle.exits) {
+            cout << " " << tangle.assemblyGraph[e].id;
+        }
+        cout << endl;
+
+        cout << "Tangle matrix:" << endl;
+        for(uint64_t i=0; i<entranceCount; i++) {
+            for(uint64_t j=0; j<exitCount; j++) {
+                cout << tangleMatrix.tangleMatrix[i][j] << " ";
+            }
+            cout << endl;
+        }
+    }
+
+    // Run the likelihood ratio test.
+    const GTest gTest(tangleMatrix.tangleMatrix, epsilon);
+    if(not gTest.success) {
+        if(debug) {
+            cout << "Not detangling because the G-test failed." << endl;
+        }
+        return false;
+    }
+
+
+
+    // If the best G is not good enough, do nothing.
+    const double bestG = gTest.hypotheses.front().G;
+    if(debug) {
+        cout << "Best G " << bestG << endl;
+    }
+    if(bestG > maxLogP) {
+        if(debug) {
+            cout << "Not detangling because the best G is too large." << endl;
+        }
+        return false;
+    }
+
+    // Also check the second best G.
+    if(gTest.hypotheses.size() >= 2) {
+        const double secondBestG = gTest.hypotheses[1].G;
+        if(debug) {
+            cout << "Second best G " << secondBestG << endl;
+        }
+        const double GDelta = secondBestG - bestG;
+        if(GDelta < minLogPDelta) {
+            if(debug) {
+                cout << "Not detangling because the second best G is too small." << endl;
+            }
+            return false;
+        }
+    }
+
+    // If getting here, we will detangle using the connectivity matrix for the best hypothesis.
+    const vector< vector<bool> >& bestConnectivityMatrix = gTest.hypotheses.front().connectivityMatrix;
+    if(debug) {
+        cout << "Connectivity matrix of best hypothesis:" << endl;
+        for(uint64_t i=0; i<entranceCount; i++) {
+            for(uint64_t j=0; j<exitCount; j++) {
+                cout << uint64_t(bestConnectivityMatrix[i][j]) << " ";
+            }
+            cout << endl;
+        }
+
+    }
+
+    // Store the connect pairs and detangle.
+    for(uint64_t iEntrance=0; iEntrance<entranceCount; iEntrance++) {
+        for(uint64_t iExit=0; iExit<exitCount; iExit++) {
+            if(bestConnectivityMatrix[iEntrance][iExit]) {
+                tangle.connect(iEntrance, iExit);
+                if(debug) {
+                    cout << "Connecting for detangling: " << iEntrance << " " << iExit << endl;
+                }
+            }
+        }
+    }
+    tangle.detangle();
+
+    return true;
+}
+

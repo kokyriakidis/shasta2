@@ -25,7 +25,7 @@ Tangle1::Tangle1(
 
     // Compute the tangle matrix.
     ostream html(0);
-    tangleMatrix = make_shared<TangleMatrix1>(assemblyGraph, entrances, exits, html);
+    tangleMatrixPointer = make_shared<TangleMatrix1>(assemblyGraph, entrances, exits, html);
 }
 
 
@@ -69,7 +69,7 @@ void Tangle1::findEntrances()
 
 void Tangle1::findExits()
 {
-    entrances.clear();
+    exits.clear();
     for(const vertex_descriptor v0: tangleVertices) {
         BGL_FORALL_OUTEDGES(v0, e, assemblyGraph, AssemblyGraph) {
             const vertex_descriptor v1 = target(e, assemblyGraph);
@@ -104,15 +104,104 @@ bool Tangle1::isTangleVertex(vertex_descriptor v) const
 
 
 
-void Tangle1::connect(uint64_t /* iEntrance */, uint64_t /* iExit */)
-{
-    SHASTA_ASSERT(0);
+void Tangle1::connect(uint64_t iEntrance, uint64_t iExit) {
+    SHASTA_ASSERT(iEntrance < entrances.size());
+    SHASTA_ASSERT(iExit < exits.size());
+    connectList.push_back({iEntrance, iExit});
 }
 
 
 
 void Tangle1::detangle()
 {
+    // Reroute the entrances to new vertices, so all
+    // entrances and exits become temporarily dangling.
+    vector<vertex_descriptor> newEntranceVertices;
+    rerouteEntrances(newEntranceVertices);
+
+    vector<vertex_descriptor> newExitVertices;
+    rerouteExits(newExitVertices);
+
+    // Finally, reconnect the entrance/exit pairs in our connect list.
+    for(const auto& p: connectList) {
+        const uint64_t iEntrance = p.first;
+        const uint64_t iExit = p.second;
+
+        reconnect(
+            iEntrance, iExit,
+            newEntranceVertices[iEntrance],
+            newExitVertices[iExit]);
+    }
     SHASTA_ASSERT(0);
 }
 
+
+
+// Make a copy of each entrance edge, with the target vertex replaced by a new vertex
+// with the same AnchorId.
+void Tangle1::rerouteEntrances(vector<vertex_descriptor>& newEntranceVertices) const
+{
+    newEntranceVertices.clear();
+
+    for(const edge_descriptor& eOld: entrances) {
+        const vertex_descriptor v0Old = source(eOld, assemblyGraph);
+        AssemblyGraphEdge& edgeOld = assemblyGraph[eOld];
+        const AnchorId lastAnchorId = edgeOld.back().anchorPair.anchorIdB;
+
+        // Create the new vertex.
+        const vertex_descriptor v1 = add_vertex(
+            AssemblyGraphVertex(lastAnchorId, assemblyGraph.nextVertexId++), assemblyGraph);
+        newEntranceVertices.push_back(v1);
+
+        // Create the new edge, with the same steps and id as the old one.
+        edge_descriptor eNew;
+        tie(eNew, ignore) = add_edge(v0Old, v1, AssemblyGraphEdge(edgeOld.id), assemblyGraph);
+        AssemblyGraphEdge& edgeNew = assemblyGraph[eNew];
+        edgeNew.swapSteps(edgeOld);
+        edgeNew.wasAssembled = edgeOld.wasAssembled;
+    }
+}
+
+
+
+// Make a copy of each exit edge, with the source vertex replaced by a new vertex
+// with the same AnchorId.
+void Tangle1::rerouteExits(vector<vertex_descriptor>& newExitVertices) const
+{
+    newExitVertices.clear();
+    for(const edge_descriptor& eOld: exits) {
+        const vertex_descriptor v1Old = target(eOld, assemblyGraph);
+        AssemblyGraphEdge& edgeOld = assemblyGraph[eOld];
+        const AnchorId firstAnchorId = edgeOld.front().anchorPair.anchorIdA;
+
+        // Create the new vertex.
+        const vertex_descriptor v0 = add_vertex(
+            AssemblyGraphVertex(firstAnchorId, assemblyGraph.nextVertexId++), assemblyGraph);
+        newExitVertices.push_back(v0);
+
+        // Create the new edge, with the same steps and id as the old one.
+        edge_descriptor eNew;
+        tie(eNew, ignore) = add_edge(v0, v1Old, AssemblyGraphEdge(edgeOld.id), assemblyGraph);
+        AssemblyGraphEdge& edgeNew = assemblyGraph[eNew];
+        edgeNew.swapSteps(edgeOld);
+        edgeNew.wasAssembled = edgeOld.wasAssembled;
+    }
+}
+
+
+
+void Tangle1::reconnect(
+    uint64_t iEntrance,
+    uint64_t iExit,
+    vertex_descriptor v0,
+    vertex_descriptor v1
+    ) const
+{
+    const bool debug = true;
+    if(debug) {
+        cout << "Connecting entrance " << assemblyGraph[entrances[iEntrance]].id <<
+            " with exit " << assemblyGraph[exits[iExit]].id << endl;
+    }
+
+    SHASTA_ASSERT(0);
+}

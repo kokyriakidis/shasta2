@@ -253,6 +253,9 @@ public:
     // Low level detangling function.
     uint64_t detangle(const vector< vector<vertex_descriptor> >& detanglingCandidates, Detangler&);
 
+    // Low level detangling function. This detangles a single tangle using Tangle1.
+    bool detangle1(const vector<vertex_descriptor>&, Detangler&);
+
     uint64_t detangleVerticesIteration(Detangler&);
     uint64_t detangleVertices(uint64_t maxIterationCount, Detangler&);
 

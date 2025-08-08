@@ -18,6 +18,11 @@ AssemblyGraphPostprocessor::AssemblyGraphPostprocessor(
 {
     const AssemblyGraph& assemblyGraph = *this;
 
+    // Fill in the vertex map.
+    BGL_FORALL_VERTICES(v, assemblyGraph, AssemblyGraph) {
+        vertexMap.insert(make_pair(assemblyGraph[v].id, v));
+    }
+
     // Fill in the edge map.
     BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
         edgeMap.insert(make_pair(assemblyGraph[e].id, e));

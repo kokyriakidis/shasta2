@@ -27,6 +27,7 @@
 #include "Superbubble.hpp"
 #include "SuperbubbleChain.hpp"
 #include "Tangle.hpp"
+#include "Tangle1.hpp"
 #include "TangleMatrix.hpp"
 #include "transitiveReduction.hpp"
 #include "TrivialDetangler.hpp"
@@ -1359,6 +1360,19 @@ uint64_t AssemblyGraph::detangle(
 
     return successCount;
 }
+
+
+
+// Low level detangling function. This detangles a single tangle using Tangle1.
+bool AssemblyGraph::detangle1(
+    const vector<vertex_descriptor>& tangleVertices, Detangler& detangler)
+{
+    AssemblyGraph& assemblyGraph = *this;
+
+    Tangle1 tangle(assemblyGraph, tangleVertices);
+    return detangler(tangle);
+}
+
 
 
 #if 0

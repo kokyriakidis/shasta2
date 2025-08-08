@@ -24,6 +24,9 @@ public:
         const Options&,
         const string& assemblyStage);
 
+    // Map from vertex id to edge_descriptor.
+    std::map<uint64_t, vertex_descriptor> vertexMap;
+
     // Map from edge id to edge_descriptor.
     std::map<uint64_t, edge_descriptor> edgeMap;
 

@@ -155,6 +155,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
                 (uint64_t, uint64_t, Detangler&)
             )
             &AssemblyGraph::detangle)
+        .def("detangle1", &AssemblyGraph::detangle1)
         .def("compress", &AssemblyGraph::compress)
         .def("assembleAll", &AssemblyGraph::assembleAll)
         .def("phaseSuperbubbleChains", &AssemblyGraph::phaseSuperbubbleChains)
@@ -179,6 +180,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
 
     class_<AssemblyGraphPostprocessor>(shasta2Module, "AssemblyGraphPostprocessor",
         pybind11::base<AssemblyGraph>())
+        .def_readonly("vertexMap", &AssemblyGraphPostprocessor::vertexMap)
         .def_readonly("edgeMap", &AssemblyGraphPostprocessor::edgeMap)
         ;
 
