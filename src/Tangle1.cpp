@@ -1,5 +1,6 @@
 // Shasta.
 #include "Tangle1.hpp"
+#include "Anchor.hpp"
 #include "TangleMatrix1.hpp"
 using namespace shasta;
 
@@ -197,11 +198,38 @@ void Tangle1::reconnect(
     vertex_descriptor v1
     ) const
 {
+    // EXPOSE WHEN CODE STABILIZES.
+    const double tangleMatrixContributionThreshold = 0.8;
+
     const bool debug = true;
+
+    const AnchorId anchorId0 = assemblyGraph[v0].anchorId;
+    const AnchorId anchorId1 = assemblyGraph[v1].anchorId;
+
     if(debug) {
         cout << "Connecting entrance " << assemblyGraph[entrances[iEntrance]].id <<
             " with exit " << assemblyGraph[exits[iExit]].id << endl;
+        cout << "Anchors " << anchorIdToString(anchorId0) << " " <<
+            anchorIdToString(anchorId1) << endl;
     }
+
+    // Gather the OrientedReadIds to use.
+    // They are the ones that contribute significantly to
+    // tangleMatrix[iEntrance][iExit].
+    vector<OrientedReadId> orientedReadIds;
+    for(const auto& info: tangleMatrix().orientedReadInfos) {
+        if(info.tangleMatrix[iEntrance][iExit] >= tangleMatrixContributionThreshold) {
+            orientedReadIds.push_back(info.orientedReadId);
+        }
+    }
+
+    if(debug) {
+        cout << "This connection will use the following " <<
+            orientedReadIds.size() << " oriented reads:" << endl;
+        std::ranges::copy(orientedReadIds, ostream_iterator<OrientedReadId>(cout, " "));
+        cout << endl;
+    }
+
 
     SHASTA_ASSERT(0);
 }
