@@ -35,14 +35,41 @@ public:
 
 
 
-    // For each entrance, we define a representative region
-    // consisting of the last representativeRegionLength
+    // We define a representative region for each entrance and exit.
+    // For an entrance, the representative region
+    // consists of the last representativeRegionLength
     // step in the entrance edge.
-    // For each exit, we define a representative region
-    // consisting of the first representativeRegionLength
+    // For an exit, the representative region
+    // consists of the first representativeRegionLength
     // step in the exit edge.
     // We gather information for each oriented read that appear
     // in these representative regions.
+    // These are stored sorted by OrientedReadId.
+    class OrientedReadInfo {
+    public:
+        OrientedReadId orientedReadId;
+
+        // The number of steps where this OrientedReadId is present
+        // in the representative region of the entrance or exit
+        // this refers to.
+        uint64_t stepCount = 0;
+
+        // Position in journey.
+        // For an entrance, this is the position in journey of this orientedReadId
+        // at anchorIdB of the last step in which this oriented read appears.
+        // For an exit, this is the position in journey of this orientedReadId
+        // at anchorIdA of the first step in which this oriented read appears.
+        // This information is used in detangling.
+        uint32_t positionInJourney;
+
+        bool operator<(const OrientedReadInfo&) const;
+    };
+    vector< vector<OrientedReadInfo> > entranceOrientedReadInfos;
+    vector< vector<OrientedReadInfo> > exitOrientedReadInfos;
+    void gatherOrientedReads(uint64_t representativeRegionLength);
+    void gatherEntranceOrientedReads(uint64_t iEntrance, uint64_t representativeRegionLength);
+    void gatherExitOrientedReads(uint64_t iExit, uint64_t representativeRegionLength);
+    void writeOrientedReads(ostream& html) const;
 
 
 
@@ -68,7 +95,7 @@ public:
             uint64_t exitCount = 0);
 
         // Order them by OrientedReadId.
-        bool operator<(const CommonOrientedReadInfo& that) const;
+        bool operator<(const CommonOrientedReadInfo&) const;
 
         // The contribution of this oriented read to the total tangle matrix.
         vector< vector<double> > tangleMatrix;

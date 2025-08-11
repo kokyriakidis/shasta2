@@ -1,4 +1,5 @@
 #include "TangleMatrix1.hpp"
+#include "Anchor.hpp"
 #include "deduplicate.hpp"
 using namespace shasta;
 
@@ -16,10 +17,20 @@ TangleMatrix1::TangleMatrix1(
     entrances(entrances),
     exits(exits)
 {
+    // EXPOSE WHEN CODE STABILIZES.
+    const uint64_t representativeRegionLength = 10;
+
     // Sanity checks.
     SHASTA_ASSERT(not assemblyGraph.orientedReadEdgeInformation.empty());
     SHASTA_ASSERT(std::ranges::is_sorted(entrances, assemblyGraph.orderById));
     SHASTA_ASSERT(std::ranges::is_sorted(exits, assemblyGraph.orderById));
+
+    // Gather oriented reads in the representative region of each entrance and exit.
+    gatherOrientedReads(representativeRegionLength);
+    if(html) {
+        html << std::setprecision(2) << std::defaultfloat << "<h3>Tangle matrix</h3>";
+        writeOrientedReads(html);
+    }
 
     // Gather the oriented reads that contribute to this TangleMatrix1.
     // These are the oriented reads that appear in at least one entrance
@@ -37,6 +48,248 @@ TangleMatrix1::TangleMatrix1(
 
 
 
+void TangleMatrix1::gatherOrientedReads(uint64_t representativeRegionLength)
+{
+    const uint64_t entranceCount = entrances.size();
+    const uint64_t exitCount = exits.size();
+
+    entranceOrientedReadInfos.resize(entranceCount);
+    for(uint64_t iEntrance=0; iEntrance<entranceCount; iEntrance++) {
+        gatherEntranceOrientedReads(iEntrance, representativeRegionLength);
+    }
+    exitOrientedReadInfos.resize(exitCount);
+    for(uint64_t iExit=0; iExit<exitCount; iExit++) {
+        gatherExitOrientedReads(iExit, representativeRegionLength);
+    }
+
+}
+
+
+
+void TangleMatrix1::gatherEntranceOrientedReads(
+    uint64_t iEntrance,
+    uint64_t representativeRegionLength)
+{
+    // Get the edge for this entrance.
+    const edge_descriptor e = entrances[iEntrance];
+    const AssemblyGraphEdge& edge = assemblyGraph[e];
+
+    // Define the beginning of the representative region.
+    uint64_t begin = invalid<uint64_t>;
+    const uint64_t stepCount = edge.size();
+    if(representativeRegionLength >= stepCount) {
+        begin = 0;
+    } else {
+        begin = stepCount - representativeRegionLength;
+    }
+
+
+
+    // A work vector to store information on each appearance of an OrientedRead
+    // on a step of the representative region.
+    class WorkInfo {
+    public:
+        OrientedReadId orientedReadId;
+        uint32_t positionInJourney;
+        WorkInfo(
+            OrientedReadId orientedReadId,
+            uint32_t positionInJourney) :
+            orientedReadId(orientedReadId),
+            positionInJourney(positionInJourney)
+        {}
+        bool operator<(const WorkInfo& that) const
+        {
+            return orientedReadId < that.orientedReadId;
+        }
+    };
+    vector<WorkInfo> workInfos;
+
+
+    // Loop over the representative region and fill in the workInfos vector.
+    for(uint64_t stepId=begin; stepId<stepCount; stepId++) {
+        const AssemblyGraphEdgeStep& step = edge[stepId];
+        const AnchorPair& anchorPair = step.anchorPair;
+        const AnchorId anchorIdB = anchorPair.anchorIdB;
+        const Anchor anchorB = assemblyGraph.anchors[anchorIdB];
+
+        // Joint loop over the OrientedReadIds in the AnchorPair
+        // and the OrientedReadIds in anchorB.
+        auto itB = anchorB.begin();
+        for(const OrientedReadId orientedReadId: anchorPair.orientedReadIds) {
+            while(itB->orientedReadId < orientedReadId) {
+                ++itB;
+                SHASTA_ASSERT(itB != anchorB.end());
+            }
+            SHASTA_ASSERT(itB->orientedReadId == orientedReadId);
+            workInfos.emplace_back(orientedReadId, itB->positionInJourney);
+        }
+    }
+
+    // Sort the WorkInfos by OrientedReadId.
+    sort(workInfos.begin(), workInfos.end());
+
+
+
+    // Each streak with the same OrientedReadId generates an OrientedReadInfo.
+    vector<OrientedReadInfo>& orientedReadInfos = entranceOrientedReadInfos[iEntrance];
+    for(auto streakBegin=workInfos.begin(); streakBegin!=workInfos.end(); /* Update later */) {
+        const OrientedReadId orientedReadId = streakBegin->orientedReadId;
+
+        auto streakEnd = streakBegin;
+        while((streakEnd!= workInfos.end()) and (streakEnd->orientedReadId == orientedReadId)) {
+            ++streakEnd;
+        }
+
+        // Loop over this streak.
+        OrientedReadInfo orientedReadInfo;
+        orientedReadInfo.orientedReadId = orientedReadId;
+        orientedReadInfo.stepCount = streakEnd - streakBegin;
+        orientedReadInfo.positionInJourney = 0;
+        for(auto it=streakBegin; it!=streakEnd; it++) {
+            orientedReadInfo.positionInJourney = max(orientedReadInfo.positionInJourney, it->positionInJourney);
+        }
+        orientedReadInfos.push_back(orientedReadInfo);
+
+        // Prepare to process the next streak.
+        streakBegin = streakEnd;
+    }
+}
+
+
+
+void TangleMatrix1::gatherExitOrientedReads(
+    uint64_t iExit,
+    uint64_t representativeRegionLength)
+{
+    // Get the edge for this entrance.
+    const edge_descriptor e = exits[iExit];
+    const AssemblyGraphEdge& edge = assemblyGraph[e];
+
+    // Define the end of the representative region.
+    const uint64_t stepCount = edge.size();
+    const uint64_t end = min(stepCount, representativeRegionLength);
+
+
+
+
+    // A work vector to store information on each appearance of an OrientedRead
+    // on a step of the representative region.
+    class WorkInfo {
+    public:
+        OrientedReadId orientedReadId;
+        uint32_t positionInJourney;
+        WorkInfo(
+            OrientedReadId orientedReadId,
+            uint32_t positionInJourney) :
+            orientedReadId(orientedReadId),
+            positionInJourney(positionInJourney)
+        {}
+        bool operator<(const WorkInfo& that) const
+        {
+            return orientedReadId < that.orientedReadId;
+        }
+    };
+    vector<WorkInfo> workInfos;
+
+
+    // Loop over the representative region and fill in the workInfos vector.
+    for(uint64_t stepId=0; stepId<end; stepId++) {
+        const AssemblyGraphEdgeStep& step = edge[stepId];
+        const AnchorPair& anchorPair = step.anchorPair;
+        const AnchorId anchorIdA = anchorPair.anchorIdA;
+        const Anchor anchorA = assemblyGraph.anchors[anchorIdA];
+
+        // Joint loop over the OrientedReadIds in the AnchorPair
+        // and the OrientedReadIds in anchorA.
+        auto itA = anchorA.begin();
+        for(const OrientedReadId orientedReadId: anchorPair.orientedReadIds) {
+            while(itA->orientedReadId < orientedReadId) {
+                ++itA;
+                SHASTA_ASSERT(itA != anchorA.end());
+            }
+            SHASTA_ASSERT(itA->orientedReadId == orientedReadId);
+            workInfos.emplace_back(orientedReadId, itA->positionInJourney);
+        }
+    }
+
+    // Sort the WorkInfos by OrientedReadId.
+    sort(workInfos.begin(), workInfos.end());
+
+
+
+    // Each streak with the same OrientedReadId generates an OrientedReadInfo.
+    vector<OrientedReadInfo>& orientedReadInfos = exitOrientedReadInfos[iExit];
+    for(auto streakBegin=workInfos.begin(); streakBegin!=workInfos.end(); /* Update later */) {
+        const OrientedReadId orientedReadId = streakBegin->orientedReadId;
+
+        auto streakEnd = streakBegin;
+        while((streakEnd!= workInfos.end()) and (streakEnd->orientedReadId == orientedReadId)) {
+            ++streakEnd;
+        }
+
+        // Loop over this streak.
+        OrientedReadInfo orientedReadInfo;
+        orientedReadInfo.orientedReadId = orientedReadId;
+        orientedReadInfo.stepCount = streakEnd - streakBegin;
+        orientedReadInfo.positionInJourney = std::numeric_limits<uint32_t>::max();
+        for(auto it=streakBegin; it!=streakEnd; it++) {
+            orientedReadInfo.positionInJourney = min(orientedReadInfo.positionInJourney, it->positionInJourney);
+        }
+        orientedReadInfos.push_back(orientedReadInfo);
+
+        // Prepare to process the next streak.
+        streakBegin = streakEnd;
+    }
+}
+
+
+void TangleMatrix1::writeOrientedReads(ostream& html) const
+{
+    const uint64_t entranceCount = entrances.size();
+    const uint64_t exitCount = exits.size();
+
+    for(uint64_t iEntrance=0; iEntrance<entranceCount; iEntrance++) {
+        const edge_descriptor e = entrances[iEntrance];
+        html << "<h4>Oriented reads on entrance " << assemblyGraph[e].id << "</h4>"
+            "These are the oriented reads that appear in the " <<
+            "representative region of this entrance."
+            "<p><table><tr>"
+            "<th>Oriented<br>read<br>Id"
+            "<th>Number<br>of<br>steps"
+            "<th>Max<br>position<br>in journey";
+        for(const OrientedReadInfo& orientedReadInfo: entranceOrientedReadInfos[iEntrance]) {
+            html <<
+                "<tr>"
+                "<td class=centered>" << orientedReadInfo.orientedReadId <<
+                "<td class=centered>" << orientedReadInfo.stepCount <<
+                "<td class=centered>" << orientedReadInfo.positionInJourney;
+        }
+        html << "</table>";
+    }
+
+    for(uint64_t iExit=0; iExit<exitCount; iExit++) {
+        const edge_descriptor e = exits[iExit];
+        html << "<h4>Oriented reads on exit " << assemblyGraph[e].id << "</h4>"
+            "<p>These are the oriented reads that appear in the " <<
+            "representative region of this exit."
+            "<table><tr>"
+            "<th>Oriented<br>read<br>Id"
+            "<th>Number<br>of<br>steps"
+            "<th>Min<br>position<br>in journey";
+        for(const OrientedReadInfo& orientedReadInfo: exitOrientedReadInfos[iExit]) {
+            html <<
+                "<tr>"
+                "<td class=centered>" << orientedReadInfo.orientedReadId <<
+                "<td class=centered>" << orientedReadInfo.stepCount <<
+                "<td class=centered>" << orientedReadInfo.positionInJourney;
+        }
+        html << "</table>";
+    }
+
+}
+
+
+#if 0
 void TangleMatrix1::gatherCommonOrientedReads()
 {
     const uint64_t entranceCount = entrances.size();
@@ -131,6 +384,91 @@ void TangleMatrix1::gatherCommonOrientedReads()
         commonOrientedReadInfo.computeTangleMatrix();
     }
 }
+#endif
+
+
+
+void TangleMatrix1::gatherCommonOrientedReads()
+{
+    const uint64_t entranceCount = entrances.size();
+    const uint64_t exitCount = exits.size();
+
+    // Find orientedReads that appear in one or more entrances.
+    vector<OrientedReadId> entranceOrientedReadIds;
+    for(const vector<OrientedReadInfo>& orientedReadInfos: entranceOrientedReadInfos) {
+        for(const OrientedReadInfo& orientedReadInfo: orientedReadInfos) {
+            entranceOrientedReadIds.push_back(orientedReadInfo.orientedReadId);
+        }
+    }
+    deduplicate(entranceOrientedReadIds);
+
+    // Find orientedReads that appear in one or more entrances.
+    vector<OrientedReadId> exitOrientedReadIds;
+    for(const vector<OrientedReadInfo>& orientedReadInfos: exitOrientedReadInfos) {
+        for(const OrientedReadInfo& orientedReadInfo: orientedReadInfos) {
+            exitOrientedReadIds.push_back(orientedReadInfo.orientedReadId);
+        }
+    }
+    deduplicate(exitOrientedReadIds);
+
+    // Find OrientedReadIds that appear in at least one entrance
+    // and at least one exit.
+    vector<OrientedReadId> commonOrientedReadIds;
+    std::set_intersection(
+        entranceOrientedReadIds.begin(), entranceOrientedReadIds.end(),
+        exitOrientedReadIds.begin(), exitOrientedReadIds.end(),
+        back_inserter(commonOrientedReadIds));
+
+
+
+    // Loop over these common OrientedReadIds.
+    // Maintain iterators into the entranceOrientedReadInfos and exitOrientedReadInfos.
+    commonOrientedReadInfos.clear();
+    vector< vector<OrientedReadInfo>::const_iterator > entranceInfoIterators(entranceCount);
+    for(uint64_t i=0; i<entranceCount; i++) {
+        entranceInfoIterators[i] = entranceOrientedReadInfos[i].begin();
+    }
+    vector< vector<OrientedReadInfo>::const_iterator > exitInfoIterators(exitCount);
+    for(uint64_t i=0; i<exitCount; i++) {
+        exitInfoIterators[i] = exitOrientedReadInfos[i].begin();
+    }
+
+    for(const OrientedReadId orientedReadId: commonOrientedReadIds) {
+        commonOrientedReadInfos.emplace_back(orientedReadId, entranceCount, exitCount);
+        CommonOrientedReadInfo& commonOrientedReadInfo = commonOrientedReadInfos.back();
+
+        for(uint64_t i=0; i<entranceCount; i++) {
+            auto& it = entranceInfoIterators[i];
+            while((it != entranceOrientedReadInfos[i].end()) and (it->orientedReadId < orientedReadId)) {
+                ++it;
+            }
+            if((it == entranceOrientedReadInfos[i].end()) or (it->orientedReadId != orientedReadId)) {
+                commonOrientedReadInfo.entranceStepCount[i] = 0;
+            } else {
+                commonOrientedReadInfo.entranceStepCount[i] = it->stepCount;
+            }
+        }
+
+        for(uint64_t i=0; i<exitCount; i++) {
+            auto& it = exitInfoIterators[i];
+            while((it != exitOrientedReadInfos[i].end()) and (it->orientedReadId < orientedReadId)) {
+                ++it;
+            }
+            if((it == exitOrientedReadInfos[i].end()) or (it->orientedReadId != orientedReadId)) {
+                commonOrientedReadInfo.exitStepCount[i] = 0;
+            } else {
+                commonOrientedReadInfo.exitStepCount[i] = it->stepCount;
+            }
+        }
+
+    }
+
+    // For each of the oriented reads, compute the contribution to the
+    // tangle matrix.
+    for(CommonOrientedReadInfo& commonOrientedReadInfo: commonOrientedReadInfos) {
+        commonOrientedReadInfo.computeTangleMatrix();
+    }
+}
 
 
 
@@ -191,9 +529,12 @@ uint64_t TangleMatrix1::getCommonOrientedReadIdIndex(OrientedReadId orientedRead
 
 void TangleMatrix1::writeCommonOrientedReads(ostream& html) const
 {
-    html << std::setprecision(2) << std::defaultfloat << "<h3>Tangle matrix</h3>"
-        "<h5>Oriented read contributions</h5>"
-        "<table>"
+    html << std::setprecision(2) << std::defaultfloat <<
+        "<h4>Common oriented reads</h4>"
+        "These are the oriented reads that appear in the representative region "
+        "of at least one entrance and at least one exit. "
+        "They are the ones that contribute to the tangle matrix."
+        "<p><table>"
         "<tr><th>Oriented<br>read<br>id";
     for(uint64_t i=0; i<entrances.size(); i++) {
         html << "<th>Entrance<br>" << assemblyGraph[entrances[i]].id;
@@ -250,7 +591,7 @@ void TangleMatrix1::computeTotalTangleMatrix()
 
 void TangleMatrix1::writeTotalTangleMatrix(ostream& html) const
 {
-    html << "<h5>Total tangle matrix</h5><table><tr><th>";
+    html << "<h4>Total tangle matrix</h4><table><tr><th>";
     for(uint64_t j=0; j<exits.size(); j++) {
         html << "<th>" << assemblyGraph[exits[j]].id;
     }
