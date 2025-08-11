@@ -548,10 +548,18 @@ void Assembler::exploreSegmentStep(
         return;
     }
 
-    html << "<h2>Step " << stepId << " of segment " << segmentId << " at assembly stage " <<
+
+
+    // Write the AnchorPair to html.
+    html << "<h2>AnchorPair for step " << stepId << " of segment " << segmentId << " at assembly stage " <<
         assemblyStage << "</h2>";
+    edge[stepId].anchorPair.writeAllHtml(html, anchors(), journeys());
 
 
+
+    // Write the local assembly to html.
+    html << "<h2>Local assembly for step " << stepId << " of segment " << segmentId << " at assembly stage " <<
+        assemblyStage << "</h2>";
 
     // Do the local assembly for this step.
     LocalAssembly localAssembly(
