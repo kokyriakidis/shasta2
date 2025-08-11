@@ -4,6 +4,7 @@
 #include "AssemblyGraphPostprocessor.hpp"
 #include "GTest.hpp"
 #include "LocalAssembly.hpp"
+#include "RestrictedAnchorGraph.hpp"
 #include "Tangle.hpp"
 #include "TangleMatrix.hpp"
 #include "TangleMatrix1.hpp"
@@ -1046,6 +1047,29 @@ void Assembler::exploreTangleMatrix1(const vector<string>& request, ostream& htm
     const TangleMatrix1 tangleMatrix(assemblyGraph, entrances, exits, html);
     GTest gTest(tangleMatrix.tangleMatrix, epsilon);
     gTest.writeHtml(html);
+
+    // Create a RestrictedAnchorGraph for each element of the top hypothesis
+    // that is set to 1.
+    if(gTest.hypotheses.empty()) {
+        return;
+    }
+    const auto& bestConnectivityMatrix = gTest.hypotheses.front().connectivityMatrix;
+    for(uint64_t iEntrance=0; iEntrance<entrances.size(); iEntrance++) {
+        for(uint64_t iExit=0; iExit<exits.size(); iExit++) {
+            if(bestConnectivityMatrix[iEntrance][iExit]) {
+                html << "<h4>RestrictedAnchorGraph to connect entrance " <<
+                    assemblyGraph[entrances[iEntrance]].id <<
+                    " with exit " << assemblyGraph[exits[iExit]].id << "</h4>";
+                const RestrictedAnchorGraph restrictedAnchorGraph(
+                    journeys(), tangleMatrix, iEntrance, iExit, html);
+
+                if(iEntrance == 0) {
+                    restrictedAnchorGraph.writeGraphviz("RestrictedAnchorGraph.dot");
+                }
+            }
+        }
+
+    }
 }
 
 
