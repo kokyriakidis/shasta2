@@ -1061,7 +1061,7 @@ void Assembler::exploreTangleMatrix1(const vector<string>& request, ostream& htm
                     assemblyGraph[entrances[iEntrance]].id <<
                     " with exit " << assemblyGraph[exits[iExit]].id << "</h4>";
                 const RestrictedAnchorGraph restrictedAnchorGraph(
-                    journeys(), tangleMatrix, iEntrance, iExit, html);
+                    anchors(), journeys(), tangleMatrix, iEntrance, iExit, html);
 
                 if(iEntrance == 0) {
                     restrictedAnchorGraph.writeGraphviz("RestrictedAnchorGraph.dot");

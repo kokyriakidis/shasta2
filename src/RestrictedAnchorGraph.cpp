@@ -13,6 +13,7 @@ using namespace shasta;
 
 
 RestrictedAnchorGraph::RestrictedAnchorGraph(
+    const Anchors& anchors,
     const Journeys& journeys,
     const TangleMatrix1& tangleMatrix1,
     uint64_t iEntrance,
@@ -98,12 +99,13 @@ RestrictedAnchorGraph::RestrictedAnchorGraph(
 
 
     // Create the graph using these journey portions.
-    create(journeys, journeyPortions, html);
+    create(anchors, journeys, journeyPortions, html);
 }
 
 
 
 void RestrictedAnchorGraph::create(
+    const Anchors& anchors,
     const Journeys& journeys,
     const vector<JourneyPortion>& journeyPortions,
     ostream& html)
@@ -157,6 +159,13 @@ void RestrictedAnchorGraph::create(
         }
     }
 
+    // Fill in the offsets.
+    BGL_FORALL_EDGES(e, graph, Graph) {
+        RestrictedAnchorGraphEdge& edge = graph[e];
+        edge.offset = edge.anchorPair.getAverageOffset(anchors);
+    }
+
+
     if(html) {
         html << "<br>The RestrictedAnchorGraph has " << num_vertices(*this) <<
             " vertices and " << num_edges(*this) << " edges ";
@@ -199,13 +208,15 @@ void RestrictedAnchorGraph::writeGraphviz(ostream& dot) const
         const vertex_descriptor v1 = target(e, graph);
         const AnchorId anchorId0 = graph[v0].anchorId;
         const AnchorId anchorId1 = graph[v1].anchorId;
-        const uint64_t coverage = graph[e].anchorPair.size();
+        const RestrictedAnchorGraphEdge& edge = graph[e];
+        const uint64_t coverage = edge.anchorPair.size();
+        const uint64_t offset = edge.offset;
 
         dot << "\"" << anchorIdToString(anchorId0) << "\"->\"" <<
             anchorIdToString(anchorId1) << "\""
             "["
             "penwidth=" << std::setprecision(2) << 0.5 * double(coverage) <<
-            " label=\"" << coverage << "\""
+            " label=\"" << coverage << "\\n" << offset << "\""
             "];\n";
     }
 

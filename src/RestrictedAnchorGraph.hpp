@@ -67,6 +67,7 @@ public:
 class shasta::RestrictedAnchorGraph : public RestrictedAnchorGraphBaseClass {
 public:
     RestrictedAnchorGraph(
+        const Anchors&,
         const Journeys&,
         const TangleMatrix1&,
         uint64_t iEntrance,
@@ -74,6 +75,7 @@ public:
         ostream& html);
 
     void create(
+        const Anchors&,
         const Journeys&,
         const vector<JourneyPortion>& journeyPortions,
         ostream& html);
