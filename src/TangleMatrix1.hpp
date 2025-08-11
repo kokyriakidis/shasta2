@@ -6,11 +6,6 @@ A TangleMatrix1 is defined by two sets of AssemblyGraphe edges (segments):
 - The entrances.
 - The exits.
 
-The TangleMatrix1 is constructed using AssemblyGraph::orientedReadSegments
-and AssemblyGraphEdge::transitioningOrientedReadIds.
-These are filled in by  AssemblyGraph::countOrientedReadStepsBySegment
-and should not be out of date.
-
 *******************************************************************************/
 
 // Shasta.
@@ -39,34 +34,59 @@ public:
     const vector<edge_descriptor>& exits;
 
 
-    // Some information for each of  OrientedReadId that contributes to
-    // this tangle matrix. Sorted by OrientedReadId.
-    // These oriented reads must appear in at least one entrance and
-    // at least one exit.
-    class OrientedReadInfo {
+
+    // For each entrance, we define a representative region
+    // consisting of the last representativeRegionLength
+    // step in the entrance edge.
+    // For each exit, we define a representative region
+    // consisting of the first representativeRegionLength
+    // step in the exit edge.
+    // We gather information for each oriented read that appear
+    // in these representative regions.
+
+
+
+    // The common OrientedReadIds are the ones that appear
+    // in the representative regions of at least one entrance and
+    // at leas one exit. They are the only ones that contribute
+    // to the tangle matrix.
+    class CommonOrientedReadInfo {
     public:
         OrientedReadId orientedReadId;
+
+        // The number of times this OrientedReadId appears
+        // in the representative region of each entrance.
         vector<uint64_t> entranceStepCount;
+
+        // The number of times this OrientedReadId appears
+        // in the representative region of each exit.
         vector<uint64_t> exitStepCount;
-        OrientedReadInfo(
+
+        CommonOrientedReadInfo(
             OrientedReadId orientedReadId,
             uint64_t entranceCount = 0,
             uint64_t exitCount = 0);
-        bool operator<(const OrientedReadInfo& that) const;
+
+        // Order them by OrientedReadId.
+        bool operator<(const CommonOrientedReadInfo& that) const;
 
         // The contribution of this oriented read to the total tangle matrix.
         vector< vector<double> > tangleMatrix;
         void computeTangleMatrix();
     };
-    vector<OrientedReadInfo> orientedReadInfos;
-    void gatherOrientedReads();
-    void writeOrientedReads(ostream& html) const;
+    vector<CommonOrientedReadInfo> commonOrientedReadInfos;
+    void gatherCommonOrientedReads();
+    void writeCommonOrientedReads(ostream& html) const;
 
-    // Return the index of a given OrientedReadId in the orientedReadInfos vector,
+
+
+    // Return the index of a given OrientedReadId in the commonOrientedReadInfos vector,
     // or invalid<uint64_t> if not present.
-    uint64_t getOrientedReadIdIndex(OrientedReadId orientedReadId) const;
+    uint64_t getCommonOrientedReadIdIndex(OrientedReadId orientedReadId) const;
 
     // The total tangle matrix.
+    // It is computed by adding the contributions of each of the common
+    // oriented reads.
     vector< vector<double> > tangleMatrix;
     void computeTotalTangleMatrix();
     void writeTotalTangleMatrix(ostream& html) const;

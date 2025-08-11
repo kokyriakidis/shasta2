@@ -24,9 +24,9 @@ TangleMatrix1::TangleMatrix1(
     // Gather the oriented reads that contribute to this TangleMatrix1.
     // These are the oriented reads that appear in at least one entrance
     // and one exit.
-    gatherOrientedReads();
+    gatherCommonOrientedReads();
     if(html) {
-        writeOrientedReads(html);
+        writeCommonOrientedReads(html);
     }
 
     computeTotalTangleMatrix();
@@ -36,80 +36,8 @@ TangleMatrix1::TangleMatrix1(
 }
 
 
-#if 0
-void TangleMatrix1::gatherOrientedReads()
-{
-    // Find transitioning orientedReads that appear in one or more entrances.
-    vector<OrientedReadId> entranceOrientedReadIds;
-    for(const edge_descriptor e: entrances) {
-        for(const auto& p: assemblyGraph[e].transitioningOrientedReadIds) {
-            entranceOrientedReadIds.push_back(p.first);
-        }
-    }
-    deduplicate(entranceOrientedReadIds);
 
-    // Find transitioning orientedReads that appear in one or more exits.
-    vector<OrientedReadId> exitOrientedReadIds;
-    for(const edge_descriptor e: exits) {
-        for(const auto& p: assemblyGraph[e].transitioningOrientedReadIds) {
-            exitOrientedReadIds.push_back(p.first);
-        }
-    }
-    deduplicate(exitOrientedReadIds);
-
-
-    // Find OrientedReadIds that appear in at least one entrance
-    // and at least one exit.
-    vector<OrientedReadId> orientedReadIds;
-    std::set_intersection(
-        entranceOrientedReadIds.begin(), entranceOrientedReadIds.end(),
-        exitOrientedReadIds.begin(), exitOrientedReadIds.end(),
-        back_inserter(orientedReadIds));
-
-    // Initialize the orientedReadInfos vector.
-    for(const OrientedReadId orientedReadId: orientedReadIds) {
-        orientedReadInfos.emplace_back(orientedReadId, entrances.size(), exits.size());
-    }
-
-
-    // Gather the number of appearances in entrances and exits for each of these oriented reads.
-    for(uint64_t i=0; i<entrances.size(); i++) {
-        const edge_descriptor e = entrances[i];
-        for(const auto& p: assemblyGraph[e].transitioningOrientedReadIds) {
-            const OrientedReadId orientedReadId = p.first;
-            const uint64_t j = getOrientedReadIdIndex(orientedReadId);
-            if(j != invalid<uint64_t>) {
-                const uint64_t count = p.second;
-                OrientedReadInfo& info = orientedReadInfos[j];
-                info.entranceStepCount[i] = count;
-            }
-        }
-    }
-    for(uint64_t i=0; i<exits.size(); i++) {
-        const edge_descriptor e = exits[i];
-        for(const auto& p: assemblyGraph[e].transitioningOrientedReadIds) {
-            const OrientedReadId orientedReadId = p.first;
-            const uint64_t j = getOrientedReadIdIndex(orientedReadId);
-            if(j != invalid<uint64_t>) {
-                const uint64_t count = p.second;
-                OrientedReadInfo& info = orientedReadInfos[j];
-                info.exitStepCount[i] = count;
-            }
-        }
-    }
-
-
-    // For each of the oriented reads, compute the contribution to the
-    // tangle matrix.
-    for(OrientedReadInfo& orientedReadInfo: orientedReadInfos) {
-        orientedReadInfo.computeTangleMatrix();
-    }
-}
-#endif
-
-
-
-void TangleMatrix1::gatherOrientedReads()
+void TangleMatrix1::gatherCommonOrientedReads()
 {
     const uint64_t entranceCount = entrances.size();
     const uint64_t exitCount = exits.size();
@@ -158,7 +86,7 @@ void TangleMatrix1::gatherOrientedReads()
 
     // Loop over these common OrientedReadIds.
     // Maintain iterators into the entranceInfos and exitInfos.
-    orientedReadInfos.clear();
+    commonOrientedReadInfos.clear();
     vector< vector<AssemblyGraph::OrientedReadEdgeInfo>::const_iterator > entranceInfoIterators(entranceCount);
     for(uint64_t i=0; i<entranceCount; i++) {
         entranceInfoIterators[i] = entranceInfos[i].begin();
@@ -168,8 +96,8 @@ void TangleMatrix1::gatherOrientedReads()
         exitInfoIterators[i] = exitInfos[i].begin();
     }
     for(const OrientedReadId orientedReadId: orientedReadIds) {
-        orientedReadInfos.emplace_back(orientedReadId, entranceCount, exitCount);
-        OrientedReadInfo& orientedReadInfo = orientedReadInfos.back();
+        commonOrientedReadInfos.emplace_back(orientedReadId, entranceCount, exitCount);
+        CommonOrientedReadInfo& commonOrientedReadInfo = commonOrientedReadInfos.back();
 
         for(uint64_t i=0; i<entranceCount; i++) {
             auto& it = entranceInfoIterators[i];
@@ -177,9 +105,9 @@ void TangleMatrix1::gatherOrientedReads()
                 ++it;
             }
             if((it == entranceInfos[i].end()) or (it->orientedReadId != orientedReadId)) {
-                orientedReadInfo.entranceStepCount[i] = 0;
+                commonOrientedReadInfo.entranceStepCount[i] = 0;
             } else {
-                orientedReadInfo.entranceStepCount[i] = it->stepCount;
+                commonOrientedReadInfo.entranceStepCount[i] = it->stepCount;
             }
         }
 
@@ -189,9 +117,9 @@ void TangleMatrix1::gatherOrientedReads()
                 ++it;
             }
             if((it == exitInfos[i].end()) or (it->orientedReadId != orientedReadId)) {
-                orientedReadInfo.exitStepCount[i] = 0;
+                commonOrientedReadInfo.exitStepCount[i] = 0;
             } else {
-                orientedReadInfo.exitStepCount[i] = it->stepCount;
+                commonOrientedReadInfo.exitStepCount[i] = it->stepCount;
             }
         }
 
@@ -199,14 +127,14 @@ void TangleMatrix1::gatherOrientedReads()
 
     // For each of the oriented reads, compute the contribution to the
     // tangle matrix.
-    for(OrientedReadInfo& orientedReadInfo: orientedReadInfos) {
-        orientedReadInfo.computeTangleMatrix();
+    for(CommonOrientedReadInfo& commonOrientedReadInfo: commonOrientedReadInfos) {
+        commonOrientedReadInfo.computeTangleMatrix();
     }
 }
 
 
 
-TangleMatrix1::OrientedReadInfo::OrientedReadInfo(
+TangleMatrix1::CommonOrientedReadInfo::CommonOrientedReadInfo(
     OrientedReadId orientedReadId,
     uint64_t entranceCount,
     uint64_t exitCount) :
@@ -217,14 +145,14 @@ TangleMatrix1::OrientedReadInfo::OrientedReadInfo(
 
 
 
-bool TangleMatrix1::OrientedReadInfo::operator<(const OrientedReadInfo& that) const
+bool TangleMatrix1::CommonOrientedReadInfo::operator<(const CommonOrientedReadInfo& that) const
 {
     return orientedReadId < that.orientedReadId;
 }
 
 
 
-void TangleMatrix1::OrientedReadInfo::computeTangleMatrix()
+void TangleMatrix1::CommonOrientedReadInfo::computeTangleMatrix()
 {
     const double entranceSum = double(std::accumulate(entranceStepCount.begin(), entranceStepCount.end(), 0UL));
     const double exitSum = double(std::accumulate(exitStepCount.begin(), exitStepCount.end(), 0UL));
@@ -245,23 +173,23 @@ void TangleMatrix1::OrientedReadInfo::computeTangleMatrix()
 
 
 
-// Return the index of a given OrientedReadId in the orientedReadInfos vector,
+// Return the index of a given OrientedReadId in the commonOrientedReadInfos vector,
 // or invalid<uint64_t> if not present.
-uint64_t TangleMatrix1::getOrientedReadIdIndex(OrientedReadId orientedReadId) const
+uint64_t TangleMatrix1::getCommonOrientedReadIdIndex(OrientedReadId orientedReadId) const
 {
-    const OrientedReadInfo target(orientedReadId);
-    const auto it = std::lower_bound(orientedReadInfos.begin(), orientedReadInfos.end(), target);
+    const CommonOrientedReadInfo target(orientedReadId);
+    const auto it = std::lower_bound(commonOrientedReadInfos.begin(), commonOrientedReadInfos.end(), target);
 
-    if((it == orientedReadInfos.end()) or (it->orientedReadId != orientedReadId)) {
+    if((it == commonOrientedReadInfos.end()) or (it->orientedReadId != orientedReadId)) {
         return invalid<uint64_t>;
     }
 
-    return it - orientedReadInfos.begin();
+    return it - commonOrientedReadInfos.begin();
 }
 
 
 
-void TangleMatrix1::writeOrientedReads(ostream& html) const
+void TangleMatrix1::writeCommonOrientedReads(ostream& html) const
 {
     html << std::setprecision(2) << std::defaultfloat << "<h3>Tangle matrix</h3>"
         "<h5>Oriented read contributions</h5>"
@@ -275,16 +203,16 @@ void TangleMatrix1::writeOrientedReads(ostream& html) const
     }
     html << "<th>Tangle<br>matrix";
 
-    // Loop over oriented reads.
-    for(const OrientedReadInfo& orientedReadInfo: orientedReadInfos) {
-        const OrientedReadId orientedReadId = orientedReadInfo.orientedReadId;
+    // Loop over common oriented reads.
+    for(const CommonOrientedReadInfo& commonOrientedReadInfo: commonOrientedReadInfos) {
+        const OrientedReadId orientedReadId = commonOrientedReadInfo.orientedReadId;
 
         html << "<tr><th>" << orientedReadId;
         for(uint64_t i=0; i<entrances.size(); i++) {
-            html << "<td class=centered>" << orientedReadInfo.entranceStepCount[i];
+            html << "<td class=centered>" << commonOrientedReadInfo.entranceStepCount[i];
         }
         for(uint64_t j=0; j<exits.size(); j++) {
-            html << "<td class=centered>" << orientedReadInfo.exitStepCount[j];
+            html << "<td class=centered>" << commonOrientedReadInfo.exitStepCount[j];
         }
 
         // Write the contribution of this oriented read to the total tangle matrix.
@@ -292,7 +220,7 @@ void TangleMatrix1::writeOrientedReads(ostream& html) const
         for(uint64_t i=0; i<entrances.size(); i++) {
             html << "<tr>";
             for(uint64_t j=0; j<exits.size(); j++) {
-                html << "<td class=centered>" << orientedReadInfo.tangleMatrix[i][j];
+                html << "<td class=centered>" << commonOrientedReadInfo.tangleMatrix[i][j];
             }
         }
         html << "</table>";
@@ -309,10 +237,10 @@ void TangleMatrix1::computeTotalTangleMatrix()
 
     tangleMatrix.clear();
     tangleMatrix.resize(entranceCount, vector<double>(exitCount, 0.));
-    for(const OrientedReadInfo& orientedReadInfo: orientedReadInfos) {
+    for(const CommonOrientedReadInfo& commonOrientedReadInfo: commonOrientedReadInfos) {
         for(uint64_t i=0; i<entranceCount; i++) {
             for(uint64_t j=0; j<exitCount; j++) {
-                tangleMatrix[i][j] += orientedReadInfo.tangleMatrix[i][j];
+                tangleMatrix[i][j] += commonOrientedReadInfo.tangleMatrix[i][j];
             }
         }
     }

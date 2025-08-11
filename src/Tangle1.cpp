@@ -217,7 +217,7 @@ void Tangle1::reconnect(
     // They are the ones that contribute significantly to
     // tangleMatrix[iEntrance][iExit].
     vector<OrientedReadId> orientedReadIds;
-    for(const auto& info: tangleMatrix().orientedReadInfos) {
+    for(const auto& info: tangleMatrix().commonOrientedReadInfos) {
         if(info.tangleMatrix[iEntrance][iExit] >= tangleMatrixContributionThreshold) {
             orientedReadIds.push_back(info.orientedReadId);
         }
