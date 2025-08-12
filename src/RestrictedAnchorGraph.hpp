@@ -86,6 +86,6 @@ public:
     // creating the vertex if necessary.
     vertex_descriptor getVertex(AnchorId);
 
-    void writeGraphviz(const string& fileName) const;
-    void writeGraphviz(ostream&) const;
+    void writeGraphviz(const string& fileName, const vector<AnchorId>& highlightVertices) const;
+    void writeGraphviz(ostream&, const vector<AnchorId>& highlightVertices) const;
 };

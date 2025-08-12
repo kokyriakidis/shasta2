@@ -1053,6 +1053,8 @@ void Assembler::exploreTangleMatrix1(const vector<string>& request, ostream& htm
     GTest gTest(tangleMatrix.tangleMatrix, epsilon);
     gTest.writeHtml(html);
 
+
+
     // Create a RestrictedAnchorGraph for each element of the top hypothesis
     // that is set to 1.
     if(gTest.hypotheses.empty()) {
@@ -1062,22 +1064,36 @@ void Assembler::exploreTangleMatrix1(const vector<string>& request, ostream& htm
     for(uint64_t iEntrance=0; iEntrance<entrances.size(); iEntrance++) {
         for(uint64_t iExit=0; iExit<exits.size(); iExit++) {
             if(bestConnectivityMatrix[iEntrance][iExit]) {
+
+                const AssemblyGraph::edge_descriptor eEntrance = entrances[iEntrance];
+                const AssemblyGraph::edge_descriptor eExit = exits[iExit];
+
+                const AssemblyGraphEdge& entranceEdge = assemblyGraph[eEntrance];
+                const AssemblyGraphEdge& exitEdge = assemblyGraph[eExit];
+
+                const AnchorId entranceAnchorId = entranceEdge.back().anchorPair.anchorIdB;
+                const AnchorId exitAnchorId = exitEdge.front().anchorPair.anchorIdA;
+
                 html << "<h4>RestrictedAnchorGraph to connect entrance " <<
-                    assemblyGraph[entrances[iEntrance]].id <<
-                    " with exit " << assemblyGraph[exits[iExit]].id << "</h4>";
+                    entranceEdge.id <<
+                    " with exit " << exitEdge.id << "</h4>"
+                    "Last AnchorId on entrance is " << anchorIdToString(entranceAnchorId) <<
+                    "<br>First AnchorId on exit is " << anchorIdToString(exitAnchorId);
+
                 const RestrictedAnchorGraph restrictedAnchorGraph(
                     anchors(), journeys(), tangleMatrix, iEntrance, iExit, html);
 
                 // Write it out in Graphviz format.
                 const string uuid = to_string(boost::uuids::random_generator()());
                 const string dotFileName = tmpDirectory() + uuid + ".dot";
-                restrictedAnchorGraph.writeGraphviz(dotFileName);
+                restrictedAnchorGraph.writeGraphviz(dotFileName, {entranceAnchorId, exitAnchorId});
 
                 // Display it in html in svg format.
                 const double timeout = 30.;
                 const string options = "-Nshape=rectangle -Gbgcolor=gray95";
                 html << "<p>";
                 graphvizToHtml(dotFileName, "dot", timeout, options, html);
+
             }
         }
 

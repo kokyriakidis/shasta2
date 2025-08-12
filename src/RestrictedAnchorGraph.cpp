@@ -188,20 +188,33 @@ RestrictedAnchorGraph::vertex_descriptor RestrictedAnchorGraph::getVertex(Anchor
 
 
 
-void RestrictedAnchorGraph::writeGraphviz(const string& fileName) const
+void RestrictedAnchorGraph::writeGraphviz(
+    const string& fileName,
+    const vector<AnchorId>& highlightVertices) const
 {
     ofstream dot(fileName);
-    writeGraphviz(dot);
+    writeGraphviz(dot, highlightVertices);
 }
 
 
 
-void RestrictedAnchorGraph::writeGraphviz(ostream& dot) const
+void RestrictedAnchorGraph::writeGraphviz(
+    ostream& dot,
+    const vector<AnchorId>& highlightVertices) const
 {
     using Graph = RestrictedAnchorGraph;
     const Graph& graph = *this;
 
     dot << "digraph RestrictedAnchorGraph {\n";
+
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        const AnchorId anchorId = graph[v].anchorId;
+        dot << "\"" << anchorIdToString(anchorId) << "\"";
+        if(find(highlightVertices.begin(), highlightVertices.end(), anchorId) != highlightVertices.end()) {
+            dot << "[style=filled fillcolor=pink]";
+        }
+        dot << ";\n";
+    }
 
     BGL_FORALL_EDGES(e, graph, Graph) {
         const vertex_descriptor v0 = source(e, graph);
