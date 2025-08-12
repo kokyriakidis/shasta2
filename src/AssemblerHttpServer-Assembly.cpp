@@ -2,18 +2,23 @@
 #include "Assembler.hpp"
 #include "areSimilarSequences.hpp"
 #include "AssemblyGraphPostprocessor.hpp"
+#include "graphvizToHtml.hpp"
 #include "GTest.hpp"
 #include "LocalAssembly.hpp"
 #include "RestrictedAnchorGraph.hpp"
 #include "Tangle.hpp"
 #include "TangleMatrix.hpp"
 #include "TangleMatrix1.hpp"
+#include "tmpDirectory.hpp"
 using namespace shasta;
 
 // Boost libraries.
 #include <boost/algorithm/string.hpp>
 #include <boost/graph/iteration_macros.hpp>
 #include <boost/tokenizer.hpp>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
 
 // Standard library.
 #include <fstream.hpp>
@@ -1063,9 +1068,16 @@ void Assembler::exploreTangleMatrix1(const vector<string>& request, ostream& htm
                 const RestrictedAnchorGraph restrictedAnchorGraph(
                     anchors(), journeys(), tangleMatrix, iEntrance, iExit, html);
 
-                if(iEntrance == 0) {
-                    restrictedAnchorGraph.writeGraphviz("RestrictedAnchorGraph.dot");
-                }
+                // Write it out in Graphviz format.
+                const string uuid = to_string(boost::uuids::random_generator()());
+                const string dotFileName = tmpDirectory() + uuid + ".dot";
+                restrictedAnchorGraph.writeGraphviz(dotFileName);
+
+                // Display it in html in svg format.
+                const double timeout = 30.;
+                const string options = "-Nshape=rectangle -Gbgcolor=gray95";
+                html << "<p>";
+                graphvizToHtml(dotFileName, "dot", timeout, options, html);
             }
         }
 
