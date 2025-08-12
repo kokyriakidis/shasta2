@@ -931,7 +931,7 @@ void AnchorPair::OrientedReadIdSimilarityGraph::writeHtml(
 {
 
     // Write it out in Graphviz format.
-    const string uuid = "abc"; //to_string(boost::uuids::random_generator()());
+    const string uuid = to_string(boost::uuids::random_generator()());
     const string dotFileName = tmpDirectory() + uuid + ".dot";
     writeGraphviz(dotFileName, orientedReadIds);
 
