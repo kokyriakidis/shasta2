@@ -3,13 +3,8 @@
 
 // BitCounter is a traits class that can be used to define the
 // number of bits in an integer type.
-// It can be used for built-in unsigned integer types and
-// also for unsigned integers defined by the Boost Multiprecision library.
 // std::numeric_limits::digits only works for built-in types
 // and cannot be extended.
-
-// Boost libraries.
-#include <boost/multiprecision/cpp_int.hpp>
 
 // Standard library.
 #include <cstdint.hpp>
@@ -45,10 +40,5 @@ namespace shasta {
     template<> class BitCounter<__uint128_t> {
     public:
         static constexpr int numberOfBits = 128;
-    };
-
-    template<> class BitCounter<boost::multiprecision::uint256_t> {
-    public:
-        static constexpr int numberOfBits = 256;
     };
 }
