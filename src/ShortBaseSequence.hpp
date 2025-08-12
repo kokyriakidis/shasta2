@@ -88,26 +88,6 @@ public:
 
     }
 
-    // Return an integer consisting of the concatenation
-    // of the base bits corresponding to the first n bases.
-    using Int2 = typename BitCounter<Int>::doubleSizeType;
-    Int2 id(uint64_t n) const
-    {
-        const uint64_t shift = capacity - n;
-        const Int2 lsb = data[0] >> shift;
-        const Int2 msb = data[1] >> shift;
-        return (msb << n) | lsb;
-    }
-
-    // Opposite of the above: construct the sequence given the id.
-    ShortBaseSequence(Int2 id, uint64_t n)
-    {
-        const Int2 mask = (Int2(1) << n) - Int2(1);
-        const uint64_t shift = capacity - n;
-        data[0] = Int((id & mask) << shift);
-        data[1] = Int(((id >> n) & mask) << shift);
-    }
-
     // Return the reverse complement of the first n bases.
     ShortBaseSequence<Int> reverseComplementSlow(uint64_t n) const
     {
