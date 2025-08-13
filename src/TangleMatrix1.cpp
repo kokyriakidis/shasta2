@@ -21,7 +21,6 @@ TangleMatrix1::TangleMatrix1(
     const uint64_t representativeRegionLength = 10;
 
     // Sanity checks.
-    SHASTA_ASSERT(not assemblyGraph.orientedReadEdgeInformation.empty());
     SHASTA_ASSERT(std::ranges::is_sorted(entrances, assemblyGraph.orderById));
     SHASTA_ASSERT(std::ranges::is_sorted(exits, assemblyGraph.orderById));
 
