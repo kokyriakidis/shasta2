@@ -1,5 +1,6 @@
 // Shasta.
 #include "RestrictedAnchorGraph.hpp"
+#include "findReachableVertices.hpp"
 #include "Journeys.hpp"
 #include "TangleMatrix1.hpp"
 using namespace shasta;
@@ -164,12 +165,6 @@ void RestrictedAnchorGraph::create(
         RestrictedAnchorGraphEdge& edge = graph[e];
         edge.offset = edge.anchorPair.getAverageOffset(anchors);
     }
-
-
-    if(html) {
-        html << "<br>The RestrictedAnchorGraph has " << num_vertices(*this) <<
-            " vertices and " << num_edges(*this) << " edges ";
-    }
 }
 
 
@@ -234,4 +229,60 @@ void RestrictedAnchorGraph::writeGraphviz(
     }
 
     dot << "}\n";
+}
+
+
+
+// Only keep vertices that are forward reachable from the
+// vertex at anchorId0 and backward reachable from the vertex at anchorId1.
+void RestrictedAnchorGraph::keepBetween(AnchorId anchorId0, AnchorId anchorId1)
+{
+    using Graph = RestrictedAnchorGraph;
+    Graph& graph = *this;
+
+    const auto it0 = vertexMap.find(anchorId0);
+    SHASTA_ASSERT(it0 != vertexMap.end());
+    const vertex_descriptor v0 = it0->second;
+
+    const auto it1 = vertexMap.find(anchorId1);
+    SHASTA_ASSERT(it1 != vertexMap.end());
+    const vertex_descriptor v1 = it1->second;
+
+    std::set<vertex_descriptor> reachableVertices;
+    vector<vertex_descriptor> verticesToBeRemoved;
+
+    // Remove vertices that are not forward reachable from v0.
+    findReachableVertices(graph, v0, 0, reachableVertices);
+    SHASTA_ASSERT(reachableVertices.contains(v1));
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        if(not reachableVertices.contains(v)) {
+            verticesToBeRemoved.push_back(v);
+        }
+    }
+    cout << "AAA "  << verticesToBeRemoved.size() << endl;
+    for(const vertex_descriptor v: verticesToBeRemoved) {
+        vertexMap.erase(graph[v].anchorId);
+        boost::clear_vertex(v, graph);
+        boost::remove_vertex(v, graph);
+    }
+    cout << "BBB" << endl;
+    reachableVertices.clear();
+    verticesToBeRemoved.clear();
+
+    // Remove vertices that are not backward reachable from v1.
+    findReachableVertices(graph, v1, 1, reachableVertices);
+    cout << "CCC" << endl;
+    SHASTA_ASSERT(reachableVertices.contains(v0));
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        if(not reachableVertices.contains(v)) {
+            verticesToBeRemoved.push_back(v);
+        }
+    }
+    cout << "DDD " << verticesToBeRemoved.size() << endl;
+    for(const vertex_descriptor v: verticesToBeRemoved) {
+        vertexMap.erase(graph[v].anchorId);
+        boost::clear_vertex(v, graph);
+        boost::remove_vertex(v, graph);
+    }
+    cout << "EEE" << endl;
 }

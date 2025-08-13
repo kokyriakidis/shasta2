@@ -1080,13 +1080,18 @@ void Assembler::exploreTangleMatrix1(const vector<string>& request, ostream& htm
                     "Last AnchorId on entrance is " << anchorIdToString(entranceAnchorId) <<
                     "<br>First AnchorId on exit is " << anchorIdToString(exitAnchorId);
 
-                const RestrictedAnchorGraph restrictedAnchorGraph(
+                RestrictedAnchorGraph restrictedAnchorGraph(
                     anchors(), journeys(), tangleMatrix, iEntrance, iExit, html);
+                restrictedAnchorGraph.keepBetween(entranceAnchorId, exitAnchorId);
+
+                html << "<br>The RestrictedAnchorGraph has " << num_vertices(restrictedAnchorGraph) <<
+                    " vertices and " << num_edges(restrictedAnchorGraph) << " edges ";
 
                 // Write it out in Graphviz format.
                 const string uuid = to_string(boost::uuids::random_generator()());
                 const string dotFileName = tmpDirectory() + uuid + ".dot";
                 restrictedAnchorGraph.writeGraphviz(dotFileName, {entranceAnchorId, exitAnchorId});
+
 
                 // Display it in html in svg format.
                 const double timeout = 30.;

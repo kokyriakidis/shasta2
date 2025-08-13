@@ -24,7 +24,7 @@ namespace shasta {
 
     using RestrictedAnchorGraphBaseClass = boost::adjacency_list<
         boost::listS,
-        boost::vecS,
+        boost::listS,
         boost::bidirectionalS,
         RestrictedAnchorGraphVertex,
         RestrictedAnchorGraphEdge>;
@@ -85,6 +85,10 @@ public:
     // Return the vertex_descriptor correspponding to an AnchorId,
     // creating the vertex if necessary.
     vertex_descriptor getVertex(AnchorId);
+
+    // Only keep vertices that are forward reachable from the
+    // vertex at anchorId0 and backward reachable from the vertex at anchorId1.
+    void keepBetween(AnchorId anchorId0, AnchorId anchorId1);
 
     void writeGraphviz(const string& fileName, const vector<AnchorId>& highlightVertices) const;
     void writeGraphviz(ostream&, const vector<AnchorId>& highlightVertices) const;
