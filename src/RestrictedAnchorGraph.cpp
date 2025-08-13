@@ -1,7 +1,9 @@
 // Shasta.
 #include "RestrictedAnchorGraph.hpp"
+#include "approximateTopologicalSort.hpp"
 #include "findReachableVertices.hpp"
 #include "Journeys.hpp"
+#include "orderPairs.hpp"
 #include "TangleMatrix1.hpp"
 using namespace shasta;
 
@@ -280,4 +282,48 @@ void RestrictedAnchorGraph::keepBetween(AnchorId anchorId0, AnchorId anchorId1)
         boost::clear_vertex(v, graph);
         boost::remove_vertex(v, graph);
     }
+}
+
+
+
+// Remove cycles by doing an approximate topological ordering,
+// the removing edges that are not DAG edges.
+void RestrictedAnchorGraph::removeCycles()
+{
+    using Graph = RestrictedAnchorGraph;
+    Graph& graph = *this;
+
+    // Gather the edges with their coverage.
+    vector< pair<edge_descriptor, uint64_t> > edgeTable;
+    BGL_FORALL_EDGES(e, graph, Graph)
+    {
+        const uint64_t coverage = graph[e].anchorPair.size();
+        edgeTable.push_back(make_pair(e, coverage));
+    }
+
+    // Sort by decreasing coverage.
+    std::ranges::sort(edgeTable, OrderPairsBySecondOnlyGreater<edge_descriptor, uint64_t>());
+    vector<edge_descriptor> edgesSortedByDecreasingCoverage;
+    for(const auto& p: edgeTable) {
+        edgesSortedByDecreasingCoverage.push_back(p.first);
+    }
+
+    // Do the approxinate topological sort.
+    approximateTopologicalSort(graph, edgesSortedByDecreasingCoverage);
+
+    // Gather the edges to be removed.
+    vector<edge_descriptor> edgesToBeRemoved;
+    BGL_FORALL_EDGES(e, graph, Graph)
+    {
+        if(not graph[e].isDagEdge) {
+            edgesToBeRemoved.push_back(e);
+        }
+    }
+
+    // Remove these edges.
+    for(const edge_descriptor e: edgesToBeRemoved) {
+        boost::remove_edge(e, graph);
+    }
+
+
 }

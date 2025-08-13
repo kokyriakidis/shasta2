@@ -1083,6 +1083,7 @@ void Assembler::exploreTangleMatrix1(const vector<string>& request, ostream& htm
                 RestrictedAnchorGraph restrictedAnchorGraph(
                     anchors(), journeys(), tangleMatrix, iEntrance, iExit, html);
                 restrictedAnchorGraph.keepBetween(entranceAnchorId, exitAnchorId);
+                restrictedAnchorGraph.removeCycles();
 
                 html << "<br>The RestrictedAnchorGraph has " << num_vertices(restrictedAnchorGraph) <<
                     " vertices and " << num_edges(restrictedAnchorGraph) << " edges ";

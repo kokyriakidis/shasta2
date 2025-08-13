@@ -52,6 +52,10 @@ class shasta::RestrictedAnchorGraphVertex {
 public:
     AnchorId anchorId;
     RestrictedAnchorGraphVertex(AnchorId anchorId = invalid<AnchorId>) : anchorId(anchorId) {}
+
+    // Fields used by approximateTopologicalSort.
+    uint64_t color;
+    uint64_t rank;
 };
 
 
@@ -60,6 +64,9 @@ class shasta::RestrictedAnchorGraphEdge {
 public:
     AnchorPair anchorPair;
     uint64_t offset = invalid<uint64_t>;
+
+    // Field used by approximateTopologicalSort.
+    bool isDagEdge = false;
 };
 
 
@@ -89,6 +96,10 @@ public:
     // Only keep vertices that are forward reachable from the
     // vertex at anchorId0 and backward reachable from the vertex at anchorId1.
     void keepBetween(AnchorId anchorId0, AnchorId anchorId1);
+
+    // Remove cycles by doing an approximate topological ordering,
+    // the removing edges that are not DAG edges.
+    void removeCycles();
 
     void writeGraphviz(const string& fileName, const vector<AnchorId>& highlightVertices) const;
     void writeGraphviz(ostream&, const vector<AnchorId>& highlightVertices) const;
