@@ -11,7 +11,6 @@
 #include "diploidBayesianPhase.hpp"
 #include "extractKmer128.hpp"
 #include "findConvergingVertex.hpp"
-#include "globalMsa.hpp"
 #include "LikelihoodRatioDetangler.hpp"
 #include "LongBaseSequence.hpp"
 #include "mappedCopy.hpp"
@@ -255,9 +254,6 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         );
     shasta2Module.def("testFindConvergingVertex",
         testFindConvergingVertex
-        );
-    shasta2Module.def("globalMsaPython",
-        globalMsaPython
         );
     shasta2Module.def("anchorIdToString",
         anchorIdToString
