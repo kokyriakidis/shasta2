@@ -65,6 +65,8 @@ public:
     AnchorPair anchorPair;
     uint64_t offset = invalid<uint64_t>;
 
+    bool isLongestPathEdge = false;
+
     // Field used by approximateTopologicalSort.
     bool isDagEdge = false;
 };
@@ -100,6 +102,10 @@ public:
     // Remove cycles by doing an approximate topological ordering,
     // the removing edges that are not DAG edges.
     void removeCycles();
+
+    // Find the longest path.
+    // This also sets the isLongestPathEdge on the edges of the longest path.
+    void findLongestPath(vector<edge_descriptor>&);
 
     void writeGraphviz(const string& fileName, const vector<AnchorId>& highlightVertices) const;
     void writeGraphviz(ostream&, const vector<AnchorId>& highlightVertices) const;

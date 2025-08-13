@@ -3,6 +3,7 @@
 #include "approximateTopologicalSort.hpp"
 #include "findReachableVertices.hpp"
 #include "Journeys.hpp"
+#include "longestPath.hpp"
 #include "orderPairs.hpp"
 #include "TangleMatrix1.hpp"
 using namespace shasta;
@@ -226,8 +227,13 @@ void RestrictedAnchorGraph::writeGraphviz(
             anchorIdToString(anchorId1) << "\""
             "["
             "penwidth=" << std::setprecision(2) << 0.5 * double(coverage) <<
-            " label=\"" << coverage << "\\n" << offset << "\""
-            "];\n";
+            " label=\"" << coverage << "\\n" << offset << "\"";
+
+        if(edge.isLongestPathEdge) {
+            dot << " color=green";
+        }
+
+        dot << "];\n";
     }
 
     dot << "}\n";
@@ -326,4 +332,19 @@ void RestrictedAnchorGraph::removeCycles()
     }
 
 
+}
+
+
+
+// Find the longest path.
+void RestrictedAnchorGraph::findLongestPath(vector<edge_descriptor>& longestPath)
+{
+    using Graph = RestrictedAnchorGraph;
+    Graph& graph = *this;
+
+    shasta::longestPath(graph, longestPath);
+
+    for(const edge_descriptor e: longestPath) {
+        graph[e].isLongestPathEdge = true;
+    }
 }

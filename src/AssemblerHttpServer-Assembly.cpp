@@ -1088,6 +1088,10 @@ void Assembler::exploreTangleMatrix1(const vector<string>& request, ostream& htm
                 html << "<br>The RestrictedAnchorGraph has " << num_vertices(restrictedAnchorGraph) <<
                     " vertices and " << num_edges(restrictedAnchorGraph) << " edges ";
 
+                // Find the longest path in the RestrictedAnchorGraph.
+                vector<RestrictedAnchorGraph::edge_descriptor> longestPath;
+                restrictedAnchorGraph.findLongestPath(longestPath);
+
                 // Write it out in Graphviz format.
                 const string uuid = to_string(boost::uuids::random_generator()());
                 const string dotFileName = tmpDirectory() + uuid + ".dot";
