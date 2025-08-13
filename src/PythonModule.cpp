@@ -154,7 +154,12 @@ PYBIND11_MODULE(shasta2, shasta2Module)
                 (uint64_t, uint64_t, Detangler&)
             )
             &AssemblyGraph::detangle)
-        .def("detangle1", &AssemblyGraph::detangle1)
+        .def("detangle1",
+            (
+                bool (AssemblyGraph::*)
+                (const vector<AssemblyGraph::vertex_descriptor>&, Detangler&)
+            )
+            &AssemblyGraph::detangle1)
         .def("compress", &AssemblyGraph::compress)
         .def("assembleAll", &AssemblyGraph::assembleAll)
         .def("phaseSuperbubbleChains", &AssemblyGraph::phaseSuperbubbleChains)

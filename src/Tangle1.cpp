@@ -65,6 +65,7 @@ void Tangle1::findEntrances()
             }
         }
     }
+    std::ranges::sort(entrances, assemblyGraph.orderById);
 }
 
 
@@ -80,6 +81,7 @@ void Tangle1::findExits()
             }
         }
     }
+    std::ranges::sort(exits, assemblyGraph.orderById);
 }
 
 
@@ -216,7 +218,7 @@ void Tangle1::reconnect(
     vertex_descriptor v1
     ) const
 {
-    const bool debug = true;
+    const bool debug = false;
 
     const AnchorId anchorId0 = assemblyGraph[v0].anchorId;
     const AnchorId anchorId1 = assemblyGraph[v1].anchorId;
@@ -237,6 +239,7 @@ void Tangle1::reconnect(
         assemblyGraph.anchors, assemblyGraph.journeys, tangleMatrix(), iEntrance, iExit, html);
     restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
     restrictedAnchorGraph.removeCycles();
+    restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
     vector<RestrictedAnchorGraph::edge_descriptor> longestPath;
     restrictedAnchorGraph.findLongestPath(longestPath);
 

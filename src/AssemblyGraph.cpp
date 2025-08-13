@@ -29,6 +29,7 @@
 #include "Tangle.hpp"
 #include "Tangle1.hpp"
 #include "TangleMatrix.hpp"
+#include "TangleMatrix1.hpp"
 #include "transitiveReduction.hpp"
 #include "TrivialDetangler.hpp"
 using namespace shasta;
@@ -1218,7 +1219,7 @@ uint64_t AssemblyGraph::detangleEdgesIteration(
     }
 
     // Do the detangling.
-    return detangle(detanglingCandidates, detangler);
+    return detangle1(detanglingCandidates, detangler);
 }
 
 
@@ -1358,6 +1359,87 @@ uint64_t AssemblyGraph::detangle(
     clearOrientedReadEdgeInformation();
 
 
+    return successCount;
+}
+
+
+
+// Version that uses Tangle1 instead of Tangle.
+uint64_t AssemblyGraph::detangle1(
+    const vector< vector<vertex_descriptor> >& detanglingCandidates,
+    Detangler& detangler)
+{
+    const bool debug = false;
+
+    AssemblyGraph& assemblyGraph = *this;
+
+    std::set<vertex_descriptor> removedVertices;
+    uint64_t attemptCount = 0;
+    uint64_t successCount = 0;
+    for(const vector<vertex_descriptor>& tangleVertices: detanglingCandidates) {
+
+        // If any of the vertices in this tangle have been removed, by previous
+        // detangling operations, skip it.
+        bool skip = false;
+        for(const vertex_descriptor v: tangleVertices) {
+            if(removedVertices.contains(v)) {
+                skip = true;
+                break;
+            }
+        }
+        if(skip) {
+            continue;
+        }
+
+
+
+        // Attempt detangling for the tangle defined by these vertices.
+        ++attemptCount;
+        Tangle1 tangle(assemblyGraph, tangleVertices);
+        if(debug) {
+            const TangleMatrix1& tangleMatrix = tangle.tangleMatrix();
+            cout << "Tangle with " << tangleMatrix.entrances.size() << " entrances and " <<
+                tangleMatrix.exits.size() << " exits." << endl;
+
+            cout << "Entrances:";
+            for(const edge_descriptor e: tangleMatrix.entrances) {
+                cout << " " << assemblyGraph[e].id;
+            }
+            cout << endl;
+
+            cout << "Exits:";
+            for(const edge_descriptor e: tangleMatrix.exits) {
+                cout << " " << assemblyGraph[e].id;
+            }
+            cout << endl;
+
+            for(uint64_t iEntrance=0; iEntrance<tangleMatrix.entrances.size(); iEntrance++) {
+                for(uint64_t iExit=0; iExit<tangleMatrix.exits.size(); iExit++) {
+                    cout << tangleMatrix.tangleMatrix[iEntrance][iExit] << " ";
+                }
+            }
+            cout << endl;
+        }
+
+        const bool success = detangler(tangle);
+        if(success) {
+            if(debug) {
+                cout << "Detangle was successful." << endl;
+            }
+            for(vertex_descriptor v: tangle.removedVertices) {
+                removedVertices.insert(v);
+            }
+            ++successCount;
+        } else {
+            if(debug) {
+                cout << "Detangle failed." << endl;
+            }
+        }
+
+
+    }
+    // cout << "Attempted detangling for " << attemptCount << " tangles." << endl;
+    // cout << "Detangling was successful for " << successCount << " tangles." << endl;
     return successCount;
 }
 
