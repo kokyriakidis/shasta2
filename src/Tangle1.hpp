@@ -66,6 +66,9 @@ public:
     void connect(uint64_t iEntrance, uint64_t iExit);
     void detangle();
 
+    // If the Tangle is detangled successfully, we store the vertices that were removed.
+    vector<vertex_descriptor> removedVertices;
+
     void rerouteEntrances(vector<vertex_descriptor>& newEntranceVertices) const;
     void rerouteExits(vector<vertex_descriptor>& newExitVertices) const;
     void reconnect(

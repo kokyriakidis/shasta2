@@ -1,6 +1,7 @@
 // Shasta.
 #include "Tangle1.hpp"
 #include "Anchor.hpp"
+#include "RestrictedAnchorGraph.hpp"
 #include "TangleMatrix1.hpp"
 using namespace shasta;
 
@@ -133,7 +134,24 @@ void Tangle1::detangle()
             newEntranceVertices[iEntrance],
             newExitVertices[iExit]);
     }
-    SHASTA_ASSERT(0);
+
+    // Now we can remove all the tangle vertices and their edges.
+    // This also removes the old entrances and exits.
+    removedVertices = tangleVertices;
+    for(const vertex_descriptor v: tangleVertices) {
+        if(false) {
+            cout << "Removing for detangling:";
+            BGL_FORALL_INEDGES(v, e, assemblyGraph, AssemblyGraph) {
+                cout << " " << assemblyGraph[e].id;
+            }
+            BGL_FORALL_OUTEDGES(v, e, assemblyGraph, AssemblyGraph) {
+                cout << " " << assemblyGraph[e].id;
+            }
+            cout << endl;
+        }
+        clear_vertex(v, assemblyGraph);
+        remove_vertex(v, assemblyGraph);
+    }
 }
 
 
@@ -198,9 +216,6 @@ void Tangle1::reconnect(
     vertex_descriptor v1
     ) const
 {
-    // EXPOSE WHEN CODE STABILIZES.
-    const double tangleMatrixContributionThreshold = 0.8;
-
     const bool debug = true;
 
     const AnchorId anchorId0 = assemblyGraph[v0].anchorId;
@@ -213,23 +228,30 @@ void Tangle1::reconnect(
             anchorIdToString(anchorId1) << endl;
     }
 
-    // Gather the OrientedReadIds to use.
-    // They are the ones that contribute significantly to
-    // tangleMatrix[iEntrance][iExit].
-    vector<OrientedReadId> orientedReadIds;
-    for(const auto& info: tangleMatrix().commonOrientedReadInfos) {
-        if(info.tangleMatrix[iEntrance][iExit] >= tangleMatrixContributionThreshold) {
-            orientedReadIds.push_back(info.orientedReadId);
-        }
-    }
+    // Create the RestrictedAnchorGraph, then:
+    // - Remove vertices not accessible from anchorId0 and anchorId1.
+    // - Remove cycles.
+    // - Find the longest path.
+    ostream html(0);
+    RestrictedAnchorGraph restrictedAnchorGraph(
+        assemblyGraph.anchors, assemblyGraph.journeys, tangleMatrix(), iEntrance, iExit, html);
+    restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
+    restrictedAnchorGraph.removeCycles();
+    vector<RestrictedAnchorGraph::edge_descriptor> longestPath;
+    restrictedAnchorGraph.findLongestPath(longestPath);
 
+    // Create a new AssemblyGraphEdge between v0 and v1.
+    // Add one step for each edge of the longest path of the RestrictedAnchorGraph.
+    AssemblyGraph::edge_descriptor e;
+    tie(e, ignore) = add_edge(v0, v1, assemblyGraph);
+    AssemblyGraphEdge& newEdge = assemblyGraph[e];
+    newEdge.id = assemblyGraph.nextEdgeId++;
     if(debug) {
-        cout << "This connection will use the following " <<
-            orientedReadIds.size() << " oriented reads:" << endl;
-        std::ranges::copy(orientedReadIds, ostream_iterator<OrientedReadId>(cout, " "));
-        cout << endl;
+        cout << "Created new assembly graph edge " << newEdge.id << endl;
+    }
+    for(const RestrictedAnchorGraph::edge_descriptor re: longestPath) {
+        const auto& rEdge = restrictedAnchorGraph[re];
+        newEdge.push_back(AssemblyGraphEdgeStep(rEdge.anchorPair,rEdge.offset));
     }
 
-
-    SHASTA_ASSERT(0);
 }
