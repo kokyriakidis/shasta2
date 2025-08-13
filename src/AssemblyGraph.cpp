@@ -1160,7 +1160,7 @@ uint64_t AssemblyGraph::detangleVerticesIteration(Detangler& detangler)
     }
 
     // Do the detangling.
-    return detangle(detanglingCandidates, detangler);
+    return detangle1(detanglingCandidates, detangler);
 }
 
 

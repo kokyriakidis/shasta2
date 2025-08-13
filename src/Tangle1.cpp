@@ -230,21 +230,8 @@ void Tangle1::reconnect(
             anchorIdToString(anchorId1) << endl;
     }
 
-    // Create the RestrictedAnchorGraph, then:
-    // - Remove vertices not accessible from anchorId0 and anchorId1.
-    // - Remove cycles.
-    // - Find the longest path.
-    ostream html(0);
-    RestrictedAnchorGraph restrictedAnchorGraph(
-        assemblyGraph.anchors, assemblyGraph.journeys, tangleMatrix(), iEntrance, iExit, html);
-    restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
-    restrictedAnchorGraph.removeCycles();
-    restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
-    vector<RestrictedAnchorGraph::edge_descriptor> longestPath;
-    restrictedAnchorGraph.findLongestPath(longestPath);
 
     // Create a new AssemblyGraphEdge between v0 and v1.
-    // Add one step for each edge of the longest path of the RestrictedAnchorGraph.
     AssemblyGraph::edge_descriptor e;
     tie(e, ignore) = add_edge(v0, v1, assemblyGraph);
     AssemblyGraphEdge& newEdge = assemblyGraph[e];
@@ -252,9 +239,30 @@ void Tangle1::reconnect(
     if(debug) {
         cout << "Created new assembly graph edge " << newEdge.id << endl;
     }
-    for(const RestrictedAnchorGraph::edge_descriptor re: longestPath) {
-        const auto& rEdge = restrictedAnchorGraph[re];
-        newEdge.push_back(AssemblyGraphEdgeStep(rEdge.anchorPair,rEdge.offset));
+
+
+
+    if(anchorId0 == anchorId1) {
+        // We just generate an edge without steps.
+    } else {
+        // Create the RestrictedAnchorGraph, then:
+        // - Remove vertices not accessible from anchorId0 and anchorId1.
+        // - Remove cycles.
+        // - Find the longest path.
+        // - Add one step for each edge of the longest path of the RestrictedAnchorGraph.
+        ostream html(0);
+        RestrictedAnchorGraph restrictedAnchorGraph(
+            assemblyGraph.anchors, assemblyGraph.journeys, tangleMatrix(), iEntrance, iExit, html);
+        restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
+        restrictedAnchorGraph.removeCycles();
+        restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
+        vector<RestrictedAnchorGraph::edge_descriptor> longestPath;
+        restrictedAnchorGraph.findLongestPath(longestPath);
+
+        for(const RestrictedAnchorGraph::edge_descriptor re: longestPath) {
+            const auto& rEdge = restrictedAnchorGraph[re];
+            newEdge.push_back(AssemblyGraphEdgeStep(rEdge.anchorPair,rEdge.offset));
+        }
     }
 
 }

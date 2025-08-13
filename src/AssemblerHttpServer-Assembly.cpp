@@ -1074,36 +1074,42 @@ void Assembler::exploreTangleMatrix1(const vector<string>& request, ostream& htm
                 const AnchorId entranceAnchorId = entranceEdge.back().anchorPair.anchorIdB;
                 const AnchorId exitAnchorId = exitEdge.front().anchorPair.anchorIdA;
 
-                html << "<h4>RestrictedAnchorGraph to connect entrance " <<
-                    entranceEdge.id <<
-                    " with exit " << exitEdge.id << "</h4>"
-                    "Last AnchorId on entrance is " << anchorIdToString(entranceAnchorId) <<
-                    "<br>First AnchorId on exit is " << anchorIdToString(exitAnchorId);
+                if(entranceAnchorId == exitAnchorId) {
+                    html << "<br>The two anchors are coincident.";
+                } else {
 
-                RestrictedAnchorGraph restrictedAnchorGraph(
-                    anchors(), journeys(), tangleMatrix, iEntrance, iExit, html);
-                restrictedAnchorGraph.keepBetween(entranceAnchorId, exitAnchorId);
-                restrictedAnchorGraph.removeCycles();
-                restrictedAnchorGraph.keepBetween(entranceAnchorId, exitAnchorId);
-
-                html << "<br>The RestrictedAnchorGraph has " << num_vertices(restrictedAnchorGraph) <<
-                    " vertices and " << num_edges(restrictedAnchorGraph) << " edges ";
-
-                // Find the longest path in the RestrictedAnchorGraph.
-                vector<RestrictedAnchorGraph::edge_descriptor> longestPath;
-                restrictedAnchorGraph.findLongestPath(longestPath);
-
-                // Write it out in Graphviz format.
-                const string uuid = to_string(boost::uuids::random_generator()());
-                const string dotFileName = tmpDirectory() + uuid + ".dot";
-                restrictedAnchorGraph.writeGraphviz(dotFileName, {entranceAnchorId, exitAnchorId});
+                    html << "<h4>RestrictedAnchorGraph to connect entrance " <<
+                        entranceEdge.id <<
+                        " with exit " << exitEdge.id << "</h4>"
+                        "Last AnchorId on entrance is " << anchorIdToString(entranceAnchorId) <<
+                        "<br>First AnchorId on exit is " << anchorIdToString(exitAnchorId);
 
 
-                // Display it in html in svg format.
-                const double timeout = 30.;
-                const string options = "-Nshape=rectangle -Gbgcolor=gray95";
-                html << "<p>";
-                graphvizToHtml(dotFileName, "dot", timeout, options, html);
+                    RestrictedAnchorGraph restrictedAnchorGraph(
+                        anchors(), journeys(), tangleMatrix, iEntrance, iExit, html);
+                    restrictedAnchorGraph.keepBetween(entranceAnchorId, exitAnchorId);
+                    restrictedAnchorGraph.removeCycles();
+                    restrictedAnchorGraph.keepBetween(entranceAnchorId, exitAnchorId);
+
+                    html << "<br>The RestrictedAnchorGraph has " << num_vertices(restrictedAnchorGraph) <<
+                        " vertices and " << num_edges(restrictedAnchorGraph) << " edges ";
+
+                    // Find the longest path in the RestrictedAnchorGraph.
+                    vector<RestrictedAnchorGraph::edge_descriptor> longestPath;
+                    restrictedAnchorGraph.findLongestPath(longestPath);
+
+                    // Write it out in Graphviz format.
+                    const string uuid = to_string(boost::uuids::random_generator()());
+                    const string dotFileName = tmpDirectory() + uuid + ".dot";
+                    restrictedAnchorGraph.writeGraphviz(dotFileName, {entranceAnchorId, exitAnchorId});
+
+
+                    // Display it in html in svg format.
+                    const double timeout = 30.;
+                    const string options = "-Nshape=rectangle -Gbgcolor=gray95";
+                    html << "<p>";
+                    graphvizToHtml(dotFileName, "dot", timeout, options, html);
+                }
 
             }
         }
