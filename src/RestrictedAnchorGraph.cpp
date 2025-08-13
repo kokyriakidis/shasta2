@@ -259,30 +259,25 @@ void RestrictedAnchorGraph::keepBetween(AnchorId anchorId0, AnchorId anchorId1)
             verticesToBeRemoved.push_back(v);
         }
     }
-    cout << "AAA "  << verticesToBeRemoved.size() << endl;
     for(const vertex_descriptor v: verticesToBeRemoved) {
         vertexMap.erase(graph[v].anchorId);
         boost::clear_vertex(v, graph);
         boost::remove_vertex(v, graph);
     }
-    cout << "BBB" << endl;
     reachableVertices.clear();
     verticesToBeRemoved.clear();
 
     // Remove vertices that are not backward reachable from v1.
     findReachableVertices(graph, v1, 1, reachableVertices);
-    cout << "CCC" << endl;
     SHASTA_ASSERT(reachableVertices.contains(v0));
     BGL_FORALL_VERTICES(v, graph, Graph) {
         if(not reachableVertices.contains(v)) {
             verticesToBeRemoved.push_back(v);
         }
     }
-    cout << "DDD " << verticesToBeRemoved.size() << endl;
     for(const vertex_descriptor v: verticesToBeRemoved) {
         vertexMap.erase(graph[v].anchorId);
         boost::clear_vertex(v, graph);
         boost::remove_vertex(v, graph);
     }
-    cout << "EEE" << endl;
 }
