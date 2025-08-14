@@ -15,6 +15,9 @@ public:
 
     uint64_t phase(AssemblyGraph&, uint64_t superbubbleChainId);
 
+    // Version that uses Tangle1/TangleMatrix1 instead of Tangle/TangleMatrix.
+    uint64_t phase1(AssemblyGraph&, uint64_t superbubbleChainId);
+
 private:
 
 };
