@@ -30,8 +30,8 @@ public:
         ostream& html);
 
     const AssemblyGraph& assemblyGraph;
-    const vector<edge_descriptor>& entrances;
-    const vector<edge_descriptor>& exits;
+    const vector<edge_descriptor> entrances;
+    const vector<edge_descriptor> exits;
 
 
 
