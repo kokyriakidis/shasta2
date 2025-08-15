@@ -136,7 +136,24 @@ void RestrictedAnchorGraph::create(
         html << "</table>";
     }
 
-    // Loop over the JourneyPortions.
+
+
+    // Loop over the JourneyPortions to create the vertices.
+    for(const JourneyPortion&  journeyPortion:journeyPortions) {
+        const OrientedReadId orientedReadId = journeyPortion.orientedReadId;
+        const Journey journey = journeys[orientedReadId];
+        const uint32_t begin = journeyPortion.begin;
+        const uint32_t end = journeyPortion.end;
+        for(uint32_t i=begin; i<end; i++) {
+            const AnchorId anchorId = journey[i];
+            const vertex_descriptor v = getVertex(anchorId);
+            ++graph[v].coverage;
+        }
+    }
+
+
+
+    // Loop over the JourneyPortions to create the edges.
     for(const JourneyPortion&  journeyPortion:journeyPortions) {
         const OrientedReadId orientedReadId = journeyPortion.orientedReadId;
         const Journey journey = journeys[orientedReadId];
@@ -208,11 +225,13 @@ void RestrictedAnchorGraph::writeGraphviz(
 
     BGL_FORALL_VERTICES(v, graph, Graph) {
         const AnchorId anchorId = graph[v].anchorId;
-        dot << "\"" << anchorIdToString(anchorId) << "\"";
+        dot <<
+            "\"" << anchorIdToString(anchorId) << "\""
+            " [label=\"" << anchorIdToString(anchorId) << "\\n" << graph[v].coverage << "\"";
         if(find(highlightVertices.begin(), highlightVertices.end(), anchorId) != highlightVertices.end()) {
-            dot << "[style=filled fillcolor=pink]";
+            dot << " style=filled fillcolor=pink";
         }
-        dot << ";\n";
+        dot << "];\n";
     }
 
     BGL_FORALL_EDGES(e, graph, Graph) {

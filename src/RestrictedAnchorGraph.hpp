@@ -51,6 +51,7 @@ public:
 class shasta::RestrictedAnchorGraphVertex {
 public:
     AnchorId anchorId;
+    uint64_t coverage = 0;
     RestrictedAnchorGraphVertex(AnchorId anchorId = invalid<AnchorId>) : anchorId(anchorId) {}
 
     // Fields used by approximateTopologicalSort.
