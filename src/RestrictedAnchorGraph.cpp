@@ -230,7 +230,7 @@ void RestrictedAnchorGraph::writeGraphviz(
             "penwidth=" << std::setprecision(2) << 0.5 * double(coverage) <<
             " label=\"" << coverage << "\\n" << offset << "\"";
 
-        if(edge.isLongestPathEdge) {
+        if(edge.isOptimalPathEdge) {
             dot << " color=green";
         }
 
@@ -346,7 +346,7 @@ void RestrictedAnchorGraph::findLongestPath(vector<edge_descriptor>& longestPath
     shasta::longestPath(graph, longestPath);
 
     for(const edge_descriptor e: longestPath) {
-        graph[e].isLongestPathEdge = true;
+        graph[e].isOptimalPathEdge = true;
     }
 }
 
@@ -419,7 +419,7 @@ void RestrictedAnchorGraph::findOptimalPath(
         tie(e, edgeWasFound) = edge(vPrevious, v, graph);
         SHASTA_ASSERT(edgeWasFound);
         optimalPath.push_back(e);
-        graph[e].isLongestPathEdge = true;
+        graph[e].isOptimalPathEdge = true;
         v = vPrevious;
     }
     std::ranges::reverse(optimalPath);

@@ -65,7 +65,7 @@ public:
     AnchorPair anchorPair;
     uint64_t offset = invalid<uint64_t>;
 
-    bool isLongestPathEdge = false;
+    bool isOptimalPathEdge = false;
 
     // Field used by approximateTopologicalSort.
     bool isDagEdge = false;
@@ -104,11 +104,11 @@ public:
     void removeCycles();
 
     // Find the longest path.
-    // This also sets the isLongestPathEdge on the edges of the longest path.
+    // This also sets the isOptimalPathEdge on the edges of the longest path.
     void findLongestPath(vector<edge_descriptor>&);
 
     // Find the optimal assembly path.
-    // This also sets the isLongestPathEdge on the edges of the longest path.
+    // This also sets the isOptimalPathEdge on the edges of the optimal path path.
     void findOptimalPath(
         AnchorId anchorId0,
         AnchorId anchorId1,
