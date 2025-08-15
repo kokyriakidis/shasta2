@@ -107,6 +107,13 @@ public:
     // This also sets the isLongestPathEdge on the edges of the longest path.
     void findLongestPath(vector<edge_descriptor>&);
 
+    // Find the optimal assembly path.
+    // This also sets the isLongestPathEdge on the edges of the longest path.
+    void findOptimalPath(
+        AnchorId anchorId0,
+        AnchorId anchorId1,
+        vector<edge_descriptor>&);
+
     void writeGraphviz(const string& fileName, const vector<AnchorId>& highlightVertices) const;
     void writeGraphviz(ostream&, const vector<AnchorId>& highlightVertices) const;
 };

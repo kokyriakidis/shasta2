@@ -9,6 +9,7 @@
 using namespace shasta;
 
 // Boost libraries.
+#include <boost/graph/dijkstra_shortest_paths.hpp>
 #include <boost/graph/iteration_macros.hpp>
 
 // Standard library.
@@ -347,4 +348,79 @@ void RestrictedAnchorGraph::findLongestPath(vector<edge_descriptor>& longestPath
     for(const edge_descriptor e: longestPath) {
         graph[e].isLongestPathEdge = true;
     }
+}
+
+
+
+// Find the optimal assembly path.
+// This finds the shortest path from anchorId0 to anchorId1,
+// with lengh of an edge defined to estimate average
+// number of assembly errors in the edge.
+void RestrictedAnchorGraph::findOptimalPath(
+    AnchorId anchorId0,
+    AnchorId anchorId1,
+    vector<edge_descriptor>& optimalPath)
+{
+    using Graph = RestrictedAnchorGraph;
+    Graph& graph = *this;
+
+    // Find the vertices corresponding to anchorId0 anc anchorId1.
+    const auto it0 = vertexMap.find(anchorId0);
+    SHASTA_ASSERT(it0 != vertexMap.end());
+    const vertex_descriptor v0 = it0->second;
+    const auto it1 = vertexMap.find(anchorId1);
+    SHASTA_ASSERT(it1 != vertexMap.end());
+    const vertex_descriptor v1 = it1->second;
+
+    // Map the vertices to integers.
+    uint64_t vertexIndex = 0;
+    std::map<vertex_descriptor, uint64_t> vertexIndexMap;
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        vertexIndexMap.insert(make_pair(v, vertexIndex++));
+    }
+
+    // Define the weight map, which estimates the "cost" of each edge
+    // (number of likely errors).
+    const double epsilon = 0.2;
+    std::map<edge_descriptor, double> weightMap;
+    BGL_FORALL_EDGES(e, graph, Graph) {
+        const RestrictedAnchorGraphEdge& edge = graph[e];
+        const double coverage = double(edge.anchorPair.size());
+        const double offset = double(edge.offset);
+        const double w = offset * std::pow(epsilon, coverage);
+        weightMap.insert(make_pair(e, w));
+    }
+
+    // The predecessor map will record the predecessor of each vertex
+    // in the shortest paths.
+    std::map<vertex_descriptor, vertex_descriptor> predecessorMap;
+
+    // Compute shortest paths starting at v0.
+    using boost::dijkstra_shortest_paths;
+    using boost::vertex_index_map;
+    using boost::make_assoc_property_map;
+    using boost::weight_map;
+    using boost::predecessor_map;
+    dijkstra_shortest_paths(graph, v0,
+        vertex_index_map(make_assoc_property_map(vertexIndexMap)).
+        weight_map(make_assoc_property_map(weightMap)).
+        predecessor_map(make_assoc_property_map(predecessorMap))
+    );
+
+    // Now we can use the predecessor map to assemble the optimal path from v0 to v1.
+    optimalPath.clear();
+    vertex_descriptor v = v1;
+    while(v != v0) {
+        const auto it = predecessorMap.find(v);
+        SHASTA_ASSERT(it != predecessorMap.end());
+        const vertex_descriptor vPrevious = it->second;
+        edge_descriptor e;
+        bool edgeWasFound = false;
+        tie(e, edgeWasFound) = edge(vPrevious, v, graph);
+        SHASTA_ASSERT(edgeWasFound);
+        optimalPath.push_back(e);
+        graph[e].isLongestPathEdge = true;
+        v = vPrevious;
+    }
+    std::ranges::reverse(optimalPath);
 }
