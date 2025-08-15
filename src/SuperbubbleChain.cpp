@@ -352,7 +352,7 @@ uint64_t SuperbubbleChain::phase1(
     uint64_t superbubbleChainId)
 {
     SuperbubbleChain& superbubbleChain = *this;
-    const bool debug = true; // (superbubbleChainId == 18);
+    const bool debug = false; // (superbubbleChainId == 18);
 
     const uint64_t phasingDistance = assemblyGraph.options.phasingDistance;
     const uint64_t phasingMinDegree = assemblyGraph.options.phasingMinDegree;
