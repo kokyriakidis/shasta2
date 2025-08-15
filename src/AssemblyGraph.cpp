@@ -1511,6 +1511,7 @@ uint64_t AssemblyGraph::detangle(
 uint64_t AssemblyGraph::prune()
 {
     AssemblyGraph& assemblyGraph = *this;
+    const bool debug = false;
 
     uint64_t totalPruneCount = 0;
 
@@ -1542,6 +1543,9 @@ uint64_t AssemblyGraph::prune()
 
         // Remove the edges.
         for(const edge_descriptor e: edgesToBeRemoved) {
+            if(debug) {
+                cout << "Pruned " << assemblyGraph[e].id << ", offset " << assemblyGraph[e].offset() << endl;
+            }
             boost::remove_edge(e, assemblyGraph);
         }
 
