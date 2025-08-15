@@ -1094,6 +1094,9 @@ void Assembler::exploreTangleMatrix1(const vector<string>& request, ostream& htm
                     html << "<br>The RestrictedAnchorGraph has " << num_vertices(restrictedAnchorGraph) <<
                         " vertices and " << num_edges(restrictedAnchorGraph) << " edges ";
 
+                    html << "<br>";
+                    restrictedAnchorGraph.writeOrientedReadsInVertices(html);
+
                     // Find the longest path in the RestrictedAnchorGraph.
                     vector<RestrictedAnchorGraph::edge_descriptor> longestPath;
                     // restrictedAnchorGraph.findLongestPath(longestPath);

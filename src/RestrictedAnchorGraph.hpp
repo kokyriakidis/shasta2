@@ -51,12 +51,12 @@ public:
 class shasta::RestrictedAnchorGraphVertex {
 public:
     AnchorId anchorId;
-    uint64_t coverage = 0;
+    vector<OrientedReadId> orientedReadIds;
     RestrictedAnchorGraphVertex(AnchorId anchorId = invalid<AnchorId>) : anchorId(anchorId) {}
 
     // Fields used by approximateTopologicalSort.
-    uint64_t color;
-    uint64_t rank;
+    uint64_t color = invalid<uint64_t>;
+    uint64_t rank = invalid<uint64_t>;
 };
 
 
@@ -87,12 +87,13 @@ public:
     void create(
         const Anchors&,
         const Journeys&,
-        const vector<JourneyPortion>& journeyPortions,
         ostream& html);
+    vector<JourneyPortion> journeyPortions;
+
 
     std::map<AnchorId, vertex_descriptor> vertexMap;
 
-    // Return the vertex_descriptor correspponding to an AnchorId,
+    // Return the vertex_descriptor corresponding to an AnchorId,
     // creating the vertex if necessary.
     vertex_descriptor getVertex(AnchorId);
 
@@ -114,6 +115,10 @@ public:
         AnchorId anchorId0,
         AnchorId anchorId1,
         vector<edge_descriptor>&);
+
+    // Write a table showing which OrientedReadIds are in each vertex.
+    // Vertices are written out in rank order.
+    void writeOrientedReadsInVertices(ostream& html) const;
 
     void writeGraphviz(const string& fileName, const vector<AnchorId>& highlightVertices) const;
     void writeGraphviz(ostream&, const vector<AnchorId>& highlightVertices) const;

@@ -33,7 +33,6 @@ RestrictedAnchorGraph::RestrictedAnchorGraph(
 
 
     // Joint loop over the oriented reads of the entrance and exit.
-    vector<JourneyPortion> journeyPortions;
     auto itEntrance = entranceOrientedReadInfos.begin();
     auto itExit = exitOrientedReadInfos.begin();
     const auto itEntranceEnd = entranceOrientedReadInfos.end();
@@ -104,7 +103,7 @@ RestrictedAnchorGraph::RestrictedAnchorGraph(
 
 
     // Create the graph using these journey portions.
-    create(anchors, journeys, journeyPortions, html);
+    create(anchors, journeys, html);
 }
 
 
@@ -112,7 +111,6 @@ RestrictedAnchorGraph::RestrictedAnchorGraph(
 void RestrictedAnchorGraph::create(
     const Anchors& anchors,
     const Journeys& journeys,
-    const vector<JourneyPortion>& journeyPortions,
     ostream& html)
 {
     using Graph = RestrictedAnchorGraph;
@@ -147,7 +145,7 @@ void RestrictedAnchorGraph::create(
         for(uint32_t i=begin; i<end; i++) {
             const AnchorId anchorId = journey[i];
             const vertex_descriptor v = getVertex(anchorId);
-            ++graph[v].coverage;
+            graph[v].orientedReadIds.push_back(orientedReadId);
         }
     }
 
@@ -227,7 +225,7 @@ void RestrictedAnchorGraph::writeGraphviz(
         const AnchorId anchorId = graph[v].anchorId;
         dot <<
             "\"" << anchorIdToString(anchorId) << "\""
-            " [label=\"" << anchorIdToString(anchorId) << "\\n" << graph[v].coverage << "\"";
+            " [label=\"" << anchorIdToString(anchorId) << "\\n" << graph[v].orientedReadIds.size() << "\"";
         if(find(highlightVertices.begin(), highlightVertices.end(), anchorId) != highlightVertices.end()) {
             dot << " style=filled fillcolor=pink";
         }
@@ -442,4 +440,53 @@ void RestrictedAnchorGraph::findOptimalPath(
         v = vPrevious;
     }
     std::ranges::reverse(optimalPath);
+}
+
+
+
+// Write a table showing which OrientedReadIds are in each vertex.
+// Vertices are written out in rank order.
+void RestrictedAnchorGraph::writeOrientedReadsInVertices(ostream& html) const
+{
+    using Graph = RestrictedAnchorGraph;
+    const Graph& graph = *this;
+
+    // Gather the vertices in rank order.
+    vector< pair<vertex_descriptor, uint64_t> > verticesSortedByRank;
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        verticesSortedByRank.push_back(make_pair(v, graph[v].rank));
+    }
+    std::ranges::sort(verticesSortedByRank, OrderPairsBySecondOnly<vertex_descriptor, uint64_t>());
+
+    // Write the table header.
+    html << "<table><tr><th>Oriented<br>read<br<id>";
+    for(const auto& p: verticesSortedByRank) {
+        const vertex_descriptor v = p.first;
+        const AnchorId anchorId = graph[v].anchorId;
+        html << "<th>" << anchorIdToString(anchorId);
+    }
+
+
+
+    // Write one row for each OrientedReadId.
+    for(const JourneyPortion& journeyPortion: journeyPortions) {
+        const OrientedReadId orientedReadId = journeyPortion.orientedReadId;
+
+        html << "<tr><th>" << orientedReadId;
+
+        for(const auto& p: verticesSortedByRank) {
+            const vertex_descriptor v = p.first;
+            const bool vertexContainsOrientedReadId =
+                std::ranges::binary_search(graph[v].orientedReadIds, orientedReadId);
+
+            html << "<td";
+            if(vertexContainsOrientedReadId) {
+                html << " style='background-color:LightGreen'";
+            }
+            html << ">" << int(vertexContainsOrientedReadId);
+        }
+    }
+
+
+    html << "</table>";
 }
