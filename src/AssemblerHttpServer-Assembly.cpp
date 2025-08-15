@@ -1096,7 +1096,8 @@ void Assembler::exploreTangleMatrix1(const vector<string>& request, ostream& htm
 
                     // Find the longest path in the RestrictedAnchorGraph.
                     vector<RestrictedAnchorGraph::edge_descriptor> longestPath;
-                    restrictedAnchorGraph.findLongestPath(longestPath);
+                    // restrictedAnchorGraph.findLongestPath(longestPath);
+                    restrictedAnchorGraph.findOptimalPath(entranceAnchorId, exitAnchorId, longestPath);
 
                     // Write it out in Graphviz format.
                     const string uuid = to_string(boost::uuids::random_generator()());

@@ -257,7 +257,8 @@ void Tangle1::reconnect(
         restrictedAnchorGraph.removeCycles();
         restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
         vector<RestrictedAnchorGraph::edge_descriptor> longestPath;
-        restrictedAnchorGraph.findLongestPath(longestPath);
+        // restrictedAnchorGraph.findLongestPath(longestPath);
+        restrictedAnchorGraph.findOptimalPath(anchorId0, anchorId1, longestPath);
 
         for(const RestrictedAnchorGraph::edge_descriptor re: longestPath) {
             const auto& rEdge = restrictedAnchorGraph[re];
