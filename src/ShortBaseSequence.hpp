@@ -248,6 +248,20 @@ public:
     }
 
 
+    // Non-templated version.
+    uint64_t countExactRepeatCopies(uint64_t period, uint64_t k) const
+    {
+        switch(period) {
+        case 1: return countExactRepeatCopies<1>(k);
+        case 2: return countExactRepeatCopies<2>(k);
+        case 3: return countExactRepeatCopies<3>(k);
+        case 4: return countExactRepeatCopies<4>(k);
+        case 5: return countExactRepeatCopies<5>(k);
+        case 6: return countExactRepeatCopies<6>(k);
+        default: SHASTA_ASSERT(0);
+        }
+    }
+
 
     // The data are left public to facilitate low level custom code.
     array<Int, 2> data;
