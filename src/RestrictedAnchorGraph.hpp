@@ -84,11 +84,21 @@ public:
         uint64_t iExit,
         ostream& html);
 
+    // The journey portions that define this RestrictedAnchorGraph.
+    vector<JourneyPortion> journeyPortions;
+
+    // Fill the journey portions using a TangleMatrix1.
+    void fillJourneyPortions(
+        const Journeys&,
+        const TangleMatrix1&,
+        uint64_t iEntrance,
+        uint64_t iExit);
+
+    // Create the graph from the journey portions.
     void create(
         const Anchors&,
         const Journeys&,
         ostream& html);
-    vector<JourneyPortion> journeyPortions;
 
 
     std::map<AnchorId, vertex_descriptor> vertexMap;

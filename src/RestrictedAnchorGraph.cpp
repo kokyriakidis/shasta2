@@ -25,6 +25,19 @@ RestrictedAnchorGraph::RestrictedAnchorGraph(
     uint64_t iExit,
     ostream& html)
 {
+    fillJourneyPortions(journeys, tangleMatrix1, iEntrance, iExit);
+    create(anchors, journeys, html);
+}
+
+
+
+// Fill the journey portions using a TangleMatrix1.
+void RestrictedAnchorGraph::fillJourneyPortions(
+    const Journeys& journeys,
+    const TangleMatrix1& tangleMatrix1,
+    uint64_t iEntrance,
+    uint64_t iExit)
+{
     using OrientedReadInfo = TangleMatrix1::OrientedReadInfo;
 
     const vector<OrientedReadInfo>& entranceOrientedReadInfos = tangleMatrix1.entranceOrientedReadInfos[iEntrance];
@@ -99,15 +112,11 @@ RestrictedAnchorGraph::RestrictedAnchorGraph(
             SHASTA_ASSERT(0);
         }
     }
-
-
-
-    // Create the graph using these journey portions.
-    create(anchors, journeys, html);
 }
 
 
 
+// Create the graph from the journey portions.
 void RestrictedAnchorGraph::create(
     const Anchors& anchors,
     const Journeys& journeys,
