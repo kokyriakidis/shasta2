@@ -97,8 +97,8 @@ void Options::addOptions()
         "Maximum anchor coverage."
         )->capture_default_str();
 
-    add_option("--max-anchor-homopolymer-length", maxAnchorHomopolymerLength,
-        "Maximum homopolymer length allowed on an anchor."
+    add_option("--max-anchor-repeat-length", maxAnchorRepeatLength,
+        "Maximum number of copies of repeats of period 1, 2, 3,... allowed in an anchor sequence."
         )->capture_default_str();
 
     add_option("--min-anchor-graph-edge-coverage", minAnchorGraphEdgeCoverage,

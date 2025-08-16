@@ -81,7 +81,7 @@ void Assembler::assemble(
     createAnchors(
         options.minAnchorCoverage,
         options.maxAnchorCoverage,
-        options.maxAnchorHomopolymerLength,
+        options.maxAnchorRepeatLength,
         options.threadCount);
 
     createJourneys(options.threadCount);
@@ -123,7 +123,7 @@ void Assembler::accessKmerChecker()
 void Assembler::createAnchors(
     uint64_t minAnchorCoverage,
     uint64_t maxAnchorCoverage,
-    uint64_t maxHomopolymerLength,
+    const vector<uint64_t>& maxAnchorRepeatLength,
     uint64_t threadCount)
 {
     anchorsPointer = make_shared<Anchors>(
@@ -134,7 +134,7 @@ void Assembler::createAnchors(
         markerKmers,
         minAnchorCoverage,
         maxAnchorCoverage,
-        maxHomopolymerLength,
+        maxAnchorRepeatLength,
         threadCount);
 }
 

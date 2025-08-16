@@ -47,11 +47,24 @@ public:
 
     uint64_t minAnchorCoverage = 10;
     uint64_t maxAnchorCoverage = 60;
-    uint64_t maxAnchorHomopolymerLength = 10;
+
+    // An anchor is not generated if its sequence contains an exact repeat
+    // consisting of n copies of a unit of length (period) p, if
+    // n > maxAnchorRepeatLength[p-1].
+    // So for example:
+    // - maxAnchorRepeatLength[0] is the maximum allowed length of
+    //   a homopolymer run.
+    // - maxAnchorRepeatLength[1] is the maximum allowed number of
+    //   copies of a repeat with period 2 (e. g. ATATAT).
+    //   Note this is the number of copies, not number of bases.
+    //   So if maxAnchorRepeatLength[1] is 3, the anchor is not
+    //   generated if it contains a 2-base repeat with more than 3 copies
+    //   (a total 6 bases).
+    vector<uint64_t> maxAnchorRepeatLength = {6, 4, 4, 4, 4};
+
+    // Options controlling creation of the AnchorGraph.
     uint64_t minAnchorGraphEdgeCoverage = 6;
     uint64_t minAnchorGraphContinueReadFollowingCount = 10;
-
-    // Transitive reduction of the AnchorGraph.
     uint64_t transitiveReductionMaxEdgeCoverage = 10;
     uint64_t transitiveReductionMaxDistance = 10;
 
