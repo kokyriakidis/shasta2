@@ -45,6 +45,7 @@ void Assembler::fillServerFunctionTable()
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreLocalAssembly);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreSimilarSequences);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreLocalAnchorGraph);
+    SHASTA_ADD_TO_FUNCTION_TABLE(exploreRestrictedAnchorGraph);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreSegments);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreSegment);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreSegmentStep);
@@ -219,6 +220,7 @@ void Assembler::writeNavigation(ostream& html) const
         {"Anchor pair", "exploreAnchorPair2"},
         {"Anchor pair (old)", "exploreAnchorPair"},
         {"Journey", "exploreJourney"},
+        {"Local journey analysis", "exploreRestrictedAnchorGraph"},
         {"Read following on anchors", "exploreReadFollowing"},
         {"Local anchor graph", "exploreLocalAnchorGraph"},
         });

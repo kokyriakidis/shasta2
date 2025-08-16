@@ -76,6 +76,17 @@ public:
 
 class shasta::RestrictedAnchorGraph : public RestrictedAnchorGraphBaseClass {
 public:
+
+    // Constructor from an AnchorId.
+    RestrictedAnchorGraph(
+        const Anchors&,
+        const Journeys&,
+        AnchorId,
+        uint32_t distanceInJourney,
+        ostream& html);
+
+
+    // Constructor using a TangleMatrix1.
     RestrictedAnchorGraph(
         const Anchors&,
         const Journeys&,
@@ -110,6 +121,9 @@ public:
     // Only keep vertices that are forward reachable from the
     // vertex at anchorId0 and backward reachable from the vertex at anchorId1.
     void keepBetween(AnchorId anchorId0, AnchorId anchorId1);
+
+    // Approximate topological sort.
+    void approximateTopologicalSort();
 
     // Remove cycles by doing an approximate topological ordering,
     // the removing edges that are not DAG edges.

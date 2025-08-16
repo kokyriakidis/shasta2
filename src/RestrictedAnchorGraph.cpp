@@ -319,9 +319,8 @@ void RestrictedAnchorGraph::keepBetween(AnchorId anchorId0, AnchorId anchorId1)
 
 
 
-// Remove cycles by doing an approximate topological ordering,
-// the removing edges that are not DAG edges.
-void RestrictedAnchorGraph::removeCycles()
+
+void RestrictedAnchorGraph::approximateTopologicalSort()
 {
     using Graph = RestrictedAnchorGraph;
     Graph& graph = *this;
@@ -342,7 +341,20 @@ void RestrictedAnchorGraph::removeCycles()
     }
 
     // Do the approxinate topological sort.
-    approximateTopologicalSort(graph, edgesSortedByDecreasingCoverage);
+    shasta::approximateTopologicalSort(graph, edgesSortedByDecreasingCoverage);
+}
+
+
+
+
+// Remove cycles by doing an approximate topological ordering,
+// the removing edges that are not DAG edges.
+void RestrictedAnchorGraph::removeCycles()
+{
+    using Graph = RestrictedAnchorGraph;
+    Graph& graph = *this;
+
+    approximateTopologicalSort();
 
     // Gather the edges to be removed.
     vector<edge_descriptor> edgesToBeRemoved;
@@ -499,3 +511,34 @@ void RestrictedAnchorGraph::writeOrientedReadsInVertices(ostream& html) const
 
     html << "</table>";
 }
+
+
+
+// Constructor from an AnchorId.
+RestrictedAnchorGraph::RestrictedAnchorGraph(
+    const Anchors& anchors,
+    const Journeys& journeys,
+    AnchorId anchorId,
+    uint32_t distanceInJourney,
+    ostream& html)
+{
+
+    // Fill in the JourneyPortions by looking around this Anchor.
+    const Anchor anchor = anchors[anchorId];
+    for(const AnchorMarkerInfo& markerInfo: anchor) {
+        const OrientedReadId orientedReadId = markerInfo.orientedReadId;
+        const uint32_t positionInJourney = markerInfo.positionInJourney;
+        const Journey journey = journeys[orientedReadId];
+
+        // Find the journey portion of this OrientedReadId.
+        const uint32_t begin = (distanceInJourney >= positionInJourney) ? 0 : (positionInJourney - distanceInJourney);
+        uint32_t end = min(uint32_t(journey.size()), positionInJourney + distanceInJourney);
+        journeyPortions.emplace_back(orientedReadId, begin, end);
+    }
+
+
+
+    // Create the RestrictedAnchorGraph using these JourneyPortions.
+    create(anchors, journeys, html);
+}
+
