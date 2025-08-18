@@ -37,6 +37,7 @@ using namespace shasta;
 // Boost libraries.
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
+#include <boost/container/small_vector.hpp>
 #include <boost/graph/adj_list_serialize.hpp>
 #include <boost/graph/filtered_graph.hpp>
 #include <boost/graph/reverse_graph.hpp>
@@ -1210,7 +1211,12 @@ uint64_t AssemblyGraph::detangleEdgesIteration(
         const uint64_t out1 = out_degree(v1, assemblyGraph);
 
         const bool isTangleEdge = (in0 > 1) and (out0 == 1) and (in1 == 1) and (out1 > 1);
-        const bool isCrossEdge = (in0 == 1) and (out0 == 2) and (in1 == 2) and (out1 == 1);
+
+        // For cross edges, don't use in-degree and out-degree.
+        // This is needed to make sure that bubble edges are not classified as cross-edges.
+        const bool isCrossEdge =
+            (countDistinctTargetVertices(v0) > 1) and
+            (countDistinctSourceVertices(v1) > 1);
 
         const bool isShort = assemblyGraph[e].offset() <= detangleMaxCrossEdgeLength;
 
@@ -3814,4 +3820,42 @@ void AssemblyGraph::removeEmptyEdges()
     for(const vertex_descriptor v: verticesToBeRemoved) {
         boost::remove_vertex(v, assemblyGraph);
     }
+}
+
+
+
+// Count the distinct target vertices among
+// all the out-edges of a given vertex.
+// So this counts the number of parallel edge sets
+// outgoing from the given vertex.
+uint64_t AssemblyGraph::countDistinctTargetVertices(vertex_descriptor v) const
+{
+    const AssemblyGraph& assemblyGraph = *this;
+
+    boost::container::small_vector<vertex_descriptor, 6> targetVertices;
+    BGL_FORALL_OUTEDGES(v, e, assemblyGraph, AssemblyGraph) {
+        targetVertices.push_back(target(e, assemblyGraph));
+    }
+
+    std::ranges::unique(targetVertices);
+    return targetVertices.size();
+}
+
+
+
+// Count the distinct source vertices among
+// all the in-edges of a given vertex.
+// So this counts the number of parallel edge sets
+// incoming into the given vertex.
+uint64_t AssemblyGraph::countDistinctSourceVertices(vertex_descriptor v) const
+{
+    const AssemblyGraph& assemblyGraph = *this;
+
+    boost::container::small_vector<vertex_descriptor, 6> sourceVertices;
+    BGL_FORALL_INEDGES(v, e, assemblyGraph, AssemblyGraph) {
+        sourceVertices.push_back(source(e, assemblyGraph));
+    }
+
+    std::ranges::unique(sourceVertices);
+    return sourceVertices.size();
 }
