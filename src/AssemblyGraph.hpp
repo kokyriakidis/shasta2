@@ -261,11 +261,11 @@ public:
     uint64_t detangleVertices(uint64_t maxIterationCount, Detangler&);
 
     uint64_t detangleEdgesIteration(
-        uint64_t maxEdgeLength,
+        uint64_t detangleMaxCrossEdgeLength,
         Detangler&);
     uint64_t detangleEdges(
         uint64_t maxIterationCount,
-        uint64_t maxEdgeLength,
+        uint64_t detangleMaxCrossEdgeLength,
         Detangler&);
 
     uint64_t detangleTemplateIteration(uint64_t templateId, Detangler&);
@@ -275,7 +275,7 @@ public:
     // High level detangling function.
     uint64_t detangle(
         uint64_t maxIterationCount,
-        uint64_t maxEdgeLength,
+        uint64_t detangleMaxCrossEdgeLength,
         Detangler&);
 
     // The detangling process can generate empty edges (edges without steps).
