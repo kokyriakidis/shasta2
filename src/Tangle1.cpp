@@ -243,7 +243,9 @@ void Tangle1::reconnect(
 
 
     if(anchorId0 == anchorId1) {
-        // We just generate an edge without steps.
+        // We just generate an empty edge without any steps.
+        // If any of these are left after compress, they will have to be
+        // removed by collapsing the vertices they join.
     } else {
         // Create the RestrictedAnchorGraph, then:
         // - Remove vertices not accessible from anchorId0 and anchorId1.

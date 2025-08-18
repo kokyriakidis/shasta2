@@ -278,6 +278,10 @@ public:
         uint64_t maxEdgeLength,
         Detangler&);
 
+    // The detangling process can generate empty edges (edges without steps).
+    // This removes them by collapsing the vertices they join.
+    void removeEmptyEdges();
+
 
 
     // Tangle templates.
