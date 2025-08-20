@@ -3695,7 +3695,7 @@ void AssemblyGraph::gatherOrientedReadInformationOnEdge(
 void AssemblyGraph::removeEmptyEdges()
 {
     AssemblyGraph& assemblyGraph = *this;
-    const bool debug = true;
+    const bool debug = false;
 
     // We need to find groups of vertices that need to be collapsed together.
     // Usually it will be just two vertices to be collapsed together,
