@@ -230,6 +230,22 @@ bool LikelihoodRatioDetangler::operator()(Tangle1& tangle)
             }
             cout << endl;
         }
+
+        for(uint64_t i=0; i<entranceCount; i++) {
+            cout << "Entrance " << tangle.assemblyGraph[tangle.entrances[i]].id << " oriented reads:" << endl;
+            for(const TangleMatrix1::OrientedReadInfo& info: tangleMatrix.entranceOrientedReadInfos[i]) {
+                cout << info.orientedReadId << " ";
+            }
+            cout << endl;
+        }
+
+        for(uint64_t j=0; j<exitCount; j++) {
+            cout << "Exit " << tangle.assemblyGraph[tangle.exits[j]].id << " oriented reads:" << endl;
+            for(const TangleMatrix1::OrientedReadInfo& info: tangleMatrix.exitOrientedReadInfos[j]) {
+                cout << info.orientedReadId << " ";
+            }
+            cout << endl;
+        }
     }
 
     // Run the likelihood ratio test.
