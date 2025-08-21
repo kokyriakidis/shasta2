@@ -435,6 +435,8 @@ void TangleMatrix1::gatherCommonOrientedReads()
     for(const OrientedReadId orientedReadId: commonOrientedReadIds) {
         commonOrientedReadInfos.emplace_back(orientedReadId, entranceCount, exitCount);
         CommonOrientedReadInfo& commonOrientedReadInfo = commonOrientedReadInfos.back();
+        commonOrientedReadInfo.maxPositionInJourneyOnEntrances = 0;
+        commonOrientedReadInfo.minPositionInJourneyOnExits = std::numeric_limits<uint32_t>::max();
 
         for(uint64_t i=0; i<entranceCount; i++) {
             auto& it = entranceInfoIterators[i];
@@ -445,6 +447,8 @@ void TangleMatrix1::gatherCommonOrientedReads()
                 commonOrientedReadInfo.entranceStepCount[i] = 0;
             } else {
                 commonOrientedReadInfo.entranceStepCount[i] = it->stepCount;
+                commonOrientedReadInfo.maxPositionInJourneyOnEntrances =
+                    max(commonOrientedReadInfo.maxPositionInJourneyOnEntrances, it->positionInJourney);
             }
         }
 
@@ -457,6 +461,8 @@ void TangleMatrix1::gatherCommonOrientedReads()
                 commonOrientedReadInfo.exitStepCount[i] = 0;
             } else {
                 commonOrientedReadInfo.exitStepCount[i] = it->stepCount;
+                commonOrientedReadInfo.minPositionInJourneyOnExits =
+                    min(commonOrientedReadInfo.minPositionInJourneyOnExits, it->positionInJourney);
             }
         }
 
@@ -532,7 +538,7 @@ void TangleMatrix1::writeCommonOrientedReads(ostream& html) const
         "<h4>Common oriented reads</h4>"
         "These are the oriented reads that appear in the representative region "
         "of at least one entrance and at least one exit. "
-        "They are the ones that contribute to the tangle matrix."
+        "The ones that don't go backward contribute to the tangle matrix."
         "<p><table>"
         "<tr><th>Oriented<br>read<br>id";
     for(uint64_t i=0; i<entrances.size(); i++) {
@@ -541,7 +547,11 @@ void TangleMatrix1::writeCommonOrientedReads(ostream& html) const
     for(uint64_t i=0; i<exits.size(); i++) {
         html << "<th>Exit<br>" << assemblyGraph[exits[i]].id;
     }
-    html << "<th>Tangle<br>matrix";
+    html <<
+        "<th>Max<br>position<br>in journey<br>(all entrances)"
+        "<th>Min<br>position<br>in journey<br>(all exits)"
+        "<th>Goes<br>backward?"
+        "<th>Tangle<br>matrix";
 
     // Loop over common oriented reads.
     for(const CommonOrientedReadInfo& commonOrientedReadInfo: commonOrientedReadInfos) {
@@ -553,6 +563,14 @@ void TangleMatrix1::writeCommonOrientedReads(ostream& html) const
         }
         for(uint64_t j=0; j<exits.size(); j++) {
             html << "<td class=centered>" << commonOrientedReadInfo.exitStepCount[j];
+        }
+
+        html <<
+            "<td class=centered>" << commonOrientedReadInfo.maxPositionInJourneyOnEntrances <<
+            "<td class=centered>" << commonOrientedReadInfo.minPositionInJourneyOnExits <<
+            "<td class=centered>";
+        if(commonOrientedReadInfo.goesBackward()) {
+            html << "&#10003;";
         }
 
         // Write the contribution of this oriented read to the total tangle matrix.
@@ -578,9 +596,11 @@ void TangleMatrix1::computeTotalTangleMatrix()
     tangleMatrix.clear();
     tangleMatrix.resize(entranceCount, vector<double>(exitCount, 0.));
     for(const CommonOrientedReadInfo& commonOrientedReadInfo: commonOrientedReadInfos) {
-        for(uint64_t i=0; i<entranceCount; i++) {
-            for(uint64_t j=0; j<exitCount; j++) {
-                tangleMatrix[i][j] += commonOrientedReadInfo.tangleMatrix[i][j];
+        if(not commonOrientedReadInfo.goesBackward()) {
+            for(uint64_t i=0; i<entranceCount; i++) {
+                for(uint64_t j=0; j<exitCount; j++) {
+                    tangleMatrix[i][j] += commonOrientedReadInfo.tangleMatrix[i][j];
+                }
             }
         }
     }

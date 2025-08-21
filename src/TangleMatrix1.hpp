@@ -89,6 +89,12 @@ public:
         // in the representative region of each exit.
         vector<uint64_t> exitStepCount;
 
+        // The maximum position in journey among all entrances.
+        uint32_t maxPositionInJourneyOnEntrances;
+
+        // The minimum position in journey among all exits.
+        uint32_t minPositionInJourneyOnExits;
+
         CommonOrientedReadInfo(
             OrientedReadId orientedReadId,
             uint64_t entranceCount = 0,
@@ -97,6 +103,11 @@ public:
         // Order them by OrientedReadId.
         bool operator<(const CommonOrientedReadInfo&) const;
 
+        bool goesBackward() const
+        {
+            return maxPositionInJourneyOnEntrances > minPositionInJourneyOnExits;
+        }
+
         // The contribution of this oriented read to the total tangle matrix.
         vector< vector<double> > tangleMatrix;
         void computeTangleMatrix();
@@ -104,6 +115,19 @@ public:
     vector<CommonOrientedReadInfo> commonOrientedReadInfos;
     void gatherCommonOrientedReads();
     void writeCommonOrientedReads(ostream& html) const;
+
+    // Find out if a given common oriented read goes backward.
+    bool goesBackward(OrientedReadId orientedReadId) const
+    {
+        CommonOrientedReadInfo target(orientedReadId);
+        auto it = std::lower_bound(commonOrientedReadInfos.begin(), commonOrientedReadInfos.end(), target);
+        if((it == commonOrientedReadInfos.end()) or (it->orientedReadId != orientedReadId)) {
+            // This OrientedReadId is not common between entrances and exits.
+            return false;
+        } else {
+            return it->goesBackward();
+        }
+    }
 
 
 

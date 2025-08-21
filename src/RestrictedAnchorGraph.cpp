@@ -65,11 +65,13 @@ void RestrictedAnchorGraph::fillJourneyPortions(
             (itEntrance != itEntranceEnd) and
             (itExit==itExitEnd or (itEntrance->orientedReadId < itExit->orientedReadId))) {
             const OrientedReadId orientedReadId = itEntrance->orientedReadId;
-            const Journey journey = journeys[orientedReadId];
-            const uint32_t begin = itEntrance->positionInJourney;
-            const uint32_t end = uint32_t(journey.size());
-            journeyPortions.emplace_back(orientedReadId, begin, end);
-            // cout << "Entrance only " << orientedReadId << endl;
+            if(not tangleMatrix1.goesBackward(orientedReadId)) {
+                const Journey journey = journeys[orientedReadId];
+                const uint32_t begin = itEntrance->positionInJourney;
+                const uint32_t end = uint32_t(journey.size());
+                journeyPortions.emplace_back(orientedReadId, begin, end);
+                // cout << "Entrance only " << orientedReadId << endl;
+            }
             ++itEntrance;
         }
 
@@ -81,11 +83,13 @@ void RestrictedAnchorGraph::fillJourneyPortions(
             (itExit != itExitEnd) and
             (itEntrance==itEntranceEnd or (itExit->orientedReadId < itEntrance->orientedReadId))) {
             const OrientedReadId orientedReadId = itExit->orientedReadId;
-            const Journey journey = journeys[orientedReadId];
-            const uint32_t begin = 0;
-            const uint32_t end = itExit->positionInJourney + 1;
-            journeyPortions.emplace_back(orientedReadId, begin, end);
-            // cout << "Exit only " << orientedReadId << endl;
+            if(not tangleMatrix1.goesBackward(orientedReadId)) {
+                const Journey journey = journeys[orientedReadId];
+                const uint32_t begin = 0;
+                const uint32_t end = itExit->positionInJourney + 1;
+                journeyPortions.emplace_back(orientedReadId, begin, end);
+                // cout << "Exit only " << orientedReadId << endl;
+            }
             ++itExit;
         }
 
@@ -98,11 +102,13 @@ void RestrictedAnchorGraph::fillJourneyPortions(
             (itExit!=itExitEnd) and
             (itEntrance->orientedReadId == itExit->orientedReadId)) {
             const OrientedReadId orientedReadId = itEntrance->orientedReadId;
-            const Journey journey = journeys[orientedReadId];
-            const uint32_t begin = itEntrance->positionInJourney;
-            const uint32_t end = itExit->positionInJourney + 1;
-            journeyPortions.emplace_back(orientedReadId, begin, end);
-            // cout << "Both " << orientedReadId << endl;
+            if(not tangleMatrix1.goesBackward(orientedReadId)) {
+                const Journey journey = journeys[orientedReadId];
+                const uint32_t begin = itEntrance->positionInJourney;
+                const uint32_t end = itExit->positionInJourney + 1;
+                journeyPortions.emplace_back(orientedReadId, begin, end);
+                // cout << "Both " << orientedReadId << endl;
+            }
             ++itEntrance;
             ++itExit;
         }
