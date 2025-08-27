@@ -24,6 +24,10 @@ class shasta::LocalAssemblyGraphVertex {
 public:
     AssemblyGraph::vertex_descriptor v;
     uint64_t distance = invalid<uint64_t>;
+
+    // Fields used by approximateTopologicalSort.
+    uint64_t color = invalid<uint64_t>;
+    uint64_t rank = invalid<uint64_t>;
 };
 
 
@@ -34,6 +38,9 @@ public:
 
     // The default constructor is only needed to avoid a warning.
     LocalAssemblyGraphEdge() : e(0, 0, 0) {}
+
+    // Field used by approximateTopologicalSort.
+    bool isDagEdge = false;
 };
 
 
@@ -49,13 +56,13 @@ public:
     void writeHtml(
         ostream& html,
         const AssemblyGraph&,
-        uint64_t maxDistance) const;
+        uint64_t maxDistance);
     void writeGraphviz(
         const string& fileName,
         const AssemblyGraph&,
-        uint64_t maxDistance) const;
+        uint64_t maxDistance);
     void writeGraphviz(
         ostream&,
         const AssemblyGraph&,
-        uint64_t maxDistance) const;
+        uint64_t maxDistance);
 };

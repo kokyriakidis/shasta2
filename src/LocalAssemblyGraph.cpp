@@ -1,8 +1,10 @@
 // Shasta.
 #include "LocalAssemblyGraph.hpp"
 #include "Anchor.hpp"
+#include "approximateTopologicalSort.hpp"
 #include "graphvizToHtml.hpp"
 #include "LocalSubgraph.hpp"
+#include "orderPairs.hpp"
 #include "tmpDirectory.hpp"
 using namespace shasta;
 
@@ -30,7 +32,7 @@ LocalAssemblyGraph::LocalAssemblyGraph(
 void LocalAssemblyGraph::writeHtml(
     ostream& html,
     const AssemblyGraph& assemblyGraph,
-    uint64_t maxDistance) const
+    uint64_t maxDistance)
 {
     // Write it out in Graphviz format.
     const string uuid = to_string(boost::uuids::random_generator()());
@@ -51,7 +53,7 @@ void LocalAssemblyGraph::writeHtml(
 void LocalAssemblyGraph::writeGraphviz(
     const string& fileName,
     const AssemblyGraph& assemblyGraph,
-    uint64_t maxDistance) const
+    uint64_t maxDistance)
 {
     ofstream dot(fileName);
     writeGraphviz(dot, assemblyGraph, maxDistance);
@@ -62,14 +64,37 @@ void LocalAssemblyGraph::writeGraphviz(
 void LocalAssemblyGraph::writeGraphviz(
     ostream& dot,
     const AssemblyGraph& assemblyGraph,
-    uint64_t maxDistance) const
+    uint64_t maxDistance)
 {
-    const LocalAssemblyGraph& localAssemblyGraph = *this;
+    LocalAssemblyGraph& localAssemblyGraph = *this;
+
+    // Compute an approximate topological sort.
+    vector< pair<edge_descriptor, double> > edgesWithCoverage;
+    BGL_FORALL_EDGES(le, localAssemblyGraph, LocalAssemblyGraph) {
+        const AssemblyGraph::edge_descriptor e = localAssemblyGraph[le].e;
+        edgesWithCoverage.emplace_back(le, assemblyGraph[e].averageCoverage());
+    }
+    std::ranges::sort(edgesWithCoverage, OrderPairsBySecondOnlyGreater<edge_descriptor, double>());
+    vector<edge_descriptor> edgesSortedByCoverage;
+    for(const auto& p: edgesWithCoverage) {
+        edgesSortedByCoverage.push_back(p.first);
+    }
+    approximateTopologicalSort(localAssemblyGraph, edgesSortedByCoverage);
+
+    // Gather vertices sorted by rank.
+    vector< pair<vertex_descriptor, uint64_t> > verticesWithRank;
+    BGL_FORALL_VERTICES(lv, localAssemblyGraph, LocalAssemblyGraph) {
+        verticesWithRank.emplace_back(lv, localAssemblyGraph[lv].rank);
+    }
+    std::ranges::sort(verticesWithRank, OrderPairsBySecondOnly<vertex_descriptor, uint64_t>());
+
+
 
     dot << "digraph LocalAssemblyGraph {\n";
 
-    // Vertices.
-    BGL_FORALL_VERTICES(lv, localAssemblyGraph, LocalAssemblyGraph) {
+    // Vertices. Written in rank order for better display.
+    for(const auto& p: verticesWithRank) {
+        const vertex_descriptor lv = p.first;
         const auto& localVertex = localAssemblyGraph[lv];
         const AssemblyGraph::vertex_descriptor v = localVertex.v;
         const uint64_t distance = localVertex.distance;
@@ -104,7 +129,8 @@ void LocalAssemblyGraph::writeGraphviz(
 
     // Edges.
     BGL_FORALL_EDGES(le, localAssemblyGraph, LocalAssemblyGraph) {
-        const AssemblyGraph::edge_descriptor e = localAssemblyGraph[le].e;
+        const LocalAssemblyGraphEdge localEdge = localAssemblyGraph[le];
+        const AssemblyGraph::edge_descriptor e = localEdge.e;
         const AssemblyGraphEdge& edge = assemblyGraph[e];
         const uint64_t length = (edge.wasAssembled ? edge.sequenceLength() : edge.offset());
         const double penwidth = std::pow(double(length), 0.15);
@@ -119,7 +145,7 @@ void LocalAssemblyGraph::writeGraphviz(
             "["
             "label=\"" << edge.id << "\\n" << length << "\""
             " penwidth=" << penwidth <<
-            " color=navy"
+            " color=" << (localEdge.isDagEdge ? "navy" : "red") <<
             "];\n";
     }
 
