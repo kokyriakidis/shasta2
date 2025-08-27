@@ -2224,7 +2224,10 @@ bool AssemblyGraph::simplifySuperbubble(
     AnchorPair anchorPair(anchors, anchorIdA, anchorIdB, false);
 
     if(debug) {
-        cout << "The initial anchor pair has " << anchorPair.orientedReadIds.size() <<
+        cout << "The initial anchor pair " <<
+            anchorIdToString(anchorIdA) << " " <<
+            anchorIdToString(anchorIdB) <<
+            " has " << anchorPair.orientedReadIds.size() <<
             " oriented reads." << endl;
     }
 
