@@ -5,6 +5,7 @@
 #include "graphvizToHtml.hpp"
 #include "GTest.hpp"
 #include "LocalAssembly.hpp"
+#include "LocalAssemblyGraph.hpp"
 #include "RestrictedAnchorGraph.hpp"
 #include "Tangle.hpp"
 #include "TangleMatrix.hpp"
@@ -23,6 +24,97 @@ using namespace shasta;
 // Standard library.
 #include <fstream.hpp>
 #include <tuple.hpp>
+
+
+
+void Assembler::exploreLocalAssemblyGraph(
+    const vector<string>& request,
+    ostream& html)
+{
+    // Get the options from the request.
+    string assemblyStage;
+    HttpServer::getParameterValue(request, "assemblyStage", assemblyStage);
+
+    string segmentName;;
+    HttpServer::getParameterValue(request, "segmentName", segmentName);
+
+    uint64_t distance = 10;
+    HttpServer::getParameterValue(request, "distance", distance);
+
+
+
+    // Write the form.
+    html <<
+        "<h2>Local assembly graph</h2><form><table>"
+
+    // Assembly stage.
+        "<tr>"
+        "<th class=left>Assembly stage"
+        "<td class=centered><input type=text name=assemblyStage style='text-align:center' required";
+    if(not assemblyStage.empty()) {
+        html << " value='" << assemblyStage + "'";
+    }
+    html <<
+        " size=10>"
+
+    // Start segment name.
+        "<tr>"
+        "<th class=left>Start segment name"
+        "<td class=centered><input type=text name=segmentName style='text-align:center' required";
+    if(not segmentName.empty()) {
+        html << " value='" << segmentName + "'";
+    }
+    html <<
+        ">"
+
+    // Distance.
+        "<tr>"
+        "<th class=left>Distance"
+        "<td class=centered><input type=text name=distance style='text-align:center' "
+        "value='" << distance << "'>";
+
+    html <<
+        "</table>"
+        "<input type=submit value='Get segment information'>"
+        "</form>";
+
+    if(segmentName.empty()) {
+        return;
+    }
+
+    uint64_t segmentId = invalid<uint64_t>;
+    try {
+        segmentId = std::stol(segmentName);
+    } catch(exception&) {
+    }
+    if(segmentId == invalid<uint64_t>) {
+        html << "Segment name must be a number.";
+        return;
+    }
+
+    // Get the AssemblyGraph for this assembly stage.
+    const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
+        assemblyStage,
+        *httpServerData.options);
+
+    // Find the AssemblyGraphEdge corresponding to the requested segment.
+    auto it = assemblyGraph.edgeMap.find(segmentId);
+    if(it == assemblyGraph.edgeMap.end()) {
+        html << "<p>Assembly graph at stage " << assemblyStage <<
+            " does not have segment " << segmentId;
+        return;
+    }
+    const AssemblyGraph::edge_descriptor e = it->second;
+
+    // Create the LocalAssemblyGraph.
+    const vector<AssemblyGraph::vertex_descriptor> startVertices = {source(e, assemblyGraph), target(e, assemblyGraph)};
+    LocalAssemblyGraph localAssemblyGraph(assemblyGraph, startVertices, distance);
+
+    html << "<p>The local assembly graph has " << num_vertices(localAssemblyGraph) <<
+        " vertices and " << num_edges(localAssemblyGraph) << " edges.";
+
+    localAssemblyGraph.writeHtml(html, assemblyGraph, distance);
+}
 
 
 
