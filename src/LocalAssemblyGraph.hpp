@@ -56,13 +56,16 @@ public:
     void writeHtml(
         ostream& html,
         const AssemblyGraph&,
-        uint64_t maxDistance);
+        uint64_t maxDistance) const;
     void writeGraphviz(
         const string& fileName,
         const AssemblyGraph&,
-        uint64_t maxDistance);
+        uint64_t maxDistance) const;
     void writeGraphviz(
         ostream&,
         const AssemblyGraph&,
-        uint64_t maxDistance);
+        uint64_t maxDistance) const;
+
+    void approximateTopologicalSort(const AssemblyGraph&);
+    vector<vertex_descriptor> verticesByRank;
 };
