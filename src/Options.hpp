@@ -85,10 +85,6 @@ public:
     uint64_t phasingMinCoverage = 4;
 
     // Options that control detangling.
-    uint64_t detangleMinCommonCoverage = 3;
-    uint64_t detangleLowCoverageThreshold = 1;
-    uint64_t detangleHighCoverageThreshold = 4;
-    uint64_t detangleMaxTrim = 10;
     double detangleEpsilon = 0.05;
     double detangleMaxLogP = 30.;
     double detangleMinLogPDelta = 10.;
