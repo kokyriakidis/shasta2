@@ -12,7 +12,6 @@ namespace shasta {
 
 class shasta::LikelihoodRatioDetangler : public Detangler {
 public:
-    bool operator()(Tangle&);
     bool operator()(Tangle1&);
 
     LikelihoodRatioDetangler(

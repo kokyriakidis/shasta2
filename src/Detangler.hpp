@@ -2,7 +2,6 @@
 
 namespace shasta {
     class Detangler;
-    class Tangle;
     class Tangle1;
 }
 
@@ -15,8 +14,6 @@ public:
     //   * It calls Tangle::connect to store in the Tangle the entrance/exit pairs to be connected.
     //   * It calls Tangle::detangle.
     //   * It returns true.
-    virtual bool operator()(Tangle&) = 0;
-
     virtual bool operator()(Tangle1&)
     {
         return false;
