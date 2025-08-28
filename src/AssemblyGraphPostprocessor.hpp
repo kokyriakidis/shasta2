@@ -2,7 +2,6 @@
 
 // Shasta.
 #include "AssemblyGraph.hpp"
-#include "TrivialDetangler.hpp"
 
 // Standard library.
 #include <span.hpp>

@@ -5,7 +5,6 @@
 #include "Assembler.hpp"
 #include "AssemblyGraphPostprocessor.hpp"
 #include "Base.hpp"
-#include "ChiSquareDetangler.hpp"
 #include "deduplicate.hpp"
 #include "Detangler.hpp"
 #include "diploidBayesianPhase.hpp"
@@ -16,14 +15,11 @@
 #include "mappedCopy.hpp"
 #include "MultithreadedObject.hpp"
 #include "Options.hpp"
-#include "PermutationDetangler.hpp"
 #include "performanceLog.hpp"
 #include "ShortBaseSequence.hpp"
-#include "SimpleDetangler.hpp"
 #include "splitRange.hpp"
 #include "testSpoa.hpp"
 #include "testSubsetGraph.hpp"
-#include "TrivialDetangler.hpp"
 using namespace shasta;
 
 // Pybind11
@@ -183,18 +179,6 @@ PYBIND11_MODULE(shasta2, shasta2Module)
     // Detangler classes.
     class_<Detangler>(shasta2Module, "Detangler")
         .def_readwrite("debug", &Detangler::debug)
-        ;
-    class_<TrivialDetangler>(shasta2Module, "TrivialDetangler", pybind11::base<Detangler>())
-        .def(init<uint64_t>())
-        ;
-    class_<SimpleDetangler>(shasta2Module, "SimpleDetangler", pybind11::base<Detangler>())
-        .def(init<uint64_t, uint64_t>())
-        ;
-    class_<PermutationDetangler>(shasta2Module, "PermutationDetangler", pybind11::base<Detangler>())
-        .def(init<uint64_t, double, double, double>())
-        ;
-    class_<ChiSquareDetangler>(shasta2Module, "ChiSquareDetangler", pybind11::base<Detangler>())
-        .def(init<uint64_t, double, double, double>())
         ;
     class_<LikelihoodRatioDetangler>(shasta2Module, "LikelihoodRatioDetangler", pybind11::base<Detangler>())
         .def(init<uint64_t, double, double, double, uint64_t>())

@@ -10,7 +10,6 @@
 #include "copyNumber.hpp"
 #include "deduplicate.hpp"
 #include "Detangler.hpp"
-#include "ExactDetangler.hpp"
 #include "findLinearChains.hpp"
 #include "findConvergingVertex.hpp"
 #include "inducedSubgraphIsomorphisms.hpp"
@@ -23,7 +22,6 @@
 #include "Reads.hpp"
 #include "rle.hpp"
 #include "SearchGraph.hpp"
-#include "SimpleDetangler.hpp"
 #include "Superbubble.hpp"
 #include "SuperbubbleChain.hpp"
 #include "Tangle.hpp"
@@ -31,7 +29,6 @@
 #include "TangleMatrix.hpp"
 #include "TangleMatrix1.hpp"
 #include "transitiveReduction.hpp"
-#include "TrivialDetangler.hpp"
 using namespace shasta;
 
 // Boost libraries.
