@@ -8,16 +8,12 @@ using namespace shasta;
 
 
 LikelihoodRatioDetangler::LikelihoodRatioDetangler(
-    uint64_t minCommonCoverage,
     const double epsilon,
     const double maxLogP,
-    const double minLogPDelta,
-    uint64_t detangleHighCoverageThreshold):
-    minCommonCoverage(minCommonCoverage),
+    const double minLogPDelta):
     epsilon(epsilon),
     maxLogP(maxLogP),
-    minLogPDelta(minLogPDelta),
-    detangleHighCoverageThreshold(detangleHighCoverageThreshold)
+    minLogPDelta(minLogPDelta)
 {}
 
 

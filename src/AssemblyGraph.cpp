@@ -187,11 +187,9 @@ void AssemblyGraph::run()
 
         // Detangling.
         LikelihoodRatioDetangler detangler(
-            options.detangleMinCommonCoverage,
             options.detangleEpsilon,
             options.detangleMaxLogP,
-            options.detangleMinLogPDelta,
-            options.detangleHighCoverageThreshold);
+            options.detangleMinLogPDelta);
         changeCount += detangleHighLevel(detangleMaxIterationCount, detangleMaxCrossEdgeLength, detangler);
         write("E" + to_string(iteration));
 

@@ -15,15 +15,11 @@ public:
     bool operator()(Tangle1&);
 
     LikelihoodRatioDetangler(
-        uint64_t minCommonCoverage,
         const double epsilon,
         const double maxLogP,
-        const double minLogPDelta,
-        uint64_t detangleHighCoverageThreshold);
+        const double minLogPDelta);
 
-    uint64_t minCommonCoverage;
     double epsilon;
     double maxLogP;
     double minLogPDelta;
-    uint64_t detangleHighCoverageThreshold;
 };

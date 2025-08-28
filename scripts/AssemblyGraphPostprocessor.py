@@ -23,11 +23,9 @@ assembler.accessJourneys()
 # Create a Detangler. Only needed if we want to perform
 # detangling operations.
 detangler = LikelihoodRatioDetangler(
-    options.detangleMinCommonCoverage,
     options.detangleEpsilon,
     options.detangleMaxLogP,
-    options.detangleMinLogPDelta,
-    options.detangleHighCoverageThreshold)
+    options.detangleMinLogPDelta)
     
 # Read our AssemblyGraph to work on.
 assemblyGraph = assembler.getAssemblyGraph("Z", options)
