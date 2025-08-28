@@ -259,19 +259,21 @@ public:
     }
 
 
+
     // Detangling.
     // The detangling functions return the number of successful detangling operations.
 
-    // Low level detangling function.
-    uint64_t detangle(const vector< vector<vertex_descriptor> >& detanglingCandidates, Detangler&);
-    uint64_t detangle1(const vector< vector<vertex_descriptor> >& detanglingCandidates, Detangler&);
+    // High level detangling function.
+    uint64_t detangle(
+        uint64_t maxIterationCount,
+        uint64_t detangleMaxCrossEdgeLength,
+        Detangler&);
 
-    // Low level detangling function. This detangles a single tangle using Tangle1.
-    bool detangle1(const vector<vertex_descriptor>&, Detangler&);
-
+    // Vertex detangling.
     uint64_t detangleVerticesIteration(Detangler&);
     uint64_t detangleVertices(uint64_t maxIterationCount, Detangler&);
 
+    // Edge detangling.
     uint64_t detangleEdgesIteration(
         uint64_t detangleMaxCrossEdgeLength,
         Detangler&);
@@ -280,11 +282,10 @@ public:
         uint64_t detangleMaxCrossEdgeLength,
         Detangler&);
 
-    // High level detangling function.
-    uint64_t detangle(
-        uint64_t maxIterationCount,
-        uint64_t detangleMaxCrossEdgeLength,
-        Detangler&);
+    // Low level detangling function.
+    uint64_t detangle1(const vector< vector<vertex_descriptor> >& detanglingCandidates, Detangler&);
+
+
 
     // The detangling process can generate empty edges (edges without steps).
     // This removes them by collapsing the vertices they join.
