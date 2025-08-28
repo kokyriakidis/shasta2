@@ -27,8 +27,7 @@ detangler = LikelihoodRatioDetangler(
     options.detangleEpsilon,
     options.detangleMaxLogP,
     options.detangleMinLogPDelta,
-    options.detangleHighCoverageThreshold,
-    False)
+    options.detangleHighCoverageThreshold)
     
 # Read our AssemblyGraph to work on.
 assemblyGraph = assembler.getAssemblyGraph("Z", options)

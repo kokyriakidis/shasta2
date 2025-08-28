@@ -20,13 +20,11 @@ public:
         const double epsilon,
         const double maxLogP,
         const double minLogPDelta,
-        uint64_t detangleHighCoverageThreshold,
-        bool useExtendedTangleMatrix);
+        uint64_t detangleHighCoverageThreshold);
 
     uint64_t minCommonCoverage;
     double epsilon;
     double maxLogP;
     double minLogPDelta;
     uint64_t detangleHighCoverageThreshold;
-    bool useExtendedTangleMatrix;
 };

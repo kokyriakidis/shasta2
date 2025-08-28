@@ -189,15 +189,12 @@ void AssemblyGraph::run()
         write("D" + to_string(iteration));
 
         // Detangling.
-        // createTangleTemplates();
-        const bool useExtendedTangleMatrix = true;
         LikelihoodRatioDetangler detangler(
             options.detangleMinCommonCoverage,
             options.detangleEpsilon,
             options.detangleMaxLogP,
             options.detangleMinLogPDelta,
-            options.detangleHighCoverageThreshold,
-            useExtendedTangleMatrix);
+            options.detangleHighCoverageThreshold);
         changeCount += detangle(detangleMaxIterationCount, detangleMaxCrossEdgeLength, detangler);
         write("E" + to_string(iteration));
 
