@@ -280,10 +280,6 @@ public:
         uint64_t detangleMaxCrossEdgeLength,
         Detangler&);
 
-    uint64_t detangleTemplateIteration(uint64_t templateId, Detangler&);
-    uint64_t detangleTemplate(uint64_t templateId, uint64_t maxIterationCount, Detangler&);
-    uint64_t detangleTemplates(uint64_t maxIterationCount, Detangler&);
-
     // High level detangling function.
     uint64_t detangle(
         uint64_t maxIterationCount,
@@ -294,14 +290,6 @@ public:
     // This removes them by collapsing the vertices they join.
     void removeEmptyEdges();
 
-
-
-    // Tangle templates.
-    using TangleTemplate = boost::adjacency_list<boost::listS, boost::vecS, boost::bidirectionalS>;
-    static void writeGraphviz(ostream&, const TangleTemplate&);
-    static TangleTemplate reverse(const TangleTemplate&);
-    vector<TangleTemplate> tangleTemplates;
-    void createTangleTemplates();
 
 
 public:
