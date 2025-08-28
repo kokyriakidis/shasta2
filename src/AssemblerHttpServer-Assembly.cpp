@@ -250,6 +250,7 @@ void Assembler::exploreSuperbubble(
         " vertices and " << num_edges(localAssemblyGraph) << " edges.";
 
     localAssemblyGraph.writeHtml(html, assemblyGraph, 1);
+    localAssemblyGraph.analyze(html, assemblyGraph);
 
 }
 

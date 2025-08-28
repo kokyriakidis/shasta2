@@ -2,13 +2,16 @@
 #include "LocalAssemblyGraph.hpp"
 #include "Anchor.hpp"
 #include "approximateTopologicalSort.hpp"
+#include "deduplicate.hpp"
 #include "graphvizToHtml.hpp"
 #include "LocalSubgraph.hpp"
 #include "orderPairs.hpp"
+#include "shastaLapack.hpp"
 #include "tmpDirectory.hpp"
 using namespace shasta;
 
 // Boost libraries.
+#include <boost/numeric/ublas/matrix.hpp>
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
@@ -211,4 +214,161 @@ void LocalAssemblyGraph::writeGraphviz(
 
 
     dot << "}\n";
+}
+
+
+
+void LocalAssemblyGraph::analyze(
+    ostream& html,
+    const AssemblyGraph& assemblyGraph) const
+{
+    const LocalAssemblyGraph localAssemblyGraph = *this;
+
+    // Gather the edges and sort them by id.
+    vector<AssemblyGraph::edge_descriptor> edgesSortedById;
+    BGL_FORALL_EDGES(le, localAssemblyGraph, LocalAssemblyGraph) {
+        const AssemblyGraph::edge_descriptor e = localAssemblyGraph[le].e;
+        edgesSortedById.push_back(e);
+    }
+    std::ranges::sort(edgesSortedById, assemblyGraph.orderById);
+    const uint64_t edgeCount = edgesSortedById.size();
+
+    // Gather the OrientedReadids present in all the edges.
+    vector<OrientedReadId> orientedReadIds;
+    for(const AssemblyGraph::edge_descriptor e: edgesSortedById) {
+        const AssemblyGraphEdge& edge = assemblyGraph[e];
+        for(const AssemblyGraphEdgeStep& step: edge) {
+            const AnchorPair anchorPair = step.anchorPair;
+            std::ranges::copy(anchorPair.orientedReadIds, back_inserter(orientedReadIds));
+        }
+    }
+    deduplicate(orientedReadIds);
+    const uint64_t orientedReadCount = orientedReadIds.size();
+
+
+
+    // Count how many times each OrientedReadId appears in each edge.
+    using IntegerMatrix = boost::numeric::ublas::matrix<uint64_t, boost::numeric::ublas::column_major>;
+    IntegerMatrix integerMatrix(orientedReadCount, edgeCount, 0);
+    for(uint64_t iEdge=0; iEdge<edgeCount; iEdge++) {
+        const AssemblyGraph::edge_descriptor e = edgesSortedById[iEdge];
+        const AssemblyGraphEdge& edge = assemblyGraph[e];
+        for(const AssemblyGraphEdgeStep& step: edge) {
+            const AnchorPair anchorPair = step.anchorPair;
+            for(const OrientedReadId orientedReadId: anchorPair.orientedReadIds) {
+                const auto it = std::ranges::lower_bound(orientedReadIds, orientedReadId);
+                SHASTA_ASSERT(it != orientedReadIds.end());
+                SHASTA_ASSERT(*it == orientedReadId);
+                const uint64_t iOrientedRead = it - orientedReadIds.begin();
+                ++integerMatrix(iOrientedRead, iEdge);
+            }
+        }
+    }
+
+
+    if(html) {
+        html <<
+            "<h3>Occurrences of oriented reads in edges of this local assembly graph</h3>"
+            "<table><tr><td>";
+        for(uint64_t iEdge=0; iEdge<edgeCount; iEdge++) {
+            html << "<th>" << assemblyGraph[edgesSortedById[iEdge]].id;
+        }
+        for(uint64_t iOrientedRead=0; iOrientedRead<orientedReadCount; iOrientedRead++) {
+            html << "<tr><th>" << orientedReadIds[iOrientedRead];
+            for(uint64_t iEdge=0; iEdge<edgeCount; iEdge++) {
+                html << "<td class=centered>" << integerMatrix(iOrientedRead, iEdge);
+            }
+        }
+        html << "</table>";
+    }
+
+
+
+    // Use a SVD to cluster the OrientedReadIds.
+
+    // Create a matrix containing doubles.
+    using Matrix = boost::numeric::ublas::matrix<double, boost::numeric::ublas::column_major>;
+    Matrix matrix(orientedReadCount, edgeCount);
+    for(uint64_t iOrientedRead=0; iOrientedRead<orientedReadCount; iOrientedRead++) {
+        for(uint64_t iEdge=0; iEdge<edgeCount; iEdge++) {
+            matrix(iOrientedRead, iEdge) = double(integerMatrix(iOrientedRead, iEdge));
+        }
+    }
+
+    // Shift all the columns so they have zero average.
+    for(uint64_t iEdge=0; iEdge<edgeCount; iEdge++) {
+        double sum = 0.;
+        for(uint64_t iOrientedRead=0; iOrientedRead<orientedReadCount; iOrientedRead++) {
+            sum += matrix(iOrientedRead, iEdge);
+        }
+        const double average = sum / double(orientedReadCount);
+        for(uint64_t iOrientedRead=0; iOrientedRead<orientedReadCount; iOrientedRead++) {
+            matrix(iOrientedRead, iEdge) -= average;
+        }
+    }
+
+    // Shift all the rows so they have zero average.
+    for(uint64_t iOrientedRead=0; iOrientedRead<orientedReadCount; iOrientedRead++) {
+        double sum = 0.;
+        for(uint64_t iEdge=0; iEdge<edgeCount; iEdge++) {
+            sum += matrix(iOrientedRead, iEdge);
+        }
+        const double average = sum / double(edgeCount);
+        for(uint64_t iEdge=0; iEdge<edgeCount; iEdge++) {
+            matrix(iOrientedRead, iEdge) -= average;
+        }
+    }
+
+    // Compute the SVD.
+    vector<double> singularValues;
+    Matrix leftSingularVectors;
+    Matrix rightSingularVectors;
+    dgesvd(matrix, singularValues, leftSingularVectors, rightSingularVectors);
+
+
+
+    // Write SVD results.
+    if(html) {
+        // The actual number of singular values/vectors we will write out.
+        const uint64_t singularValueCount = min(6UL, singularValues.size());
+
+        html << std::fixed << std::setprecision(3);
+
+        // Singular values.
+        html <<
+            "<h3>Singular values</h3><table>";
+        for(uint64_t j=0; j<singularValueCount; j++) {
+            html << "<tr><th>S<sub>" << j << "</sub><td class=centered>" << singularValues[j];
+        }
+        html << "</table>";
+
+        // Left singular vectors.
+        html <<
+            "<h3>Left singular vectors</h3><table>"
+            "<tr><th>Oriented<br>read<br>id";
+        for(uint64_t j=0; j<singularValueCount; j++) {
+            html << "<th>L<sub>" << j << "</sub>";
+        }
+        for(uint64_t j=0; j<singularValueCount; j++) {
+            html << "<th>S<sub>" << j << "</sub>L<sub>" << j << "</sub>";
+        }
+        html << "\n";
+        for(uint64_t iOrientedRead=0; iOrientedRead<orientedReadCount; iOrientedRead++) {
+            const OrientedReadId orientedReadId = orientedReadIds[iOrientedRead];
+            html << "<tr><th>" << orientedReadId;
+
+            // Without scaling.
+            for(uint64_t j=0; j<singularValueCount; j++) {
+                html << "<td class=centered>" << leftSingularVectors(iOrientedRead, j);
+            }
+
+            // With scaling.
+            for(uint64_t j=0; j<singularValueCount; j++) {
+                html << "<td class=centered>" << singularValues[j] * leftSingularVectors(iOrientedRead, j);
+            }
+
+            html << "\n";
+        }
+        html << "</table>";
+    }
 }

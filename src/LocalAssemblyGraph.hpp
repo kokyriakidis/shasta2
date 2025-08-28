@@ -81,4 +81,6 @@ public:
 
     void approximateTopologicalSort(const AssemblyGraph&);
     vector<vertex_descriptor> verticesByRank;
+
+    void analyze(ostream& html, const AssemblyGraph&) const;
 };
