@@ -52,7 +52,7 @@ void Assembler::fillServerFunctionTable()
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreSegment);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreSegmentStep);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreBridgeSegmentSteps);
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreTangleMatrix1);
+    SHASTA_ADD_TO_FUNCTION_TABLE(exploreTangleMatrix);
 }
 #undef SHASTA_ADD_TO_FUNCTION_TABLE
 
@@ -234,7 +234,7 @@ void Assembler::writeNavigation(ostream& html) const
         {"Segment", "exploreSegment"},
         {"Segment step", "exploreSegmentStep"},
         {"Bridge segment steps", "exploreBridgeSegmentSteps"},
-        {"Tangle matrix", "exploreTangleMatrix1"},
+        {"Tangle matrix", "exploreTangleMatrix"},
         {"Local assembly", "exploreLocalAssembly"},
         {"Sequence similarity", "exploreSimilarSequences"},
         });

@@ -980,7 +980,7 @@ AssemblyGraphPostprocessor& Assembler::getAssemblyGraph(
 
 
 
-void Assembler::exploreTangleMatrix1(const vector<string>& request, ostream& html)
+void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html)
 {
     // Get the options from the request.
     string assemblyStage;
