@@ -163,6 +163,11 @@ void AssemblyGraph::run()
     const uint64_t detangleMaxIterationCount = 10;
     const uint64_t detangleMaxCrossEdgeLength = 10000;
 
+    LikelihoodRatioDetangler detangler(
+        options.detangleEpsilon,
+        options.detangleMaxLogP,
+        options.detangleMinLogPDelta);
+
     // Initial output.
     write("A");
 
@@ -174,9 +179,11 @@ void AssemblyGraph::run()
         changeCount += prune();
         changeCount += compress();
 
-        // Simplify Superbubbles and remove or simplify bubbles likely caused by errors.
-        changeCount += simplifySuperbubbles();
+        // Simplify Superbubbles.
+        changeCount += simplifySuperbubbles(detangler);
         write("B" + to_string(iteration));
+
+        // Remove or simplify bubbles likely caused by errors.
         changeCount += bubbleCleanup();
         changeCount += compress();
         write("C" + to_string(iteration));
@@ -186,10 +193,6 @@ void AssemblyGraph::run()
         write("D" + to_string(iteration));
 
         // Detangling.
-        LikelihoodRatioDetangler detangler(
-            options.detangleEpsilon,
-            options.detangleMaxLogP,
-            options.detangleMinLogPDelta);
         changeCount += detangleHighLevel(detangleMaxIterationCount, detangleMaxCrossEdgeLength, detangler);
         write("E" + to_string(iteration));
 
@@ -1756,7 +1759,7 @@ uint64_t AssemblyGraph::phaseSuperbubbleChains()
 
 // Simplify Superbubbles by turning them into bubbles via clustering
 // of oriented read journeys.
-uint64_t AssemblyGraph::simplifySuperbubbles()
+uint64_t AssemblyGraph::simplifySuperbubbles(Detangler& detangler)
 {
 
     // Find the superbubbles, then remove superbubbles that are entirely
@@ -1778,9 +1781,18 @@ uint64_t AssemblyGraph::simplifySuperbubbles()
     uint64_t simplifiedCount = 0;
     for(const Superbubble& superbubble: superbubbles) {
         if(not superbubble.isBubble()) {
-            const bool success = simplifySuperbubble(superbubble,
-                options.simplifySuperbubbleMinCoverage,
-                options.simplifySuperbubbleMaxOffset);
+
+            // First try simplify by detangling.
+            bool success = simplifySuperbubbleByDetangling(superbubble, detangler);
+
+            // If that did not work, try simplify by clustering.
+            if(not success) {
+                simplifySuperbubbleByClustering(superbubble,
+                    options.simplifySuperbubbleMinCoverage,
+                    options.simplifySuperbubbleMaxOffset);
+            }
+
+            // If one of the above was successful, increment our counter.
             if(success) {
                 ++simplifiedCount;
             }
@@ -1792,7 +1804,14 @@ uint64_t AssemblyGraph::simplifySuperbubbles()
 
 
 
-bool AssemblyGraph::simplifySuperbubble(
+bool AssemblyGraph::simplifySuperbubbleByDetangling(const Superbubble&, Detangler&)
+{
+    return false;
+}
+
+
+
+bool AssemblyGraph::simplifySuperbubbleByClustering(
     const Superbubble& superbubble,
     uint64_t minCoverage,
     uint64_t maxOffset)
