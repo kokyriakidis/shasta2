@@ -264,7 +264,7 @@ public:
     // The detangling functions return the number of successful detangling operations.
 
     // High level detangling function.
-    uint64_t detangle(
+    uint64_t detangleHighLevel(
         uint64_t maxIterationCount,
         uint64_t detangleMaxCrossEdgeLength,
         Detangler&);
@@ -283,7 +283,7 @@ public:
         Detangler&);
 
     // Low level detangling function.
-    uint64_t detangle1(const vector< vector<vertex_descriptor> >& detanglingCandidates, Detangler&);
+    uint64_t detangleLowLevel(const vector< vector<vertex_descriptor> >& detanglingCandidates, Detangler&);
 
 
 

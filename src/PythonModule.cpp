@@ -147,18 +147,8 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def("detangleVerticesIteration", &AssemblyGraph::detangleVerticesIteration)
         .def("detangleEdges", &AssemblyGraph::detangleEdges)
         .def("detangleEdgesIteration", &AssemblyGraph::detangleEdgesIteration)
-        .def("detangle",
-            (
-                uint64_t (AssemblyGraph::*)
-                (uint64_t, uint64_t, Detangler&)
-            )
-            &AssemblyGraph::detangle)
-        .def("detangle1",
-            (
-                bool (AssemblyGraph::*)
-                (const vector<AssemblyGraph::vertex_descriptor>&, Detangler&)
-            )
-            &AssemblyGraph::detangle1)
+        .def("detangleHighLevel", &AssemblyGraph::detangleHighLevel)
+        .def("detangleLowLevel", &AssemblyGraph::detangleLowLevel)
         .def("compress", &AssemblyGraph::compress)
         .def("removeEmptyEdges", &AssemblyGraph::removeEmptyEdges)
         .def("assembleAll", &AssemblyGraph::assembleAll)

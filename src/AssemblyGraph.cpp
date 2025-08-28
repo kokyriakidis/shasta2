@@ -195,7 +195,7 @@ void AssemblyGraph::run()
             options.detangleMaxLogP,
             options.detangleMinLogPDelta,
             options.detangleHighCoverageThreshold);
-        changeCount += detangle(detangleMaxIterationCount, detangleMaxCrossEdgeLength, detangler);
+        changeCount += detangleHighLevel(detangleMaxIterationCount, detangleMaxCrossEdgeLength, detangler);
         write("E" + to_string(iteration));
 
         cout << "Total change count at iteration " << iteration << " was " << changeCount << endl;
@@ -1159,7 +1159,7 @@ uint64_t AssemblyGraph::detangleVerticesIteration(Detangler& detangler)
     }
 
     // Do the detangling.
-    return detangle1(detanglingCandidates, detangler);
+    return detangleLowLevel(detanglingCandidates, detangler);
 }
 
 
@@ -1225,13 +1225,12 @@ uint64_t AssemblyGraph::detangleEdgesIteration(
     }
 
     // Do the detangling.
-    return detangle1(detanglingCandidates, detangler);
+    return detangleLowLevel(detanglingCandidates, detangler);
 }
 
 
 
-// Version that uses Tangle1 instead of Tangle.
-uint64_t AssemblyGraph::detangle1(
+uint64_t AssemblyGraph::detangleLowLevel(
     const vector< vector<vertex_descriptor> >& detanglingCandidates,
     Detangler& detangler)
 {
@@ -1315,7 +1314,7 @@ uint64_t AssemblyGraph::detangle1(
 
 
 
-uint64_t AssemblyGraph::detangle(
+uint64_t AssemblyGraph::detangleHighLevel(
     uint64_t maxIterationCount,
     uint64_t detangleMaxCrossEdgeLength,
     Detangler& detangler)
