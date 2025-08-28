@@ -18,6 +18,7 @@ using namespace shasta;
 
 
 
+// Constructor from a set of AssemblyGraph start vertices and maximum distance.
 LocalAssemblyGraph::LocalAssemblyGraph(
     const AssemblyGraph& assemblyGraph,
     vector<AssemblyGraph::vertex_descriptor> startVertices,
@@ -25,6 +26,51 @@ LocalAssemblyGraph::LocalAssemblyGraph(
 {
     *this = createLocalSubgraph<AssemblyGraph, LocalAssemblyGraph>(
         assemblyGraph, startVertices, true, true, maxDistance);
+    approximateTopologicalSort(assemblyGraph);
+}
+
+
+
+// Constructor from a set of AssemblyGraph edges.
+LocalAssemblyGraph::LocalAssemblyGraph(
+    const AssemblyGraph& assemblyGraph,
+    vector<AssemblyGraph::edge_descriptor> edges)
+{
+    LocalAssemblyGraph& localAssemblyGraph = *this;
+
+    // Create the vertices.
+    std::map<AssemblyGraph::vertex_descriptor, vertex_descriptor> vertexMap;
+    for(const AssemblyGraph::edge_descriptor e: edges) {
+
+        const AssemblyGraph::vertex_descriptor v0 = source(e, assemblyGraph);
+        if(not vertexMap.contains(v0)) {
+            vertexMap.insert(make_pair(v0, add_vertex(LocalAssemblyGraphVertex(v0), localAssemblyGraph)));
+        }
+
+        const AssemblyGraph::vertex_descriptor v1 = target(e, assemblyGraph);
+        if(not vertexMap.contains(v1)) {
+            vertexMap.insert(make_pair(v1, add_vertex(LocalAssemblyGraphVertex(v1), localAssemblyGraph)));
+        }
+    }
+
+
+
+    // Create the edges.
+    for(const AssemblyGraph::edge_descriptor e: edges) {
+
+        const AssemblyGraph::vertex_descriptor v0 = source(e, assemblyGraph);
+        const auto it0 = vertexMap.find(v0);
+        SHASTA_ASSERT(it0 != vertexMap.end());
+        const vertex_descriptor lv0 = it0->second;
+
+        const AssemblyGraph::vertex_descriptor v1 = target(e, assemblyGraph);
+        const auto it1 = vertexMap.find(v1);
+        SHASTA_ASSERT(it1 != vertexMap.end());
+        const vertex_descriptor lv1 = it1->second;
+
+        add_edge(lv0, lv1, LocalAssemblyGraphEdge(e), localAssemblyGraph);
+    }
+
     approximateTopologicalSort(assemblyGraph);
 }
 

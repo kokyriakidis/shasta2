@@ -23,6 +23,10 @@ namespace shasta {
 class shasta::LocalAssemblyGraphVertex {
 public:
     AssemblyGraph::vertex_descriptor v;
+
+    LocalAssemblyGraphVertex(AssemblyGraph::vertex_descriptor v) : v(v) {}
+    LocalAssemblyGraphVertex() : v(LocalAssemblyGraphBaseClass::null_vertex()) {}
+
     uint64_t distance = invalid<uint64_t>;
 
     // Fields used by approximateTopologicalSort.
@@ -36,7 +40,7 @@ class shasta::LocalAssemblyGraphEdge {
 public:
     AssemblyGraph::edge_descriptor e;
 
-    // The default constructor is only needed to avoid a warning.
+    LocalAssemblyGraphEdge(AssemblyGraph::edge_descriptor e) : e(e) {}
     LocalAssemblyGraphEdge() : e(0, 0, 0) {}
 
     // Field used by approximateTopologicalSort.
@@ -47,10 +51,19 @@ public:
 
 class shasta::LocalAssemblyGraph : public LocalAssemblyGraphBaseClass {
 public:
+
+    // Constructor from a set of AssemblyGraph start vertices and maximum distance.
     LocalAssemblyGraph(
         const AssemblyGraph&,
         vector<AssemblyGraph::vertex_descriptor> startVertices,
         uint64_t maxDistance);
+
+    // Constructor from a set of AssemblyGraph edges.
+    LocalAssemblyGraph(
+        const AssemblyGraph&,
+        vector<AssemblyGraph::edge_descriptor> edges);
+
+    // Default constructor.
     LocalAssemblyGraph() {}
 
     void writeHtml(

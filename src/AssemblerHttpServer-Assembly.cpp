@@ -111,7 +111,7 @@ void Assembler::exploreLocalAssemblyGraph(
 
     // Create the LocalAssemblyGraph.
     const vector<AssemblyGraph::vertex_descriptor> startVertices = {source(e, assemblyGraph), target(e, assemblyGraph)};
-    LocalAssemblyGraph localAssemblyGraph(assemblyGraph, startVertices, distance);
+    const LocalAssemblyGraph localAssemblyGraph(assemblyGraph, startVertices, distance);
 
     html << "<p>The local assembly graph has " << num_vertices(localAssemblyGraph) <<
         " vertices and " << num_edges(localAssemblyGraph) << " edges.";
@@ -243,9 +243,13 @@ void Assembler::exploreSuperbubble(
 
     // Create the Superbubble.
     const Superbubble superbubble(assemblyGraph, vSource, vTarget);
-    html << "<p>The superbubble has " <<
-        superbubble.internalVertices.size() << " internal vertices and " <<
-        superbubble.internalEdges.size() << " internal edges. ";
+
+    // Create a LocalAssemblyGraph for this Superbubble.
+    const LocalAssemblyGraph localAssemblyGraph(assemblyGraph, superbubble.internalEdges);
+    html << "<p>The local assembly graph for this superbubble has " << num_vertices(localAssemblyGraph) <<
+        " vertices and " << num_edges(localAssemblyGraph) << " edges.";
+
+    localAssemblyGraph.writeHtml(html, assemblyGraph, 1);
 
 }
 
