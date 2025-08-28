@@ -2210,14 +2210,34 @@ bool AssemblyGraph::simplifySuperbubble(
 
     const bool debug = false;
 
+
+
     if(debug) {
-        cout << "Working on a superbubble consisting of the following " <<
+        cout << "Working on a superbubble with source vertex " <<
+            assemblyGraph[superbubble.sourceVertex].id <<
+            " and target vertex " << assemblyGraph[superbubble.targetVertex].id << endl;
+
+        cout << "Source edges:";
+        for(const edge_descriptor e: superbubble.sourceEdges) {
+            cout << " " << assemblyGraph[e].id << " ";
+        }
+        cout << endl;
+
+        cout << "Target edges:";
+        for(const edge_descriptor e: superbubble.targetEdges) {
+            cout << " " << assemblyGraph[e].id;
+        }
+        cout << endl;
+
+        cout << "This superbubble consists of the following " <<
             superbubble.internalEdges.size() << " edges:" << endl;
         for(const edge_descriptor e: superbubble.internalEdges) {
             cout << assemblyGraph[e].id << " ";
         }
         cout << endl;
     }
+
+
 
     // Create an AnchorPair between anchorIdA and anchorIdB
     // using all oriented reads in common between anchorIdA and anchorIdB.
