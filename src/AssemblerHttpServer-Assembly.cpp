@@ -2,11 +2,13 @@
 #include "Assembler.hpp"
 #include "areSimilarSequences.hpp"
 #include "AssemblyGraphPostprocessor.hpp"
+#include "findConvergingVertex.hpp"
 #include "graphvizToHtml.hpp"
 #include "GTest.hpp"
 #include "LocalAssembly.hpp"
 #include "LocalAssemblyGraph.hpp"
 #include "RestrictedAnchorGraph.hpp"
+#include "Superbubble.hpp"
 #include "Tangle.hpp"
 #include "TangleMatrix.hpp"
 #include "TangleMatrix1.hpp"
@@ -16,6 +18,7 @@ using namespace shasta;
 // Boost libraries.
 #include <boost/algorithm/string.hpp>
 #include <boost/graph/iteration_macros.hpp>
+#include <boost/graph/reverse_graph.hpp>
 #include <boost/tokenizer.hpp>
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
@@ -114,6 +117,136 @@ void Assembler::exploreLocalAssemblyGraph(
         " vertices and " << num_edges(localAssemblyGraph) << " edges.";
 
     localAssemblyGraph.writeHtml(html, assemblyGraph, distance);
+}
+
+
+
+void Assembler::exploreSuperbubble(
+    const vector<string>& request,
+    ostream& html)
+{
+    // Get the options from the request.
+    string assemblyStage;
+    HttpServer::getParameterValue(request, "assemblyStage", assemblyStage);
+    boost::trim(assemblyStage);
+
+    string sourceVertexIdString;
+    const bool sourceVertexIdIsPresent = HttpServer::getParameterValue(request, "sourceVertexId", sourceVertexIdString);
+    boost::trim(sourceVertexIdString);
+
+    string targetVertexIdString;
+    const bool targetVertexIdIsPresent = HttpServer::getParameterValue(request, "targetVertexId", targetVertexIdString);
+    boost::trim(targetVertexIdString);
+
+    uint64_t maxSuperbubbleDiameter = httpServerData.options->findSuperbubblesMaxDistance;
+    HttpServer::getParameterValue(request, "maxSuperbubbleDiameter", maxSuperbubbleDiameter);
+
+    // Write the form.
+    html <<
+        "<h2>Superbubble</h2><form><table>"
+
+    // Assembly stage.
+        "<tr>"
+        "<th class=left>Assembly stage"
+        "<td class=centered><input type=text name=assemblyStage style='text-align:center' required";
+    if(not assemblyStage.empty()) {
+        html << " value='" << assemblyStage + "'";
+    }
+    html <<
+        " size=10>"
+
+    // Source vertex id.
+        "<tr>"
+        "<th class=left>Source vertex id"
+        "<td class=centered><input type=text name=sourceVertexId style='text-align:center' required";
+    if(sourceVertexIdIsPresent) {
+        html << " value='" << sourceVertexIdString + "'";
+    }
+    html <<
+        ">"
+
+    // Target vertex id.
+        "<tr>"
+        "<th class=left>Target vertex id"
+        "<td class=centered><input type=text name=targetVertexId style='text-align:center' required";
+    if(targetVertexIdIsPresent) {
+        html << " value='" << targetVertexIdString + "'";
+    }
+    html <<
+        ">"
+
+    // Maximum superbubble diameter.
+        "<tr>"
+        "<th class=left>Maximum superbubble diameter"
+        "<td class=centered><input type=text name=maxSuperbubbleDiameter style='text-align:center' required"
+        " value='" << maxSuperbubbleDiameter << "'>"
+
+    // End the form.
+        "</table>"
+        "<input type=submit value='Get segment information'>"
+        "</form>";
+
+
+
+    // If the source or target vertices are not present, don't do anything.
+    if(not sourceVertexIdIsPresent) {
+        return;
+    }
+    if(not targetVertexIdIsPresent) {
+        return;
+    }
+
+    // Get the source and target vertex ids.
+    uint64_t sourceVertexId;
+    try {
+        sourceVertexId = atoul(sourceVertexIdString);
+    } catch(std::exception& e) {
+        throw runtime_error("Source vertex id " + sourceVertexIdString + " is not valid. Must be a number.");
+    }
+    uint64_t targetVertexId;
+    try {
+        targetVertexId = atoul(targetVertexIdString);
+    } catch(std::exception& e) {
+        throw runtime_error("Target vertex id " + targetVertexIdString + " is not valid. Must be a number.");
+    }
+
+    // Get the AssemblyGraph for this assembly stage.
+    const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
+        assemblyStage,
+        *httpServerData.options);
+    const boost::reverse_graph<AssemblyGraph> reverseAssemblyGraph(assemblyGraph);
+
+    // Find the vertex descriptors for the source and target vertex.
+    auto itSource = assemblyGraph.vertexMap.find(sourceVertexId);
+    if(itSource == assemblyGraph.vertexMap.end()) {
+        html << "<p>Assembly graph at stage " << assemblyStage <<
+            " does not have vertex " << sourceVertexId;
+        return;
+    }
+    const AssemblyGraph::vertex_descriptor vSource = itSource->second;
+    auto itTarget = assemblyGraph.vertexMap.find(targetVertexId);
+    if(itTarget == assemblyGraph.vertexMap.end()) {
+        html << "<p>Assembly graph at stage " << assemblyStage <<
+            " does not have vertex " << targetVertexId;
+        return;
+    }
+    const AssemblyGraph::vertex_descriptor vTarget = itTarget->second;
+
+
+    // Check that the source and target vertices for a superbubble.
+    const AssemblyGraph::vertex_descriptor vB = findConvergingVertexGeneral(assemblyGraph, vSource, maxSuperbubbleDiameter);
+    const AssemblyGraph::vertex_descriptor vA = findConvergingVertexGeneral(reverseAssemblyGraph, vTarget, maxSuperbubbleDiameter);
+    if((vB != vTarget) or (vA != vSource)) {
+        html << "<p>These vertices do not form a valid superbubble.";
+        return;
+    }
+
+    // Create the Superbubble.
+    const Superbubble superbubble(assemblyGraph, vSource, vTarget);
+    html << "<p>The superbubble has " <<
+        superbubble.internalVertices.size() << " internal vertices and " <<
+        superbubble.internalEdges.size() << " internal edges. ";
+
 }
 
 
