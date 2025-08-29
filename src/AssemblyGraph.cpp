@@ -1799,14 +1799,64 @@ uint64_t AssemblyGraph::simplifySuperbubbles(Detangler& detangler)
         }
     }
 
+    // The detangling process can generate empty edges. Remove them.
+    removeEmptyEdges();
+
     return simplifiedCount;
 }
 
 
 
-bool AssemblyGraph::simplifySuperbubbleByDetangling(const Superbubble&, Detangler&)
+bool AssemblyGraph::simplifySuperbubbleByDetangling(
+    const Superbubble& superbubble,
+    Detangler& detangler)
 {
-    return false;
+    AssemblyGraph& assemblyGraph = *this;
+
+    const bool debug = false;
+
+    Tangle1 tangle(assemblyGraph, superbubble.internalVertices);
+
+    if(debug) {
+        cout << "simplifySuperbubbleByDetangling begins." << endl;
+
+        const TangleMatrix1& tangleMatrix = tangle.tangleMatrix();
+        cout << "Tangle with " << tangleMatrix.entrances.size() << " entrances and " <<
+            tangleMatrix.exits.size() << " exits." << endl;
+
+        cout << "Entrances:";
+        for(const edge_descriptor e: tangleMatrix.entrances) {
+            cout << " " << assemblyGraph[e].id;
+        }
+        cout << endl;
+
+        cout << "Exits:";
+        for(const edge_descriptor e: tangleMatrix.exits) {
+            cout << " " << assemblyGraph[e].id;
+        }
+        cout << endl;
+
+        for(uint64_t iEntrance=0; iEntrance<tangleMatrix.entrances.size(); iEntrance++) {
+            for(uint64_t iExit=0; iExit<tangleMatrix.exits.size(); iExit++) {
+                cout << tangleMatrix.tangleMatrix[iEntrance][iExit] << " ";
+            }
+        }
+        cout << endl;
+    }
+
+    const bool success = detangler(tangle);
+    if(success) {
+        if(debug) {
+            cout << "Detangle was successful." << endl;
+        }
+    } else {
+        if(debug) {
+            cout << "Detangle failed." << endl;
+        }
+    }
+
+    return success;
+
 }
 
 
