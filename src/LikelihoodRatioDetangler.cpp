@@ -10,10 +10,14 @@ using namespace shasta;
 LikelihoodRatioDetangler::LikelihoodRatioDetangler(
     const double epsilon,
     const double maxLogP,
-    const double minLogPDelta):
+    const double minLogPDelta,
+    bool requireInjective,
+    bool requirePermutation) :
     epsilon(epsilon),
     maxLogP(maxLogP),
-    minLogPDelta(minLogPDelta)
+    minLogPDelta(minLogPDelta),
+    requireInjective(requireInjective),
+    requirePermutation(requirePermutation)
 {}
 
 
@@ -42,6 +46,12 @@ bool LikelihoodRatioDetangler::operator()(Tangle1& tangle)
         }
         cout << endl;
 
+        cout << "Tangle vertices:";
+        for(const AssemblyGraph::vertex_descriptor v: tangle.tangleVertices) {
+            cout << " " << tangle.assemblyGraph[v].id;
+        }
+        cout << endl;
+
         cout << "Tangle matrix:" << endl;
         for(uint64_t i=0; i<entranceCount; i++) {
             for(uint64_t j=0; j<exitCount; j++) {
@@ -65,6 +75,22 @@ bool LikelihoodRatioDetangler::operator()(Tangle1& tangle)
             }
             cout << endl;
         }
+    }
+
+    // Skip pathological case.
+    if((entranceCount ==0) or (exitCount == 0)) {
+        if(debug) {
+            cout << "Not detangling because there are no entrances and/or no exits." << endl;
+        }
+        return false;
+    }
+
+    if(requirePermutation and (entranceCount != exitCount)) {
+        if(debug) {
+            cout << "Not detangling because requirePermutation is set and the number of "
+                " entrances is nto the same as the number of exits." << endl;
+        }
+        return false;
     }
 
     // Run the likelihood ratio test.
@@ -138,11 +164,23 @@ bool LikelihoodRatioDetangler::operator()(Tangle1& tangle)
         }
     }
 
-    if(not(isForwardInjective or isBackwardInjective)) {
-        if(debug) {
-            cout << "Not detangling because the best connectivity matrix is not forward or backward injective." << endl;
+
+    if(requireInjective) {
+        if(not(isForwardInjective or isBackwardInjective)) {
+            if(debug) {
+                cout << "Not detangling because the best connectivity matrix is not forward or backward injective." << endl;
+            }
+            return false;
         }
-        return false;
+    }
+
+    if(requirePermutation) {
+        if(not(isForwardInjective and isBackwardInjective)) {
+            if(debug) {
+                cout << "Not detangling because the best connectivity matrix is not forward and backward injective." << endl;
+            }
+            return false;
+        }
     }
 
 

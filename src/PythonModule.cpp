@@ -142,6 +142,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def("detangleEdgesIteration", &AssemblyGraph::detangleEdgesIteration)
         .def("detangleHighLevel", &AssemblyGraph::detangleHighLevel)
         .def("detangleLowLevel", &AssemblyGraph::detangleLowLevel)
+        .def("detangleShortTangles", &AssemblyGraph::detangleShortTangles)
         .def("compress", &AssemblyGraph::compress)
         .def("removeEmptyEdges", &AssemblyGraph::removeEmptyEdges)
         .def("assembleAll", &AssemblyGraph::assembleAll)
@@ -178,7 +179,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def_readwrite("debug", &Detangler::debug)
         ;
     class_<LikelihoodRatioDetangler>(shasta2Module, "LikelihoodRatioDetangler", pybind11::base<Detangler>())
-        .def(init<double, double, double>())
+        .def(init<double, double, double, bool, bool>())
         ;
 
 

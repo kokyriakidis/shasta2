@@ -162,7 +162,15 @@ void AssemblyGraph::simplifyAndAssemble()
     LikelihoodRatioDetangler detangler(
         options.detangleEpsilon,
         options.detangleMaxLogP,
-        options.detangleMinLogPDelta);
+        options.detangleMinLogPDelta,
+        true,
+        false);
+    LikelihoodRatioDetangler shortTanglesDetangler(
+        options.detangleEpsilon,
+        options.detangleMaxLogP,
+        options.detangleMinLogPDelta,
+        true,
+        true);
 
     // Initial output.
     write("A");
@@ -189,7 +197,7 @@ void AssemblyGraph::simplifyAndAssemble()
         write("D" + to_string(iteration));
 
         // Detangling.
-        changeCount += detangleHighLevel(detangler);
+        changeCount += detangleHighLevel(detangler, shortTanglesDetangler);
         write("E" + to_string(iteration));
 
         cout << "Total change count at iteration " << iteration << " was " << changeCount << endl;
@@ -1304,14 +1312,16 @@ uint64_t AssemblyGraph::detangleLowLevel(
 
 
 uint64_t AssemblyGraph::detangleHighLevel(
-    Detangler& detangler)
+    Detangler& detangler,
+    Detangler& shortTanglesDetangler)
 {
     performanceLog << timestamp << "AssemblyGraph::detangle begins." << endl;
 
     const uint64_t verticesChangeCount = detangleVertices(detangler);
     const uint64_t edgesChangeCount = detangleEdges(detangler);
+    const uint64_t shortTanglesChangeCount = detangleShortTangles(shortTanglesDetangler);
 
-    const uint64_t changeCount = verticesChangeCount + edgesChangeCount; // + templateChangeCount;
+    const uint64_t changeCount = verticesChangeCount + edgesChangeCount + shortTanglesChangeCount;
 
     performanceLog << timestamp << "AssemblyGraph::detangle ends." << endl;
     return changeCount;
@@ -3532,4 +3542,95 @@ uint64_t AssemblyGraph::countDistinctSourceVertices(vertex_descriptor v) const
 
     std::ranges::unique(sourceVertices);
     return sourceVertices.size();
+}
+
+
+
+// Detangle short tangles.
+uint64_t AssemblyGraph::detangleShortTangles(Detangler& detangler)
+{
+    const AssemblyGraph& assemblyGraph = *this;
+
+    // EXPOSE WHEN CODE STABILIZES.
+    const uint64_t shortTangleMaxStepCount = 10;
+
+    // Map vertices to integers.
+    std::map<vertex_descriptor, uint64_t> vertexIndexMap;
+    vector<vertex_descriptor> vertexTable;
+    uint64_t vertexIndex = 0;
+    BGL_FORALL_VERTICES(v, assemblyGraph, AssemblyGraph) {
+        vertexIndexMap.insert(make_pair(v, vertexIndex++));
+        vertexTable.push_back(v);
+    }
+    const uint64_t n = vertexIndexMap.size();
+
+    // Initialize the disjoint set data structures.
+    vector<uint64_t> rank(n);
+    vector<uint64_t> parent(n);
+    boost::disjoint_sets<uint64_t*, uint64_t*> disjointSets(&rank[0], &parent[0]);
+    for(uint64_t i=0; i<n; i++) {
+        disjointSets.make_set(i);
+    }
+
+
+
+    // Compute connected components of the AssemblyGraph using only short edges.
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+
+        // If not a short edge, skip it.
+        if(assemblyGraph[e].size() > shortTangleMaxStepCount) {
+            continue;
+        }
+
+        // Find the index corresponding to the source vertex.
+        const vertex_descriptor v0 = source(e, assemblyGraph);
+        const auto it0 = vertexIndexMap.find(v0);
+        SHASTA_ASSERT(it0 != vertexIndexMap.end());
+        const uint64_t i0 = it0->second;
+
+        // Find the index corresponding to the target vertex.
+        const vertex_descriptor v1 = target(e, assemblyGraph);
+        const auto it1 = vertexIndexMap.find(v1);
+        SHASTA_ASSERT(it1 != vertexIndexMap.end());
+        const uint64_t i1 = it1->second;
+
+        // Update the disjoint sets for this edge.
+        disjointSets.union_set(i0, i1);
+    }
+
+
+
+    // Gather the vertices in each connected component.
+    vector< vector<uint64_t> > components(n);
+    for(uint64_t i=0; i<n; i++) {
+        components[disjointSets.find_set(i)].push_back(i);
+    }
+
+
+
+    // Each connected components with size greater than 1 generates a short tangle.
+    vector< vector<vertex_descriptor> > detanglingCandidates;
+    for(const vector<uint64_t>& component: components) {
+        if(component.size() <= 1) {
+            continue;
+        }
+
+        // Gather the tangle vertices.
+        vector<vertex_descriptor> tangleVertices;
+        for(const uint64_t i: component) {
+            tangleVertices.push_back(vertexTable[i]);
+        }
+
+        // Add it to our detangling candidates.
+        detanglingCandidates.push_back(tangleVertices);
+    }
+
+    // Do the detangling.
+    const uint64_t successCount = detangleLowLevel(detanglingCandidates, detangler);
+
+    cout << "Of " << detanglingCandidates.size() <<
+        " short tangles, " << successCount << " were detangled successfully." << endl;
+    compress();
+
+    return successCount;
 }

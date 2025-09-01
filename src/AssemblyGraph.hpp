@@ -264,7 +264,8 @@ public:
     // The detangling functions return the number of successful detangling operations.
 
     // High level detangling function.
-    uint64_t detangleHighLevel(Detangler&);
+    // The second detangler is used for short tangles.
+    uint64_t detangleHighLevel(Detangler&, Detangler&);
 
     // Vertex detangling.
     uint64_t detangleVerticesIteration(Detangler&);
@@ -273,6 +274,9 @@ public:
     // Edge detangling.
     uint64_t detangleEdgesIteration(Detangler&);
     uint64_t detangleEdges(Detangler&);
+
+    // Detangling of short tangles.
+    uint64_t detangleShortTangles(Detangler&);
 
     // Low level detangling function.
     uint64_t detangleLowLevel(const vector< vector<vertex_descriptor> >& detanglingCandidates, Detangler&);
