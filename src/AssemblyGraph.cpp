@@ -167,7 +167,7 @@ void AssemblyGraph::simplifyAndAssemble()
     // Initial output.
     write("A");
 
-    for(uint64_t iteration=0; iteration<3; iteration++) {
+    for(uint64_t iteration=0; iteration<options.simplifyMaxIterationCount; iteration++) {
 
         uint64_t changeCount = 0;
 

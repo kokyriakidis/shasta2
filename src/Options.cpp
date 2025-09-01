@@ -125,6 +125,10 @@ void Options::addOptions()
         "Constant factor for offset consistency."
         )->capture_default_str();
 
+    add_option("--simplify-max-iterationCount", simplifyMaxIterationCount,
+        "Maximum number of assembly graph simplify iterations."
+        )->capture_default_str();
+
     add_option("--bubble-cleanup-max-bubble-length",
        bubbleCleanupMaxBubbleLength,
        "Maximum bubble length for bubble cleanup."
