@@ -164,7 +164,7 @@ void AssemblyGraph::simplifyAndAssemble()
         options.detangleMaxLogP,
         options.detangleMinLogPDelta,
         true,
-        false);
+        true);
     LikelihoodRatioDetangler shortTanglesDetangler(
         options.detangleEpsilon,
         options.detangleMaxLogP,
