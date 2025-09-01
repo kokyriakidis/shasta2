@@ -448,7 +448,7 @@ uint64_t SuperbubbleChain::phase1(
                 }
             }
 
-            if( gTest.hypotheses.front().isForwardInjective() or
+            if( gTest.hypotheses.front().isForwardInjective() and
                 gTest.hypotheses.front().isBackwardInjective()) {
                 phasingGraph.addEdge(position0, position1, bestHypothesis);
 
