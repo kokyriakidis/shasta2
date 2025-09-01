@@ -88,6 +88,8 @@ public:
     double detangleEpsilon = 0.05;
     double detangleMaxLogP = 30.;
     double detangleMinLogPDelta = 10.;
+    uint64_t detangleMaxIterationCount = 10;
+    uint64_t detangleMaxCrossEdgeLength = 10000;
 
     // Options that control pruning.
     uint64_t pruneLength = 50000;

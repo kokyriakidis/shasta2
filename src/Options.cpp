@@ -172,17 +172,27 @@ void Options::addOptions()
 
     add_option("--detangle-epsilon",
         detangleEpsilon,
-        "Epsilon value for chi-square detangling."
+        "Epsilon value for likelihood ratio detangling."
         )->capture_default_str();
 
     add_option("--detangle-maxLogP",
         detangleMaxLogP,
-        "MaxLogP value for chi-square detangling."
+        "MaxLogP value for likelihood ratio detangling."
         )->capture_default_str();
 
     add_option("--detangle-minLogPDelta",
         detangleMinLogPDelta,
-        "MinLogPDelta value for chi-square detangling."
+        "MinLogPDelta value for likelihood ratio detangling."
+        )->capture_default_str();
+
+    add_option("--detangle-max-iteration-count",
+        detangleMaxIterationCount,
+        "Maximum number of detangling iterations at each iteration of assembly graph simplify."
+        )->capture_default_str();
+
+    add_option("--detangle-max-cross-edge-length",
+        detangleMaxCrossEdgeLength,
+        "Maximum cross-edge length for detangling."
         )->capture_default_str();
 
     add_option("--prune-length",
