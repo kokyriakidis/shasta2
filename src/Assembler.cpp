@@ -216,7 +216,7 @@ void Assembler::createAssemblyGraph(const Options& options)
         journeys(),
         *anchorGraphPointer,
         options);
-    assemblyGraph.run();
+    assemblyGraph.simplifyAndAssemble();
 }
 
 

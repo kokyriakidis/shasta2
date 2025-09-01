@@ -155,9 +155,9 @@ AssemblyGraph::AssemblyGraph(
 
 
 // Detangle, phase, assemble sequence, output.
-void AssemblyGraph::run()
+void AssemblyGraph::simplifyAndAssemble()
 {
-    performanceLog << timestamp << "Assembly graph::run begins." << endl;
+    performanceLog << timestamp << "Assembly graph::simplifyAndAssemble begins." << endl;
 
     LikelihoodRatioDetangler detangler(
         options.detangleEpsilon,
@@ -201,7 +201,7 @@ void AssemblyGraph::run()
     write("Z");
     writeFasta("Z");
 
-    performanceLog << timestamp << "Assembly graph::run ends." << endl;
+    performanceLog << timestamp << "Assembly graph::simplifyAndAssemble ends." << endl;
 }
 
 

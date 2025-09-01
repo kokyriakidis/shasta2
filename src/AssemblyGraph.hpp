@@ -162,7 +162,7 @@ public:
         const string& stage);
 
     // Detangle, phase, assemble sequence, output.
-    void run();
+    void simplifyAndAssemble();
 
     const Anchors& anchors;
     const Journeys& journeys;
