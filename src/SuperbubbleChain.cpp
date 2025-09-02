@@ -622,7 +622,7 @@ uint64_t SuperbubbleChain::phase1(
                                 ", anchor pair coverage " <<
                                 tangle.tangleMatrix().tangleMatrix[iEntrance][iExit] << endl;
                         }
-                        tangle.connect(iEntrance, iExit);
+                        SHASTA_ASSERT(tangle.addConnectPair(iEntrance, iExit));
                     }
                 }
             }

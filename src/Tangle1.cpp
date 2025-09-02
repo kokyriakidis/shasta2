@@ -108,10 +108,13 @@ bool Tangle1::isTangleVertex(vertex_descriptor v) const
 
 
 
-void Tangle1::connect(uint64_t iEntrance, uint64_t iExit) {
-    SHASTA_ASSERT(iEntrance < entrances.size());
-    SHASTA_ASSERT(iExit < exits.size());
-    connectList.push_back({iEntrance, iExit});
+bool Tangle1::addConnectPair(uint64_t entranceIndex, uint64_t exitIndex) {
+    SHASTA_ASSERT(entranceIndex < entrances.size());
+    SHASTA_ASSERT(exitIndex < exits.size());
+    connectPairs.emplace_back(entranceIndex, exitIndex);
+
+    // For now this always returns true.
+    return true;
 }
 
 
@@ -126,15 +129,14 @@ void Tangle1::detangle()
     vector<vertex_descriptor> newExitVertices;
     rerouteExits(newExitVertices);
 
-    // Finally, reconnect the entrance/exit pairs in our connect list.
-    for(const auto& p: connectList) {
-        const uint64_t iEntrance = p.first;
-        const uint64_t iExit = p.second;
-
+    // Finally, reconnect the entrance/exit pairs in our ConnectPairs.
+    for(const ConnectPair& connectPair: connectPairs) {
+        const uint64_t entranceIndex = connectPair.entranceIndex;
+        const uint64_t exitIndex = connectPair.exitIndex;
         reconnect(
-            iEntrance, iExit,
-            newEntranceVertices[iEntrance],
-            newExitVertices[iExit]);
+            entranceIndex, exitIndex,
+            newEntranceVertices[entranceIndex],
+            newExitVertices[exitIndex]);
     }
 
     // Now we can remove all the tangle vertices and their edges.

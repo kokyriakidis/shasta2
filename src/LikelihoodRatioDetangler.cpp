@@ -201,9 +201,15 @@ bool LikelihoodRatioDetangler::operator()(Tangle1& tangle)
     for(uint64_t iEntrance=0; iEntrance<entranceCount; iEntrance++) {
         for(uint64_t iExit=0; iExit<exitCount; iExit++) {
             if(bestConnectivityMatrix[iEntrance][iExit]) {
-                tangle.connect(iEntrance, iExit);
-                if(debug) {
-                    cout << "Connecting for detangling: " << iEntrance << " " << iExit << endl;
+                if(tangle.addConnectPair(iEntrance, iExit)) {
+                    if(debug) {
+                        cout << "Connecting for detangling: " << iEntrance << " " << iExit << endl;
+                    }
+                } else {
+                    if(debug) {
+                        cout << "Cannot connect for detangling: " << iEntrance << " " << iExit << endl;
+                    }
+                    return false;
                 }
             }
         }

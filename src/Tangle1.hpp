@@ -57,14 +57,28 @@ public:
         return *tangleMatrixPointer;
     }
 
+
+
     // Detangling instructions.
-    // Each pair is (entranceIndex, exitIndex) that are to be connected
-    // when detangling.
+    // Each entry describes an entrance/exit pair to be connected.
     // Detangling decisions are not made in Tangle. They are made by the
     // Detangler object.
-    vector< pair<uint64_t, uint64_t> > connectList;
-    void connect(uint64_t iEntrance, uint64_t iExit);
+    class ConnectPair {
+    public:
+        uint64_t entranceIndex;
+        uint64_t exitIndex;
+        ConnectPair(
+            uint64_t entranceIndex,
+            uint64_t exitIndex) :
+            entranceIndex(entranceIndex),
+            exitIndex(exitIndex)
+            {}
+    };
+    vector<ConnectPair> connectPairs;
+    bool addConnectPair(uint64_t entranceIndex, uint64_t exitIndex);
     void detangle();
+
+
 
     // If the Tangle is detangled successfully, we store the vertices that were removed.
     vector<vertex_descriptor> removedVertices;
