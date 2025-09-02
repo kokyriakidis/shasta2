@@ -108,7 +108,7 @@ bool Tangle1::isTangleVertex(vertex_descriptor v) const
 
 
 
-bool Tangle1::addConnectPair(uint64_t entranceIndex, uint64_t exitIndex) {
+void Tangle1::addConnectPair(uint64_t entranceIndex, uint64_t exitIndex) {
     SHASTA_ASSERT(entranceIndex < entrances.size());
     SHASTA_ASSERT(exitIndex < exits.size());
     connectPairs.emplace_back(entranceIndex, exitIndex);
@@ -145,9 +145,6 @@ bool Tangle1::addConnectPair(uint64_t entranceIndex, uint64_t exitIndex) {
             newEdge.push_back(AssemblyGraphEdgeStep(rEdge.anchorPair,rEdge.offset));
         }
     }
-
-    // For now this always returns true.
-    return true;
 }
 
 
