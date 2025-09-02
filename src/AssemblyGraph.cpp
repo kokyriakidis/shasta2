@@ -997,7 +997,6 @@ bool AssemblyGraph::analyzeBubble(
 uint64_t AssemblyGraph::compress()
 {
     AssemblyGraph& assemblyGraph = *this;
-    const bool debug = false;
     uint64_t compressCount = 0;
 
     // Find linear chains of 2 or more edges.
@@ -1026,13 +1025,33 @@ uint64_t AssemblyGraph::compress()
             copy(edge.begin(), edge.end(), back_inserter(edgeNew));
         }
 
-        if(debug) {
+
+
+        // Compact debug output.
+        if(compressDebugLevel >= 1) {
             cout << "Compress";
             for(const edge_descriptor e: chain) {
                 cout << " " << assemblyGraph[e].id;
             }
             cout << " into " << edgeNew.id << endl;
         }
+
+
+
+        // Detailed debug output.
+        if(compressDebugLevel >= 2) {
+            uint64_t stepCount = 0;
+            for(const edge_descriptor e: chain) {
+                const AssemblyGraphEdge& edge = assemblyGraph[e];
+                const uint64_t stepBegin = stepCount;
+                const uint64_t stepEnd = stepBegin + edge.size();
+                cout << edge.id << " " << edge.size() << " steps become " <<
+                    edgeNew.id << " steps " << stepBegin << "-" << stepEnd << endl;
+                stepCount = stepEnd;
+            }
+        }
+
+
 
         // Now we can remove the edges of the chain and its internal vertices.
         bool isFirst = true;
