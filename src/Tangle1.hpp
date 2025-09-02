@@ -81,6 +81,7 @@ public:
     };
     vector<ConnectPair> connectPairs;
     void addConnectPair(uint64_t entranceIndex, uint64_t exitIndex);
+    uint64_t minConnectPairCoverage() const;
     void detangle();
 
 

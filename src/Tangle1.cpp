@@ -301,3 +301,16 @@ void Tangle1::reconnect(
     }
 #endif
 }
+
+
+
+uint64_t Tangle1::minConnectPairCoverage() const
+{
+    uint64_t minCoverage = std::numeric_limits<uint64_t>::max();
+    for(const ConnectPair& connectPair: connectPairs) {
+        for(const auto& step: connectPair.newEdge) {
+            minCoverage = min(minCoverage, step.anchorPair.size());
+        }
+    }
+    return minCoverage;
+}

@@ -92,6 +92,7 @@ public:
     double detangleMinLogPDelta = 10.;
     uint64_t detangleMaxIterationCount = 10;
     uint64_t detangleMaxCrossEdgeLength = 10000;
+    uint64_t detangleMinCoverage = 3;
 
     // Options that control pruning.
     uint64_t pruneLength = 50000;

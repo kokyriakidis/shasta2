@@ -199,6 +199,11 @@ void Options::addOptions()
         "Maximum cross-edge length for detangling."
         )->capture_default_str();
 
+    add_option("--detangle-min-coverage",
+        detangleMinCoverage,
+        "Minimum coverage that phasing and detangling are allowed to generate."
+        )->capture_default_str();
+
     add_option("--prune-length",
         pruneLength,
         "Maximum length of a hanging segments to be pruned."

@@ -11,11 +11,13 @@ LikelihoodRatioDetangler::LikelihoodRatioDetangler(
     const double epsilon,
     const double maxLogP,
     const double minLogPDelta,
+    uint64_t detangleMinCoverage,
     bool requireInjective,
     bool requirePermutation) :
     epsilon(epsilon),
     maxLogP(maxLogP),
     minLogPDelta(minLogPDelta),
+    detangleMinCoverage(detangleMinCoverage),
     requireInjective(requireInjective),
     requirePermutation(requirePermutation)
 {}
@@ -207,6 +209,11 @@ bool LikelihoodRatioDetangler::operator()(Tangle1& tangle)
                 }
             }
         }
+    }
+
+    // If any of the ConnectPairs contain AnchorPairs with low coverage, don't detangle.
+    if(tangle.minConnectPairCoverage() < detangleMinCoverage) {
+        return false;
     }
 
     // Detangle.

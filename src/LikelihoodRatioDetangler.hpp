@@ -18,12 +18,14 @@ public:
         const double epsilon,
         const double maxLogP,
         const double minLogPDelta,
+        uint64_t detangleMinCoverage,
         bool requireInjective,
         bool requirePermutation);
 
     double epsilon;
     double maxLogP;
     double minLogPDelta;
+    uint64_t detangleMinCoverage;
 
     // If this is set, all hypotheses are computed, but detangling
     // is not done if the top hypothesis is not forward injective

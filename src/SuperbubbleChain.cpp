@@ -3,6 +3,7 @@
 #include "GTest.hpp"
 #include "Options.hpp"
 #include "PhasingGraph.hpp"
+#include "RestrictedAnchorGraph.hpp"
 #include "Tangle.hpp"
 #include "TangleMatrix.hpp"
 #include "Tangle1.hpp"
@@ -349,8 +350,10 @@ uint64_t SuperbubbleChain::phase(
 // Version that uses Tangle1/TangleMatrix1 instead of Tangle/TangleMatrix.
 uint64_t SuperbubbleChain::phase1(
     AssemblyGraph& assemblyGraph,
-    uint64_t superbubbleChainId)
+    uint64_t superbubbleChainId,
+    uint64_t detangleMinCoverage)
 {
+
     SuperbubbleChain& superbubbleChain = *this;
     const bool debug = false; // (superbubbleChainId == 18);
 
@@ -448,19 +451,77 @@ uint64_t SuperbubbleChain::phase1(
                 }
             }
 
-            if( gTest.hypotheses.front().isForwardInjective() and
-                gTest.hypotheses.front().isBackwardInjective()) {
-                phasingGraph.addEdge(position0, position1, bestHypothesis);
-
+            if(not(gTest.hypotheses.front().isForwardInjective() and
+                gTest.hypotheses.front().isBackwardInjective())) {
                 if(debug) {
-                    cout << "Added edge " << position0 << " " << position1 << endl;
-                    cout << "Connectivity matrix for the best hypothesis:" << endl;
-                    for(const auto& row: gTest.hypotheses.front().connectivityMatrix) {
-                        for(const bool c: row) {
-                            cout << int(c);
+                    cout << "The top hypothesis is not forward and backward injective." << endl;
+                }
+                continue;
+            }
+
+
+
+            // We need to check that the top hypothesis would not generate AssemblyGraphEdgeSteps with low coverage.
+            bool coverageCheckFailed = false;
+            for(uint64_t iEntrance=0; iEntrance<tangleMatrix.entrances.size(); iEntrance++) {
+                const AssemblyGraph::vertex_descriptor v0 = target(tangleMatrix.entrances[iEntrance], assemblyGraph);
+                const AnchorId anchorId0 = assemblyGraph[v0].anchorId;
+                for(uint64_t iExit=0; iExit<tangleMatrix.exits.size(); iExit++) {
+                    if(gTest.hypotheses.front().connectivityMatrix[iEntrance][iExit]) {
+                        const AssemblyGraph::vertex_descriptor v1 = source(tangleMatrix.exits[iExit], assemblyGraph);
+                        const AnchorId anchorId1 = assemblyGraph[v1].anchorId;
+                        ostream html(0);
+                        RestrictedAnchorGraph restrictedAnchorGraph(
+                            assemblyGraph.anchors, assemblyGraph.journeys, tangleMatrix, iEntrance, iExit, html);
+                        restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
+                        restrictedAnchorGraph.removeCycles();
+                        restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
+                        vector<RestrictedAnchorGraph::edge_descriptor> longestPath;
+                        // restrictedAnchorGraph.findLongestPath(longestPath);
+                        restrictedAnchorGraph.findOptimalPath(anchorId0, anchorId1, longestPath);
+
+                        uint64_t minCoverage = std::numeric_limits<uint64_t>::max();
+                        for(const RestrictedAnchorGraph::edge_descriptor e: longestPath) {
+                            const RestrictedAnchorGraphEdge& edge = restrictedAnchorGraph[e];
+                            minCoverage = min(minCoverage, edge.anchorPair.size());
                         }
-                        cout << endl;
+                        if(minCoverage < detangleMinCoverage) {
+                            coverageCheckFailed = true;
+                            if(debug) {
+                                cout << "Connecting " << assemblyGraph[tangleMatrix.entrances[iEntrance]].id <<
+                                    " to " << assemblyGraph[tangleMatrix.exits[iExit]].id <<
+                                    " would generate one or more AnchorPairs with coverage " << minCoverage << endl;
+                            }
+                        }
                     }
+                    if(coverageCheckFailed) {
+                        break;
+                    }
+                }
+                if(coverageCheckFailed) {
+                    break;
+                }
+            }
+            if(coverageCheckFailed) {
+                if(debug) {
+                    cout << "The coverage check failed." << endl;
+                }
+                continue;
+            }
+
+
+
+            // If getting here, add the PhasingGraph edge.
+            phasingGraph.addEdge(position0, position1, bestHypothesis);
+
+            if(debug) {
+                cout << "Added edge " << position0 << " " << position1 << endl;
+                cout << "Connectivity matrix for the best hypothesis:" << endl;
+                for(const auto& row: gTest.hypotheses.front().connectivityMatrix) {
+                    for(const bool c: row) {
+                        cout << int(c);
+                    }
+                    cout << endl;
                 }
             }
         }

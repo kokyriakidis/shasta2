@@ -163,12 +163,14 @@ void AssemblyGraph::simplifyAndAssemble()
         options.detangleEpsilon,
         options.detangleMaxLogP,
         options.detangleMinLogPDelta,
+        options.detangleMinCoverage,
         true,
         true);
     LikelihoodRatioDetangler shortTanglesDetangler(
         options.detangleEpsilon,
         options.detangleMaxLogP,
         options.detangleMinLogPDelta,
+        options.detangleMinCoverage,
         true,
         true);
 
@@ -1761,7 +1763,7 @@ uint64_t AssemblyGraph::phaseSuperbubbleChains()
     uint64_t changeCount = 0;
     for(uint64_t superbubbleChainId=0; superbubbleChainId<superbubbleChains.size(); superbubbleChainId++) {
         SuperbubbleChain& superbubbleChain = superbubbleChains[superbubbleChainId];
-        changeCount += superbubbleChain.phase1(*this, superbubbleChainId);
+        changeCount += superbubbleChain.phase1(*this, superbubbleChainId, options.detangleMinCoverage);
     }
     clearOrientedReadEdgeInformation();
 
