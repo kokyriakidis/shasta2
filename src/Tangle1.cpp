@@ -112,6 +112,39 @@ bool Tangle1::addConnectPair(uint64_t entranceIndex, uint64_t exitIndex) {
     SHASTA_ASSERT(entranceIndex < entrances.size());
     SHASTA_ASSERT(exitIndex < exits.size());
     connectPairs.emplace_back(entranceIndex, exitIndex);
+    AssemblyGraphEdge& newEdge = connectPairs.back().newEdge;
+
+    // Store the AssemblyGraphEdge, without adding it to the AssemblyGraph for now.
+    const AssemblyGraph::vertex_descriptor v0 = target(entrances[entranceIndex], assemblyGraph);
+    const AssemblyGraph::vertex_descriptor v1 = source(exits[exitIndex], assemblyGraph);
+    const AnchorId anchorId0 = assemblyGraph[v0].anchorId;
+    const AnchorId anchorId1 = assemblyGraph[v1].anchorId;
+
+    if(anchorId0 == anchorId1) {
+        // We just generate an empty edge without any steps.
+        // If any of these are left after compress, they will have to be
+        // removed by collapsing the vertices they join.
+    } else {
+        // Create the RestrictedAnchorGraph, then:
+        // - Remove vertices not accessible from anchorId0 and anchorId1.
+        // - Remove cycles.
+        // - Find the longest path.
+        // - Add one step for each edge of the longest path of the RestrictedAnchorGraph.
+        ostream html(0);
+        RestrictedAnchorGraph restrictedAnchorGraph(
+            assemblyGraph.anchors, assemblyGraph.journeys, tangleMatrix(), entranceIndex, exitIndex, html);
+        restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
+        restrictedAnchorGraph.removeCycles();
+        restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
+        vector<RestrictedAnchorGraph::edge_descriptor> longestPath;
+        // restrictedAnchorGraph.findLongestPath(longestPath);
+        restrictedAnchorGraph.findOptimalPath(anchorId0, anchorId1, longestPath);
+
+        for(const RestrictedAnchorGraph::edge_descriptor re: longestPath) {
+            const auto& rEdge = restrictedAnchorGraph[re];
+            newEdge.push_back(AssemblyGraphEdgeStep(rEdge.anchorPair,rEdge.offset));
+        }
+    }
 
     // For now this always returns true.
     return true;
@@ -130,11 +163,11 @@ void Tangle1::detangle()
     rerouteExits(newExitVertices);
 
     // Finally, reconnect the entrance/exit pairs in our ConnectPairs.
-    for(const ConnectPair& connectPair: connectPairs) {
+    for(ConnectPair& connectPair: connectPairs) {
         const uint64_t entranceIndex = connectPair.entranceIndex;
         const uint64_t exitIndex = connectPair.exitIndex;
         reconnect(
-            entranceIndex, exitIndex,
+            connectPair,
             newEntranceVertices[entranceIndex],
             newExitVertices[exitIndex]);
     }
@@ -214,8 +247,7 @@ void Tangle1::rerouteExits(vector<vertex_descriptor>& newExitVertices) const
 
 
 void Tangle1::reconnect(
-    uint64_t iEntrance,
-    uint64_t iExit,
+    ConnectPair& connectPair,
     vertex_descriptor v0,
     vertex_descriptor v1
     ) const
@@ -226,8 +258,8 @@ void Tangle1::reconnect(
     const AnchorId anchorId1 = assemblyGraph[v1].anchorId;
 
     if(debug) {
-        cout << "Connecting entrance " << assemblyGraph[entrances[iEntrance]].id <<
-            " with exit " << assemblyGraph[exits[iExit]].id << endl;
+        cout << "Connecting entrance " << assemblyGraph[entrances[connectPair.entranceIndex]].id <<
+            " with exit " << assemblyGraph[exits[connectPair.exitIndex]].id << endl;
         cout << "Anchors " << anchorIdToString(anchorId0) << " " <<
             anchorIdToString(anchorId1) << endl;
     }
@@ -237,13 +269,14 @@ void Tangle1::reconnect(
     AssemblyGraph::edge_descriptor e;
     tie(e, ignore) = add_edge(v0, v1, assemblyGraph);
     AssemblyGraphEdge& newEdge = assemblyGraph[e];
+    newEdge.swapSteps(connectPair.newEdge);
     newEdge.id = assemblyGraph.nextEdgeId++;
     if(debug) {
         cout << "Created new assembly graph edge " << newEdge.id << endl;
     }
 
 
-
+#if 0
     if(anchorId0 == anchorId1) {
         // We just generate an empty edge without any steps.
         // If any of these are left after compress, they will have to be
@@ -269,5 +302,5 @@ void Tangle1::reconnect(
             newEdge.push_back(AssemblyGraphEdgeStep(rEdge.anchorPair,rEdge.offset));
         }
     }
-
+#endif
 }

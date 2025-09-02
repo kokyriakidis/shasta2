@@ -73,6 +73,11 @@ public:
             entranceIndex(entranceIndex),
             exitIndex(exitIndex)
             {}
+
+        // The AssemblyGraphEdge that will be used to connect
+        // this entrance with this exit. It is stored here without id.
+        // and before being added to the AssemblyGraph.
+        AssemblyGraphEdge newEdge;
     };
     vector<ConnectPair> connectPairs;
     bool addConnectPair(uint64_t entranceIndex, uint64_t exitIndex);
@@ -86,8 +91,7 @@ public:
     void rerouteEntrances(vector<vertex_descriptor>& newEntranceVertices) const;
     void rerouteExits(vector<vertex_descriptor>& newExitVertices) const;
     void reconnect(
-        uint64_t iEntrance,
-        uint64_t iExit,
+        ConnectPair& connectPair,
         vertex_descriptor v0,
         vertex_descriptor v1
         ) const;
