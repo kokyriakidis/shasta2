@@ -10,6 +10,7 @@ using namespace shasta;
 
 // Boost libraries.
 #include <boost/graph/dijkstra_shortest_paths.hpp>
+#include <boost/graph/filtered_graph.hpp>
 #include <boost/graph/iteration_macros.hpp>
 
 // Standard library.
@@ -395,10 +396,10 @@ void RestrictedAnchorGraph::findLongestPath(vector<edge_descriptor>& longestPath
 }
 
 
-
+#if 0
 // Find the optimal assembly path.
 // This finds the shortest path from anchorId0 to anchorId1,
-// with lengh of an edge defined to estimate average
+// with length of an edge defined to estimate average
 // number of assembly errors in the edge.
 void RestrictedAnchorGraph::findOptimalPath(
     AnchorId anchorId0,
@@ -467,6 +468,89 @@ void RestrictedAnchorGraph::findOptimalPath(
         v = vPrevious;
     }
     std::ranges::reverse(optimalPath);
+}
+#endif
+
+
+
+// Find the optimal assembly path.
+// This uses a series of filtered versions of the RestrictedAnchorGraph
+// which only use edges with coverage >= minCoverage.
+// We gradually increase minCoverage starting at 1,
+// and for each value of minCoverage we compute the longest path AnchorId0...AnchorId1.
+// The process stops when AnchorId1 is no longer accessible from AnchorId0.
+// The last longest path found becomes the optimal assembly paht.
+void RestrictedAnchorGraph::findOptimalPath(
+    AnchorId anchorId0,
+    AnchorId anchorId1,
+    vector<edge_descriptor>& optimalPath)
+{
+    using Graph = RestrictedAnchorGraph;
+    Graph& graph = *this;
+
+
+
+    // A predicate class that returns true for edges with coverage at least minCoverage.
+    class EdgePredicate {
+    public:
+        bool operator()(const edge_descriptor& e) const
+        {
+            return (*graph)[e].anchorPair.size() >= minCoverage;
+        }
+        EdgePredicate(
+            const Graph* graph = 0,
+            uint64_t minCoverage = 0) :
+            graph(graph),
+            minCoverage(minCoverage)
+            {}
+        const Graph* graph;
+        uint64_t minCoverage;
+    };
+
+
+
+    // Find the vertices corresponding to anchorId0 and anchorId1.
+    const auto it0 = vertexMap.find(anchorId0);
+    SHASTA_ASSERT(it0 != vertexMap.end());
+    const vertex_descriptor v0 = it0->second;
+    const auto it1 = vertexMap.find(anchorId1);
+    SHASTA_ASSERT(it1 != vertexMap.end());
+    const vertex_descriptor v1 = it1->second;
+
+    // Loop over increasing values of minCoverage.
+    optimalPath.clear();
+    for(uint64_t minCoverage=1; ; ++minCoverage) {
+
+        // Create a filtered graph that only includes edges
+        // with coverage at least minCoverage.
+        using FilteredGraph = boost::filtered_graph<RestrictedAnchorGraph, EdgePredicate>;
+        FilteredGraph filteredGraph(graph, EdgePredicate(&graph, minCoverage));
+
+        // Find the longest path in this filtered graph.
+        vector<edge_descriptor> longestPath;
+        shasta::longestPath(filteredGraph, longestPath);
+
+        // If the longest path does not start at v0 and ends at v1,
+        // stop here and keep the best optimal path we found.
+        if(longestPath.empty()) {
+            break;
+        }
+        if(source(longestPath.front(), graph) != v0) {
+            break;
+        }
+        if(target(longestPath.back(), graph) != v1) {
+            break;
+        }
+
+        // This path begins at v0 and ends at v1. Save it as the optimal path.
+        optimalPath = longestPath;
+
+    }
+
+    // Set the isOptimalPathEdge flags.
+    for(const edge_descriptor e: optimalPath) {
+        graph[e].isOptimalPathEdge = true;
+    }
 }
 
 
