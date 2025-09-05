@@ -1168,9 +1168,8 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
                     html << "<br>";
                     restrictedAnchorGraph.writeOrientedReadsInVertices(html);
 
-                    // Find the longest path in the RestrictedAnchorGraph.
+                    // Find the optimal path in the RestrictedAnchorGraph.
                     vector<RestrictedAnchorGraph::edge_descriptor> longestPath;
-                    // restrictedAnchorGraph.findLongestPath(longestPath);
                     restrictedAnchorGraph.findOptimalPath(entranceAnchorId, exitAnchorId, longestPath);
 
                     // Write it out in Graphviz format.
