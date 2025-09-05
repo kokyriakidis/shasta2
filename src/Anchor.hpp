@@ -177,6 +177,9 @@ public:
     // for the requested OrientedReadId.
     uint32_t getOrdinal(AnchorId, OrientedReadId) const;
 
+    // Find out if the given AnchorId contains the specified OrientedReadId.
+    bool anchorContains(AnchorId, OrientedReadId) const;
+
     const Reads& reads;
     uint64_t k;
     uint64_t kHalf;

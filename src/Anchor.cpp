@@ -726,6 +726,19 @@ uint32_t Anchors::getOrdinal(AnchorId anchorId, OrientedReadId orientedReadId) c
 }
 
 
+// Find out if the given AnchorId contains the specified OrientedReadId.
+bool Anchors::anchorContains(AnchorId anchorId, OrientedReadId orientedReadId) const
+{
+    for(const auto& markerInfo: anchorMarkerInfos[anchorId]) {
+        if(markerInfo.orientedReadId == orientedReadId) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+
 
 void Anchors::writeCoverageHistogram() const
 {

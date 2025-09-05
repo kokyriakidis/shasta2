@@ -2,6 +2,7 @@
 #include "Assembler.hpp"
 #include "areSimilarSequences.hpp"
 #include "AssemblyGraphPostprocessor.hpp"
+#include "deduplicate.hpp"
 #include "findConvergingVertex.hpp"
 #include "graphvizToHtml.hpp"
 #include "GTest.hpp"
@@ -742,10 +743,326 @@ void Assembler::exploreSegmentSteps(
 
 
 void Assembler::exploreSegmentOrientedReads(
-    const vector<string>& /* request */,
-    ostream& /* html */)
+    const vector<string>& request,
+    ostream& html)
 {
-    SHASTA_ASSERT(0);
+    // Get the options from the request.
+    string assemblyStage;
+    HttpServer::getParameterValue(request, "assemblyStage", assemblyStage);
+
+    string segmentName;;
+    HttpServer::getParameterValue(request, "segmentName", segmentName);
+
+    string displaySteps = "none";
+    HttpServer::getParameterValue(request, "displaySteps", displaySteps);
+
+    string stepBeginString;
+    HttpServer::getParameterValue(request, "stepBegin", stepBeginString);
+
+    string stepEndString;
+    HttpServer::getParameterValue(request, "stepEnd", stepEndString);
+
+    string firstStepsCountString = "5";
+    HttpServer::getParameterValue(request, "firstStepsCount", firstStepsCountString);
+
+    string lastStepsCountString = "5";
+    HttpServer::getParameterValue(request, "lastStepsCount", lastStepsCountString);
+
+    double pixelsPerBase = 1.;
+    HttpServer::getParameterValue(request, "pixelsPerBase", pixelsPerBase);
+
+
+    // Start the form.
+    html << "<h2>Assembly graph segment supporting oriented reads</h2><form><table>";
+
+    html <<
+        "<tr>"
+        "<th class=left>Assembly stage"
+        "<td class=centered><input type=text name=assemblyStage style='text-align:center' required";
+    if(not assemblyStage.empty()) {
+        html << " value='" << assemblyStage + "'";
+    }
+    html << " size=8>";
+
+    html <<
+        "<tr>"
+        "<th class=left>Segment name"
+        "<td class=centered><input type=text name=segmentName style='text-align:center' required";
+    if(not segmentName.empty()) {
+        html << " value='" << segmentName + "'";
+    }
+    html << " size=8>";
+
+
+
+    // Options to control which segment steps are shown.
+    html <<
+        "<tr>"
+        "<th class=left>Show segment steps"
+        "<td class=left>"
+
+        "<input type=radio required name=displaySteps value='all'" <<
+        (displaySteps == "all" ? " checked=on" : "") << "> All"
+
+        "<br><input type=radio required name=displaySteps value='range'" <<
+        (displaySteps == "range" ? " checked=on" : "") << "> Steps in position range "
+        "<input type=text name=stepBegin size=8 style='text-align:center' value='" << stepBeginString << "'> to "
+        "<input type=text name=stepEnd size=8 style='text-align:center' value='" << stepEndString << "'>"
+
+        "<br><input type=radio required name=displaySteps value='first'" <<
+        (displaySteps == "first" ? " checked=on" : "") << "> First "
+        "<input type=text name=firstStepsCount size=8 style='text-align:center' value='" << firstStepsCountString << "'>"
+        " steps"
+
+        "<br><input type=radio required name=displaySteps value='last'" <<
+        (displaySteps == "last" ? " checked=on" : "") << "> Last "
+        "<input type=text name=lastStepsCount size=8 style='text-align:center' value='" << lastStepsCountString << "'>"
+        " steps"
+
+        "<tr><th>Pixels per base"
+        "<td class=centered>"
+        "<input type=text name=pixelsPerBase size=8 style='text-align:center' value='" << pixelsPerBase << "'>"
+        ;
+
+
+
+    // End the form.
+    html <<
+        "</table>"
+        "<p><input type=submit value='Get segment information'>"
+        "</form>";
+
+    if(segmentName.empty()) {
+        return;
+    }
+
+    uint64_t segmentId = invalid<uint64_t>;
+    try {
+        segmentId = std::stol(segmentName);
+    } catch(exception&) {
+    }
+    if(segmentId == invalid<uint64_t>) {
+        html << "Segment name must be a number.";
+        return;
+    }
+
+    // Get the AssemblyGraph for this assembly stage.
+    const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
+        assemblyStage,
+        *httpServerData.options);
+
+    // Find the AssemblyGraphEdge corresponding to the requested segment.
+    auto it = assemblyGraph.edgeMap.find(segmentId);
+    if(it == assemblyGraph.edgeMap.end()) {
+        html << "<p>Assembly graph at stage " << assemblyStage <<
+            " does not have segment " << segmentId;
+        return;
+    }
+    const AssemblyGraph::edge_descriptor e = it->second;
+    const AssemblyGraphEdge& edge = assemblyGraph[e];
+
+    // Figure out the step position range to use.
+    uint64_t stepBegin = invalid<uint64_t>;
+    uint64_t stepEnd = invalid<uint64_t>;
+    if(displaySteps == "all") {
+        stepBegin = 0;
+        stepEnd = edge.size();
+    } else if(displaySteps == "range") {
+        try {
+            stepBegin = atoul(stepBeginString);
+        } catch(std::exception& e) {
+            throw runtime_error("Begin " + stepBeginString + " is not valid. Must be a number.");
+        }
+        try {
+            stepEnd = atoul(stepEndString);
+        } catch(std::exception& e) {
+            throw runtime_error("End " + stepEndString + " is not valid. Must be a number.");
+        }
+        if(stepBegin >= edge.size()) {
+            stepBegin = edge.size() - 1;
+        }
+        if(stepBegin > edge.size()) {
+            stepBegin = edge.size();
+        }
+        if(stepEnd < stepBegin) {
+            stepEnd = stepBegin + 1;
+        }
+        if(stepEnd > edge.size()) {
+            stepEnd = edge.size();
+        }
+    } else if(displaySteps == "first") {
+        stepBegin = 0;
+        try {
+            stepEnd = atoul(firstStepsCountString);
+        } catch(std::exception& e) {
+            throw runtime_error("First anchors count " + firstStepsCountString + " is not valid. Must be a number.");
+        }
+        if(stepEnd > edge.size()) {
+            stepEnd = edge.size();
+        }
+    } else if(displaySteps == "last") {
+        stepEnd = edge.size();
+        uint64_t count = invalid<uint64_t>;
+        try {
+            count = atoul(lastStepsCountString);
+        } catch(std::exception& e) {
+            throw runtime_error("Last anchors count " + lastStepsCountString + " is not valid. Must be a number.");
+        }
+        if(count > edge.size()) {
+            stepBegin = 0;
+        } else {
+            stepBegin = stepEnd - count;
+        }
+    }
+    const uint64_t stepCount = stepEnd - stepBegin;
+
+
+    // Find the OrientedReadIds that appear in the AnchorPairs of these steps.
+    vector<OrientedReadId> orientedReadIds;
+    for(const AssemblyGraphEdgeStep& step: edge) {
+        const AnchorPair anchorPair = step.anchorPair;
+        std::ranges::copy(step.anchorPair.orientedReadIds, back_inserter(orientedReadIds));
+    }
+    deduplicate(orientedReadIds);
+
+
+
+    // Find the base position offsets of the two anchors of each step
+    // relative to the base position of the first anchor of the first step.
+    vector< pair<uint64_t, uint64_t> > offsetTable(stepCount);
+    uint64_t offset = 0;
+    for(uint64_t step=stepBegin; step!=stepEnd; step++) {
+        const uint64_t length = (edge.wasAssembled ? edge[step].sequence.size() : edge[step].offset);
+        pair<uint64_t, uint64_t>& offsets = offsetTable[step - stepBegin];
+        offsets.first = offset;
+        offset += length;
+        offsets.second = offset;
+    }
+
+
+
+    // Svg constants.
+    // Avoid complications with aspect ratio adjustments in the browser.
+
+    // Horizontal direction.
+    const double maxOffsetBases = double(offsetTable.back().second);
+    const double borderPixels = 5.;
+    const double borderBases = borderPixels / pixelsPerBase;
+    const double svgWidthBases = maxOffsetBases + 2. * borderBases;
+    const double svgWidthPixels = svgWidthBases * pixelsPerBase;
+
+    // Vertical direction.
+    const double svgHeightPixels = 10.;
+    const double svgHeightBases = svgHeightPixels / pixelsPerBase;
+    const double yBases = svgHeightBases / 2.;
+
+    // Horizontal and vertical direction.
+    const double dotRadiusBases = yBases;
+
+
+
+    // Begin the table.
+    html <<"<table>";
+
+
+
+    // Write a table row for the segment.
+    html <<
+        "<tr><th>Segment " << segmentId <<
+        "<td class=centered style='vertical-align:middle'>"
+        "<svg width='" << svgWidthPixels << "' height='" << svgHeightPixels << "'"
+        " viewbox='0 0 " << svgWidthBases << " " << svgHeightBases << "'"
+        " style='background-color:#f0f0f0'"
+        ">";
+
+    // Write a rectangle for each step.
+    for(uint64_t step=stepBegin; step<stepEnd; step++) {
+        const pair<uint64_t, uint64_t>& offsets = offsetTable[step - stepBegin];
+        const double xBases = borderBases + double(offsets.first);
+        const double widthBases = double(offsets.second - offsets.first);
+        const string color = "LightPink";
+        html <<
+            "<g><title>Step " << step << "</title>"
+            "<rect x='" << xBases << "' y='0' width='" << widthBases << "' height='" << svgHeightBases <<
+            "' style='fill:" << color << "' /></g>";
+    }
+
+    // Write a dot for each Anchor.
+    for(uint64_t step=stepBegin; step<=stepEnd; step++) {
+        uint64_t offset;
+        AnchorId anchorId;
+        if(step == stepEnd) {
+            offset = offsetTable[step - 1 - stepBegin].second;
+            anchorId = edge[step - 1].anchorPair.anchorIdB;
+        } else {
+            offset = offsetTable[step - stepBegin].first;
+            anchorId = edge[step].anchorPair.anchorIdA;
+        }
+        const double xBases = borderBases + double(offset);
+        html <<
+            "<g><title>" << anchorIdToString(anchorId) << "</title>"
+            "<circle cx='" << xBases << "' cy='" << yBases << "' r=" << dotRadiusBases << " /></g>";
+    }
+
+    html << "</svg>";
+
+
+
+    // Write a table row for each OrientedReadId.
+    for(const OrientedReadId orientedReadId: orientedReadIds) {
+        html << "<tr><th>" << orientedReadId <<
+            "<td class=centered style='vertical-align:middle'>"
+            "<svg width='" << svgWidthPixels << "' height='" << svgHeightPixels << "'"
+            " viewbox='0 0 " << svgWidthBases << " " << svgHeightBases << "'"
+            " style='background-color:#f0f0f0'"
+            ">";
+
+        // Write a rectangle for each step.
+        for(uint64_t step=stepBegin; step<stepEnd; step++) {
+            const AnchorPair& anchorPair = edge[step].anchorPair;
+            const bool containsOrientedRead = std::ranges::binary_search(anchorPair.orientedReadIds, orientedReadId);
+            if(containsOrientedRead) {
+                const pair<uint64_t, uint64_t>& offsets = offsetTable[step - stepBegin];
+                const double xBases = borderBases + double(offsets.first);
+                const double widthBases = double(offsets.second - offsets.first);
+                const string color = "LightPink";
+                html <<
+                    "<g><title>Step " << step << "</title>"
+                    "<rect x='" << xBases << "' y='0' width='" << widthBases << "' height='" << svgHeightBases <<
+                    "' style='fill:" << color << "' /></g>";
+            }
+        }
+
+        // Write a dot for each Anchor.
+            for(uint64_t step=stepBegin; step<=stepEnd; step++) {
+                uint64_t offset;
+                AnchorId anchorId;
+                if(step == stepEnd) {
+                    offset = offsetTable[step - 1 - stepBegin].second;
+                    anchorId = edge[step - 1].anchorPair.anchorIdB;
+                } else {
+                    offset = offsetTable[step - stepBegin].first;
+                    anchorId = edge[step].anchorPair.anchorIdA;
+                }
+                const string color = (anchors().anchorContains(anchorId, orientedReadId) ? "Black" : "LightGrey");
+                const double xBases = borderBases + double(offset);
+                html <<
+                    "<g><title>" << anchorIdToString(anchorId) << "</title>"
+                    "<circle cx='" << xBases << "' cy='" << yBases << "' r=" << dotRadiusBases <<
+                    " fill=\"" << color << "\""
+                    " /></g>";
+            }
+
+        html << "</svg>";
+    }
+
+    html << "</svg>";
+
+
+
+    // End the table.
+    html << "</table>";
+
 }
 
 
