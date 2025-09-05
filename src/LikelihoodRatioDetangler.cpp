@@ -80,9 +80,9 @@ bool LikelihoodRatioDetangler::operator()(Tangle1& tangle)
     }
 
     // Skip pathological case.
-    if((entranceCount ==0) or (exitCount == 0)) {
+    if((entranceCount < 2) or (exitCount < 2)) {
         if(debug) {
-            cout << "Not detangling because there are no entrances and/or no exits." << endl;
+            cout << "Not detangling because the number of entrances and/or exits is less than 2." << endl;
         }
         return false;
     }
