@@ -474,12 +474,6 @@ void RestrictedAnchorGraph::findOptimalPath(
 
 
 // Find the optimal assembly path.
-// This uses a series of filtered versions of the RestrictedAnchorGraph
-// which only use edges with coverage >= minCoverage.
-// We gradually increase minCoverage starting at 1,
-// and for each value of minCoverage we compute the longest path AnchorId0...AnchorId1.
-// The process stops when AnchorId1 is no longer accessible from AnchorId0.
-// The last longest path found becomes the optimal assembly paht.
 void RestrictedAnchorGraph::findOptimalPath(
     AnchorId anchorId0,
     AnchorId anchorId1,
@@ -490,22 +484,25 @@ void RestrictedAnchorGraph::findOptimalPath(
 
 
 
-    // A predicate class that returns true for edges with coverage at least minCoverage.
-    class EdgePredicate {
+    // A filtered graph that only includes edges for which the wasRemoved flag is not set.
+    class FilteringPredicate {
     public:
+        bool operator()(const vertex_descriptor& v) const
+        {
+            return  not (*graph)[v].wasRemoved;
+        }
         bool operator()(const edge_descriptor& e) const
         {
-            return (*graph)[e].anchorPair.size() >= minCoverage;
+            return  not (*graph)[e].wasRemoved;
         }
-        EdgePredicate(
-            const Graph* graph = 0,
-            uint64_t minCoverage = 0) :
-            graph(graph),
-            minCoverage(minCoverage)
+        FilteringPredicate(const Graph* graph = 0) :
+            graph(graph)
             {}
         const Graph* graph;
-        uint64_t minCoverage;
     };
+    // Create the filtered graph
+    using FilteredGraph = boost::filtered_graph<RestrictedAnchorGraph, FilteringPredicate, FilteringPredicate>;
+    const FilteredGraph filteredGraph(graph, FilteringPredicate(&graph), FilteringPredicate(&graph));
 
 
 
@@ -517,40 +514,67 @@ void RestrictedAnchorGraph::findOptimalPath(
     SHASTA_ASSERT(it1 != vertexMap.end());
     const vertex_descriptor v1 = it1->second;
 
+
+
     // Loop over increasing values of minCoverage.
-    optimalPath.clear();
     for(uint64_t minCoverage=1; ; ++minCoverage) {
 
-        // Create a filtered graph that only includes edges
-        // with coverage at least minCoverage.
-        using FilteredGraph = boost::filtered_graph<RestrictedAnchorGraph, EdgePredicate>;
-        FilteredGraph filteredGraph(graph, EdgePredicate(&graph, minCoverage));
-
-        // Find the longest path in this filtered graph.
-        vector<edge_descriptor> longestPath;
-        shasta::longestPath(filteredGraph, longestPath);
-
-        // If the longest path does not start at v0 and ends at v1,
-        // stop here and keep the best optimal path we found.
-        if(longestPath.empty()) {
-            break;
-        }
-        if(source(longestPath.front(), graph) != v0) {
-            break;
-        }
-        if(target(longestPath.back(), graph) != v1) {
-            break;
+        // Flag as removed the edges with coverage less than minCoverage.
+        // Keep track of them.
+        vector<edge_descriptor> edgesRemoved;
+        BGL_FORALL_EDGES(e, filteredGraph, FilteredGraph) {
+            auto& edge = graph[e];
+            if(not edge.wasRemoved and edge.anchorPair.size() < minCoverage) {
+                edge.wasRemoved = true;
+                edgesRemoved.push_back(e);
+            }
         }
 
-        // This path begins at v0 and ends at v1. Save it as the optimal path.
-        optimalPath = longestPath;
+        // If v1 is still reachable from v0, try increasing minCoverage more.
+        if(isReachable(filteredGraph, v0, v1, 0)) {
+            continue;
+        }
 
+        // v1 is no longer reachable from v0.
+        // Put back the edges we just removed.
+        for(const edge_descriptor e: edgesRemoved) {
+            graph[e].wasRemoved = false;
+        }
+
+        // Remove vertices not forward reachable from v0.
+        std::set<vertex_descriptor> reachableVertices;
+        findReachableVertices(filteredGraph, v0, 0, reachableVertices);
+        BGL_FORALL_VERTICES(v, filteredGraph, FilteredGraph) {
+            if(not reachableVertices.contains(v)) {
+                graph[v].wasRemoved = true;
+            }
+        }
+
+        // Remove vertices not backward reachable from v1.
+        reachableVertices.clear();
+        findReachableVertices(filteredGraph, v1, 1, reachableVertices);
+        BGL_FORALL_VERTICES(v, filteredGraph, FilteredGraph) {
+            if(not reachableVertices.contains(v)) {
+                graph[v].wasRemoved = true;
+            }
+        }
+
+        // Compute the longest path.
+        shasta::longestPath(filteredGraph, optimalPath);
+        SHASTA_ASSERT(not optimalPath.empty());
+        SHASTA_ASSERT(source(optimalPath.front(), graph) == v0);
+        SHASTA_ASSERT(target(optimalPath.back(), graph) == v1);
+
+        // Set the isOptimalPathEdge flags.
+        for(const edge_descriptor e: optimalPath) {
+            graph[e].isOptimalPathEdge = true;
+        }
+
+        return;
     }
 
-    // Set the isOptimalPathEdge flags.
-    for(const edge_descriptor e: optimalPath) {
-        graph[e].isOptimalPathEdge = true;
-    }
+    SHASTA_ASSERT(0);
+
 }
 
 

@@ -379,12 +379,14 @@ uint64_t SuperbubbleChain::phase1(
     // non-trivial bubble. Each pair that can be phased
     // generates an edge of the PhasingGraph.
     for(uint64_t position0=0; position0<size(); position0++) {
+        // cout << "phase1: " << superbubbleChainId << " " << position0 << "/" << size() << endl;
         const Superbubble& bubble0 = superbubbleChain[position0];
         if(not bubble0.isBubble() or bubble0.isTrivial()) {
             continue;
         }
         uint64_t n0 = 0;
         for(uint64_t position1=position0+1; position1<size(); position1++) {
+            // cout << "phase1 working on " << superbubbleChainId << " " << position0 << " " << position1 << endl;
             const Superbubble& bubble1 = superbubbleChain[position1];
             if(not bubble1.isBubble() or bubble1.isTrivial()) {
                 continue;
@@ -406,6 +408,18 @@ uint64_t SuperbubbleChain::phase1(
                 html);
 
             if(debug) {
+                cout << "Entrances:";
+                for(const AssemblyGraph::edge_descriptor e: tangleMatrix.entrances) {
+                    cout << " " << assemblyGraph[e].id;
+                }
+                cout << endl;
+
+                cout << "Exits:";
+                for(const AssemblyGraph::edge_descriptor e: tangleMatrix.exits) {
+                    cout << " " << assemblyGraph[e].id;
+                }
+                cout << endl;
+
                 cout << "Tangle matrix:" << endl;
                 for(uint64_t iEntrance=0; iEntrance<tangleMatrix.entrances.size(); iEntrance++) {
                     for(uint64_t iExit=0; iExit<tangleMatrix.exits.size(); iExit++) {
@@ -468,17 +482,30 @@ uint64_t SuperbubbleChain::phase1(
                 const AnchorId anchorId0 = assemblyGraph[v0].anchorId;
                 for(uint64_t iExit=0; iExit<tangleMatrix.exits.size(); iExit++) {
                     if(gTest.hypotheses.front().connectivityMatrix[iEntrance][iExit]) {
+                        // cout << "Creating RestrictedAnchorGraph for entrance " << iEntrance << " exit " << iExit << endl;
                         const AssemblyGraph::vertex_descriptor v1 = source(tangleMatrix.exits[iExit], assemblyGraph);
                         const AnchorId anchorId1 = assemblyGraph[v1].anchorId;
+
+                        // If the AnchorIds are the same, detangling will just add an empty edge
+                        // and so the coverage check is satistfied.
+                        if(anchorId1 == anchorId0) {
+                            continue;
+                        }
+
                         ostream html(0);
                         RestrictedAnchorGraph restrictedAnchorGraph(
                             assemblyGraph.anchors, assemblyGraph.journeys, tangleMatrix, iEntrance, iExit, html);
+                        // cout << "AAA " << num_vertices(restrictedAnchorGraph) << " " << num_edges(restrictedAnchorGraph) << endl;
                         restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
+                        // cout << "BBB " << num_vertices(restrictedAnchorGraph) << " " << num_edges(restrictedAnchorGraph) << endl;
                         restrictedAnchorGraph.removeCycles();
+                        // cout << "CCC " << num_vertices(restrictedAnchorGraph) << " " << num_edges(restrictedAnchorGraph) << endl;
                         restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
+                        // cout << "DDD " << num_vertices(restrictedAnchorGraph) << " " << num_edges(restrictedAnchorGraph) << endl;
                         vector<RestrictedAnchorGraph::edge_descriptor> longestPath;
                         // restrictedAnchorGraph.findLongestPath(longestPath);
                         restrictedAnchorGraph.findOptimalPath(anchorId0, anchorId1, longestPath);
+                        // cout << "EEE " << num_vertices(restrictedAnchorGraph) << " " << num_edges(restrictedAnchorGraph) << endl;
 
                         uint64_t minCoverage = std::numeric_limits<uint64_t>::max();
                         for(const RestrictedAnchorGraph::edge_descriptor e: longestPath) {

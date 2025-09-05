@@ -57,6 +57,9 @@ public:
     // Fields used by approximateTopologicalSort.
     uint64_t color = invalid<uint64_t>;
     uint64_t rank = invalid<uint64_t>;
+
+    // Field used by findOptimalPath.
+    bool wasRemoved = false;
 };
 
 
@@ -70,6 +73,9 @@ public:
 
     // Field used by approximateTopologicalSort.
     bool isDagEdge = false;
+
+    // Field used by findOptimalPath.
+    bool wasRemoved = false;
 };
 
 

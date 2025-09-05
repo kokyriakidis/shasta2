@@ -48,6 +48,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def_readonly("detangleEpsilon", &Options::detangleEpsilon)
         .def_readonly("detangleMaxLogP", &Options::detangleMaxLogP)
         .def_readonly("detangleMinLogPDelta", &Options::detangleMinLogPDelta)
+        .def_readonly("detangleMinCoverage", &Options::detangleMinCoverage)
         ;
 
     // Class Assembler.

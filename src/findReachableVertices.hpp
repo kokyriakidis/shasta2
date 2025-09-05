@@ -1,8 +1,9 @@
 #pragma once
 
-// Given a directed graph and a start vertex on it,
-// find all vertices that are reachable from the start vertex
-// moving forward (if direction is 0) or backward (if direction is 1).
+// Given a directed graph and a start vertex on it:
+// - findReachableVertices find all vertices that are reachable from the start vertex
+//   moving forward (if direction is 0) or backward (if direction is 1).
+// - isReachable returns true if the end vertex is reachable from the start vertex.
 
 // Boost libraries.
 #include <boost/graph/iteration_macros.hpp>
@@ -18,6 +19,12 @@ namespace shasta {
         uint64_t direction,
         std::set<typename Graph::vertex_descriptor>&
         );
+
+    template<class Graph> bool isReachable(
+        const Graph&,
+        typename Graph::vertex_descriptor vStart,
+        typename Graph::vertex_descriptor vEnd,
+        uint64_t direction);
 }
 
 
@@ -61,3 +68,21 @@ template<class Graph> void shasta::findReachableVertices(
         }
     }
 }
+
+
+
+template<class Graph> bool shasta::isReachable(
+    const Graph& graph,
+    typename Graph::vertex_descriptor vStart,
+    typename Graph::vertex_descriptor vEnd,
+    uint64_t direction)
+{
+    using vertex_descriptor = typename Graph::vertex_descriptor;
+
+    std::set<vertex_descriptor> reachableVertices;
+    findReachableVertices(graph, vStart, direction, reachableVertices);
+
+    return reachableVertices.contains(vEnd);
+
+}
+
