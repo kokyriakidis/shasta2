@@ -49,7 +49,9 @@ void Assembler::fillServerFunctionTable()
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreLocalAssemblyGraph);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreSuperbubble);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreSegments);
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreSegment);
+    SHASTA_ADD_TO_FUNCTION_TABLE(exploreSegmentSequence);
+    SHASTA_ADD_TO_FUNCTION_TABLE(exploreSegmentSteps);
+    SHASTA_ADD_TO_FUNCTION_TABLE(exploreSegmentOrientedReads);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreSegmentStep);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreBridgeSegmentSteps);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreTangleMatrix);
@@ -231,7 +233,9 @@ void Assembler::writeNavigation(ostream& html) const
         {"Local assembly graph", "exploreLocalAssemblyGraph"},
         {"Superbubble", "exploreSuperbubble"},
         {"Segments", "exploreSegments"},
-        {"Segment", "exploreSegment"},
+        {"Segment sequence", "exploreSegmentSequence"},
+        {"Segment steps", "exploreSegmentSteps"},
+        {"Segment oriented reads", "exploreSegmentOrientedReads"},
         {"Segment step", "exploreSegmentStep"},
         {"Bridge segment steps", "exploreBridgeSegmentSteps"},
         {"Tangle matrix", "exploreTangleMatrix"},

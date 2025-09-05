@@ -317,7 +317,145 @@ void Assembler::exploreSegments(
 
 
 
-void Assembler::exploreSegment(
+void Assembler::exploreSegmentSequence(
+    const vector<string>& request,
+    ostream& html)
+{
+    // Get the options from the request.
+    string assemblyStage;
+    HttpServer::getParameterValue(request, "assemblyStage", assemblyStage);
+
+    string segmentName;;
+    HttpServer::getParameterValue(request, "segmentName", segmentName);
+
+    uint64_t sequenceBegin = 0;
+    const bool sequenceBeginIsPresent = getParameterValue(request, "sequenceBegin", sequenceBegin);
+
+    uint64_t sequenceEnd = 0;
+    const bool sequenceEndIsPresent = getParameterValue(request, "sequenceEnd", sequenceEnd);
+
+
+    // Start the form.
+    html << "<h2>Assembled segment sequence</h2><form><table>";
+
+    html <<
+        "<tr>"
+        "<th class=left>Assembly stage"
+        "<td class=centered><input type=text name=assemblyStage size=8 style='text-align:center' required";
+    if(not assemblyStage.empty()) {
+        html << " value='" << assemblyStage + "'";
+    }
+    html << " size=8>";
+
+    html <<
+        "<tr>"
+        "<th class=left>Segment name"
+        "<td class=centered><input type=text name=segmentName size=8 style='text-align:center' required";
+    if(not segmentName.empty()) {
+        html << " value='" << segmentName + "'";
+    }
+    html << ">";
+
+    html << "<tr><th>Begin position<td class=centered>"
+        "<input type=text name=sequenceBegin style='text-align:center' size=8";
+    if(sequenceBeginIsPresent) {
+        html << " value=" << sequenceBegin;
+    }
+    html << ">";
+
+    html << "<tr><th>End position<td class=centered>"
+        "<input type=text name=sequenceEnd style='text-align:center' size=8";
+    if(sequenceEndIsPresent) {
+        html << " value=" << sequenceEnd;
+    }
+    html << ">";
+\
+    // End the form.
+    html <<
+        "</table>"
+        "<p><input type=submit value='Get segment sequence'>"
+        "</form>";
+
+    if(segmentName.empty()) {
+        return;
+    }
+
+    uint64_t segmentId = invalid<uint64_t>;
+    try {
+        segmentId = std::stol(segmentName);
+    } catch(exception&) {
+    }
+    if(segmentId == invalid<uint64_t>) {
+        html << "Segment name must be a number.";
+        return;
+    }
+
+    // Get the AssemblyGraph for this assembly stage.
+    const AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
+        assemblyStage,
+        *httpServerData.options);
+
+    // Find the AssemblyGraphEdge corresponding to the requested segment.
+    auto it = assemblyGraph.edgeMap.find(segmentId);
+    if(it == assemblyGraph.edgeMap.end()) {
+        html << "<p>Assembly graph at stage " << assemblyStage <<
+            " does not have segment " << segmentId;
+        return;
+    }
+    const AssemblyGraph::edge_descriptor e = it->second;
+    const AssemblyGraphEdge& edge = assemblyGraph[e];
+
+
+    if(not edge.wasAssembled) {
+        html << "<p>Assembled sequence for segment " << segmentId <<
+            " at assembly stage " << assemblyStage << " is not available.";
+        return;
+    }
+
+
+    html << "<h2>Assembled sequence of segment " << segmentId << " at assembly stage " << assemblyStage << "</h2>";
+
+    vector<Base> sequence;
+    edge.getSequence(sequence);
+
+    if(not sequenceBeginIsPresent) {
+        sequenceBegin = 0;
+    }
+    if(not sequenceEndIsPresent) {
+        sequenceEnd = sequence.size();
+    }
+
+    if(sequenceBegin >= sequence.size()) {
+        sequenceBegin = sequence.size() - 1;
+    }
+    if(sequenceEnd > sequence.size()) {
+        sequenceEnd = sequence.size();
+    }
+    if(sequenceEnd < sequenceBegin) {
+        sequenceEnd = sequenceBegin;
+    }
+
+    html << "<div style='font-family:monospace'>";
+    html << ">" << segmentName << "-" << sequenceBegin << "-" << sequenceEnd <<
+        ", length " << sequenceEnd - sequenceBegin << "<br>";
+    copy(sequence.begin() + sequenceBegin, sequence.begin() + sequenceEnd,
+        ostream_iterator<Base>(html));
+    html << "</div>";
+
+    // Also write the sequence to LocalAssembly.fasta.
+    ofstream fasta("Segment.fasta");
+    fasta << ">" << segmentName << "-" << sequenceBegin << "-" << sequenceEnd <<
+        " length " << sequenceEnd - sequenceBegin << endl;
+    copy(sequence.begin() + sequenceBegin, sequence.begin() + sequenceEnd,
+        ostream_iterator<Base>(fasta));
+
+    html << "<p>The sequence was stored in Segment.fasta.";
+
+}
+
+
+
+void Assembler::exploreSegmentSteps(
     const vector<string>& request,
     ostream& html)
 {
@@ -343,17 +481,9 @@ void Assembler::exploreSegment(
     string lastStepsCountString = "5";
     HttpServer::getParameterValue(request, "lastStepsCount", lastStepsCountString);
 
-    string showSequenceString;
-    const bool showSequence = getParameterValue(request, "showSequence", showSequenceString);
-
     string showSequenceDetailsString;
     const bool showSequenceDetails = getParameterValue(request, "showSequenceDetails", showSequenceDetailsString);
 
-    uint64_t sequenceBegin = 0;
-    const bool sequenceBeginIsPresent = getParameterValue(request, "sequenceBegin", sequenceBegin);
-
-    uint64_t sequenceEnd = 0;
-    const bool sequenceEndIsPresent = getParameterValue(request, "sequenceEnd", sequenceEnd);
 
 
     // Start the form.
@@ -366,7 +496,7 @@ void Assembler::exploreSegment(
     if(not assemblyStage.empty()) {
         html << " value='" << assemblyStage + "'";
     }
-    html << " size=10>";
+    html << " size=8>";
 
     html <<
         "<tr>"
@@ -375,7 +505,7 @@ void Assembler::exploreSegment(
     if(not segmentName.empty()) {
         html << " value='" << segmentName + "'";
     }
-    html << ">";
+    html << " size=8>";
 
 
 
@@ -410,31 +540,12 @@ void Assembler::exploreSegment(
         "> Also show sequence details for these steps";
         ;
 
-    // Options to control the sequence display.
-    html <<
-        "<tr>"
-        "<th class=left>Show sequence"
-        "<td class=left>"
-        "<input type=checkbox name=showSequence" << (showSequence ? " checked" : "") << "> Show sequence";
-
-    html << "<br><input type=text name=sequenceBegin size=8";
-    if(sequenceBeginIsPresent) {
-        html << " value=" << sequenceBegin;
-    }
-    html << "> Begin position";
-
-    html << "<br><input type=text name=sequenceEnd size=8";
-    if(sequenceEndIsPresent) {
-        html << " value=" << sequenceEnd;
-    }
-    html << "> End position";
-
 
 
     // End the form.
     html <<
         "</table>"
-        "<input type=submit value='Get segment information'>"
+        "<p><input type=submit value='Get segment information'>"
         "</form>";
 
     if(segmentName.empty()) {
@@ -626,49 +737,15 @@ void Assembler::exploreSegment(
             "'>See these anchors in the local anchor graph</a>";
         }
     }
+}
 
 
 
-
-    // Sequence, if requested.
-    if(showSequence and edge.wasAssembled) {
-        html << "<h2>Assembled sequence</h2>";
-
-        vector<Base> sequence;
-        edge.getSequence(sequence);
-
-        if(not sequenceBeginIsPresent) {
-            sequenceBegin = 0;
-        }
-        if(not sequenceEndIsPresent) {
-            sequenceEnd = sequence.size();
-        }
-
-        if(sequenceBegin >= sequence.size()) {
-            sequenceBegin = sequence.size() - 1;
-        }
-        if(sequenceEnd > sequence.size()) {
-            sequenceEnd = sequence.size();
-        }
-        if(sequenceEnd < sequenceBegin) {
-            sequenceEnd = sequenceBegin;
-        }
-
-        html << "<div style='font-family:monospace'>";
-        html << ">" << segmentName << "-" << sequenceBegin << "-" << sequenceEnd <<
-            ", length " << sequenceEnd - sequenceBegin << "<br>";
-        copy(sequence.begin() + sequenceBegin, sequence.begin() + sequenceEnd,
-            ostream_iterator<Base>(html));
-        html << "</div>";
-
-        // Also write the sequence to LocalAssembly.fasta.
-        ofstream fasta("Segment.fasta");
-        fasta << ">" << segmentName << "-" << sequenceBegin << "-" << sequenceEnd <<
-            " length " << sequenceEnd - sequenceBegin << endl;
-        copy(sequence.begin() + sequenceBegin, sequence.begin() + sequenceEnd,
-            ostream_iterator<Base>(fasta));
-    }
-
+void Assembler::exploreSegmentOrientedReads(
+    const vector<string>& /* request */,
+    ostream& /* html */)
+{
+    SHASTA_ASSERT(0);
 }
 
 
