@@ -495,6 +495,7 @@ uint64_t SuperbubbleChain::phase1(
                         ostream html(0);
                         RestrictedAnchorGraph restrictedAnchorGraph(
                             assemblyGraph.anchors, assemblyGraph.journeys, tangleMatrix, iEntrance, iExit, html);
+                        restrictedAnchorGraph.removeLowCoverageEdges(anchorId0, anchorId1);
                         // cout << "AAA " << num_vertices(restrictedAnchorGraph) << " " << num_edges(restrictedAnchorGraph) << endl;
                         restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
                         // cout << "BBB " << num_vertices(restrictedAnchorGraph) << " " << num_edges(restrictedAnchorGraph) << endl;

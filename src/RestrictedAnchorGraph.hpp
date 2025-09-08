@@ -9,6 +9,7 @@
 
 // Boost libraries.
 #include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/filtered_graph.hpp>
 
 // Standard library.
 #include <utility.hpp>
@@ -58,7 +59,7 @@ public:
     uint64_t color = invalid<uint64_t>;
     uint64_t rank = invalid<uint64_t>;
 
-    // Field used by findOptimalPath.
+    // Field used by removeLowCoverageEdges.
     bool wasRemoved = false;
 };
 
@@ -74,7 +75,7 @@ public:
     // Field used by approximateTopologicalSort.
     bool isDagEdge = false;
 
-    // Field used by findOptimalPath.
+    // Field used by removeLowCoverageEdges.
     bool wasRemoved = false;
 };
 
@@ -90,7 +91,6 @@ public:
         AnchorId,
         uint32_t distanceInJourney,
         ostream& html);
-
 
     // Constructor using a TangleMatrix1.
     RestrictedAnchorGraph(
@@ -139,6 +139,12 @@ public:
     // This also sets the isOptimalPathEdge on the edges of the longest path.
     void findLongestPath(vector<edge_descriptor>&);
 
+    // Remove low coverage edges without destroying reachability
+    // of anchorId1 from anchorId0. In the process, this also
+    // removes vertices that become unreachable from anchorId0 (forward)
+    // or anchorId1 (backward).
+    void removeLowCoverageEdges(AnchorId anchorId0, AnchorId anchorId1);
+
     // Find the optimal assembly path.
     // This also sets the isOptimalPathEdge on the edges of the optimal path path.
     void findOptimalPath(
@@ -152,4 +158,25 @@ public:
 
     void writeGraphviz(const string& fileName, const vector<AnchorId>& highlightVertices) const;
     void writeGraphviz(ostream&, const vector<AnchorId>& highlightVertices) const;
+
+
+    // A filtered graph that only includes vertices and edges for which the wasRemoved flag is not set.
+    class FilteringPredicate {
+    public:
+        bool operator()(const vertex_descriptor& v) const
+        {
+            return  not (*restrictedAnchorGraph)[v].wasRemoved;
+        }
+        bool operator()(const edge_descriptor& e) const
+        {
+            return  not (*restrictedAnchorGraph)[e].wasRemoved;
+        }
+        FilteringPredicate(const RestrictedAnchorGraph* restrictedAnchorGraph = 0) :
+            restrictedAnchorGraph(restrictedAnchorGraph)
+            {}
+        const RestrictedAnchorGraph* restrictedAnchorGraph;
+    };
+    FilteringPredicate filteringPredicate;
+    using FilteredGraph = boost::filtered_graph<RestrictedAnchorGraph, FilteringPredicate, FilteringPredicate>;
+    FilteredGraph filteredGraph;
 };

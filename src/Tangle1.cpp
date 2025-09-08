@@ -133,6 +133,7 @@ void Tangle1::addConnectPair(uint64_t entranceIndex, uint64_t exitIndex) {
         ostream html(0);
         RestrictedAnchorGraph restrictedAnchorGraph(
             assemblyGraph.anchors, assemblyGraph.journeys, tangleMatrix(), entranceIndex, exitIndex, html);
+        restrictedAnchorGraph.removeLowCoverageEdges(anchorId0, anchorId1);
         restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
         restrictedAnchorGraph.removeCycles();
         restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);

@@ -1552,6 +1552,7 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
 
                     RestrictedAnchorGraph restrictedAnchorGraph(
                         anchors(), journeys(), tangleMatrix, iEntrance, iExit, html);
+                    restrictedAnchorGraph.removeLowCoverageEdges(entranceAnchorId, exitAnchorId);
                     restrictedAnchorGraph.keepBetween(entranceAnchorId, exitAnchorId);
                     restrictedAnchorGraph.removeCycles();
                     restrictedAnchorGraph.keepBetween(entranceAnchorId, exitAnchorId);
