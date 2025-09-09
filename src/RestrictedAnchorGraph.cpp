@@ -1,6 +1,7 @@
 // Shasta.
 #include "RestrictedAnchorGraph.hpp"
 #include "approximateTopologicalSort.hpp"
+#include "dominatorTree.hpp"
 #include "findReachableVertices.hpp"
 #include "Journeys.hpp"
 #include "longestPath.hpp"
@@ -598,6 +599,83 @@ void RestrictedAnchorGraph::removeLowCoverageEdges(
             break;
         }
     }
+
+
+#if 0
+
+    // Compute the dominator tree starting at v0.
+    computeDominatorTree(v0);
+#if 0
+    cout << "Dominator tree:" << endl;
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        const vertex_descriptor dominator = graph[v].dominator;
+        if(dominator != null_vertex()) {
+            cout << anchorIdToString(graph[v].anchorId) << " " <<
+                anchorIdToString(graph[dominator].anchorId) << endl;
+        }
+    }
+#endif
+
+
+    // Walk back the dominator tree starting at v1.
+    vector<vertex_descriptor> dominatorSequence({v1});
+    while(true) {
+        const vertex_descriptor v = dominatorSequence.back();
+        const vertex_descriptor dominator = graph[v].dominator;
+        if(dominator == null_vertex()) {
+            break;
+        } else {
+            dominatorSequence.push_back(dominator);
+        }
+    }
+    std::ranges::reverse(dominatorSequence);
+#if 0
+    cout << "Dominator sequence:";
+    for(const vertex_descriptor v: dominatorSequence) {
+        cout << " " << anchorIdToString(graph[v].anchorId);
+    }
+    cout << endl;
+#endif
+    SHASTA_ASSERT(dominatorSequence.size() >= 2);
+    SHASTA_ASSERT(dominatorSequence.front() == v0);
+    SHASTA_ASSERT(dominatorSequence.back() == v1);
+
+
+
+    // Each pair of adjacent vertices (vA, vB) in the dominatorSequence
+    // define a "segment" in the RestrictedAnchorGraph such that all paths
+    // starting at v0 that go through vB must also go through vA first.
+    // So vA and vB are "choke points" of the RestrictedAnchorGraph
+    // and define a "segment" of the RestrictedAnchorGraph.
+    for(uint64_t i=1; i<dominatorSequence.size(); i++) {
+        const vertex_descriptor vA = dominatorSequence[i-1];
+        const vertex_descriptor vB = dominatorSequence[i];
+
+        // Skip trivial segments.
+        bool edgeExists = false;
+        tie(ignore, edgeExists) = boost::edge(vA, vB, graph);
+        if(edgeExists and (out_degree(vA, graph) == 1) and (in_degree(vB, graph) == 1)) {
+            continue;
+        }
+
+        cout << "Working on non-trivial RestrictedAnchorGraph segment " <<
+            anchorIdToString(graph[vA].anchorId) << " " <<
+            anchorIdToString(graph[vB].anchorId) << endl;
+    }
+#endif
+}
+
+
+
+// Compute the dominator tree starting at a given vertex.
+// Store the immediate dominator of each vertex in
+// RestrictedAnchorGraphVertex::immediateDominator.
+void RestrictedAnchorGraph::computeDominatorTree(vertex_descriptor v0)
+{
+    using Graph = RestrictedAnchorGraph;
+    Graph& graph = *this;
+
+    shasta::lengauer_tarjan_dominator_tree_general(graph, v0);
 }
 
 

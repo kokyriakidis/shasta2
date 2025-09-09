@@ -61,6 +61,9 @@ public:
 
     // Field used by removeLowCoverageEdges.
     bool wasRemoved = false;
+
+    RestrictedAnchorGraphBaseClass::vertex_descriptor dominator =
+        RestrictedAnchorGraphBaseClass::null_vertex();
 };
 
 
@@ -179,4 +182,9 @@ public:
     FilteringPredicate filteringPredicate;
     using FilteredGraph = boost::filtered_graph<RestrictedAnchorGraph, FilteringPredicate, FilteringPredicate>;
     FilteredGraph filteredGraph;
+
+    // Compute the dominator tree starting at a given vertex.
+    // Store the immediate dominator of each vertex in
+    // RestrictedAnchorGraphVertex::immediateDominator.
+    void computeDominatorTree(vertex_descriptor);
 };

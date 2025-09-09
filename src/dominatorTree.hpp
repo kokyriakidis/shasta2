@@ -78,6 +78,82 @@ namespace shasta {
             parentMap, verticesByDFNum, domTreePredMap);
     }
 
+
+
+    // The above requires a Graph that uses vecS to store the vertices.
+    // For graphs that don't do that, I was not able to get the 7-argument
+    // version of boost::lengauer_tarjan_dominator_tree to work.
+    // As a workaround, the code below creates an AuxiliaryGraph
+    // that uses vecS, computes the dominator tree for the AuxiliaryGraph,
+    // then stores the result in the dominator field of the Graph vertex (required).
+    template<class Graph>
+    void lengauer_tarjan_dominator_tree_general(
+        Graph &graph,
+        typename boost::graph_traits<Graph>::vertex_descriptor entry)
+    {
+        using namespace boost;
+
+        // Vertex descriptor for the original Graph.
+        using V = typename Graph::vertex_descriptor;
+
+        // Base class for AuxiliaryGraph.
+        class AuxiliaryGraphVertex;
+        using AuxiliaryGraph = boost::adjacency_list<
+            boost::listS,
+            boost::vecS,
+            boost::bidirectionalS,
+            AuxiliaryGraphVertex>;
+
+        // Vertex descriptor for the AuxiliaryGraph.
+        using AV = typename AuxiliaryGraph::vertex_descriptor;
+
+        // Each vertex stores the corresponding vertex descriptor of the Graph.
+        class AuxiliaryGraphVertex {
+        public:
+            V v;
+            AV dominator = AuxiliaryGraph::null_vertex();
+            AuxiliaryGraphVertex(V v = Graph::null_vertex()) : v(v) {}
+         };
+
+        // Create the AuxiliaryGraph.
+        AuxiliaryGraph auxiliaryGraph;
+
+        // Create an AuxiliaryGraph vertex for each vertex of the Graph.
+        std::map<V, AV> vertexMap;
+        BGL_FORALL_VERTICES_T(v, graph, Graph) {
+            const AV av = boost::add_vertex(AuxiliaryGraphVertex(v), auxiliaryGraph);
+            vertexMap.insert(make_pair(v, av));
+        }
+
+        // Create an AuxiliaryGraph edge for each edge of the Graph.
+        BGL_FORALL_EDGES_T(e, graph, Graph) {
+            const V v0 = source(e, graph);
+            const V v1 = target(e, graph);
+            const AV av0 = vertexMap[v0];
+            const AV av1 = vertexMap[v1];
+            boost::add_edge(av0, av1, auxiliaryGraph);
+        }
+
+        // Compute the dominator tree of the AuxiliaryGraph.
+        const auto itEntry = vertexMap.find(entry);
+        SHASTA_ASSERT(itEntry != vertexMap.end());
+        const AV auxEntry = itEntry->second;
+        shasta::lengauer_tarjan_dominator_tree(
+            auxiliaryGraph,
+            auxEntry,
+            boost::get(&AuxiliaryGraphVertex::dominator, auxiliaryGraph));
+
+        // Store it in the dominator field of the vertices of the original graph.
+        BGL_FORALL_VERTICES_T(v, graph, Graph) {
+            const AV av = vertexMap[v];
+            const AV auxDominator = auxiliaryGraph[av].dominator;
+            if(auxDominator == AuxiliaryGraph::null_vertex()){
+                graph[v].dominator = Graph::null_vertex();
+            } else {
+                graph[v].dominator = auxiliaryGraph[auxDominator].v;
+            }
+        }
+    }
 }
 
 #endif
