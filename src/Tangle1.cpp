@@ -108,7 +108,7 @@ bool Tangle1::isTangleVertex(vertex_descriptor v) const
 
 
 
-void Tangle1::addConnectPair(uint64_t entranceIndex, uint64_t exitIndex) {
+bool Tangle1::addConnectPair(uint64_t entranceIndex, uint64_t exitIndex, uint64_t detangleMinCoverage) {
     SHASTA_ASSERT(entranceIndex < entrances.size());
     SHASTA_ASSERT(exitIndex < exits.size());
     connectPairs.emplace_back(entranceIndex, exitIndex);
@@ -124,28 +124,45 @@ void Tangle1::addConnectPair(uint64_t entranceIndex, uint64_t exitIndex) {
         // We just generate an empty edge without any steps.
         // If any of these are left after compress, they will have to be
         // removed by collapsing the vertices they join.
+        return true;
     } else {
-        // Create the RestrictedAnchorGraph, then:
-        // - Remove vertices not accessible from anchorId0 and anchorId1.
-        // - Remove cycles.
-        // - Find the longest path.
-        // - Add one step for each edge of the longest path of the RestrictedAnchorGraph.
-        ostream html(0);
-        RestrictedAnchorGraph restrictedAnchorGraph(
-            assemblyGraph.anchors, assemblyGraph.journeys, tangleMatrix(), entranceIndex, exitIndex, html);
-        restrictedAnchorGraph.removeLowCoverageEdges(anchorId0, anchorId1);
-        restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
-        restrictedAnchorGraph.removeCycles();
-        restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
-        vector<RestrictedAnchorGraph::edge_descriptor> longestPath;
-        // restrictedAnchorGraph.findLongestPath(longestPath);
-        restrictedAnchorGraph.findOptimalPath(anchorId0, anchorId1, longestPath);
 
-        for(const RestrictedAnchorGraph::edge_descriptor re: longestPath) {
-            const auto& rEdge = restrictedAnchorGraph[re];
-            newEdge.push_back(AssemblyGraphEdgeStep(rEdge.anchorPair,rEdge.offset));
+        try {
+
+            // Create the RestrictedAnchorGraph, then:
+            // - Remove vertices not accessible from anchorId0 and anchorId1.
+            // - Remove cycles.
+            // - Find the longest path.
+            // - Add one step for each edge of the longest path of the RestrictedAnchorGraph.
+            ostream html(0);
+            RestrictedAnchorGraph restrictedAnchorGraph(
+                assemblyGraph.anchors, assemblyGraph.journeys, tangleMatrix(), entranceIndex, exitIndex, html);
+            restrictedAnchorGraph.removeLowCoverageEdges(anchorId0, anchorId1);
+            restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
+            restrictedAnchorGraph.removeCycles();
+            restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
+            vector<RestrictedAnchorGraph::edge_descriptor> longestPath;
+            // restrictedAnchorGraph.findLongestPath(longestPath);
+            restrictedAnchorGraph.findOptimalPath(anchorId0, anchorId1, longestPath);
+
+            for(const RestrictedAnchorGraph::edge_descriptor re: longestPath) {
+                const auto& rEdge = restrictedAnchorGraph[re];
+                if(rEdge.anchorPair.size() < detangleMinCoverage) {
+                    newEdge.clear();
+                    return false;
+                }
+                newEdge.push_back(AssemblyGraphEdgeStep(rEdge.anchorPair, rEdge.offset));
+            }
+
+        } catch(const std::exception&) {
+
+            // Creation of the RestrictedAnchorGraph failed.
+            return false;
         }
+
+        return true;
     }
+
 }
 
 
@@ -272,46 +289,6 @@ void Tangle1::reconnect(
     if(debug) {
         cout << "Created new assembly graph edge " << newEdge.id << endl;
     }
-
-
-#if 0
-    if(anchorId0 == anchorId1) {
-        // We just generate an empty edge without any steps.
-        // If any of these are left after compress, they will have to be
-        // removed by collapsing the vertices they join.
-    } else {
-        // Create the RestrictedAnchorGraph, then:
-        // - Remove vertices not accessible from anchorId0 and anchorId1.
-        // - Remove cycles.
-        // - Find the longest path.
-        // - Add one step for each edge of the longest path of the RestrictedAnchorGraph.
-        ostream html(0);
-        RestrictedAnchorGraph restrictedAnchorGraph(
-            assemblyGraph.anchors, assemblyGraph.journeys, tangleMatrix(), iEntrance, iExit, html);
-        restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
-        restrictedAnchorGraph.removeCycles();
-        restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
-        vector<RestrictedAnchorGraph::edge_descriptor> longestPath;
-        // restrictedAnchorGraph.findLongestPath(longestPath);
-        restrictedAnchorGraph.findOptimalPath(anchorId0, anchorId1, longestPath);
-
-        for(const RestrictedAnchorGraph::edge_descriptor re: longestPath) {
-            const auto& rEdge = restrictedAnchorGraph[re];
-            newEdge.push_back(AssemblyGraphEdgeStep(rEdge.anchorPair,rEdge.offset));
-        }
-    }
-#endif
 }
 
 
-
-uint64_t Tangle1::minConnectPairCoverage() const
-{
-    uint64_t minCoverage = std::numeric_limits<uint64_t>::max();
-    for(const ConnectPair& connectPair: connectPairs) {
-        for(const auto& step: connectPair.newEdge) {
-            minCoverage = min(minCoverage, step.anchorPair.size());
-        }
-    }
-    return minCoverage;
-}

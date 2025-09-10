@@ -203,17 +203,22 @@ bool LikelihoodRatioDetangler::operator()(Tangle1& tangle)
     for(uint64_t iEntrance=0; iEntrance<entranceCount; iEntrance++) {
         for(uint64_t iExit=0; iExit<exitCount; iExit++) {
             if(bestConnectivityMatrix[iEntrance][iExit]) {
-                tangle.addConnectPair(iEntrance, iExit);
                 if(debug) {
                     cout << "Connecting for detangling: " << iEntrance << " " << iExit << endl;
                 }
+                const bool success = tangle.addConnectPair(iEntrance, iExit, detangleMinCoverage);
+                if(success) {
+                    if(debug) {
+                        cout << "addConnectPair success." << endl;
+                    }
+                } else {
+                    if(debug) {
+                        cout << "addConnectPair failure." << endl;
+                    }
+                    return false;
+                }
             }
         }
-    }
-
-    // If any of the ConnectPairs contain AnchorPairs with low coverage, don't detangle.
-    if(tangle.minConnectPairCoverage() < detangleMinCoverage) {
-        return false;
     }
 
     // Detangle.
