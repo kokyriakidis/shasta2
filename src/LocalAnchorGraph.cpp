@@ -198,21 +198,18 @@ void LocalAnchorGraph::writeGraphviz(
         vector<AssemblyGraph::edge_descriptor> annotationEdges;
         if(options.vertexColoring == "byAssemblyAnnotations") {
             hasVertexAnnotation = assemblyGraph3Pointer->hasVertexAnnotation(anchorId);
-            if(not hasVertexAnnotation) {
-                assemblyGraph3Pointer->findAnnotationEdges(anchorId, annotationEdges);
-            }
+            assemblyGraph3Pointer->findAnnotationEdges(anchorId, annotationEdges);
         }
 
         // Annotation text.
         string annotationText;
         if(options.vertexColoring == "byAssemblyAnnotations") {
             if(hasVertexAnnotation) {
-                annotationText = "Vertex";
-            } else if(annotationEdges.size() > 1) {
-                annotationText = "Multiple";
-            } else if(annotationEdges.size() == 1) {
-                const uint64_t segmentId = (*assemblyGraph3Pointer)[annotationEdges.front()].id;
-                annotationText = to_string(segmentId);
+                annotationText = "\\nVertex";
+            }
+            for(const AssemblyGraph::edge_descriptor e: annotationEdges) {
+                annotationText.append("\\n");
+                annotationText.append(to_string((*assemblyGraph3Pointer)[e].id));
             }
         }
 
@@ -236,7 +233,7 @@ void LocalAnchorGraph::writeGraphviz(
         if(options.vertexLabels) {
             s << " label=\"" << anchorIdString << "\\n" << coverage;
             if(not annotationText.empty()) {
-                s << "\\n" << annotationText;
+                s << annotationText;
             }
             s << "\"";
         }
