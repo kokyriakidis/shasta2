@@ -3,15 +3,20 @@
 #include "approximateTopologicalSort.hpp"
 #include "dominatorTree.hpp"
 #include "findReachableVertices.hpp"
+#include "graphvizToHtml.hpp"
 #include "Journeys.hpp"
 #include "longestPath.hpp"
 #include "orderPairs.hpp"
 #include "TangleMatrix1.hpp"
+#include "tmpDirectory.hpp"
 using namespace shasta;
 
 // Boost libraries.
 #include <boost/graph/dijkstra_shortest_paths.hpp>
 #include <boost/graph/iteration_macros.hpp>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
 
 // Standard library.
 #include <fstream.hpp>
@@ -142,12 +147,22 @@ void RestrictedAnchorGraph::create(
             "<th>Begin<th>End"
             "<th>Journey<br>portion<br>length";
         for(const JourneyPortion& journeyPortion: journeyPortions) {
+            const Journey journey = journeys[journeyPortion.orientedReadId];
             html << "<tr>" <<
                 "<td class=centered>" << journeyPortion.orientedReadId <<
-                "<td class=centered>" << journeys[journeyPortion.orientedReadId].size() <<
+                "<td class=centered>" << journey.size() <<
                 "<td class=centered>" << journeyPortion.begin <<
                 "<td class=centered>" << journeyPortion.end <<
                 "<td class=centered>" << journeyPortion.end -journeyPortion.begin;
+#if 0
+            html <<    "<td class=centered>";
+            for(uint64_t position=journeyPortion.begin; position!=journeyPortion.end; ++position) {
+                if(position != journeyPortion.begin) {
+                    html << " ";
+                }
+                html << anchorIdToString(journey[position]);
+            }
+#endif
         }
         html << "</table>";
     }
@@ -273,6 +288,25 @@ void RestrictedAnchorGraph::writeGraphviz(
     }
 
     dot << "}\n";
+}
+
+
+
+void RestrictedAnchorGraph::writeHtml(
+    ostream& html,
+    const vector<AnchorId>& highlightVertices) const
+{
+    // Write it in graphviz format.
+    const string uuid = to_string(boost::uuids::random_generator()());
+    const string dotFileName = tmpDirectory() + uuid + ".dot";
+    writeGraphviz(dotFileName, highlightVertices);
+
+
+    // Display it in html in svg format.
+    const double timeout = 30.;
+    const string options = "-Nshape=rectangle -Gbgcolor=gray95";
+    html << "<p>";
+    graphvizToHtml(dotFileName, "dot", timeout, options, html);
 }
 
 

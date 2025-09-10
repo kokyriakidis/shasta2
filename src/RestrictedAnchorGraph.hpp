@@ -161,6 +161,7 @@ public:
 
     void writeGraphviz(const string& fileName, const vector<AnchorId>& highlightVertices) const;
     void writeGraphviz(ostream&, const vector<AnchorId>& highlightVertices) const;
+    void writeHtml(ostream&, const vector<AnchorId>& highlightVertices) const;
 
 
     // A filtered graph that only includes vertices and edges for which the wasRemoved flag is not set.

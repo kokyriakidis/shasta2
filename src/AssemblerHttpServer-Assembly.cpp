@@ -4,7 +4,6 @@
 #include "AssemblyGraphPostprocessor.hpp"
 #include "deduplicate.hpp"
 #include "findConvergingVertex.hpp"
-#include "graphvizToHtml.hpp"
 #include "GTest.hpp"
 #include "LocalAssembly.hpp"
 #include "LocalAssemblyGraph.hpp"
@@ -13,7 +12,6 @@
 #include "Tangle.hpp"
 #include "TangleMatrix.hpp"
 #include "TangleMatrix1.hpp"
-#include "tmpDirectory.hpp"
 using namespace shasta;
 
 // Boost libraries.
@@ -21,9 +19,6 @@ using namespace shasta;
 #include <boost/graph/iteration_macros.hpp>
 #include <boost/graph/reverse_graph.hpp>
 #include <boost/tokenizer.hpp>
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_generators.hpp>
-#include <boost/uuid/uuid_io.hpp>
 
 // Standard library.
 #include <fstream.hpp>
@@ -1568,16 +1563,7 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
                     restrictedAnchorGraph.findOptimalPath(entranceAnchorId, exitAnchorId, longestPath);
 
                     // Write it out in Graphviz format.
-                    const string uuid = to_string(boost::uuids::random_generator()());
-                    const string dotFileName = tmpDirectory() + uuid + ".dot";
-                    restrictedAnchorGraph.writeGraphviz(dotFileName, {entranceAnchorId, exitAnchorId});
-
-
-                    // Display it in html in svg format.
-                    const double timeout = 30.;
-                    const string options = "-Nshape=rectangle -Gbgcolor=gray95";
-                    html << "<p>";
-                    graphvizToHtml(dotFileName, "dot", timeout, options, html);
+                    restrictedAnchorGraph.writeHtml(html, {entranceAnchorId, exitAnchorId});
                 }
 
             }
