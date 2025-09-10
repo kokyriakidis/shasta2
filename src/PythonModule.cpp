@@ -38,17 +38,17 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         // Constructor from the name of a configuration file.
         .def(pybind11::init<const string&>(),
             arg("configurationFileName") = "shasta2.conf")
-        .def_readonly("threadCount", &Options::threadCount)
-        .def_readonly("k", &Options::k)
-        .def_readonly("markerDensity", &Options::markerDensity)
-        .def_readonly("maxMarkerErrorRate", &Options::maxMarkerErrorRate)
-        .def_readonly("minAnchorCoverage", &Options::minAnchorCoverage)
-        .def_readonly("maxAnchorCoverage", &Options::maxAnchorCoverage)
-        .def_readonly("minAnchorGraphEdgeCoverage", &Options::minAnchorGraphEdgeCoverage)
-        .def_readonly("detangleEpsilon", &Options::detangleEpsilon)
-        .def_readonly("detangleMaxLogP", &Options::detangleMaxLogP)
-        .def_readonly("detangleMinLogPDelta", &Options::detangleMinLogPDelta)
-        .def_readonly("detangleMinCoverage", &Options::detangleMinCoverage)
+        .def_readwrite("threadCount", &Options::threadCount)
+        .def_readwrite("k", &Options::k)
+        .def_readwrite("markerDensity", &Options::markerDensity)
+        .def_readwrite("maxMarkerErrorRate", &Options::maxMarkerErrorRate)
+        .def_readwrite("minAnchorCoverage", &Options::minAnchorCoverage)
+        .def_readwrite("maxAnchorCoverage", &Options::maxAnchorCoverage)
+        .def_readwrite("minAnchorGraphEdgeCoverage", &Options::minAnchorGraphEdgeCoverage)
+        .def_readwrite("detangleEpsilon", &Options::detangleEpsilon)
+        .def_readwrite("detangleMaxLogP", &Options::detangleMaxLogP)
+        .def_readwrite("detangleMinLogPDelta", &Options::detangleMinLogPDelta)
+        .def_readwrite("detangleMinCoverage", &Options::detangleMinCoverage)
         ;
 
     // Class Assembler.
