@@ -914,7 +914,8 @@ void Assembler::exploreSegmentOrientedReads(
 
     // Find the OrientedReadIds that appear in the AnchorPairs of these steps.
     vector<OrientedReadId> orientedReadIds;
-    for(const AssemblyGraphEdgeStep& step: edge) {
+    for(uint64_t i=stepBegin; i<stepEnd; ++i) {
+        const AssemblyGraphEdgeStep& step = edge[i];
         const AnchorPair anchorPair = step.anchorPair;
         std::ranges::copy(step.anchorPair.orientedReadIds, back_inserter(orientedReadIds));
     }
