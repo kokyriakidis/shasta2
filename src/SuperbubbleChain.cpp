@@ -487,40 +487,43 @@ uint64_t SuperbubbleChain::phase1(
                         const AnchorId anchorId1 = assemblyGraph[v1].anchorId;
 
                         // If the AnchorIds are the same, detangling will just add an empty edge
-                        // and so the coverage check is satistfied.
+                        // and so the coverage check is satisfied.
                         if(anchorId1 == anchorId0) {
                             continue;
                         }
 
-                        ostream html(0);
-                        RestrictedAnchorGraph restrictedAnchorGraph(
-                            assemblyGraph.anchors, assemblyGraph.journeys, tangleMatrix, iEntrance, iExit, html);
-                        restrictedAnchorGraph.removeLowCoverageEdges(anchorId0, anchorId1);
-                        // cout << "AAA " << num_vertices(restrictedAnchorGraph) << " " << num_edges(restrictedAnchorGraph) << endl;
-                        restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
-                        // cout << "BBB " << num_vertices(restrictedAnchorGraph) << " " << num_edges(restrictedAnchorGraph) << endl;
-                        restrictedAnchorGraph.removeCycles();
-                        // cout << "CCC " << num_vertices(restrictedAnchorGraph) << " " << num_edges(restrictedAnchorGraph) << endl;
-                        restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
-                        // cout << "DDD " << num_vertices(restrictedAnchorGraph) << " " << num_edges(restrictedAnchorGraph) << endl;
-                        vector<RestrictedAnchorGraph::edge_descriptor> longestPath;
-                        // restrictedAnchorGraph.findLongestPath(longestPath);
-                        restrictedAnchorGraph.findOptimalPath(anchorId0, anchorId1, longestPath);
-                        // cout << "EEE " << num_vertices(restrictedAnchorGraph) << " " << num_edges(restrictedAnchorGraph) << endl;
+                        // Create the RestrictedAnchorGraph. If this fails, skip.
+                        try {
+                            ostream html(0);
+                            RestrictedAnchorGraph restrictedAnchorGraph(
+                                assemblyGraph.anchors, assemblyGraph.journeys, tangleMatrix, iEntrance, iExit, html);
+                            restrictedAnchorGraph.removeLowCoverageEdges(anchorId0, anchorId1);
+                            restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
+                            restrictedAnchorGraph.removeCycles();
+                            restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
+                            vector<RestrictedAnchorGraph::edge_descriptor> longestPath;
+                            restrictedAnchorGraph.findOptimalPath(anchorId0, anchorId1, longestPath);
 
-                        uint64_t minCoverage = std::numeric_limits<uint64_t>::max();
-                        for(const RestrictedAnchorGraph::edge_descriptor e: longestPath) {
-                            const RestrictedAnchorGraphEdge& edge = restrictedAnchorGraph[e];
-                            minCoverage = min(minCoverage, edge.anchorPair.size());
-                        }
-                        if(minCoverage < detangleMinCoverage) {
+                            uint64_t minCoverage = std::numeric_limits<uint64_t>::max();
+                            for(const RestrictedAnchorGraph::edge_descriptor e: longestPath) {
+                                const RestrictedAnchorGraphEdge& edge = restrictedAnchorGraph[e];
+                                minCoverage = min(minCoverage, edge.anchorPair.size());
+                            }
+                            if(minCoverage < detangleMinCoverage) {
+                                coverageCheckFailed = true;
+                                if(debug) {
+                                    cout << "Connecting " << assemblyGraph[tangleMatrix.entrances[iEntrance]].id <<
+                                        " to " << assemblyGraph[tangleMatrix.exits[iExit]].id <<
+                                        " would generate one or more AnchorPairs with coverage " << minCoverage << endl;
+                                }
+                            }
+                        } catch (const std::exception& e) {
                             coverageCheckFailed = true;
                             if(debug) {
-                                cout << "Connecting " << assemblyGraph[tangleMatrix.entrances[iEntrance]].id <<
-                                    " to " << assemblyGraph[tangleMatrix.exits[iExit]].id <<
-                                    " would generate one or more AnchorPairs with coverage " << minCoverage << endl;
+                                cout << "Creation of the RestrictedAnchorGraph failed." << endl;
                             }
-                        }
+                         }
+
                     }
                     if(coverageCheckFailed) {
                         break;
