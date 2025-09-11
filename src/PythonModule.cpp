@@ -182,7 +182,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def_readwrite("debug", &Detangler::debug)
         ;
     class_<LikelihoodRatioDetangler>(shasta2Module, "LikelihoodRatioDetangler", pybind11::base<Detangler>())
-        .def(init<double, double, double, uint64_t, bool, bool>())
+        .def(init<double, double, double, uint64_t, bool, bool, bool, bool>())
         ;
 
 

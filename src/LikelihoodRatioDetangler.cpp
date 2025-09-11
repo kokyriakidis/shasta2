@@ -12,12 +12,16 @@ LikelihoodRatioDetangler::LikelihoodRatioDetangler(
     const double maxLogP,
     const double minLogPDelta,
     uint64_t detangleMinCoverage,
+    bool onlyConsiderInjective,
+    bool onlyConsiderPermutation,
     bool requireInjective,
     bool requirePermutation) :
     epsilon(epsilon),
     maxLogP(maxLogP),
     minLogPDelta(minLogPDelta),
     detangleMinCoverage(detangleMinCoverage),
+    onlyConsiderInjective(onlyConsiderInjective),
+    onlyConsiderPermutation(onlyConsiderPermutation),
     requireInjective(requireInjective),
     requirePermutation(requirePermutation)
 {}
@@ -96,7 +100,7 @@ bool LikelihoodRatioDetangler::operator()(Tangle1& tangle)
     }
 
     // Run the likelihood ratio test.
-    const GTest gTest(tangleMatrix.tangleMatrix, epsilon);
+    const GTest gTest(tangleMatrix.tangleMatrix, epsilon, onlyConsiderInjective, onlyConsiderPermutation);
     if(not gTest.success) {
         if(debug) {
             cout << "Not detangling because the G-test failed." << endl;

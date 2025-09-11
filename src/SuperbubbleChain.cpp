@@ -97,11 +97,13 @@ uint64_t SuperbubbleChain::phase(
                 vector< vector<double> > extendedTangleMatrix;
                 ostream html(0);
                 const TangleMatrix1 tangleMatrix1(assemblyGraph, entranceEdges, exitEdges, html);
-                gTestPointer = make_shared<GTest>(tangleMatrix1.tangleMatrix, assemblyGraph.options.detangleEpsilon);
+                gTestPointer = make_shared<GTest>(tangleMatrix1.tangleMatrix, assemblyGraph.options.detangleEpsilon,
+                    false, false);
             } else {
                 vector< vector<uint64_t> > tangleMatrixCoverage;
                 tangleMatrix.getTangleMatrixCoverage(tangleMatrixCoverage);
-                gTestPointer = make_shared<GTest>(tangleMatrixCoverage, assemblyGraph.options.detangleEpsilon);
+                gTestPointer = make_shared<GTest>(tangleMatrixCoverage, assemblyGraph.options.detangleEpsilon,
+                    false, false);
             }
             const GTest& gTest = *gTestPointer;
             if(not gTest.success) {
@@ -159,8 +161,8 @@ uint64_t SuperbubbleChain::phase(
 
 
 
-            if( gTest.hypotheses.front().isForwardInjective() or
-                gTest.hypotheses.front().isBackwardInjective()) {
+            if( gTest.isForwardInjective(gTest.hypotheses.front().connectivityMatrix) or
+                gTest.isBackwardInjective(gTest.hypotheses.front().connectivityMatrix)) {
                 phasingGraph.addEdge(position0, position1, bestHypothesis);
 
                 if(debug) {
@@ -430,7 +432,11 @@ uint64_t SuperbubbleChain::phase1(
             }
 
             // Do the likelihood ratio test (G test).
-            const GTest gTest(tangleMatrix.tangleMatrix, assemblyGraph.options.detangleEpsilon);
+            // The two final bool parameters request that all hypotheses be considered.
+            const GTest gTest(
+                tangleMatrix.tangleMatrix,
+                assemblyGraph.options.detangleEpsilon,
+                false, false);
             if(not gTest.success) {
                 if(debug) {
                     cout << "Likelihood ratio test was not successful." << endl;
@@ -465,8 +471,10 @@ uint64_t SuperbubbleChain::phase1(
                 }
             }
 
-            if(not(gTest.hypotheses.front().isForwardInjective() and
-                gTest.hypotheses.front().isBackwardInjective())) {
+            if(not(
+                gTest.isForwardInjective(gTest.hypotheses.front().connectivityMatrix) and
+                gTest.isBackwardInjective(gTest.hypotheses.front().connectivityMatrix)
+                )) {
                 if(debug) {
                     cout << "The top hypothesis is not forward and backward injective." << endl;
                 }

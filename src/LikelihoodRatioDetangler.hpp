@@ -19,6 +19,8 @@ public:
         const double maxLogP,
         const double minLogPDelta,
         uint64_t detangleMinCoverage,
+        bool onlyConsiderInjective,
+        bool onlyConsiderPermutation,
         bool requireInjective,
         bool requirePermutation);
 
@@ -26,6 +28,15 @@ public:
     double maxLogP;
     double minLogPDelta;
     uint64_t detangleMinCoverage;
+
+    // If this is set, the GTest only considers hypotheses that are
+    // forward injective and/or backward injective.
+    bool onlyConsiderInjective;
+
+    // If this is set, the GTest only considers hypotheses that are
+    // forward injective and backward injective - that is, they are
+    // permutations.
+    bool onlyConsiderPermutation;
 
     // If this is set, all hypotheses are computed, but detangling
     // is not done if the top hypothesis is not forward injective

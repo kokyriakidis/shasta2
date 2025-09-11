@@ -12,16 +12,22 @@ using namespace shasta;
 
 
 
-GTest::GTest(const vector< vector<double> >& tangleMatrix, double epsilon)
+GTest::GTest(
+    const vector< vector<double> >& tangleMatrix,
+    double epsilon,
+    bool onlyConsiderInjective,
+    bool onlyConsiderPermutation)
 {
-    run(tangleMatrix, epsilon);
+    run(tangleMatrix, epsilon, onlyConsiderInjective, onlyConsiderPermutation);
 }
 
 
 
 GTest::GTest(
     const vector< vector<uint64_t> >& tangleMatrixInteger,
-    double epsilon)
+    double epsilon,
+    bool onlyConsiderInjective,
+    bool onlyConsiderPermutation)
 {
     // Make a copy of the tangle matrix that stores double instead of uint64_t.
     vector< vector<double> > tangleMatrixDouble;
@@ -33,12 +39,16 @@ GTest::GTest(
         tangleMatrixDouble.push_back(rowDouble);
     }
 
-    run(tangleMatrixDouble, epsilon);
+    run(tangleMatrixDouble, epsilon, onlyConsiderInjective, onlyConsiderPermutation);
 }
 
 
 
-void GTest::run(const vector< vector<double> >& tangleMatrix, double epsilon)
+void GTest::run(
+    const vector< vector<double> >& tangleMatrix,
+    double epsilon,
+    bool onlyConsiderInjective,
+    bool onlyConsiderPermutation)
 {
 
     const bool debug = false;
@@ -111,6 +121,18 @@ void GTest::run(const vector< vector<double> >& tangleMatrix, double epsilon)
                 connectivityMatrix[iEntrance][iExit] = ((connectivityInteger & mask) != 0);
                 mask = mask << 1;
             }
+        }
+
+        // Skip this hypothesis if required by onlyConsiderInjective/onlyConsiderPermutation.
+        const bool hypothesisIsForwardInjective = isForwardInjective(connectivityMatrix);
+        const bool hypothesisIsBackwardInjective = isBackwardInjective(connectivityMatrix);
+        const bool isInjective = hypothesisIsForwardInjective or hypothesisIsBackwardInjective;
+        const bool isPermutation = hypothesisIsForwardInjective and hypothesisIsBackwardInjective;
+        if(onlyConsiderInjective and (not isInjective)) {
+            continue;
+        }
+        if(onlyConsiderPermutation and (not isPermutation)) {
+            continue;
         }
 
         if(debug) {
@@ -268,7 +290,7 @@ void GTest::writeHtml(ostream& html) const
 
 
 // Return true if there is a single exit for each entrance.
-bool GTest::Hypothesis::isForwardInjective() const
+bool GTest::isForwardInjective(const vector< vector<bool> >& connectivityMatrix)
 {
     const uint64_t entranceCount = connectivityMatrix.size();
     const uint64_t exitCount = connectivityMatrix.front().size();
@@ -290,7 +312,7 @@ bool GTest::Hypothesis::isForwardInjective() const
 
 
 // Return true if there is a single entrance for exit entrance.
-bool GTest::Hypothesis::isBackwardInjective() const
+bool GTest::isBackwardInjective(const vector< vector<bool> >& connectivityMatrix)
 {
     const uint64_t entranceCount = connectivityMatrix.size();
     const uint64_t exitCount = connectivityMatrix.front().size();

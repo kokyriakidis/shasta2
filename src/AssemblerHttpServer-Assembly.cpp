@@ -1511,7 +1511,7 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
 
     // Compute the tangle matrix.
     const TangleMatrix1 tangleMatrix(assemblyGraph, entrances, exits, html);
-    GTest gTest(tangleMatrix.tangleMatrix, epsilon);
+    GTest gTest(tangleMatrix.tangleMatrix, epsilon, false, false);
     gTest.writeHtml(html);
 
 

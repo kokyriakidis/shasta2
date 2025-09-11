@@ -164,15 +164,19 @@ void AssemblyGraph::simplifyAndAssemble()
         options.detangleMaxLogP,
         options.detangleMinLogPDelta,
         options.detangleMinCoverage,
-        true,
-        true);
+        false,  // Consider all hypotheses
+        false,  // Consider all hypotheses
+        true,   // Require top hypothesis to be injective
+        true);  // Require top hypothesis to be a permutation.
     LikelihoodRatioDetangler shortTanglesDetangler(
         options.detangleEpsilon,
         options.detangleMaxLogP,
         options.detangleMinLogPDelta,
         options.detangleMinCoverage,
-        true,
-        true);
+        false,  // Consider all hypotheses
+        false,  // Consider all hypotheses
+        true,   // Require top hypothesis to be injective
+        true);  // Require top hypothesis to be a permutation.
 
     // Initial output.
     write("A");

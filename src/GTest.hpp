@@ -20,8 +20,16 @@ namespace shasta {
 
 class shasta::GTest {
 public:
-    GTest(const vector< vector<uint64_t> >& tangleMatrix, double epsilon);
-    GTest(const vector< vector<double> >& tangleMatrix, double epsilon);
+    GTest(
+        const vector< vector<uint64_t> >& tangleMatrix,
+        double epsilon,
+        bool onlyConsiderInjective,
+        bool onlyConsiderPermutation);
+    GTest(
+        const vector< vector<double> >& tangleMatrix,
+        double epsilon,
+        bool onlyConsiderInjective,
+        bool onlyConsiderPermutation);
     bool success = false;
 
     void writeHtml(ostream&) const;
@@ -40,11 +48,6 @@ public:
 
         Hypothesis() {}
 
-        // Return true if there is a single exit for each entrance.
-        bool isForwardInjective() const;
-
-        // Return true if there is a single entrance for exit entrance.
-        bool isBackwardInjective() const;
 
         // Sort by G.
         bool operator<(const Hypothesis& that) const {
@@ -53,7 +56,17 @@ public:
     };
     vector<Hypothesis> hypotheses;
 
+    // Return true if there is a single exit for each entrance.
+    static bool isForwardInjective(const vector< vector<bool> >& connectivityMatrix);
+
+    // Return true if there is a single entrance for exit entrance.
+    static bool isBackwardInjective(const vector< vector<bool> >& connectivityMatrix);
+
 private:
-    void run(const vector< vector<double> >& tangleMatrix, double epsilon);
+    void run(
+        const vector< vector<double> >& tangleMatrix,
+        double epsilon,
+        bool onlyConsiderInjective,
+        bool onlyConsiderPermutation);
 
 };
