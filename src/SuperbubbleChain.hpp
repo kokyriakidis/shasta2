@@ -16,7 +16,9 @@ public:
     uint64_t phase1(
         AssemblyGraph&,
         uint64_t superbubbleChainId,
-        uint64_t minDetangleCoverage);
+        uint64_t minDetangleCoverage,
+        bool onlyConsiderInjective,
+        bool onlyConsiderPermutation);
 
 private:
 

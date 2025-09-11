@@ -198,8 +198,8 @@ void AssemblyGraph::simplifyAndAssemble()
         changeCount += compress();
         write("C" + to_string(iteration));
 
-        // Phase SuperbubbleChains.
-        changeCount += phaseSuperbubbleChains();
+        // Phase SuperbubbleChains, considering all hypotheses.
+        changeCount += phaseSuperbubbleChains(false, false);
         write("D" + to_string(iteration));
 
         // Detangling.
@@ -1742,7 +1742,9 @@ void AssemblyGraph::writeSuperbubbleChainsForBandage(
 
 
 
-uint64_t AssemblyGraph::phaseSuperbubbleChains()
+uint64_t AssemblyGraph::phaseSuperbubbleChains(
+    bool onlyConsiderInjective,
+    bool onlyConsiderPermutation)
 {
     performanceLog << timestamp << "AssemblyGraph::phaseSuperbubbleChains begins." << endl;
 
@@ -1767,7 +1769,12 @@ uint64_t AssemblyGraph::phaseSuperbubbleChains()
     uint64_t changeCount = 0;
     for(uint64_t superbubbleChainId=0; superbubbleChainId<superbubbleChains.size(); superbubbleChainId++) {
         SuperbubbleChain& superbubbleChain = superbubbleChains[superbubbleChainId];
-        changeCount += superbubbleChain.phase1(*this, superbubbleChainId, options.detangleMinCoverage);
+        changeCount += superbubbleChain.phase1(
+            *this,
+            superbubbleChainId,
+            options.detangleMinCoverage,
+            onlyConsiderInjective,
+            onlyConsiderPermutation);
     }
     clearOrientedReadEdgeInformation();
 

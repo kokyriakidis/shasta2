@@ -447,7 +447,9 @@ public:
     bool simplifySuperbubbleByClustering(const Superbubble&, uint64_t minCoverage, uint64_t maxOffset);
 
     // Phasing of SuperbubbleChains.
-    uint64_t phaseSuperbubbleChains();
+    uint64_t phaseSuperbubbleChains(
+        bool onlyConsiderInjective,
+        bool onlyConsiderPermutation);
 
 
 
