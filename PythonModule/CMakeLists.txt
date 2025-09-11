@@ -50,7 +50,7 @@ SET(CMAKE_LINKER_FLAGS  "${CMAKE_LINKER_FLAGS} ${SHASTA2_PYTHON_LIBRARIES}")
 # Libraries to link with.
 target_link_libraries(
     shasta2PythonModule 
-    atomic png boost_program_options boost_serialization pthread abpoa z m spoa lapack blas ${SHASTA2_PYTHON_LIBRARIES})
+    atomic png boost_program_options boost_serialization pthread abpoa z m lapack blas ${SHASTA2_PYTHON_LIBRARIES})
 
 # Install the shared library into the bin directory.
 install(TARGETS shasta2PythonModule DESTINATION shasta2-install/bin)

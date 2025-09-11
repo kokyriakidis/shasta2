@@ -18,7 +18,6 @@
 #include "performanceLog.hpp"
 #include "ShortBaseSequence.hpp"
 #include "splitRange.hpp"
-#include "testSpoa.hpp"
 #include "testSubsetGraph.hpp"
 using namespace shasta;
 
@@ -210,9 +209,6 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         );
     shasta2Module.def("testSplitRange",
         testSplitRange
-        );
-    shasta2Module.def("testSpoa",
-        testSpoa
         );
     shasta2Module.def("testDeduplicateAndCount",
         testDeduplicateAndCount
