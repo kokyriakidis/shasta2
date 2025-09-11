@@ -25,7 +25,12 @@ assembler.accessJourneys()
 detangler = LikelihoodRatioDetangler(
     options.detangleEpsilon,
     options.detangleMaxLogP,
-    options.detangleMinLogPDelta)
+    options.detangleMinLogPDelta,
+    options.detangleMinCoverage,
+    False,
+    False,
+    True,
+    True)
     
 # Read our AssemblyGraph to work on.
 assemblyGraph = assembler.getAssemblyGraph("Z", options)
