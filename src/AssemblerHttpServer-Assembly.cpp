@@ -763,8 +763,11 @@ void Assembler::exploreSegmentOrientedReads(
     string lastStepsCountString = "5";
     HttpServer::getParameterValue(request, "lastStepsCount", lastStepsCountString);
 
-    double pixelsPerBase = 1.;
+    double pixelsPerBase = 0.001;
     HttpServer::getParameterValue(request, "pixelsPerBase", pixelsPerBase);
+
+    double pixelsPerStep = 20.;
+    HttpServer::getParameterValue(request, "pixelsPerStep", pixelsPerStep);
 
 
     // Start the form.
@@ -817,6 +820,10 @@ void Assembler::exploreSegmentOrientedReads(
         "<tr><th>Pixels per base"
         "<td class=centered>"
         "<input type=text name=pixelsPerBase size=8 style='text-align:center' value='" << pixelsPerBase << "'>"
+
+        "<tr><th>Pixels per step"
+        "<td class=centered>"
+        "<input type=text name=pixelsPerStep size=8 style='text-align:center' value='" << pixelsPerStep << "'>"
         ;
 
 
@@ -942,9 +949,10 @@ void Assembler::exploreSegmentOrientedReads(
 
     // Horizontal direction.
     const double maxOffsetBases = double(offsetTable.back().second);
+    const double basesPerStep = pixelsPerStep / pixelsPerBase;
     const double borderPixels = 5.;
     const double borderBases = borderPixels / pixelsPerBase;
-    const double svgWidthBases = maxOffsetBases + 2. * borderBases;
+    const double svgWidthBases = maxOffsetBases + double(stepCount) * basesPerStep + 2. * borderBases;
     const double svgWidthPixels = svgWidthBases * pixelsPerBase;
 
     // Vertical direction.
@@ -974,9 +982,9 @@ void Assembler::exploreSegmentOrientedReads(
     // Write a rectangle for each step.
     for(uint64_t step=stepBegin; step<stepEnd; step++) {
         const pair<uint64_t, uint64_t>& offsets = offsetTable[step - stepBegin];
-        const double xBases = borderBases + double(offsets.first);
-        const double widthBases = double(offsets.second - offsets.first);
-        const string color = "LightPink";
+        const double xBases = borderBases + double(offsets.first) + double(step - stepBegin) * basesPerStep;
+        const double widthBases = double(offsets.second - offsets.first) + basesPerStep;
+        const string color = "LightBlue";
         html <<
             "<g><title>Step " << step << "</title>"
             "<rect x='" << xBases << "' y='0' width='" << widthBases << "' height='" << svgHeightBases <<
@@ -994,7 +1002,7 @@ void Assembler::exploreSegmentOrientedReads(
             offset = offsetTable[step - stepBegin].first;
             anchorId = edge[step].anchorPair.anchorIdA;
         }
-        const double xBases = borderBases + double(offset);
+        const double xBases = borderBases + double(offset) + double(step - stepBegin) * basesPerStep;
         html <<
             "<g><title>" << anchorIdToString(anchorId) << "</title>"
             "<circle cx='" << xBases << "' cy='" << yBases << "' r=" << dotRadiusBases << " /></g>";
@@ -1019,8 +1027,8 @@ void Assembler::exploreSegmentOrientedReads(
             const bool containsOrientedRead = std::ranges::binary_search(anchorPair.orientedReadIds, orientedReadId);
             if(containsOrientedRead) {
                 const pair<uint64_t, uint64_t>& offsets = offsetTable[step - stepBegin];
-                const double xBases = borderBases + double(offsets.first);
-                const double widthBases = double(offsets.second - offsets.first);
+                const double xBases = borderBases + double(offsets.first) + double(step - stepBegin) * basesPerStep;
+                const double widthBases = double(offsets.second - offsets.first) + basesPerStep;
                 const string color = "LightPink";
                 html <<
                     "<g><title>Step " << step << "</title>"
@@ -1041,7 +1049,7 @@ void Assembler::exploreSegmentOrientedReads(
                     anchorId = edge[step].anchorPair.anchorIdA;
                 }
                 const string color = (anchors().anchorContains(anchorId, orientedReadId) ? "Black" : "LightGrey");
-                const double xBases = borderBases + double(offset);
+                const double xBases = borderBases + double(offset) + double(step - stepBegin) * basesPerStep;
                 html <<
                     "<g><title>" << anchorIdToString(anchorId) << "</title>"
                     "<circle cx='" << xBases << "' cy='" << yBases << "' r=" << dotRadiusBases <<
