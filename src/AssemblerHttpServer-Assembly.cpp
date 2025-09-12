@@ -6,6 +6,7 @@
 #include "findConvergingVertex.hpp"
 #include "GTest.hpp"
 #include "LocalAssembly.hpp"
+#include "LocalAssembly3.hpp"
 #include "LocalAssemblyGraph.hpp"
 #include "RestrictedAnchorGraph.hpp"
 #include "Superbubble.hpp"
@@ -1089,6 +1090,9 @@ void Assembler::exploreSegmentStep(
     string showAlignmentString;
     const bool showAlignment = getParameterValue(request, "showAlignment", showAlignmentString);
 
+    string useLocalAssembly3String;
+    const bool useLocalAssembly3 = getParameterValue(request, "useLocalAssembly3", useLocalAssembly3String);
+
     string debugString;
     const bool debug = getParameterValue(request, "debug", debugString);
 
@@ -1126,6 +1130,9 @@ void Assembler::exploreSegmentStep(
 
         "<tr><th>Show the alignment<td class=centered><input type=checkbox name=showAlignment" <<
         (showAlignment ? " checked" : "") << ">"
+
+        "<tr><th>Use LocalAssembly3<td class=centered><input type=checkbox name=useLocalAssembly3" <<
+        (useLocalAssembly3 ? " checked" : "") << ">"
 
         "<tr><th>Show debug information<td class=centered><input type=checkbox name=debug" <<
         (debug ? " checked" : "") << ">";
@@ -1195,23 +1202,45 @@ void Assembler::exploreSegmentStep(
     html << "<h2>Local assembly for step " << stepId << " of segment " << segmentId << " at assembly stage " <<
         assemblyStage << "</h2>";
 
-    // Do the local assembly for this step.
-    LocalAssembly localAssembly(
-        anchors(), html, debug,
-        httpServerData.options->aDrift,
-        httpServerData.options->bDrift,
-        edge[stepId].anchorPair);
-    localAssembly.run(showAlignment, httpServerData.options->maxAbpoaLength);
 
 
+    if(useLocalAssembly3) {
 
-    // Also output the sequence to fasta.
-    vector<Base> sequence;
-    localAssembly.getSequence(sequence);
+        // Let LocalAssembly3 use OrientedReadIds from the previous and next step.
+        vector<OrientedReadId> additionalOrientedReadIds;
+        if(stepId > 0) {
+            std::ranges::copy(edge[stepId - 1].anchorPair.orientedReadIds, back_inserter(additionalOrientedReadIds));
+        }
+        if(stepId < edge.size() - 1) {
+            std::ranges::copy(edge[stepId + 1].anchorPair.orientedReadIds, back_inserter(additionalOrientedReadIds));
+        }
+        deduplicate(additionalOrientedReadIds);
 
-    ofstream fasta("LocalAssembly.fasta");
-    fasta << ">LocalAssembly " << sequence.size() << endl;
-    copy(sequence.begin(), sequence.end(), ostream_iterator<Base>(fasta));
+        LocalAssembly3 localAssembly(
+            anchors(),
+            html,
+            debug,
+            edge[stepId].anchorPair,
+            additionalOrientedReadIds);
+
+    } else {
+
+        // Do the local assembly for this step.
+        LocalAssembly localAssembly(
+            anchors(), html, debug,
+            httpServerData.options->aDrift,
+            httpServerData.options->bDrift,
+            edge[stepId].anchorPair);
+        localAssembly.run(showAlignment, httpServerData.options->maxAbpoaLength);
+
+        // Also output the sequence to fasta.
+        vector<Base> sequence;
+        localAssembly.getSequence(sequence);
+
+        ofstream fasta("LocalAssembly.fasta");
+        fasta << ">LocalAssembly " << sequence.size() << endl;
+        copy(sequence.begin(), sequence.end(), ostream_iterator<Base>(fasta));
+    }
 }
 
 
