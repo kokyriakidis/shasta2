@@ -20,15 +20,24 @@ LocalAssembly3::LocalAssembly3(
     bool debug,
     const AnchorPair& anchorPair,
     const vector<OrientedReadId>& additionalOrientedReadIds) :
-    anchorIdA(anchorPair.anchorIdA),
-    anchorIdB(anchorPair.anchorIdB)
+    leftAnchorId(anchorPair.anchorIdA),
+    rightAnchorId(anchorPair.anchorIdB)
 {
+    // EXPOSE WHEN CODE STABILIZES.
+    const double drift = 0.1;
+
     SHASTA_ASSERT(std::ranges::is_sorted(additionalOrientedReadIds));
     if(html) {
         writeInput(html, debug, anchorPair, additionalOrientedReadIds);
     }
 
     gatherOrientedReads(anchors,anchorPair, additionalOrientedReadIds);
+    estimateOffset();
+    if(html) {
+        html << "<p>Estimated offset is " << offset << " bases.";
+    }
+
+    fillFirstLastOrdinalForAssembly(anchors.markers, drift);
     if(html) {
         writeOrientedReads(anchors, html);
     }
@@ -44,8 +53,8 @@ void LocalAssembly3::writeInput(
 {
     html <<
         "<table>"
-        "<tr><th class=left>Left anchor<td class=centered>" << anchorIdToString(anchorIdA) <<
-        "<tr><th class=left>Right anchor<td class=centered>" << anchorIdToString(anchorIdB) <<
+        "<tr><th class=left>Left anchor<td class=centered>" << anchorIdToString(leftAnchorId) <<
+        "<tr><th class=left>Right anchor<td class=centered>" << anchorIdToString(rightAnchorId) <<
         "</table>";
 
     if(debug) {
@@ -80,27 +89,27 @@ void LocalAssembly3::gatherOrientedReads(
     deduplicate(inputOrientedReadIds);
 
     // Access the two Anchors.
-    const Anchor anchorA = anchors[anchorIdA];
-    const Anchor anchorB = anchors[anchorIdB];
+    const Anchor leftAnchor = anchors[leftAnchorId];
+    const Anchor rightAnchor = anchors[rightAnchorId];
 
     // To gather the OrientedReadIds that we can use for assembly,
     // use a joint loop over the inputOrientedReadIds and the oriented reads in
     // the two anchors.
-    auto itA = anchorA.begin();
-    const auto endA = anchorA.end();
-    auto itB = anchorB.begin();
-    const auto endB = anchorB.end();
+    auto itLeft = leftAnchor.begin();
+    const auto endLeft = leftAnchor.end();
+    auto itRight = rightAnchor.begin();
+    const auto endRight = rightAnchor.end();
     for(auto it=inputOrientedReadIds.begin(); it!=inputOrientedReadIds.end(); ++it) {
         const OrientedReadId orientedReadId = *it;
 
-        while((itA !=endA) and (itA->orientedReadId < orientedReadId)) {
-            ++itA;
+        while((itLeft != endLeft) and (itLeft->orientedReadId < orientedReadId)) {
+            ++itLeft;
         }
-        while((itB != endB) and (itB->orientedReadId < orientedReadId)) {
-            ++itB;
+        while((itRight != endRight) and (itRight->orientedReadId < orientedReadId)) {
+            ++itRight;
         }
-        const bool isOnLeftAnchor = (itA != endA) and (itA->orientedReadId == orientedReadId);
-        const bool isOnRightAnchor = (itB != endB) and (itB->orientedReadId == orientedReadId);
+        const bool isOnLeftAnchor = (itLeft != endLeft) and (itLeft->orientedReadId == orientedReadId);
+        const bool isOnRightAnchor = (itRight != endRight) and (itRight->orientedReadId == orientedReadId);
 
         if(isOnLeftAnchor or isOnRightAnchor) {
             const auto orientedReadMarkers = anchors.markers[orientedReadId.getValue()];
@@ -110,16 +119,108 @@ void LocalAssembly3::gatherOrientedReads(
             orientedReadInfo.isOnLeftAnchor = isOnLeftAnchor;
             orientedReadInfo.isOnRightAnchor = isOnRightAnchor;
             if(isOnLeftAnchor) {
-                orientedReadInfo.leftOrdinal = itA->ordinal;
-                orientedReadInfo.leftPosition = orientedReadMarkers[itA->ordinal].position;
+                orientedReadInfo.leftOrdinal = itLeft->ordinal;
+                orientedReadInfo.leftPosition = orientedReadMarkers[itLeft->ordinal].position;
             }
             if(isOnRightAnchor) {
-                orientedReadInfo.rightOrdinal = itB->ordinal;
-                orientedReadInfo.rightPosition = orientedReadMarkers[itB->ordinal].position;
+                orientedReadInfo.rightOrdinal = itRight->ordinal;
+                orientedReadInfo.rightPosition = orientedReadMarkers[itRight->ordinal].position;
             }
             orientedReadInfos.push_back(orientedReadInfo);
         }
     }
+}
+
+
+
+void LocalAssembly3::estimateOffset()
+{
+    uint64_t n = 0;
+    uint64_t offsetSum = 0;
+    for(const OrientedReadInfo& orientedReadInfo: orientedReadInfos) {
+        if(orientedReadInfo.isOnBothAnchors()) {
+            ++n;
+            offsetSum += orientedReadInfo.positionOffset();
+        }
+    }
+    SHASTA_ASSERT(n > 0);
+
+    const double preciseOffset = double(offsetSum) / double(n);
+    offset = uint32_t(std::round(preciseOffset));
+}
+
+
+
+// Use the estimated offset to fill in the firstOrdinalForAssembly and lastOrdinalForAssembly
+// of each oriented read. These define the portion of this OrientedReadId
+// sequence that will be used in this local assembly.
+void LocalAssembly3::fillFirstLastOrdinalForAssembly(const Markers& markers, double drift)
+{
+    const uint32_t length = uint32_t(std::round((1. + drift) * double(offset)));
+
+    for(OrientedReadInfo& orientedReadInfo: orientedReadInfos) {
+        orientedReadInfo.fillFirstLastOrdinalForAssembly(markers, length);
+    }
+}
+
+
+
+void LocalAssembly3::OrientedReadInfo::fillFirstLastOrdinalForAssembly(
+    const Markers& markers,
+    uint32_t length)
+{
+    if(isOnLeftAnchor and isOnRightAnchor) {
+        firstOrdinalForAssembly = leftOrdinal;
+        lastOrdinalForAssembly = rightOrdinal;
+    }
+
+    else if(isOnLeftAnchor and not isOnRightAnchor){
+        firstOrdinalForAssembly = leftOrdinal;
+        const auto orientedReadMarkers = markers[orientedReadId.getValue()];
+
+        // Move right by at least length bases.
+        for(lastOrdinalForAssembly=firstOrdinalForAssembly;
+            lastOrdinalForAssembly<orientedReadMarkers.size()-1; lastOrdinalForAssembly++) {
+            if(orientedReadMarkers[lastOrdinalForAssembly].position - leftPosition >= length) {
+                break;
+            }
+        }
+    }
+
+    else if(isOnRightAnchor and not isOnLeftAnchor){
+        lastOrdinalForAssembly = rightOrdinal;
+        const auto orientedReadMarkers = markers[orientedReadId.getValue()];
+
+        // Move left by at least length bases.
+        for(firstOrdinalForAssembly=lastOrdinalForAssembly; /* Check later */ ; firstOrdinalForAssembly--) {
+            if(orientedReadMarkers[firstOrdinalForAssembly].position - leftPosition >= length) {
+                break;
+            }
+            if(firstOrdinalForAssembly == 0) {
+                break;
+            }
+        }
+    }
+
+    else {
+        SHASTA_ASSERT(0);
+    }
+}
+
+
+
+uint32_t LocalAssembly3::OrientedReadInfo::firstPositionForAssembly(const Markers& markers) const
+{
+    const auto orientedReadMarkers = markers[orientedReadId.getValue()];
+    return orientedReadMarkers[firstOrdinalForAssembly].position;
+}
+
+
+
+uint32_t LocalAssembly3::OrientedReadInfo::lastPositionForAssembly(const Markers& markers) const
+{
+    const auto orientedReadMarkers = markers[orientedReadId.getValue()];
+    return orientedReadMarkers[lastOrdinalForAssembly].position;
 }
 
 
@@ -129,10 +230,11 @@ void LocalAssembly3::writeOrientedReads(
     ostream& html) const
 {
 
-    html << "<h3>OrientedReadIds used in this local assembly</h3>"
+    html << "<h3>Oriented reads used in this local assembly</h3>"
         "<table><tr>"
         "<th>Oriented<br>read id"
-        "<th>Oriented<br>read<br>length"
+        "<th>Number<br>of<br>markers"
+        "<th>Sequence<br>read<br>length"
         "<th>On left<br>anchor"
         "<th>On right<br>anchor"
         "<th>On both<br>anchors"
@@ -141,11 +243,19 @@ void LocalAssembly3::writeOrientedReads(
         "<th>Ordinal<br>offset"
         "<th>Left<br>position"
         "<th>Right<br>position"
-        "<th>Position<br>offset";
+        "<th>Position<br>offset"
+        "<th>First<br>ordinal<br>for assembly"
+        "<th>Last<br>ordinal<br>for assembly"
+        "<th>Ordinal<br>offset<br>for assembly"
+        "<th>First<br>position<br>for assembly"
+        "<th>Last<br>position<br>for assembly"
+        "<th>Position<br>offset<br>for assembly";
 
     for(const OrientedReadInfo& orientedReadInfo: orientedReadInfos) {
         html <<
             "<tr><td class=centered>" << orientedReadInfo.orientedReadId <<
+            "<td class=centered>" <<
+            anchors.markers.size(orientedReadInfo.orientedReadId.getValue()) <<
             "<td class=centered>" <<
             anchors.reads.getReadSequenceLength(orientedReadInfo.orientedReadId.getReadId());
 
@@ -185,7 +295,20 @@ void LocalAssembly3::writeOrientedReads(
         if(orientedReadInfo.isOnBothAnchors()) {
             html << orientedReadInfo.positionOffset();
         }
+
+        html <<
+            "<td class=centered>" << orientedReadInfo.firstOrdinalForAssembly <<
+            "<td class=centered>" << orientedReadInfo.lastOrdinalForAssembly <<
+            "<td class=centered>" <<
+            orientedReadInfo.lastOrdinalForAssembly -
+            orientedReadInfo.firstOrdinalForAssembly <<
+            "<td class=centered>" << orientedReadInfo.firstPositionForAssembly(anchors.markers) <<
+            "<td class=centered>" << orientedReadInfo.lastPositionForAssembly(anchors.markers) <<
+        "<td class=centered>" <<
+            orientedReadInfo.lastPositionForAssembly(anchors.markers) -
+            orientedReadInfo.firstPositionForAssembly(anchors.markers);
     }
+    html << "</table>";
 
 }
 

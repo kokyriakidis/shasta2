@@ -15,6 +15,7 @@ namespace shasta {
 
     class Anchors;
     class AnchorPair;
+    class Markers;
 }
 
 
@@ -40,8 +41,8 @@ public:
 public:
 
     // The two anchors that bound the region assembled by this local assembly.
-    AnchorId anchorIdA;
-    AnchorId anchorIdB;
+    AnchorId leftAnchorId;
+    AnchorId rightAnchorId;
 
 
 
@@ -50,6 +51,7 @@ public:
     public:
         OrientedReadId orientedReadId;
 
+        // Whether this OrientedReadId appear in the left and right anchors.
         bool isOnLeftAnchor;
         bool isOnRightAnchor;
         bool isOnBothAnchors() const
@@ -57,6 +59,7 @@ public:
             return isOnLeftAnchor and isOnRightAnchor;
         }
 
+        // The ordinals of this OrientedReadId in the left/right anchor, if any.
         uint32_t leftOrdinal = invalid<uint32_t>;
         uint32_t rightOrdinal = invalid<uint32_t>;
         uint32_t ordinalOffset() const
@@ -66,7 +69,8 @@ public:
             return rightOrdinal - leftOrdinal;
         }
 
-        // The left/right positions of this marker.
+        // The base positions of this OrientedReadId's marker
+        // in the left/right anchor, if any.
         // These are positions in the oriented read sequence
         // of the leftmost base of the marker.
         uint32_t leftPosition = invalid<uint32_t>;
@@ -77,13 +81,36 @@ public:
             SHASTA_ASSERT(isOnRightAnchor);
             return rightPosition - leftPosition;
         }
+
+        // All data members up to here are filled by gatherOrientedReads.
+
+        // The first and last ordinal of the portion of this OrientedReadId
+        // sequence that will be used in this local assembly.
+        // These are filled by fillFirstLastOrdinalForAssembly.
+        uint32_t firstOrdinalForAssembly;
+        uint32_t lastOrdinalForAssembly;
+        void fillFirstLastOrdinalForAssembly(const Markers&, uint32_t length);
+        uint32_t firstPositionForAssembly(const Markers&) const;
+        uint32_t lastPositionForAssembly(const Markers&) const;
     };
+
     vector<OrientedReadInfo> orientedReadInfos;
     void gatherOrientedReads(
         const Anchors&,
         const AnchorPair& anchorPair,
         const vector<OrientedReadId>& additionalOrientedReadIds);
 
+
+
+    // The estimated base offset between the left and right anchor.
+    // It is estimated using the oriented reads that appear in both anchors.
+    uint32_t offset;
+    void estimateOffset();
+
+    // Use the estimated offset to fill in the firstOrdinal and lastOrdinal
+    // of each oriented read. These define the portion of this OrientedReadId
+    // sequence that will be used in this local assembly.
+    void fillFirstLastOrdinalForAssembly(const Markers&, double drift);
 
 
     // Html output.
