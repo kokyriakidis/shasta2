@@ -41,6 +41,15 @@ LocalAssembly3::LocalAssembly3(
     if(html) {
         writeOrientedReads(anchors, html);
     }
+
+    fillOrientedReadKmers(anchors.markers);
+    gatherKmers(anchors);
+    if(html) {
+        html << "<p>Found " << kmers.size() << " distinct kmers." << endl;
+        if(debug) {
+            writeOrientedReadKmers(html);
+        }
+    }
 }
 
 
@@ -225,6 +234,60 @@ uint32_t LocalAssembly3::OrientedReadInfo::lastPositionForAssembly(const Markers
 
 
 
+void LocalAssembly3::fillOrientedReadKmers(const Markers& markers)
+{
+    for(OrientedReadInfo& orientedReadInfo: orientedReadInfos) {
+        orientedReadInfo.fillOrientedReadKmers(markers);
+    }
+}
+
+
+
+void LocalAssembly3::OrientedReadInfo::fillOrientedReadKmers(const Markers& markers)
+{
+    const auto orientedReadMarkers = markers[orientedReadId.getValue()];
+    orientedReadKmerInfos.resize(lastOrdinalForAssembly - firstOrdinalForAssembly + 1);
+    for(uint32_t ordinal=firstOrdinalForAssembly; ordinal<=lastOrdinalForAssembly; ordinal++) {
+        orientedReadKmerInfos[ordinal - firstOrdinalForAssembly].kmer =
+            markers.getKmer(orientedReadId, ordinal);
+    }
+
+}
+
+
+
+void LocalAssembly3::gatherKmers(const Anchors& anchors)
+{
+    for(const OrientedReadInfo& orientedReadInfo: orientedReadInfos) {
+        for(const auto& kmerInfo: orientedReadInfo.orientedReadKmerInfos) {
+            kmers.push_back(kmerInfo.kmer);
+        }
+    }
+    deduplicate(kmers);
+
+    for(OrientedReadInfo& orientedReadInfo: orientedReadInfos) {
+        for(auto& kmerInfo: orientedReadInfo.orientedReadKmerInfos) {
+            kmerInfo.kmerIndex = getKmerIndex(kmerInfo.kmer);
+        }
+    }
+
+    leftAnchorKmerIndex = getKmerIndex(anchors.anchorKmer(leftAnchorId));
+    rightAnchorKmerIndex = getKmerIndex(anchors.anchorKmer(rightAnchorId));
+}
+
+
+
+// Return the index of the given Kmer in the kmers vector.
+uint64_t LocalAssembly3::getKmerIndex(const Kmer& kmer) const
+{
+    const auto it = std::lower_bound(kmers.begin(), kmers.end(), kmer);
+    SHASTA_ASSERT(it != kmers.end());
+    SHASTA_ASSERT(*it == kmer);
+    return it - kmers.begin();
+}
+
+
+
 void LocalAssembly3::writeOrientedReads(
     const Anchors& anchors,
     ostream& html) const
@@ -312,3 +375,27 @@ void LocalAssembly3::writeOrientedReads(
 
 }
 
+
+
+void LocalAssembly3::writeOrientedReadKmers(ostream& html) const
+{
+    html <<
+        "<h3>Sequences of k-mer indexes</h3>"
+        "<p>Left anchor has k-mer index " << leftAnchorKmerIndex <<
+        "<p>Right anchor has k-mer index " << rightAnchorKmerIndex <<
+        "<table>";
+    for(const OrientedReadInfo& orientedReadInfo: orientedReadInfos) {
+        html << "<tr><th>" << orientedReadInfo.orientedReadId;
+        for(const auto& kmerInfo: orientedReadInfo.orientedReadKmerInfos) {
+            html << "<td class=centered";
+            if(kmerInfo.kmerIndex == leftAnchorKmerIndex) {
+                html << " style='background-color:LightBlue'";
+            }
+            if(kmerInfo.kmerIndex == rightAnchorKmerIndex) {
+                html << " style='background-color:LightPink'";
+            }
+            html << ">" << kmerInfo.kmerIndex;
+        }
+    }
+    html << "</table>";
+}

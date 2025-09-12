@@ -97,6 +97,22 @@ vector<Base> Anchors::anchorKmerSequence(AnchorId anchorId) const
 
 
 
+Kmer Anchors::anchorKmer(AnchorId anchorId) const
+{
+    // Get the first AnchorMarkerInterval for this Anchor.
+    const Anchor anchor = (*this)[anchorId];
+    const AnchorMarkerInfo& firstMarkerInfo = anchor.front();
+
+    // Get the OrientedReadId and the ordinal.
+    const OrientedReadId orientedReadId = firstMarkerInfo.orientedReadId;
+    const uint32_t ordinal = firstMarkerInfo.ordinal;
+
+    return markers.getKmer(orientedReadId, ordinal);
+
+}
+
+
+
 uint64_t Anchors::size() const
 {
     return anchorMarkerInfos.size();

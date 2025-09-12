@@ -1,6 +1,7 @@
 #pragma once
 
 // Shasta.
+#include "Kmer.hpp"
 #include "invalid.hpp"
 #include "ReadId.hpp"
 
@@ -92,6 +93,16 @@ public:
         void fillFirstLastOrdinalForAssembly(const Markers&, uint32_t length);
         uint32_t firstPositionForAssembly(const Markers&) const;
         uint32_t lastPositionForAssembly(const Markers&) const;
+
+        // The Kmers for each of the ordinal in [firstOrdinalForAssembly, lastOrdinalForAssembly].
+        // These are filled by fillOrientedReadKmers.
+        class OrientedReadKmerInfo {
+        public:
+            Kmer kmer;
+            uint64_t kmerIndex; // The index of this Kmer in the kmers vector.
+        };
+        vector<OrientedReadKmerInfo> orientedReadKmerInfos;
+        void fillOrientedReadKmers(const Markers&);
     };
 
     vector<OrientedReadInfo> orientedReadInfos;
@@ -112,6 +123,21 @@ public:
     // sequence that will be used in this local assembly.
     void fillFirstLastOrdinalForAssembly(const Markers&, double drift);
 
+    void fillOrientedReadKmers(const Markers&);
+
+    // A sorted vector containing all the Kmers found in all oriented reads
+    // of this local assembly. This provides a perfect hash function for
+    // these Kmers.
+    vector<Kmer> kmers;
+    void gatherKmers(const Anchors&);
+
+    // Return the index of the given Kmer in the kmers vector.
+    uint64_t getKmerIndex(const Kmer&) const;
+
+    // The kmer indexes of the left and right anchors.
+    uint64_t leftAnchorKmerIndex;
+    uint64_t rightAnchorKmerIndex;
+
 
     // Html output.
     void writeInput(
@@ -122,4 +148,5 @@ public:
     void writeOrientedReads(
         const Anchors&,
         ostream& html) const;
+    void writeOrientedReadKmers(ostream& html) const;
 };
