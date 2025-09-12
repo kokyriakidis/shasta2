@@ -5,6 +5,9 @@
 #include "invalid.hpp"
 #include "ReadId.hpp"
 
+// Boost libraries.
+#include <boost/graph/adjacency_list.hpp>
+
 // Standard library.
 #include <iosfwd.hpp>
 #include <vector.hpp>
@@ -13,6 +16,15 @@
 
 namespace shasta {
     class LocalAssembly3;
+    class LocalAssembly3Vertex;
+    class LocalAssembly3Edge;
+
+    using LocalAssembly3BaseClass = boost::adjacency_list<
+        boost::listS,
+        boost::listS,
+        boost::bidirectionalS,
+        LocalAssembly3Vertex,
+        LocalAssembly3Edge>;
 
     class Anchors;
     class AnchorPair;
@@ -21,7 +33,51 @@ namespace shasta {
 
 
 
-class shasta::LocalAssembly3 {
+class shasta::LocalAssembly3Vertex {
+public:
+
+    // The index of the Kmer corresponding to this vertex
+    // in the kmers vector.
+    uint64_t kmerIndex;
+
+    // The markers that contain this Kmer.
+    class Data {
+    public:
+        uint64_t orientedReadIndex; // Index in orientedReadInfos vector.
+        uint32_t ordinal;
+    };
+    vector<Data> data;
+    uint64_t coverage() const
+    {
+        return data.size();
+    }
+
+    LocalAssembly3Vertex(uint64_t kmerIndex) : kmerIndex(kmerIndex) {}
+};
+
+
+
+class shasta::LocalAssembly3Edge {
+public:
+
+    // The oriented reads that transition from the source of this vertex
+    // to its target.
+    class Data {
+    public:
+        uint64_t orientedReadIndex; // Index in orientedReadInfos vector.
+        uint32_t ordinal0;
+        uint32_t ordinal1;
+    };
+    vector<Data> data;
+    uint64_t coverage() const
+    {
+        return data.size();
+    }
+};
+
+
+
+class shasta::LocalAssembly3 : public LocalAssembly3BaseClass {
 public:
 
     // This assembles between anchorIdA and anchorIdB
@@ -138,6 +194,13 @@ public:
     uint64_t leftAnchorKmerIndex;
     uint64_t rightAnchorKmerIndex;
 
+    // Map k-mer indexes to vertices.
+    vector<vertex_descriptor> vertexMap;
+    void createVertices();
+    void createEdges();
+    vertex_descriptor leftAnchorVertex;
+    vertex_descriptor rightAnchorVertex;
+
 
     // Html output.
     void writeInput(
@@ -149,4 +212,7 @@ public:
         const Anchors&,
         ostream& html) const;
     void writeOrientedReadKmers(ostream& html) const;
+    void writeGraphviz(const string& fileName) const;
+    void writeGraphviz(ostream&) const;
+    void writeHtml(ostream&) const;
 };

@@ -1,9 +1,21 @@
+// Shasta.
 #include "LocalAssembly3.hpp"
 #include "Anchor.hpp"
 #include "deduplicate.hpp"
+#include "graphvizToHtml.hpp"
 #include "Markers.hpp"
 #include "Reads.hpp"
+#include "tmpDirectory.hpp"
 using namespace shasta;
+
+// Boost libraries.
+#include <boost/graph/iteration_macros.hpp>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
+
+// Standard library.
+#include <fstream.hpp>
 
 
 
@@ -49,6 +61,14 @@ LocalAssembly3::LocalAssembly3(
         if(debug) {
             writeOrientedReadKmers(html);
         }
+    }
+
+    createVertices();
+    createEdges();
+    if(html) {
+        html << "<p>The graph for this local assembly has " << num_vertices(*this) <<
+            " vertices and " << num_edges(*this) << " edges.";
+        writeHtml(html);
     }
 }
 
@@ -398,4 +418,173 @@ void LocalAssembly3::writeOrientedReadKmers(ostream& html) const
         }
     }
     html << "</table>";
+}
+
+
+
+void LocalAssembly3::createVertices()
+{
+    using Graph = LocalAssembly3;
+    Graph& graph = *this;
+
+    vertexMap.clear();
+    vertexMap.resize(kmers.size(), null_vertex());
+
+    // Loop over oriented reads.
+    for(uint64_t orientedReadIndex=0; orientedReadIndex<orientedReadInfos.size(); orientedReadIndex++) {
+        const OrientedReadInfo& orientedReadInfo = orientedReadInfos[orientedReadIndex];
+
+        // Loop over Kmers of this oriented read.
+        for(uint32_t ordinal=orientedReadInfo.firstOrdinalForAssembly;
+            ordinal<=orientedReadInfo.lastOrdinalForAssembly; ordinal++) {
+            const auto& orientedReadKmerInfo =
+                orientedReadInfo.orientedReadKmerInfos[ordinal - orientedReadInfo.firstOrdinalForAssembly];
+            const uint64_t kmerIndex = orientedReadKmerInfo.kmerIndex;
+
+            // Get the vertex, creating it if necessary.
+            vertex_descriptor v = vertexMap[kmerIndex];
+            if(v == null_vertex()) {
+                v = boost::add_vertex(LocalAssembly3Vertex(kmerIndex), graph);
+                vertexMap[kmerIndex] = v;
+            }
+
+            // Store this marker in the vertex.
+            graph[v].data.emplace_back(LocalAssembly3Vertex::Data({orientedReadIndex, ordinal}));
+        }
+    }
+
+    leftAnchorVertex = vertexMap[leftAnchorKmerIndex];
+    rightAnchorVertex = vertexMap[rightAnchorKmerIndex];
+}
+
+
+
+void LocalAssembly3::createEdges()
+{
+    using Graph = LocalAssembly3;
+    Graph& graph = *this;
+
+    // Loop over oriented reads.
+    for(uint64_t orientedReadIndex=0; orientedReadIndex<orientedReadInfos.size(); orientedReadIndex++) {
+        const OrientedReadInfo& orientedReadInfo = orientedReadInfos[orientedReadIndex];
+
+        // Loop over Kmers of this oriented read.
+        for(uint32_t ordinal0=orientedReadInfo.firstOrdinalForAssembly;
+            ordinal0<orientedReadInfo.lastOrdinalForAssembly; ordinal0++) {
+
+            const auto& orientedReadKmerInfo0 =
+                orientedReadInfo.orientedReadKmerInfos[ordinal0 - orientedReadInfo.firstOrdinalForAssembly];
+            const uint64_t kmerIndex0 = orientedReadKmerInfo0.kmerIndex;
+
+            const uint32_t ordinal1 = ordinal0 + 1;
+            const auto& orientedReadKmerInfo1 =
+                orientedReadInfo.orientedReadKmerInfos[ordinal1 - orientedReadInfo.firstOrdinalForAssembly];
+            const uint64_t kmerIndex1 = orientedReadKmerInfo1.kmerIndex;
+
+            vertex_descriptor v0 = vertexMap[kmerIndex0];
+            vertex_descriptor v1 = vertexMap[kmerIndex1];
+
+            // Get the edge, creating it if necessary.
+            edge_descriptor e;
+            bool edgeExists = false;
+            tie(e, edgeExists) = boost::edge(v0, v1, graph);
+            if(not edgeExists) {
+                tie(e, edgeExists) = boost::add_edge(v0, v1, graph);
+                SHASTA_ASSERT(edgeExists);
+            }
+
+            const LocalAssembly3Edge::Data data({orientedReadIndex, ordinal0, ordinal1});
+            graph[e].data.emplace_back(LocalAssembly3Edge::Data({orientedReadIndex, ordinal0, ordinal1}));
+        }
+    }
+
+}
+
+
+
+void LocalAssembly3::writeGraphviz(const string& fileName) const
+{
+    ofstream dot(fileName);
+    writeGraphviz(dot);
+}
+
+
+
+void LocalAssembly3::writeGraphviz(ostream& dot) const
+{
+    using Graph = LocalAssembly3;
+    const Graph& graph = *this;
+
+    dot << "digraph LocalAssembly3 {\n";
+
+
+
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        const LocalAssembly3Vertex& vertex = graph[v];
+        dot << vertex.kmerIndex;
+
+        // Begin vertex attributes.
+        dot << "[";
+
+        // Label.
+        dot << "label=\"" << vertex.kmerIndex << "\\n" << vertex.coverage() << "\"";
+
+        // Color.
+        if(v == leftAnchorVertex) {
+            dot << " style=filled fillcolor=LightGreen";
+        }
+        if(v == rightAnchorVertex) {
+            dot << " style=filled fillcolor=LightPink";
+        }
+
+        // End vertex attributes.
+        dot << "]";
+
+        // End the line for this vertex.
+        dot << ";\n";
+    }
+
+
+
+    BGL_FORALL_EDGES(e, graph, Graph) {
+        const LocalAssembly3Edge& edge = graph[e];
+        const vertex_descriptor v0 = source(e, graph);
+        const vertex_descriptor v1 = target(e, graph);
+
+        dot << graph[v0].kmerIndex << "->" << graph[v1].kmerIndex;
+
+        // Begin edge attributes.
+        dot << "[";
+
+        // Label.
+        dot << "label=\"" << edge.coverage() << "\"";
+
+        // Thickness.
+        dot << " penwidth=" << std::setprecision(2) << 0.5 * double(edge.coverage());
+
+        // End edge attributes.
+        dot << "]";
+
+        // End the line for this edge.
+        dot << ";\n";
+    }
+    dot << "}\n";
+}
+
+
+
+void LocalAssembly3::writeHtml(ostream& html) const
+{
+    // Write it in graphviz format.
+    const string uuid = to_string(boost::uuids::random_generator()());
+    const string dotFileName = tmpDirectory() + uuid + ".dot";
+    writeGraphviz(dotFileName);
+
+
+    // Display it in html in svg format.
+    const double timeout = 30.;
+    const string options = "-Nshape=rectangle -Gbgcolor=gray95";
+    html << "<p>";
+    graphvizToHtml(dotFileName, "dot", timeout, options, html);
+
 }
