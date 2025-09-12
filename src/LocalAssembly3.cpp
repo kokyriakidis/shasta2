@@ -222,7 +222,7 @@ void LocalAssembly3::OrientedReadInfo::fillFirstLastOrdinalForAssembly(
 
         // Move left by at least length bases.
         for(firstOrdinalForAssembly=lastOrdinalForAssembly; /* Check later */ ; firstOrdinalForAssembly--) {
-            if(orientedReadMarkers[firstOrdinalForAssembly].position - leftPosition >= length) {
+            if(rightPosition - orientedReadMarkers[firstOrdinalForAssembly].position >= length) {
                 break;
             }
             if(firstOrdinalForAssembly == 0) {
