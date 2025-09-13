@@ -201,6 +201,11 @@ public:
     vertex_descriptor leftAnchorVertex;
     vertex_descriptor rightAnchorVertex;
 
+    // Compute the average position offset for an edge.
+    uint32_t edgePositionOffset(
+        edge_descriptor,
+        const Markers&) const;
+
 
     // Html output.
     void writeInput(
@@ -212,7 +217,7 @@ public:
         const Anchors&,
         ostream& html) const;
     void writeOrientedReadKmers(ostream& html) const;
-    void writeGraphviz(const string& fileName) const;
-    void writeGraphviz(ostream&) const;
-    void writeHtml(ostream&) const;
+    void writeGraphviz(const string& fileName, const Markers&) const;
+    void writeGraphviz(ostream&, const Markers&) const;
+    void writeHtml(ostream&, const Markers&) const;
 };

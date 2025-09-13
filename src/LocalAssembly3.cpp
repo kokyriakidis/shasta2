@@ -68,7 +68,7 @@ LocalAssembly3::LocalAssembly3(
     if(html) {
         html << "<p>The graph for this local assembly has " << num_vertices(*this) <<
             " vertices and " << num_edges(*this) << " edges.";
-        writeHtml(html);
+        writeHtml(html, anchors.markers);
     }
 }
 
@@ -502,15 +502,15 @@ void LocalAssembly3::createEdges()
 
 
 
-void LocalAssembly3::writeGraphviz(const string& fileName) const
+void LocalAssembly3::writeGraphviz(const string& fileName, const Markers& markers) const
 {
     ofstream dot(fileName);
-    writeGraphviz(dot);
+    writeGraphviz(dot, markers);
 }
 
 
 
-void LocalAssembly3::writeGraphviz(ostream& dot) const
+void LocalAssembly3::writeGraphviz(ostream& dot, const Markers& markers) const
 {
     using Graph = LocalAssembly3;
     const Graph& graph = *this;
@@ -527,7 +527,8 @@ void LocalAssembly3::writeGraphviz(ostream& dot) const
         dot << "[";
 
         // Label.
-        dot << "label=\"" << vertex.kmerIndex << "\\n" << vertex.coverage() << "\"";
+        dot << "label=\"" << vertex.kmerIndex << "\\n" <<
+            vertex.coverage() << "\"";
 
         // Color.
         if(v == leftAnchorVertex) {
@@ -557,7 +558,8 @@ void LocalAssembly3::writeGraphviz(ostream& dot) const
         dot << "[";
 
         // Label.
-        dot << "label=\"" << edge.coverage() << "\"";
+        dot << "label=\"" << edge.coverage() << "\\n" <<
+            edgePositionOffset(e, markers) << "\"";
 
         // Thickness.
         dot << " penwidth=" << std::setprecision(2) << 0.5 * double(edge.coverage());
@@ -573,12 +575,12 @@ void LocalAssembly3::writeGraphviz(ostream& dot) const
 
 
 
-void LocalAssembly3::writeHtml(ostream& html) const
+void LocalAssembly3::writeHtml(ostream& html, const Markers& markers) const
 {
     // Write it in graphviz format.
     const string uuid = to_string(boost::uuids::random_generator()());
     const string dotFileName = tmpDirectory() + uuid + ".dot";
-    writeGraphviz(dotFileName);
+    writeGraphviz(dotFileName, markers);
 
 
     // Display it in html in svg format.
@@ -587,4 +589,30 @@ void LocalAssembly3::writeHtml(ostream& html) const
     html << "<p>";
     graphvizToHtml(dotFileName, "dot", timeout, options, html);
 
+}
+
+
+
+// Compute the average position offset for an edge.
+uint32_t LocalAssembly3::edgePositionOffset(
+    edge_descriptor e,
+    const Markers& markers) const
+{
+    using Graph = LocalAssembly3;
+    const Graph& graph = *this;
+
+    const LocalAssembly3Edge& edge = graph[e];
+
+    uint64_t positionOffsetSum = 0;
+    for(const auto& data: edge.data) {
+        const OrientedReadId orientedReadId = orientedReadInfos[data.orientedReadIndex].orientedReadId;
+        const auto orientedReadMarkers = markers[orientedReadId.getValue()];
+        const uint32_t positionOffset =
+            orientedReadMarkers[data.ordinal1].position -
+            orientedReadMarkers[data.ordinal0].position;
+        positionOffsetSum += positionOffset;
+    }
+
+    const double preciseOffset = double(positionOffsetSum) / double(edge.data.size());
+    return uint32_t(std::round(preciseOffset));
 }
