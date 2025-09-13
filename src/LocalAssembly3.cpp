@@ -163,7 +163,16 @@ void LocalAssembly3::gatherOrientedReads(
                 orientedReadInfo.rightOrdinal = itRight->ordinal;
                 orientedReadInfo.rightPosition = orientedReadMarkers[itRight->ordinal].position;
             }
-            orientedReadInfos.push_back(orientedReadInfo);
+
+            // Exclude the case where it is on both anchors, but the ordinal on the
+            // left anchor is greater or equal than the ordinal on the right anchor.
+            const bool isBad =
+                isOnLeftAnchor and
+                isOnRightAnchor and
+                (itLeft->ordinal >= itRight->ordinal);
+            if(not isBad) {
+                orientedReadInfos.push_back(orientedReadInfo);
+            }
         }
     }
 }
