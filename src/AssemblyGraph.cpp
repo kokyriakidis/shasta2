@@ -15,7 +15,7 @@
 #include "inducedSubgraphIsomorphisms.hpp"
 #include "Journeys.hpp"
 #include "LikelihoodRatioDetangler.hpp"
-#include "LocalAssembly.hpp"
+#include "LocalAssembly3.hpp"
 #include "MurmurHash2.hpp"
 #include "Options.hpp"
 #include "performanceLog.hpp"
@@ -456,6 +456,7 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
         return;
     }
 
+#if 0
     // Run the LocalAssembly.
     ofstream html;  // Not open, so no html output takes place.
     LocalAssembly localAssembly(
@@ -469,6 +470,27 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
     }
     localAssembly.run(false, options.maxAbpoaLength);
     localAssembly.getSequence(step.sequence);
+#endif
+
+
+    // Let LocalAssembly3 use OrientedReadIds from the previous and next step.
+    vector<OrientedReadId> additionalOrientedReadIds;
+    if(i > 0) {
+        std::ranges::copy(edge[i - 1].anchorPair.orientedReadIds, back_inserter(additionalOrientedReadIds));
+    }
+    if(i < edge.size() - 1) {
+        std::ranges::copy(edge[i + 1].anchorPair.orientedReadIds, back_inserter(additionalOrientedReadIds));
+    }
+    deduplicate(additionalOrientedReadIds);
+
+    ostream html(0);
+    LocalAssembly3 localAssembly(
+        anchors,
+        html,
+        false,
+        edge[i].anchorPair,
+        additionalOrientedReadIds);
+    step.sequence = localAssembly.sequence;
 }
 
 
