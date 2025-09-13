@@ -33,6 +33,7 @@ The fixed version below works correctly even if the graph contains unreachable v
 *******************************************************************************/
 
 #include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/iteration_macros.hpp>
 #include <boost/graph/dominator_tree.hpp>
 
 namespace shasta {

@@ -2,6 +2,7 @@
 #include "LocalAssembly3.hpp"
 #include "Anchor.hpp"
 #include "deduplicate.hpp"
+#include "dominatorTree.hpp"
 #include "graphvizToHtml.hpp"
 #include "Markers.hpp"
 #include "Reads.hpp"
@@ -65,6 +66,7 @@ LocalAssembly3::LocalAssembly3(
 
     createVertices();
     createEdges();
+    computeDominatorTree();
     if(html) {
         html << "<p>The graph for this local assembly has " << num_vertices(*this) <<
             " vertices and " << num_edges(*this) << " edges.";
@@ -533,9 +535,10 @@ void LocalAssembly3::writeGraphviz(ostream& dot, const Markers& markers) const
         // Color.
         if(v == leftAnchorVertex) {
             dot << " style=filled fillcolor=LightGreen";
-        }
-        if(v == rightAnchorVertex) {
+        } else if(v == rightAnchorVertex) {
             dot << " style=filled fillcolor=LightPink";
+        } else if(vertex.isOnDominatorTreePath) {
+            dot << " style=filled fillcolor=LightBlue";
         }
 
         // End vertex attributes.
@@ -615,4 +618,41 @@ uint32_t LocalAssembly3::edgePositionOffset(
 
     const double preciseOffset = double(positionOffsetSum) / double(edge.data.size());
     return uint32_t(std::round(preciseOffset));
+}
+
+
+
+// Compute a dominator tree starting at leftAnchorVertex
+// and the dominator tree path from leftAnchorVertex
+// to rightAnchorVertex.
+void LocalAssembly3::computeDominatorTree()
+{
+    using Graph = LocalAssembly3;
+    Graph& graph = *this;
+
+    // Compute the dominator tree.
+    // This sets the dominator field of the vertices
+    // reachable by leftAnchorVertex.
+    lengauer_tarjan_dominator_tree_general(graph, leftAnchorVertex);
+
+    // To compute the dominator tree path from leftAnchorVertex
+    // to rightAnchorVertex we walk back the dominator tree
+    // starting at rightAnchorVertex.
+    dominatorTreePath.push_back(rightAnchorVertex);
+    while(true) {
+        const vertex_descriptor v = dominatorTreePath.back();
+        const vertex_descriptor dominator = graph[v].dominator;
+        if(dominator == null_vertex()) {
+            break;
+        } else {
+            dominatorTreePath.push_back(dominator);
+        }
+    }
+    std::ranges::reverse(dominatorTreePath);
+
+    for(const vertex_descriptor v: dominatorTreePath) {
+        graph[v].isOnDominatorTreePath = true;
+    }
+    SHASTA_ASSERT(dominatorTreePath.front() == leftAnchorVertex);
+    SHASTA_ASSERT(dominatorTreePath.back() == rightAnchorVertex);
 }

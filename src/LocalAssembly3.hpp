@@ -53,6 +53,11 @@ public:
     }
 
     LocalAssembly3Vertex(uint64_t kmerIndex) : kmerIndex(kmerIndex) {}
+
+    // These are used when computing the dominatyor tree.
+    LocalAssembly3BaseClass::vertex_descriptor dominator =
+        LocalAssembly3BaseClass::null_vertex();
+    bool isOnDominatorTreePath = false;
 };
 
 
@@ -205,6 +210,12 @@ public:
     uint32_t edgePositionOffset(
         edge_descriptor,
         const Markers&) const;
+
+    // Compute a dominator tree stasting at leftAnchorVertex
+    // and the dominator tree path from leftAnchorVertex
+    // to rightAnchorVertex.
+    void computeDominatorTree();
+    vector<vertex_descriptor> dominatorTreePath;
 
 
     // Html output.
