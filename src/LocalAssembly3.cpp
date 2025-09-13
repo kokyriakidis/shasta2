@@ -1,10 +1,12 @@
 // Shasta.
 #include "LocalAssembly3.hpp"
+#include "abpoaWrapper.hpp"
 #include "Anchor.hpp"
 #include "deduplicate.hpp"
 #include "dominatorTree.hpp"
 #include "graphvizToHtml.hpp"
 #include "Markers.hpp"
+#include "orderPairs.hpp"
 #include "Reads.hpp"
 #include "tmpDirectory.hpp"
 using namespace shasta;
@@ -70,8 +72,12 @@ LocalAssembly3::LocalAssembly3(
     if(html) {
         html << "<p>The graph for this local assembly has " << num_vertices(*this) <<
             " vertices and " << num_edges(*this) << " edges.";
-        writeHtml(html, anchors.markers);
+        if(debug) {
+            writeHtml(html, anchors.markers);
+        }
     }
+
+    assemble(anchors, html, debug);
 }
 
 
@@ -655,4 +661,330 @@ void LocalAssembly3::computeDominatorTree()
     }
     SHASTA_ASSERT(dominatorTreePath.front() == leftAnchorVertex);
     SHASTA_ASSERT(dominatorTreePath.back() == rightAnchorVertex);
+}
+
+
+
+// Assemble sequence. Use the dominatorTreePath as the assembly path.
+void LocalAssembly3::assemble(
+    const Anchors& anchors,
+    ostream& html,
+    bool debug)
+{
+
+    // Loop over edges of the dominator tree path.
+    // These are not necessarily edges of the LocalAssembly3 graph.
+    for(uint64_t i1=1; i1<dominatorTreePath.size(); i1++) {
+        const uint64_t i0 = i1 - 1;
+
+        const vertex_descriptor v0 = dominatorTreePath[i0];
+        const vertex_descriptor v1 = dominatorTreePath[i1];
+        assemble(anchors, v0, v1, html, debug);
+    }
+}
+
+
+
+void LocalAssembly3::assemble(
+    const Anchors& anchors,
+    vertex_descriptor v0,
+    vertex_descriptor v1,
+    ostream& html,
+    bool debug)
+{
+    using Graph = LocalAssembly3;
+    Graph& graph = *this;
+    const Reads& reads = anchors.reads;
+    const Markers& markers = anchors.markers;
+    const uint32_t kHalf = uint32_t(anchors.kHalf);
+
+    const LocalAssembly3Vertex& vertex0 = graph[v0];
+    const LocalAssembly3Vertex& vertex1 = graph[v1];
+
+    if(html and debug) {
+        html << "<h4>Assembly details between vertices " << vertex0.kmerIndex <<
+            " and " << vertex1.kmerIndex << "</h4>";
+    }
+
+
+    // Gather information about oriented reads that appear both in vertex0 and vertex1.
+    class AssemblyInfo {
+    public:
+        OrientedReadId orientedReadId;
+        uint32_t ordinal0;
+        uint32_t ordinal1;
+        // Base positions of marker midpoints.
+        uint32_t position0;
+        uint32_t position1;
+        vector<Base> sequence;
+    };
+    vector<AssemblyInfo> assemblyInfos;
+    auto it0 = vertex0.data.begin();
+    const auto end0 = vertex0.data.end();
+    auto it1 = vertex1.data.begin();
+    const auto end1 = vertex1.data.end();
+    while((it0 != end0) and (it1 != end1)) {
+        if(it0->orientedReadIndex < it1->orientedReadIndex) {
+            ++it0;
+        } else if(it1->orientedReadIndex < it0->orientedReadIndex) {
+            ++it1;
+        } else {
+
+            if(it0->ordinal < it1->ordinal) {
+                // We found a common oriented read.
+                assemblyInfos.emplace_back();
+                AssemblyInfo& assemblyInfo = assemblyInfos.back();
+                assemblyInfo.orientedReadId = orientedReadInfos[it0->orientedReadIndex].orientedReadId;
+                assemblyInfo.ordinal0 = it0->ordinal;
+                assemblyInfo.ordinal1 = it1->ordinal;
+
+                const auto orientedReadMarkers = markers[assemblyInfo.orientedReadId.getValue()];
+                assemblyInfo.position0 = orientedReadMarkers[assemblyInfo.ordinal0].position + kHalf;
+                assemblyInfo.position1 = orientedReadMarkers[assemblyInfo.ordinal1].position + kHalf;
+
+                for(uint32_t position=assemblyInfo.position0; position!=assemblyInfo.position1; position++) {
+                    assemblyInfo.sequence.push_back(reads.getOrientedReadBase(assemblyInfo.orientedReadId, position));
+                }
+            }
+
+            ++it0;
+            ++it1;
+        }
+    }
+
+
+
+    // Write out the AssemblyInfos.
+    if(html and debug) {
+        html <<
+            "<h5>Contributing oriented reads</h5>"
+            "<table><tr><th>Coverage<td>" << assemblyInfos.size() << "</table>"
+            "<p><table>"
+            "<tr><th>Oriented<br>read<br>id"
+            "<th>Ordinal0<th>Ordinal1<th>Ordinal<br>offset"
+            "<th>Position0<th>Position1<th>Sequence<br>length<th class=left>Sequence";
+        for(const AssemblyInfo& assemblyInfo: assemblyInfos) {
+            html <<
+                "<tr>"
+                "<td class=centered>" << assemblyInfo.orientedReadId <<
+                "<td class=centered>" << assemblyInfo.ordinal0 <<
+                "<td class=centered>" << assemblyInfo.ordinal1 <<
+                "<td class=centered>" << assemblyInfo.ordinal1 - assemblyInfo.ordinal0 <<
+                "<td class=centered>" << assemblyInfo.position0 <<
+                "<td class=centered>" << assemblyInfo.position1 <<
+                "<td class=centered>" << assemblyInfo.position1 - assemblyInfo.position0 <<
+                "<td class=left style='font-family:monospace'>";
+            for(const Base& base: assemblyInfo.sequence) {
+                html << base;
+            }
+        }
+        html << "</table>";
+    }
+
+
+
+    // Gather the sequences encountered.
+    vector< vector<Base> > sequences;;
+    for(const AssemblyInfo& assemblyInfo: assemblyInfos) {
+        sequences.push_back(assemblyInfo.sequence);
+    }
+
+
+    // Display the distinct sequences encountered.
+    if(html and debug) {
+        vector< vector<Base> > distinctSequences = sequences;
+        vector<uint64_t> coverage;
+        deduplicateAndCount(distinctSequences, coverage);
+        SHASTA_ASSERT(coverage.size() == distinctSequences.size());
+        vector< pair< vector<Base>, uint64_t > > distinctSequencesWithCoverage;
+        for(uint64_t i=0; i<distinctSequences.size(); i++) {
+            distinctSequencesWithCoverage.emplace_back(distinctSequences[i], coverage[i]);
+        }
+        std::ranges::sort(distinctSequencesWithCoverage, OrderPairsBySecondOnlyGreater<vector<Base>, uint64_t>());
+
+
+        html <<
+            "<h5>Distinct sequences</h5>"
+            "<p><table><tr>"
+            "<th>Coverage<th>Sequence<br>length<th class=left>Sequence";
+        for(const auto& p: distinctSequencesWithCoverage) {
+            const vector<Base>& sequence = p.first;
+            const uint64_t coverage = p.second;
+            html <<
+                "<tr><td class=centered>" << coverage <<
+                "<td class=centered>" << sequence.size() <<
+                "<td class=left style='font-family:monospace'>";
+            std::ranges::copy(sequence, ostream_iterator<Base>(html));
+        }
+        html << "</table>";
+    }
+
+
+    // Compute the alignment.
+    // For now always use abpoa.
+    vector< pair<Base, uint64_t> > consensus;
+    vector< vector<AlignedBase> > alignment;
+    vector<AlignedBase> alignedConsensus;
+    const bool computeAlignment = html and debug;
+    abpoa(sequences, consensus, alignment, alignedConsensus, computeAlignment);
+
+
+
+    // Display the results of the MSA.
+    if(html and debug) {
+        writeConsensus(html, consensus, assemblyInfos.size());
+        writeAlignment(html, sequences, consensus, alignment, alignedConsensus, assemblyInfos.size());
+        html << "<p>This edge assembled sequence positions " << sequence.size() <<
+            "-" << sequence.size() + consensus.size();
+    }
+
+    // Append to previously assembled sequence.
+    for(const auto& p: consensus) {
+        const Base base = p.first;
+        const uint64_t coverage64 = p.second;
+        const uint8_t clippedCoverage = ((coverage64 < 256) ? uint8_t(coverage64) : uint8_t(255));
+        sequence.push_back(base);
+        coverage.push_back(clippedCoverage);
+    }
+}
+
+
+
+void LocalAssembly3::writeConsensus(
+    ostream& html,
+    const vector< pair<Base, uint64_t> >& consensus,
+    uint64_t maxCoverage) const
+{
+    html <<
+        "<h5>Consensus</h5>"
+        "<table>"
+        "<tr><th class=left>Consensus sequence length<td class=left>" << consensus.size() <<
+        "<tr><th class=left>Consensus sequence"
+        "<td style='font-family:monospace'>";
+
+    for(uint64_t position=0; position<consensus.size(); position++) {
+        const Base b = consensus[position].first;
+        html << "<span title='" << position << "'>" << b << "</span>";
+    }
+
+    html <<
+        "<tr><th class=left >Coverage"
+        "<td style='font-family:monospace'>";
+
+    std::map<char, uint64_t> coverageLegend;
+
+    for(const auto& p: consensus) {
+        const uint64_t coverage = p.second;
+        const char c = (coverage < 10) ? char(coverage + '0') : char(coverage - 10 + 'A');
+        coverageLegend.insert(make_pair(c, coverage));
+
+        if(coverage < maxCoverage) {
+            html << "<span style='background-color:Pink'>";
+        }
+
+        html << c;
+
+        if(coverage < maxCoverage) {
+            html << "</span>";
+        }
+    }
+
+    html << "</table>";
+
+    // Write the coverage legend.
+    html << "<p><table><tr><th>Symbol<th>Coverage";
+    for(const auto& p: coverageLegend) {
+        html << "<tr><td class=centered>" << p.first << "<td class=centered>" << p.second;
+    }
+    html << "</table>";
+
+}
+
+
+
+void LocalAssembly3::writeAlignment(
+    ostream& html,
+    const vector< vector<Base> >& sequences,
+    const vector< pair<Base, uint64_t> >& consensus,
+    const vector< vector<AlignedBase> >& alignment,
+    const vector<AlignedBase>& alignedConsensus,
+    uint64_t maxCoverage) const
+{
+    html <<
+        "<h5>Alignment</h5>"
+        "<table>"
+        "<tr><th class=left>OrientedReadId"
+        "<th class=left>Sequence<br>length"
+        "<th class=left>Aligned sequence";
+
+    for(uint64_t i=0; i<alignment.size(); i++) {
+        const vector<AlignedBase>& alignmentRow = alignment[i];
+
+        html << "<tr><th>" << orientedReadInfos[i].orientedReadId <<
+            "<td class=centered>" << sequences[i].size() <<
+            "<td style='font-family:monospace;white-space: nowrap'>";
+
+        for(uint64_t j=0; j<alignmentRow.size(); j++) {
+            const AlignedBase b = alignmentRow[j];
+            const bool isMatch = (b == alignedConsensus[j]);
+
+            if(not isMatch) {
+                html << "<span style='background-color:Pink'>";
+            }
+            html << b;
+            if(not isMatch) {
+                html << "</span>";
+            }
+        }
+
+    }
+
+    html << "<tr><th>Consensus<td class=centered>" << consensus.size() <<
+        "<td style='font-family:monospace;background-color:LightCyan;white-space:nowrap'>";
+
+    uint64_t position = 0;
+    for(uint64_t i=0; i<alignedConsensus.size(); i++) {
+        const AlignedBase b = alignedConsensus[i];
+
+        if(not b.isGap()) {
+            html << "<span title='" << position << "'>";
+        }
+
+        html << b;
+
+        if(not b.isGap()) {
+            html << "</span>";
+            ++position;
+        }
+    }
+
+    html << "<tr><th>Consensus coverage<td>"
+        "<td style='font-family:monospace;white-space:nowrap'>";
+
+    position = 0;
+    for(uint64_t i=0; i<alignedConsensus.size(); i++) {
+        const AlignedBase b = alignedConsensus[i];
+
+        if(b.isGap()) {
+            html << "-";
+        } else {
+            const uint64_t coverage = consensus[position].second;
+            const char c = (coverage < 10) ? char(coverage + '0') : char(coverage - 10 + 'A');
+
+            if(coverage < maxCoverage) {
+                html << "<span style='background-color:Pink'>";
+            }
+
+            html << c;
+
+            if(coverage < maxCoverage) {
+                html << "</span>";
+            }
+
+            ++position;
+        }
+    }
+
+    html << "</table>";
+
 }

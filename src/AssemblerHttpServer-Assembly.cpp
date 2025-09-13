@@ -1223,6 +1223,28 @@ void Assembler::exploreSegmentStep(
             edge[stepId].anchorPair,
             additionalOrientedReadIds);
 
+        html <<
+            "<h3>Assembled sequence</h3>"
+            "<p><span style='font-family:monospace'>"
+            ">LocalAssembly " << localAssembly.sequence.size() <<
+            "<br>";
+        std::ranges::copy(localAssembly.sequence, ostream_iterator<Base>(html));
+        html << "</span>";
+
+        html << "<p><table><tr><th>Position<th>Base<th>Coverage";
+        for(uint64_t position=0; position<localAssembly.sequence.size(); position++) {
+            html <<
+                "<tr><td class=centered>" << position <<
+                "<td class=centered>" << localAssembly.sequence[position] <<
+                "<td class=centered>" << localAssembly.coverage[position];
+        }
+        html << "</table>";
+
+        // Also output the sequence to fasta.
+        ofstream fasta("LocalAssembly.fasta");
+        fasta << ">LocalAssembly " << localAssembly.sequence.size() << endl;
+        std::ranges::copy(localAssembly.sequence, ostream_iterator<Base>(fasta));
+
     } else {
 
         // Do the local assembly for this step.

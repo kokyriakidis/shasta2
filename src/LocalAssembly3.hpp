@@ -9,8 +9,9 @@
 #include <boost/graph/adjacency_list.hpp>
 
 // Standard library.
-#include <iosfwd.hpp>
-#include <vector.hpp>
+#include "iosfwd.hpp"
+#include "utility.hpp"
+#include "vector.hpp"
 
 
 
@@ -84,6 +85,7 @@ public:
 
 class shasta::LocalAssembly3 : public LocalAssembly3BaseClass {
 public:
+    using Base = shasta::Base;
 
     // This assembles between anchorIdA and anchorIdB
     // of the given AnchorPair. It uses all the OrientedReadIds
@@ -217,6 +219,21 @@ public:
     void computeDominatorTree();
     vector<vertex_descriptor> dominatorTreePath;
 
+    // Assemble sequence. Use the dominatorTreePath as the assembly path.
+    void assemble(
+        const Anchors&,
+        ostream& html,
+        bool debug);
+    void assemble(
+        const Anchors&,
+        vertex_descriptor,
+        vertex_descriptor,
+        ostream& html,
+        bool debug);
+
+    // Assembled sequence and its coverage.
+    vector<Base> sequence;
+    vector<uint64_t> coverage;
 
     // Html output.
     void writeInput(
@@ -231,4 +248,15 @@ public:
     void writeGraphviz(const string& fileName, const Markers&) const;
     void writeGraphviz(ostream&, const Markers&) const;
     void writeHtml(ostream&, const Markers&) const;
+    void writeConsensus(
+        ostream& html,
+        const vector< pair<Base, uint64_t> >& consensus,
+        uint64_t maxCoverage) const;
+    void writeAlignment(
+        ostream& html,
+        const vector< vector<Base> >& inputSequences,
+        const vector< pair<Base, uint64_t> >& consensus,
+        const vector< vector<AlignedBase> >& alignment,
+        const vector<AlignedBase>& alignedConsensus,
+        uint64_t maxCoverage) const;
 };
