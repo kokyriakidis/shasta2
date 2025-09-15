@@ -110,6 +110,7 @@ void Assembler::exploreReadMarkers(const vector<string>& request, ostream& html)
 
 
     // Begin the main table containing one row for each marker.
+    const uint64_t maxPeriod = 6;
     html <<
         "<p><table>"
         "<tr>"
@@ -122,9 +123,13 @@ void Assembler::exploreReadMarkers(const vector<string>& request, ostream& html)
     if(markerKmers and markerKmers->isOpen()) {
         html << "<th>Global<br>frequency";
     }
+    for(uint64_t period=1; period<=maxPeriod; period++) {
+        html << "<th>Max copy<br>number<br>for repeats<br>of period " << period;
+    }
 
 
     // Write one row for each marker.
+    const auto& maxAnchorRepeatLength = httpServerData.options->maxAnchorRepeatLength;
     for(uint64_t ordinal=0; ordinal<orientedReadMarkers.size(); ordinal++) {
         const uint64_t position = orientedReadMarkers[ordinal].position;
         const Kmer kmer = markers().getKmer(orientedReadId, uint32_t(ordinal));
@@ -147,6 +152,20 @@ void Assembler::exploreReadMarkers(const vector<string>& request, ostream& html)
             html << "<td class=centered>" << markerKmers->getFrequency(kmer);
         }
 
+        for(uint64_t period=1; period<=maxPeriod; period++) {
+            const uint64_t copyNumber = kmer.countExactRepeatCopies(period, k);
+            bool isHighCopyNumber = false;
+            if(period - 1 < maxAnchorRepeatLength.size()) {
+                const uint64_t maxAllowedCopyNumber = maxAnchorRepeatLength[period - 1];
+                isHighCopyNumber = (copyNumber > maxAllowedCopyNumber);
+
+            }
+            html << "<td class=centered";
+            if(isHighCopyNumber) {
+                html << " style='background-color:LightPink'";
+            }
+            html << ">" << copyNumber;
+        }
     }
 
     html << "</table>";
