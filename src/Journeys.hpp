@@ -49,12 +49,6 @@ public:
         return journeys.size();
     }
 
-    void writeAnchorGapsByRead(
-        const Reads&,
-        const Markers&,
-        const Anchors&
-        ) const;
-
     bool isOpen() const
     {
         return journeys.isOpen();

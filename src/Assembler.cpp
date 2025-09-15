@@ -5,6 +5,7 @@
 #include "AssemblyGraph.hpp"
 #include "Journeys.hpp"
 #include "KmerCheckerFactory.hpp"
+#include "Markers.hpp"
 #include "MurmurHash2.hpp"
 #include "performanceLog.hpp"
 #include "Reads.hpp"
@@ -87,7 +88,7 @@ void Assembler::assemble(
         options.threadCount);
 
     createJourneys(options.threadCount);
-    journeys().writeAnchorGapsByRead(reads(), markers(), anchors());
+    storeAnchorGaps();
 
     createAnchorGraph(options);
     anchorGraphTransitiveReduction(options);
@@ -170,6 +171,66 @@ void Assembler::accessJourneys()
 {
     journeysPointer = make_shared<Journeys>(*this);
 }
+
+
+
+// Store anchor gaps information in ReadSummary for each read.
+void Assembler::storeAnchorGaps()
+{
+    const uint32_t kHalf = uint32_t(anchors().kHalf);
+
+    // Loop over all Reads.
+    for(ReadId readId=0; readId<reads().readCount(); readId++) {
+        ReadSummary& readSummary = readSummaries[readId];
+        const uint32_t readLength = uint32_t(reads().getReadSequenceLength(readId));
+
+        // Put it on strand 0.
+        const OrientedReadId orientedReadId(readId, 0);
+
+        // Get the markers and the journey of this oriented read.
+        const auto orientedReadMarkers = markers()[orientedReadId.getValue()];
+        const auto journey = journeys()[orientedReadId];
+
+        if(journey.empty()) {
+            readSummary.initialAnchorGap = readLength;
+            readSummary.middleAnchorGap = readLength;
+            readSummary.finalAnchorGap = readLength;
+            continue;
+        }
+
+        // Compute the largest gap between adjacent anchors on the journey.
+        uint32_t maxGap = 0;
+        for(uint64_t i1=1; i1<journey.size(); i1++) {
+            const uint64_t i0 = i1 - 1;
+
+            const AnchorId anchorId0 = journey[i0];
+            const AnchorId anchorId1 = journey[i1];
+
+            const uint32_t ordinal0 = anchors().getOrdinal(anchorId0, orientedReadId);
+            const uint32_t ordinal1 = anchors().getOrdinal(anchorId1, orientedReadId);
+
+            const uint32_t position0 = orientedReadMarkers[ordinal0].position + kHalf;
+            const uint32_t position1 = orientedReadMarkers[ordinal1].position + kHalf;
+
+            const uint32_t gap = position1 - position0;
+            maxGap = max(maxGap, gap);
+        }
+        readSummary.middleAnchorGap = maxGap;
+
+        // Compute the number of bases preceding the first anchor on the journey.
+        const AnchorId anchorId0 = journey.front();
+        const uint32_t ordinal0 = anchors().getOrdinal(anchorId0, orientedReadId);
+        readSummary.initialAnchorGap = orientedReadMarkers[ordinal0].position + kHalf;
+
+        // Compute the number of bases following the last anchor on the journey.
+        const AnchorId anchorId1 = journey.back();
+        const uint32_t ordinal1 = anchors().getOrdinal(anchorId1, orientedReadId);
+        readSummary.finalAnchorGap = readLength - orientedReadMarkers[ordinal1].position - kHalf;
+
+    }
+
+}
+
 
 
 AnchorId Assembler::readFollowing(
@@ -279,6 +340,9 @@ void Assembler::writeReadSummaries() const
         "Use for assembly,"
         "Initial marker error rate,"
         "Marker error rate,"
+        "Initial anchor gap,"
+        "Middle anchor gap,"
+        "Final anchor gap,"
         "\n";
 
     for(ReadId readId=0; readId<readSummaries.size(); readId++) {
@@ -289,6 +353,9 @@ void Assembler::writeReadSummaries() const
             (readSummary.isUsedForAssembly ? "Yes" : "No") << "," <<
             readSummary.initialMarkerErrorRate << "," <<
             readSummary.markerErrorRate << "," <<
+            readSummary.initialAnchorGap << "," <<
+            readSummary.middleAnchorGap << "," <<
+            readSummary.finalAnchorGap << "," <<
             "\n";
     }
 }

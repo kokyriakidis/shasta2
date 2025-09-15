@@ -204,6 +204,9 @@ public:
     void createJourneys(uint64_t threadCount);
     void accessJourneys();
 
+    // Store anchor gaps information in ReadSummary for each read.
+    void storeAnchorGaps();
+
     AnchorId readFollowing(
         AnchorId,
         uint64_t direction,

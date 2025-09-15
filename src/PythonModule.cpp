@@ -112,6 +112,8 @@ PYBIND11_MODULE(shasta2, shasta2Module)
           arg("threadCount") = 0)
       .def("accessJourneys",
           &Assembler::accessJourneys)
+      .def("storeAnchorGaps",
+          &Assembler::storeAnchorGaps)
       .def("readFollowing",
           &Assembler::readFollowing)
 
