@@ -169,59 +169,78 @@ void Journeys::threadFunction4(uint64_t /* threadId */)
 
 
 
-// For each read, write out the largest gap between adjacent anchors.
-// The two oriented reads for a read have the same gaps.
+// For each oriented read, write out:
+// - The number of bases preceding the first anchor on the journey.
+// - The largest gap between adjacent anchors on the journey.
+// - The number of bases following the last anchor on the journey.
 void Journeys::writeAnchorGapsByRead(
     const Reads& reads,
     const Markers& markers,
     const Anchors& anchors
     ) const
 {
+    const Journeys& journeys = *this;
 
     // Open the output csv file and write a header.
     ofstream csv("AnchorGaps.csv");
-    csv << "ReadId,Length,Gap\n";
+    csv << "OrientedReadId,Length,Initial gap,Largest middle gap,Final gap\n";
 
-    // Loop over all reads.
+    // Loop over all Reads.
     for(ReadId readId=0; readId<reads.readCount(); readId++) {
         const uint64_t readLength = reads.getRead(readId).baseCount;
 
-        // Put in on strand 0. It would have the same gap on strand 1.
-        const OrientedReadId orientedReadId(readId, 0);
+        for(Strand strand=0; strand<2; strand++) {
+            const OrientedReadId orientedReadId(readId, strand);
 
-        // Get the markers and the journey.
-        const auto orientedReadMarkers = markers[orientedReadId.getValue()];
-        const auto journey = (*this)[orientedReadId];
+            // Get the markers and the journey of this oriented read.
+            const auto orientedReadMarkers = markers[orientedReadId.getValue()];
+            const auto journey = journeys[orientedReadId];
 
-        // Loop over adjacent positions in journey.
-        uint64_t previousPosition = 0;
-        uint64_t maxGap = 0;
-        for(uint64_t i=0; i<=journey.size(); i++) {
-
-            uint64_t position = invalid<uint64_t>;
-            if(i == journey.size()) {
-                position = readLength;
-            } else {
-                const AnchorId anchorId = journey[i];
-                const Anchor anchor = anchors[anchorId];
-                for(const AnchorMarkerInfo& markerInfo: anchor) {
-                    if(markerInfo.orientedReadId == orientedReadId) {
-                        const uint32_t ordinal = markerInfo.ordinal;
-                        const Marker& marker = orientedReadMarkers[ordinal];
-                        position = marker.position;
-                        break;
-                    }
-                }
+            if(journey.empty()) {
+                csv <<
+                    orientedReadId << "," <<
+                    readLength << "," <<
+                    readLength << "," <<
+                    readLength << "," <<
+                    readLength << "\n";
+                continue;
             }
-            SHASTA_ASSERT(position != invalid<uint64_t>);
-            SHASTA_ASSERT(position >= previousPosition);
 
-            const uint64_t gap = position - previousPosition;
-            maxGap = max(maxGap, gap);
+            // Compute the largest gap between adjacent anchors on the journey.
+            uint64_t maxGap = 0;
+            for(uint64_t i1=1; i1<journey.size(); i1++) {
+                const uint64_t i0 = i1 - 1;
 
-            previousPosition = position;
+                const AnchorId anchorId0 = journey[i0];
+                const AnchorId anchorId1 = journey[i1];
+
+                const uint64_t ordinal0 = anchors.getOrdinal(anchorId0, orientedReadId);
+                const uint64_t ordinal1 = anchors.getOrdinal(anchorId1, orientedReadId);
+
+                const uint64_t position0 = orientedReadMarkers[ordinal0].position + anchors.kHalf;
+                const uint64_t position1 = orientedReadMarkers[ordinal1].position + anchors.kHalf;
+
+                const uint64_t gap = position1 - position0;
+                maxGap = max(maxGap, gap);
+            }
+
+            // Compute the number of bases preceding the first anchor on the journey.
+            const AnchorId anchorId0 = journey.front();
+            const uint64_t ordinal0 = anchors.getOrdinal(anchorId0, orientedReadId);
+            const uint64_t initialGap = orientedReadMarkers[ordinal0].position + anchors.kHalf;
+
+            // Compute the number of bases following the last anchor on the journey.
+            const AnchorId anchorId1 = journey.back();
+            const uint64_t ordinal1 = anchors.getOrdinal(anchorId1, orientedReadId);
+            const uint64_t finalGap = readLength - orientedReadMarkers[ordinal1].position - anchors.kHalf;
+
+            csv <<
+                orientedReadId << "," <<
+                readLength << "," <<
+                initialGap << "," <<
+                maxGap << "," <<
+                finalGap << "\n";
         }
-        csv << readId << "," << readLength << "," << maxGap << "\n";
     }
 }
 
