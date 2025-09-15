@@ -190,7 +190,7 @@ void AssemblyGraph::simplifyAndAssemble()
         write("C" + to_string(iteration));
 
         // Phase SuperbubbleChains, considering all hypotheses.
-        changeCount += phaseSuperbubbleChains(false, false);
+        changeCount += phaseSuperbubbleChains(true, true);
         write("D" + to_string(iteration));
 
         // Detangling.
