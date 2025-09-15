@@ -168,15 +168,6 @@ void AssemblyGraph::simplifyAndAssemble()
         false,  // Consider all hypotheses
         true,   // Require top hypothesis to be injective
         true);  // Require top hypothesis to be a permutation.
-    LikelihoodRatioDetangler shortTanglesDetangler(
-        options.detangleEpsilon,
-        options.detangleMaxLogP,
-        options.detangleMinLogPDelta,
-        options.detangleMinCoverage,
-        false,  // Consider all hypotheses
-        false,  // Consider all hypotheses
-        true,   // Require top hypothesis to be injective
-        true);  // Require top hypothesis to be a permutation.
 
     // Initial output.
     write("A");
@@ -203,7 +194,7 @@ void AssemblyGraph::simplifyAndAssemble()
         write("D" + to_string(iteration));
 
         // Detangling.
-        changeCount += detangleHighLevel(detangler, shortTanglesDetangler);
+        changeCount += detangleHighLevel(detangler);
         write("E" + to_string(iteration));
 
         cout << "Total change count at iteration " << iteration << " was " << changeCount << endl;
@@ -1358,15 +1349,13 @@ uint64_t AssemblyGraph::detangleLowLevel(
 
 
 
-uint64_t AssemblyGraph::detangleHighLevel(
-    Detangler& detangler,
-    Detangler& shortTanglesDetangler)
+uint64_t AssemblyGraph::detangleHighLevel(Detangler& detangler)
 {
     performanceLog << timestamp << "AssemblyGraph::detangle begins." << endl;
 
     const uint64_t verticesChangeCount = detangleVertices(detangler);
     const uint64_t edgesChangeCount = detangleEdges(detangler);
-    const uint64_t shortTanglesChangeCount = detangleShortTangles(shortTanglesDetangler);
+    const uint64_t shortTanglesChangeCount = detangleShortTangles(detangler);
 
     const uint64_t changeCount = verticesChangeCount + edgesChangeCount + shortTanglesChangeCount;
 
