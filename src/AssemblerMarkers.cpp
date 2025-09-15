@@ -5,6 +5,7 @@
 #include "MarkerKmers.hpp"
 #include "performanceLog.hpp"
 #include "Reads.hpp"
+#include "ReadSummary.hpp"
 #include "timestamp.hpp"
 using namespace shasta;
 
@@ -49,7 +50,7 @@ void Assembler::createMarkerKmers(double maxMarkerErrorRate, uint64_t threadCoun
     const MappedMemoryOwner& mappedMemoryOwner = *this;
     const uint64_t readCount = reads().readCount();
 
-    // First, compute marker k-mers using all reads.
+    // First, create marker k-mers using all reads.
     vector<bool> useRead(readCount, true);
     markerKmers = make_shared<MarkerKmers>(
         assemblerInfo->k,
@@ -59,24 +60,28 @@ void Assembler::createMarkerKmers(double maxMarkerErrorRate, uint64_t threadCoun
         markers(),
         threadCount);
 
-    // Compute marker error rates.
-    vector<uint64_t> frequencyOneMarkerCount;
-    computeMarkerErrorRates(useRead, frequencyOneMarkerCount);
-    writeMarkerErrorRates(useRead, frequencyOneMarkerCount, "MarkerErrorRates-AllReads.csv");
-
-
-
-    // Do it again, this time using only the reads with low marker error rate.
+    // Compute marker error rates using all reads and store them in the ReadSummaries.
+    // Also set the isUsedForAssembly flag.
+    vector<uint64_t> lowFrequencyMarkerCount;
+    computeMarkerErrorRates(lowFrequencyMarkerCount);
     for(ReadId readId=0; readId<readCount; readId++) {
         const auto readMarkers = markers()[OrientedReadId(readId, 0).getValue()];
-        const double markerErrorRate = double(frequencyOneMarkerCount[readId]) / double(readMarkers.size());
+        const uint64_t readMarkerCount = readMarkers.size();
+        const double markerErrorRate = double(lowFrequencyMarkerCount[readId]) / double(readMarkerCount);
         useRead[readId] = (markerErrorRate <= maxMarkerErrorRate);
+        ReadSummary& readSummary = readSummaries[readId];
+        readSummary.isUsedForAssembly = useRead[readId];
+        readSummary.initialMarkerErrorRate = markerErrorRate;
+
     }
 
-    const uint64_t keepCount = std::ranges::count(useRead, 1);
+
+    // Count the reads and bases that will be used for assembly.
+    uint64_t keepCount = 0;
     uint64_t baseKeepCount = 0;
     for(ReadId readId=0; readId<readCount; readId++) {
         if(useRead[readId]) {
+            ++keepCount;
             baseKeepCount += reads().getRead(readId).baseCount;
         }
     }
@@ -84,6 +89,7 @@ void Assembler::createMarkerKmers(double maxMarkerErrorRate, uint64_t threadCoun
         readCount << " total (" << baseKeepCount <<
         " bases out of " << reads().getTotalBaseCount() << " total)." << endl;
 
+    // Do it again, this time using only the reads with low marker error rate.
     markerKmers->remove();
     markerKmers = make_shared<MarkerKmers>(
         assemblerInfo->k,
@@ -94,9 +100,15 @@ void Assembler::createMarkerKmers(double maxMarkerErrorRate, uint64_t threadCoun
         threadCount);
 
     // Compute marker error rates.
-    computeMarkerErrorRates(useRead, frequencyOneMarkerCount);
-    writeMarkerErrorRates(useRead, frequencyOneMarkerCount, "MarkerErrorRates.csv");
-}
+    computeMarkerErrorRates(lowFrequencyMarkerCount);
+    for(ReadId readId=0; readId<readCount; readId++) {
+        const auto readMarkers = markers()[OrientedReadId(readId, 0).getValue()];
+        const uint64_t readMarkerCount = readMarkers.size();
+        const double markerErrorRate = double(lowFrequencyMarkerCount[readId]) / double(readMarkerCount);
+        ReadSummary& readSummary = readSummaries[readId];
+        readSummary.markerErrorRate = markerErrorRate;
+    }
+ }
 
 
 
@@ -116,21 +128,17 @@ void Assembler::accessMarkerKmers()
 // Compute marker error rates for each read by counting the
 // marker k-mers with frequency 1.
 void Assembler::computeMarkerErrorRates(
-    const vector<bool>& useRead,
-    vector<uint64_t>& frequencyOneMarkerCount) const
+    vector<uint64_t>& lowFrequencyMarkerCount) const
 {
     SHASTA_ASSERT(markerKmers);
     const uint64_t k = assemblerInfo->k;
     const uint64_t readCount = reads().readCount();
 
-    frequencyOneMarkerCount.clear();
-    frequencyOneMarkerCount.resize(readCount, 0);
+    lowFrequencyMarkerCount.clear();
+    lowFrequencyMarkerCount.resize(readCount, 0);
 
     // Loop over all reads.
     for(ReadId readId=0; readId<readCount; readId++) {
-        if(not useRead[readId]) {
-            continue;
-        }
         const auto readSequence = reads().getRead(readId);
         const auto readMarkers = markers()[OrientedReadId(readId, 0).getValue()];
 
@@ -140,37 +148,11 @@ void Assembler::computeMarkerErrorRates(
             Kmer kmer;
             extractKmer128(readSequence, position, k, kmer);
             const uint64_t frequency = markerKmers->getFrequency(kmer);
-            if(frequency == 1) {
-                ++frequencyOneMarkerCount[readId];
+            // Also count frequency 0.
+            // Possible, for reads for which useRead is false;
+            if(frequency <= 1) {
+                ++lowFrequencyMarkerCount[readId];
             }
         }
-    }
-}
-
-
-
-void Assembler::writeMarkerErrorRates(
-    const vector<bool>& useRead,
-    const vector<uint64_t>& frequencyOneMarkerCount,
-    const string& fileName) const
-{
-    ofstream csv(fileName);
-    csv << "ReadId,Length,TotalMarkerCount,FrequencyOneMarkerCount,FrequencyOneMarkerRatio,\n";
-
-    // Loop over all reads.
-    for(ReadId readId=0; readId<reads().readCount(); readId++) {
-        if(not useRead[readId]) {
-            continue;
-        }
-        const auto readSequence = reads().getRead(readId);
-        const auto readMarkers = markers()[OrientedReadId(readId, 0).getValue()];
-
-        csv << readId << ",";
-        csv << readSequence.baseCount << ",";
-        csv << readMarkers.size() << ",";
-        csv << frequencyOneMarkerCount[readId] << ",";
-        csv << double(frequencyOneMarkerCount[readId]) / double(readMarkers.size()) << ",";
-        csv << "\n";
-
     }
 }

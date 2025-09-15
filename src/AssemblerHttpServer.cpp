@@ -5,6 +5,7 @@
 #include "MarkerKmers.hpp"
 #include "tmpDirectory.hpp"
 #include "Reads.hpp"
+#include "ReadSummary.hpp"
 using namespace shasta;
 
 // Boost libraries.
@@ -353,6 +354,13 @@ void Assembler::accessAllSoft()
 {
 
     bool allDataAreAvailable = true;
+
+    try {
+        accessReadSummaries();
+    } catch(const exception& e) {
+        cout << "The read summaries not accessible." << endl;
+        allDataAreAvailable = false;
+    }
 
     try {
         accessKmerChecker();

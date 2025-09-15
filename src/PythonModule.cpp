@@ -16,6 +16,7 @@
 #include "MultithreadedObject.hpp"
 #include "Options.hpp"
 #include "performanceLog.hpp"
+#include "ReadSummary.hpp"
 #include "ShortBaseSequence.hpp"
 #include "splitRange.hpp"
 #include "testSubsetGraph.hpp"
@@ -68,6 +69,8 @@ PYBIND11_MODULE(shasta2, shasta2Module)
             &Assembler::createReadLengthDistribution)
         .def("accessReadLengthDistribution",
             &Assembler::accessReadLengthDistribution)
+        .def("accessReadSummaries",
+            &Assembler::accessReadSummaries)
 
         // K-mer checker.
         .def("createKmerChecker",

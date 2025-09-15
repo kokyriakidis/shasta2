@@ -5,6 +5,7 @@
 #include "HttpServer.hpp"
 #include "MappedMemoryOwner.hpp"
 #include "MemoryMappedObject.hpp"
+#include "MemoryMappedVector.hpp"
 #include "MultithreadedObject.hpp"
 #include "shastaTypes.hpp"
 
@@ -30,6 +31,7 @@ namespace shasta {
     class MarkerKmers;
     class ReadLengthDistribution;
     class Reads;
+    class ReadSummary;
 
 
     // Write an html form to select strand.
@@ -120,6 +122,13 @@ public:
 
 
 
+    // Read summary information.
+    MemoryMapped::Vector<ReadSummary> readSummaries;
+    void createReadSummaries();
+    void accessReadSummaries();
+    void writeReadSummaries() const;
+
+
     // Read length distribution.
     // It provides the computation of coverage correlation,
     // used during assembly.
@@ -163,16 +172,9 @@ public:
     void createMarkerKmers(double maxMarkerErrorRate, uint64_t threadCount);
     void accessMarkerKmers();
 
-    // Compute marker error rates for each read by counting the
-    // marker k-mers with frequency 1.
+    // Compute marker error rates for each read..
     void computeMarkerErrorRates(
-        const vector<bool>& useRead,
-        vector<uint64_t>& frequencyOneMarkerCount) const;
-    void writeMarkerErrorRates(
-        const vector<bool>& useRead,
-        const vector<uint64_t>& frequencyOneMarkerCount,
-        const string& fileName) const;
-
+        vector<uint64_t>& lowFrequencyMarkerCount) const;
 
 
 

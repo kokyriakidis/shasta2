@@ -9,6 +9,7 @@
 #include "performanceLog.hpp"
 #include "Reads.hpp"
 #include "ReadLengthDistribution.hpp"
+#include "ReadSummary.hpp"
 using namespace shasta;
 
 #include "MultithreadedObject.tpp"
@@ -74,6 +75,7 @@ void Assembler::assemble(
         options.minReadLength,
         options.threadCount);
     createReadLengthDistribution();
+    createReadSummaries();
 
     createKmerChecker(options.k, options.markerDensity, options.threadCount);
     createMarkers(options.threadCount);
@@ -92,6 +94,8 @@ void Assembler::assemble(
     saveAnchorGraph();
 
     createAssemblyGraph(options);
+
+    writeReadSummaries();
 }
 
 
@@ -248,4 +252,43 @@ void Assembler::accessSimpleAnchorGraph()
 {
     const MappedMemoryOwner& mappedMemoryOwner = *this;
     simpleAnchorGraphPointer = make_shared<AnchorGraph>(mappedMemoryOwner, "SimpleAnchorGraph");
+}
+
+
+
+void Assembler::createReadSummaries()
+{
+    readSummaries.createNew(largeDataName("ReadSummaries"), largeDataPageSize);
+    readSummaries.resize(reads().readCount());
+}
+
+
+
+void Assembler::accessReadSummaries()
+{
+    readSummaries.accessExistingReadWrite(largeDataName("ReadSummaries"));
+}
+
+
+
+void Assembler::writeReadSummaries() const
+{
+    ofstream csv("ReadSummaries.csv");
+    csv <<
+        "ReadId,"
+        "Use for assembly,"
+        "Initial marker error rate,"
+        "Marker error rate,"
+        "\n";
+
+    for(ReadId readId=0; readId<readSummaries.size(); readId++) {
+        const ReadSummary& readSummary = readSummaries[readId];
+
+        csv <<
+            readId << "," <<
+            (readSummary.isUsedForAssembly ? "Yes" : "No") << "," <<
+            readSummary.initialMarkerErrorRate << "," <<
+            readSummary.markerErrorRate << "," <<
+            "\n";
+    }
 }

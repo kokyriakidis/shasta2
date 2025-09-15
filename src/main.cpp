@@ -4,6 +4,7 @@
 #include "Options.hpp"
 #include "filesystem.hpp"
 #include "performanceLog.hpp"
+#include "ReadSummary.hpp"
 #include "Tee.hpp"
 #include "timestamp.hpp"
 using namespace shasta;
