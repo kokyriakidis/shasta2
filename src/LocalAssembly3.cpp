@@ -737,16 +737,6 @@ void LocalAssembly3::assemble(
 
 
     // Gather information about oriented reads that appear both in vertex0 and vertex1.
-    class AssemblyInfo {
-    public:
-        OrientedReadId orientedReadId;
-        uint32_t ordinal0;
-        uint32_t ordinal1;
-        // Base positions of marker midpoints.
-        uint32_t position0;
-        uint32_t position1;
-        vector<Base> sequence;
-    };
     vector<AssemblyInfo> assemblyInfos;
     auto it0 = vertex0.data.begin();
     const auto end0 = vertex0.data.end();
@@ -862,7 +852,7 @@ void LocalAssembly3::assemble(
     // Display the results of the MSA.
     if(html and debug) {
         writeConsensus(html, consensus, assemblyInfos.size());
-        writeAlignment(html, sequences, consensus, alignment, alignedConsensus, assemblyInfos.size());
+        writeAlignment(html, sequences, consensus, alignment, alignedConsensus, assemblyInfos);
         html << "<p>This edge assembled sequence positions " << sequence.size() <<
             "-" << sequence.size() + consensus.size();
     }
@@ -937,7 +927,7 @@ void LocalAssembly3::writeAlignment(
     const vector< pair<Base, uint64_t> >& consensus,
     const vector< vector<AlignedBase> >& alignment,
     const vector<AlignedBase>& alignedConsensus,
-    uint64_t maxCoverage) const
+    const vector<AssemblyInfo>& assemblyInfos) const
 {
     html <<
         "<h5>Alignment</h5>"
@@ -949,7 +939,7 @@ void LocalAssembly3::writeAlignment(
     for(uint64_t i=0; i<alignment.size(); i++) {
         const vector<AlignedBase>& alignmentRow = alignment[i];
 
-        html << "<tr><th>" << orientedReadInfos[i].orientedReadId <<
+        html << "<tr><th>" << assemblyInfos[i].orientedReadId <<
             "<td class=centered>" << sequences[i].size() <<
             "<td style='font-family:monospace;white-space: nowrap'>";
 
@@ -1000,13 +990,13 @@ void LocalAssembly3::writeAlignment(
             const uint64_t coverage = consensus[position].second;
             const char c = (coverage < 10) ? char(coverage + '0') : char(coverage - 10 + 'A');
 
-            if(coverage < maxCoverage) {
+            if(coverage < assemblyInfos.size()) {
                 html << "<span style='background-color:Pink'>";
             }
 
             html << c;
 
-            if(coverage < maxCoverage) {
+            if(coverage < assemblyInfos.size()) {
                 html << "</span>";
             }
 

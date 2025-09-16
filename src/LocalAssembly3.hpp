@@ -231,6 +231,19 @@ public:
         ostream& html,
         bool debug);
 
+    // Class used when assembling between two vertices.
+    class AssemblyInfo {
+    public:
+        OrientedReadId orientedReadId;
+        uint32_t ordinal0;
+        uint32_t ordinal1;
+        // Base positions of marker midpoints.
+        uint32_t position0;
+        uint32_t position1;
+        vector<Base> sequence;
+    };
+
+
     // Assembled sequence and its coverage.
     vector<Base> sequence;
     vector<uint64_t> coverage;
@@ -259,5 +272,5 @@ public:
         const vector< pair<Base, uint64_t> >& consensus,
         const vector< vector<AlignedBase> >& alignment,
         const vector<AlignedBase>& alignedConsensus,
-        uint64_t maxCoverage) const;
+        const vector<AssemblyInfo>&) const;
 };
