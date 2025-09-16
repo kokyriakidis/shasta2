@@ -244,6 +244,7 @@ public:
     void writeOrientedReads(
         const Anchors&,
         ostream& html) const;
+    void writeKmers(ostream& html, uint64_t k) const;
     void writeOrientedReadKmers(ostream& html) const;
     void writeGraphviz(const string& fileName, const Markers&) const;
     void writeGraphviz(ostream&, const Markers&) const;

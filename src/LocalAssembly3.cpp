@@ -60,8 +60,8 @@ LocalAssembly3::LocalAssembly3(
     fillOrientedReadKmers(anchors.markers);
     gatherKmers(anchors);
     if(html) {
-        html << "<p>Found " << kmers.size() << " distinct kmers." << endl;
         if(debug) {
+            writeKmers(html, anchors.k);
             writeOrientedReadKmers(html);
         }
     }
@@ -410,6 +410,26 @@ void LocalAssembly3::writeOrientedReads(
     }
     html << "</table>";
 
+}
+
+
+
+void LocalAssembly3::writeKmers(ostream& html, uint64_t k) const
+{
+    html <<
+        "<h3>Marker k-mers</h3>"
+        "<p>Found " << kmers.size() << " distinct k-mers."
+        "<table><tr><th>K-mer<br>index<th>K-mer";
+
+    for(uint64_t kmerIndex=0; kmerIndex<kmers.size(); kmerIndex++) {
+        const Kmer& kmer = kmers[kmerIndex];
+        html <<
+            "<tr><td class=centered>" << kmerIndex <<
+            "<td class=centered style='font-family:monospace;'>";
+        kmer.write(html, k);
+    }
+
+    html << "</table>";
 }
 
 
