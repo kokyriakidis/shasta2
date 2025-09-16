@@ -1,5 +1,6 @@
 // Shasta.
 #include "Assembler.hpp"
+#include "abpoaWrapper.hpp"
 #include "KmerChecker.hpp"
 #include "Markers.hpp"
 #include "MarkerKmers.hpp"
@@ -266,4 +267,297 @@ void Assembler::exploreMarkerKmers(const vector<string>& request, ostream& html)
     html << "</table>";
 
 
+}
+
+
+
+void Assembler::exploreMarkerKmerPair(
+    const vector<string>& request,
+    ostream& html)
+{
+    SHASTA_ASSERT(markerKmers and markerKmers->isOpen());
+
+    const uint64_t k = assemblerInfo->k;
+
+    html << "<h2>Marker k-mer pair</h2>";
+
+    // Get the request parameters.
+    string kmerString0;
+    getParameterValue(request, "kmer0", kmerString0);
+    boost::trim(kmerString0);
+
+    string kmerString1;
+    getParameterValue(request, "kmer1", kmerString1);
+    boost::trim(kmerString1);
+
+
+
+    // Write the form.
+    html <<
+        "<p><form><table>"
+
+        "<tr><th class=left>Left k-mer"
+        "<td><input type=text name=kmer0 style='font-family:monospace' "
+        "size=" << k + 10 << " "
+        "value='" << kmerString0 << "'" <<
+        " title='Enter a " << k << "-base k-mer.'>"
+
+        "<tr><th class=left>Right k-mer"
+        "<td><input type=text name=kmer1 style='font-family:monospace' "
+        "size=" << k + 10 << " "
+        "value='" << kmerString1 << "'" <<
+        " title='Enter a " << k << "-base k-mer.'>"
+
+        "</table><input type=submit value='Get k-mer pair information'></form>";
+
+
+
+    // If the k-mer strings are empty, do nothing.
+    if(kmerString0.empty() or kmerString1.empty()) {
+        return;
+    }
+
+    // Check the length.
+    if(kmerString0.size() != k) {
+        html << "<p>The left k-mer is " << kmerString0.size() << " bases long. "
+            "This assembly uses " << k << "-base markers. "
+            "Specify a " << k << "-mer." << endl;
+        return;
+    }
+    if(kmerString1.size() != k) {
+        html << "<p>The right k-mer is " << kmerString1.size() << " bases long. "
+            "This assembly uses " << k << "-base markers. "
+            "Specify a " << k << "-mer." << endl;
+        return;
+    }
+
+    // Construct the k-mers.
+    Kmer kmer0;
+    for(uint64_t i=0; i<kmerString0.size(); i++) {
+        const char c = kmerString0[i];
+        const Base b = Base::fromCharacterNoException(c);
+        if(not b.isValid()) {
+            throw runtime_error("Invalid base character " + string(1, c) + " at left k-mer position " + to_string(i));
+        }
+        kmer0.set(i, b);
+    }
+    Kmer kmer1;
+    for(uint64_t i=0; i<kmerString1.size(); i++) {
+        const char c = kmerString1[i];
+        const Base b = Base::fromCharacterNoException(c);
+        if(not b.isValid()) {
+            throw runtime_error("Invalid base character " + string(1, c) + " at right k-mer position " + to_string(i));
+        }
+        kmer1.set(i, b);
+    }
+
+    // Check if they are markers.
+    SHASTA_ASSERT(kmerChecker);
+    if(not kmerChecker->isMarker(kmer0)) {
+        html << "<p>The left k-mer is not a marker.";
+        return;
+    }
+    if(not kmerChecker->isMarker(kmer1)) {
+        html << "<p>The right k-mer is not a marker.";
+        return;
+    }
+
+    // Get the MarkerInfos for these Kmers.
+    vector<MarkerInfo> markerInfos0;
+    markerKmers->get(kmer0, markerInfos0);
+    vector<MarkerInfo> markerInfos1;
+    markerKmers->get(kmer1, markerInfos1);
+
+    html <<
+        "<p><table>"
+        "<tr><th class=left>Left K-mer coverage<td class=centered>" << markerInfos0.size() <<
+        "<tr><th class=left>Right K-mer coverage<td class=centered>" << markerInfos1.size() <<
+        "</table>";
+
+
+
+    // Gather common oriented reads that appear in both k-mers, with the left
+    // ordinal less than the right orginal.
+    class CommonOrientedReadInfo {
+    public:
+        OrientedReadId orientedReadId;
+        uint32_t ordinal0;
+        uint32_t ordinal1;
+        uint32_t ordinalOffset() const
+        {
+            return ordinal1 - ordinal0;
+        }
+        uint32_t position0;
+        uint32_t position1;
+        uint32_t positionOffset() const
+        {
+            return position1 - position0;
+        }
+        vector<Base> sequence;
+    };
+    vector<CommonOrientedReadInfo> commonOrientedReadInfos;
+    auto it0 = markerInfos0.begin();
+    const auto end0 = markerInfos0.end();
+    auto it1 = markerInfos1.begin();
+    const auto end1 = markerInfos1.end();
+    const uint32_t kHalf = uint32_t(assemblerInfo->k / 2);
+    while((it0 != end0) and (it1!=end1)) {
+        if(it0->orientedReadId < it1->orientedReadId) {
+            ++it0;
+        } else if(it1->orientedReadId < it0->orientedReadId) {
+            ++it1;
+        } else {
+            // We found a common oriented read.
+
+            if(it0->ordinal < it1->ordinal) {
+                const OrientedReadId orientedReadId = it0->orientedReadId;
+                const auto orientedReadMarkers = markers()[orientedReadId.getValue()];
+
+                commonOrientedReadInfos.emplace_back();
+                CommonOrientedReadInfo& commonOrientedReadInfo = commonOrientedReadInfos.back();
+                commonOrientedReadInfo.orientedReadId = orientedReadId;
+                commonOrientedReadInfo.ordinal0 = it0->ordinal;
+                commonOrientedReadInfo.ordinal1 = it1->ordinal;
+                commonOrientedReadInfo.position0 = orientedReadMarkers[it0->ordinal].position + kHalf;
+                commonOrientedReadInfo.position1 = orientedReadMarkers[it1->ordinal].position + kHalf;
+
+                for(uint32_t position=commonOrientedReadInfo.position0;
+                    position!=commonOrientedReadInfo.position1; position++) {
+                    commonOrientedReadInfo.sequence.push_back(reads().getOrientedReadBase(orientedReadId, position));
+                }
+            }
+
+            ++it0;
+            ++it1;
+        }
+    }
+
+
+
+    html <<
+        "<h3>Common oriented reads</h3>"
+        "<p>Found " << commonOrientedReadInfos.size() <<
+        " oriented reads that appear in both the left and right k-mers, "
+        "with a lower ordinal on the left k-mer than on the right k-mer."
+        "<table><tr>"
+        "<th>Oriented<br>read id"
+        "<th>Left<br>ordinal"
+        "<th>Right<br>ordinal"
+        "<th>Ordinal<br>offset"
+        "<th>Left<br>position"
+        "<th>Right<br>position"
+        "<th>Position<br>offset"
+        "<th class=left>Sequence";
+    for(const CommonOrientedReadInfo& commonOrientedReadInfo: commonOrientedReadInfos) {
+        html <<
+            "<tr>"
+            "<td class=centered>" << commonOrientedReadInfo.orientedReadId <<
+            "<td class=centered>" << commonOrientedReadInfo.ordinal0 <<
+            "<td class=centered>" << commonOrientedReadInfo.ordinal1 <<
+            "<td class=centered>" << commonOrientedReadInfo.ordinalOffset() <<
+            "<td class=centered>" << commonOrientedReadInfo.position0 <<
+            "<td class=centered>" << commonOrientedReadInfo.position1 <<
+            "<td class=centered>" << commonOrientedReadInfo.positionOffset() <<
+            "<td class=left style='font-family:monospace'>";
+        for(const Base b: commonOrientedReadInfo.sequence) {
+            html << b;
+        }
+    }
+    html << "</table>";
+
+
+
+    // Use abpoa to align the sequences.
+    vector< vector<Base> > sequences;
+    for(const CommonOrientedReadInfo& commonOrientedReadInfo: commonOrientedReadInfos) {
+        sequences.push_back(commonOrientedReadInfo.sequence);
+    }
+    vector< pair<Base, uint64_t> > consensus;
+    vector< vector<AlignedBase> > alignment;
+    vector<AlignedBase> alignedConsensus;
+    abpoa(sequences, consensus, alignment, alignedConsensus, true);
+
+
+
+    // Write the alignment.
+    html <<
+        "<h3>Alignment</h3>"
+        "<table>"
+        "<tr><th class=left>OrientedReadId"
+        "<th class=left>Sequence<br>length"
+        "<th class=left>Aligned sequence";
+
+    for(uint64_t i=0; i<alignment.size(); i++) {
+        const vector<AlignedBase>& alignmentRow = alignment[i];
+
+        html << "<tr><th>" << commonOrientedReadInfos[i].orientedReadId <<
+            "<td class=centered>" << sequences[i].size() <<
+            "<td style='font-family:monospace;white-space: nowrap'>";
+
+        for(uint64_t j=0; j<alignmentRow.size(); j++) {
+            const AlignedBase b = alignmentRow[j];
+            const bool isMatch = (b == alignedConsensus[j]);
+
+            if(not isMatch) {
+                html << "<span style='background-color:Pink'>";
+            }
+            html << b;
+            if(not isMatch) {
+                html << "</span>";
+            }
+        }
+
+    }
+
+    html << "<tr><th>Consensus<td class=centered>" << consensus.size() <<
+        "<td style='font-family:monospace;background-color:LightCyan;white-space:nowrap'>";
+
+    uint64_t position = 0;
+    for(uint64_t i=0; i<alignedConsensus.size(); i++) {
+        const AlignedBase b = alignedConsensus[i];
+
+        if(not b.isGap()) {
+            html << "<span title='" << position << "'>";
+        }
+
+        html << b;
+
+        if(not b.isGap()) {
+            html << "</span>";
+            ++position;
+        }
+    }
+
+    html << "<tr><th>Consensus coverage<td>"
+        "<td style='font-family:monospace;white-space:nowrap'>";
+
+    position = 0;
+    for(uint64_t i=0; i<alignedConsensus.size(); i++) {
+        const AlignedBase b = alignedConsensus[i];
+
+        if(b.isGap()) {
+            html << "-";
+        } else {
+            const uint64_t coverage = consensus[position].second;
+            char c;
+            if(coverage < 10) {
+                c = char(coverage + '0');
+            } else if(coverage < 36) {
+                c = char(coverage - 10 + 'A');
+            } else {
+                c = '*';
+            }
+
+            html << "<span title='" << position << " " << coverage << "'";
+            if(coverage < commonOrientedReadInfos.size()) {
+                html << " style='background-color:Pink'";
+            }
+            html << ">";
+            html << c << "</span>";
+
+            ++position;
+        }
+    }
+
+    html << "</table>";
 }

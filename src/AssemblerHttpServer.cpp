@@ -36,6 +36,7 @@ void Assembler::fillServerFunctionTable()
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreReadSequence);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreReadMarkers);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreMarkerKmers);
+    SHASTA_ADD_TO_FUNCTION_TABLE(exploreMarkerKmerPair);
 
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreAnchor);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreAnchorPair);
@@ -213,7 +214,8 @@ void Assembler::writeNavigation(ostream& html) const
     // Markers menu.
     writeNavigation(html, "Markers", {
         {"Markers", "exploreReadMarkers"},
-        {"Marker k-mers", "exploreMarkerKmers"}
+        {"Marker k-mers", "exploreMarkerKmers"},
+        {"Marker k-mer pair", "exploreMarkerKmerPair"}
         });
 
 
