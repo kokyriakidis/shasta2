@@ -78,13 +78,13 @@ public:
     // Get the Kmer corresponding to a given MarkerInfo.
     Kmer getKmer(const MarkerInfo&) const;
 
-private:
-
     // Constructor arguments.
     uint64_t k;
     const Reads& reads;
     const vector<bool>* useReadPointer;
     const Markers& markers;
+
+private:
 
     // A function object class that sorts MarkerInfo objects by Kmer.
     class MarkerInfoSorter {
