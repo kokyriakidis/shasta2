@@ -239,14 +239,22 @@ void MarkerKmerPair::writeAlignment(ostream& html) const
         "<h3>Alignment</h3>"
         "<table>"
         "<tr><th class=left>OrientedReadId"
-        "<th class=left>Sequence<br>length"
+        "<th>Sequence<br>rank"
+        "<th>Sequence<br>coverage"
+        "<th>Sequence<br>length"
         "<th class=left>Aligned sequence";
 
     for(uint64_t i=0; i<alignment.size(); i++) {
         const vector<AlignedBase>& alignmentRow = alignment[i];
+        const auto& p = *(commonOrientedReads[i].sequenceMapIterator);
+        const vector<Base>& sequence = p.first;
+        SHASTA_ASSERT(sequence == sequences[i]);
+        const SequenceInfo& sequenceInfo = p.second;
 
         html << "<tr><th>" << commonOrientedReads[i].orientedReadId <<
-            "<td class=centered>" << sequences[i].size() <<
+            "<td class=centered>" << sequenceInfo.rank <<
+            "<td class=centered>" << sequenceInfo.coverage() <<
+            "<td class=centered>" << sequences.size() <<
             "<td style='font-family:monospace;white-space: nowrap'>";
 
         for(uint64_t j=0; j<alignmentRow.size(); j++) {
@@ -264,7 +272,7 @@ void MarkerKmerPair::writeAlignment(ostream& html) const
 
     }
 
-    html << "<tr><th>Consensus<td class=centered>" << consensus.size() <<
+    html << "<tr><th>Consensus<td class=centered><td><td class=centered>" << consensus.size() <<
         "<td style='font-family:monospace;background-color:LightCyan;white-space:nowrap'>";
 
     uint64_t position = 0;
@@ -284,7 +292,7 @@ void MarkerKmerPair::writeAlignment(ostream& html) const
         }
     }
 
-    html << "<tr><th>Consensus coverage<td>"
+    html << "<tr><th>Consensus coverage<td><td><td>"
         "<td style='font-family:monospace;white-space:nowrap'>";
 
     position = 0;
@@ -426,20 +434,39 @@ void MarkerKmerPair::writePairAlignmentDistances(ostream& html) const
     }
 
 
+
     // Write out the edit distances.
     html <<
         "<h3>Edit distances between the sequences</h3>"
-        "<p><table><tr><th>Ranks";
+        "<p><table><tr>"
+        "<td colspan=3 rowspan=3>"
+        "<th>Rank";
     for(uint64_t i=0; i<n; i++) {
         html << "<th>" << i;
     }
-
+    html << "<tr><th>Coverage";
+    for(uint64_t i=0; i<n; i++) {
+        html << "<th>" << sequencesByRank[i]->second.coverage();
+    }
+    html << "<tr><th>Length";
+    for(uint64_t i=0; i<n; i++) {
+        html << "<th>" << sequencesByRank[i]->first.size();
+    }
+    html << "<tr><th>Rank<th>Coverage<th>Length<td>";
+    for(uint64_t i=0; i<n; i++) {
+        html << "<td>";
+    }
     for(uint64_t i0=0; i0<n; i0++) {
-        html << "<tr><th>" << i0;
+        html <<
+            "<tr>"
+            "<th>" << i0 <<
+            "<th>" << sequencesByRank[i0]->second.coverage() <<
+            "<th>" << sequencesByRank[i0]->first.size() <<
+            "<td>";
         for(uint64_t i1=0; i1<n; i1++) {
             html << "<td class=centered>" << editDistances[i0][i1];
         }
     }
-
     html << "</table>";
+
 }
