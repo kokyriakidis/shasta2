@@ -388,3 +388,58 @@ void MarkerKmerPair::writeAlignment(ostream& html) const
     }
     html << "</table>";
 }
+
+
+
+void MarkerKmerPair::writePairAlignmentDistances(ostream& html) const
+{
+    const uint64_t n = sequencesByRank.size();
+    vector< vector<uint64_t> > editDistances(n, vector<uint64_t>(n, 0));
+
+    vector< vector<Base> > sequences(2);
+    vector< pair<Base, uint64_t> > consensus;
+    vector< vector<AlignedBase> > alignment;
+    vector<AlignedBase> alignedConsensus;
+
+    // Loop over pairs of sequences.
+    for(uint64_t i1=1; i1<n; i1++) {
+        const vector<Base>& sequence1 = sequencesByRank[i1]->first;
+        sequences[1] = sequence1;
+
+        for(uint64_t i0=0; i0<i1; i0++) {
+            const vector<Base>& sequence0 = sequencesByRank[i0]->first;
+            sequences[0] = sequence0;
+
+            // Align them.
+            abpoa(sequences, consensus, alignment, alignedConsensus, true);
+
+            // Compute edit distances.
+            uint64_t editDistance = 0;
+            for(uint64_t position=0; position<alignment[0].size(); position++) {
+                if(alignment[0][position] != alignment[1][position]) {
+                    ++editDistance;
+                }
+            }
+            editDistances[i0][i1] = editDistance;
+            editDistances[i1][i0] = editDistance;
+        }
+    }
+
+
+    // Write out the edit distances.
+    html <<
+        "<h3>Edit distances between the sequences</h3>"
+        "<p><table><tr><th>Ranks";
+    for(uint64_t i=0; i<n; i++) {
+        html << "<th>" << i;
+    }
+
+    for(uint64_t i0=0; i0<n; i0++) {
+        html << "<tr><th>" << i0;
+        for(uint64_t i1=0; i1<n; i1++) {
+            html << "<td class=centered>" << editDistances[i0][i1];
+        }
+    }
+
+    html << "</table>";
+}

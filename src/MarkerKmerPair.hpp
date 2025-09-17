@@ -100,4 +100,5 @@ public:
     void writeSequences(ostream& html) const;
     void writeCommonOrientedReads(ostream& html) const;
     void writeAlignment(ostream& html) const;
+    void writePairAlignmentDistances(ostream& html) const;
 };

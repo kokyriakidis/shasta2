@@ -367,5 +367,6 @@ void Assembler::exploreMarkerKmerPair(
     markerKmerPair.writeSequences(html);
     markerKmerPair.writeCommonOrientedReads(html);
     markerKmerPair.writeAlignment(html);
+    markerKmerPair.writePairAlignmentDistances(html);
 
 }
