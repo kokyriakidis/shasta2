@@ -18,6 +18,7 @@ MarkerKmerPair::MarkerKmerPair(
     gatherCommonOrientedReads(markerKmers.markers);
     gatherSequences(markerKmers.reads);
     rankSequences();
+    align();
 }
 
 
@@ -229,21 +230,20 @@ void MarkerKmerPair::writeCommonOrientedReads(ostream& html) const
 
 
 
-void MarkerKmerPair::writeAlignment(ostream& html) const
+void MarkerKmerPair::align()
 {
-    // Use abpoa to align the sequences.
     vector< vector<Base> > sequences;
     for(const CommonOrientedRead& commonOrientedRead: commonOrientedReads) {
         sequences.push_back(commonOrientedRead.sequenceMapIterator->first);
     }
 
-    // Compute the alignment.
-    vector< pair<Base, uint64_t> > consensus;
-    vector< vector<AlignedBase> > alignment;
-    vector<AlignedBase> alignedConsensus;
     abpoa(sequences, consensus, alignment, alignedConsensus, true);
+}
 
-    // Write the alignment.
+
+
+void MarkerKmerPair::writeAlignment(ostream& html) const
+{
     html <<
         "<h3>Alignment</h3>"
         "<table>"
@@ -257,13 +257,12 @@ void MarkerKmerPair::writeAlignment(ostream& html) const
         const vector<AlignedBase>& alignmentRow = alignment[i];
         const auto& p = *(commonOrientedReads[i].sequenceMapIterator);
         const vector<Base>& sequence = p.first;
-        SHASTA_ASSERT(sequence == sequences[i]);
         const SequenceInfo& sequenceInfo = p.second;
 
         html << "<tr><th>" << commonOrientedReads[i].orientedReadId <<
             "<td class=centered>" << sequenceInfo.rank <<
             "<td class=centered>" << sequenceInfo.coverage() <<
-            "<td class=centered>" << sequences.size() <<
+            "<td class=centered>" << sequence.size() <<
             "<td style='font-family:monospace;white-space: nowrap'>";
 
         for(uint64_t j=0; j<alignmentRow.size(); j++) {

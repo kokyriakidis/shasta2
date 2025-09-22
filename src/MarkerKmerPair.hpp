@@ -69,6 +69,11 @@ public:
     void gatherSequences(const Reads&);
     void rankSequences();
 
+    // Compute the alignment.
+    vector< pair<Base, uint64_t> > consensus;
+    vector< vector<AlignedBase> > alignment;
+    vector<AlignedBase> alignedConsensus;
+    void align();
 
 
     // Common oriented reads that have kmer0 at ordinal0

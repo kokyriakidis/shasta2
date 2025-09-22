@@ -296,7 +296,7 @@ void Assembler::exploreSegments(
     BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
         const AssemblyGraphEdge& edge = assemblyGraph[e];
         const uint64_t coverage = uint64_t(std::round(edge.averageCoverage()));
-        const string url = "exploreSegment?assemblyStage=" + assemblyStage + "&segmentName=" + to_string(edge.id);
+        const string url = "exploreSegmentSteps?assemblyStage=" + assemblyStage + "&segmentName=" + to_string(edge.id);
         html <<
             "<tr>"
             "<td class=centered><a href='" << url << "'>" << edge.id << "</a>"
