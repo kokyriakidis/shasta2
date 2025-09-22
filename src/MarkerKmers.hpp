@@ -60,6 +60,10 @@ public:
     // Get MarkerInfo objects for a given Kmer.
     void get(const Kmer&, vector<MarkerInfo>&) const;
 
+    // Get MarkerInfo objects for a given Kmer, including only
+    // ReadIds that appear only once in the Kmer.
+    void getWithUniqueReadIds(const Kmer&, vector<MarkerInfo>&) const;
+
     // Return the number of Kmers stored.
     uint64_t size() const
     {

@@ -24,8 +24,8 @@ MarkerKmerPair::MarkerKmerPair(
 
 void MarkerKmerPair::getMarkerInfos(const MarkerKmers& markerKmers)
 {
-    markerKmers.get(kmer0, markerInfos0);
-    markerKmers.get(kmer1, markerInfos1);
+    markerKmers.getWithUniqueReadIds(kmer0, markerInfos0);
+    markerKmers.getWithUniqueReadIds(kmer1, markerInfos1);
 }
 
 
@@ -136,7 +136,16 @@ void MarkerKmerPair::writeSummary(ostream& html, uint64_t k) const
 {
     html <<
         "<h3>Marker k-mer pair summary</h3>"
-        "<table>";
+        "This includes oriented reads that appear in "
+        "<code>kmer0</code> at <code>ordinal0</code> and "
+        "in <code>kmer1</code> at <code>ordinal1</code> and such that:"
+        "<ul>"
+        "<li><code>ordinal0 &lt; ordinal1</code>"
+        "<li>The <code>ReadId</code> appears exactly once in both <code>kmer0</code> and <code>kmer1</code>. "
+        "This implies that the <code>OrientedReadId</code> also appears exactly once "
+        "in both <code>kmer0</code> and <code>kmer1</code>."
+        "</ul>"
+        "<p><table>";
 
     html <<
         "<tr><th class=left>Left k-mer<td class=centered style='font-family:monospace'>";

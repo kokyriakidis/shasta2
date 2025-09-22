@@ -530,3 +530,65 @@ void MarkerKmers::get(
         sort(v.begin(), v.end(), MarkerInfoSorter(*this));
     }
 }
+
+
+
+// Get MarkerInfo objects for a given Kmer, including only
+// ReadIds that appear only once in the Kmer.
+void MarkerKmers::getWithUniqueReadIds(
+    const Kmer& kmer,
+    vector<MarkerInfo>& v) const
+{
+    v.clear();
+    const Kmer kmerRc = kmer.reverseComplement(k);
+
+    if(kmer <= kmerRc) {
+
+        // Kmer is canonical.
+        span<const MarkerInfo> s = getMarkerInfos(kmer);
+        for(uint64_t i=0; i<s.size(); i++) {
+            const MarkerInfo& markerInfo = s[i];
+            const ReadId readId = markerInfo.orientedReadId.getReadId();
+
+            // Figure out if it is a repeated ReadId.
+            bool isRepeatedReadId = false;
+            if(i != 0) {
+                isRepeatedReadId = (readId == s[i-1].orientedReadId.getReadId());
+            }
+            if(i != s.size() - 1) {
+                isRepeatedReadId = isRepeatedReadId or
+                    (readId == s[i+1].orientedReadId.getReadId());
+            }
+
+            if(not isRepeatedReadId) {
+                v.push_back(markerInfo);
+            }
+        }
+
+    } else {
+
+        // Kmer is not canonical but kmerRc is.
+        span<const MarkerInfo> s = getMarkerInfos(kmerRc);
+        for(uint64_t i=0; i<s.size(); i++) {
+            const MarkerInfo& markerInfo = s[i];
+            const ReadId readId = markerInfo.orientedReadId.getReadId();
+
+            // Figure out if it is a repeated ReadId.
+            bool isRepeatedReadId = false;
+            if(i != 0) {
+                isRepeatedReadId = (readId == s[i-1].orientedReadId.getReadId());
+            }
+            if(i != s.size() - 1) {
+                isRepeatedReadId = isRepeatedReadId or
+                    (readId == s[i+1].orientedReadId.getReadId());
+            }
+
+            if(not isRepeatedReadId) {
+                v.push_back(markerInfo.reverseComplement(markers));
+            }
+        }
+        sort(v.begin(), v.end(), MarkerInfoSorter(*this));
+    }
+
+}
+

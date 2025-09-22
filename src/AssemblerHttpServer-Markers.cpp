@@ -311,13 +311,13 @@ void Assembler::exploreMarkerKmerPair(
     html <<
         "<p><form><table>"
 
-        "<tr><th class=left>Left k-mer"
+        "<tr><th class=left>Left k-mer (kmer0)"
         "<td><input type=text name=kmer0 style='font-family:monospace' "
         "size=" << k << " "
         "value='" << kmerString0 << "'" <<
         " title='Enter a " << k << "-base k-mer.'>"
 
-        "<tr><th class=left>Right k-mer"
+        "<tr><th class=left>Right k-mer (kmer1)"
         "<td><input type=text name=kmer1 style='font-family:monospace' "
         "size=" << k << " "
         "value='" << kmerString1 << "'" <<

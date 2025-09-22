@@ -20,6 +20,11 @@ namespace shasta {
 
 
 
+// A MarkerKmerPair between two MarkerKmers kmer0 and kmer1 is defined using
+// OrientedReadIds that appear in kmer0 at ordinal0 and in kmer1 at ordinal1 and such that:
+// - ordinal0 < ordinal1
+// - The ReadId appears exactly once in both kmer0 and kmer1.
+//   This implies that the OrientedReadId also appears exactly once in both kmer0 and kmer1.
 class shasta::MarkerKmerPair {
 public:
 
@@ -32,7 +37,8 @@ public:
     Kmer kmer0;
     Kmer kmer1;
 
-    // The MarkerInfos of the left and right Kmer.
+    // The MarkerInfos of kmer0 and kmer1, excluding ReadIds that appear
+    // more than once in kmer0 or kmer1.
     vector<MarkerInfo> markerInfos0;
     vector<MarkerInfo> markerInfos1;
     void getMarkerInfos(const MarkerKmers&);
