@@ -428,6 +428,9 @@ void Assembler::writeStyle(ostream& html)
     body {
         font-family: Arial;
     }
+    ul, p{
+        margin:auto;
+    }
     pre {
         font-family: monospace;
     }
