@@ -731,9 +731,43 @@ void LocalAssembly3::assemble(
     const LocalAssembly3Vertex& vertex1 = graph[v1];
 
     if(html and debug) {
-        html << "<h4>Assembly details between vertices " << vertex0.kmerIndex <<
-            " and " << vertex1.kmerIndex << "</h4>";
+        const Kmer& kmer0 = kmers[vertex0.kmerIndex];
+        const Kmer& kmer1 = kmers[vertex1.kmerIndex];
+
+        html <<
+            "<h4>Assembly details between vertices " << vertex0.kmerIndex <<
+            " and " << vertex1.kmerIndex << "</h4>"
+            "<h5>K-mers for these vertices</h5>"
+            "<table>"
+            "<tr><th>Vertex<th>K-mer";
+
+        html <<
+            "<tr><td class=centered>" << vertex0.kmerIndex <<
+            "<td class=centered style='font-family:monospace'>"
+            "<a href='exploreMarkerKmers?kmer=";
+        kmer0.write(html, anchors.k);
+        html << "'>";
+        kmer0.write(html, anchors.k);
+        html << "</a>";
+
+        html <<
+            "<tr><td class=centered>" << vertex1.kmerIndex <<
+            "<td class=centered style='font-family:monospace'>"
+            "<a href='exploreMarkerKmers?kmer=";
+        kmer1.write(html, anchors.k);
+        html << "'>";
+        kmer1.write(html, anchors.k);
+        html << "</a>";
+
+        html << "</table>";
+
+        html << "<a href='exploreMarkerKmerPair?kmer0=";
+        kmer0.write(html, anchors.k);
+        html << "&kmer1=";
+        kmer1.write(html, anchors.k);
+        html << "'>K-mer pair</a>";
     }
+
 
 
     // Gather information about oriented reads that appear both in vertex0 and vertex1.
