@@ -429,10 +429,7 @@ void Assembler::writeStyle(ostream& html)
         font-family: Arial;
     }
     pre {
-        font-family: courier;
-    }
-    p, input {
-        font-size: 16px;
+        font-family: monospace;
     }
     h1, h2, h3 {
         color: DarkSlateBlue;
