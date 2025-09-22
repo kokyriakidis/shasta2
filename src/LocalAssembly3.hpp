@@ -42,6 +42,7 @@ public:
     uint64_t kmerIndex;
 
     // The markers that contain this Kmer.
+    // We don't allow a ReadId to appear more than once in a vertex.
     class Data {
     public:
         uint64_t orientedReadIndex; // Index in orientedReadInfos vector.
@@ -55,7 +56,7 @@ public:
 
     LocalAssembly3Vertex(uint64_t kmerIndex) : kmerIndex(kmerIndex) {}
 
-    // These are used when computing the dominatyor tree.
+    // These are used when computing the dominator tree.
     LocalAssembly3BaseClass::vertex_descriptor dominator =
         LocalAssembly3BaseClass::null_vertex();
     bool isOnDominatorTreePath = false;

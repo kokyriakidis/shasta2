@@ -492,10 +492,114 @@ void LocalAssembly3::createVertices()
 
     leftAnchorVertex = vertexMap[leftAnchorKmerIndex];
     rightAnchorVertex = vertexMap[rightAnchorKmerIndex];
+
+
+
+    // We don't allow a ReadId to appear more than once in a vertex.
+    // Remove from each vertex oriented reads whose ReadId appears more than once.
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        LocalAssembly3Vertex& vertex = graph[v];
+        vector<LocalAssembly3Vertex::Data> newData;
+        for(uint64_t i=0; i<vertex.data.size(); i++) {
+            const ReadId readId = orientedReadInfos[vertex.data[i].orientedReadIndex].orientedReadId.getReadId();
+
+            // Figure out if it is a repeated ReadId.
+            bool isRepeatedReadId = false;
+            if(i != 0) {
+                // Check against previous.
+                const ReadId previousReadId = orientedReadInfos[vertex.data[i-1].orientedReadIndex].orientedReadId.getReadId();
+                isRepeatedReadId = (previousReadId == readId);
+            }
+            if(i != vertex.data.size() - 1) {
+                // Check against next.
+                const ReadId nextReadId = orientedReadInfos[vertex.data[i+1].orientedReadIndex].orientedReadId.getReadId();
+                isRepeatedReadId = isRepeatedReadId or (nextReadId == readId);
+            }
+
+            if(not isRepeatedReadId) {
+                newData.push_back(vertex.data[i]);
+            }
+        }
+        vertex.data.swap(newData);
+    }
+
 }
 
 
 
+// We create an edge v0->v1 if one or more oriented reads visit v1
+// immediately after visiting v0.
+// We can't simply loop over the ordinals of each  oriented read
+// because some markers were removed from vertices when duplicate ReadIds
+// were encountered.
+void LocalAssembly3::createEdges()
+{
+    using Graph = LocalAssembly3;
+    Graph& graph = *this;
+
+    // Find the sequence of vertices encountered by each oriented read.
+    class Info {
+    public:
+        vertex_descriptor v;
+        uint32_t ordinal;
+        Info(vertex_descriptor v, uint32_t ordinal) :
+            v(v), ordinal(ordinal) {}
+        bool operator<(const Info& that) const
+        {
+            return ordinal < that.ordinal;
+        }
+    };
+    vector< vector<Info> > infos(orientedReadInfos.size());
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        for(const LocalAssembly3Vertex::Data& data: graph[v].data) {
+            infos[data.orientedReadIndex].emplace_back(v, data.ordinal);
+        }
+    }
+    for(vector<Info>& v: infos) {
+        sort(v.begin(), v.end());
+    }
+
+
+    // At this point the infos vector contains the sequence of
+    // vertices encountered by each oriented read.
+
+
+
+    // We can scan these sequences to create edges.
+    for(uint64_t orientedReadIndex=0; orientedReadIndex<orientedReadInfos.size(); orientedReadIndex++) {
+        const vector<Info>& vertexSequence = infos[orientedReadIndex];
+
+        for(uint64_t i1=1; i1<vertexSequence.size(); i1++) {
+            const uint64_t i0 = i1 - 1;
+
+            const Info& info0 = vertexSequence[i0];
+            const Info& info1 = vertexSequence[i1];
+
+            const vertex_descriptor v0 = info0.v;
+            const vertex_descriptor v1 = info1.v;
+
+            const uint32_t ordinal0 = info0.ordinal;
+            const uint32_t ordinal1 = info1.ordinal;
+
+            // Get the edge, creating it if necessary.
+            edge_descriptor e;
+            bool edgeExists = false;
+            tie(e, edgeExists) = boost::edge(v0, v1, graph);
+            if(not edgeExists) {
+                tie(e, edgeExists) = boost::add_edge(v0, v1, graph);
+                SHASTA_ASSERT(edgeExists);
+            }
+
+            // Store this v0->v1 transition in the edge.
+            graph[e].data.emplace_back(LocalAssembly3Edge::Data({orientedReadIndex, ordinal0, ordinal1}));
+        }
+    }
+
+}
+
+
+
+#if 0
 void LocalAssembly3::createEdges()
 {
     using Graph = LocalAssembly3;
@@ -536,6 +640,7 @@ void LocalAssembly3::createEdges()
     }
 
 }
+#endif
 
 
 
