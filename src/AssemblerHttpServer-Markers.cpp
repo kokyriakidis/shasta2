@@ -250,18 +250,34 @@ void Assembler::exploreMarkerKmers(const vector<string>& request, ostream& html)
     html <<
         "<p>"
         "<table>"
-        "<tr><th>Oriented<br>read<th>Ordinal<th>Position";
-    for(const MarkerInfo& markerInfo: markerInfos) {
+        "<tr><th>Oriented<br>read<th>Ordinal<th>Position<th>Repeated<br>ReadId";
+    for(uint64_t i=0; i<markerInfos.size(); i++) {
+        const MarkerInfo& markerInfo = markerInfos[i];
         const OrientedReadId orientedReadId = markerInfo.orientedReadId;
+        const ReadId readId = orientedReadId.getReadId();
         const uint32_t ordinal = markerInfo.ordinal;
         const Marker& marker = markers()[orientedReadId.getValue()][ordinal];
         const uint32_t position = marker.position;
+
+        // Figure out if it is a repeated ReadId.
+        bool isRepeatedReadId = false;
+        if(i != 0) {
+            isRepeatedReadId = (readId == markerInfos[i-1].orientedReadId.getReadId());
+        }
+        if(i != markerInfos.size() - 1) {
+            isRepeatedReadId = isRepeatedReadId or
+                (readId == markerInfos[i+1].orientedReadId.getReadId());
+        }
 
         html <<
             "<tr>"
             "<td class=centered>" << orientedReadId <<
             "<td class=centered>" << ordinal <<
-            "<td class=centered>" << position;
+            "<td class=centered>" << position <<
+            "<td class=centered>";
+        if(isRepeatedReadId) {
+            html << "&#10003;";
+        }
     }
     html << "</table>";
 
