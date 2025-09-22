@@ -192,7 +192,7 @@ void Assembler::exploreMarkerKmers(const vector<string>& request, ostream& html)
         "<p><form><table>"
         "<tr><th class=left>K-mer"
         "<td><input type=text name=kmer style='font-family:monospace' "
-        "size=" << k + 10 << " "
+        "size=" << k << " "
         "value='" << kmerString << "'" <<
         " title='Enter a " << k << "-base k-mer.'>"
         "</table><input type=submit value='Get k-mer information'></form>";
@@ -313,13 +313,13 @@ void Assembler::exploreMarkerKmerPair(
 
         "<tr><th class=left>Left k-mer"
         "<td><input type=text name=kmer0 style='font-family:monospace' "
-        "size=" << k + 10 << " "
+        "size=" << k << " "
         "value='" << kmerString0 << "'" <<
         " title='Enter a " << k << "-base k-mer.'>"
 
         "<tr><th class=left>Right k-mer"
         "<td><input type=text name=kmer1 style='font-family:monospace' "
-        "size=" << k + 10 << " "
+        "size=" << k << " "
         "value='" << kmerString1 << "'" <<
         " title='Enter a " << k << "-base k-mer.'>"
 
