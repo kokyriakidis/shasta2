@@ -136,7 +136,7 @@ void Assembler::createAnchors(
         reads(),
         assemblerInfo->k,
         markers(),
-        markerKmers,
+        *markerKmers,
         minAnchorCoverage,
         maxAnchorCoverage,
         maxAnchorRepeatLength,
@@ -148,7 +148,7 @@ void Assembler::createAnchors(
 void Assembler::accessAnchors(bool writeAccess)
 {
      anchorsPointer = make_shared<Anchors>(
-         MappedMemoryOwner(*this), reads(), assemblerInfo->k, markers(), writeAccess);
+         MappedMemoryOwner(*this), reads(), assemblerInfo->k, markers(), *markerKmers, writeAccess);
 }
 
 

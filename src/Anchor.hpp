@@ -104,7 +104,7 @@ public:
         const Reads& reads,
         uint64_t k,
         const Markers& markers,
-        shared_ptr<MarkerKmers>,
+        const MarkerKmers&,
         uint64_t minAnchorCoverage,
         uint64_t maxAnchorCoverage,
         const vector<uint64_t>& maxAnchorRepeatLength,
@@ -116,6 +116,7 @@ public:
         const Reads& reads,
         uint64_t k,
         const Markers& markers,
+        const MarkerKmers&,
         bool writeAccess);
 
     Anchor operator[](AnchorId) const;
@@ -185,6 +186,7 @@ public:
     uint64_t k;
     uint64_t kHalf;
     const Markers& markers;
+    const MarkerKmers& markerKmers;
 
 private:
 
@@ -280,8 +282,6 @@ private:
         uint64_t minAnchorCoverage;
         uint64_t maxAnchorCoverage;
         vector<uint64_t> maxAnchorRepeatLength;
-
-        shared_ptr<MarkerKmers> markerKmers;
 
         // During multithreaded pass 1 we loop over all marker k-mers
         // and for each one we find out if it can be used to generate

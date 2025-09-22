@@ -17,6 +17,7 @@ options = Options()
 # Create the Assembler and access what we need.
 assembler = Assembler()
 assembler.accessMarkers()
+assembler.accessMarkerKmers()
 assembler.accessAnchors()
 assembler.accessJourneys()
 

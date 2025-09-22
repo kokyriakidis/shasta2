@@ -15,6 +15,7 @@ openPerformanceLog("Python-performance.log")
 options = Options()
 assembler = Assembler()
 assembler.accessMarkers()
+assembler.accessMarkerKmers()
 assembler.accessAnchors()
 assembler.accessJourneys()
 

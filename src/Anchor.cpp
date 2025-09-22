@@ -43,12 +43,14 @@ Anchors::Anchors(
     const Reads& reads,
     uint64_t k,
     const Markers& markers,
+    const MarkerKmers& markerKmers,
     bool writeAccess) :
     MultithreadedObject<Anchors>(*this),
     MappedMemoryOwner(mappedMemoryOwner),
     reads(reads),
     k(k),
-    markers(markers)
+    markers(markers),
+    markerKmers(markerKmers)
 {
     SHASTA_ASSERT((k %2) == 0);
     kHalf = k / 2;
@@ -864,7 +866,7 @@ Anchors::Anchors(
     const Reads& reads,
     uint64_t k,
     const Markers& markers,
-    shared_ptr<MarkerKmers> markerKmers,
+    const MarkerKmers& markerKmers,
     uint64_t minAnchorCoverage,
     uint64_t maxAnchorCoverage,
     const vector<uint64_t>& maxAnchorRepeatLength,
@@ -873,7 +875,8 @@ Anchors::Anchors(
     MappedMemoryOwner(mappedMemoryOwner),
     reads(reads),
     k(k),
-    markers(markers)
+    markers(markers),
+    markerKmers(markerKmers)
 {
     kHalf = k / 2;
 
@@ -889,7 +892,6 @@ Anchors::Anchors(
     data.minAnchorCoverage = minAnchorCoverage;
     data.maxAnchorCoverage = maxAnchorCoverage;
     data.maxAnchorRepeatLength = maxAnchorRepeatLength;
-    data.markerKmers = markerKmers;
 
     // During multithreaded pass 1 we loop over all marker k-mers
     // and for each one we find out if it can be used to generate
@@ -897,7 +899,7 @@ Anchors::Anchors(
     // we also fill in the coverage - that is,
     // the number of usable MarkerInfos that will go in each of the
     // two anchors.
-    const uint64_t markerKmerCount = markerKmers->size();
+    const uint64_t markerKmerCount = markerKmers.size();
     data.coverage.createNew(largeDataName("tmp-kmerToAnchorInfos"), largeDataPageSize);
     data.coverage.resize(markerKmerCount);
     const uint64_t batchSize = 1000;
@@ -959,7 +961,6 @@ void Anchors::constructThreadFunctionPass1(uint64_t /* threadId */)
     const uint64_t minAnchorCoverage = data.minAnchorCoverage;
     const uint64_t maxAnchorCoverage = data.maxAnchorCoverage;
     const vector<uint64_t> maxAnchorRepeatLength = data.maxAnchorRepeatLength;
-    const MarkerKmers& markerKmers = *data.markerKmers;
 
     // Loop over batches of marker Kmers assigned to this thread.
     uint64_t begin, end;
@@ -1044,7 +1045,6 @@ void Anchors::constructThreadFunctionPass2(uint64_t /* threadId */)
     ConstructData& data = constructData;
     const uint64_t minAnchorCoverage = data.minAnchorCoverage;
     const uint64_t maxAnchorCoverage = data.maxAnchorCoverage;
-    const MarkerKmers& markerKmers = *data.markerKmers;
 
 
     // A vector used below and defined here to reduce memory allocation activity.
