@@ -6,6 +6,7 @@
 #include "dominatorTree.hpp"
 #include "graphvizToHtml.hpp"
 #include "Markers.hpp"
+#include "MarkerKmerPair.hpp"
 #include "orderPairs.hpp"
 #include "Reads.hpp"
 #include "tmpDirectory.hpp"
@@ -914,29 +915,121 @@ void LocalAssembly3::assemble(
 
     // Write out the AssemblyInfos.
     if(html and debug) {
-        html <<
-            "<h5>Contributing oriented reads</h5>"
-            "<table><tr><th>Coverage<td>" << assemblyInfos.size() << "</table>"
-            "<p><table>"
-            "<tr><th>Oriented<br>read<br>id"
-            "<th>Ordinal0<th>Ordinal1<th>Ordinal<br>offset"
-            "<th>Position0<th>Position1<th>Sequence<br>length<th class=left>Sequence";
-        for(const AssemblyInfo& assemblyInfo: assemblyInfos) {
-            html <<
-                "<tr>"
-                "<td class=centered>" << assemblyInfo.orientedReadId <<
-                "<td class=centered>" << assemblyInfo.ordinal0 <<
-                "<td class=centered>" << assemblyInfo.ordinal1 <<
-                "<td class=centered>" << assemblyInfo.ordinal1 - assemblyInfo.ordinal0 <<
-                "<td class=centered>" << assemblyInfo.position0 <<
-                "<td class=centered>" << assemblyInfo.position1 <<
-                "<td class=centered>" << assemblyInfo.position1 - assemblyInfo.position0 <<
-                "<td class=left style='font-family:monospace'>";
-            for(const Base& base: assemblyInfo.sequence) {
-                html << base;
-            }
+        html << "<h5>Contributing oriented reads</h5>";
+        writeAssemblyInfos(html, assemblyInfos);
+    }
+
+
+
+    // In case of low coverage, get some help from the MarkerKmerPair
+    // for these Kmers.
+    // EXPOSE WHEN CODE STABILIZES.
+    // const uint64_t assemblyCoverageThreshold1 = 3;
+    const uint64_t assemblyCoverageThreshold2 = 3;
+    if(false /*assemblyInfos.size() <= assemblyCoverageThreshold1 */) {    // TURNED OFF FOR NOW *************
+        if(html and debug) {
+            html << "<p>Special treatment for low coverage.";
         }
-        html << "</table>";
+
+        const Kmer& kmer0 = kmers[vertex0.kmerIndex];
+        const Kmer& kmer1 = kmers[vertex1.kmerIndex];
+        MarkerKmerPair markerKmerPair(anchors.markerKmers, kmer0, kmer1);
+
+
+
+        // Create a new set of AssemblyInfos.
+        // Replace oriented reads with low coverage, where possible.
+        vector<AssemblyInfo> newAssemblyInfos;
+        for(const AssemblyInfo& assemblyInfo: assemblyInfos) {
+            const OrientedReadId orientedReadId = assemblyInfo.orientedReadId;
+
+            // Locate this OrientedReadId in the MarkerKmerPair.
+            MarkerKmerPair::CommonOrientedRead target;
+            target.orientedReadId = orientedReadId;
+            const auto it = std::lower_bound(
+                markerKmerPair.commonOrientedReads.begin(),
+                markerKmerPair.commonOrientedReads.end(),
+                target);
+
+            // If the OrientedReadId is not in the MarkerKmerPair,
+            // don't replace it. This can happen due to repeated ReadIds in the two MarkerKmers.
+            if(it == markerKmerPair.commonOrientedReads.end()) {
+                if(html and debug) {
+                    html << "<br>" << orientedReadId << ": not found in the MarkerKmerPair.";
+                }
+                newAssemblyInfos.emplace_back(assemblyInfo);
+                continue;
+            }
+            const MarkerKmerPair::CommonOrientedRead& commonOrientedReadInfo = *it;
+            const MarkerKmerPair::SequenceInfo& sequenceInfo = commonOrientedReadInfo.sequenceMapIterator->second;
+
+            // If coverage of this OrientedReadId in the MarkerKmerPair is high, don't replace it.
+            if(sequenceInfo.coverage() >= assemblyCoverageThreshold2) {
+                if(html and debug) {
+                    html << "<br>" << orientedReadId << ": not replaced due to high coverage in the MarkerKmerPair.";
+                }
+                newAssemblyInfos.emplace_back(assemblyInfo);
+                continue;
+            }
+
+            // Loop over sequences in the MarkerKmerPair that have coverage greater than this.
+            // Find the one that is closest.
+            uint64_t bestRank = invalid<uint64_t>;
+            uint64_t bestEditDistance = invalid<uint64_t>;
+            for(uint64_t otherRank=0; otherRank<markerKmerPair.sequencesByRank.size(); otherRank++) {
+                if(otherRank == sequenceInfo.rank) {
+                    continue;
+                }
+                const auto jt = markerKmerPair.sequencesByRank[otherRank];
+                const MarkerKmerPair::SequenceInfo& otherSequenceInfo = jt->second;
+                if(otherSequenceInfo.coverage() <= sequenceInfo.coverage()) {
+                    continue;
+                }
+                const uint64_t editDistance = markerKmerPair.editDistance(sequenceInfo.rank, otherRank);
+                if(editDistance < bestEditDistance) {
+                    bestRank = otherRank;
+                    bestEditDistance = editDistance;
+                }
+            }
+
+            if(bestRank == invalid<uint64_t>) {
+                if(html and debug) {
+                    html << "<br>" << orientedReadId << ": no replacement found.";
+                }
+                newAssemblyInfos.emplace_back(assemblyInfo);
+                continue;
+            }
+
+            // Ok, we found a usable replacement.
+            const MarkerKmerPair::SequenceInfo& bestSequenceInfo = markerKmerPair.sequencesByRank[bestRank]->second;
+            SHASTA_ASSERT(not bestSequenceInfo.orientedReadIndexes.empty());
+            const uint64_t bestOrientedReadIndex = bestSequenceInfo.orientedReadIndexes.front();
+            const MarkerKmerPair::CommonOrientedRead& bestCommonOrientedRead =
+                markerKmerPair.commonOrientedReads[bestOrientedReadIndex];
+            if(html and debug) {
+                html << "<br>" << orientedReadId << ": found " << bestCommonOrientedRead.orientedReadId <<
+                    " as replacement with MarkerKmerPair coverage " <<
+                    bestSequenceInfo.coverage();
+            }
+            newAssemblyInfos.emplace_back();
+            AssemblyInfo& newAssemblyInfo = newAssemblyInfos.back();
+            newAssemblyInfo.orientedReadId = bestCommonOrientedRead.orientedReadId;
+            newAssemblyInfo.ordinal0 = bestCommonOrientedRead.ordinal0;
+            newAssemblyInfo.ordinal1 = bestCommonOrientedRead.ordinal1;
+            newAssemblyInfo.position0 = bestCommonOrientedRead.position0;
+            newAssemblyInfo.position1 = bestCommonOrientedRead.position1;
+            newAssemblyInfo.sequence = markerKmerPair.sequencesByRank[bestRank]->first;
+        }
+
+
+        // Switch to the new assemblyInfos.
+        assemblyInfos.swap(newAssemblyInfos);
+
+        // Write out the AssemblyInfos.
+        if(html and debug) {
+            html << "<h5>Contributing oriented reads after special treatment for low coverage</h5>";
+            writeAssemblyInfos(html, assemblyInfos);
+        }
     }
 
 
@@ -1004,6 +1097,38 @@ void LocalAssembly3::assemble(
         sequence.push_back(base);
         coverage.push_back(clippedCoverage);
     }
+}
+
+
+
+void LocalAssembly3::writeAssemblyInfos(
+    ostream& html,
+    const vector<AssemblyInfo>& assemblyInfos) const
+{
+    html <<
+        "<table><tr><th>Coverage<td>" << assemblyInfos.size() << "</table>"
+        "<p><table>"
+        "<tr><th>Oriented<br>read<br>id"
+        "<th>Ordinal0<th>Ordinal1<th>Ordinal<br>offset"
+        "<th>Position0<th>Position1<th>Sequence<br>length<th class=left>Sequence";
+
+    for(const AssemblyInfo& assemblyInfo: assemblyInfos) {
+        html <<
+            "<tr>"
+            "<td class=centered>" << assemblyInfo.orientedReadId <<
+            "<td class=centered>" << assemblyInfo.ordinal0 <<
+            "<td class=centered>" << assemblyInfo.ordinal1 <<
+            "<td class=centered>" << assemblyInfo.ordinal1 - assemblyInfo.ordinal0 <<
+            "<td class=centered>" << assemblyInfo.position0 <<
+            "<td class=centered>" << assemblyInfo.position1 <<
+            "<td class=centered>" << assemblyInfo.position1 - assemblyInfo.position0 <<
+            "<td class=left style='font-family:monospace'>";
+        for(const Base& base: assemblyInfo.sequence) {
+            html << base;
+        }
+    }
+    html << "</table>";
+
 }
 
 

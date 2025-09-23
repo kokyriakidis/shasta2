@@ -260,6 +260,7 @@ public:
         ostream& html) const;
     void writeKmers(ostream& html, uint64_t k) const;
     void writeOrientedReadKmers(ostream& html) const;
+    void writeAssemblyInfos(ostream& html, const vector<AssemblyInfo>&) const;
     void writeGraphviz(const string& fileName, const Markers&) const;
     void writeGraphviz(ostream&, const Markers&) const;
     void writeHtml(ostream&, const Markers&) const;

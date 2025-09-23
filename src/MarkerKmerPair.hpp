@@ -75,6 +75,9 @@ public:
     vector<AlignedBase> alignedConsensus;
     void align();
 
+    // Return the edit distance between two sequences with given rank.
+    uint64_t editDistance(uint64_t rank0, uint64_t rank1) const;
+
 
     // Common oriented reads that have kmer0 at ordinal0
     // and kmer1 at ordinal1, with ordinal0 < ordinal1.
@@ -103,6 +106,11 @@ public:
         // corresponding to the sequence of this oriented read
         // between the midpoints of the two markers.
         SequenceMap::const_iterator sequenceMapIterator;
+
+        bool operator<(const CommonOrientedRead& that) const
+        {
+            return orientedReadId < that.orientedReadId;
+        }
     };
     vector<CommonOrientedRead> commonOrientedReads;
     void gatherCommonOrientedReads(const Markers&);

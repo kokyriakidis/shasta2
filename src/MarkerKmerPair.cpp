@@ -407,37 +407,55 @@ void MarkerKmerPair::writeAlignment(ostream& html) const
 
 
 
-void MarkerKmerPair::writePairAlignmentDistances(ostream& html) const
+// Return the edit distance between two sequences with given rank,
+// computed using the MSA.
+uint64_t MarkerKmerPair::editDistance(uint64_t rank0, uint64_t rank1) const
 {
-    const uint64_t n = sequencesByRank.size();
-    vector< vector<uint64_t> > editDistances(n, vector<uint64_t>(n, 0));
-
+    // Get the sequences with these ranks.
     vector< vector<Base> > sequences(2);
+    sequences[0] = sequencesByRank[rank0]->first;
+    sequences[1] = sequencesByRank[rank1]->first;
+
+    // Align them.
     vector< pair<Base, uint64_t> > consensus;
     vector< vector<AlignedBase> > alignment;
     vector<AlignedBase> alignedConsensus;
+    abpoa(sequences, consensus, alignment, alignedConsensus, true);
+
+    // Sanity checks.
+    SHASTA_ASSERT(alignment.size() == 2);
+    const vector<AlignedBase>& alignment0 = alignment.front();
+    const vector<AlignedBase>& alignment1 = alignment.back();
+    const uint64_t alignmentLength = alignment0.size();
+    SHASTA_ASSERT(alignment1.size() == alignmentLength);
+
+    // Compute edit distance.
+    uint64_t editDistance = 0;
+    for(uint64_t position=0; position<alignmentLength; position++) {
+        if(alignment0[position] != alignment1[position]) {
+            ++editDistance;
+        }
+    }
+
+    return editDistance;
+}
+
+
+
+void MarkerKmerPair::writePairAlignmentDistances(ostream& html) const
+{
+    const uint64_t n = sequencesByRank.size();
+    vector< vector<uint64_t> > editDistances(n, vector<uint64_t>(n));
+    for(uint64_t i=0; i<n; i++) {
+        editDistances[i][i] = 0;
+    }
 
     // Loop over pairs of sequences.
     for(uint64_t i1=1; i1<n; i1++) {
-        const vector<Base>& sequence1 = sequencesByRank[i1]->first;
-        sequences[1] = sequence1;
-
         for(uint64_t i0=0; i0<i1; i0++) {
-            const vector<Base>& sequence0 = sequencesByRank[i0]->first;
-            sequences[0] = sequence0;
-
-            // Align them.
-            abpoa(sequences, consensus, alignment, alignedConsensus, true);
-
-            // Compute edit distances.
-            uint64_t editDistance = 0;
-            for(uint64_t position=0; position<alignment[0].size(); position++) {
-                if(alignment[0][position] != alignment[1][position]) {
-                    ++editDistance;
-                }
-            }
-            editDistances[i0][i1] = editDistance;
-            editDistances[i1][i0] = editDistance;
+            const uint64_t ed = editDistance(i0, i1);
+            editDistances[i0][i1] = ed;
+            editDistances[i1][i0] = ed;
         }
     }
 
