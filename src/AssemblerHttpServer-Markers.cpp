@@ -174,7 +174,7 @@ void Assembler::exploreReadMarkers(const vector<string>& request, ostream& html)
 
 
 
-void Assembler::exploreMarkerKmers(const vector<string>& request, ostream& html)
+void Assembler::exploreMarkerKmer(const vector<string>& request, ostream& html)
 {
     SHASTA_ASSERT(markerKmers and markerKmers->isOpen());
 
