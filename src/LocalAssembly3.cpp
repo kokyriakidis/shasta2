@@ -924,16 +924,17 @@ void LocalAssembly3::assemble(
     // In case of low coverage, get some help from the MarkerKmerPair
     // for these Kmers.
     // EXPOSE WHEN CODE STABILIZES.
-    // const uint64_t assemblyCoverageThreshold1 = 3;
+    const uint64_t assemblyCoverageThreshold1 = 3;
     const uint64_t assemblyCoverageThreshold2 = 3;
-    if(false /*assemblyInfos.size() <= assemblyCoverageThreshold1 */) {    // TURNED OFF FOR NOW *************
+    const uint32_t maxPositionOffset = 5000;
+    if(assemblyInfos.size() <= assemblyCoverageThreshold1) {
         if(html and debug) {
             html << "<p>Special treatment for low coverage.";
         }
 
         const Kmer& kmer0 = kmers[vertex0.kmerIndex];
         const Kmer& kmer1 = kmers[vertex1.kmerIndex];
-        MarkerKmerPair markerKmerPair(anchors.markerKmers, kmer0, kmer1);
+        MarkerKmerPair markerKmerPair(anchors.markerKmers, kmer0, kmer1, maxPositionOffset);
 
 
 

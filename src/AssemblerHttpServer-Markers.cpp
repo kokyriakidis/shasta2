@@ -378,7 +378,8 @@ void Assembler::exploreMarkerKmerPair(
     }
 
     // Create the MarkerKmerPair and write it out.
-    const MarkerKmerPair markerKmerPair(*markerKmers, kmer0, kmer1);
+    const uint32_t maxPositionOffset = 5000;
+    const MarkerKmerPair markerKmerPair(*markerKmers, kmer0, kmer1, maxPositionOffset);
     markerKmerPair.writeSummary(html, k);
     markerKmerPair.writeSequences(html);
     markerKmerPair.writeCommonOrientedReads(html);

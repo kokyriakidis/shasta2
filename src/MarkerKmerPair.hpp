@@ -23,6 +23,7 @@ namespace shasta {
 // A MarkerKmerPair between two MarkerKmers kmer0 and kmer1 is defined using
 // OrientedReadIds that appear in kmer0 at ordinal0 and in kmer1 at ordinal1 and such that:
 // - ordinal0 < ordinal1
+// - position1 - position0 <= maxPositionOffset
 // - The ReadId appears exactly once in both kmer0 and kmer1.
 //   This implies that the OrientedReadId also appears exactly once in both kmer0 and kmer1.
 class shasta::MarkerKmerPair {
@@ -31,7 +32,8 @@ public:
     MarkerKmerPair(
         const MarkerKmers&,
         const Kmer& kmer0,
-        const Kmer& kmer1);
+        const Kmer& kmer1,
+        uint64_t maxPositionOffset);
 
     // The left and right Kmer of the pair.
     Kmer kmer0;
@@ -113,7 +115,7 @@ public:
         }
     };
     vector<CommonOrientedRead> commonOrientedReads;
-    void gatherCommonOrientedReads(const Markers&);
+    void gatherCommonOrientedReads(const Markers&, uint64_t maxPositionOffset);
 
     void writeSummary(ostream& html, uint64_t k) const;
     void writeSequences(ostream& html) const;

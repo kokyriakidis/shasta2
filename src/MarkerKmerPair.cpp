@@ -10,12 +10,13 @@ using namespace shasta;
 MarkerKmerPair::MarkerKmerPair(
     const MarkerKmers& markerKmers,
     const Kmer& kmer0,
-    const Kmer& kmer1) :
+    const Kmer& kmer1,
+    uint64_t maxPositionOffset) :
     kmer0(kmer0),
     kmer1(kmer1)
 {
     getMarkerInfos(markerKmers);
-    gatherCommonOrientedReads(markerKmers.markers);
+    gatherCommonOrientedReads(markerKmers.markers, maxPositionOffset);
     gatherSequences(markerKmers.reads);
     rankSequences();
     align();
@@ -31,7 +32,9 @@ void MarkerKmerPair::getMarkerInfos(const MarkerKmers& markerKmers)
 
 
 
-void MarkerKmerPair::gatherCommonOrientedReads(const Markers& markers)
+void MarkerKmerPair::gatherCommonOrientedReads(
+    const Markers& markers,
+    uint64_t maxPositionOffset)
 {
     const uint32_t kHalf = uint32_t(markers.k / 2);
 
@@ -54,19 +57,25 @@ void MarkerKmerPair::gatherCommonOrientedReads(const Markers& markers)
         else {
 
             // We found a common oriented read.
-            // If the ordinals are in the correct order, store it.
+            // If the ordinals are in the correct order
+            // and the position offset is not too large, store it.
 
             if(it0->ordinal < it1->ordinal) {
                 const OrientedReadId orientedReadId = it0->orientedReadId;
                 const auto orientedReadMarkers = markers[orientedReadId.getValue()];
 
-                commonOrientedReads.emplace_back();
-                CommonOrientedRead& commonOrientedRead = commonOrientedReads.back();
-                commonOrientedRead.orientedReadId = orientedReadId;
-                commonOrientedRead.ordinal0 = it0->ordinal;
-                commonOrientedRead.ordinal1 = it1->ordinal;
-                commonOrientedRead.position0 = orientedReadMarkers[it0->ordinal].position + kHalf;
-                commonOrientedRead.position1 = orientedReadMarkers[it1->ordinal].position + kHalf;
+                const uint32_t position0 = orientedReadMarkers[it0->ordinal].position + kHalf;
+                const uint32_t position1 = orientedReadMarkers[it1->ordinal].position + kHalf;\
+
+                if(position1 - position0 <= maxPositionOffset) {
+                    commonOrientedReads.emplace_back();
+                    CommonOrientedRead& commonOrientedRead = commonOrientedReads.back();
+                    commonOrientedRead.orientedReadId = orientedReadId;
+                    commonOrientedRead.ordinal0 = it0->ordinal;
+                    commonOrientedRead.ordinal1 = it1->ordinal;
+                    commonOrientedRead.position0 = position0;
+                    commonOrientedRead.position1 = position1;
+                }
             }
 
             ++it0;
