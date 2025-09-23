@@ -275,6 +275,7 @@ public:
     void exploreReadSequence(const vector<string>&, ostream&);
     void exploreReadMarkers(const vector<string>&, ostream&);
     void exploreMarkerKmer(const vector<string>&, ostream&);
+    void exploreMarkerKmerAnalysis(const vector<string>&, ostream&);
     void exploreMarkerKmerPair(const vector<string>&, ostream&);
     static void addScaleSvgButtons(ostream&, uint64_t sizePixels);
 

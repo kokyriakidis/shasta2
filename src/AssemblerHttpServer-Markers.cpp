@@ -1,13 +1,24 @@
 // Shasta.
 #include "Assembler.hpp"
+#include "deduplicate.hpp"
+#include "graphvizToHtml.hpp"
 #include "KmerChecker.hpp"
 #include "Markers.hpp"
 #include "MarkerKmerPair.hpp"
 #include "MarkerKmers.hpp"
+#include "tmpDirectory.hpp"
 using namespace shasta;
 
 // Boost libraries.
 #include <boost/algorithm/string.hpp>
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/iteration_macros.hpp>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
+
+// Standard library.
+#include <fstream.hpp>
 
 
 
@@ -281,6 +292,252 @@ void Assembler::exploreMarkerKmer(const vector<string>& request, ostream& html)
     }
     html << "</table>";
 
+
+}
+
+
+void Assembler::exploreMarkerKmerAnalysis(const vector<string>& request, ostream& html)
+{
+    SHASTA_ASSERT(markerKmers and markerKmers->isOpen());
+
+    const uint64_t k = assemblerInfo->k;
+
+    html << "<h2>Marker k-mer</h2>";
+
+    // Get the request parameters.
+    string kmerString;
+    getParameterValue(request, "kmer", kmerString);
+    boost::trim(kmerString);
+
+    int64_t ordinalOffset = 3;
+    getParameterValue(request, "ordinalOffset", ordinalOffset);
+
+
+
+    // Write the form.
+    html <<
+        "<p><form><table>"
+
+        "<tr><th class=left>K-mer"
+        "<td><input type=text name=kmer style='font-family:monospace' "
+        "size=" << k << " "
+        "value='" << kmerString << "'" <<
+        " title='Enter a " << k << "-base k-mer.'>"
+
+        "<tr><th class=left>Ordinal offset"
+        "<td><input type=text name=ordinalOffset size=6 value=" << ordinalOffset << ">"
+
+        "</table><br><input type=submit value='Get k-mer information'></form>";
+
+
+
+    // If the k-mer string is empty, do nothing.
+    if(kmerString.empty()) {
+        return;
+    }
+
+    // Check the length.
+    if(kmerString.size() != k) {
+        html << "This k-mer is " << kmerString.size() << " bases long. "
+            "This assembly uses " << k << "-base markers. "
+            "Specify a " << k << "-mer." << endl;
+        return;
+    }
+
+    // Construct the k-mer.
+    Kmer kmer;
+    for(uint64_t i=0; i<kmerString.size(); i++) {
+        const char c = kmerString[i];
+        const Base b = Base::fromCharacterNoException(c);
+        if(not b.isValid()) {
+            throw runtime_error("Invalid base character " + string(1, c) + " at k-mer position " + to_string(i));
+        }
+        kmer.set(i, b);
+    }
+
+    // Check if it is a marker.
+    SHASTA_ASSERT(kmerChecker);
+    if(not kmerChecker->isMarker(kmer)) {
+        throw runtime_error("This assembly does not use this as a marker.");
+    }
+
+
+
+    // Summary table.
+    const uint64_t coverage = markerKmers->getFrequency(kmer);
+    const Kmer kmerRc = kmer.reverseComplement(k);
+    html <<
+        "<br><table><tr><th class=left>K-mer<td class=centered style='font-family:monospace'>";
+    kmer.write(html, k);
+    html <<
+        "<tr><th class=left>Reverse complement K-mer<td class=centered style='font-family:monospace'>";
+    kmerRc.write(html, k);
+    html << "<tr><th class=left>Coverage<td class=centered>" << coverage <<
+        "</table>";
+
+    // Get the MarkerInfos for this K-mer.
+    vector<MarkerInfo> markerInfos;
+    markerKmers->get(kmer, markerInfos);
+
+
+
+    // For each of these MarkerInfos, gather the k-mers by moving
+    // forward or backward by up to ordinalOffset markers.
+    class KmerInfo {
+    public:
+        bool isAvailable = false;
+        Kmer kmer;
+        uint64_t id = invalid<uint64_t>;    // Index in the kmers vector below.
+        KmerInfo() {}
+        KmerInfo(const Kmer& kmer) : isAvailable(true), kmer(kmer) {}
+    };
+    vector< vector<KmerInfo> > kmerInfos(markerInfos.size());
+    vector<Kmer> kmers;
+    for(uint64_t i=0; i<markerInfos.size(); i++) {
+        const MarkerInfo& markerInfo = markerInfos[i];
+        kmerInfos[i].reserve(2 * ordinalOffset + 1);
+        const OrientedReadId orientedReadId = markerInfo.orientedReadId;
+        const auto orientedReadMarkers = markers()[orientedReadId.getValue()];
+
+        // Use signed arithmethic to simplify checks.
+        const int64_t markerCount = int64_t(orientedReadMarkers.size());
+        const int64_t ordinal0 = markerInfo.ordinal;
+        for(int64_t offset=-ordinalOffset; offset<=ordinalOffset; offset++) {
+            const int64_t ordinal1 = ordinal0 + offset;
+            if((ordinal1 < 0) or (ordinal1 >= markerCount)) {
+                kmerInfos[i].push_back(KmerInfo());
+            } else {
+                const Kmer kmer = markers().getKmer(orientedReadId, uint32_t(ordinal1));
+                kmerInfos[i].push_back(KmerInfo(kmer));
+                kmers.push_back(kmer);
+            }
+        }
+        SHASTA_ASSERT(kmerInfos[i].size() == 2 * uint64_t(ordinalOffset) + 1);
+    }
+    vector<uint64_t> count;
+    deduplicateAndCount(kmers, count);
+
+    html <<
+        "<br>Found " << kmers.size() << " distinct k-mers."
+        "<br><table><tr><th>Id<th>Number of<br>occurrences<th>K-mer";
+    for(uint64_t i=0; i<kmers.size(); i++) {
+        html <<
+            "<tr><td class=centered>" << i <<
+            "<td class=centered>" << count[i] <<
+            "<td class=centered style='font-family:monospace'>";
+        kmers[i].write(html, assemblerInfo->k);
+    }
+    html << "</table>";
+
+
+    html <<
+        "<br>"
+        "<table>"
+        "<tr><th>Oriented<br>read<th>Ordinal<th>Position<th>Repeated<br>ReadId";
+    for(int64_t offset=-ordinalOffset; offset<=ordinalOffset; offset++) {
+        html << "<th>" << offset;
+    }
+    for(uint64_t i=0; i<markerInfos.size(); i++) {
+        const MarkerInfo& markerInfo = markerInfos[i];
+        const OrientedReadId orientedReadId = markerInfo.orientedReadId;
+        const ReadId readId = orientedReadId.getReadId();
+        const uint32_t ordinal = markerInfo.ordinal;
+        const Marker& marker = markers()[orientedReadId.getValue()][ordinal];
+        const uint32_t position = marker.position;
+
+        // Figure out if it is a repeated ReadId.
+        bool isRepeatedReadId = false;
+        if(i != 0) {
+            isRepeatedReadId = (readId == markerInfos[i-1].orientedReadId.getReadId());
+        }
+        if(i != markerInfos.size() - 1) {
+            isRepeatedReadId = isRepeatedReadId or
+                (readId == markerInfos[i+1].orientedReadId.getReadId());
+        }
+
+        html <<
+            "<tr>"
+            "<td class=centered>" << orientedReadId <<
+            "<td class=centered>" << ordinal <<
+            "<td class=centered>" << position <<
+            "<td class=centered>";
+        if(isRepeatedReadId) {
+            html << "&#10003;";
+        }
+        for(int64_t offset=-ordinalOffset; offset<=ordinalOffset; offset++) {
+            KmerInfo& kmerInfo = kmerInfos[i][offset + ordinalOffset];
+            html << "<td class=centered>";
+            if(kmerInfo.isAvailable) {
+                auto it = std::lower_bound(kmers.begin(), kmers.end(), kmerInfo.kmer);
+                kmerInfo.id = it - kmers.begin();
+                html << kmerInfo.id;
+            }
+        }
+    }
+    html << "</table>";
+
+
+
+    // Create a graph with one vertex for each of these k-mers.
+    // Generate edges by following the reads.
+    // Each vertex and edge stores coverage.
+    using Graph = boost::adjacency_list<
+        boost::listS,
+        boost::vecS,
+        boost::bidirectionalS,
+        uint64_t,
+        uint64_t>;
+    Graph graph(kmers.size());
+    for(uint64_t i=0; i<kmers.size(); i++) {
+        graph[i] = count[i];
+    }
+    for(uint64_t i=0; i<kmerInfos.size(); i++) {
+        for(uint64_t j1=1; j1<kmerInfos[i].size(); j1++) {
+            const uint64_t j0 = j1 - 1;
+            const KmerInfo& kmerInfo0 = kmerInfos[i][j0];
+            const KmerInfo& kmerInfo1 = kmerInfos[i][j1];
+            if(not (kmerInfo0.isAvailable and kmerInfo1.isAvailable)) {
+                continue;
+            }
+            const uint64_t id0 = kmerInfo0.id;
+            const uint64_t id1 = kmerInfo1.id;
+            Graph::edge_descriptor e;
+            bool edgeWasFound = false;
+            tie(e, edgeWasFound) = edge(id0, id1, graph);
+            if(edgeWasFound) {
+                ++graph[e];
+            } else {
+                tie(e, edgeWasFound) = add_edge(id0, id1, 1, graph);
+            }
+        }
+    }
+
+
+
+    // Write it in graphviz format.
+    const string uuid = to_string(boost::uuids::random_generator()());
+    const string dotFileName = tmpDirectory() + uuid + ".dot";
+    ofstream dot(dotFileName);
+    dot << "digraph KmerGraph {\n";
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        dot << v << " [label=\"" << v << "\\n" << graph[v] << "\"];\n";
+    }
+    BGL_FORALL_EDGES(e, graph, Graph) {
+        const Graph::vertex_descriptor v0 = source(e, graph);
+        const Graph::vertex_descriptor v1 = target(e, graph);
+        dot << v0 << "->" << v1 <<
+            " [label=\"" << graph[e] << "\""
+            " penwidth=" << std::setprecision(2) << 0.5 * double(graph[e]) <<
+            "];\n";
+    }
+    dot << "}\n";
+    dot.close();
+
+    // Display it in html in svg format.
+    const double timeout = 30.;
+    const string options = "-Nshape=rectangle";
+    html << "<p>";
+    graphvizToHtml(dotFileName, "dot", timeout, options, html);
 
 }
 
