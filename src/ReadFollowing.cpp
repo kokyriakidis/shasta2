@@ -7,7 +7,6 @@
 using namespace shasta;
 
 // Boost libraries.
-#include <boost/graph/filtered_graph.hpp>
 #include <boost/graph/iteration_macros.hpp>
 
 // Standard library.
@@ -272,30 +271,7 @@ void ReadFollowing::followForward(AEdge ae0) const
 
 
 
-    // Create a filtered version of the LineGraph that contains
-    // only the vertices corresponding to these AssemblyGraph edges.
-    class Predicate {
-    public:
-        Predicate(const LineGraph& lineGraph, const std::set<AEdge>& assemblyGraphEdges) :
-            lineGraph(&lineGraph), assemblyGraphEdges(&assemblyGraphEdges) {}
-        const LineGraph* lineGraph;
-        const std::set<AEdge>* assemblyGraphEdges;
-        bool operator()(const LineGraph::vertex_descriptor& lv) const
-        {
-            const AEdge ae = (*lineGraph)[lv];
-            return assemblyGraphEdges->contains(ae);
-        }
-        bool operator()(const LineGraph::edge_descriptor& le) const
-        {
-            const LineGraph::vertex_descriptor lv0 = source(le, *lineGraph);
-            const LineGraph::vertex_descriptor lv1 = target(le, *lineGraph);
-            const AEdge ae0 = (*lineGraph)[lv0];
-            const AEdge ae1 = (*lineGraph)[lv1];
-            return assemblyGraphEdges->contains(ae0) and assemblyGraphEdges->contains(ae1);
-        }
-    };
-    const Predicate predicate(lineGraph, next);
-    using FilteredLineGraph = boost::filtered_graph<LineGraph, Predicate, Predicate>;
+    const FilteringPredicate predicate(lineGraph, next);
     FilteredLineGraph filteredLineGraph(lineGraph, predicate, predicate);
 
     // Write out the FilteredLineGraph.

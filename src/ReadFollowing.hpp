@@ -7,6 +7,7 @@
 
 // Boost libraries.
 #include <boost/graph/adjacency_list.hpp>
+#include <boost/graph/filtered_graph.hpp>
 
 // Standard library.
 #include <map>
@@ -48,6 +49,40 @@ private:
     LineGraph lineGraph;
     std::map<AEdge, LineGraph::vertex_descriptor> lineGraphVertexMap;
     void createLineGraph();
+
+
+
+    // A filtered version of the LineGraph that contains
+    // only the vertices corresponding to some AssemblyGraph edges.
+    // This is not permanently stored. It is only created as needed.
+    class FilteringPredicate {
+    public:
+        FilteringPredicate(
+            const LineGraph& lineGraph,
+            const std::set<AEdge>& assemblyGraphEdges) :
+            lineGraph(&lineGraph),
+            assemblyGraphEdges(&assemblyGraphEdges)
+        {}
+        const LineGraph* lineGraph;
+        const std::set<AEdge>* assemblyGraphEdges;
+
+        bool operator()(const LineGraph::vertex_descriptor& lv) const
+        {
+            const AEdge ae = (*lineGraph)[lv];
+            return assemblyGraphEdges->contains(ae);
+        }
+
+        bool operator()(const LineGraph::edge_descriptor& le) const
+        {
+            const LineGraph::vertex_descriptor lv0 = source(le, *lineGraph);
+            const LineGraph::vertex_descriptor lv1 = target(le, *lineGraph);
+            const AEdge ae0 = (*lineGraph)[lv0];
+            const AEdge ae1 = (*lineGraph)[lv1];
+            return assemblyGraphEdges->contains(ae0) and assemblyGraphEdges->contains(ae1);
+        }
+    };
+    using FilteredLineGraph = boost::filtered_graph<LineGraph, FilteringPredicate, FilteringPredicate>;
+
 
 
     // Find appearances of OrientedReadIds in the initial/final
