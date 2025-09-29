@@ -744,6 +744,23 @@ uint32_t Anchors::getOrdinal(AnchorId anchorId, OrientedReadId orientedReadId) c
 }
 
 
+
+// Get the positionInJourney for the AnchorMarkerInfo corresponding to a
+// given AnchorId and OrientedReadId.
+// This asserts if the given AnchorId does not contain an AnchorMarkerInfo
+// for the requested OrientedReadId.
+uint32_t Anchors::getPositionInJourney(AnchorId anchorId, OrientedReadId orientedReadId) const
+{
+    for(const auto& markerInfo: anchorMarkerInfos[anchorId]) {
+        if(markerInfo.orientedReadId == orientedReadId) {
+            return markerInfo.positionInJourney;
+        }
+    }
+
+    SHASTA_ASSERT(0);
+}
+
+
 // Find out if the given AnchorId contains the specified OrientedReadId.
 bool Anchors::anchorContains(AnchorId anchorId, OrientedReadId orientedReadId) const
 {
