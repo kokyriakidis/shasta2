@@ -16,6 +16,7 @@
 #include "MultithreadedObject.hpp"
 #include "Options.hpp"
 #include "performanceLog.hpp"
+#include "ReadFollowing.hpp"
 #include "ReadSummary.hpp"
 #include "ShortBaseSequence.hpp"
 #include "splitRange.hpp"
@@ -189,6 +190,11 @@ PYBIND11_MODULE(shasta2, shasta2Module)
     class_<LikelihoodRatioDetangler>(shasta2Module, "LikelihoodRatioDetangler", pybind11::base<Detangler>())
         .def(init<double, double, double, uint64_t, bool, bool, bool, bool>())
         ;
+
+    // Class ReadFollowing.
+    class_<ReadFollowing>(shasta2Module, "ReadFollowing")
+        .def(pybind11::init<const AssemblyGraph&, uint64_t, uint64_t>())
+        .def("followForward", &ReadFollowing::followForward);
 
 
     // Non-member functions exposed to Python.
