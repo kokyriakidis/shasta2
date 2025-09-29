@@ -22,6 +22,7 @@ ReadFollowing::ReadFollowing(
 {
     createLineGraph();
     findAppearances(representativeRegionLength);
+    countAppearances();
     findEdgePairs();
     createEdgePairsGraph(minCoverage);
     writeEdgePairsGraph();
@@ -136,6 +137,43 @@ void ReadFollowing::findAppearances(uint64_t representativeRegionLength)
     for(vector<Appearance>& v: finalAppearances) {
         sort(v.begin(), v.end(), AppearanceSorter(assemblyGraph));
     }
+}
+
+
+
+void ReadFollowing::countAppearances()
+{
+    const uint64_t orientedReadCount = assemblyGraph.journeys.size();
+
+
+    // Loop over all OrientedReadIds.
+    for(uint64_t i=0; i<orientedReadCount; i++) {
+        for(const Appearance appearance: initialAppearances[i]) {
+            const AEdge e = appearance.e;
+
+            // Initial appearances.
+            {
+                const auto it = initialAppearancesCount.find(e);
+                if(it == initialAppearancesCount.end()) {
+                    initialAppearancesCount.insert(make_pair(e, 1));
+                } else {
+                    ++(it->second);
+                }
+            }
+
+            // Final appearances.
+            {
+                const auto it = finalAppearancesCount.find(e);
+                if(it == finalAppearancesCount.end()) {
+                    finalAppearancesCount.insert(make_pair(e, 1));
+                } else {
+                    ++(it->second);
+                }
+            }
+        }
+
+    }
+
 }
 
 
@@ -279,11 +317,17 @@ void ReadFollowing::followForward(AEdge ae0) const
     dot << "digraph FilteredLineGraph {\n";
     for(const AEdge ae: next) {
         dot << assemblyGraph[ae].id;
-        const auto it = edgePairs.find(AssemblyGraphEdgePair(ae0, ae));
-        if(it != edgePairs.end()) {
-            const uint64_t coverage = it->second;
-            dot << " [label=\"" << assemblyGraph[ae].id << "\\n" << coverage << "\"]";
+        uint64_t coverage;
+        if(ae == ae0) {
+            const auto it = finalAppearancesCount.find(ae);
+            SHASTA_ASSERT(it != finalAppearancesCount.end());
+            coverage = it->second;
+        } else {
+            const auto it = edgePairs.find(AssemblyGraphEdgePair(ae0, ae));
+            SHASTA_ASSERT(it != edgePairs.end());
+            coverage = it->second;
         }
+        dot << " [label=\"" << assemblyGraph[ae].id << "\\n" << coverage << "\"]";
         dot << ";\n";
     }
     for(const AEdge ae0: next) {
@@ -342,11 +386,17 @@ void ReadFollowing::followBackward(AEdge ae0) const
     dot << "digraph FilteredLineGraph {\n";
     for(const AEdge ae: next) {
         dot << assemblyGraph[ae].id;
-        const auto it = edgePairs.find(AssemblyGraphEdgePair(ae, ae0));
-        if(it != edgePairs.end()) {
-            const uint64_t coverage = it->second;
-            dot << " [label=\"" << assemblyGraph[ae].id << "\\n" << coverage << "\"]";
+        uint64_t coverage;
+        if(ae == ae0) {
+            const auto it = initialAppearancesCount.find(ae);
+            SHASTA_ASSERT(it != initialAppearancesCount.end());
+            coverage = it->second;
+        } else {
+            const auto it = edgePairs.find(AssemblyGraphEdgePair(ae, ae0));
+            SHASTA_ASSERT(it != edgePairs.end());
+            coverage = it->second;
         }
+        dot << " [label=\"" << assemblyGraph[ae].id << "\\n" << coverage << "\"]";
         dot << ";\n";
     }
     for(const AEdge ae0: next) {

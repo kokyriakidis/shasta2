@@ -104,6 +104,12 @@ private:
     void findAppearances(uint64_t representativeRegionLength);
 
 
+    // The number of initial/final Appearances in each AssemblyGraph edge.
+    std::map<AEdge, uint64_t> initialAppearancesCount;
+    std::map<AEdge, uint64_t> finalAppearancesCount;
+    void countAppearances();
+
+
 
     // Pairs of edges (e0, e1) such that one or more OrientedReadIds
     // appear in the final representative region of e0 and
