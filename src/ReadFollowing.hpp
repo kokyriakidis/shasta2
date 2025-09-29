@@ -24,8 +24,12 @@ public:
         const AssemblyGraph&,
         uint64_t representativeRegionLength,
         uint64_t minCoverage);
-    void followForward(AssemblyGraph::edge_descriptor) const;
-    void followBackward(AssemblyGraph::edge_descriptor) const;
+    void followForward(
+        AssemblyGraph::edge_descriptor,
+        vector<AssemblyGraph::edge_descriptor>& path) const;
+    void followBackward(
+        AssemblyGraph::edge_descriptor,
+        vector<AssemblyGraph::edge_descriptor>& path) const;
 
 private:
     const AssemblyGraph& assemblyGraph;
@@ -59,10 +63,10 @@ private:
     class FilteringPredicate {
     public:
         FilteringPredicate(
-            const LineGraph& lineGraph,
-            const std::set<AEdge>& assemblyGraphEdges) :
-            lineGraph(&lineGraph),
-            assemblyGraphEdges(&assemblyGraphEdges)
+            const LineGraph* lineGraph = 0,
+            const std::set<AEdge>* assemblyGraphEdges = 0) :
+            lineGraph(lineGraph),
+            assemblyGraphEdges(assemblyGraphEdges)
         {}
         const LineGraph* lineGraph;
         const std::set<AEdge>* assemblyGraphEdges;

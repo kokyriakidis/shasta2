@@ -47,10 +47,12 @@ void ReadFollowing::createLineGraph()
         }
     }
 
+#if 0
     cout << "The AssemblyGraph has " << num_vertices(assemblyGraph) <<
         " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
     cout << "The LineGraph has " << num_vertices(lineGraph) <<
         " vertices and " << num_edges(lineGraph) << " edges." << endl;
+#endif
 }
 
 
@@ -277,7 +279,9 @@ void ReadFollowing::writeEdgePairsGraph()
 
 
 
-void ReadFollowing::followForward(AEdge ae0) const
+void ReadFollowing::followForward(
+    AEdge ae0,
+    vector<AssemblyGraph::edge_descriptor>& path) const
 {
     const auto it0 = edgePairsVertexMap.find(ae0);
     SHASTA_ASSERT(it0 != edgePairsVertexMap.end());
@@ -309,7 +313,7 @@ void ReadFollowing::followForward(AEdge ae0) const
 
 
 
-    const FilteringPredicate predicate(lineGraph, next);
+    const FilteringPredicate predicate(&lineGraph, &next);
     FilteredLineGraph filteredLineGraph(lineGraph, predicate, predicate);
 
     // Write out the FilteredLineGraph.
@@ -342,11 +346,38 @@ void ReadFollowing::followForward(AEdge ae0) const
         }
     }
     dot << "}\n";
+
+
+
+    // Follow the FilteredLineGraph forward starting at the vertex corresponding to ae0.
+    // Stop when the out-degree is not exactly one.
+    path.clear();
+    const auto it = lineGraphVertexMap.find(ae0);
+    SHASTA_ASSERT(it != lineGraphVertexMap.end());
+    FilteredLineGraph::vertex_descriptor lv = it->second;
+    while(true) {
+        const AEdge ae = lineGraph[lv];
+        path.push_back(ae);
+        if(out_degree(lv, filteredLineGraph) != 1) {
+            break;
+        }
+        FilteredLineGraph::out_edge_iterator it;
+        tie(it, ignore) = out_edges(lv, filteredLineGraph);
+        lv = target(*it, filteredLineGraph);
+    }
+
+    for(const AEdge& ae: path) {
+        cout << assemblyGraph[ae].id << " ";
+    }
+    cout << endl;
+
 }
 
 
 
-void ReadFollowing::followBackward(AEdge ae0) const
+void ReadFollowing::followBackward(
+    AEdge ae0,
+    vector<AssemblyGraph::edge_descriptor>& path) const
 {
     const auto it0 = edgePairsVertexMap.find(ae0);
     SHASTA_ASSERT(it0 != edgePairsVertexMap.end());
@@ -378,7 +409,7 @@ void ReadFollowing::followBackward(AEdge ae0) const
 
 
 
-    const FilteringPredicate predicate(lineGraph, next);
+    const FilteringPredicate predicate(&lineGraph, &next);
     FilteredLineGraph filteredLineGraph(lineGraph, predicate, predicate);
 
     // Write out the FilteredLineGraph.
@@ -411,4 +442,29 @@ void ReadFollowing::followBackward(AEdge ae0) const
         }
     }
     dot << "}\n";
+
+
+
+    // Follow the FilteredLineGraph backward starting at the vertex corresponding to ae0.
+    // Stop when the out-degree is not exactly one.
+    path.clear();
+    const auto it = lineGraphVertexMap.find(ae0);
+    SHASTA_ASSERT(it != lineGraphVertexMap.end());
+    FilteredLineGraph::vertex_descriptor lv = it->second;
+    while(true) {
+        const AEdge ae = lineGraph[lv];
+        path.push_back(ae);
+        if(in_degree(lv, filteredLineGraph) != 1) {
+            break;
+        }
+        FilteredLineGraph::in_edge_iterator it;
+        tie(it, ignore) = in_edges(lv, filteredLineGraph);
+        lv = source(*it, filteredLineGraph);
+    }
+    std::ranges::reverse(path);
+
+    for(const AEdge& ae: path) {
+        cout << assemblyGraph[ae].id << " ";
+    }
+    cout << endl;
 }
