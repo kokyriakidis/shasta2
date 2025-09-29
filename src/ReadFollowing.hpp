@@ -25,6 +25,7 @@ public:
         uint64_t representativeRegionLength,
         uint64_t minCoverage);
     void followForward(AssemblyGraph::edge_descriptor) const;
+    void followBackward(AssemblyGraph::edge_descriptor) const;
 
 private:
     const AssemblyGraph& assemblyGraph;

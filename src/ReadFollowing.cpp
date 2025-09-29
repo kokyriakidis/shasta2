@@ -278,7 +278,76 @@ void ReadFollowing::followForward(AEdge ae0) const
     ofstream dot("ReadFollowing-FilteredLineGraph.dot");
     dot << "digraph FilteredLineGraph {\n";
     for(const AEdge ae: next) {
-        dot << assemblyGraph[ae].id << ";\n";
+        dot << assemblyGraph[ae].id;
+        const auto it = edgePairs.find(AssemblyGraphEdgePair(ae0, ae));
+        if(it != edgePairs.end()) {
+            const uint64_t coverage = it->second;
+            dot << " [label=\"" << assemblyGraph[ae].id << "\\n" << coverage << "\"]";
+        }
+        dot << ";\n";
+    }
+    for(const AEdge ae0: next) {
+        const auto it0 = lineGraphVertexMap.find(ae0);
+        SHASTA_ASSERT(it0 != lineGraphVertexMap.end());
+        const LineGraph::vertex_descriptor lv0 = it0->second;
+        BGL_FORALL_OUTEDGES(lv0, le, filteredLineGraph, FilteredLineGraph) {
+            const LineGraph::vertex_descriptor lv1 = target(le, filteredLineGraph);
+            const AEdge ae1 = filteredLineGraph[lv1];
+            dot << assemblyGraph[ae0].id << "->" <<
+                assemblyGraph[ae1].id << ";\n";
+        }
+    }
+    dot << "}\n";
+}
+
+
+
+void ReadFollowing::followBackward(AEdge ae0) const
+{
+    const auto it0 = edgePairsVertexMap.find(ae0);
+    SHASTA_ASSERT(it0 != edgePairsVertexMap.end());
+    const EdgePairsGraph::vertex_descriptor v0 = it0->second;
+
+    std::set<AEdge> next;
+    next.insert(ae0);
+    BGL_FORALL_INEDGES(v0, e, edgePairsGraph, EdgePairsGraph) {
+        const EdgePairsGraph::vertex_descriptor v1 = source(e, edgePairsGraph);
+        const AEdge e1 = edgePairsGraph[v1];
+        next.insert(e1);
+    }
+
+    ofstream csv("ReadFollowing-Bandage.csv");
+    csv << "Segment,Color\n";
+    BGL_FORALL_EDGES(ae, assemblyGraph, AssemblyGraph) {
+        string color;
+        if(ae == ae0) {
+            color = "Blue";
+        } else {
+            if(next.contains(ae)) {
+                color = "Green";
+            } else {
+                color = "LightGrey";
+            }
+        }
+        csv << assemblyGraph[ae].id << "," << color << "\n";
+    }
+
+
+
+    const FilteringPredicate predicate(lineGraph, next);
+    FilteredLineGraph filteredLineGraph(lineGraph, predicate, predicate);
+
+    // Write out the FilteredLineGraph.
+    ofstream dot("ReadFollowing-FilteredLineGraph.dot");
+    dot << "digraph FilteredLineGraph {\n";
+    for(const AEdge ae: next) {
+        dot << assemblyGraph[ae].id;
+        const auto it = edgePairs.find(AssemblyGraphEdgePair(ae, ae0));
+        if(it != edgePairs.end()) {
+            const uint64_t coverage = it->second;
+            dot << " [label=\"" << assemblyGraph[ae].id << "\\n" << coverage << "\"]";
+        }
+        dot << ";\n";
     }
     for(const AEdge ae0: next) {
         const auto it0 = lineGraphVertexMap.find(ae0);
