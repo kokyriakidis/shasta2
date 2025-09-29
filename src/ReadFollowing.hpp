@@ -32,6 +32,24 @@ private:
     using AssemblyGraphVertexPair = pair<AVertex, AVertex>;
     using AssemblyGraphEdgePair = pair<AEdge, AEdge>;
 
+
+    // A "line graph" representation of the AssemblyGraph.
+    // Names or vertices and edges of the line graph are prefixed with "l".
+    // Each vertex of the LineGraph corresponds to an edge of the AssemblyGraph.
+    // Given LineGraph vertices lv0 and lv1 corresponding to AssemblyGraph
+    // edges e0 and e1, a LineGraph edge lv0->lv1 is created if
+    // target(e0, assemblyGraph) == source(e1, assemblyGraph).
+    // The LineGraph is similar to the Bandage representation of the AssemblyGraph.
+    using LineGraph = boost::adjacency_list<
+        boost::vecS,
+        boost::vecS,
+        boost::bidirectionalS,
+        AEdge>;
+    LineGraph lineGraph;
+    std::map<AEdge, LineGraph::vertex_descriptor> lineGraphVertexMap;
+    void createLineGraph();
+
+
     // Find appearances of OrientedReadIds in the initial/final
     // representative regions of each edge.
     // Store them by OrientedReadId, indexed by OrientedReadId::getValue().

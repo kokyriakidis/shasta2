@@ -7,6 +7,7 @@
 using namespace shasta;
 
 // Boost libraries.
+#include <boost/graph/filtered_graph.hpp>
 #include <boost/graph/iteration_macros.hpp>
 
 // Standard library.
@@ -20,10 +21,36 @@ ReadFollowing::ReadFollowing(
     uint64_t minCoverage) :
     assemblyGraph(assemblyGraph)
 {
+    createLineGraph();
     findAppearances(representativeRegionLength);
     findEdgePairs();
     createEdgePairsGraph(minCoverage);
     writeEdgePairsGraph();
+}
+
+
+
+void ReadFollowing::createLineGraph()
+{
+    // Create a vertex for each AssemblyGraph edge.
+    BGL_FORALL_EDGES(ae, assemblyGraph, AssemblyGraph) {
+        lineGraphVertexMap.insert(make_pair(ae, add_vertex(ae, lineGraph)));
+    }
+
+    // Create edges of the LineGraph.
+    BGL_FORALL_EDGES(ae0, assemblyGraph, AssemblyGraph) {
+        const LineGraph::vertex_descriptor lv0 = lineGraphVertexMap[ae0];
+        const AVertex av0 = target(ae0, assemblyGraph);
+        BGL_FORALL_OUTEDGES(av0, ae1, assemblyGraph, AssemblyGraph) {
+            const LineGraph::vertex_descriptor lv1 = lineGraphVertexMap[ae1];
+            add_edge(lv0, lv1, lineGraph);
+        }
+    }
+
+    cout << "The AssemblyGraph has " << num_vertices(assemblyGraph) <<
+        " vertices and " << num_edges(assemblyGraph) << " edges." << endl;
+    cout << "The LineGraph has " << num_vertices(lineGraph) <<
+        " vertices and " << num_edges(lineGraph) << " edges." << endl;
 }
 
 
@@ -220,6 +247,7 @@ void ReadFollowing::followForward(AEdge ae0) const
     const EdgePairsGraph::vertex_descriptor v0 = it0->second;
 
     std::set<AEdge> next;
+    next.insert(ae0);
     BGL_FORALL_OUTEDGES(v0, e, edgePairsGraph, EdgePairsGraph) {
         const EdgePairsGraph::vertex_descriptor v1 = target(e, edgePairsGraph);
         const AEdge e1 = edgePairsGraph[v1];
@@ -241,4 +269,51 @@ void ReadFollowing::followForward(AEdge ae0) const
         }
         csv << assemblyGraph[ae].id << "," << color << "\n";
     }
+
+
+
+    // Create a filtered version of the LineGraph that contains
+    // only the vertices corresponding to these AssemblyGraph edges.
+    class Predicate {
+    public:
+        Predicate(const LineGraph& lineGraph, const std::set<AEdge>& assemblyGraphEdges) :
+            lineGraph(&lineGraph), assemblyGraphEdges(&assemblyGraphEdges) {}
+        const LineGraph* lineGraph;
+        const std::set<AEdge>* assemblyGraphEdges;
+        bool operator()(const LineGraph::vertex_descriptor& lv) const
+        {
+            const AEdge ae = (*lineGraph)[lv];
+            return assemblyGraphEdges->contains(ae);
+        }
+        bool operator()(const LineGraph::edge_descriptor& le) const
+        {
+            const LineGraph::vertex_descriptor lv0 = source(le, *lineGraph);
+            const LineGraph::vertex_descriptor lv1 = target(le, *lineGraph);
+            const AEdge ae0 = (*lineGraph)[lv0];
+            const AEdge ae1 = (*lineGraph)[lv1];
+            return assemblyGraphEdges->contains(ae0) and assemblyGraphEdges->contains(ae1);
+        }
+    };
+    const Predicate predicate(lineGraph, next);
+    using FilteredLineGraph = boost::filtered_graph<LineGraph, Predicate, Predicate>;
+    FilteredLineGraph filteredLineGraph(lineGraph, predicate, predicate);
+
+    // Write out the FilteredLineGraph.
+    ofstream dot("ReadFollowing-FilteredLineGraph.dot");
+    dot << "digraph FilteredLineGraph {\n";
+    for(const AEdge ae: next) {
+        dot << assemblyGraph[ae].id << ";\n";
+    }
+    for(const AEdge ae0: next) {
+        const auto it0 = lineGraphVertexMap.find(ae0);
+        SHASTA_ASSERT(it0 != lineGraphVertexMap.end());
+        const LineGraph::vertex_descriptor lv0 = it0->second;
+        BGL_FORALL_OUTEDGES(lv0, le, filteredLineGraph, FilteredLineGraph) {
+            const LineGraph::vertex_descriptor lv1 = target(le, filteredLineGraph);
+            const AEdge ae1 = filteredLineGraph[lv1];
+            dot << assemblyGraph[ae0].id << "->" <<
+                assemblyGraph[ae1].id << ";\n";
+        }
+    }
+    dot << "}\n";
 }
