@@ -194,8 +194,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
     // Class ReadFollowing.
     class_<ReadFollowing>(shasta2Module, "ReadFollowing")
         .def(pybind11::init<const AssemblyGraph&, uint64_t, uint64_t>())
-        .def("followForward", &ReadFollowing::followForward)
-        .def("followBackward", &ReadFollowing::followBackward);
+        ;
 
 
     // Non-member functions exposed to Python.

@@ -24,12 +24,6 @@ public:
         const AssemblyGraph&,
         uint64_t representativeRegionLength,
         uint64_t minCoverage);
-    void followForward(
-        AssemblyGraph::edge_descriptor /*,
-        vector<AssemblyGraph::edge_descriptor>& path*/) const;
-    void followBackward(
-        AssemblyGraph::edge_descriptor /*,
-        vector<AssemblyGraph::edge_descriptor>& path */) const;
 
 private:
     const AssemblyGraph& assemblyGraph;
@@ -40,7 +34,7 @@ private:
     using AVertexPair = AssemblyGraphVertexPair;
     using AEdgePair = AssemblyGraphEdgePair;
 
-
+#if 0
     // A "line graph" representation of the AssemblyGraph.
     // Names or vertices and edges of the line graph are prefixed with "l".
     // Each vertex of the LineGraph corresponds to an edge of the AssemblyGraph.
@@ -89,6 +83,7 @@ private:
         }
     };
     using FilteredLineGraph = boost::filtered_graph<LineGraph, FilteringPredicate, FilteringPredicate>;
+#endif
 
 
 

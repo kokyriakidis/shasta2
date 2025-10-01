@@ -20,7 +20,6 @@ ReadFollowing::ReadFollowing(
     uint64_t minCoverage) :
     assemblyGraph(assemblyGraph)
 {
-    createLineGraph();
     findAppearances(representativeRegionLength);
     countAppearances();
     findEdgePairs();
@@ -31,6 +30,7 @@ ReadFollowing::ReadFollowing(
 
 
 
+#if 0
 void ReadFollowing::createLineGraph()
 {
     // Create a vertex for each AssemblyGraph edge.
@@ -55,6 +55,7 @@ void ReadFollowing::createLineGraph()
         " vertices and " << num_edges(lineGraph) << " edges." << endl;
 #endif
 }
+#endif
 
 
 
@@ -280,7 +281,7 @@ void ReadFollowing::writeEdgePairsGraph()
 
 
 
-
+#if 0
 void ReadFollowing::followForward(AEdge ae0) const
 {
     // EXPOSE WHEN CODE STABILIZES.
@@ -421,7 +422,6 @@ void ReadFollowing::followBackward(AEdge ae0) const
 
 
 
-#if 0
 void ReadFollowing::followForward(
     AEdge ae0,
     vector<AssemblyGraph::edge_descriptor>& path) const
