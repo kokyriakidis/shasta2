@@ -22,8 +22,7 @@ class shasta::ReadFollowing {
 public:
     ReadFollowing(
         const AssemblyGraph&,
-        uint64_t representativeRegionLength,
-        uint64_t minCoverage);
+        uint64_t representativeRegionLength);
 
 private:
     const AssemblyGraph& assemblyGraph;
@@ -114,17 +113,16 @@ private:
 
     // Pairs of edges (e0, e1) such that one or more OrientedReadIds
     // appear in the final representative region of e0 and
-    // in the initial representative region of e1.
+    // in the initial representative region of e1,
     // with the journey position in e0 less than the journey position in e1.
     // The map is keyed by (e0, e1) and contains the number of
     // such OrientedReadIds.
     std::map<AssemblyGraphEdgePair, uint64_t> edgePairs;
     void findEdgePairs();
 
-    void findGoodEdgePairs();
-
-    // The edge pairs with coverage >= minCoverage define a directed graph
-    // in which each vertex corresponds to an AssemblyGraph edge.
+    // Some of the edgePairs are classified as "strong" - see findStrongEdgePairs for details.
+    // The strong edgePairs define a graph in which vertex corresponds to
+    // an AssemblyGraph edge, and a directed edge is added for each strong edgePair.
     using EdgePairsGraph = boost::adjacency_list<
         boost::listS,
         boost::listS,
@@ -133,6 +131,6 @@ private:
         uint64_t>;
     EdgePairsGraph edgePairsGraph;
     std::map<AEdge, EdgePairsGraph::vertex_descriptor> edgePairsVertexMap;
-    void createEdgePairsGraph(uint64_t minCoverage);
+    void createEdgePairsGraph();
     void writeEdgePairsGraph();
 };
