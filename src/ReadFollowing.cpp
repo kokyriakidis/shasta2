@@ -24,6 +24,7 @@ ReadFollowing::ReadFollowing(
     findAppearances(representativeRegionLength);
     countAppearances();
     findEdgePairs();
+    findGoodEdgePairs();
     createEdgePairsGraph(minCoverage);
     writeEdgePairsGraph();
 }
@@ -279,6 +280,148 @@ void ReadFollowing::writeEdgePairsGraph()
 
 
 
+
+void ReadFollowing::followForward(AEdge ae0) const
+{
+    // EXPOSE WHEN CODE STABILIZES.
+    const uint64_t minCoverage = 3;
+    const double minCoverageFraction = 0.8;
+
+    const auto it0 = edgePairsVertexMap.find(ae0);
+    SHASTA_ASSERT(it0 != edgePairsVertexMap.end());
+    const EdgePairsGraph::vertex_descriptor v0 = it0->second;
+
+    const auto it = finalAppearancesCount.find(ae0);
+    cout << assemblyGraph[ae0].id << " " << it->second << endl;
+
+    // Find possible following AEdges, grouping them by they source AVertex.
+    std::map<AVertex, vector< pair<AEdge, uint64_t> > > m;
+    BGL_FORALL_OUTEDGES(v0, e, edgePairsGraph, EdgePairsGraph) {
+        const EdgePairsGraph::vertex_descriptor v1 = target(e, edgePairsGraph);
+        const AEdge ae1 = edgePairsGraph[v1];
+        const uint64_t coverage = edgePairsGraph[e];
+        const AVertex av1 = source(ae1, assemblyGraph);
+        m[av1].push_back(make_pair(ae1, coverage));
+    }
+
+
+    // Loop over the source vertices.
+    std::set<AEdge> next;
+    for(const auto& p: m) {
+        const AVertex v1 = p.first;
+        const vector< pair<AEdge, uint64_t> >& v = p.second;
+
+        // Compute total coverage.
+        uint64_t totalCoverage = 0;
+        for(const auto& q: v) {
+            const uint64_t coverage = q.second;
+            totalCoverage += coverage;
+        }
+
+        cout << assemblyGraph[v1].id << ":";
+        for(const auto& q: v) {
+            const AEdge ae = q.first;
+            const uint64_t coverage = q.second;
+            cout << " (" << assemblyGraph[ae].id << "," << coverage;
+            if((coverage >= minCoverage) and ((double(coverage) / double(totalCoverage)) >= minCoverageFraction)) {
+                cout << " ***";
+                next.insert(ae);
+            }
+            cout << ")";
+        }
+        cout << endl;
+    }
+
+    ofstream csv("ReadFollowing-Bandage.csv");
+    csv << "Segment,Color\n";
+    BGL_FORALL_EDGES(ae, assemblyGraph, AssemblyGraph) {
+        string color;
+        if(ae == ae0) {
+            color = "Blue";
+        } else {
+            if(next.contains(ae)) {
+                color = "Green";
+            } else {
+                color = "LightGrey";
+            }
+        }
+        csv << assemblyGraph[ae].id << "," << color << "\n";
+    }
+}
+
+
+
+void ReadFollowing::followBackward(AEdge ae0) const
+{
+    // EXPOSE WHEN CODE STABILIZES.
+    const uint64_t minCoverage = 3;
+    const double minCoverageFraction = 0.8;
+
+    const auto it0 = edgePairsVertexMap.find(ae0);
+    SHASTA_ASSERT(it0 != edgePairsVertexMap.end());
+    const EdgePairsGraph::vertex_descriptor v0 = it0->second;
+
+    const auto it = finalAppearancesCount.find(ae0);
+    cout << assemblyGraph[ae0].id << " " << it->second << endl;
+
+    // Find possible previous AEdges, grouping them by they target AVertex.
+    std::map<AVertex, vector< pair<AEdge, uint64_t> > > m;
+    BGL_FORALL_INEDGES(v0, e, edgePairsGraph, EdgePairsGraph) {
+        const EdgePairsGraph::vertex_descriptor v1 = source(e, edgePairsGraph);
+        const AEdge ae1 = edgePairsGraph[v1];
+        const uint64_t coverage = edgePairsGraph[e];
+        const AVertex av1 = target(ae1, assemblyGraph);
+        m[av1].push_back(make_pair(ae1, coverage));
+    }
+
+
+    // Loop over the target vertices.
+    std::set<AEdge> next;
+    for(const auto& p: m) {
+        const AVertex v1 = p.first;
+        const vector< pair<AEdge, uint64_t> >& v = p.second;
+
+        // Compute total coverage.
+        uint64_t totalCoverage = 0;
+        for(const auto& q: v) {
+            const uint64_t coverage = q.second;
+            totalCoverage += coverage;
+        }
+
+        cout << assemblyGraph[v1].id << ":";
+        for(const auto& q: v) {
+            const AEdge ae = q.first;
+            const uint64_t coverage = q.second;
+            cout << " (" << assemblyGraph[ae].id << "," << coverage;
+            if((coverage >= minCoverage) and ((double(coverage) / double(totalCoverage)) >= minCoverageFraction)) {
+                cout << " ***";
+                next.insert(ae);
+            }
+            cout << ")";
+        }
+        cout << endl;
+    }
+
+    ofstream csv("ReadFollowing-Bandage.csv");
+    csv << "Segment,Color\n";
+    BGL_FORALL_EDGES(ae, assemblyGraph, AssemblyGraph) {
+        string color;
+        if(ae == ae0) {
+            color = "Blue";
+        } else {
+            if(next.contains(ae)) {
+                color = "Green";
+            } else {
+                color = "LightGrey";
+            }
+        }
+        csv << assemblyGraph[ae].id << "," << color << "\n";
+    }
+}
+
+
+
+#if 0
 void ReadFollowing::followForward(
     AEdge ae0,
     vector<AssemblyGraph::edge_descriptor>& path) const
@@ -467,4 +610,155 @@ void ReadFollowing::followBackward(
         cout << assemblyGraph[ae].id << " ";
     }
     cout << endl;
+}
+#endif
+
+
+
+void ReadFollowing::findGoodEdgePairs()
+{
+    // EXPOSE WHEN CODE STABILIZES.
+    const uint64_t minCoverage = 3;
+    const double minCoverageFraction = 0.8;
+    const uint64_t maxAppearanceCount = 25;
+
+    // Group AssemblyGraphEdgePairs (e0, e1)
+    // by (v0, v1), where v0 = target(e0), v1 = source(e1).
+    std::set<AVertexPair> s;
+    for(const auto& p: edgePairs) {
+        const AEdgePair& aEdgePair = p.first;
+        const AEdge e0 = aEdgePair.first;
+        const AEdge e1 = aEdgePair.second;
+        const AVertex v0 = target(e0, assemblyGraph);
+        const AVertex v1 = source(e1, assemblyGraph);
+        s.insert(make_pair(v0, v1));
+    }
+
+    ofstream dot("ReadFollowing-GoodEdgePairs.dot");
+    dot << "digraph GoodEdgePairs {\n";
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        const AssemblyGraphEdge& edge = assemblyGraph[e];
+        dot << edge.id << "[label=\"" << edge.id << "\\n" << edge.offset() << "\"];\n";
+    }
+
+    // Loop over pairs (v0, v1).
+    for(const auto& p: s) {
+        const AVertex v0 = p.first;
+        const AVertex v1 = p.second;
+
+        // Gather the in-edges of v0.
+        vector<AEdge> in;
+        BGL_FORALL_INEDGES(v0, e, assemblyGraph, AssemblyGraph) {
+            in.push_back(e);
+        }
+        sort(in.begin(), in.end(), assemblyGraph.orderById);
+        const uint64_t nIn = in.size();
+
+        // Gather the out-edges of v1.
+        vector<AEdge> out;
+        BGL_FORALL_OUTEDGES(v1, e, assemblyGraph, AssemblyGraph) {
+            out.push_back(e);
+        }
+        sort(out.begin(), out.end(), assemblyGraph.orderById);
+        const uint64_t nOut = out.size();
+
+        cout << "In:";
+        for(const AEdge e: in) {
+            cout << " " << assemblyGraph[e].id;
+        }
+        cout << endl;
+
+        cout << "Out:";
+        for(const AEdge e: out) {
+            cout << " " << assemblyGraph[e].id;
+        }
+        cout << endl;
+
+        // Create a tangle matrix using the edgePairs.
+        vector< vector<uint64_t> > tangleMatrix(nIn, vector<uint64_t>(nOut));
+        cout << "Tangle matrix:" << endl;
+        for(uint64_t i0=0; i0<nIn; i0++) {
+            const AEdge e0 = in[i0];
+            for(uint64_t i1=0; i1<nOut; i1++) {
+                const AEdge e1 = out[i1];
+                uint64_t coverage = 0;
+                auto it = edgePairs.find(make_pair(e0, e1));
+                if(it != edgePairs.end()) {
+                    coverage = it->second;
+                }
+                cout << coverage << ",";
+                tangleMatrix[i0][i1] = coverage;
+            }
+            cout << endl;
+        }
+
+        // Compute the sum of tangle matrix values for each of the in-edges.
+        vector<uint64_t> inSum(nIn, 0);
+        for(uint64_t i0=0; i0<nIn; i0++) {
+            for(uint64_t i1=0; i1<nOut; i1++) {
+                inSum[i0] += tangleMatrix[i0][i1];
+            }
+        }
+        cout << "inSum: ";
+        for(const uint64_t s: inSum) {
+            cout << s << ",";
+        }
+        cout << endl;
+
+        // Compute the sum of tangle matrix values for each of the out-edges.
+        vector<uint64_t> outSum(nOut, 0);
+        for(uint64_t i0=0; i0<nIn; i0++) {
+            for(uint64_t i1=0; i1<nOut; i1++) {
+                outSum[i1] += tangleMatrix[i0][i1];
+            }
+        }
+        cout << "outSum: ";
+        for(const uint64_t s: outSum) {
+            cout << s << ",";
+        }
+        cout << endl;
+
+
+
+        // Each "strong" element of the tangle matrix generates a good edge pair.
+        // "Strong" means:
+        // - coverage >= minCoverage
+        // - coverage / sum(tangle matrix values for same in-edge) >= minCoverageFraction.
+        // - coverage / sum(tangle matrix values for same out-edge) >= minCoverageFraction.
+        // - The number of final/initial appearances is no more than maxAppearanceCount.
+        for(uint64_t i0=0; i0<nIn; i0++) {
+            for(uint64_t i1=0; i1<nOut; i1++) {
+                const uint64_t coverage = tangleMatrix[i0][i1];
+                if(coverage < minCoverage) {
+                    continue;
+                }
+                if(double(coverage) / double(inSum[i0]) < minCoverageFraction) {
+                    continue;
+                }
+                if(double(coverage) / double(outSum[i1]) < minCoverageFraction) {
+                    continue;
+                }
+                const AEdge e0 = in[i0];
+                const AEdge e1 = out[i1];
+
+                if(finalAppearancesCount[e0] > maxAppearanceCount) {
+                    continue;
+                }
+                if(initialAppearancesCount[e1] > maxAppearanceCount) {
+                    continue;
+                }
+
+                cout << "Found a good edge pair: " <<
+                    assemblyGraph[e0].id << " " <<
+                    assemblyGraph[e1].id << " " << coverage << endl;
+                dot << assemblyGraph[e0].id << "->" <<
+                    assemblyGraph[e1].id <<
+                    "[penwidth=\"" << double(coverage) * 0.5 << "\""
+                    " tooltip=\"" << coverage << "\""
+                    "]"
+                    ";\n";
+            }
+        }
+    }
+    dot << "}\n";
 }

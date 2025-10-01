@@ -25,11 +25,11 @@ public:
         uint64_t representativeRegionLength,
         uint64_t minCoverage);
     void followForward(
-        AssemblyGraph::edge_descriptor,
-        vector<AssemblyGraph::edge_descriptor>& path) const;
+        AssemblyGraph::edge_descriptor /*,
+        vector<AssemblyGraph::edge_descriptor>& path*/) const;
     void followBackward(
-        AssemblyGraph::edge_descriptor,
-        vector<AssemblyGraph::edge_descriptor>& path) const;
+        AssemblyGraph::edge_descriptor /*,
+        vector<AssemblyGraph::edge_descriptor>& path */) const;
 
 private:
     const AssemblyGraph& assemblyGraph;
@@ -37,6 +37,8 @@ private:
     using AEdge = AssemblyGraph::edge_descriptor;
     using AssemblyGraphVertexPair = pair<AVertex, AVertex>;
     using AssemblyGraphEdgePair = pair<AEdge, AEdge>;
+    using AVertexPair = AssemblyGraphVertexPair;
+    using AEdgePair = AssemblyGraphEdgePair;
 
 
     // A "line graph" representation of the AssemblyGraph.
@@ -123,6 +125,8 @@ private:
     // such OrientedReadIds.
     std::map<AssemblyGraphEdgePair, uint64_t> edgePairs;
     void findEdgePairs();
+
+    void findGoodEdgePairs();
 
     // The edge pairs with coverage >= minCoverage define a directed graph
     // in which each vertex corresponds to an AssemblyGraph edge.
