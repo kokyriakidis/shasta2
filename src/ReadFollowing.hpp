@@ -120,17 +120,35 @@ private:
     std::map<AssemblyGraphEdgePair, uint64_t> edgePairs;
     void findEdgePairs();
 
+
+
     // Some of the edgePairs are classified as "strong" - see findStrongEdgePairs for details.
     // The strong edgePairs define a graph in which vertex corresponds to
     // an AssemblyGraph edge, and a directed edge is added for each strong edgePair.
+    class EdgePairsGraphVertex {
+    public:
+        AEdge ae;
+        uint64_t length;
+        EdgePairsGraphVertex(const AssemblyGraph&, AEdge ae);
+    };
     using EdgePairsGraph = boost::adjacency_list<
         boost::listS,
         boost::listS,
         boost::bidirectionalS,
-        AEdge,
+        EdgePairsGraphVertex,
         uint64_t>;
     EdgePairsGraph edgePairsGraph;
     std::map<AEdge, EdgePairsGraph::vertex_descriptor> edgePairsVertexMap;
     void createEdgePairsGraph();
     void writeEdgePairsGraph();
+
+
+
+    // In the EdgePairsGraph, find a path that starts at a given AEdge
+    // and moves forward/backward. At each step we choose the child vertex
+    // corresponding to the longest AEdge.
+public:
+    void findPath(AEdge, uint64_t direction) const;
+    void findForwardPath(AEdge) const;
+    void findBackwardPath(AEdge) const;
 };

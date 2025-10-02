@@ -261,19 +261,19 @@ void ReadFollowing::writeEdgePairsGraph()
     dot << std::fixed << std::setprecision(1);
 
     BGL_FORALL_VERTICES(v, edgePairsGraph, EdgePairsGraph) {
-        const AEdge ae = edgePairsGraph[v];
-        const AssemblyGraphEdge& aEdge = assemblyGraph[ae];
-        const uint64_t length = aEdge.wasAssembled ? aEdge.sequenceLength() : aEdge.offset();
-        dot << aEdge.id <<
-            " [label=\"" << assemblyGraph[ae].id << "\\n" << length << "\"]"
+        const EdgePairsGraphVertex& edgePairsGraphVertex = edgePairsGraph[v];
+        const AEdge ae = edgePairsGraphVertex.ae;
+        const AssemblyGraphEdge& assemblyGraphEdge = assemblyGraph[ae];
+        dot << assemblyGraphEdge.id <<
+            " [label=\"" << assemblyGraphEdge.id << "\\n" << edgePairsGraphVertex.length << "\"]"
             ";\n";
     }
 
     BGL_FORALL_EDGES(e, edgePairsGraph, EdgePairsGraph) {
         const EdgePairsGraph::vertex_descriptor v0 = source(e, edgePairsGraph);
         const EdgePairsGraph::vertex_descriptor v1 = target(e, edgePairsGraph);
-        const AEdge ae0 = edgePairsGraph[v0];
-        const AEdge ae1 = edgePairsGraph[v1];
+        const AEdge ae0 = edgePairsGraph[v0].ae;
+        const AEdge ae1 = edgePairsGraph[v1].ae;
         const uint64_t coverage = edgePairsGraph[e];
         dot <<
             assemblyGraph[ae0].id << "->" <<
@@ -631,7 +631,8 @@ void ReadFollowing::createEdgePairsGraph()
 
     // Create a vertex for each AssemblyGraph edge.
     BGL_FORALL_EDGES(ae, assemblyGraph, AssemblyGraph) {
-        edgePairsVertexMap.insert(make_pair(ae, add_vertex(ae, edgePairsGraph)));
+        edgePairsVertexMap.insert(make_pair(ae,
+            add_vertex(EdgePairsGraphVertex(assemblyGraph, ae), edgePairsGraph)));
     }
 
     // Group AssemblyGraphEdgePairs (e0, e1)
@@ -766,3 +767,110 @@ void ReadFollowing::createEdgePairsGraph()
         }
     }
 }
+
+
+
+// In the EdgePairsGraph, find a path that starts at a given AEdge
+// and moves forward/backward. At each step we choose the child vertex
+// corresponding to the longest AEdge.
+void ReadFollowing::findPath(AEdge ae, uint64_t direction) const
+{
+    if(direction == 0) {
+        findForwardPath(ae);
+    } else if(direction == 1) {
+        findBackwardPath(ae);
+    } else {
+        SHASTA_ASSERT(0);
+    }
+}
+
+
+
+void ReadFollowing::findForwardPath(AEdge ae) const
+{
+    const auto it = edgePairsVertexMap.find(ae);
+    SHASTA_ASSERT(it != edgePairsVertexMap.end());
+    EdgePairsGraph::vertex_descriptor v = it->second;
+
+    vector<AEdge> path;
+    while(true) {
+        path.push_back(edgePairsGraph[v].ae);
+
+        EdgePairsGraph::vertex_descriptor vNext = EdgePairsGraph::null_vertex();
+        uint64_t bestLength = 0;
+        BGL_FORALL_OUTEDGES(v, e, edgePairsGraph, EdgePairsGraph) {
+            EdgePairsGraph::vertex_descriptor v1 = target(e, edgePairsGraph);
+            const uint64_t length = edgePairsGraph[v1].length;
+            if(length > bestLength) {
+                vNext = v1;
+                bestLength = length;
+            }
+        }
+
+        if(vNext == EdgePairsGraph::null_vertex()) {
+            break;
+        }
+
+        v = vNext;
+    }
+
+    cout << "Path:" << endl;
+    for(const AEdge ae: path) {
+        cout << assemblyGraph[ae].id << ",";
+    }
+    cout << endl;
+}
+
+
+
+void ReadFollowing::findBackwardPath(AEdge ae) const
+{
+    const auto it = edgePairsVertexMap.find(ae);
+    SHASTA_ASSERT(it != edgePairsVertexMap.end());
+    EdgePairsGraph::vertex_descriptor v = it->second;
+
+    vector<AEdge> path;
+    while(true) {
+        path.push_back(edgePairsGraph[v].ae);
+
+        EdgePairsGraph::vertex_descriptor vNext = EdgePairsGraph::null_vertex();
+        uint64_t bestLength = 0;
+        BGL_FORALL_INEDGES(v, e, edgePairsGraph, EdgePairsGraph) {
+            EdgePairsGraph::vertex_descriptor v1 = source(e, edgePairsGraph);
+            const uint64_t length = edgePairsGraph[v1].length;
+            if(length > bestLength) {
+                vNext = v1;
+                bestLength = length;
+            }
+        }
+
+        if(vNext == EdgePairsGraph::null_vertex()) {
+            break;
+        }
+
+        v = vNext;
+    }
+    std::ranges::reverse(path);
+
+    cout << "Path:" << endl;
+    for(const AEdge ae: path) {
+        cout << assemblyGraph[ae].id << ",";
+    }
+    cout << endl;
+}
+
+
+
+ReadFollowing::EdgePairsGraphVertex::EdgePairsGraphVertex(
+    const AssemblyGraph& assemblyGraph,
+    AEdge ae) :
+    ae(ae)
+{
+    const AssemblyGraphEdge& edge = assemblyGraph[ae];
+    if(edge.wasAssembled) {
+        length = edge.sequenceLength();
+    } else {
+        length = edge.offset();
+    }
+}
+
