@@ -813,13 +813,16 @@ void ReadFollowing::findForwardPath(AEdge ae) const
         path.push_back(edgePairsGraph[v].ae);
 
         EdgePairsGraph::vertex_descriptor vNext = EdgePairsGraph::null_vertex();
-        uint64_t bestLength = 0;
+        // uint64_t bestLength = 0;
+        double bestJaccard = 0.;
         BGL_FORALL_OUTEDGES(v, e, edgePairsGraph, EdgePairsGraph) {
             EdgePairsGraph::vertex_descriptor v1 = target(e, edgePairsGraph);
-            const uint64_t length = edgePairsGraph[v1].length;
-            if(length > bestLength) {
+            // const uint64_t length = edgePairsGraph[v1].length;
+            const double j = jaccard(e);
+            if(j > bestJaccard /*length > bestLength */) {
                 vNext = v1;
-                bestLength = length;
+                // bestLength = length;
+                bestJaccard = j;
             }
         }
 
@@ -850,13 +853,16 @@ void ReadFollowing::findBackwardPath(AEdge ae) const
         path.push_back(edgePairsGraph[v].ae);
 
         EdgePairsGraph::vertex_descriptor vNext = EdgePairsGraph::null_vertex();
-        uint64_t bestLength = 0;
+        // uint64_t bestLength = 0;
+        double bestJaccard = 0.;
         BGL_FORALL_INEDGES(v, e, edgePairsGraph, EdgePairsGraph) {
             EdgePairsGraph::vertex_descriptor v1 = source(e, edgePairsGraph);
-            const uint64_t length = edgePairsGraph[v1].length;
-            if(length > bestLength) {
+            // const uint64_t length = edgePairsGraph[v1].length;
+            const double j = jaccard(e);
+            if(j > bestJaccard /*length > bestLength */) {
                 vNext = v1;
-                bestLength = length;
+                // bestLength = length;
+                bestJaccard = j;
             }
         }
 
