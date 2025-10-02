@@ -351,13 +351,9 @@ void ReadFollowing::createEdgePairsGraph()
 
         // Each "strong" element of the tangle matrix generates a strong edge pair
         // and an edge of the EdgePairsGraph.
-        // "Strong" means:
-        // - coverage >= minCoverage
-        // - coverage / sum(tangle matrix values for same in-edge) >= minCoverageFraction.
-        // - coverage / sum(tangle matrix values for same out-edge) >= minCoverageFraction.
-        // - The number of final/initial appearances is no more than maxAppearanceCount.
         for(uint64_t i0=0; i0<nIn; i0++) {
             for(uint64_t i1=0; i1<nOut; i1++) {
+
                 const uint64_t coverage = tangleMatrix[i0][i1];
                 if(coverage < minCoverage) {
                     continue;
@@ -371,6 +367,13 @@ void ReadFollowing::createEdgePairsGraph()
                 const AEdge e0 = in[i0];
                 const AEdge e1 = out[i1];
 
+                if(edgePairsGraph[edgePairsVertexMap[e0]].length < minLength) {
+                    continue;
+                }
+                if(edgePairsGraph[edgePairsVertexMap[e1]].length < minLength) {
+                    continue;
+                }
+
                 if(initialAppearancesCount[e0] > maxAppearanceCount) {
                     continue;
                 }
@@ -381,6 +384,10 @@ void ReadFollowing::createEdgePairsGraph()
                     continue;
                 }
                 if(finalAppearancesCount[e1] > maxAppearanceCount) {
+                    continue;
+                }
+
+                if(jaccard(e0, e1, coverage) < minJaccard) {
                     continue;
                 }
 
@@ -548,4 +555,20 @@ double ReadFollowing::jaccard(EdgePairsGraph::edge_descriptor e) const
     const uint64_t unionSize = n0 + n1 - intersectionSize;
 
     return double(intersectionSize) / double(unionSize);
+}
+
+
+
+double ReadFollowing::jaccard(AEdge ae0, AEdge ae1, uint64_t coverage) const
+{
+    const uint64_t n0 = getFinalAppearancesCount(ae0);
+    const uint64_t n1 = getInitialAppearancesCount(ae1);
+
+    const uint64_t n01 = coverage;
+
+    const uint64_t intersectionSize = n01;
+    const uint64_t unionSize = n0 + n1 - intersectionSize;
+
+    return double(intersectionSize) / double(unionSize);
+
 }

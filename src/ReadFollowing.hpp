@@ -36,6 +36,8 @@ private:
     const uint64_t minCoverage = 3;
     const double minCoverageFraction = 0.8;
     const uint64_t maxAppearanceCount = 25;
+    const double minJaccard = 0.05;
+    const uint64_t minLength = 1000;
 
 
     // Find appearances of OrientedReadIds in the initial/final
@@ -96,9 +98,10 @@ private:
     void createEdgePairsGraph();
     void writeEdgePairsGraph();
 
-    // Jaccard similarity for an EdgePairsGraph.
-    // Computed using the finalAppearancesCount of the surce vertex
+    // Jaccard similarity for an EdgePairsGraph edge.
+    // Computed using the finalAppearancesCount of the source vertex
     // and the initialAppearancesCount of the target vertex.
+    double jaccard(AEdge, AEdge, uint64_t coverage) const;
     double jaccard(EdgePairsGraph::edge_descriptor) const;
 
 
