@@ -108,6 +108,8 @@ private:
     std::map<AEdge, uint64_t> initialAppearancesCount;
     std::map<AEdge, uint64_t> finalAppearancesCount;
     void countAppearances();
+    uint64_t getInitialAppearancesCount(AEdge) const;
+    uint64_t getFinalAppearancesCount(AEdge) const;
 
 
 

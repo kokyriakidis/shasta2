@@ -151,27 +151,26 @@ void ReadFollowing::countAppearances()
 
     // Loop over all OrientedReadIds.
     for(uint64_t i=0; i<orientedReadCount; i++) {
+
+        // Initial appearances.
         for(const Appearance appearance: initialAppearances[i]) {
             const AEdge e = appearance.e;
-
-            // Initial appearances.
-            {
-                const auto it = initialAppearancesCount.find(e);
-                if(it == initialAppearancesCount.end()) {
-                    initialAppearancesCount.insert(make_pair(e, 1));
-                } else {
-                    ++(it->second);
-                }
+            const auto it = initialAppearancesCount.find(e);
+            if(it == initialAppearancesCount.end()) {
+                initialAppearancesCount.insert(make_pair(e, 1));
+            } else {
+                ++(it->second);
             }
+        }
 
-            // Final appearances.
-            {
-                const auto it = finalAppearancesCount.find(e);
-                if(it == finalAppearancesCount.end()) {
-                    finalAppearancesCount.insert(make_pair(e, 1));
-                } else {
-                    ++(it->second);
-                }
+        // Final appearances.
+        for(const Appearance appearance: finalAppearances[i]) {
+            const AEdge e = appearance.e;
+            const auto it = finalAppearancesCount.find(e);
+            if(it == finalAppearancesCount.end()) {
+                finalAppearancesCount.insert(make_pair(e, 1));
+            } else {
+                ++(it->second);
             }
         }
 
@@ -265,7 +264,11 @@ void ReadFollowing::writeEdgePairsGraph()
         const AEdge ae = edgePairsGraphVertex.ae;
         const AssemblyGraphEdge& assemblyGraphEdge = assemblyGraph[ae];
         dot << assemblyGraphEdge.id <<
-            " [label=\"" << assemblyGraphEdge.id << "\\n" << edgePairsGraphVertex.length << "\"]"
+            " [label=\"" << assemblyGraphEdge.id << "\\n" <<
+            edgePairsGraphVertex.length << "\\n" <<
+            getInitialAppearancesCount(ae) << "/" <<
+            getFinalAppearancesCount(ae) <<
+            "\"]"
             ";\n";
     }
 
@@ -871,6 +874,30 @@ ReadFollowing::EdgePairsGraphVertex::EdgePairsGraphVertex(
         length = edge.sequenceLength();
     } else {
         length = edge.offset();
+    }
+}
+
+
+
+uint64_t ReadFollowing::getInitialAppearancesCount(AEdge ae) const
+{
+    const auto it = initialAppearancesCount.find(ae);
+    if(it == initialAppearancesCount.end()) {
+        return 0;
+    } else {
+        return it->second;
+    }
+}
+
+
+
+uint64_t ReadFollowing::getFinalAppearancesCount(AEdge ae) const
+{
+    const auto it = finalAppearancesCount.find(ae);
+    if(it == finalAppearancesCount.end()) {
+        return 0;
+    } else {
+        return it->second;
     }
 }
 
