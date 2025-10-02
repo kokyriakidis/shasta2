@@ -20,9 +20,7 @@ namespace shasta {
 
 class shasta::ReadFollowing {
 public:
-    ReadFollowing(
-        const AssemblyGraph&,
-        uint64_t representativeRegionLength);
+    ReadFollowing(const AssemblyGraph&);
 
 private:
     const AssemblyGraph& assemblyGraph;
@@ -33,6 +31,11 @@ private:
     using AVertexPair = AssemblyGraphVertexPair;
     using AEdgePair = AssemblyGraphEdgePair;
 
+    // EXPOSE WHEN CODE STABILIZES.
+    const uint64_t representativeRegionLength = 10;
+    const uint64_t minCoverage = 3;
+    const double minCoverageFraction = 0.8;
+    const uint64_t maxAppearanceCount = 25;
 
 
     // Find appearances of OrientedReadIds in the initial/final
@@ -50,7 +53,7 @@ private:
     };
     vector< vector<Appearance> > initialAppearances;
     vector< vector<Appearance> > finalAppearances;
-    void findAppearances(uint64_t representativeRegionLength);
+    void findAppearances();
 
 
     // The number of initial/final Appearances in each AssemblyGraph edge.

@@ -15,12 +15,10 @@ using namespace shasta;
 
 
 
-ReadFollowing::ReadFollowing(
-    const AssemblyGraph& assemblyGraph,
-    uint64_t representativeRegionLength) :
+ReadFollowing::ReadFollowing(const AssemblyGraph& assemblyGraph) :
     assemblyGraph(assemblyGraph)
 {
-    findAppearances(representativeRegionLength);
+    findAppearances();
     countAppearances();
     findEdgePairs();
     createEdgePairsGraph();
@@ -29,7 +27,7 @@ ReadFollowing::ReadFollowing(
 
 
 
-void ReadFollowing::findAppearances(uint64_t representativeRegionLength)
+void ReadFollowing::findAppearances()
 {
     const uint64_t orientedReadCount = assemblyGraph.journeys.size();
     initialAppearances.resize(orientedReadCount);
@@ -246,10 +244,6 @@ void ReadFollowing::writeEdgePairsGraph()
 
 void ReadFollowing::createEdgePairsGraph()
 {
-    // EXPOSE WHEN CODE STABILIZES.
-    const uint64_t minCoverage = 3;
-    const double minCoverageFraction = 0.8;
-    const uint64_t maxAppearanceCount = 25;
 
     // Create a vertex for each AssemblyGraph edge.
     BGL_FORALL_EDGES(ae, assemblyGraph, AssemblyGraph) {
