@@ -144,6 +144,10 @@ private:
     void createEdgePairsGraph();
     void writeEdgePairsGraph();
 
+    // Jaccard similarity for an EdgePairsGraph.
+    // Computed using the finalAppearancesCount of the surce vertex
+    // and the initialAppearancesCount of the target vertex.
+    double jaccard(EdgePairsGraph::edge_descriptor) const;
 
 
     // In the EdgePairsGraph, find a path that starts at a given AEdge

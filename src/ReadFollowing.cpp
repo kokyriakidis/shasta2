@@ -257,7 +257,7 @@ void ReadFollowing::writeEdgePairsGraph()
 {
     ofstream dot("ReadFollowing.dot");
     dot << "digraph EdgePairsGraph {\n";
-    dot << std::fixed << std::setprecision(1);
+    dot << std::fixed << std::setprecision(2);
 
     BGL_FORALL_VERTICES(v, edgePairsGraph, EdgePairsGraph) {
         const EdgePairsGraphVertex& edgePairsGraphVertex = edgePairsGraph[v];
@@ -278,11 +278,18 @@ void ReadFollowing::writeEdgePairsGraph()
         const AEdge ae0 = edgePairsGraph[v0].ae;
         const AEdge ae1 = edgePairsGraph[v1].ae;
         const uint64_t coverage = edgePairsGraph[e];
+
+        const double j = jaccard(e);
+        SHASTA_ASSERT(j <= 1.);
+        const double hue = j / 3.; // So 0=red, 1=green.
+
         dot <<
             assemblyGraph[ae0].id << "->" <<
             assemblyGraph[ae1].id <<
             " [penwidth=\"" << 0.4 * double(coverage) << "\""
-            " tooltip=\"" << coverage << "\"]"
+            " tooltip=\"" << coverage << " " << j << "\""
+            " color=\"" << hue << ",1,.9\""
+            "]"
             ";\n";
     }
 
@@ -758,10 +765,16 @@ void ReadFollowing::createEdgePairsGraph()
                 const AEdge e0 = in[i0];
                 const AEdge e1 = out[i1];
 
+                if(initialAppearancesCount[e0] > maxAppearanceCount) {
+                    continue;
+                }
                 if(finalAppearancesCount[e0] > maxAppearanceCount) {
                     continue;
                 }
                 if(initialAppearancesCount[e1] > maxAppearanceCount) {
+                    continue;
+                }
+                if(finalAppearancesCount[e1] > maxAppearanceCount) {
                     continue;
                 }
 
@@ -901,3 +914,26 @@ uint64_t ReadFollowing::getFinalAppearancesCount(AEdge ae) const
     }
 }
 
+
+
+// Jaccard similarity for an EdgePairsGraph.
+// Computed using the finalAppearancesCount of the surce vertex
+// and the initialAppearancesCount of the target vertex.
+double ReadFollowing::jaccard(EdgePairsGraph::edge_descriptor e) const
+{
+    const EdgePairsGraph::vertex_descriptor v0 = source(e, edgePairsGraph);
+    const EdgePairsGraph::vertex_descriptor v1 = target(e, edgePairsGraph);
+
+    const AEdge ae0 = edgePairsGraph[v0].ae;
+    const AEdge ae1 = edgePairsGraph[v1].ae;
+
+    const uint64_t n0 = getFinalAppearancesCount(ae0);
+    const uint64_t n1 = getInitialAppearancesCount(ae1);
+
+    const uint64_t n01 = edgePairsGraph[e];
+
+    const uint64_t intersectionSize = n01;
+    const uint64_t unionSize = n0 + n1 - intersectionSize;
+
+    return double(intersectionSize) / double(unionSize);
+}
