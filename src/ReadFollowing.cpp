@@ -249,6 +249,7 @@ void ReadFollowing::createGraph()
 {
     using Graph = ReadFollowing;
     Graph& graph = *this;
+    const bool debug = false;
 
     // Create a vertex for each AssemblyGraph edge.
     BGL_FORALL_EDGES(ae, assemblyGraph, AssemblyGraph) {
@@ -291,22 +292,26 @@ void ReadFollowing::createGraph()
         sort(out.begin(), out.end(), assemblyGraph.orderById);
         const uint64_t nOut = out.size();
 
-#if 0
-        cout << "In:";
-        for(const AEdge e: in) {
-            cout << " " << assemblyGraph[e].id;
-        }
-        cout << endl;
+        if(debug) {
+            cout << "In:";
+            for(const AEdge e: in) {
+                cout << " " << assemblyGraph[e].id;
+            }
+            cout << endl;
 
-        cout << "Out:";
-        for(const AEdge e: out) {
-            cout << " " << assemblyGraph[e].id;
+            cout << "Out:";
+            for(const AEdge e: out) {
+                cout << " " << assemblyGraph[e].id;
+            }
+            cout << endl;
         }
-        cout << endl;
-#endif
+
         // Create a tangle matrix using the edgePairs.
         vector< vector<uint64_t> > tangleMatrix(nIn, vector<uint64_t>(nOut));
-        // cout << "Tangle matrix:" << endl;
+
+        if(debug) {
+            cout << "Tangle matrix:" << endl;
+        }
         for(uint64_t i0=0; i0<nIn; i0++) {
             const AEdge e0 = in[i0];
             for(uint64_t i1=0; i1<nOut; i1++) {
@@ -316,10 +321,14 @@ void ReadFollowing::createGraph()
                 if(it != edgePairs.end()) {
                     coverage = it->second;
                 }
-                // cout << coverage << ",";
+                if(debug) {
+                    cout << coverage << ",";
+                }
                 tangleMatrix[i0][i1] = coverage;
             }
-            // cout << endl;
+            if(debug) {
+                cout << endl;
+            }
         }
 
         // Compute the sum of tangle matrix values for each of the in-edges.
@@ -329,13 +338,14 @@ void ReadFollowing::createGraph()
                 inSum[i0] += tangleMatrix[i0][i1];
             }
         }
-        /*
-        cout << "inSum: ";
-        for(const uint64_t s: inSum) {
-            cout << s << ",";
+
+        if(debug) {
+            cout << "inSum: ";
+            for(const uint64_t s: inSum) {
+                cout << s << ",";
+            }
+            cout << endl;
         }
-        cout << endl;
-        */
 
         // Compute the sum of tangle matrix values for each of the out-edges.
         vector<uint64_t> outSum(nOut, 0);
@@ -344,13 +354,14 @@ void ReadFollowing::createGraph()
                 outSum[i1] += tangleMatrix[i0][i1];
             }
         }
-        /*
-        cout << "outSum: ";
-        for(const uint64_t s: outSum) {
-            cout << s << ",";
+
+        if(debug) {
+            cout << "outSum: ";
+            for(const uint64_t s: outSum) {
+                cout << s << ",";
+            }
+            cout << endl;
         }
-        cout << endl;
-        */
 
 
 
@@ -358,44 +369,81 @@ void ReadFollowing::createGraph()
         // and an edge of the EdgePairsGraph.
         for(uint64_t i0=0; i0<nIn; i0++) {
             for(uint64_t i1=0; i1<nOut; i1++) {
-
-                const uint64_t coverage = tangleMatrix[i0][i1];
-                if(coverage < minCoverage) {
-                    continue;
-                }
-                if(double(coverage) / double(inSum[i0]) < minCoverageFraction) {
-                    continue;
-                }
-                if(double(coverage) / double(outSum[i1]) < minCoverageFraction) {
-                    continue;
-                }
                 const AEdge e0 = in[i0];
                 const AEdge e1 = out[i1];
 
+                if(debug) {
+                    cout << "Checking " << assemblyGraph[e0].id << " " << assemblyGraph[e1].id << endl;
+                }
+
+                const uint64_t coverage = tangleMatrix[i0][i1];
+                if(coverage < minCoverage) {
+                    if(debug) {
+                        cout << "Discarded due to coverage." << endl;
+                    }
+                    continue;
+                }
+                if(double(coverage) / double(inSum[i0]) < minCoverageFraction) {
+                    if(debug) {
+                        cout << "Discarded due to coverage fraction on " << assemblyGraph[e0].id << endl;
+                    }
+                    continue;
+                }
+                if(double(coverage) / double(outSum[i1]) < minCoverageFraction) {
+                    if(debug) {
+                        cout << "Discarded due to coverage fraction on " << assemblyGraph[e1].id << endl;
+                    }
+                    continue;
+                }
+
                 if(graph[vertexMap[e0]].length < minLength) {
+                    if(debug) {
+                        cout << "Discarded due to length on " << assemblyGraph[e0].id << endl;
+                    }
                     continue;
                 }
                 if(graph[vertexMap[e1]].length < minLength) {
                     continue;
+                    if(debug) {
+                        cout << "Discarded due to length on " << assemblyGraph[e1].id << endl;
+                    }
                 }
 
                 if(initialAppearancesCount[e0] > maxAppearanceCount) {
+                    if(debug) {
+                        cout << "Discarded due to initial coverage on " << assemblyGraph[e0].id << endl;
+                    }
                     continue;
                 }
                 if(finalAppearancesCount[e0] > maxAppearanceCount) {
+                    if(debug) {
+                        cout << "Discarded due to final coverage on " << assemblyGraph[e0].id << endl;
+                    }
                     continue;
                 }
                 if(initialAppearancesCount[e1] > maxAppearanceCount) {
+                    if(debug) {
+                        cout << "Discarded due to initial coverage on " << assemblyGraph[e1].id << endl;
+                    }
                     continue;
                 }
                 if(finalAppearancesCount[e1] > maxAppearanceCount) {
+                    if(debug) {
+                        cout << "Discarded due to final coverage " << assemblyGraph[e1].id << endl;
+                    }
                     continue;
                 }
 
                 if(jaccard(e0, e1, coverage) < minJaccard) {
+                    if(debug) {
+                        cout << "Discarded due to Jaccard." << endl;
+                    }
                     continue;
                 }
 
+                if(debug) {
+                    cout << "Adding edge " << assemblyGraph[e0].id << " " << assemblyGraph[e1].id << endl;
+                }
                 add_edge(vertexMap[e0], vertexMap[e1], coverage, graph);
             }
         }
@@ -586,3 +634,7 @@ double ReadFollowing::jaccard(AEdge ae0, AEdge ae1, uint64_t coverage) const
     return double(intersectionSize) / double(unionSize);
 
 }
+
+
+
+
