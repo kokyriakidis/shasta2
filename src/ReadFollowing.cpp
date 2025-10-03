@@ -468,6 +468,122 @@ void ReadFollowing::findPath(AEdge ae, uint64_t direction) const
 
 
 
+// Test version.
+void ReadFollowing::findForwardPath(AEdge ae) const
+{
+    using Graph = ReadFollowing;
+    const Graph& graph = *this;
+
+    // Find the start vertex.
+    const auto it = vertexMap.find(ae);
+    SHASTA_ASSERT(it != vertexMap.end());
+    vertex_descriptor v = it->second;
+
+    // Each iteration adds one vertex to the path.
+    vector<vertex_descriptor> path;
+    while(true) {
+         path.push_back(v);
+
+         // Find the best next vertex.
+         vertex_descriptor vNext = null_vertex();
+         double bestJaccardSum = 0.;
+         BGL_FORALL_OUTEDGES(v, e, graph, Graph) {
+             vertex_descriptor v1 = target(e, graph);
+
+             // Compute the sum of Jaccard similarities between all
+             // previous vertices in the path and v1.
+             double jaccardSum = 0.;
+             for(const vertex_descriptor vPrevious: path) {
+                 edge_descriptor ePrevious;
+                 bool edgeWasFound;
+                 tie(ePrevious, edgeWasFound) = edge(vPrevious, v1, graph);
+                 if(edgeWasFound) {
+                    jaccardSum += jaccard(ePrevious);
+                 }
+             }
+
+             if(jaccardSum > bestJaccardSum) {
+                 vNext = v1;
+                 bestJaccardSum = jaccardSum;
+             }
+
+         }
+
+         if(vNext == null_vertex()) {
+             break;
+         }
+
+         v = vNext;
+     }
+
+     cout << "Path:" << endl;
+     for(const vertex_descriptor v: path) {
+         cout << assemblyGraph[graph[v].ae].id << ",";
+     }
+     cout << endl;
+}
+
+
+
+void ReadFollowing::findBackwardPath(AEdge ae) const
+{
+    using Graph = ReadFollowing;
+    const Graph& graph = *this;
+
+    // Find the start vertex.
+    const auto it = vertexMap.find(ae);
+    SHASTA_ASSERT(it != vertexMap.end());
+    vertex_descriptor v = it->second;
+
+    // Each iteration adds one vertex to the path.
+    vector<vertex_descriptor> path;
+    while(true) {
+         path.push_back(v);
+
+         // Find the best next vertex.
+         vertex_descriptor vNext = null_vertex();
+         double bestJaccardSum = 0.;
+         BGL_FORALL_INEDGES(v, e, graph, Graph) {
+             vertex_descriptor v1 = source(e, graph);
+
+             // Compute the sum of Jaccard similarities between all
+             // previous vertices in the path and v1.
+             double jaccardSum = 0.;
+             for(const vertex_descriptor vPrevious: path) {
+                 edge_descriptor ePrevious;
+                 bool edgeWasFound;
+                 tie(ePrevious, edgeWasFound) = edge(v1, vPrevious, graph);
+                 if(edgeWasFound) {
+                    jaccardSum += jaccard(ePrevious);
+                 }
+             }
+
+             if(jaccardSum > bestJaccardSum) {
+                 vNext = v1;
+                 bestJaccardSum = jaccardSum;
+             }
+
+         }
+
+         if(vNext == null_vertex()) {
+             break;
+         }
+
+         v = vNext;
+     }
+    std::ranges::reverse(path);
+
+     cout << "Path:" << endl;
+     for(const vertex_descriptor v: path) {
+         cout << assemblyGraph[graph[v].ae].id << ",";
+     }
+     cout << endl;
+}
+
+
+
+// Old version.
+#if 0
 void ReadFollowing::findForwardPath(AEdge ae) const
 {
     using Graph = ReadFollowing;
@@ -552,6 +668,7 @@ void ReadFollowing::findBackwardPath(AEdge ae) const
     }
     cout << endl;
 }
+#endif
 
 
 
