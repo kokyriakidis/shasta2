@@ -23,6 +23,9 @@ ReadFollowing::ReadFollowing(const AssemblyGraph& assemblyGraph) :
     findEdgePairs();
     createGraph();
     writeGraph();
+
+    std::set< pair<vertex_descriptor, vertex_descriptor> > connectedLongPairs;
+    findConnections(connectedLongPairs);
 }
 
 
@@ -460,12 +463,12 @@ void ReadFollowing::createGraph()
 // In the graph, find a path that starts at a given AEdge
 // and moves forward/backward. At each step we choose the child vertex
 // corresponding to the longest AEdge.
-void ReadFollowing::findPath(AEdge ae, uint64_t direction) const
+void ReadFollowing::findPath(AEdge ae, uint64_t direction, vector<vertex_descriptor>& path) const
 {
     if(direction == 0) {
-        findForwardPath(ae);
+        findForwardPath(ae, path);
     } else if(direction == 1) {
-        findBackwardPath(ae);
+        findBackwardPath(ae, path);
     } else {
         SHASTA_ASSERT(0);
     }
@@ -474,7 +477,7 @@ void ReadFollowing::findPath(AEdge ae, uint64_t direction) const
 
 
 // Test version.
-void ReadFollowing::findForwardPath(AEdge ae) const
+void ReadFollowing::findForwardPath(AEdge ae, vector<vertex_descriptor>& path) const
 {
     using Graph = ReadFollowing;
     const Graph& graph = *this;
@@ -485,7 +488,8 @@ void ReadFollowing::findForwardPath(AEdge ae) const
     vertex_descriptor v = it->second;
 
     // Each iteration adds one vertex to the path.
-    vector<vertex_descriptor> path(1, v);
+    path.clear();
+    path.push_back(v);
     while(true) {
 
          // Find the best next vertex.
@@ -534,7 +538,7 @@ void ReadFollowing::findForwardPath(AEdge ae) const
 
 
 
-void ReadFollowing::findBackwardPath(AEdge ae) const
+void ReadFollowing::findBackwardPath(AEdge ae, vector<vertex_descriptor>& path) const
 {
     using Graph = ReadFollowing;
     const Graph& graph = *this;
@@ -545,7 +549,8 @@ void ReadFollowing::findBackwardPath(AEdge ae) const
     vertex_descriptor v = it->second;
 
     // Each iteration adds one vertex to the path.
-    vector<vertex_descriptor> path(1, v);
+    path.clear();
+    path.push_back(v);
     while(true) {
 
          // Find the best next vertex.
@@ -771,3 +776,84 @@ double ReadFollowing::jaccard(AEdge ae0, AEdge ae1, uint64_t coverage) const
 
 
 
+void ReadFollowing::findConnections(std::set<pair<vertex_descriptor, vertex_descriptor> >& connectedLongPairs) const
+{
+    using Graph = ReadFollowing;
+    const Graph& graph = *this;
+    const bool debug = true;
+
+    // Gather the vertices flagged as long.
+    vector<vertex_descriptor> longVertices;
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        if(graph[v].isLong) {
+            longVertices.push_back(v);
+        }
+    }
+    if(debug) {
+        cout << "Found the following " << longVertices.size() <<
+            " long assembly graph edges:";
+        for(const vertex_descriptor v: longVertices) {
+            cout << " " << assemblyGraph[graph[v].ae].id;
+        }
+        cout << endl;
+    }
+
+
+
+    // Call findPath in both directions for each of the longVertices.
+    std::map< pair<vertex_descriptor, vertex_descriptor>, uint64_t> m;
+    vector<vertex_descriptor> path;
+    for(const vertex_descriptor v0: longVertices) {
+
+        // Forward.
+        findPath(graph[v0].ae, 0, path);
+        if(path.size() > 1) {
+            const vertex_descriptor v1 = path.back();
+            if(graph[v1].isLong) {
+                const auto p = make_pair(v0, v1);
+                auto it = m.find(p);
+                if(it == m.end()) {
+                    m.insert(make_pair(p, 1));
+                } else {
+                    ++(it->second);
+                }
+            }
+        }
+
+        // Backward.
+        findPath(graph[v0].ae, 1, path);
+        if(path.size() > 1) {
+            const vertex_descriptor v1 = path.front();
+            if(graph[v1].isLong) {
+                const auto p = make_pair(v1, v0);
+                auto it = m.find(p);
+                if(it == m.end()) {
+                    m.insert(make_pair(p, 1));
+                } else {
+                    ++(it->second);
+                }
+            }
+        }
+    }
+
+    // The ones that were found twice (that is, in both directions) are added
+    // to the connectedLongPairs.
+    connectedLongPairs.clear();
+    for(const auto& p: m) {
+        if(p.second == 2) {
+            const vertex_descriptor v0 = p.first.first;
+            const vertex_descriptor v1 = p.first.second;
+            connectedLongPairs.insert(make_pair(v0, v1));
+        }
+    }
+
+    if(debug) {
+        cout << "Found the following pairs of long connected AssemblyGraph edges:" << endl;
+        for(const auto& p: connectedLongPairs) {
+            const vertex_descriptor v0 = p.first;
+            const vertex_descriptor v1 = p.second;
+            cout << assemblyGraph[graph[v0].ae].id << " " <<
+                assemblyGraph[graph[v1].ae].id << endl;
+        }
+    }
+}

@@ -11,6 +11,7 @@
 
 // Standard library.
 #include <map>
+#include <set>
 
 
 
@@ -127,7 +128,10 @@ private:
     // and moves forward/backward. At each step we choose the child vertex
     // corresponding to best Jaccard similarity.
 public:
-    void findPath(AEdge, uint64_t direction) const;
-    void findForwardPath(AEdge) const;
-    void findBackwardPath(AEdge) const;
+    void findPath(AEdge, uint64_t direction, vector<vertex_descriptor>& path) const;
+    void findForwardPath(AEdge, vector<vertex_descriptor>& path) const;
+    void findBackwardPath(AEdge, vector<vertex_descriptor>& path) const;
+
+    // Find connections between long AEdges.
+    void findConnections(std::set<pair<vertex_descriptor, vertex_descriptor> >&) const;
 };
