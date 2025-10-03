@@ -180,6 +180,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         pybind11::base<AssemblyGraph>())
         .def_readonly("vertexMap", &AssemblyGraphPostprocessor::vertexMap)
         .def_readonly("edgeMap", &AssemblyGraphPostprocessor::edgeMap)
+        .def("getId", &AssemblyGraphPostprocessor::getId)
         ;
 
 
@@ -199,8 +200,6 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def(pybind11::init<const AssemblyGraph&>())
         .def("findPath", &ReadFollowing::findPath)
         ;
-
-
 
     // Class ExternalAnchors.
     class_<ExternalAnchors>(shasta2Module, "ExternalAnchors")
