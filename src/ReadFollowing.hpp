@@ -34,7 +34,11 @@ class shasta::ReadFollowingVertex {
 public:
     AssemblyGraph::edge_descriptor ae;
     uint64_t length;
-    ReadFollowingVertex(const AssemblyGraph&, AssemblyGraph::edge_descriptor);
+    bool isLong;
+    ReadFollowingVertex(
+        const AssemblyGraph&,
+        AssemblyGraph::edge_descriptor,
+        uint64_t longLengthThreshold);
 };
 
 
@@ -67,7 +71,8 @@ private:
     const double minCoverageFraction = 0.8;
     const uint64_t maxAppearanceCount = 25;
     const double minJaccard = 0.05;
-    const uint64_t minLength = 1000;
+    const uint64_t shortLengthThreshold = 1000;
+    const uint64_t longLengthThreshold = 500000;
 
     // Find appearances of OrientedReadIds in the initial/final
     // representative regions of each edge.

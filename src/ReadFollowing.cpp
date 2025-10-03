@@ -215,7 +215,12 @@ void ReadFollowing::writeGraph() const
             vertex.length << "\\n" <<
             getInitialAppearancesCount(ae) << "/" <<
             getFinalAppearancesCount(ae) <<
-            "\"]"
+            "\"";
+        if(vertex.isLong) {
+            dot << " style=filled fillcolor=CornflowerBlue";
+        }
+        dot <<
+            "]"
             ";\n";
     }
 
@@ -254,7 +259,7 @@ void ReadFollowing::createGraph()
     // Create a vertex for each AssemblyGraph edge.
     BGL_FORALL_EDGES(ae, assemblyGraph, AssemblyGraph) {
         vertexMap.insert(make_pair(ae,
-            add_vertex(ReadFollowingVertex(assemblyGraph, ae), graph)));
+            add_vertex(ReadFollowingVertex(assemblyGraph, ae, longLengthThreshold), graph)));
     }
 
     // Group AssemblyGraphEdgePairs (e0, e1)
@@ -396,13 +401,13 @@ void ReadFollowing::createGraph()
                     continue;
                 }
 
-                if(graph[vertexMap[e0]].length < minLength) {
+                if(graph[vertexMap[e0]].length < shortLengthThreshold) {
                     if(debug) {
                         cout << "Discarded due to length on " << assemblyGraph[e0].id << endl;
                     }
                     continue;
                 }
-                if(graph[vertexMap[e1]].length < minLength) {
+                if(graph[vertexMap[e1]].length < shortLengthThreshold) {
                     continue;
                     if(debug) {
                         cout << "Discarded due to length on " << assemblyGraph[e1].id << endl;
@@ -480,9 +485,8 @@ void ReadFollowing::findForwardPath(AEdge ae) const
     vertex_descriptor v = it->second;
 
     // Each iteration adds one vertex to the path.
-    vector<vertex_descriptor> path;
+    vector<vertex_descriptor> path(1, v);
     while(true) {
-         path.push_back(v);
 
          // Find the best next vertex.
          vertex_descriptor vNext = null_vertex();
@@ -514,6 +518,11 @@ void ReadFollowing::findForwardPath(AEdge ae) const
          }
 
          v = vNext;
+
+         path.push_back(v);
+         if(graph[v].isLong) {
+             break;
+         }
      }
 
      cout << "Path:" << endl;
@@ -536,9 +545,8 @@ void ReadFollowing::findBackwardPath(AEdge ae) const
     vertex_descriptor v = it->second;
 
     // Each iteration adds one vertex to the path.
-    vector<vertex_descriptor> path;
+    vector<vertex_descriptor> path(1, v);
     while(true) {
-         path.push_back(v);
 
          // Find the best next vertex.
          vertex_descriptor vNext = null_vertex();
@@ -570,8 +578,13 @@ void ReadFollowing::findBackwardPath(AEdge ae) const
          }
 
          v = vNext;
+
+         path.push_back(v);
+         if(graph[v].isLong) {
+             break;
+         }
      }
-    std::ranges::reverse(path);
+     std::ranges::reverse(path);
 
      cout << "Path:" << endl;
      for(const vertex_descriptor v: path) {
@@ -674,7 +687,8 @@ void ReadFollowing::findBackwardPath(AEdge ae) const
 
 ReadFollowingVertex::ReadFollowingVertex(
     const AssemblyGraph& assemblyGraph,
-    AssemblyGraph::edge_descriptor ae) :
+    AssemblyGraph::edge_descriptor ae,
+    uint64_t longLengthThreshold) :
     ae(ae)
 {
     const AssemblyGraphEdge& edge = assemblyGraph[ae];
@@ -683,6 +697,8 @@ ReadFollowingVertex::ReadFollowingVertex(
     } else {
         length = edge.offset();
     }
+
+    isLong = (length >= longLengthThreshold);
 }
 
 
