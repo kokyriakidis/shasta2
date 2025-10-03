@@ -87,12 +87,17 @@ private:
         uint64_t length;
         EdgePairsGraphVertex(const AssemblyGraph&, AEdge ae);
     };
+    class EdgePairsGraphEdge {
+    public:
+        uint64_t coverage = invalid<uint64_t>;
+        EdgePairsGraphEdge(uint64_t coverage) : coverage(coverage) {}
+    };
     using EdgePairsGraph = boost::adjacency_list<
         boost::listS,
         boost::listS,
         boost::bidirectionalS,
         EdgePairsGraphVertex,
-        uint64_t>;
+        EdgePairsGraphEdge>;
     EdgePairsGraph edgePairsGraph;
     std::map<AEdge, EdgePairsGraph::vertex_descriptor> edgePairsVertexMap;
     void createEdgePairsGraph();

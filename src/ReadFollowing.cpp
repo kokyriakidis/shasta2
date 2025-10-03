@@ -221,7 +221,7 @@ void ReadFollowing::writeEdgePairsGraph()
         const EdgePairsGraph::vertex_descriptor v1 = target(e, edgePairsGraph);
         const AEdge ae0 = edgePairsGraph[v0].ae;
         const AEdge ae1 = edgePairsGraph[v1].ae;
-        const uint64_t coverage = edgePairsGraph[e];
+        const uint64_t coverage = edgePairsGraph[e].coverage;
 
         const double j = jaccard(e);
         SHASTA_ASSERT(j <= 1.);
@@ -549,7 +549,7 @@ double ReadFollowing::jaccard(EdgePairsGraph::edge_descriptor e) const
     const uint64_t n0 = getFinalAppearancesCount(ae0);
     const uint64_t n1 = getInitialAppearancesCount(ae1);
 
-    const uint64_t n01 = edgePairsGraph[e];
+    const uint64_t n01 = edgePairsGraph[e].coverage;
 
     const uint64_t intersectionSize = n01;
     const uint64_t unionSize = n0 + n1 - intersectionSize;
