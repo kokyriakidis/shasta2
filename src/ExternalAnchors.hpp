@@ -30,7 +30,7 @@ public:
 
     // Add an  oriented read to the last anchor.
     // Read orientation is specified via Strand,
-    // an integer whicj cna be 0 (no reverse complementing)
+    // an integer which can be 0 (no reverse complementing)
     // or 1 (reverse complemented read).
     // The position is the position in base space of the
     // first Anchor Base in the oriented read.
