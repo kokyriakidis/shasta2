@@ -8,6 +8,7 @@
 #include "deduplicate.hpp"
 #include "Detangler.hpp"
 #include "diploidBayesianPhase.hpp"
+#include "ExternalAnchors.hpp"
 #include "extractKmer128.hpp"
 #include "findConvergingVertex.hpp"
 #include "LikelihoodRatioDetangler.hpp"
@@ -191,11 +192,23 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def(init<double, double, double, uint64_t, bool, bool, bool, bool>())
         ;
 
+
+
     // Class ReadFollowing.
     class_<ReadFollowing>(shasta2Module, "ReadFollowing")
         .def(pybind11::init<const AssemblyGraph&>())
         .def("findPath", &ReadFollowing::findPath)
         ;
+
+
+
+    // Class ExternalAnchors.
+    class_<ExternalAnchors>(shasta2Module, "ExternalAnchors")
+        .def(pybind11::init<const string&>())
+        .def("beginNewAnchor", &ExternalAnchors::beginNewAnchor)
+        .def("addOrientedRead", &ExternalAnchors::addOrientedRead)
+        ;
+
 
 
     // Non-member functions exposed to Python.
