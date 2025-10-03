@@ -29,6 +29,11 @@ public:
     // Map from edge id to edge_descriptor.
     std::map<uint64_t, edge_descriptor> edgeMap;
 
+    // Python-callable function to get an id given an edge-descriptor.
+    uint64_t getId(edge_descriptor e) const
+    {
+        return (*this)[e].id;
+    }
 
 
     // Annotations of where each AnchorId is used in the current state
