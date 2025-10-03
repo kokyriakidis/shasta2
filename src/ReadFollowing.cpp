@@ -21,8 +21,8 @@ ReadFollowing::ReadFollowing(const AssemblyGraph& assemblyGraph) :
     findAppearances();
     countAppearances();
     findEdgePairs();
-    createEdgePairsGraph();
-    writeEdgePairsGraph();
+    createGraph();
+    writeGraph();
 }
 
 
@@ -197,31 +197,34 @@ void ReadFollowing::findEdgePairs()
 
 
 
-void ReadFollowing::writeEdgePairsGraph()
+void ReadFollowing::writeGraph() const
 {
+    using Graph = ReadFollowing;
+    const Graph& graph = *this;
+
     ofstream dot("ReadFollowing.dot");
     dot << "digraph EdgePairsGraph {\n";
     dot << std::fixed << std::setprecision(2);
 
-    BGL_FORALL_VERTICES(v, edgePairsGraph, EdgePairsGraph) {
-        const EdgePairsGraphVertex& edgePairsGraphVertex = edgePairsGraph[v];
-        const AEdge ae = edgePairsGraphVertex.ae;
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        const ReadFollowingVertex& vertex = graph[v];
+        const AEdge ae = vertex.ae;
         const AssemblyGraphEdge& assemblyGraphEdge = assemblyGraph[ae];
         dot << assemblyGraphEdge.id <<
             " [label=\"" << assemblyGraphEdge.id << "\\n" <<
-            edgePairsGraphVertex.length << "\\n" <<
+            vertex.length << "\\n" <<
             getInitialAppearancesCount(ae) << "/" <<
             getFinalAppearancesCount(ae) <<
             "\"]"
             ";\n";
     }
 
-    BGL_FORALL_EDGES(e, edgePairsGraph, EdgePairsGraph) {
-        const EdgePairsGraph::vertex_descriptor v0 = source(e, edgePairsGraph);
-        const EdgePairsGraph::vertex_descriptor v1 = target(e, edgePairsGraph);
-        const AEdge ae0 = edgePairsGraph[v0].ae;
-        const AEdge ae1 = edgePairsGraph[v1].ae;
-        const uint64_t coverage = edgePairsGraph[e].coverage;
+    BGL_FORALL_EDGES(e, graph, Graph) {
+        const vertex_descriptor v0 = source(e, graph);
+        const vertex_descriptor v1 = target(e, graph);
+        const AEdge ae0 = graph[v0].ae;
+        const AEdge ae1 = graph[v1].ae;
+        const uint64_t coverage = graph[e].coverage;
 
         const double j = jaccard(e);
         SHASTA_ASSERT(j <= 1.);
@@ -242,13 +245,15 @@ void ReadFollowing::writeEdgePairsGraph()
 
 
 
-void ReadFollowing::createEdgePairsGraph()
+void ReadFollowing::createGraph()
 {
+    using Graph = ReadFollowing;
+    Graph& graph = *this;
 
     // Create a vertex for each AssemblyGraph edge.
     BGL_FORALL_EDGES(ae, assemblyGraph, AssemblyGraph) {
-        edgePairsVertexMap.insert(make_pair(ae,
-            add_vertex(EdgePairsGraphVertex(assemblyGraph, ae), edgePairsGraph)));
+        vertexMap.insert(make_pair(ae,
+            add_vertex(ReadFollowingVertex(assemblyGraph, ae), graph)));
     }
 
     // Group AssemblyGraphEdgePairs (e0, e1)
@@ -367,10 +372,10 @@ void ReadFollowing::createEdgePairsGraph()
                 const AEdge e0 = in[i0];
                 const AEdge e1 = out[i1];
 
-                if(edgePairsGraph[edgePairsVertexMap[e0]].length < minLength) {
+                if(graph[vertexMap[e0]].length < minLength) {
                     continue;
                 }
-                if(edgePairsGraph[edgePairsVertexMap[e1]].length < minLength) {
+                if(graph[vertexMap[e1]].length < minLength) {
                     continue;
                 }
 
@@ -391,7 +396,7 @@ void ReadFollowing::createEdgePairsGraph()
                     continue;
                 }
 
-                add_edge(edgePairsVertexMap[e0], edgePairsVertexMap[e1], coverage, edgePairsGraph);
+                add_edge(vertexMap[e0], vertexMap[e1], coverage, graph);
             }
         }
     }
@@ -399,7 +404,7 @@ void ReadFollowing::createEdgePairsGraph()
 
 
 
-// In the EdgePairsGraph, find a path that starts at a given AEdge
+// In the graph, find a path that starts at a given AEdge
 // and moves forward/backward. At each step we choose the child vertex
 // corresponding to the longest AEdge.
 void ReadFollowing::findPath(AEdge ae, uint64_t direction) const
@@ -417,20 +422,23 @@ void ReadFollowing::findPath(AEdge ae, uint64_t direction) const
 
 void ReadFollowing::findForwardPath(AEdge ae) const
 {
-    const auto it = edgePairsVertexMap.find(ae);
-    SHASTA_ASSERT(it != edgePairsVertexMap.end());
-    EdgePairsGraph::vertex_descriptor v = it->second;
+    using Graph = ReadFollowing;
+    const Graph& graph = *this;
+
+    const auto it = vertexMap.find(ae);
+    SHASTA_ASSERT(it != vertexMap.end());
+    vertex_descriptor v = it->second;
 
     vector<AEdge> path;
     while(true) {
-        path.push_back(edgePairsGraph[v].ae);
+        path.push_back(graph[v].ae);
 
-        EdgePairsGraph::vertex_descriptor vNext = EdgePairsGraph::null_vertex();
+        vertex_descriptor vNext = null_vertex();
         // uint64_t bestLength = 0;
         double bestJaccard = 0.;
-        BGL_FORALL_OUTEDGES(v, e, edgePairsGraph, EdgePairsGraph) {
-            EdgePairsGraph::vertex_descriptor v1 = target(e, edgePairsGraph);
-            // const uint64_t length = edgePairsGraph[v1].length;
+        BGL_FORALL_OUTEDGES(v, e, graph, Graph) {
+            vertex_descriptor v1 = target(e, graph);
+            // const uint64_t length = graph[v1].length;
             const double j = jaccard(e);
             if(j > bestJaccard /*length > bestLength */) {
                 vNext = v1;
@@ -439,7 +447,7 @@ void ReadFollowing::findForwardPath(AEdge ae) const
             }
         }
 
-        if(vNext == EdgePairsGraph::null_vertex()) {
+        if(vNext == null_vertex()) {
             break;
         }
 
@@ -457,20 +465,23 @@ void ReadFollowing::findForwardPath(AEdge ae) const
 
 void ReadFollowing::findBackwardPath(AEdge ae) const
 {
-    const auto it = edgePairsVertexMap.find(ae);
-    SHASTA_ASSERT(it != edgePairsVertexMap.end());
-    EdgePairsGraph::vertex_descriptor v = it->second;
+    using Graph = ReadFollowing;
+    const Graph& graph = *this;
+
+    const auto it = vertexMap.find(ae);
+    SHASTA_ASSERT(it != vertexMap.end());
+    vertex_descriptor v = it->second;
 
     vector<AEdge> path;
     while(true) {
-        path.push_back(edgePairsGraph[v].ae);
+        path.push_back(graph[v].ae);
 
-        EdgePairsGraph::vertex_descriptor vNext = EdgePairsGraph::null_vertex();
+        vertex_descriptor vNext = null_vertex();
         // uint64_t bestLength = 0;
         double bestJaccard = 0.;
-        BGL_FORALL_INEDGES(v, e, edgePairsGraph, EdgePairsGraph) {
-            EdgePairsGraph::vertex_descriptor v1 = source(e, edgePairsGraph);
-            // const uint64_t length = edgePairsGraph[v1].length;
+        BGL_FORALL_INEDGES(v, e, graph, Graph) {
+            vertex_descriptor v1 = source(e, graph);
+            // const uint64_t length = graph[v1].length;
             const double j = jaccard(e);
             if(j > bestJaccard /*length > bestLength */) {
                 vNext = v1;
@@ -479,7 +490,7 @@ void ReadFollowing::findBackwardPath(AEdge ae) const
             }
         }
 
-        if(vNext == EdgePairsGraph::null_vertex()) {
+        if(vNext == null_vertex()) {
             break;
         }
 
@@ -496,9 +507,9 @@ void ReadFollowing::findBackwardPath(AEdge ae) const
 
 
 
-ReadFollowing::EdgePairsGraphVertex::EdgePairsGraphVertex(
+ReadFollowingVertex::ReadFollowingVertex(
     const AssemblyGraph& assemblyGraph,
-    AEdge ae) :
+    AssemblyGraph::edge_descriptor ae) :
     ae(ae)
 {
     const AssemblyGraphEdge& edge = assemblyGraph[ae];
@@ -511,7 +522,7 @@ ReadFollowing::EdgePairsGraphVertex::EdgePairsGraphVertex(
 
 
 
-uint64_t ReadFollowing::getInitialAppearancesCount(AEdge ae) const
+uint64_t ReadFollowing::getInitialAppearancesCount(AssemblyGraph::edge_descriptor ae) const
 {
     const auto it = initialAppearancesCount.find(ae);
     if(it == initialAppearancesCount.end()) {
@@ -538,18 +549,21 @@ uint64_t ReadFollowing::getFinalAppearancesCount(AEdge ae) const
 // Jaccard similarity for an EdgePairsGraph.
 // Computed using the finalAppearancesCount of the surce vertex
 // and the initialAppearancesCount of the target vertex.
-double ReadFollowing::jaccard(EdgePairsGraph::edge_descriptor e) const
+double ReadFollowing::jaccard(edge_descriptor e) const
 {
-    const EdgePairsGraph::vertex_descriptor v0 = source(e, edgePairsGraph);
-    const EdgePairsGraph::vertex_descriptor v1 = target(e, edgePairsGraph);
+    using Graph = ReadFollowing;
+    const Graph& graph = *this;
 
-    const AEdge ae0 = edgePairsGraph[v0].ae;
-    const AEdge ae1 = edgePairsGraph[v1].ae;
+    const vertex_descriptor v0 = source(e, graph);
+    const vertex_descriptor v1 = target(e, graph);
+
+    const AEdge ae0 = graph[v0].ae;
+    const AEdge ae1 = graph[v1].ae;
 
     const uint64_t n0 = getFinalAppearancesCount(ae0);
     const uint64_t n1 = getInitialAppearancesCount(ae1);
 
-    const uint64_t n01 = edgePairsGraph[e].coverage;
+    const uint64_t n01 = graph[e].coverage;
 
     const uint64_t intersectionSize = n01;
     const uint64_t unionSize = n0 + n1 - intersectionSize;

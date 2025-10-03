@@ -15,15 +15,45 @@
 
 
 namespace shasta {
+
     class ReadFollowing;
+    class ReadFollowingVertex;
+    class ReadFollowingEdge;
+
+    using ReadFollowingBaseClass = boost::adjacency_list<
+        boost::listS,
+        boost::listS,
+        boost::bidirectionalS,
+        ReadFollowingVertex,
+        ReadFollowingEdge>;
 }
 
-class shasta::ReadFollowing {
+
+
+class shasta::ReadFollowingVertex {
+public:
+    AssemblyGraph::edge_descriptor ae;
+    uint64_t length;
+    ReadFollowingVertex(const AssemblyGraph&, AssemblyGraph::edge_descriptor);
+};
+
+
+
+class shasta::ReadFollowingEdge {
+public:
+    uint64_t coverage = invalid<uint64_t>;
+    ReadFollowingEdge(uint64_t coverage) : coverage(coverage) {}
+};
+
+
+
+class shasta::ReadFollowing : public ReadFollowingBaseClass {
 public:
     ReadFollowing(const AssemblyGraph&);
 
 private:
     const AssemblyGraph& assemblyGraph;
+
     using AVertex = AssemblyGraph::vertex_descriptor;
     using AEdge = AssemblyGraph::edge_descriptor;
     using AssemblyGraphVertexPair = pair<AVertex, AVertex>;
@@ -38,7 +68,6 @@ private:
     const uint64_t maxAppearanceCount = 25;
     const double minJaccard = 0.05;
     const uint64_t minLength = 1000;
-
 
     // Find appearances of OrientedReadIds in the initial/final
     // representative regions of each edge.
@@ -76,43 +105,22 @@ private:
     std::map<AssemblyGraphEdgePair, uint64_t> edgePairs;
     void findEdgePairs();
 
-
-
-    // Some of the edgePairs are classified as "strong" - see findStrongEdgePairs for details.
+    // Some of the edgePairs are classified as "strong" - see createGraph for details.
     // The strong edgePairs define a graph in which vertex corresponds to
     // an AssemblyGraph edge, and a directed edge is added for each strong edgePair.
-    class EdgePairsGraphVertex {
-    public:
-        AEdge ae;
-        uint64_t length;
-        EdgePairsGraphVertex(const AssemblyGraph&, AEdge ae);
-    };
-    class EdgePairsGraphEdge {
-    public:
-        uint64_t coverage = invalid<uint64_t>;
-        EdgePairsGraphEdge(uint64_t coverage) : coverage(coverage) {}
-    };
-    using EdgePairsGraph = boost::adjacency_list<
-        boost::listS,
-        boost::listS,
-        boost::bidirectionalS,
-        EdgePairsGraphVertex,
-        EdgePairsGraphEdge>;
-    EdgePairsGraph edgePairsGraph;
-    std::map<AEdge, EdgePairsGraph::vertex_descriptor> edgePairsVertexMap;
-    void createEdgePairsGraph();
-    void writeEdgePairsGraph();
+    std::map<AEdge, vertex_descriptor> vertexMap;
+    void createGraph();
+    void writeGraph() const;
 
     // Jaccard similarity for an EdgePairsGraph edge.
     // Computed using the finalAppearancesCount of the source vertex
     // and the initialAppearancesCount of the target vertex.
     double jaccard(AEdge, AEdge, uint64_t coverage) const;
-    double jaccard(EdgePairsGraph::edge_descriptor) const;
+    double jaccard(edge_descriptor) const;
 
-
-    // In the EdgePairsGraph, find a path that starts at a given AEdge
+    // In the graph, find a path that starts at a given AEdge
     // and moves forward/backward. At each step we choose the child vertex
-    // corresponding to the longest AEdge.
+    // corresponding to best Jaccard similarity.
 public:
     void findPath(AEdge, uint64_t direction) const;
     void findForwardPath(AEdge) const;
