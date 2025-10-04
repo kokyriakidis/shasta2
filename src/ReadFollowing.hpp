@@ -118,6 +118,12 @@ private:
     void createGraph();
     void writeGraph() const;
 
+    uint64_t id(vertex_descriptor v) const
+    {
+        const AEdge ae = (*this)[v].ae;
+        return assemblyGraph[ae].id;
+    }
+
     // Jaccard similarity for an EdgePairsGraph edge.
     // Computed using the finalAppearancesCount of the source vertex
     // and the initialAppearancesCount of the target vertex.
@@ -132,6 +138,7 @@ public:
     void findForwardPath(AEdge, vector<vertex_descriptor>& path) const;
     void findBackwardPath(AEdge, vector<vertex_descriptor>& path) const;
 
-    // Find connections between long AEdges.
-    void findConnections(std::set<pair<vertex_descriptor, vertex_descriptor> >&) const;
+    // Find assembly paths.
+    void findAssemblyPaths();
+    vector< vector<AEdge> > assemblyPaths;
 };

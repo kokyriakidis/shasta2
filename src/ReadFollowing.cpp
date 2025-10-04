@@ -3,10 +3,13 @@
 // Shasta.
 #include "ReadFollowing.hpp"
 #include "deduplicate.hpp"
+#include "findReachableVertices.hpp"
+#include "longestPath.hpp"
 #include "Journeys.hpp"
 using namespace shasta;
 
 // Boost libraries.
+#include <boost/graph/filtered_graph.hpp>
 #include <boost/graph/iteration_macros.hpp>
 
 // Standard library.
@@ -23,9 +26,7 @@ ReadFollowing::ReadFollowing(const AssemblyGraph& assemblyGraph) :
     findEdgePairs();
     createGraph();
     writeGraph();
-
-    std::set< pair<vertex_descriptor, vertex_descriptor> > connectedLongPairs;
-    findConnections(connectedLongPairs);
+    findAssemblyPaths();
 }
 
 
@@ -529,11 +530,13 @@ void ReadFollowing::findForwardPath(AEdge ae, vector<vertex_descriptor>& path) c
          }
      }
 
+    /*
      cout << "Path:" << endl;
      for(const vertex_descriptor v: path) {
          cout << assemblyGraph[graph[v].ae].id << ",";
      }
      cout << endl;
+     */
 }
 
 
@@ -591,11 +594,13 @@ void ReadFollowing::findBackwardPath(AEdge ae, vector<vertex_descriptor>& path) 
      }
      std::ranges::reverse(path);
 
+     /*
      cout << "Path:" << endl;
      for(const vertex_descriptor v: path) {
          cout << assemblyGraph[graph[v].ae].id << ",";
      }
      cout << endl;
+     */
 }
 
 
@@ -776,7 +781,7 @@ double ReadFollowing::jaccard(AEdge ae0, AEdge ae1, uint64_t coverage) const
 
 
 
-void ReadFollowing::findConnections(std::set<pair<vertex_descriptor, vertex_descriptor> >& connectedLongPairs) const
+void ReadFollowing::findAssemblyPaths()
 {
     using Graph = ReadFollowing;
     const Graph& graph = *this;
@@ -801,7 +806,9 @@ void ReadFollowing::findConnections(std::set<pair<vertex_descriptor, vertex_desc
 
 
     // Call findPath in both directions for each of the longVertices.
-    std::map< pair<vertex_descriptor, vertex_descriptor>, uint64_t> m;
+    // Store all paths found, keyed by the first and last vertex.
+    using Path = vector<vertex_descriptor>;
+    std::map< pair<vertex_descriptor, vertex_descriptor>, vector<Path> > pathTable;
     vector<vertex_descriptor> path;
     for(const vertex_descriptor v0: longVertices) {
 
@@ -810,13 +817,7 @@ void ReadFollowing::findConnections(std::set<pair<vertex_descriptor, vertex_desc
         if(path.size() > 1) {
             const vertex_descriptor v1 = path.back();
             if(graph[v1].isLong) {
-                const auto p = make_pair(v0, v1);
-                auto it = m.find(p);
-                if(it == m.end()) {
-                    m.insert(make_pair(p, 1));
-                } else {
-                    ++(it->second);
-                }
+                pathTable[make_pair(v0, v1)].push_back(path);
             }
         }
 
@@ -825,35 +826,125 @@ void ReadFollowing::findConnections(std::set<pair<vertex_descriptor, vertex_desc
         if(path.size() > 1) {
             const vertex_descriptor v1 = path.front();
             if(graph[v1].isLong) {
-                const auto p = make_pair(v1, v0);
-                auto it = m.find(p);
-                if(it == m.end()) {
-                    m.insert(make_pair(p, 1));
-                } else {
-                    ++(it->second);
-                }
+                pathTable[make_pair(v1, v0)].push_back(path);
             }
         }
     }
 
-    // The ones that were found twice (that is, in both directions) are added
-    // to the connectedLongPairs.
-    connectedLongPairs.clear();
-    for(const auto& p: m) {
-        if(p.second == 2) {
-            const vertex_descriptor v0 = p.first.first;
-            const vertex_descriptor v1 = p.first.second;
-            connectedLongPairs.insert(make_pair(v0, v1));
-        }
-    }
 
-    if(debug) {
-        cout << "Found the following pairs of long connected AssemblyGraph edges:" << endl;
-        for(const auto& p: connectedLongPairs) {
-            const vertex_descriptor v0 = p.first;
-            const vertex_descriptor v1 = p.second;
-            cout << assemblyGraph[graph[v0].ae].id << " " <<
-                assemblyGraph[graph[v1].ae].id << endl;
+
+    // The ones that were found twice (that is, in both directions) will
+    // be used to create assembly paths.
+    assemblyPaths.clear();
+    uint64_t debugOutputIndex = 0;
+    for(const auto& p: pathTable) {
+        const vertex_descriptor v0 = p.first.first;
+        const vertex_descriptor v1 = p.first.second;
+        const vector<Path>& paths = p.second;
+        if(debug) {
+            cout << "Found " << paths.size() << " paths between " << id(v0) << " and " << id(v1) << endl;
         }
+
+        if(paths.size() != 2) {
+            continue;
+        }
+
+        if(debug) {
+            cout << "Looking for an optimal path between " << id(v0) << " and " << id(v1) << endl;
+            for(const Path& path: paths) {
+                cout << "One-directional path of length " << path.size() << endl;
+                for(const vertex_descriptor v: path) {
+                    cout << id(v) << ",";
+                }
+                cout << endl;
+            }
+        }
+
+
+
+        // Create a filtered graph containing only the vertices found in these two paths.
+        class Filter {
+        public:
+            bool operator()(const vertex_descriptor& v) const
+            {
+                return vertices.contains(v);
+            }
+            bool operator()(const edge_descriptor& e) const
+            {
+                const vertex_descriptor v0 = source(e, *graph);
+                const vertex_descriptor v1 = target(e, *graph);
+                return vertices.contains(v0) and vertices.contains(v1);
+            }
+            Filter(const Graph* graph = 0) : graph(graph) {}
+            const Graph* graph;
+            std::set<vertex_descriptor> vertices;
+        };
+        Filter filter(&graph);
+        for(const Path& path: paths) {
+            for(const vertex_descriptor v: path) {
+                filter.vertices.insert(v);
+            }
+        }
+        if(debug) {
+            cout << "Using " << filter.vertices.size() <<
+                " vertices to compute an optimal path." << endl;
+        }
+        using FilteredGraph = boost::filtered_graph<Graph, Filter>;
+        FilteredGraph filteredGraph(graph, filter);
+
+        if(debug) {
+            ofstream dot("ReadFollowing-FilteredGraph-" + to_string(debugOutputIndex) + ".dot");
+            dot << "digraph FilteredGraph {\n";
+            BGL_FORALL_EDGES(e, filteredGraph, FilteredGraph) {
+                const vertex_descriptor v0 = source(e, filteredGraph);
+                const vertex_descriptor v1 = target(e, filteredGraph);
+                dot << id(v0) << "->" << id(v1) << ";\n";
+            }
+            dot << "}\n";
+        }
+
+        // Find the longest path in this filtered graph.
+        vector<edge_descriptor> edgePath;
+        longestPath(filteredGraph, edgePath);
+        vector<vertex_descriptor> optimalPath;
+        optimalPath.push_back(source(edgePath.front(), graph));
+        for(const edge_descriptor e: edgePath) {
+            optimalPath.push_back(target(e, graph));
+        }
+
+        // Turn it into a sequence of AEdges and store it.
+        assemblyPaths.emplace_back();
+        auto& assemblyPath = assemblyPaths.back();
+        for(const vertex_descriptor v: optimalPath) {
+            assemblyPath.push_back(graph[v].ae);
+        }
+
+        if(debug) {
+            cout << "The assembly path has " << edgePath.size() + 1 << " vertices:" << endl;
+            for(const AEdge ae: assemblyPath) {
+                cout << assemblyGraph[ae].id << ",";
+            }
+            cout << endl;
+
+            // Also write a fasta file numbering edges along this path.
+            ofstream fasta("ReadFollowing-OptimalPath-" + to_string(debugOutputIndex) + ".fasta");
+            for(uint64_t i=0; i<assemblyPath.size(); i++) {
+                const AEdge ae = assemblyPath[i];
+                const AssemblyGraphEdge& aEdge = assemblyGraph[ae];
+                vector<shasta::Base> sequence;
+                aEdge.getSequence(sequence);
+                fasta << ">" << i << " " << assemblyGraph[ae].id << " " << sequence.size() << endl;
+                std::ranges::copy(sequence, ostream_iterator<shasta::Base>(fasta));
+                fasta << endl;
+            }
+
+        }
+
+
+        ++debugOutputIndex;
     }
 }
+
+
+
+
