@@ -36,6 +36,7 @@ namespace shasta {
 
     class AnchorGraph;
     class Anchors;
+    class Assembler;
     class Options;
     class Detangler;
     class Superbubble;
@@ -160,6 +161,16 @@ public:
         const Journeys&,
         const Options&,
         const string& stage);
+
+    // Constructor from another AssemblyGraph and assembly paths
+    // like the ones computed by ReadFollowing.
+    // (Those are not actually paths in the AssemblyGraph but simply
+    // sequences of edges).
+    AssemblyGraph(
+        const Assembler&,
+        const Options&,
+        const AssemblyGraph&,
+        const vector< vector<edge_descriptor> >&);
 
     // Detangle, phase, assemble sequence, output.
     void simplifyAndAssemble();
@@ -481,6 +492,9 @@ private:
     // Assemble sequence for all edges.
 public:
     void assembleAll();
+
+    // Clear sequence from all steps of all edges.
+    void clearSequence();
 private:
 
     // Assemble sequence for the specified edge.
@@ -499,8 +513,6 @@ private:
     vector<edge_descriptor> edgesToBeAssembled;
     vector< pair<edge_descriptor, uint64_t> > stepsToBeAssembled;
 
-    // Clear sequence from all steps of all edges.
-    void clearSequence();
 
 
 

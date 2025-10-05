@@ -142,6 +142,12 @@ PYBIND11_MODULE(shasta2, shasta2Module)
 
     class_<AssemblyGraph> assemblyGraphClass(shasta2Module, "AssemblyGraph");
     assemblyGraphClass
+        .def(pybind11::init<
+            const Assembler&,
+            const Options&,
+            const AssemblyGraph&,
+            const vector< vector<AssemblyGraph::edge_descriptor> >&
+            >())
         .def_readwrite("compressDebugLevel", &AssemblyGraph::compressDebugLevel)
         .def("prune", &AssemblyGraph::prune)
         .def("bubbleCleanupIteration", &AssemblyGraph::bubbleCleanupIteration)
@@ -156,6 +162,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def("compress", &AssemblyGraph::compress)
         .def("removeEmptyEdges", &AssemblyGraph::removeEmptyEdges)
         .def("assembleAll", &AssemblyGraph::assembleAll)
+        .def("clearSequence", &AssemblyGraph::clearSequence)
         .def("phaseSuperbubbleChains", &AssemblyGraph::phaseSuperbubbleChains)
         .def("simplifySuperbubbles", &AssemblyGraph::simplifySuperbubbles)
         .def("colorStrongComponents", &AssemblyGraph::colorStrongComponents)
@@ -198,6 +205,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
     // Class ReadFollowing.
     class_<ReadFollowing>(shasta2Module, "ReadFollowing")
         .def(pybind11::init<const AssemblyGraph&>())
+        .def_readonly("assemblyPaths", &ReadFollowing::assemblyPaths)
         .def("findPath", &ReadFollowing::findPath)
         ;
 
