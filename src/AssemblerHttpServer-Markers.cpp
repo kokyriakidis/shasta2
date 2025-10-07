@@ -417,12 +417,22 @@ void Assembler::exploreMarkerKmerAnalysis(const vector<string>& request, ostream
     vector<uint64_t> count;
     deduplicateAndCount(kmers, count);
 
+    // Locate our start k-mer in the table.
+    const auto it = lower_bound(kmers.begin(), kmers.end(), kmer);
+    SHASTA_ASSERT(it != kmers.end());
+    SHASTA_ASSERT(*it == kmer);
+    const uint64_t iStart = it - kmers.begin();
+
     html <<
         "<br>Found " << kmers.size() << " distinct k-mers."
         "<br><table><tr><th>Id<th>Number of<br>occurrences<th>K-mer";
     for(uint64_t i=0; i<kmers.size(); i++) {
+        html << "<tr";
+        if(i == iStart) {
+             html << " style='background-color:Pink'";
+        }
         html <<
-            "<tr><td class=centered>" << i <<
+            "><td class=centered>" << i <<
             "<td class=centered>" << count[i] <<
             "<td class=centered style='font-family:monospace'>";
         kmers[i].write(html, assemblerInfo->k);
@@ -520,14 +530,20 @@ void Assembler::exploreMarkerKmerAnalysis(const vector<string>& request, ostream
     ofstream dot(dotFileName);
     dot << "digraph KmerGraph {\n";
     BGL_FORALL_VERTICES(v, graph, Graph) {
-        dot << v << " [label=\"" << v << "\\n" << graph[v] << "\"];\n";
+        dot << v;
+        dot << " [";
+        dot << "label=\"" << v << "\\n" << graph[v] << "\"";
+        if(v == iStart) {
+            dot << " style=filled fillcolor=Pink";
+        }
+        dot << "];\n";
     }
     BGL_FORALL_EDGES(e, graph, Graph) {
         const Graph::vertex_descriptor v0 = source(e, graph);
         const Graph::vertex_descriptor v1 = target(e, graph);
         dot << v0 << "->" << v1 <<
             " [label=\"" << graph[e] << "\""
-            " penwidth=" << std::setprecision(2) << 0.5 * double(graph[e]) <<
+            " penwidth=" << std::setprecision(2) << 0.2 * double(graph[e]) <<
             "];\n";
     }
     dot << "}\n";
