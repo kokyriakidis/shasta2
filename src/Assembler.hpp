@@ -278,6 +278,7 @@ public:
     void exploreMarkerKmerAnalysisWithMarkerOffset(const vector<string>&, ostream&);
     void exploreMarkerKmerAnalysisWithBaseOffset(const vector<string>&, ostream&);
     void exploreMarkerKmerPair(const vector<string>&, ostream&);
+    void exploreLocalKmerGraph(const vector<string>&, ostream&);
     static void addScaleSvgButtons(ostream&, uint64_t sizePixels);
 
     class HttpServerData {

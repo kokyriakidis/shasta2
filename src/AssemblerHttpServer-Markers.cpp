@@ -19,6 +19,7 @@ using namespace shasta;
 
 // Standard library.
 #include <fstream.hpp>
+#include <queue>
 
 
 
@@ -822,6 +823,262 @@ void Assembler::exploreMarkerKmerAnalysisWithBaseOffset(const vector<string>& re
     html << "<p>";
     graphvizToHtml(dotFileName, "dot", timeout, options, html);
 
+}
+
+
+
+void Assembler::exploreLocalKmerGraph(const vector<string>& request, ostream& html)
+{
+    SHASTA_ASSERT(markerKmers and markerKmers->isOpen());
+
+    const uint64_t k = assemblerInfo->k;
+
+    html << "<h2>Local k-mer graph</h2>";
+
+    // Get the request parameters.
+    string kmerString;
+    getParameterValue(request, "kmer", kmerString);
+    boost::trim(kmerString);
+
+    uint64_t distance = 10;
+    getParameterValue(request, "distance", distance);
+
+    uint64_t minVertexCoverage = 2;
+    getParameterValue(request, "minVertexCoverage", minVertexCoverage);
+
+    uint64_t minEdgeCoverage = 2;
+    getParameterValue(request, "minEdgeCoverage", minEdgeCoverage);
+
+
+
+    // Write the form.
+    html <<
+        "<p><form><table>"
+
+        "<tr><th class=left>K-mer"
+        "<td><input type=text name=kmer style='font-family:monospace' "
+        "size=" << k << " "
+        "value='" << kmerString << "'" <<
+        " title='Enter a " << k << "-base k-mer.'>"
+
+        "<tr><th class=left>Distance"
+        "<td class=centered><input type=text name=distance size=6 value=" << distance << " style='text-align:center'>"
+
+        "<tr><th class=left>Minimum vertex coverage"
+        "<td class=centered><input type=text name=minVertexCoverage size=6 value=" << minVertexCoverage << " style='text-align:center'>"
+
+        "<tr><th class=left>Minimum edge coverage"
+        "<td class=centered><input type=text name=minEdgeCoverage size=6 value=" << minEdgeCoverage << " style='text-align:center'>"
+
+        "</table><br><input type=submit value='Get k-mer information'></form>";
+
+
+
+    // If the k-mer string is empty, do nothing.
+    if(kmerString.empty()) {
+        return;
+    }
+
+    // Check the length.
+    if(kmerString.size() != k) {
+        html << "This k-mer is " << kmerString.size() << " bases long. "
+            "This assembly uses " << k << "-base markers. "
+            "Specify a " << k << "-mer." << endl;
+        return;
+    }
+
+    // Construct the k-mer.
+    Kmer kmerA;
+    for(uint64_t i=0; i<kmerString.size(); i++) {
+        const char c = kmerString[i];
+        const Base b = Base::fromCharacterNoException(c);
+        if(not b.isValid()) {
+            throw runtime_error("Invalid base character " + string(1, c) + " at k-mer position " + to_string(i));
+        }
+        kmerA.set(i, b);
+    }
+
+    // Check if it is a marker.
+    SHASTA_ASSERT(kmerChecker);
+    if(not kmerChecker->isMarker(kmerA)) {
+        throw runtime_error("This assembly does not use this as a marker.");
+    }
+
+
+
+    // Summary table.
+    const uint64_t coverage = markerKmers->getFrequency(kmerA);
+    const Kmer kmerARc = kmerA.reverseComplement(k);
+    html <<
+        "<br><table><tr><th class=left>K-mer<td class=centered style='font-family:monospace'>";
+    kmerA.write(html, k);
+    html <<
+        "<tr><th class=left>Reverse complement K-mer<td class=centered style='font-family:monospace'>";
+    kmerARc.write(html, k);
+    html << "<tr><th class=left>Coverage<td class=centered>" << coverage <<
+        "</table>";
+
+
+
+    // The local k-mer graph.
+    class Vertex {
+    public:
+        uint64_t id;
+        Kmer kmer;
+        uint64_t coverage;
+        uint64_t distance;
+        Vertex(
+            uint64_t id,
+            Kmer kmer,
+            uint64_t coverage,
+            uint64_t distance) :
+            id(id), kmer(kmer), coverage(coverage), distance(distance)
+            {}
+    };
+    class Edge {
+    public:
+        uint64_t coverage;
+        Edge(uint64_t coverage) : coverage(coverage) {}
+    };
+    using Graph = boost::adjacency_list<
+        boost::listS,
+        boost::listS,
+        boost::bidirectionalS,
+        Vertex,
+        Edge>;
+    using vertex_descriptor = Graph::vertex_descriptor;
+    // using edge_descriptor = Graph::edge_descriptor;
+    Graph graph;
+
+
+
+    // Construct graph vertices (the k-mers).
+    uint64_t nextVertexId = 0;
+    std::map<Kmer, vertex_descriptor> vertexMap;
+    std::queue<vertex_descriptor> q;
+    const vertex_descriptor vA = add_vertex(Vertex(nextVertexId++, kmerA, coverage, 0), graph);
+    vertexMap.insert(make_pair(kmerA, vA));
+    q.push(vA);
+    vector<pair<Kmer, uint64_t> > nextKmers;
+    while(not q.empty()) {
+        const vertex_descriptor v0 = q.front();
+        q.pop();
+        const Vertex& vertex0 = graph[v0];
+        const Kmer& kmer0 = vertex0.kmer;
+        const uint64_t distance0 = vertex0.distance;
+        const uint64_t distance1 = distance0 + 1;
+
+        markerKmers->getNext(kmer0, nextKmers);
+        for(const auto& p: nextKmers) {
+            if(p.second < minEdgeCoverage) {
+                continue;
+            }
+            const Kmer& kmer1 = p.first;
+
+            const uint64_t coverage1 = markerKmers->getFrequency(kmer1);
+            if(coverage1 >= minVertexCoverage) {
+                auto it1 = vertexMap.find(kmer1);
+                if(it1 == vertexMap.end()) {
+                    const vertex_descriptor v1 = add_vertex(Vertex(nextVertexId++, kmer1, coverage1, distance1), graph);
+                    vertexMap.insert(make_pair(kmer1, v1));
+                    if(distance1 < distance) {
+                        q.push(v1);
+                    }
+                }
+            }
+        }
+
+        markerKmers->getPrevious(kmer0, nextKmers);
+        for(const auto& p: nextKmers) {
+            if(p.second < minEdgeCoverage) {
+                continue;
+            }
+            const Kmer& kmer1 = p.first;
+
+            const uint64_t coverage1 = markerKmers->getFrequency(kmer1);
+            if(coverage1 >= minVertexCoverage) {
+                auto it1 = vertexMap.find(kmer1);
+                if(it1 == vertexMap.end()) {
+                    const vertex_descriptor v1 = add_vertex(Vertex(nextVertexId++, kmer1, coverage1, distance1), graph);
+                    vertexMap.insert(make_pair(kmer1, v1));
+                    if(distance1 < distance) {
+                        q.push(v1);
+                    }
+                }
+            }
+        }
+    }
+
+
+
+    // Now add edges.
+    BGL_FORALL_VERTICES(v0, graph, Graph) {
+        const Kmer& kmer0 = graph[v0].kmer;
+        markerKmers->getNext(kmer0, nextKmers);
+        for(const auto& p: nextKmers) {
+            const Kmer& kmer1 = p.first;
+            const uint64_t coverage1 = p.second;
+            if(coverage1 >= minEdgeCoverage) {
+                const auto it1 = vertexMap.find(kmer1);
+                if(it1 != vertexMap.end()) {
+                    const vertex_descriptor v1 = it1->second;
+                    add_edge(v0, v1, Edge(coverage1), graph);
+                }
+            }
+        }
+    }
+    html << "<br>The local k-mer graph has " << num_vertices(graph) <<
+        " vertices and " << num_edges(graph) << " edges.";
+
+
+
+    // Write it in graphviz format.
+    const string uuid = to_string(boost::uuids::random_generator()());
+    const string dotFileName = tmpDirectory() + uuid + ".dot";
+    ofstream dot(dotFileName);
+    dot << "digraph KmerGraph {\n";
+    dot << "node [fontname = \"Courier New\" fontsize=10]\n";
+
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        const Vertex& vertex = graph[v];
+        dot << vertex.id;
+        dot << " [";
+
+        dot << "label=\"" << /* vertex.id << "\\n" << */ graph[v].coverage;
+        for(uint64_t i=0; i<k; i++) {
+            if((i % 20) == 0) {
+                dot << "\\n";
+            }
+            dot << vertex.kmer[i];
+        }
+        dot << "\"";
+
+        if(v == vA) {
+            dot << " style=filled fillcolor=Pink";
+        }
+        dot << " tooltip=\"";
+        graph[v].kmer.write(dot, k);
+        dot << "\"";
+        dot << "];\n";
+    }
+
+    BGL_FORALL_EDGES(e, graph, Graph) {
+        const Graph::vertex_descriptor v0 = source(e, graph);
+        const Graph::vertex_descriptor v1 = target(e, graph);
+        const uint64_t coverage = graph[e].coverage;
+        dot << graph[v0].id << "->" << graph[v1].id <<
+            " [label=\"" << coverage << "\""
+            " penwidth=" << std::setprecision(2) << 0.2 * double(coverage) <<
+            "];\n";
+    }
+    dot << "}\n";
+    dot.close();
+
+    // Display it in html in svg format.
+    const double timeout = 30.;
+    const string options = "-Nshape=rectangle";
+    html << "<p>";
+    graphvizToHtml(dotFileName, "dot", timeout, options, html);
 }
 
 

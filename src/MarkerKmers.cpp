@@ -1,4 +1,5 @@
 #include "MarkerKmers.hpp"
+#include "deduplicate.hpp"
 #include "extractKmer128.hpp"
 #include "Markers.hpp"
 #include "performanceLog.hpp"
@@ -592,3 +593,66 @@ void MarkerKmers::getWithUniqueReadIds(
 
 }
 
+
+
+// Given a K-mer, find pairs(Kmer, coverage) for the K-mers that
+// immediately follow/preced it in one or more oriented reads.
+void MarkerKmers::getNext(const Kmer& kmer0, vector< pair<Kmer, uint64_t> >& v)
+{
+    vector<MarkerInfo> markerInfos;
+    get(kmer0, markerInfos);
+
+    vector<Kmer> kmers;
+    for(const MarkerInfo& markerInfo: markerInfos) {
+        const OrientedReadId orientedReadId = markerInfo.orientedReadId;
+        const auto orientedReadMarkers = markers[orientedReadId.getValue()];
+        const uint32_t ordinal0 = markerInfo.ordinal;
+        const uint32_t ordinal1 = ordinal0 + 1;
+
+        if(ordinal1 >= orientedReadMarkers.size()) {
+            continue;
+        }
+
+        const Kmer kmer1 = markers.getKmer(orientedReadId, ordinal1);
+        kmers.push_back(kmer1);
+    }
+
+    vector<uint64_t> count;
+    deduplicateAndCount(kmers, count);
+
+    v.clear();
+    for(uint64_t i=0; i<kmers.size(); i++) {
+        v.push_back(make_pair(kmers[i], count[i]));
+    }
+}
+
+
+
+void MarkerKmers::getPrevious(const Kmer& kmer0, vector< pair<Kmer, uint64_t> >& v)
+{
+    vector<MarkerInfo> markerInfos;
+    get(kmer0, markerInfos);
+
+    vector<Kmer> kmers;
+    for(const MarkerInfo& markerInfo: markerInfos) {
+        const OrientedReadId orientedReadId = markerInfo.orientedReadId;
+        const auto orientedReadMarkers = markers[orientedReadId.getValue()];
+        const uint32_t ordinal0 = markerInfo.ordinal;
+
+        if(ordinal0 ==0) {
+            continue;
+        }
+        const uint32_t ordinal1 = ordinal0 - 1;
+
+        const Kmer kmer1 = markers.getKmer(orientedReadId, ordinal1);
+        kmers.push_back(kmer1);
+    }
+
+    vector<uint64_t> count;
+    deduplicateAndCount(kmers, count);
+
+    v.clear();
+    for(uint64_t i=0; i<kmers.size(); i++) {
+        v.push_back(make_pair(kmers[i], count[i]));
+    }
+}
