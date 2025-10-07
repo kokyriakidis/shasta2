@@ -296,7 +296,7 @@ void Assembler::exploreMarkerKmer(const vector<string>& request, ostream& html)
 }
 
 
-void Assembler::exploreMarkerKmerAnalysis(const vector<string>& request, ostream& html)
+void Assembler::exploreMarkerKmerAnalysisWithMarkerOffset(const vector<string>& request, ostream& html)
 {
     SHASTA_ASSERT(markerKmers and markerKmers->isOpen());
 
@@ -325,7 +325,7 @@ void Assembler::exploreMarkerKmerAnalysis(const vector<string>& request, ostream
         " title='Enter a " << k << "-base k-mer.'>"
 
         "<tr><th class=left>Ordinal offset"
-        "<td><input type=text name=ordinalOffset size=6 value=" << ordinalOffset << ">"
+        "<td><input type=text name=ordinalOffset size=6 value=" << ordinalOffset << " style='text-align:center'>"
 
         "</table><br><input type=submit value='Get k-mer information'></form>";
 
@@ -536,6 +536,273 @@ void Assembler::exploreMarkerKmerAnalysis(const vector<string>& request, ostream
         if(v == iStart) {
             dot << " style=filled fillcolor=Pink";
         }
+        dot << "];\n";
+    }
+    BGL_FORALL_EDGES(e, graph, Graph) {
+        const Graph::vertex_descriptor v0 = source(e, graph);
+        const Graph::vertex_descriptor v1 = target(e, graph);
+        dot << v0 << "->" << v1 <<
+            " [label=\"" << graph[e] << "\""
+            " penwidth=" << std::setprecision(2) << 0.2 * double(graph[e]) <<
+            "];\n";
+    }
+    dot << "}\n";
+    dot.close();
+
+    // Display it in html in svg format.
+    const double timeout = 30.;
+    const string options = "-Nshape=rectangle";
+    html << "<p>";
+    graphvizToHtml(dotFileName, "dot", timeout, options, html);
+
+}
+
+
+
+void Assembler::exploreMarkerKmerAnalysisWithBaseOffset(const vector<string>& request, ostream& html)
+{
+    SHASTA_ASSERT(markerKmers and markerKmers->isOpen());
+
+    const uint64_t k = assemblerInfo->k;
+
+    html << "<h2>Marker k-mer</h2>";
+
+    // Get the request parameters.
+    string kmerString;
+    getParameterValue(request, "kmer", kmerString);
+    boost::trim(kmerString);
+
+    int64_t baseOffset = 1000;
+    getParameterValue(request, "baseOffset", baseOffset);
+
+
+
+    // Write the form.
+    html <<
+        "<p><form><table>"
+
+        "<tr><th class=left>K-mer"
+        "<td><input type=text name=kmer style='font-family:monospace' "
+        "size=" << k << " "
+        "value='" << kmerString << "'" <<
+        " title='Enter a " << k << "-base k-mer.'>"
+
+        "<tr><th class=left>Base offset"
+        "<td><input type=text name=baseOffset size=6 value=" << baseOffset << " style='text-align:center'>"
+
+        "</table><br><input type=submit value='Get k-mer information'></form>";
+
+
+
+    // If the k-mer string is empty, do nothing.
+    if(kmerString.empty()) {
+        return;
+    }
+
+    // Check the length.
+    if(kmerString.size() != k) {
+        html << "This k-mer is " << kmerString.size() << " bases long. "
+            "This assembly uses " << k << "-base markers. "
+            "Specify a " << k << "-mer." << endl;
+        return;
+    }
+
+    // Construct the k-mer.
+    Kmer kmer0;
+    for(uint64_t i=0; i<kmerString.size(); i++) {
+        const char c = kmerString[i];
+        const Base b = Base::fromCharacterNoException(c);
+        if(not b.isValid()) {
+            throw runtime_error("Invalid base character " + string(1, c) + " at k-mer position " + to_string(i));
+        }
+        kmer0.set(i, b);
+    }
+
+    // Check if it is a marker.
+    SHASTA_ASSERT(kmerChecker);
+    if(not kmerChecker->isMarker(kmer0)) {
+        throw runtime_error("This assembly does not use this as a marker.");
+    }
+
+
+
+    // Summary table.
+    const uint64_t coverage = markerKmers->getFrequency(kmer0);
+    const Kmer kmer0Rc = kmer0.reverseComplement(k);
+    html <<
+        "<br><table><tr><th class=left>K-mer<td class=centered style='font-family:monospace'>";
+    kmer0.write(html, k);
+    html <<
+        "<tr><th class=left>Reverse complement K-mer<td class=centered style='font-family:monospace'>";
+    kmer0Rc.write(html, k);
+    html << "<tr><th class=left>Coverage<td class=centered>" << coverage <<
+        "</table>";
+
+    // Get the MarkerInfos for this K-mer.
+    vector<MarkerInfo> markerInfos;
+    markerKmers->get(kmer0, markerInfos);
+
+
+
+    // For each of these MarkerInfos, gather k-mers by moving
+    // forward or backward by up to baseOffset bases.
+    class KmerInfo {
+    public:
+        int32_t ordinalOffset;
+        int32_t positionOffset;
+        Kmer kmer;
+        uint64_t id = invalid<uint64_t>;    // Index in the kmers vector below.
+        KmerInfo(
+            int32_t ordinalOffset,
+            int32_t positionOffset,
+            const Kmer& kmer) :
+            ordinalOffset(ordinalOffset),
+            positionOffset(positionOffset),
+            kmer(kmer)
+            {}
+    };
+
+    vector< vector<KmerInfo> > kmerInfos(markerInfos.size());
+    vector<Kmer> kmers;
+
+    vector<KmerInfo> forwardKmerInfos;
+    vector<KmerInfo> backwardKmerInfos;
+    for(uint64_t i=0; i<markerInfos.size(); i++) {
+        const MarkerInfo& markerInfo = markerInfos[i];
+        const OrientedReadId orientedReadId = markerInfo.orientedReadId;
+        const auto orientedReadMarkers = markers()[orientedReadId.getValue()];
+        const int32_t markerCount = int32_t(orientedReadMarkers.size());
+        const int32_t ordinal0 = int32_t(markerInfo.ordinal);
+        const int32_t position0 = int32_t(orientedReadMarkers[ordinal0].position);
+
+        // Move forward.
+        forwardKmerInfos.clear();
+        for(int32_t ordinalOffset=0; ; ordinalOffset++) {
+            const int64_t ordinal1 = ordinal0 + ordinalOffset;
+            if(ordinal1 >= markerCount) {
+                break;
+            }
+            const int32_t position1 = int32_t(orientedReadMarkers[ordinal1].position);
+            const int32_t positionOffset = position1 - position0;
+            if(positionOffset > baseOffset) {
+                break;
+            }
+            const Kmer kmer1 = markers().getKmer(orientedReadId, uint32_t(ordinal1));
+            forwardKmerInfos.push_back(KmerInfo(ordinalOffset, positionOffset, kmer1));
+            kmers.push_back(kmer1);
+        }
+
+        // Move backward.
+        backwardKmerInfos.clear();
+        for(int32_t ordinalOffset=1; ; ordinalOffset++) {
+            const int64_t ordinal1 = ordinal0 - ordinalOffset;
+            if(ordinal1 < 0) {
+                break;
+            }
+            const int32_t position1 = int32_t(orientedReadMarkers[ordinal1].position);
+            const int32_t positionOffset = position0 - position1;
+            if(positionOffset > baseOffset) {
+                break;
+            }
+            const Kmer kmer1 = markers().getKmer(orientedReadId, uint32_t(ordinal1));
+            backwardKmerInfos.push_back(KmerInfo(ordinalOffset, positionOffset, kmer1));
+            kmers.push_back(kmer1);
+        }
+
+        copy(backwardKmerInfos.rbegin(), backwardKmerInfos.rend(), back_inserter(kmerInfos[i]));
+        copy(forwardKmerInfos.begin(), forwardKmerInfos.end(), back_inserter(kmerInfos[i]));
+    }
+
+    vector<uint64_t> count;
+    deduplicateAndCount(kmers, count);
+
+
+
+    // Fill in the id fields in all the KmerInfos.
+    for(vector<KmerInfo>& v: kmerInfos) {
+        for(KmerInfo& kmerInfo: v) {
+            const auto it = std::lower_bound(kmers.begin(), kmers.end(), kmerInfo.kmer);
+            SHASTA_ASSERT(it != kmers.end());
+            SHASTA_ASSERT(*it == kmerInfo.kmer);
+            kmerInfo.id = it - kmers.begin();
+        }
+    }
+
+
+
+    // Locate our start k-mer in the table.
+    const auto it0 = lower_bound(kmers.begin(), kmers.end(), kmer0);
+    SHASTA_ASSERT(it0 != kmers.end());
+    SHASTA_ASSERT(*it0 == kmer0);
+    const uint64_t i0 = it0 - kmers.begin();
+
+    // Write the k-mer table.
+    html <<
+        "<br>Found " << kmers.size() << " distinct k-mers."
+        "<br><br><table><tr><th>Id<th>Number of<br>occurrences<th>K-mer";
+    for(uint64_t i=0; i<kmers.size(); i++) {
+        html << "<tr";
+        if(i == i0) {
+             html << " style='background-color:Pink'";
+        }
+        html <<
+            "><td class=centered>" << i <<
+            "<td class=centered>" << count[i] <<
+            "<td class=centered style='font-family:monospace'>";
+        kmers[i].write(html, assemblerInfo->k);
+    }
+    html << "</table>";
+
+
+
+    // Create a graph with one vertex for each of these k-mers.
+    // Generate edges by following the reads.
+    // Each vertex and edge stores coverage.
+    using Graph = boost::adjacency_list<
+        boost::listS,
+        boost::vecS,
+        boost::bidirectionalS,
+        uint64_t,
+        uint64_t>;
+    Graph graph(kmers.size());
+    for(uint64_t i=0; i<kmers.size(); i++) {
+        graph[i] = count[i];
+    }
+    for(uint64_t i=0; i<kmerInfos.size(); i++) {
+        for(uint64_t j1=1; j1<kmerInfos[i].size(); j1++) {
+            const uint64_t j0 = j1 - 1;
+            const KmerInfo& kmerInfo0 = kmerInfos[i][j0];
+            const KmerInfo& kmerInfo1 = kmerInfos[i][j1];
+            const uint64_t id0 = kmerInfo0.id;
+            const uint64_t id1 = kmerInfo1.id;
+            Graph::edge_descriptor e;
+            bool edgeWasFound = false;
+            tie(e, edgeWasFound) = edge(id0, id1, graph);
+            if(edgeWasFound) {
+                ++graph[e];
+            } else {
+                tie(e, edgeWasFound) = add_edge(id0, id1, 1, graph);
+            }
+        }
+    }
+
+
+
+    // Write it in graphviz format.
+    const string uuid = to_string(boost::uuids::random_generator()());
+    const string dotFileName = tmpDirectory() + uuid + ".dot";
+    ofstream dot(dotFileName);
+    dot << "digraph KmerGraph {\n";
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        dot << v;
+        dot << " [";
+        dot << "label=\"" << v << "\\n" << graph[v] << "\"";
+        if(v == i0) {
+            dot << " style=filled fillcolor=Pink";
+        }
+        dot << " tooltip=\"";
+        kmers[v].write(dot, k);
+        dot << "\"";
         dot << "];\n";
     }
     BGL_FORALL_EDGES(e, graph, Graph) {
