@@ -1,6 +1,7 @@
 #include "MarkerKmers.hpp"
 #include "deduplicate.hpp"
 #include "extractKmer128.hpp"
+#include "invalid.hpp"
 #include "Markers.hpp"
 #include "performanceLog.hpp"
 #include "Reads.hpp"
@@ -502,6 +503,29 @@ span<const MarkerInfo> MarkerKmers::getMarkerInfos(const Kmer& kmer) const
 
     // We did not find this Kmer in the bucket where it would have been.
     return span<const MarkerInfo>();
+}
+
+
+
+// Get the global index in kmerInfos for a given canonical Kmer.
+// This returns invalid<uint64_t> if the Kmer is not canonical
+// or does not exist in the table.
+uint64_t MarkerKmers::getGlobalIndex(const Kmer& kmer) const
+{
+    // Get the bucket where this Kmer would be.
+    const uint64_t bucketId = findBucket(kmer);
+    const span<const KmerInfo> bucket = kmerInfos[bucketId];
+
+    // Scan the bucket looking for this Kmer.
+    for(const KmerInfo& kmerInfo: bucket) {
+        if(getKmer(kmerInfo.markerInfo) == kmer) {
+            return &kmerInfo - kmerInfos.begin();
+        }
+    }
+
+    // We did not find this Kmer in the bucket where it would have been.
+    return invalid<uint64_t>;
+
 }
 
 

@@ -79,6 +79,11 @@ public:
             markerInfos.begin() + kmerInfo.end);
     }
 
+    // Get the global index in kmerInfos for a given canonical Kmer.
+    // This returns invalid<uint64_t> if the Kmer is not canonical
+    // or does not exist in the table.
+    uint64_t getGlobalIndex(const Kmer&) const;
+
     // Get the Kmer corresponding to a given MarkerInfo.
     Kmer getKmer(const MarkerInfo&) const;
 
