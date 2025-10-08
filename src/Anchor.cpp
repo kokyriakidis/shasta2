@@ -2131,3 +2131,37 @@ void Anchors::readFollowing(
         }
     }
 }
+
+
+
+// Use the kmerToAnchorTable table to get the AnchorId corresponding to a given Kmer.
+AnchorId Anchors::getAnchorIdFromKmer(const Kmer& kmer) const
+{
+    const Kmer kmerRc = kmer.reverseComplement(k);
+
+    if(kmer <= kmerRc) {
+
+        // kmer is canonical.
+
+        const uint64_t globalIndex = markerKmers.getGlobalIndex(kmer);
+        const uint64_t anchorId = kmerToAnchorTable[globalIndex];
+        if(anchorId == invalid<uint64_t>) {
+            return invalid<uint64_t>;
+        } else {
+            return anchorId;
+        }
+
+    } else {
+
+        // kmerRc is canonical.
+
+        const uint64_t globalIndex = markerKmers.getGlobalIndex(kmerRc);
+        const uint64_t anchorId = kmerToAnchorTable[globalIndex];
+        if(anchorId == invalid<uint64_t>) {
+            return invalid<uint64_t>;
+        } else {
+            return anchorId + 1;
+        }
+
+    }
+}

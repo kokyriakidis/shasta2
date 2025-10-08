@@ -1,5 +1,6 @@
 // Shasta.
 #include "Assembler.hpp"
+#include "Anchor.hpp"
 #include "deduplicate.hpp"
 #include "graphvizToHtml.hpp"
 #include "KmerChecker.hpp"
@@ -893,9 +894,6 @@ void Assembler::exploreLocalKmerGraph(const vector<string>& request, ostream& ht
                 "This assembly uses " << k << "-base markers. "
                 "Specify a " << k << "-mer.<br>" << kmerString;
             html << "<br>";
-            for(const char c: kmerString) {
-                html << int(c) << " ";
-            };
             return;
         }
 
@@ -1058,11 +1056,22 @@ void Assembler::exploreLocalKmerGraph(const vector<string>& request, ostream& ht
             }
             dot << vertex.kmer[i];
         }
+        bool hasAnchor = false;
+        if(anchorsPointer) {
+            const AnchorId anchorId = anchors().getAnchorIdFromKmer(vertex.kmer);
+            if(anchorId != invalid<AnchorId>) {
+                dot << "\\n" << anchorIdToString(anchorId);
+                hasAnchor = true;
+            }
+        }
         dot << "\"";
 
         if(vertex.distance == 0) {
             dot << " style=filled fillcolor=Pink";
+        } else if(hasAnchor) {
+            dot << " style=filled fillcolor=LightCyan";
         }
+
         dot << " tooltip=\"";
         graph[v].kmer.write(dot, k);
         dot << "\"";
