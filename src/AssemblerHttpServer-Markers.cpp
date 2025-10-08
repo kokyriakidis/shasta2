@@ -13,6 +13,7 @@ using namespace shasta;
 #include <boost/algorithm/string.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/iteration_macros.hpp>
+#include <boost/tokenizer.hpp>
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
@@ -836,9 +837,8 @@ void Assembler::exploreLocalKmerGraph(const vector<string>& request, ostream& ht
     html << "<h2>Local k-mer graph</h2>";
 
     // Get the request parameters.
-    string kmerString;
-    getParameterValue(request, "kmer", kmerString);
-    boost::trim(kmerString);
+    string kmersString = getKeywordValue(request, "kmer");
+    boost::trim(kmersString);
 
     uint64_t distance = 10;
     getParameterValue(request, "distance", distance);
@@ -855,11 +855,10 @@ void Assembler::exploreLocalKmerGraph(const vector<string>& request, ostream& ht
     html <<
         "<p><form><table>"
 
-        "<tr><th class=left>K-mer"
-        "<td><input type=text name=kmer style='font-family:monospace' "
-        "size=" << k << " "
-        "value='" << kmerString << "'" <<
-        " title='Enter a " << k << "-base k-mer.'>"
+        "<tr><th class=left>Starting k-mers"
+        "<td><textarea name=kmer style='font-family:monospace' "
+        "rows=\"4\" cols=\"" << k << "\">" <<
+        kmersString << "</textarea>"
 
         "<tr><th class=left>Distance"
         "<td class=centered><input type=text name=distance size=6 value=" << distance << " style='text-align:center'>"
@@ -872,51 +871,57 @@ void Assembler::exploreLocalKmerGraph(const vector<string>& request, ostream& ht
 
         "</table><br><input type=submit value='Get k-mer information'></form>";
 
-
-
     // If the k-mer string is empty, do nothing.
-    if(kmerString.empty()) {
+    if(kmersString.empty()) {
         return;
     }
 
-    // Check the length.
-    if(kmerString.size() != k) {
-        html << "This k-mer is " << kmerString.size() << " bases long. "
-            "This assembly uses " << k << "-base markers. "
-            "Specify a " << k << "-mer." << endl;
-        return;
-    }
-
-    // Construct the k-mer.
-    Kmer kmerA;
-    for(uint64_t i=0; i<kmerString.size(); i++) {
-        const char c = kmerString[i];
-        const Base b = Base::fromCharacterNoException(c);
-        if(not b.isValid()) {
-            throw runtime_error("Invalid base character " + string(1, c) + " at k-mer position " + to_string(i));
+    // Parse the kmersString to get the starting Kmers.
+    std::istringstream s(kmersString);
+    vector<Kmer> startingKmers;
+    while(s) {
+        string kmerString;
+        getline(s, kmerString);
+        boost::trim(kmerString);
+        if(kmerString.empty()) {
+            continue;
         }
-        kmerA.set(i, b);
+
+        // Check the length.
+        if(kmerString.size() != k) {
+            html << "<br>This k-mer is " << kmerString.size() << " bases long. "
+                "This assembly uses " << k << "-base markers. "
+                "Specify a " << k << "-mer.<br>" << kmerString;
+            html << "<br>";
+            for(const char c: kmerString) {
+                html << int(c) << " ";
+            };
+            return;
+        }
+
+        // Construct the k-mer.
+        Kmer kmer;
+        for(uint64_t i=0; i<kmerString.size(); i++) {
+            const char c = kmerString[i];
+            const Base b = Base::fromCharacterNoException(c);
+            if(not b.isValid()) {
+                html << "<br>This k-mer contains an invalid base character at position " << i <<
+                    "<br>" << kmerString;
+                return;
+            }
+            kmer.set(i, b);
+        }
+
+        // Check if it is a marker.
+        SHASTA_ASSERT(kmerChecker);
+        if(not kmerChecker->isMarker(kmer)) {
+            html << "<br>This assembly does not use this k-mer as a marker:"
+                "<br>" << kmerString;
+            return;
+        }
+
+        startingKmers.push_back(kmer);
     }
-
-    // Check if it is a marker.
-    SHASTA_ASSERT(kmerChecker);
-    if(not kmerChecker->isMarker(kmerA)) {
-        throw runtime_error("This assembly does not use this as a marker.");
-    }
-
-
-
-    // Summary table.
-    const uint64_t coverage = markerKmers->getFrequency(kmerA);
-    const Kmer kmerARc = kmerA.reverseComplement(k);
-    html <<
-        "<br><table><tr><th class=left>K-mer<td class=centered style='font-family:monospace'>";
-    kmerA.write(html, k);
-    html <<
-        "<tr><th class=left>Reverse complement K-mer<td class=centered style='font-family:monospace'>";
-    kmerARc.write(html, k);
-    html << "<tr><th class=left>Coverage<td class=centered>" << coverage <<
-        "</table>";
 
 
 
@@ -950,15 +955,17 @@ void Assembler::exploreLocalKmerGraph(const vector<string>& request, ostream& ht
     // using edge_descriptor = Graph::edge_descriptor;
     Graph graph;
 
-
-
     // Construct graph vertices (the k-mers).
     uint64_t nextVertexId = 0;
     std::map<Kmer, vertex_descriptor> vertexMap;
     std::queue<vertex_descriptor> q;
-    const vertex_descriptor vA = add_vertex(Vertex(nextVertexId++, kmerA, coverage, 0), graph);
-    vertexMap.insert(make_pair(kmerA, vA));
-    q.push(vA);
+    for(const Kmer& kmer: startingKmers) {
+        const uint64_t coverage = markerKmers->getFrequency(kmer);
+        const vertex_descriptor v = add_vertex(Vertex(nextVertexId++, kmer, coverage, 0), graph);
+        vertexMap.insert(make_pair(kmer, v));
+        q.push(v);
+    }
+
     vector<pair<Kmer, uint64_t> > nextKmers;
     while(not q.empty()) {
         const vertex_descriptor v0 = q.front();
@@ -1053,7 +1060,7 @@ void Assembler::exploreLocalKmerGraph(const vector<string>& request, ostream& ht
         }
         dot << "\"";
 
-        if(v == vA) {
+        if(vertex.distance == 0) {
             dot << " style=filled fillcolor=Pink";
         }
         dot << " tooltip=\"";
@@ -1077,7 +1084,7 @@ void Assembler::exploreLocalKmerGraph(const vector<string>& request, ostream& ht
     // Display it in html in svg format.
     const double timeout = 30.;
     const string options = "-Nshape=rectangle";
-    html << "<p>";
+    html << "<br><br>";
     graphvizToHtml(dotFileName, "dot", timeout, options, html);
 }
 
