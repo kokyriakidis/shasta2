@@ -229,7 +229,7 @@ template<class T> void HttpServer::processRequest(T& s)
         string newToken;
         urlDecode(token, newToken);
         if(newToken != token) {
-            cout << "Request token " << token << " decoded as " << newToken << endl;
+            cout << "Request token \"" << token << "\" decoded as \"" << newToken << "\"" << endl;
         }
         token = newToken;
     }
@@ -794,3 +794,15 @@ bool HttpServer::isLocalConnectionSameUser(uint16_t port) const
     return false;    // For now.
 }
 
+
+
+string HttpServer::getKeywordValue(const vector<string>& request, const string& name)
+{
+    for(uint64_t i=0; i<request.size()-1; i++) {
+        if(request[i] == name) {
+            return request[i+1];
+        }
+    }
+
+    return string();
+}

@@ -136,6 +136,8 @@ public:
     // when called with argument "a" returns a set containing "xyz" and "uv".
     static void getParameterValues(const vector<string>& request, const string& name, vector<string>& values);
     static void getParameterValues(const vector<string>& request, const string& name, std::set<string>& values);
+
+    static string getKeywordValue(const vector<string>& request, const string& name);
 protected:
 
     static ostream& writeJQuery(ostream& html);
