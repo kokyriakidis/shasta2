@@ -40,7 +40,9 @@ protected:
     // It is better to use atomic memory primitives for synchronization instead,
     // whenever possible.
     // Make it mutable so it can also be used by const functions.
+public:
     mutable std::mutex mutex;
+protected:
 
     // Keep track of exceptions occurring in threads.
     bool exceptionsOccurred= false;

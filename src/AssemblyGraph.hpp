@@ -17,6 +17,7 @@
 #include <boost/serialization/vector.hpp>
 
 // Standard library.
+#include <memory.hpp>
 #include <tuple.hpp>
 
 
@@ -456,10 +457,21 @@ public:
     bool simplifySuperbubbleByDetangling(const Superbubble&, Detangler&);
     bool simplifySuperbubbleByClustering(const Superbubble&, uint64_t minCoverage, uint64_t maxOffset);
 
+
+
     // Phasing of SuperbubbleChains.
     uint64_t phaseSuperbubbleChains(
         bool onlyConsiderInjective,
         bool onlyConsiderPermutation);
+    void phaseSuperbubbleChainsThreadFunction(uint64_t threadId);
+    class PhaseSuperbubbleChainsData {
+    public:
+        bool onlyConsiderInjective;
+        bool onlyConsiderPermutation;
+        shared_ptr< vector<SuperbubbleChain> > superbubbleChains;
+        uint64_t totalChangeCount = 0;
+    };
+    PhaseSuperbubbleChainsData phaseSuperbubbleChainsData;
 
 
 
