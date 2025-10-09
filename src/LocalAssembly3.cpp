@@ -47,11 +47,12 @@ LocalAssembly3::LocalAssembly3(
         writeInput(html, debug, anchorPair, additionalOrientedReadIds);
     }
 
-    gatherOrientedReads(anchors,anchorPair, additionalOrientedReadIds);
+    gatherOrientedReadsOnAnchorPair(anchors,anchorPair);
     estimateOffset();
     if(html) {
-        html << "<p>Estimated offset is " << offset << " bases.";
+        html << "<br>Estimated offset is " << offset << " bases.";
     }
+    gatherAdditionalOrientedReads(anchors, anchorPair, additionalOrientedReadIds, drift);
 
     fillFirstLastOrdinalForAssembly(anchors.markers, drift);
     if(html) {
@@ -71,7 +72,7 @@ LocalAssembly3::LocalAssembly3(
     createEdges();
     computeDominatorTree();
     if(html) {
-        html << "<p>The graph for this local assembly has " << num_vertices(*this) <<
+        html << "<br>The graph for this local assembly has " << num_vertices(*this) <<
             " vertices and " << num_edges(*this) << " edges.";
         if(debug) {
             writeHtml(html, anchors.markers);
@@ -112,32 +113,79 @@ void LocalAssembly3::writeInput(
 }
 
 
-
-// Gather all the OrientedReadIds that we can consider for use in this assembly.
-void LocalAssembly3::gatherOrientedReads(
+// Initially, we only fill the orientedReadInfos vector with oriented reads
+// in the AnchorPair.
+void LocalAssembly3::gatherOrientedReadsOnAnchorPair(
     const Anchors& anchors,
-    const AnchorPair& anchorPair,
-    const vector<OrientedReadId>& additionalOrientedReadIds)
-    {
-
-    // Merge together the OrientedReadIds in the AnchorPair and
-    // the additionalOrientedReadIds.
-    vector<OrientedReadId> inputOrientedReadIds = anchorPair.orientedReadIds;
-    std::ranges::copy(additionalOrientedReadIds, back_inserter(inputOrientedReadIds));
-    deduplicate(inputOrientedReadIds);
-
+    const AnchorPair& anchorPair)
+{
     // Access the two Anchors.
     const Anchor leftAnchor = anchors[leftAnchorId];
     const Anchor rightAnchor = anchors[rightAnchorId];
 
-    // To gather the OrientedReadIds that we can use for assembly,
-    // use a joint loop over the inputOrientedReadIds and the oriented reads in
+    // Use a joint loop over the OrientedReadIds in the AnchorPair and the oriented reads in
     // the two anchors.
     auto itLeft = leftAnchor.begin();
     const auto endLeft = leftAnchor.end();
     auto itRight = rightAnchor.begin();
     const auto endRight = rightAnchor.end();
-    for(auto it=inputOrientedReadIds.begin(); it!=inputOrientedReadIds.end(); ++it) {
+    for(auto it=anchorPair.orientedReadIds.begin(); it!=anchorPair.orientedReadIds.end(); ++it) {
+        const OrientedReadId orientedReadId = *it;
+        const auto orientedReadMarkers = anchors.markers[orientedReadId.getValue()];
+
+        // Increment the iterator for the left/right Anchors until we reach this OrientedReadId.
+        // We are guaranteed to find it because the OrientedReadIds in the AnchorPair
+        // must be present in both Anchors.
+        while((itLeft != endLeft) and (itLeft->orientedReadId < orientedReadId)) {
+            ++itLeft;
+        }
+        SHASTA_ASSERT(itLeft != endLeft);
+        while((itRight != endRight) and (itRight->orientedReadId < orientedReadId)) {
+            ++itRight;
+        }
+        SHASTA_ASSERT(itRight != endRight);
+
+
+        OrientedReadInfo& orientedReadInfo = orientedReadInfos.emplace_back();
+        orientedReadInfo.orientedReadId = orientedReadId;
+        orientedReadInfo.isOnAnchorPair = true;
+        orientedReadInfo.isOnLeftAnchor = true;
+        orientedReadInfo.isOnRightAnchor = true;
+        orientedReadInfo.leftOrdinal = itLeft->ordinal;
+        orientedReadInfo.leftPosition = orientedReadMarkers[itLeft->ordinal].position;
+        orientedReadInfo.rightOrdinal = itRight->ordinal;
+        orientedReadInfo.rightPosition = orientedReadMarkers[itRight->ordinal].position;
+     }
+}
+
+
+
+// Gather all the OrientedReadIds that we can consider for use in this assembly.
+void LocalAssembly3::gatherAdditionalOrientedReads(
+    const Anchors& anchors,
+    const AnchorPair& anchorPair,
+    const vector<OrientedReadId>& additionalOrientedReadIds,
+    double drift)
+    {
+    const uint32_t length = uint32_t(std::round((1. + drift) * double(offset)));
+
+    // Find the OrientedReadIds that are in the
+    // but not in the AnchorPair.
+    vector<OrientedReadId> newOrientedReadIds;
+    std::ranges::set_difference(additionalOrientedReadIds, anchorPair.orientedReadIds,
+        back_inserter(newOrientedReadIds));
+
+    // Access the two Anchors.
+    const Anchor leftAnchor = anchors[leftAnchorId];
+    const Anchor rightAnchor = anchors[rightAnchorId];
+
+    // Use a joint loop over the newOrientedReadIds and the oriented reads in
+    // the two anchors.
+    auto itLeft = leftAnchor.begin();
+    const auto endLeft = leftAnchor.end();
+    auto itRight = rightAnchor.begin();
+    const auto endRight = rightAnchor.end();
+    for(auto it=newOrientedReadIds.begin(); it!=newOrientedReadIds.end(); ++it) {
         const OrientedReadId orientedReadId = *it;
 
         while((itLeft != endLeft) and (itLeft->orientedReadId < orientedReadId)) {
@@ -154,6 +202,7 @@ void LocalAssembly3::gatherOrientedReads(
 
             OrientedReadInfo orientedReadInfo;
             orientedReadInfo.orientedReadId = orientedReadId;
+            orientedReadInfo.isOnAnchorPair = false;
             orientedReadInfo.isOnLeftAnchor = isOnLeftAnchor;
             orientedReadInfo.isOnRightAnchor = isOnRightAnchor;
             if(isOnLeftAnchor) {
@@ -167,15 +216,25 @@ void LocalAssembly3::gatherOrientedReads(
 
             // Exclude the case where it is on both anchors, but the ordinal on the
             // left anchor is greater or equal than the ordinal on the right anchor.
-            const bool isBad =
+            bool isBad =
                 isOnLeftAnchor and
                 isOnRightAnchor and
                 (itLeft->ordinal >= itRight->ordinal);
+
+            // Also exclude the case where i is on both anchors, but the offset
+            // is not compatible with the estimated offset.
+            const uint64_t offset = orientedReadInfo.rightPosition - orientedReadInfo.leftPosition;
+            if(isOnLeftAnchor and isOnRightAnchor and offset > length)  {
+                isBad = true;
+            }
+
             if(not isBad) {
                 orientedReadInfos.push_back(orientedReadInfo);
             }
         }
     }
+
+    sort(orientedReadInfos.begin(), orientedReadInfos.end());
 }
 
 
@@ -185,10 +244,10 @@ void LocalAssembly3::estimateOffset()
     uint64_t n = 0;
     uint64_t offsetSum = 0;
     for(const OrientedReadInfo& orientedReadInfo: orientedReadInfos) {
-        if(orientedReadInfo.isOnBothAnchors()) {
-            ++n;
-            offsetSum += orientedReadInfo.positionOffset();
-        }
+        SHASTA_ASSERT(orientedReadInfo.isOnAnchorPair);
+        SHASTA_ASSERT(orientedReadInfo.isOnBothAnchors());
+        ++n;
+        offsetSum += orientedReadInfo.positionOffset();
     }
     SHASTA_ASSERT(n > 0);
 

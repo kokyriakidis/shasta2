@@ -117,8 +117,9 @@ public:
         OrientedReadId orientedReadId;
 
         // Whether this OrientedReadId appear in the left and right anchors.
-        bool isOnLeftAnchor;
-        bool isOnRightAnchor;
+        bool isOnAnchorPair = false;
+        bool isOnLeftAnchor = false;
+        bool isOnRightAnchor = false;
         bool isOnBothAnchors() const
         {
             return isOnLeftAnchor and isOnRightAnchor;
@@ -152,8 +153,8 @@ public:
         // The first and last ordinal of the portion of this OrientedReadId
         // sequence that will be used in this local assembly.
         // These are filled by fillFirstLastOrdinalForAssembly.
-        uint32_t firstOrdinalForAssembly;
-        uint32_t lastOrdinalForAssembly;
+        uint32_t firstOrdinalForAssembly = invalid<uint32_t>;
+        uint32_t lastOrdinalForAssembly = invalid<uint32_t>;
         void fillFirstLastOrdinalForAssembly(const Markers&, uint32_t length);
         uint32_t firstPositionForAssembly(const Markers&) const;
         uint32_t lastPositionForAssembly(const Markers&) const;
@@ -167,20 +168,38 @@ public:
         };
         vector<OrientedReadKmerInfo> orientedReadKmerInfos;
         void fillOrientedReadKmers(const Markers&);
+
+        bool operator<(const OrientedReadInfo& that) const
+        {
+            return orientedReadId < that.orientedReadId;
+        }
     };
 
     vector<OrientedReadInfo> orientedReadInfos;
-    void gatherOrientedReads(
+
+
+
+    // Initially, we only fill the orientedReadInfos vector with oriented reads
+    // in the AnchorPair.
+    void gatherOrientedReadsOnAnchorPair(
         const Anchors&,
-        const AnchorPair& anchorPair,
-        const vector<OrientedReadId>& additionalOrientedReadIds);
+        const AnchorPair&);
 
-
-
-    // The estimated base offset between the left and right anchor.
-    // It is estimated using the oriented reads that appear in both anchors.
+    // These oriented reads are used to
+    // estimate the base offset between the left and right anchor.
     uint32_t offset;
     void estimateOffset();
+
+    // Now we add the additionalOrientedReadIds, when their offset
+    // (if they appear in both anchors) is not in conflict with estimated offset.
+    void gatherAdditionalOrientedReads(
+        const Anchors&,
+        const AnchorPair&,
+        const vector<OrientedReadId>& additionalOrientedReadIds,
+        double drift);
+
+
+
 
     // Use the estimated offset to fill in the firstOrdinal and lastOrdinal
     // of each oriented read. These define the portion of this OrientedReadId
