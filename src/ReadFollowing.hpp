@@ -68,11 +68,13 @@ private:
 
     // EXPOSE WHEN CODE STABILIZES.
     const uint64_t representativeRegionLength = 10;
-    const uint64_t minCoverage = 3;
-    const double minCoverageFraction = 0.8;
-    const uint64_t maxAppearanceCount = 25;
-    const double minJaccard = 0.05;
-    const uint64_t shortLengthThreshold = 1000;
+    // const uint64_t minCoverage = 3;
+    // const double minCoverageFraction = 0.8;
+    // const uint64_t maxAppearanceCount = 25;
+    // const uint64_t maxAppearanceCount = std::numeric_limits<uint64_t>::max();
+    const double minJaccard = 0.;
+    // const uint64_t shortLengthThreshold = 1000;
+    // const uint64_t shortLengthThreshold = 0;
     const uint64_t longLengthThreshold = 500000;
 
     // Find appearances of OrientedReadIds in the initial/final

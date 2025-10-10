@@ -26,7 +26,7 @@ ReadFollowing::ReadFollowing(const AssemblyGraph& assemblyGraph) :
     findEdgePairs();
     createGraph();
     writeGraph();
-    findAssemblyPaths();
+    // findAssemblyPaths();
 }
 
 
@@ -185,7 +185,7 @@ void ReadFollowing::findEdgePairs()
     // Write out the edgePairs.
     {
         ofstream csv("ReadFollowing-EdgePairs.csv");
-        csv << "Id0,Id1,Coverage,\n";
+        csv << "Id0,Id1,Coverage,Jaccard\n";
         for(const auto& p: edgePairs) {
             const auto& edgePair = p.first;
             const uint64_t coverage = p.second;
@@ -194,6 +194,7 @@ void ReadFollowing::findEdgePairs()
             csv << assemblyGraph[e0].id << ",";
             csv << assemblyGraph[e1].id << ",";
             csv << coverage << ",";
+            csv << jaccard(e0, e1, coverage) << ",";
             csv << "\n";
         }
     }
@@ -254,6 +255,35 @@ void ReadFollowing::writeGraph() const
 
 
 
+// This simply creates an edge for each EdgePair.
+void ReadFollowing::createGraph()
+{
+    using Graph = ReadFollowing;
+    Graph& graph = *this;
+
+    // Create a vertex for each AssemblyGraph edge.
+    BGL_FORALL_EDGES(ae, assemblyGraph, AssemblyGraph) {
+        vertexMap.insert(make_pair(ae,
+            add_vertex(ReadFollowingVertex(assemblyGraph, ae, longLengthThreshold), graph)));
+    }
+
+    // Create an edge for each edgePair.
+    for(const auto& p: edgePairs) {
+        const AEdgePair& aEdgePair = p.first;
+        const AEdge e0 = aEdgePair.first;
+        const AEdge e1 = aEdgePair.second;
+        const uint64_t coverage = p.second;
+        const double j = jaccard(e0, e1, coverage);
+        if(j > minJaccard) {
+            add_edge(vertexMap[e0], vertexMap[e1], coverage, graph);
+        }
+    }
+}
+
+
+
+#if 0
+// More sophisticated version.
 void ReadFollowing::createGraph()
 {
     using Graph = ReadFollowing;
@@ -458,7 +488,7 @@ void ReadFollowing::createGraph()
         }
     }
 }
-
+#endif
 
 
 // In the graph, find a path that starts at a given AEdge
@@ -491,6 +521,8 @@ void ReadFollowing::findForwardPath(AEdge ae, vector<vertex_descriptor>& path) c
     // Each iteration adds one vertex to the path.
     path.clear();
     path.push_back(v);
+    std::set<vertex_descriptor> pathVertices;
+    pathVertices.insert(v);
     while(true) {
 
          // Find the best next vertex.
@@ -498,6 +530,9 @@ void ReadFollowing::findForwardPath(AEdge ae, vector<vertex_descriptor>& path) c
          double bestJaccardSum = 0.;
          BGL_FORALL_OUTEDGES(v, e, graph, Graph) {
              vertex_descriptor v1 = target(e, graph);
+             if(pathVertices.contains(v1)) {
+                 continue;
+             }
 
              // Compute the sum of Jaccard similarities between all
              // previous vertices in the path and v1.
@@ -525,18 +560,19 @@ void ReadFollowing::findForwardPath(AEdge ae, vector<vertex_descriptor>& path) c
          v = vNext;
 
          path.push_back(v);
+         pathVertices.insert(v);
          if(graph[v].isLong) {
              break;
          }
      }
 
-    /*
+    //
      cout << "Path:" << endl;
      for(const vertex_descriptor v: path) {
          cout << assemblyGraph[graph[v].ae].id << ",";
      }
      cout << endl;
-     */
+     //
 }
 
 
@@ -554,6 +590,8 @@ void ReadFollowing::findBackwardPath(AEdge ae, vector<vertex_descriptor>& path) 
     // Each iteration adds one vertex to the path.
     path.clear();
     path.push_back(v);
+    std::set<vertex_descriptor> pathVertices;
+    pathVertices.insert(v);
     while(true) {
 
          // Find the best next vertex.
@@ -561,6 +599,9 @@ void ReadFollowing::findBackwardPath(AEdge ae, vector<vertex_descriptor>& path) 
          double bestJaccardSum = 0.;
          BGL_FORALL_INEDGES(v, e, graph, Graph) {
              vertex_descriptor v1 = source(e, graph);
+             if(pathVertices.contains(v1)) {
+                 continue;
+             }
 
              // Compute the sum of Jaccard similarities between all
              // previous vertices in the path and v1.
@@ -588,19 +629,20 @@ void ReadFollowing::findBackwardPath(AEdge ae, vector<vertex_descriptor>& path) 
          v = vNext;
 
          path.push_back(v);
+         pathVertices.insert(v);
          if(graph[v].isLong) {
              break;
          }
      }
      std::ranges::reverse(path);
 
-     /*
+     //
      cout << "Path:" << endl;
      for(const vertex_descriptor v: path) {
          cout << assemblyGraph[graph[v].ae].id << ",";
      }
      cout << endl;
-     */
+     //
 }
 
 
@@ -862,7 +904,7 @@ void ReadFollowing::findAssemblyPaths()
 
 
 
-        // Create a filtered graph containing only the vertices found in these two paths.
+        // Create a filtered graph containing only the vertices and edges found in these two paths.
         class Filter {
         public:
             bool operator()(const vertex_descriptor& v) const
@@ -871,13 +913,12 @@ void ReadFollowing::findAssemblyPaths()
             }
             bool operator()(const edge_descriptor& e) const
             {
-                const vertex_descriptor v0 = source(e, *graph);
-                const vertex_descriptor v1 = target(e, *graph);
-                return vertices.contains(v0) and vertices.contains(v1);
+                return edges.contains(e);
             }
             Filter(const Graph* graph = 0) : graph(graph) {}
             const Graph* graph;
             std::set<vertex_descriptor> vertices;
+            std::set<edge_descriptor> edges;
         };
         Filter filter(&graph);
         for(const Path& path: paths) {
@@ -885,9 +926,21 @@ void ReadFollowing::findAssemblyPaths()
                 filter.vertices.insert(v);
             }
         }
+        for(const Path& path: paths) {
+            for(uint64_t i1=1; i1<path.size(); i1++) {
+                const uint64_t i0 = i1 - 1;
+                const vertex_descriptor v0 = path[i0];
+                const vertex_descriptor v1 = path[i1];
+                edge_descriptor e;
+                bool edgeWasFound = false;
+                tie(e, edgeWasFound) = edge(v0, v1, graph);
+                SHASTA_ASSERT(edgeWasFound);
+                filter.edges.insert(e);
+            }
+        }
         if(debug) {
             cout << "Using " << filter.vertices.size() <<
-                " vertices to compute an optimal path." << endl;
+                " vertices and " << filter.edges.size() << " edges to compute an optimal path." << endl;
         }
         using FilteredGraph = boost::filtered_graph<Graph, Filter>;
         FilteredGraph filteredGraph(graph, filter);
