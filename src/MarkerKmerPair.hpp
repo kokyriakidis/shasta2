@@ -24,8 +24,11 @@ namespace shasta {
 // OrientedReadIds that appear in kmer0 at ordinal0 and in kmer1 at ordinal1 and such that:
 // - ordinal0 < ordinal1
 // - position1 - position0 <= maxPositionOffset
-// - The ReadId appears exactly once in both kmer0 and kmer1.
-//   This implies that the OrientedReadId also appears exactly once in both kmer0 and kmer1.
+// - The OrientedReadId also appears exactly once in both kmer0 and kmer1.
+// If an OrientedReadId appears once in kmer0 and more than once in kmer1,
+// the MarkerPair uses the lowest kmer1 ordinal that is greater than the kmer0 ordinal.
+// If an OrientedReadId appears once in kmer1 and more than once in kmer0,
+// the MarkerPair uses the highest kmer0 ordinal that is less than the kmer1 ordinal.
 class shasta::MarkerKmerPair {
 public:
 
@@ -108,6 +111,20 @@ public:
         // corresponding to the sequence of this oriented read
         // between the midpoints of the two markers.
         SequenceMap::const_iterator sequenceMapIterator;
+
+        CommonOrientedRead() {}
+        CommonOrientedRead(
+            OrientedReadId orientedReadId,
+            uint32_t ordinal0,
+            uint32_t ordinal1,
+            uint32_t position0,
+            uint32_t position1) :
+            orientedReadId(orientedReadId),
+            ordinal0(ordinal0),
+            ordinal1(ordinal1),
+            position0(position0),
+            position1(position1)
+        {}
 
         bool operator<(const CommonOrientedRead& that) const
         {

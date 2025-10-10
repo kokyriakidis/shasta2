@@ -26,12 +26,163 @@ MarkerKmerPair::MarkerKmerPair(
 
 void MarkerKmerPair::getMarkerInfos(const MarkerKmers& markerKmers)
 {
-    markerKmers.getWithUniqueReadIds(kmer0, markerInfos0);
-    markerKmers.getWithUniqueReadIds(kmer1, markerInfos1);
+    markerKmers.get(kmer0, markerInfos0);
+    markerKmers.get(kmer1, markerInfos1);
 }
 
 
 
+// If an OrientedReadId appears once in kmer0 and more than once in kmer1,
+// the MarkerPair uses the lowest kmer1 ordinal that is greater than the kmer0 ordinal.
+// If an OrientedReadId appears once in kmer1 and more than once in kmer0,
+// the MarkerPair uses the highest kmer0 ordinal that is less than the kmer1 ordinal.
+void MarkerKmerPair::gatherCommonOrientedReads(
+    const Markers& markers,
+    uint64_t maxPositionOffset)
+{
+    const uint32_t kHalf = uint32_t(markers.k / 2);
+
+    // Joint loop over markerInfos0 and markerInfos1.
+    // They both can contain the same OrientedReadId more than once.
+    auto it0 = markerInfos0.begin();
+    const auto end0 = markerInfos0.end();
+    auto it1 = markerInfos1.begin();
+    const auto end1 = markerInfos1.end();
+    while((it0 != end0) and (it1!=end1)) {
+
+        if(it0->orientedReadId < it1->orientedReadId) {
+            ++it0;
+            continue;
+        }
+
+        if(it1->orientedReadId < it0->orientedReadId) {
+            ++it1;
+            continue;
+        }
+
+        // We found a common OrientedReadId.
+        const OrientedReadId orientedReadId = it0->orientedReadId;
+        SHASTA_ASSERT(orientedReadId == it1->orientedReadId);
+
+        // Find the streaks containing this OrientedReadId in markerInfos0 and markerInfos1.
+        const auto streakBegin0 = it0;
+        const auto streakBegin1 = it1;
+        auto streakEnd0 = streakBegin0;
+        auto streakEnd1 = streakBegin1;
+        while(streakEnd0->orientedReadId == orientedReadId) {
+            ++streakEnd0;
+        }
+        while(streakEnd1->orientedReadId == orientedReadId) {
+            ++streakEnd1;
+        }
+        const uint64_t streakLength0 = streakEnd0 - streakBegin0;
+        const uint64_t streakLength1 = streakEnd1 - streakBegin1;
+
+
+
+        // In the most common case both streaks have length 1.
+        if(streakLength0==1 and streakLength1==1) {
+
+            // If the ordinals are in the correct order
+            // and the position offset is not too large, store it.
+
+            if(it0->ordinal < it1->ordinal) {
+                const OrientedReadId orientedReadId = it0->orientedReadId;
+                const auto orientedReadMarkers = markers[orientedReadId.getValue()];
+
+                const uint32_t position0 = orientedReadMarkers[it0->ordinal].position + kHalf;
+                const uint32_t position1 = orientedReadMarkers[it1->ordinal].position + kHalf;
+
+                if(position1 - position0 <= maxPositionOffset) {
+                    commonOrientedReads.emplace_back(orientedReadId,
+                        it0->ordinal, it1->ordinal, position0, position1);
+                }
+            }
+        }
+
+
+
+        // If this OrientedReadId appears once on markerInfos0 and more than one on markerInfos1,
+        // add it to the MarkerPair with its ordinal on markerInfos0 and the lowest
+        // ordinal on markerInfos1 that is greater than the ordinal on markerInfos0.
+        else if(streakLength0==1 and streakLength1>1) {
+            const uint32_t ordinal0 = it0->ordinal;
+
+            auto kt1 = streakBegin1;
+            for(; kt1!=streakEnd1; ++kt1) {
+                if(kt1->ordinal > ordinal0) {
+                    break;
+                }
+            }
+
+            if(kt1 != streakEnd1) {
+                const uint32_t ordinal1 = kt1->ordinal;
+
+                const OrientedReadId orientedReadId = it0->orientedReadId;
+                const auto orientedReadMarkers = markers[orientedReadId.getValue()];
+
+                const uint32_t position0 = orientedReadMarkers[ordinal0].position + kHalf;
+                const uint32_t position1 = orientedReadMarkers[ordinal1].position + kHalf;
+
+                if(position1 - position0 <= maxPositionOffset) {
+                    commonOrientedReads.emplace_back(orientedReadId,
+                        ordinal0, ordinal1, position0, position1);
+                }
+            }
+        }
+
+
+
+        // If this OrientedReadId appears once on markerInfos1 and more than one on markerInfos0,
+        // add it to the MarkerPair with its ordinal on markerInfos1 and the greatest
+        // ordinal on markerInfos0 that is lower than the ordinal on markerInfos0.
+        else if(streakLength1==1 and streakLength0>1) {
+            const uint32_t ordinal1 = it1->ordinal;
+
+            const auto streakReverseBegin0 = streakEnd0 - 1;
+            const auto streakReverseEnd0 = streakBegin0 - 1;
+            auto kt0= streakReverseBegin0;
+            for(; kt0!=streakReverseEnd0; --kt0) {
+                if(kt0->ordinal < ordinal1) {
+                    break;
+                }
+            }
+
+            if(kt0 != streakReverseEnd0) {
+                const uint32_t ordinal0 = kt0->ordinal;
+
+                const OrientedReadId orientedReadId = it0->orientedReadId;
+                const auto orientedReadMarkers = markers[orientedReadId.getValue()];
+
+                const uint32_t position0 = orientedReadMarkers[ordinal0].position + kHalf;
+                const uint32_t position1 = orientedReadMarkers[ordinal1].position + kHalf;
+
+                if(position1 - position0 <= maxPositionOffset) {
+                    commonOrientedReads.emplace_back(orientedReadId,
+                        ordinal0, ordinal1, position0, position1);
+                }
+            }
+        }
+
+
+
+        // If both streaks have length greater than 1, to avoid the ambiguity
+        // we don't add this OrientedReadId to the MarkerPair.
+        else {
+            SHASTA_ASSERT(streakLength0>1 and streakLength1>1);
+        }
+
+
+        // Prepare for the next loop iteration.
+        it0 = streakEnd0;
+        it1 = streakEnd1;
+    }
+}
+
+
+
+
+#if 0
 void MarkerKmerPair::gatherCommonOrientedReads(
     const Markers& markers,
     uint64_t maxPositionOffset)
@@ -83,6 +234,7 @@ void MarkerKmerPair::gatherCommonOrientedReads(
         }
     }
 }
+#endif
 
 
 
@@ -241,12 +393,14 @@ void MarkerKmerPair::writeCommonOrientedReads(ostream& html) const
 
 void MarkerKmerPair::align()
 {
-    vector< vector<Base> > sequences;
-    for(const CommonOrientedRead& commonOrientedRead: commonOrientedReads) {
-        sequences.push_back(commonOrientedRead.sequenceMapIterator->first);
-    }
+    if(not commonOrientedReads.empty()) {
+        vector< vector<Base> > sequences;
+        for(const CommonOrientedRead& commonOrientedRead: commonOrientedReads) {
+            sequences.push_back(commonOrientedRead.sequenceMapIterator->first);
+        }
 
-    abpoa(sequences, consensus, alignment, alignedConsensus, true);
+        abpoa(sequences, consensus, alignment, alignedConsensus, true);
+    }
 }
 
 
