@@ -18,6 +18,7 @@
 #include "Options.hpp"
 #include "performanceLog.hpp"
 #include "ReadFollowing.hpp"
+#include "ReadFollowing1.hpp"
 #include "ReadSummary.hpp"
 #include "ShortBaseSequence.hpp"
 #include "splitRange.hpp"
@@ -207,6 +208,12 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def(pybind11::init<const AssemblyGraph&>())
         .def_readonly("assemblyPaths", &ReadFollowing::assemblyPaths)
         .def("findPath", &ReadFollowing::findPath)
+        ;
+
+    // Class ReadFollowing1.
+    class_<ReadFollowing1>(shasta2Module, "ReadFollowing1")
+        .def(pybind11::init<const AssemblyGraph&>())
+        .def("writePath", &ReadFollowing1::writePath)
         ;
 
     // Class ExternalAnchors.
