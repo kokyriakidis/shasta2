@@ -38,3 +38,12 @@ ExternalAnchors::OrientedRead::OrientedRead(
     uint32_t position) :
     orientedReadId(readId, strand), position(position)
 {}
+
+
+
+// This is used to access an existing ExternalAnchors.
+ExternalAnchors::ExternalAnchors(const string& name, const AccessExisting&)
+{
+    data.accessExistingReadOnly(name);
+}
+

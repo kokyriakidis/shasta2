@@ -99,6 +99,7 @@ class shasta::Anchors :
     public MappedMemoryOwner {
 public:
 
+    // Constructor to create Anchors from MarkerKmers.
     Anchors(
         const MappedMemoryOwner&,
         const Reads& reads,
@@ -110,7 +111,16 @@ public:
         const vector<uint64_t>& maxAnchorRepeatLength,
         uint64_t threadCount);
 
-    // This constructor accesses existing Anchors.
+    // Constructor to read Anchors from ExternalAnchors.
+    Anchors(
+        const MappedMemoryOwner&,
+        const Reads& reads,
+        uint64_t k,
+        const Markers& markers,
+        const MarkerKmers&,
+        const string& externalAnchorsName);
+
+    // Constructor to accesses existing Anchors.
     Anchors(
         const MappedMemoryOwner&,
         const Reads& reads,

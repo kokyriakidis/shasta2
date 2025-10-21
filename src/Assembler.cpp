@@ -81,11 +81,16 @@ void Assembler::assemble(
     createKmerChecker(options.k, options.markerDensity, options.threadCount);
     createMarkers(options.threadCount);
     createMarkerKmers(options.maxMarkerErrorRate, options.threadCount);
-    createAnchors(
-        options.minAnchorCoverage,
-        options.maxAnchorCoverage,
-        options.maxAnchorRepeatLength,
-        options.threadCount);
+
+    if(options.externalAnchorsName.empty()) {
+        createAnchors(
+            options.minAnchorCoverage,
+            options.maxAnchorCoverage,
+            options.maxAnchorRepeatLength,
+            options.threadCount);
+    } else {
+        readExternalAnchors(options.externalAnchorsName);
+    }
 
     createJourneys(options.threadCount);
     storeAnchorGaps();
@@ -125,6 +130,7 @@ void Assembler::accessKmerChecker()
 
 
 
+// Generate Anchors from MarkerKmers.
 void Assembler::createAnchors(
     uint64_t minAnchorCoverage,
     uint64_t maxAnchorCoverage,
@@ -145,6 +151,21 @@ void Assembler::createAnchors(
 
 
 
+// Read Anchors from ExternalAnchors.
+void Assembler::readExternalAnchors(const string& externalAnchorsName)
+{
+    anchorsPointer = make_shared<Anchors>(
+        MappedMemoryOwner(*this),
+        reads(),
+        assemblerInfo->k,
+        markers(),
+        *markerKmers,
+        externalAnchorsName);
+}
+
+
+
+// Access existing Anchors.
 void Assembler::accessAnchors(bool writeAccess)
 {
      anchorsPointer = make_shared<Anchors>(

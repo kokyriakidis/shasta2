@@ -185,11 +185,18 @@ public:
         SHASTA_ASSERT(anchorsPointer);
         return *anchorsPointer;
     }
+
+    // Generate Anchors from MarkerKmers.
     void createAnchors(
         uint64_t minAnchorCoverage,
         uint64_t maxAnchorCoverage,
         const vector<uint64_t>& maxAnchorRepeatLength,
         uint64_t threadCount);
+
+    // Read Anchors from ExternalAnchors.
+    void readExternalAnchors(const string& name);
+
+    // Access existing Anchors.
     void accessAnchors(bool writeAccess);
 
 

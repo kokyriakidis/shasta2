@@ -45,6 +45,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def_readwrite("k", &Options::k)
         .def_readwrite("markerDensity", &Options::markerDensity)
         .def_readwrite("maxMarkerErrorRate", &Options::maxMarkerErrorRate)
+        .def_readwrite("externalAnchorsName", &Options::externalAnchorsName)
         .def_readwrite("minAnchorCoverage", &Options::minAnchorCoverage)
         .def_readwrite("maxAnchorCoverage", &Options::maxAnchorCoverage)
         .def_readwrite("maxAnchorRepeatLength", &Options::maxAnchorRepeatLength)
@@ -105,6 +106,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
            arg("maxAnchorCoverage"),
            arg("maxHomopolymerLength"),
            arg("threadCount") = 0)
+       .def("readExternalAnchors", &Assembler::readExternalAnchors)
        .def("accessAnchors",
            &Assembler::accessAnchors,
            arg("writeAccess") = false)

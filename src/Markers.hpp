@@ -40,6 +40,11 @@ public:
     // The position of this marker in the oriented read.
     // This limits the length of a read to 2^24=16Mib bases.
     Uint24 position;
+
+    bool operator<(const Marker& that) const
+    {
+        return position < that.position;
+    }
 };
 
 

@@ -89,6 +89,10 @@ void Options::addOptions()
         "Maximum marker error rate. Reads with a higher marker error rate are not used."
         )->capture_default_str();
 
+    add_option("--external-anchors-name", externalAnchorsName,
+        "External anchors name. Must be an absolute path without the .toc/.data extensions."
+        )->capture_default_str();
+
     add_option("--min-anchor-coverage", minAnchorCoverage,
         "Minimum anchor coverage."
         )->capture_default_str();

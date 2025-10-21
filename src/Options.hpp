@@ -45,6 +45,7 @@ public:
 
     double maxMarkerErrorRate = 0.5;
 
+    string externalAnchorsName;
     uint64_t minAnchorCoverage = 10;
     uint64_t maxAnchorCoverage = 60;
 

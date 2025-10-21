@@ -25,6 +25,10 @@ public:
     // and extensions .toc and .data.
     ExternalAnchors(const string& name);
 
+    // This is used to access an existing ExternalAnchors.
+    class AccessExisting {};
+    ExternalAnchors(const string& name, const AccessExisting&);
+
     // This is called to begin the definition of a new Anchor.
     void beginNewAnchor();
 
@@ -35,8 +39,6 @@ public:
     // The position is the position in base space of the
     // first Anchor Base in the oriented read.
     void addOrientedRead(ReadId, Strand, uint32_t position);
-
-private:
 
     class OrientedRead {
     public:
