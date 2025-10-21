@@ -6,13 +6,19 @@ using namespace shasta;
 ExternalAnchors::ExternalAnchors(const string& name)
 {
     data.createNew(name, pageSize);
+    names.createNew(name + "-Names", pageSize);
 }
 
 
 
-void ExternalAnchors::beginNewAnchor()
+void ExternalAnchors::beginNewAnchor(const string& anchorName)
 {
     data.appendVector();
+
+    names.appendVector();
+    for(const char c: anchorName) {
+        names.append(c);
+    }
 }
 
 
@@ -45,5 +51,6 @@ ExternalAnchors::OrientedRead::OrientedRead(
 ExternalAnchors::ExternalAnchors(const string& name, const AccessExisting&)
 {
     data.accessExistingReadOnly(name);
+    names.accessExistingReadOnly(name + "-Names");
 }
 

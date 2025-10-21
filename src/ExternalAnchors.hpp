@@ -30,7 +30,7 @@ public:
     ExternalAnchors(const string& name, const AccessExisting&);
 
     // This is called to begin the definition of a new Anchor.
-    void beginNewAnchor();
+    void beginNewAnchor(const string& anchorName);
 
     // Add an  oriented read to the last anchor.
     // Read orientation is specified via Strand,
@@ -50,4 +50,5 @@ public:
 
     const uint64_t pageSize = 4096;
     MemoryMapped::VectorOfVectors<OrientedRead, uint64_t> data;
+    MemoryMapped::VectorOfVectors<char, uint64_t> names;
 };
