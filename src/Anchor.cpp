@@ -2186,7 +2186,6 @@ Anchors::Anchors(
     markers(markers),
     markerKmers(markerKmers)
 {
-    const bool debug = true;
 
     // Access the ExternalAnchors.
     SHASTA_ASSERT(not externalAnchorsName.empty());
@@ -2200,28 +2199,25 @@ Anchors::Anchors(
         externalAnchors.data.totalSize() / externalAnchors.data.size() << endl;
 
     // Initialize the binary data owned by Anchors.
+    // Don't create kmerToAnchorTable because there can be more
+    // than one anchor associated with a Kmer.
     anchorMarkerInfos.createNew(
         largeDataName("AnchorMarkerInfos"),
         largeDataPageSize);
     anchorInfos.createNew(largeDataName("AnchorInfos"), largeDataPageSize);
-    kmerToAnchorTable.createNew(largeDataName("KmerToAnchorTable"), largeDataPageSize);
-    kmerToAnchorTable.resize(markerKmers.size());
-    fill(kmerToAnchorTable.begin(), kmerToAnchorTable.end(), invalid<AnchorId>);
 
 
 
     // Loop over external anchors.
     // Each external anchor generates a pair of Anchors.
+    vector<AnchorMarkerInfo> markerInfos;
     for(uint64_t i=0; i<externalAnchors.data.size(); i++) {
         const span<const ExternalAnchors::OrientedRead> externalAnchor = externalAnchors.data[i];
-        if(debug) {
-            cout << "Working on an external anchor with coverage " << externalAnchor.size() << endl;
-        }
 
-        // Get the Kmer for each of the oriented reads and check that they are all identical.
+        // Create the MarkerInfos for this external anchor.
+        // Also check that the Kmers for all oriented reads are identical.
         Kmer kmer;
-        bool isFirst = true;
-        bool errorOccurred = false;
+        markerInfos.clear();
         for(const ExternalAnchors::OrientedRead& orientedRead: externalAnchor) {
             const OrientedReadId orientedReadId = orientedRead.orientedReadId;
             const uint32_t position = orientedRead.position;
@@ -2235,39 +2231,66 @@ Anchors::Anchors(
                 std::ostringstream message;
                 message << "Oriented read " << orientedReadId <<
                     " does not have a marker at position " << position;
-                errorOccurred = true;
                 cout << message.str() << endl;
+                cout << "Offending external anchor:" << endl;
+                externalAnchors.write(cout, i, k, reads, markers);
+                throw runtime_error(message.str());
             }
             const uint32_t ordinal = uint32_t(it - orientedReadMarkers.begin());
 
-
-            // Get the kmer and check that it is the same for all oriented reads in this anchor.
-            // const Kmer orientedReadKmer = markers.getKmer(orientedReadId, ordinal);
-            if(debug) {
-                cout << orientedReadId << " position " << position;//  << ", ordinal " << ordinal;
-                    //", kmer " ;
-                // orientedReadKmer.write(cout, k);
-                cout << endl;
-            }
-#if 0
-            if(isFirst) {
+            // Check the Kmer.
+            const Kmer orientedReadKmer = markers.getKmer(orientedReadId, ordinal);
+            if(markerInfos.empty()) {
                 kmer = orientedReadKmer;
-                isFirst = false;
             } else {
                 if(orientedReadKmer != kmer) {
                     std::ostringstream message;
                     message << "Inconsistent kmer at oriented read " << orientedReadId <<
                         " position " << position << " ordinal " << ordinal << endl;
+                    cout << message.str() << endl;
+                    cout << "Offending external anchor:" << endl;
+                    externalAnchors.write(cout, i, k, reads, markers);
                     throw runtime_error(message.str());
                 }
             }
-#endif
+
+            // Store this MarkerInfo.
+            markerInfos.emplace_back(orientedReadId, ordinal);
         }
 
-        if(errorOccurred) {
-            throw runtime_error("Error processing external anchor.");
+        // Sort the MarkerInfos by OrientedReadId.
+        sort(markerInfos.begin(), markerInfos.end());
+
+        // Check that the ReadIds are all distinct.
+        for(uint64_t i1=1; i1<markerInfos.size(); i1++) {
+            const uint64_t i0 = i1 - 1;
+            if(markerInfos[i0].orientedReadId.getReadId() >= markerInfos[i1].orientedReadId.getReadId()) {
+                std::ostringstream message;
+                message << "Duplicate ReadId " << markerInfos[i0].orientedReadId.getReadId() << endl;
+                cout << "Offending external anchor:" << endl;
+                externalAnchors.write(cout, i, k, reads, markers);
+                throw runtime_error(message.str());
+            }
         }
+
+        // Generate the Anchor corresponding to this external anchor,
+        // without reverse complementing.
+        // We are not filling AnchorInfo::kmerIndex.
+        anchorMarkerInfos.appendVector(markerInfos);
+        anchorInfos.push_back(AnchorInfo());
+
+        // Reverse complement the MarkerInfos, then generate
+        // the reverse complemented Anchor.
+        // We are not filling AnchorInfo::kmerIndex.
+        for(AnchorMarkerInfo& markerInfo: markerInfos) {
+            const uint32_t orientedReadMarkerCount = uint32_t(markers.size(markerInfo.orientedReadId.getValue()));
+            markerInfo.orientedReadId.flipStrand();
+            markerInfo.ordinal = orientedReadMarkerCount - 1 - markerInfo.ordinal;
+        }
+        anchorMarkerInfos.appendVector(markerInfos);
+        anchorInfos.push_back(AnchorInfo());
     }
 
-    SHASTA_ASSERT(0);
+    cout << "Generated " << anchorMarkerInfos.size() << " anchors from " <<
+        externalAnchors.data.size() << " external anchors." << endl;
 }

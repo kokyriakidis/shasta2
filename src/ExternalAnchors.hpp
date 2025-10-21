@@ -15,19 +15,17 @@
 
 namespace shasta {
     class ExternalAnchors;
+    class Markers;
+    class Reads;
 }
 
 
 
 class shasta::ExternalAnchors {
 public:
-    // This will generate two files with the specified name
-    // and extensions .toc and .data.
+    // This will generate four files:
+    // name.toc name.data, name-Names.toc, name-names.data.
     ExternalAnchors(const string& name);
-
-    // This is used to access an existing ExternalAnchors.
-    class AccessExisting {};
-    ExternalAnchors(const string& name, const AccessExisting&);
 
     // This is called to begin the definition of a new Anchor.
     void beginNewAnchor(const string& anchorName);
@@ -40,6 +38,13 @@ public:
     // first Anchor Base in the oriented read.
     void addOrientedRead(ReadId, Strand, uint32_t position);
 
+    // THE PYTHON API ENDS HERE.
+
+    // This is used to access an existing ExternalAnchors.
+    class AccessExisting {};
+    ExternalAnchors(const string& name, const AccessExisting&);
+
+
     class OrientedRead {
     public:
         OrientedReadId orientedReadId;
@@ -49,6 +54,13 @@ public:
     };
 
     const uint64_t pageSize = 4096;
+
+    // The definitions of the external anchors.
     MemoryMapped::VectorOfVectors<OrientedRead, uint64_t> data;
+
+    // External anchor names, only used for diagnostics.
     MemoryMapped::VectorOfVectors<char, uint64_t> names;
+
+    // Write information about the i-th external anchor.
+    void write(ostream&, uint64_t i, uint64_t k, const Reads&, const Markers&) const;
 };

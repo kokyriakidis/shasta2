@@ -1,5 +1,6 @@
 // Shasta
 #include "Reads.hpp"
+#include "extractKmer128.hpp"
 #include "ReadId.hpp"
 
 // Standard Library
@@ -235,3 +236,33 @@ ReadId Reads::getReadId(const span<const char>& readName) const
     }
 }
 
+
+
+Kmer Reads::getKmer(uint64_t k, OrientedReadId orientedReadId, uint32_t position) const
+{
+    // Get the ReadId and check that it is valid.
+    const ReadId readId = orientedReadId.getReadId();
+    if(readId >= readCount()) {
+        throw runtime_error("Invalid ReadId.");
+    }
+
+    // Get the read sequence and check that the position is valid.
+    const LongBaseSequenceView read = getRead(readId);
+    const uint64_t readLength = read.baseCount;
+    if(position + k > readLength) {
+        throw runtime_error("Invalid position in read.");
+    }
+
+    // Extract the Kmer.
+    const uint64_t strand = orientedReadId.getStrand();
+    if(strand == 0) {
+        Kmer kmer;
+        extractKmer128(read, position, k, kmer);
+        return kmer;
+    } else {
+        Kmer kmer;
+        extractKmer128(read, readLength - 1 - position, k, kmer);
+        kmer.reverseComplement(k);
+        return kmer;
+    }
+}

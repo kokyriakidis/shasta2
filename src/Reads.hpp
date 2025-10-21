@@ -2,6 +2,7 @@
 
 // Shasta
 #include "Base.hpp"
+#include "Kmer.hpp"
 #include "LongBaseSequence.hpp"
 #include "MemoryMappedObject.hpp"
 #include "shastaTypes.hpp"
@@ -104,6 +105,8 @@ public:
     }
 
     void remove();
+
+    Kmer getKmer(uint64_t k, OrientedReadId, uint32_t position) const;
 
 private:
     LongBaseSequences reads;

@@ -63,6 +63,11 @@ public:
         uint32_t ordinal) :
         MarkerInfo(orientedReadId, ordinal)
     {}
+
+    bool operator<(const AnchorMarkerInfo& that) const
+    {
+        return orientedReadId < that.orientedReadId;
+    }
 };
 
 
