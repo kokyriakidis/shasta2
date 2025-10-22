@@ -2138,6 +2138,7 @@ void Anchors::readFollowing(
 
 
 // Use the kmerToAnchorTable table to get the AnchorId corresponding to a given Kmer.
+// When using ExternalAnchors, this always returns invalid<AnchorId>.
 AnchorId Anchors::getAnchorIdFromKmer(const Kmer& kmer) const
 {
     const Kmer kmerRc = kmer.reverseComplement(k);
