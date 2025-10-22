@@ -254,15 +254,14 @@ Kmer Reads::getKmer(uint64_t k, OrientedReadId orientedReadId, uint32_t position
     }
 
     // Extract the Kmer.
-    const uint64_t strand = orientedReadId.getStrand();
+    const Strand strand = orientedReadId.getStrand();
     if(strand == 0) {
         Kmer kmer;
         extractKmer128(read, position, k, kmer);
         return kmer;
     } else {
         Kmer kmer;
-        extractKmer128(read, readLength - 1 - position, k, kmer);
-        kmer.reverseComplement(k);
-        return kmer;
+        extractKmer128(read, readLength - k - position, k, kmer);
+        return kmer.reverseComplement(k);
     }
 }

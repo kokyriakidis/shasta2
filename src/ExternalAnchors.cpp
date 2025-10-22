@@ -86,7 +86,7 @@ void ExternalAnchors::write(
         Marker targetMarker;
         targetMarker.position = position;
         const auto it = std::lower_bound(orientedReadMarkers.begin(), orientedReadMarkers.end(), targetMarker);
-        if((it != orientedReadMarkers.end()) and (it->position != position)) {
+        if((it != orientedReadMarkers.end()) and (it->position == position)) {
             ordinal = uint32_t(it - orientedReadMarkers.begin());
         }
 
