@@ -2200,13 +2200,15 @@ Anchors::Anchors(
         externalAnchors.data.totalSize() / externalAnchors.data.size() << endl;
 
     // Initialize the binary data owned by Anchors.
-    // Don't create kmerToAnchorTable because there can be more
-    // than one anchor associated with a Kmer.
     anchorMarkerInfos.createNew(
         largeDataName("AnchorMarkerInfos"),
         largeDataPageSize);
     anchorInfos.createNew(largeDataName("AnchorInfos"), largeDataPageSize);
 
+    // Create the kmerToAnchorTable and fill it in with invalid<AnchorId>.
+    kmerToAnchorTable.createNew(largeDataName("KmerToAnchorTable"), largeDataPageSize);
+    kmerToAnchorTable.resize(markerKmers.size());
+    fill(kmerToAnchorTable.begin(), kmerToAnchorTable.end(), invalid<AnchorId>);
 
 
     // Loop over external anchors.
