@@ -76,6 +76,8 @@ class shasta::AnchorInfo {
 public:
     // The k-mer index in the MarkerKmers for the k-mer
     // that generated this anchor and its reverse complement.
+    // This is only used in constructThreadFunctionPass2.
+    // When using ExternalAnchors, it is not filled in.
     uint64_t kmerIndex = invalid<uint64_t>;
 
     AnchorInfo(uint64_t kmerIndex = invalid<uint64_t>) : kmerIndex(kmerIndex) {}
