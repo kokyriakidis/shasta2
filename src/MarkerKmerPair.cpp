@@ -69,10 +69,10 @@ void MarkerKmerPair::gatherCommonOrientedReads(
         const auto streakBegin1 = it1;
         auto streakEnd0 = streakBegin0;
         auto streakEnd1 = streakBegin1;
-        while(streakEnd0->orientedReadId == orientedReadId) {
+        while((streakEnd0 != end0) and (streakEnd0->orientedReadId == orientedReadId)) {
             ++streakEnd0;
         }
-        while(streakEnd1->orientedReadId == orientedReadId) {
+        while((streakEnd1 != end1) and (streakEnd1->orientedReadId == orientedReadId)) {
             ++streakEnd1;
         }
         const uint64_t streakLength0 = streakEnd0 - streakBegin0;
