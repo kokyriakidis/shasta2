@@ -442,6 +442,8 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
     AssemblyGraphEdge& edge = assemblyGraph[e];
     AssemblyGraphEdgeStep& step = edge[i];
 
+    // cout << "Begin local assembly for edge " << edge.id << " " << " step " << i << endl;
+
     if(step.anchorPair.anchorIdA == step.anchorPair.anchorIdB) {
         step.sequence.clear();
         return;
