@@ -554,7 +554,7 @@ void LocalAssembly3::createVertices()
     rightAnchorVertex = vertexMap[rightAnchorKmerIndex];
 
 
-
+#if 0
     // We don't allow a ReadId to appear more than once in a vertex.
     // Remove from each vertex oriented reads whose ReadId appears more than once.
     BGL_FORALL_VERTICES(v, graph, Graph) {
@@ -582,7 +582,7 @@ void LocalAssembly3::createVertices()
         }
         vertex.data.swap(newData);
     }
-
+#endif
 }
 
 
