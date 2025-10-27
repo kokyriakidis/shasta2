@@ -82,6 +82,22 @@ private:
     class AppearanceInfo {
     public:
         uint32_t positionInJourney;
+        uint64_t stepId;
+
+        // For an AppearanceInfo in the initial representative region,
+        // store the base offset between this appearance and the end of the segment.
+        // For an AppearanceInfo in the final representative region,
+        // store the base offset between the beginning of the segment and this appearance.
+        uint64_t offset;
+
+        AppearanceInfo(
+            uint32_t positionInJourney,
+            uint64_t stepId,
+            uint64_t offset) :
+            positionInJourney(positionInJourney),
+            stepId(stepId),
+            offset(offset)
+        {}
         bool operator<(const AppearanceInfo& that) const
         {
             return positionInJourney < that.positionInJourney;

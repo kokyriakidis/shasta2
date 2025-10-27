@@ -51,12 +51,24 @@ void ReadFollowing1::findAppearances()
         // For each OrientedReadId. store the last appearance in journey order.
         std::map<OrientedReadId, vector<AppearanceInfo> > initialAppearancesMap;
         for(uint64_t stepId=initialBegin; stepId!=initialEnd; stepId++) {
+
+            // Compute the base offset to the end of the segment.
+            uint64_t offset = 0;
+            for(uint64_t i=stepId+1; i<initialEnd; i++) {
+                const AssemblyGraphEdge& assemblyGraphEdge = assemblyGraph[segment];
+                if(assemblyGraphEdge.wasAssembled) {
+                    offset += assemblyGraphEdge[i].sequence.size();
+                } else {
+                    offset += assemblyGraphEdge[i].offset;
+                }
+            }
+
             const AssemblyGraphEdgeStep& step = edge[stepId];
             const AnchorId anchorId = step.anchorPair.anchorIdA;
             for(const OrientedReadId orientedReadId: step.anchorPair.orientedReadIds) {
                 const uint32_t positionInJourney =
                     assemblyGraph.anchors.getPositionInJourney(anchorId, orientedReadId);
-                initialAppearancesMap[orientedReadId].push_back(AppearanceInfo(positionInJourney));
+                initialAppearancesMap[orientedReadId].push_back(AppearanceInfo(positionInJourney, stepId, offset));
             }
         }
         for(auto& p: initialAppearancesMap) {
@@ -71,12 +83,23 @@ void ReadFollowing1::findAppearances()
         // For each OrientedReadId. store the first appearance in journey order.
         std::map<OrientedReadId, vector<AppearanceInfo> > finalAppearancesMap;
         for(uint64_t stepId=finalBegin; stepId!=finalEnd; stepId++) {
+
+            // Compute the base offset from the beginning of the segment.
+            uint64_t offset = 0;
+            for(uint64_t i=finalBegin; i<stepId; i++) {
+                const AssemblyGraphEdge& assemblyGraphEdge = assemblyGraph[segment];
+                if(assemblyGraphEdge.wasAssembled) {
+                    offset += assemblyGraphEdge[i].sequence.size();
+                } else {
+                    offset += assemblyGraphEdge[i].offset;
+                }
+            }
             const AssemblyGraphEdgeStep& step = edge[stepId];
             const AnchorId anchorId = step.anchorPair.anchorIdB;
             for(const OrientedReadId orientedReadId: step.anchorPair.orientedReadIds) {
                 const uint32_t positionInJourney =
                     assemblyGraph.anchors.getPositionInJourney(anchorId, orientedReadId);
-                finalAppearancesMap[orientedReadId].push_back(AppearanceInfo(positionInJourney));
+                finalAppearancesMap[orientedReadId].push_back(AppearanceInfo(positionInJourney, stepId, offset));
             }
         }
         for(auto& p: finalAppearancesMap) {
