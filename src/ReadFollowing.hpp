@@ -20,6 +20,8 @@ namespace shasta {
         class Graph;
         class Vertex;
         class Edge;
+        class AppearanceInfo;
+        class Appearance;
 
         using GraphBaseClass = boost::adjacency_list<
             boost::listS,
@@ -27,6 +29,7 @@ namespace shasta {
             boost::bidirectionalS,
             Vertex,
             Edge>;
+        using Segment = AssemblyGraph::edge_descriptor;
     }
 }
 
@@ -35,7 +38,6 @@ namespace shasta {
 class shasta::ReadFollowing::Vertex {
 public:
     // A Segment is an edge of the AssemblyGraph.
-    using Segment = AssemblyGraph::edge_descriptor;
     Segment segment;
 
     // The sequence length or estimated offset of this AssemblyGraph edge.
@@ -57,6 +59,52 @@ public:
 
 
 
+// Classes to describe an appearance of an OrientedReadIds in the initial/final
+// representative regions of a Segment.
+class shasta::ReadFollowing::AppearanceInfo {
+public:
+    uint32_t positionInJourney;
+    uint32_t ordinal;
+    uint32_t position;
+    uint64_t stepId;
+
+    // For an AppearanceInfo in the initial representative region,
+    // store the base offset between this appearance and the end of the segment.
+    // For an AppearanceInfo in the final representative region,
+    // store the base offset between the beginning of the segment and this appearance.
+    uint64_t offset;
+
+    AppearanceInfo(
+        uint32_t positionInJourney,
+        uint32_t ordinal,
+        uint32_t position,
+        uint64_t stepId,
+        uint64_t offset) :
+        positionInJourney(positionInJourney),
+        ordinal(ordinal),
+        position(position),
+        stepId(stepId),
+        offset(offset)
+    {}
+    bool operator<(const AppearanceInfo& that) const
+    {
+        return positionInJourney < that.positionInJourney;
+    }
+};
+
+
+
+class shasta::ReadFollowing::Appearance : public AppearanceInfo {
+public:
+    Segment segment;
+    Appearance(const AppearanceInfo& appearanceInfo, Segment segment) :
+        AppearanceInfo(appearanceInfo),
+        segment(segment)
+        {}
+};
+
+
+
 class shasta::ReadFollowing::Graph : public GraphBaseClass {
 public:
     Graph(const AssemblyGraph&);
@@ -64,64 +112,15 @@ public:
 private:
     const AssemblyGraph& assemblyGraph;
 
-    // A Segment is an edge of the AssemblyGraph.
-    using Segment = AssemblyGraph::edge_descriptor;
-
     // EXPOSE WHEN CODE STABILIZES.
     const uint64_t representativeRegionLength = 10;
 
-
-
-    // Find appearances of OrientedReadIds in the initial/final
-    // representative regions of each Segment.
-    // Store them by OrientedReadId, indexed by OrientedReadId::getValue().
-    // For the initial representative region, store the last appearance
-    // (in journey order) of each OrientedReadId.
-    // For the final representative region, store the first appearance
-    // (in journey order) of each OrientedReadId.
-    class AppearanceInfo {
-    public:
-        uint32_t positionInJourney;
-        uint32_t ordinal;
-        uint32_t position;
-        uint64_t stepId;
-
-        // For an AppearanceInfo in the initial representative region,
-        // store the base offset between this appearance and the end of the segment.
-        // For an AppearanceInfo in the final representative region,
-        // store the base offset between the beginning of the segment and this appearance.
-        uint64_t offset;
-
-        AppearanceInfo(
-            uint32_t positionInJourney,
-            uint32_t ordinal,
-            uint32_t position,
-            uint64_t stepId,
-            uint64_t offset) :
-            positionInJourney(positionInJourney),
-            ordinal(ordinal),
-            position(position),
-            stepId(stepId),
-            offset(offset)
-        {}
-        bool operator<(const AppearanceInfo& that) const
-        {
-            return positionInJourney < that.positionInJourney;
-        }
-    };
-    class Appearance : public AppearanceInfo {
-    public:
-        Segment segment;
-        Appearance(const AppearanceInfo& appearanceInfo, Segment segment) :
-            AppearanceInfo(appearanceInfo),
-            segment(segment)
-            {}
-    };
+    // Appearance of OrientedReadIds in the initial/final
+    // representative regions of segments.
+    // Indexed by OrientedReadId::getValue().
     vector< vector<Appearance> > initialAppearances;
     vector< vector<Appearance> > finalAppearances;
     void findAppearances();
-
-
 
     // The number of initial/final Appearances in each Segment.
     std::map<Segment, uint64_t> initialAppearancesCount;
