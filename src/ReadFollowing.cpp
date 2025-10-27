@@ -210,15 +210,14 @@ void Graph::createVertices()
     Graph& graph = *this;
 
     BGL_FORALL_EDGES(segment, assemblyGraph, AssemblyGraph) {
-        const ReadFollowingVertex vertex(assemblyGraph, segment);
-        const vertex_descriptor v = add_vertex(ReadFollowingVertex(assemblyGraph, segment), graph);
+        const vertex_descriptor v = add_vertex(Vertex(assemblyGraph, segment), graph);
         vertexMap.insert(make_pair(segment, v));
     }
 }
 
 
 
-ReadFollowingVertex::ReadFollowingVertex(
+Vertex::Vertex(
     const AssemblyGraph& assemblyGraph,
     Segment segment) :
     segment(segment)
@@ -324,7 +323,7 @@ void Graph::writeGraph(double minJaccard) const
     dot << std::fixed << std::setprecision(2);
 
     BGL_FORALL_VERTICES(v, graph, Graph) {
-        const ReadFollowingVertex& vertex = graph[v];
+        const Vertex& vertex = graph[v];
         const Segment segment = vertex.segment;
         const AssemblyGraphEdge& assemblyGraphEdge = assemblyGraph[segment];
         dot << assemblyGraphEdge.id <<
