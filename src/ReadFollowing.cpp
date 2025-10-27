@@ -19,7 +19,6 @@ Graph::Graph(const AssemblyGraph& assemblyGraph) :
     assemblyGraph(assemblyGraph)
 {
     findAppearances();
-    countAppearances();
     createVertices();
     createEdges();
 
@@ -143,65 +142,6 @@ void Graph::findAppearances()
 
 
 
-void Graph::countAppearances()
-{
-    const uint64_t orientedReadCount = assemblyGraph.journeys.size();
-
-    // Loop over all OrientedReadIds.
-    for(uint64_t i=0; i<orientedReadCount; i++) {
-
-        // Initial appearances.
-        for(const Appearance appearance: initialAppearances[i]) {
-            const Segment segment = appearance.segment;
-            const auto it = initialAppearancesCount.find(segment);
-            if(it == initialAppearancesCount.end()) {
-                initialAppearancesCount.insert(make_pair(segment, 1));
-            } else {
-                ++(it->second);
-            }
-        }
-
-        // Final appearances.
-        for(const Appearance appearance: finalAppearances[i]) {
-            const Segment segment = appearance.segment;
-            const auto it = finalAppearancesCount.find(segment);
-            if(it == finalAppearancesCount.end()) {
-                finalAppearancesCount.insert(make_pair(segment, 1));
-            } else {
-                ++(it->second);
-            }
-        }
-
-    }
-
-}
-
-
-
-uint64_t Graph::getInitialAppearancesCount(Segment segment) const
-{
-    const auto it = initialAppearancesCount.find(segment);
-    if(it == initialAppearancesCount.end()) {
-        return 0;
-    } else {
-        return it->second;
-    }
-}
-
-
-
-uint64_t Graph::getFinalAppearancesCount(Segment segment) const
-{
-    const auto it = finalAppearancesCount.find(segment);
-    if(it == finalAppearancesCount.end()) {
-        return 0;
-    } else {
-        return it->second;
-    }
-}
-
-
-
 // Create vertices of the ReadFollowing graph.
 // Each vertex corresponds to a Segment, but not
 // all Segments generate a vertex.
@@ -209,10 +149,34 @@ void Graph::createVertices()
 {
     Graph& graph = *this;
 
+    // Create a Vertex for each Segment.
     BGL_FORALL_EDGES(segment, assemblyGraph, AssemblyGraph) {
         const vertex_descriptor v = add_vertex(Vertex(assemblyGraph, segment), graph);
         vertexMap.insert(make_pair(segment, v));
     }
+    const uint64_t orientedReadCount = assemblyGraph.journeys.size();
+
+
+    // Store initial anf final apearances in vertices.
+    // Loop over all OrientedReadIds.
+    for(uint64_t i=0; i<orientedReadCount; i++) {
+
+        // Initial appearances.
+        for(const Appearance appearance: initialAppearances[i]) {
+            const Segment segment = appearance.segment;
+            const vertex_descriptor v = vertexMap[segment];
+            graph[v].initialAppearances.push_back(appearance);
+        }
+
+        // Final appearances.
+        for(const Appearance appearance: finalAppearances[i]) {
+            const Segment segment = appearance.segment;
+            const vertex_descriptor v = vertexMap[segment];
+            graph[v].finalAppearances.push_back(appearance);
+        }
+
+    }
+
 }
 
 
@@ -297,11 +261,8 @@ double Graph::jaccard(edge_descriptor e) const
     const vertex_descriptor v0 = source(e, graph);
     const vertex_descriptor v1 = target(e, graph);
 
-    const Segment segment0 = graph[v0].segment;
-    const Segment segment1 = graph[v1].segment;
-
-    const uint64_t n0 = getFinalAppearancesCount(segment0);
-    const uint64_t n1 = getInitialAppearancesCount(segment1);
+    const uint64_t n0 = graph[v0].finalAppearances.size();
+    const uint64_t n1 = graph[v1].initialAppearances.size();
 
     const uint64_t n01 = graph[e].coverage;
 
@@ -329,8 +290,8 @@ void Graph::writeGraph(double minJaccard) const
         dot << assemblyGraphEdge.id <<
             " [label=\"" << assemblyGraphEdge.id << "\\n" <<
             vertex.length << "\\n" <<
-            getInitialAppearancesCount(segment) << "/" <<
-            getFinalAppearancesCount(segment) <<
+            vertex.initialAppearances.size() << "/" <<
+            vertex.finalAppearances.size() <<
             "\"";
         dot <<
             "]"

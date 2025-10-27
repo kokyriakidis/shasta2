@@ -35,30 +35,6 @@ namespace shasta {
 
 
 
-class shasta::ReadFollowing::Vertex {
-public:
-    // A Segment is an edge of the AssemblyGraph.
-    Segment segment;
-
-    // The sequence length or estimated offset of this AssemblyGraph edge.
-    uint64_t length = invalid<uint64_t>;
-
-    Vertex(
-        const AssemblyGraph&,
-        AssemblyGraph::edge_descriptor);
-
-};
-
-
-
-class shasta::ReadFollowing::Edge {
-public:
-    uint64_t coverage = 0;
-    double jaccard = 0.;
-};
-
-
-
 // Classes to describe an appearance of an OrientedReadIds in the initial/final
 // representative regions of a Segment.
 class shasta::ReadFollowing::AppearanceInfo {
@@ -94,6 +70,33 @@ public:
 
 
 
+class shasta::ReadFollowing::Vertex {
+public:
+    // A Segment is an edge of the AssemblyGraph.
+    Segment segment;
+
+    // The sequence length or estimated offset of this AssemblyGraph edge.
+    uint64_t length = invalid<uint64_t>;
+
+    Vertex(
+        const AssemblyGraph&,
+        AssemblyGraph::edge_descriptor);
+
+    vector<AppearanceInfo> initialAppearances;
+    vector<AppearanceInfo> finalAppearances;
+
+};
+
+
+
+class shasta::ReadFollowing::Edge {
+public:
+    uint64_t coverage = 0;
+    double jaccard = 0.;
+};
+
+
+
 class shasta::ReadFollowing::Appearance : public AppearanceInfo {
 public:
     Segment segment;
@@ -121,13 +124,6 @@ private:
     vector< vector<Appearance> > initialAppearances;
     vector< vector<Appearance> > finalAppearances;
     void findAppearances();
-
-    // The number of initial/final Appearances in each Segment.
-    std::map<Segment, uint64_t> initialAppearancesCount;
-    std::map<Segment, uint64_t> finalAppearancesCount;
-    void countAppearances();
-    uint64_t getInitialAppearancesCount(Segment) const;
-    uint64_t getFinalAppearancesCount(Segment) const;
 
     // Create vertices of the ReadFollowing graph.
     // Each vertex corresponds to a Segment, but not
