@@ -49,42 +49,42 @@ void ReadFollowing1::findAppearances()
 
         // Appearances in the initial representative region of this edge.
         // For each OrientedReadId. store the last appearance in journey order.
-        std::map<OrientedReadId, vector<uint32_t> > initialAppearancesMap;
+        std::map<OrientedReadId, vector<AppearanceInfo> > initialAppearancesMap;
         for(uint64_t stepId=initialBegin; stepId!=initialEnd; stepId++) {
             const AssemblyGraphEdgeStep& step = edge[stepId];
             const AnchorId anchorId = step.anchorPair.anchorIdA;
             for(const OrientedReadId orientedReadId: step.anchorPair.orientedReadIds) {
                 const uint32_t positionInJourney =
                     assemblyGraph.anchors.getPositionInJourney(anchorId, orientedReadId);
-                initialAppearancesMap[orientedReadId].push_back(positionInJourney);
+                initialAppearancesMap[orientedReadId].push_back(AppearanceInfo(positionInJourney));
             }
         }
         for(auto& p: initialAppearancesMap) {
             const OrientedReadId orientedReadId = p.first;
-            vector<uint32_t>& positionsInJourney = p.second;
-            std::ranges::sort(positionsInJourney);
+            vector<AppearanceInfo>& infos = p.second;
+            sort(infos.begin(), infos.end());
             initialAppearances[orientedReadId.getValue()].push_back(
-                Appearance(segment, positionsInJourney.back()));
+                Appearance(infos.back(), segment));
         }
 
         // Appearances in the final representative region of this edge.
         // For each OrientedReadId. store the first appearance in journey order.
-        std::map<OrientedReadId, vector<uint32_t> > finalAppearancesMap;
+        std::map<OrientedReadId, vector<AppearanceInfo> > finalAppearancesMap;
         for(uint64_t stepId=finalBegin; stepId!=finalEnd; stepId++) {
             const AssemblyGraphEdgeStep& step = edge[stepId];
             const AnchorId anchorId = step.anchorPair.anchorIdB;
             for(const OrientedReadId orientedReadId: step.anchorPair.orientedReadIds) {
                 const uint32_t positionInJourney =
                     assemblyGraph.anchors.getPositionInJourney(anchorId, orientedReadId);
-                finalAppearancesMap[orientedReadId].push_back(positionInJourney);
+                finalAppearancesMap[orientedReadId].push_back(AppearanceInfo(positionInJourney));
             }
         }
         for(auto& p: finalAppearancesMap) {
             const OrientedReadId orientedReadId = p.first;
-            vector<uint32_t>& positionsInJourney = p.second;
-            std::ranges::sort(positionsInJourney);
+            vector<AppearanceInfo>& infos = p.second;
+            sort(infos.begin(), infos.end());
             finalAppearances[orientedReadId.getValue()].push_back(
-                Appearance(segment, positionsInJourney.front()));
+                Appearance(infos.front(), segment));
         }
     }
 

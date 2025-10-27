@@ -70,6 +70,8 @@ private:
     // EXPOSE WHEN CODE STABILIZES.
     const uint64_t representativeRegionLength = 10;
 
+
+
     // Find appearances of OrientedReadIds in the initial/final
     // representative regions of each Segment.
     // Store them by OrientedReadId, indexed by OrientedReadId::getValue().
@@ -77,18 +79,27 @@ private:
     // (in journey order) of each OrientedReadId.
     // For the final representative region, store the first appearance
     // (in journey order) of each OrientedReadId.
-    class Appearance {
+    class AppearanceInfo {
+    public:
+        uint32_t positionInJourney;
+        bool operator<(const AppearanceInfo& that) const
+        {
+            return positionInJourney < that.positionInJourney;
+        }
+    };
+    class Appearance : public AppearanceInfo {
     public:
         Segment segment;
-        uint32_t positionInJourney;
-        Appearance(Segment segment, uint32_t positionInJourney) :
-            segment(segment),
-            positionInJourney(positionInJourney)
+        Appearance(const AppearanceInfo& appearanceInfo, Segment segment) :
+            AppearanceInfo(appearanceInfo),
+            segment(segment)
             {}
     };
     vector< vector<Appearance> > initialAppearances;
     vector< vector<Appearance> > finalAppearances;
     void findAppearances();
+
+
 
     // The number of initial/final Appearances in each Segment.
     std::map<Segment, uint64_t> initialAppearancesCount;
