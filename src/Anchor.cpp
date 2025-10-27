@@ -763,6 +763,21 @@ uint32_t Anchors::getPositionInJourney(AnchorId anchorId, OrientedReadId oriente
 }
 
 
+// Get the AnchorMarkerInfo corresponding to a given AnchorId and OrientedReadId.
+// This asserts if the given AnchorId does not contain an AnchorMarkerInfo
+// for the requested OrientedReadId.
+const AnchorMarkerInfo& Anchors::getAnchorMarkerInfo(AnchorId anchorId, OrientedReadId orientedReadId) const
+{
+    for(const auto& markerInfo: anchorMarkerInfos[anchorId]) {
+        if(markerInfo.orientedReadId == orientedReadId) {
+            return markerInfo;
+        }
+    }
+
+    SHASTA_ASSERT(0);
+}
+
+
 // Find out if the given AnchorId contains the specified OrientedReadId.
 bool Anchors::anchorContains(AnchorId anchorId, OrientedReadId orientedReadId) const
 {

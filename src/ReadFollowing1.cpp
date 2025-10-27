@@ -66,9 +66,10 @@ void ReadFollowing1::findAppearances()
             const AssemblyGraphEdgeStep& step = edge[stepId];
             const AnchorId anchorId = step.anchorPair.anchorIdA;
             for(const OrientedReadId orientedReadId: step.anchorPair.orientedReadIds) {
-                const uint32_t positionInJourney =
-                    assemblyGraph.anchors.getPositionInJourney(anchorId, orientedReadId);
-                initialAppearancesMap[orientedReadId].push_back(AppearanceInfo(positionInJourney, stepId, offset));
+                const AnchorMarkerInfo& anchorMarkerInfo = assemblyGraph.anchors.getAnchorMarkerInfo(anchorId, orientedReadId);
+                const uint32_t positionInJourney = anchorMarkerInfo.positionInJourney;
+                const uint32_t ordinal = anchorMarkerInfo.ordinal;
+                initialAppearancesMap[orientedReadId].push_back(AppearanceInfo(positionInJourney, ordinal, stepId, offset));
             }
         }
         for(auto& p: initialAppearancesMap) {
@@ -97,9 +98,10 @@ void ReadFollowing1::findAppearances()
             const AssemblyGraphEdgeStep& step = edge[stepId];
             const AnchorId anchorId = step.anchorPair.anchorIdB;
             for(const OrientedReadId orientedReadId: step.anchorPair.orientedReadIds) {
-                const uint32_t positionInJourney =
-                    assemblyGraph.anchors.getPositionInJourney(anchorId, orientedReadId);
-                finalAppearancesMap[orientedReadId].push_back(AppearanceInfo(positionInJourney, stepId, offset));
+                const AnchorMarkerInfo& anchorMarkerInfo = assemblyGraph.anchors.getAnchorMarkerInfo(anchorId, orientedReadId);
+                const uint32_t positionInJourney = anchorMarkerInfo.positionInJourney;
+                const uint32_t ordinal = anchorMarkerInfo.ordinal;
+                finalAppearancesMap[orientedReadId].push_back(AppearanceInfo(positionInJourney, ordinal, stepId, offset));
             }
         }
         for(auto& p: finalAppearancesMap) {

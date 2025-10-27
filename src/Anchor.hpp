@@ -205,6 +205,12 @@ public:
     // for the requested OrientedReadId.
     uint32_t getPositionInJourney(AnchorId, OrientedReadId) const;
 
+    // Get the AnchorMarkerInfo corresponding to a given AnchorId and OrientedReadId.
+    // This asserts if the given AnchorId does not contain an AnchorMarkerInfo
+    // for the requested OrientedReadId.
+    const AnchorMarkerInfo& getAnchorMarkerInfo(AnchorId, OrientedReadId) const;
+
+
     // Find out if the given AnchorId contains the specified OrientedReadId.
     bool anchorContains(AnchorId, OrientedReadId) const;
 
