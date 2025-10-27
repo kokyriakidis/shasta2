@@ -83,6 +83,7 @@ private:
     public:
         uint32_t positionInJourney;
         uint32_t ordinal;
+        uint32_t position;
         uint64_t stepId;
 
         // For an AppearanceInfo in the initial representative region,
@@ -94,10 +95,12 @@ private:
         AppearanceInfo(
             uint32_t positionInJourney,
             uint32_t ordinal,
+            uint32_t position,
             uint64_t stepId,
             uint64_t offset) :
             positionInJourney(positionInJourney),
             ordinal(ordinal),
+            position(position),
             stepId(stepId),
             offset(offset)
         {}

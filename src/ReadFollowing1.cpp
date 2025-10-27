@@ -3,6 +3,7 @@
 // Shasta.
 #include "ReadFollowing1.hpp"
 #include "Journeys.hpp"
+#include "Markers.hpp"
 using namespace shasta;
 
 // Boost libraries.
@@ -30,6 +31,7 @@ ReadFollowing1::ReadFollowing1(const AssemblyGraph& assemblyGraph) :
 void ReadFollowing1::findAppearances()
 {
     const uint64_t orientedReadCount = assemblyGraph.journeys.size();
+    const uint32_t kHalf = uint32_t(assemblyGraph.anchors.k / 2);
     initialAppearances.resize(orientedReadCount);
     finalAppearances.resize(orientedReadCount);
 
@@ -69,7 +71,9 @@ void ReadFollowing1::findAppearances()
                 const AnchorMarkerInfo& anchorMarkerInfo = assemblyGraph.anchors.getAnchorMarkerInfo(anchorId, orientedReadId);
                 const uint32_t positionInJourney = anchorMarkerInfo.positionInJourney;
                 const uint32_t ordinal = anchorMarkerInfo.ordinal;
-                initialAppearancesMap[orientedReadId].push_back(AppearanceInfo(positionInJourney, ordinal, stepId, offset));
+                const auto orientedReadMarkers = assemblyGraph.anchors.markers[orientedReadId.getValue()];
+                const uint32_t position = orientedReadMarkers[ordinal].position + kHalf;
+                initialAppearancesMap[orientedReadId].push_back(AppearanceInfo(positionInJourney, ordinal, position, stepId, offset));
             }
         }
         for(auto& p: initialAppearancesMap) {
@@ -101,7 +105,9 @@ void ReadFollowing1::findAppearances()
                 const AnchorMarkerInfo& anchorMarkerInfo = assemblyGraph.anchors.getAnchorMarkerInfo(anchorId, orientedReadId);
                 const uint32_t positionInJourney = anchorMarkerInfo.positionInJourney;
                 const uint32_t ordinal = anchorMarkerInfo.ordinal;
-                finalAppearancesMap[orientedReadId].push_back(AppearanceInfo(positionInJourney, ordinal, stepId, offset));
+                const auto orientedReadMarkers = assemblyGraph.anchors.markers[orientedReadId.getValue()];
+                const uint32_t position = orientedReadMarkers[ordinal].position + kHalf;
+                finalAppearancesMap[orientedReadId].push_back(AppearanceInfo(positionInJourney, ordinal, position, stepId, offset));
             }
         }
         for(auto& p: finalAppearancesMap) {
