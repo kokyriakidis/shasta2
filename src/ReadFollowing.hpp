@@ -16,21 +16,21 @@
 
 namespace shasta {
 
-    class ReadFollowing1;
-    class ReadFollowing1Vertex;
-    class ReadFollowing1Edge;
+    class ReadFollowing;
+    class ReadFollowingVertex;
+    class ReadFollowingEdge;
 
-    using ReadFollowing1BaseClass = boost::adjacency_list<
+    using ReadFollowingBaseClass = boost::adjacency_list<
         boost::listS,
         boost::listS,
         boost::bidirectionalS,
-        ReadFollowing1Vertex,
-        ReadFollowing1Edge>;
+        ReadFollowingVertex,
+        ReadFollowingEdge>;
 }
 
 
 
-class shasta::ReadFollowing1Vertex {
+class shasta::ReadFollowingVertex {
 public:
     // A Segment is an edge of the AssemblyGraph.
     using Segment = AssemblyGraph::edge_descriptor;
@@ -39,7 +39,7 @@ public:
     // The sequence length or estimated offset of this AssemblyGraph edge.
     uint64_t length = invalid<uint64_t>;
 
-    ReadFollowing1Vertex(
+    ReadFollowingVertex(
         const AssemblyGraph&,
         AssemblyGraph::edge_descriptor);
 
@@ -47,7 +47,7 @@ public:
 
 
 
-class shasta::ReadFollowing1Edge {
+class shasta::ReadFollowingEdge {
 public:
     uint64_t coverage = 0;
     double jaccard = 0.;
@@ -55,14 +55,14 @@ public:
 
 
 
-class shasta::ReadFollowing1 : public ReadFollowing1BaseClass {
+class shasta::ReadFollowing : public ReadFollowingBaseClass {
 public:
-    ReadFollowing1(const AssemblyGraph&);
+    ReadFollowing(const AssemblyGraph&);
 
 private:
     const AssemblyGraph& assemblyGraph;
 
-    using Graph = ReadFollowing1;
+    using Graph = ReadFollowing;
 
     // A Segment is an edge of the AssemblyGraph.
     using Segment = AssemblyGraph::edge_descriptor;

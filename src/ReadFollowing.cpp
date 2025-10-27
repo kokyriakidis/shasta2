@@ -1,7 +1,7 @@
 // Read following in the AssemblyGraph.
 
 // Shasta.
-#include "ReadFollowing1.hpp"
+#include "ReadFollowing.hpp"
 #include "Journeys.hpp"
 #include "Markers.hpp"
 using namespace shasta;
@@ -14,7 +14,7 @@ using namespace shasta;
 
 
 
-ReadFollowing1::ReadFollowing1(const AssemblyGraph& assemblyGraph) :
+ReadFollowing::ReadFollowing(const AssemblyGraph& assemblyGraph) :
     assemblyGraph(assemblyGraph)
 {
     findAppearances();
@@ -28,7 +28,7 @@ ReadFollowing1::ReadFollowing1(const AssemblyGraph& assemblyGraph) :
 
 
 
-void ReadFollowing1::findAppearances()
+void ReadFollowing::findAppearances()
 {
     const uint64_t orientedReadCount = assemblyGraph.journeys.size();
     const uint32_t kHalf = uint32_t(assemblyGraph.anchors.k / 2);
@@ -142,7 +142,7 @@ void ReadFollowing1::findAppearances()
 
 
 
-void ReadFollowing1::countAppearances()
+void ReadFollowing::countAppearances()
 {
     const uint64_t orientedReadCount = assemblyGraph.journeys.size();
 
@@ -177,7 +177,7 @@ void ReadFollowing1::countAppearances()
 
 
 
-uint64_t ReadFollowing1::getInitialAppearancesCount(Segment segment) const
+uint64_t ReadFollowing::getInitialAppearancesCount(Segment segment) const
 {
     const auto it = initialAppearancesCount.find(segment);
     if(it == initialAppearancesCount.end()) {
@@ -189,7 +189,7 @@ uint64_t ReadFollowing1::getInitialAppearancesCount(Segment segment) const
 
 
 
-uint64_t ReadFollowing1::getFinalAppearancesCount(Segment segment) const
+uint64_t ReadFollowing::getFinalAppearancesCount(Segment segment) const
 {
     const auto it = finalAppearancesCount.find(segment);
     if(it == finalAppearancesCount.end()) {
@@ -204,20 +204,20 @@ uint64_t ReadFollowing1::getFinalAppearancesCount(Segment segment) const
 // Create vertices of the ReadFollowing graph.
 // Each vertex corresponds to a Segment, but not
 // all Segments generate a vertex.
-void ReadFollowing1::createVertices()
+void ReadFollowing::createVertices()
 {
     Graph& graph = *this;
 
     BGL_FORALL_EDGES(segment, assemblyGraph, AssemblyGraph) {
-        const ReadFollowing1Vertex vertex(assemblyGraph, segment);
-        const vertex_descriptor v = add_vertex(ReadFollowing1Vertex(assemblyGraph, segment), graph);
+        const ReadFollowingVertex vertex(assemblyGraph, segment);
+        const vertex_descriptor v = add_vertex(ReadFollowingVertex(assemblyGraph, segment), graph);
         vertexMap.insert(make_pair(segment, v));
     }
 }
 
 
 
-ReadFollowing1Vertex::ReadFollowing1Vertex(
+ReadFollowingVertex::ReadFollowingVertex(
     const AssemblyGraph& assemblyGraph,
     Segment segment) :
     segment(segment)
@@ -233,7 +233,7 @@ ReadFollowing1Vertex::ReadFollowing1Vertex(
 
 
 // Create edges of the ReadFollowing graph.
-void ReadFollowing1::createEdges()
+void ReadFollowing::createEdges()
 {
     Graph& graph = *this;
     const uint64_t orientedReadCount = assemblyGraph.journeys.size();
@@ -290,7 +290,7 @@ void ReadFollowing1::createEdges()
 // Jaccard similarity for an EdgePairsGraph edge.
 // Computed using the finalAppearancesCount of the source vertex
 // and the initialAppearancesCount of the target vertex.
-double ReadFollowing1::jaccard(edge_descriptor e) const
+double ReadFollowing::jaccard(edge_descriptor e) const
 {
     const Graph& graph = *this;
 
@@ -314,7 +314,7 @@ double ReadFollowing1::jaccard(edge_descriptor e) const
 
 
 
-void ReadFollowing1::writeGraph(double minJaccard) const
+void ReadFollowing::writeGraph(double minJaccard) const
 {
     const Graph& graph = *this;
 
@@ -323,7 +323,7 @@ void ReadFollowing1::writeGraph(double minJaccard) const
     dot << std::fixed << std::setprecision(2);
 
     BGL_FORALL_VERTICES(v, graph, Graph) {
-        const ReadFollowing1Vertex& vertex = graph[v];
+        const ReadFollowingVertex& vertex = graph[v];
         const Segment segment = vertex.segment;
         const AssemblyGraphEdge& assemblyGraphEdge = assemblyGraph[segment];
         dot << assemblyGraphEdge.id <<
@@ -367,7 +367,7 @@ void ReadFollowing1::writeGraph(double minJaccard) const
 
 
 
-void ReadFollowing1::findPath(Segment segment, uint64_t direction, vector<vertex_descriptor>& path) const
+void ReadFollowing::findPath(Segment segment, uint64_t direction, vector<vertex_descriptor>& path) const
 {
     if(direction == 0) {
         findForwardPath(segment, path);
@@ -380,7 +380,7 @@ void ReadFollowing1::findPath(Segment segment, uint64_t direction, vector<vertex
 
 
 
-void ReadFollowing1::findForwardPath(Segment segment, vector<vertex_descriptor>& path) const
+void ReadFollowing::findForwardPath(Segment segment, vector<vertex_descriptor>& path) const
 {
     const Graph& graph = *this;
 
@@ -438,14 +438,14 @@ void ReadFollowing1::findForwardPath(Segment segment, vector<vertex_descriptor>&
 
 
 
-void ReadFollowing1::findBackwardPath(Segment, vector<vertex_descriptor>& /* path */) const
+void ReadFollowing::findBackwardPath(Segment, vector<vertex_descriptor>& /* path */) const
 {
     SHASTA_ASSERT(0);
 }
 
 
 
-void ReadFollowing1::writePath(Segment segment, uint64_t direction) const
+void ReadFollowing::writePath(Segment segment, uint64_t direction) const
 {
     const Graph& graph = *this;
 
