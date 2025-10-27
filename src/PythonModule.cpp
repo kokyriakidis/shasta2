@@ -17,7 +17,6 @@
 #include "MultithreadedObject.hpp"
 #include "Options.hpp"
 #include "performanceLog.hpp"
-#include "ReadFollowing.hpp"
 #include "ReadFollowing1.hpp"
 #include "ReadSummary.hpp"
 #include "ShortBaseSequence.hpp"
@@ -204,13 +203,6 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         ;
 
 
-
-    // Class ReadFollowing.
-    class_<ReadFollowing>(shasta2Module, "ReadFollowing")
-        .def(pybind11::init<const AssemblyGraph&>())
-        .def_readonly("assemblyPaths", &ReadFollowing::assemblyPaths)
-        .def("findPath", &ReadFollowing::findPath)
-        ;
 
     // Class ReadFollowing1.
     class_<ReadFollowing1>(shasta2Module, "ReadFollowing1")
