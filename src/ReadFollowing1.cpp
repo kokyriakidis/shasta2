@@ -178,16 +178,9 @@ void ReadFollowing1::createVertices()
     Graph& graph = *this;
 
     BGL_FORALL_EDGES(segment, assemblyGraph, AssemblyGraph) {
-        const uint64_t initialCoverage = getInitialAppearancesCount(segment);
-        const uint64_t finalCoverage = getFinalAppearancesCount(segment);
-        if( (initialCoverage <= maxSegmentCoverage) and
-            (finalCoverage   <= maxSegmentCoverage)) {
-            const ReadFollowing1Vertex vertex(assemblyGraph, segment);
-            if(vertex.length >= minSegmentLength) {
-                const vertex_descriptor v = add_vertex(ReadFollowing1Vertex(assemblyGraph, segment), graph);
-                vertexMap.insert(make_pair(segment, v));
-            }
-        }
+        const ReadFollowing1Vertex vertex(assemblyGraph, segment);
+        const vertex_descriptor v = add_vertex(ReadFollowing1Vertex(assemblyGraph, segment), graph);
+        vertexMap.insert(make_pair(segment, v));
     }
 }
 

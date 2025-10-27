@@ -69,8 +69,6 @@ private:
 
     // EXPOSE WHEN CODE STABILIZES.
     const uint64_t representativeRegionLength = 10;
-    const uint64_t minSegmentLength = 0;
-    const uint64_t maxSegmentCoverage = 1000000000;
 
     // Find appearances of OrientedReadIds in the initial/final
     // representative regions of each Segment.
