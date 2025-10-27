@@ -5,6 +5,7 @@
 #include "Journeys.hpp"
 #include "Markers.hpp"
 using namespace shasta;
+using namespace ReadFollowing;
 
 // Boost libraries.
 #include <boost/graph/iteration_macros.hpp>
@@ -14,7 +15,7 @@ using namespace shasta;
 
 
 
-ReadFollowing::ReadFollowing(const AssemblyGraph& assemblyGraph) :
+Graph::Graph(const AssemblyGraph& assemblyGraph) :
     assemblyGraph(assemblyGraph)
 {
     findAppearances();
@@ -28,7 +29,7 @@ ReadFollowing::ReadFollowing(const AssemblyGraph& assemblyGraph) :
 
 
 
-void ReadFollowing::findAppearances()
+void Graph::findAppearances()
 {
     const uint64_t orientedReadCount = assemblyGraph.journeys.size();
     const uint32_t kHalf = uint32_t(assemblyGraph.anchors.k / 2);
@@ -142,7 +143,7 @@ void ReadFollowing::findAppearances()
 
 
 
-void ReadFollowing::countAppearances()
+void Graph::countAppearances()
 {
     const uint64_t orientedReadCount = assemblyGraph.journeys.size();
 
@@ -177,7 +178,7 @@ void ReadFollowing::countAppearances()
 
 
 
-uint64_t ReadFollowing::getInitialAppearancesCount(Segment segment) const
+uint64_t Graph::getInitialAppearancesCount(Segment segment) const
 {
     const auto it = initialAppearancesCount.find(segment);
     if(it == initialAppearancesCount.end()) {
@@ -189,7 +190,7 @@ uint64_t ReadFollowing::getInitialAppearancesCount(Segment segment) const
 
 
 
-uint64_t ReadFollowing::getFinalAppearancesCount(Segment segment) const
+uint64_t Graph::getFinalAppearancesCount(Segment segment) const
 {
     const auto it = finalAppearancesCount.find(segment);
     if(it == finalAppearancesCount.end()) {
@@ -204,7 +205,7 @@ uint64_t ReadFollowing::getFinalAppearancesCount(Segment segment) const
 // Create vertices of the ReadFollowing graph.
 // Each vertex corresponds to a Segment, but not
 // all Segments generate a vertex.
-void ReadFollowing::createVertices()
+void Graph::createVertices()
 {
     Graph& graph = *this;
 
@@ -233,7 +234,7 @@ ReadFollowingVertex::ReadFollowingVertex(
 
 
 // Create edges of the ReadFollowing graph.
-void ReadFollowing::createEdges()
+void Graph::createEdges()
 {
     Graph& graph = *this;
     const uint64_t orientedReadCount = assemblyGraph.journeys.size();
@@ -290,7 +291,7 @@ void ReadFollowing::createEdges()
 // Jaccard similarity for an EdgePairsGraph edge.
 // Computed using the finalAppearancesCount of the source vertex
 // and the initialAppearancesCount of the target vertex.
-double ReadFollowing::jaccard(edge_descriptor e) const
+double Graph::jaccard(edge_descriptor e) const
 {
     const Graph& graph = *this;
 
@@ -314,7 +315,7 @@ double ReadFollowing::jaccard(edge_descriptor e) const
 
 
 
-void ReadFollowing::writeGraph(double minJaccard) const
+void Graph::writeGraph(double minJaccard) const
 {
     const Graph& graph = *this;
 
@@ -367,7 +368,7 @@ void ReadFollowing::writeGraph(double minJaccard) const
 
 
 
-void ReadFollowing::findPath(Segment segment, uint64_t direction, vector<vertex_descriptor>& path) const
+void Graph::findPath(Segment segment, uint64_t direction, vector<vertex_descriptor>& path) const
 {
     if(direction == 0) {
         findForwardPath(segment, path);
@@ -380,7 +381,7 @@ void ReadFollowing::findPath(Segment segment, uint64_t direction, vector<vertex_
 
 
 
-void ReadFollowing::findForwardPath(Segment segment, vector<vertex_descriptor>& path) const
+void Graph::findForwardPath(Segment segment, vector<vertex_descriptor>& path) const
 {
     const Graph& graph = *this;
 
@@ -438,14 +439,14 @@ void ReadFollowing::findForwardPath(Segment segment, vector<vertex_descriptor>& 
 
 
 
-void ReadFollowing::findBackwardPath(Segment, vector<vertex_descriptor>& /* path */) const
+void Graph::findBackwardPath(Segment, vector<vertex_descriptor>& /* path */) const
 {
     SHASTA_ASSERT(0);
 }
 
 
 
-void ReadFollowing::writePath(Segment segment, uint64_t direction) const
+void Graph::writePath(Segment segment, uint64_t direction) const
 {
     const Graph& graph = *this;
 

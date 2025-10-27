@@ -16,7 +16,6 @@
 
 namespace shasta {
 
-    class ReadFollowing;
     class ReadFollowingVertex;
     class ReadFollowingEdge;
 
@@ -26,6 +25,10 @@ namespace shasta {
         boost::bidirectionalS,
         ReadFollowingVertex,
         ReadFollowingEdge>;
+
+    namespace ReadFollowing {
+        class Graph;
+    }
 }
 
 
@@ -55,14 +58,12 @@ public:
 
 
 
-class shasta::ReadFollowing : public ReadFollowingBaseClass {
+class shasta::ReadFollowing::Graph : public ReadFollowingBaseClass {
 public:
-    ReadFollowing(const AssemblyGraph&);
+    Graph(const AssemblyGraph&);
 
 private:
     const AssemblyGraph& assemblyGraph;
-
-    using Graph = ReadFollowing;
 
     // A Segment is an edge of the AssemblyGraph.
     using Segment = AssemblyGraph::edge_descriptor;
