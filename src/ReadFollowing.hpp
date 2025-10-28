@@ -95,7 +95,17 @@ public:
 
 class shasta::ReadFollowing::Edge {
 public:
-    uint64_t coverage = 0;
+
+    // Pairs of Appearances of the same OrientedReadId
+    // in the final representative region of the source segment
+    // and in the initial representative region of the target segment.
+    vector< pair<Appearance, Appearance> > appearancePairs;
+
+    uint64_t coverage() const
+    {
+        return appearancePairs.size();
+    }
+
     double jaccard = 0.;
 };
 
@@ -118,6 +128,7 @@ private:
 
     // Create edges of the ReadFollowing graph.
     void createEdges();
+    void writeEdgeDetails();
 
     // Enforce a minimum Jaccard when writing the graph.
     void writeGraph(double minJaccard) const;

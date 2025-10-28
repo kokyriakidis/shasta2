@@ -18,9 +18,9 @@ using namespace ReadFollowing;
 Graph::Graph(const AssemblyGraph& assemblyGraph) :
     assemblyGraph(assemblyGraph)
 {
-    // findAppearances();
     createVertices();
     createEdges();
+    writeEdgeDetails();
 
     // Enforce a minimum Jaccard when writing the graph.
     writeGraph(0.2);
@@ -86,11 +86,11 @@ void Graph::createVertices()
             }
         }
 
-        // For each OrientedReadId, store the last Appearance in order of position in journey.
+        // For each OrientedReadId, store the first Appearance in order of position in journey.
         for(auto& p: initialAppearancesMap) {
             vector<Appearance>& appearances = p.second;
             sort(appearances.begin(), appearances.end());
-            vertex.initialAppearances.push_back(appearances.back());
+            vertex.initialAppearances.push_back(appearances.front());
         }
 
 
@@ -123,11 +123,11 @@ void Graph::createVertices()
             }
         }
 
-        // For each OrientedReadId, store the first Appearance in order of position in journey.
+        // For each OrientedReadId, store the last Appearance in order of position in journey.
         for(auto& p: finalAppearancesMap) {
             vector<Appearance>& appearances = p.second;
             sort(appearances.begin(), appearances.end());
-            vertex.finalAppearances.push_back(appearances.front());
+            vertex.finalAppearances.push_back(appearances.back());
         }
     }
 
@@ -192,11 +192,13 @@ void Graph::createEdges()
                 SHASTA_ASSERT(it1 != vertexMap.end());
                 const vertex_descriptor v1 = it1->second;
 
+                SHASTA_ASSERT(appearance0.orientedReadId == appearance1.orientedReadId);
+
                 if((appearance0.positionInJourney >= appearance1.positionInJourney)) {
                     continue;
                 }
 
-                // Increment the coverage of edge segment0->segment1,
+                // Store this Appearance pair in edge segment0->segment1,
                 // creating the edge if necessary.
                 edge_descriptor e;
                 bool edgeExists;
@@ -204,7 +206,7 @@ void Graph::createEdges()
                 if(not edgeExists) {
                     tie(e, edgeExists) = add_edge(v0, v1, graph);
                 }
-                ++graph[e].coverage;
+                graph[e].appearancePairs.emplace_back(appearance0, appearance1);
             }
         }
     }
@@ -231,7 +233,7 @@ double Graph::jaccard(edge_descriptor e) const
     const uint64_t n0 = graph[v0].finalAppearances.size();
     const uint64_t n1 = graph[v1].initialAppearances.size();
 
-    const uint64_t n01 = graph[e].coverage;
+    const uint64_t n01 = graph[e].coverage();
 
     const uint64_t intersectionSize = n01;
     const uint64_t unionSize = n0 + n1 - intersectionSize;
@@ -246,7 +248,7 @@ void Graph::writeGraph(double minJaccard) const
 {
     const Graph& graph = *this;
 
-    ofstream dot("ReadFollowing1.dot");
+    ofstream dot("ReadFollowing.dot");
     dot << "digraph ReadFollowing1 {\n";
     dot << std::fixed << std::setprecision(2);
 
@@ -270,7 +272,7 @@ void Graph::writeGraph(double minJaccard) const
         const vertex_descriptor v1 = target(e, graph);
         const Segment segment0 = graph[v0].segment;
         const Segment segment1 = graph[v1].segment;
-        const uint64_t coverage = graph[e].coverage;
+        const uint64_t coverage = graph[e].coverage();
         const double j = graph[e].jaccard;
         SHASTA_ASSERT(j <= 1.);
 
@@ -291,6 +293,47 @@ void Graph::writeGraph(double minJaccard) const
     }
 
     dot << "}\n";
+}
+
+
+
+void Graph::writeEdgeDetails()
+{
+    const Graph& graph = *this;
+
+    ofstream csv("ReadFollowing-EdgeDetails.csv");
+    csv << "Segment0,Segment1,OrientedReadId,Position0,Position1,Offset0,Offset1,Offset,\n";
+
+    BGL_FORALL_EDGES(e, graph, Graph) {
+        const vertex_descriptor v0 = source(e, graph);
+        const vertex_descriptor v1 = target(e, graph);
+        const uint64_t id0 = assemblyGraph[graph[v0].segment].id;
+        const uint64_t id1 = assemblyGraph[graph[v1].segment].id;
+
+        for(const pair<Appearance, Appearance>& appearancePair: graph[e].appearancePairs) {
+            const Appearance& appearance0 = appearancePair.first;
+            const Appearance& appearance1 = appearancePair.second;
+            const OrientedReadId orientedReadId = appearance0.orientedReadId;
+            SHASTA_ASSERT(orientedReadId == appearance1.orientedReadId);
+
+            const int64_t offset =
+                int64_t(appearance1.position) -
+                int64_t(appearance0.position) -
+                int64_t(appearance0.offset) -
+                int64_t(appearance1.offset);
+
+            csv << id0 << ",";
+            csv << id1 << ",";
+            csv << orientedReadId << ",";
+            csv << appearance0.position << ",";
+            csv << appearance1.position << ",";
+            csv << appearance0.offset << ",";
+            csv << appearance1.offset << ",";
+            csv << offset << ",";
+            csv << "\n";
+
+        }
+    }
 }
 
 
