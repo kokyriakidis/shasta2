@@ -51,7 +51,7 @@ void Graph::findAppearances()
 
         // Appearances in the initial representative region of this edge.
         // For each OrientedReadId. store the last appearance in journey order.
-        std::map<OrientedReadId, vector<AppearanceInfo> > initialAppearancesMap;
+        std::map<OrientedReadId, vector<Appearance> > initialAppearancesMap;
         for(uint64_t stepId=initialBegin; stepId!=initialEnd; stepId++) {
 
             // Compute the base offset to the end of the segment.
@@ -73,20 +73,20 @@ void Graph::findAppearances()
                 const uint32_t ordinal = anchorMarkerInfo.ordinal;
                 const auto orientedReadMarkers = assemblyGraph.anchors.markers[orientedReadId.getValue()];
                 const uint32_t position = orientedReadMarkers[ordinal].position + kHalf;
-                initialAppearancesMap[orientedReadId].push_back(AppearanceInfo(positionInJourney, ordinal, position, stepId, offset));
+                initialAppearancesMap[orientedReadId].push_back(
+                    Appearance(segment, stepId, offset, orientedReadId, positionInJourney, ordinal, position));
             }
         }
         for(auto& p: initialAppearancesMap) {
             const OrientedReadId orientedReadId = p.first;
-            vector<AppearanceInfo>& infos = p.second;
+            vector<Appearance>& infos = p.second;
             sort(infos.begin(), infos.end());
-            initialAppearances[orientedReadId.getValue()].push_back(
-                Appearance(infos.back(), segment));
+            initialAppearances[orientedReadId.getValue()].push_back(Appearance(infos.back()));
         }
 
         // Appearances in the final representative region of this edge.
         // For each OrientedReadId. store the first appearance in journey order.
-        std::map<OrientedReadId, vector<AppearanceInfo> > finalAppearancesMap;
+        std::map<OrientedReadId, vector<Appearance> > finalAppearancesMap;
         for(uint64_t stepId=finalBegin; stepId!=finalEnd; stepId++) {
 
             // Compute the base offset from the beginning of the segment.
@@ -107,15 +107,15 @@ void Graph::findAppearances()
                 const uint32_t ordinal = anchorMarkerInfo.ordinal;
                 const auto orientedReadMarkers = assemblyGraph.anchors.markers[orientedReadId.getValue()];
                 const uint32_t position = orientedReadMarkers[ordinal].position + kHalf;
-                finalAppearancesMap[orientedReadId].push_back(AppearanceInfo(positionInJourney, ordinal, position, stepId, offset));
+                finalAppearancesMap[orientedReadId].push_back(
+                    Appearance(segment, stepId, offset, orientedReadId, positionInJourney, ordinal, position));
             }
         }
         for(auto& p: finalAppearancesMap) {
             const OrientedReadId orientedReadId = p.first;
-            vector<AppearanceInfo>& infos = p.second;
+            vector<Appearance>& infos = p.second;
             sort(infos.begin(), infos.end());
-            finalAppearances[orientedReadId.getValue()].push_back(
-                Appearance(infos.front(), segment));
+            finalAppearances[orientedReadId.getValue()].push_back(Appearance(infos.front()));
         }
     }
 

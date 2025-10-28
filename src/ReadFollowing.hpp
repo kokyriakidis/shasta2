@@ -20,7 +20,6 @@ namespace shasta {
         class Graph;
         class Vertex;
         class Edge;
-        class AppearanceInfo;
         class Appearance;
 
         using GraphBaseClass = boost::adjacency_list<
@@ -29,6 +28,8 @@ namespace shasta {
             boost::bidirectionalS,
             Vertex,
             Edge>;
+
+        // A Segment is an edge of the AssemblyGraph.
         using Segment = AssemblyGraph::edge_descriptor;
     }
 }
@@ -37,32 +38,35 @@ namespace shasta {
 
 // Classes to describe an appearance of an OrientedReadIds in the initial/final
 // representative regions of a Segment.
-class shasta::ReadFollowing::AppearanceInfo {
+class shasta::ReadFollowing::Appearance {
 public:
+    Segment segment;
+    uint64_t stepId;
+    uint64_t offset; // To/from end/beginning of segment.
+
+    OrientedReadId orientedReadId;
     uint32_t positionInJourney;
     uint32_t ordinal;
     uint32_t position;
-    uint64_t stepId;
 
-    // For an AppearanceInfo in the initial representative region,
-    // store the base offset between this appearance and the end of the segment.
-    // For an AppearanceInfo in the final representative region,
-    // store the base offset between the beginning of the segment and this appearance.
-    uint64_t offset;
-
-    AppearanceInfo(
+    Appearance(
+        Segment segment,
+        uint64_t stepId,
+        uint64_t offset,
+        OrientedReadId orientedReadId,
         uint32_t positionInJourney,
         uint32_t ordinal,
-        uint32_t position,
-        uint64_t stepId,
-        uint64_t offset) :
+        uint32_t position) :
+        segment(segment),
+        stepId(stepId),
+        offset(offset),
+        orientedReadId(orientedReadId),
         positionInJourney(positionInJourney),
         ordinal(ordinal),
-        position(position),
-        stepId(stepId),
-        offset(offset)
-    {}
-    bool operator<(const AppearanceInfo& that) const
+        position(position)
+        {}
+
+    bool operator<(const Appearance& that) const
     {
         return positionInJourney < that.positionInJourney;
     }
@@ -82,8 +86,8 @@ public:
         const AssemblyGraph&,
         AssemblyGraph::edge_descriptor);
 
-    vector<AppearanceInfo> initialAppearances;
-    vector<AppearanceInfo> finalAppearances;
+    vector<Appearance> initialAppearances;
+    vector<Appearance> finalAppearances;
 
 };
 
@@ -93,17 +97,6 @@ class shasta::ReadFollowing::Edge {
 public:
     uint64_t coverage = 0;
     double jaccard = 0.;
-};
-
-
-
-class shasta::ReadFollowing::Appearance : public AppearanceInfo {
-public:
-    Segment segment;
-    Appearance(const AppearanceInfo& appearanceInfo, Segment segment) :
-        AppearanceInfo(appearanceInfo),
-        segment(segment)
-        {}
 };
 
 
