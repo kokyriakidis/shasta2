@@ -80,7 +80,7 @@ void Graph::findAppearances()
         for(auto& p: initialAppearancesMap) {
             const OrientedReadId orientedReadId = p.first;
             vector<Appearance>& infos = p.second;
-            sort(infos.begin(), infos.end(), OrderAppearancesByPositionInJourney());
+            std::ranges::sort(infos, OrderAppearancesByPositionInJourney());
             initialAppearances[orientedReadId.getValue()].push_back(Appearance(infos.back()));
         }
 
@@ -114,7 +114,7 @@ void Graph::findAppearances()
         for(auto& p: finalAppearancesMap) {
             const OrientedReadId orientedReadId = p.first;
             vector<Appearance>& infos = p.second;
-            sort(infos.begin(), infos.end(), OrderAppearancesByPositionInJourney());
+            std::ranges::sort(infos, OrderAppearancesByPositionInJourney());
             finalAppearances[orientedReadId.getValue()].push_back(Appearance(infos.front()));
         }
     }
@@ -138,33 +138,101 @@ void Graph::findAppearances()
 void Graph::createVertices()
 {
     Graph& graph = *this;
+    const uint32_t kHalf = uint32_t(assemblyGraph.anchors.k / 2);
 
-    // Create a Vertex for each Segment.
+    // Each Segment generates a Vertex.
     BGL_FORALL_EDGES(segment, assemblyGraph, AssemblyGraph) {
+        const AssemblyGraphEdge& edge = assemblyGraph[segment];
+        const uint64_t stepCount = edge.size();
+
+        // Create a Vertex for this Segment.
         const vertex_descriptor v = add_vertex(Vertex(assemblyGraph, segment), graph);
+        Vertex& vertex = graph[v];
         vertexMap.insert(make_pair(segment, v));
-    }
-    const uint64_t orientedReadCount = assemblyGraph.journeys.size();
+
+        // Locate the initial representative region.
+        const uint64_t initialBegin = 0;
+        const uint64_t initialEnd = min(stepCount, representativeRegionLength);
+
+        // Locate the final representative region.
+        const uint64_t finalEnd = stepCount;
+        const uint64_t finalBegin =
+            ((stepCount >= representativeRegionLength) ? (stepCount - representativeRegionLength) : 0);
 
 
-    // Store initial anf final apearances in vertices.
-    // Loop over all OrientedReadIds.
-    for(uint64_t i=0; i<orientedReadCount; i++) {
 
-        // Initial appearances.
-        for(const Appearance appearance: initialAppearances[i]) {
-            const Segment segment = appearance.segment;
-            const vertex_descriptor v = vertexMap[segment];
-            graph[v].initialAppearances.push_back(appearance);
+        // Appearances in the initial representative region of this Segment.
+        // For each OrientedReadId, store the last appearance in journey order.
+        std::map<OrientedReadId, vector<Appearance> > initialAppearancesMap;
+        for(uint64_t stepId=initialBegin; stepId!=initialEnd; stepId++) {
+
+            // Compute the base offset to the end of the segment.
+            uint64_t offset = 0;
+            for(uint64_t i=stepId+1; i<initialEnd; i++) {
+                const AssemblyGraphEdge& assemblyGraphEdge = assemblyGraph[segment];
+                if(assemblyGraphEdge.wasAssembled) {
+                    offset += assemblyGraphEdge[i].sequence.size();
+                } else {
+                    offset += assemblyGraphEdge[i].offset;
+                }
+            }
+
+            const AssemblyGraphEdgeStep& step = edge[stepId];
+            const AnchorId anchorId = step.anchorPair.anchorIdA;
+            for(const OrientedReadId orientedReadId: step.anchorPair.orientedReadIds) {
+                const AnchorMarkerInfo& anchorMarkerInfo = assemblyGraph.anchors.getAnchorMarkerInfo(anchorId, orientedReadId);
+                const uint32_t positionInJourney = anchorMarkerInfo.positionInJourney;
+                const uint32_t ordinal = anchorMarkerInfo.ordinal;
+                const auto orientedReadMarkers = assemblyGraph.anchors.markers[orientedReadId.getValue()];
+                const uint32_t position = orientedReadMarkers[ordinal].position + kHalf;
+                initialAppearancesMap[orientedReadId].push_back(
+                    Appearance(segment, stepId, offset, orientedReadId, positionInJourney, ordinal, position));
+            }
         }
 
-        // Final appearances.
-        for(const Appearance appearance: finalAppearances[i]) {
-            const Segment segment = appearance.segment;
-            const vertex_descriptor v = vertexMap[segment];
-            graph[v].finalAppearances.push_back(appearance);
+        // For each OrientedReadId, store the last Appearance in order of position in journey.
+        for(auto& p: initialAppearancesMap) {
+            vector<Appearance>& appearances = p.second;
+            std::ranges::sort(appearances, OrderAppearancesByPositionInJourney());
+            vertex.initialAppearances.push_back(appearances.back());
         }
 
+
+
+        // Appearances in the final representative region of this Segment.
+        // For each OrientedReadId. store the first appearance in journey order.
+        std::map<OrientedReadId, vector<Appearance> > finalAppearancesMap;
+        for(uint64_t stepId=finalBegin; stepId!=finalEnd; stepId++) {
+
+            // Compute the base offset from the beginning of the segment.
+            uint64_t offset = 0;
+            for(uint64_t i=finalBegin; i<stepId; i++) {
+                const AssemblyGraphEdge& assemblyGraphEdge = assemblyGraph[segment];
+                if(assemblyGraphEdge.wasAssembled) {
+                    offset += assemblyGraphEdge[i].sequence.size();
+                } else {
+                    offset += assemblyGraphEdge[i].offset;
+                }
+            }
+            const AssemblyGraphEdgeStep& step = edge[stepId];
+            const AnchorId anchorId = step.anchorPair.anchorIdB;
+            for(const OrientedReadId orientedReadId: step.anchorPair.orientedReadIds) {
+                const AnchorMarkerInfo& anchorMarkerInfo = assemblyGraph.anchors.getAnchorMarkerInfo(anchorId, orientedReadId);
+                const uint32_t positionInJourney = anchorMarkerInfo.positionInJourney;
+                const uint32_t ordinal = anchorMarkerInfo.ordinal;
+                const auto orientedReadMarkers = assemblyGraph.anchors.markers[orientedReadId.getValue()];
+                const uint32_t position = orientedReadMarkers[ordinal].position + kHalf;
+                finalAppearancesMap[orientedReadId].push_back(
+                    Appearance(segment, stepId, offset, orientedReadId, positionInJourney, ordinal, position));
+            }
+        }
+
+        // For each OrientedReadId, store the first Appearance in order of position in journey.
+        for(auto& p: finalAppearancesMap) {
+            vector<Appearance>& appearances = p.second;
+            std::ranges::sort(appearances, OrderAppearancesByPositionInJourney());
+            vertex.finalAppearances.push_back(appearances.front());
+        }
     }
 
 }
