@@ -21,8 +21,6 @@ namespace shasta {
         class Vertex;
         class Edge;
         class Appearance;
-        class OrderAppearancesByPositionInJourney;
-        class OrderAppearancesBySegmentId;
 
         using GraphBaseClass = boost::adjacency_list<
             boost::listS,
@@ -68,32 +66,10 @@ public:
         position(position)
         {}
 
-};
-
-
-
-// Order Appearances by positionInJourney.
-class shasta::ReadFollowing::OrderAppearancesByPositionInJourney {
-public:
-    bool operator()(const Appearance& x, const Appearance& y) const
+    bool operator<(const Appearance& that) const
     {
-        return x.positionInJourney < y.positionInJourney;
+        return positionInJourney < that.positionInJourney;
     }
-
-};
-
-
-
-// Order Appearances by Segment id.
-class shasta::ReadFollowing::OrderAppearancesBySegmentId {
-public:
-    const AssemblyGraph& assemblyGraph;
-    OrderAppearancesBySegmentId(const AssemblyGraph& assemblyGraph) : assemblyGraph(assemblyGraph) {}
-    bool operator()(const Appearance& x, const Appearance& y) const
-    {
-        return assemblyGraph[x.segment].id < assemblyGraph[y.segment].id;
-    }
-
 };
 
 
@@ -135,16 +111,8 @@ private:
     // EXPOSE WHEN CODE STABILIZES.
     const uint64_t representativeRegionLength = 10;
 
-    // Appearance of OrientedReadIds in the initial/final
-    // representative regions of segments.
-    // Indexed by OrientedReadId::getValue().
-    vector< vector<Appearance> > initialAppearances;
-    vector< vector<Appearance> > finalAppearances;
-    void findAppearances();
-
     // Create vertices of the ReadFollowing graph.
-    // Each vertex corresponds to a Segment, but not
-    // all Segments generate a vertex.
+    // Each vertex corresponds to a Segment.
     std::map<Segment, vertex_descriptor> vertexMap;
     void createVertices();
 
@@ -154,7 +122,7 @@ private:
     // Enforce a minimum Jaccard when writing the graph.
     void writeGraph(double minJaccard) const;
 
-    // Jaccard similarity for an EdgePairsGraph edge.
+    // Jaccard similarity for an edge.
     // Computed using the finalAppearancesCount of the source vertex
     // and the initialAppearancesCount of the target vertex.
     double jaccard(edge_descriptor) const;
