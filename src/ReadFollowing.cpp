@@ -80,7 +80,7 @@ void Graph::findAppearances()
         for(auto& p: initialAppearancesMap) {
             const OrientedReadId orientedReadId = p.first;
             vector<Appearance>& infos = p.second;
-            sort(infos.begin(), infos.end());
+            sort(infos.begin(), infos.end(), OrderAppearancesByPositionInJourney());
             initialAppearances[orientedReadId.getValue()].push_back(Appearance(infos.back()));
         }
 
@@ -114,7 +114,7 @@ void Graph::findAppearances()
         for(auto& p: finalAppearancesMap) {
             const OrientedReadId orientedReadId = p.first;
             vector<Appearance>& infos = p.second;
-            sort(infos.begin(), infos.end());
+            sort(infos.begin(), infos.end(), OrderAppearancesByPositionInJourney());
             finalAppearances[orientedReadId.getValue()].push_back(Appearance(infos.front()));
         }
     }
@@ -122,21 +122,11 @@ void Graph::findAppearances()
 
 
     // For each OrientedReadId, sort the appearances by edge id.
-    class AppearanceSorter {
-    public:
-        const AssemblyGraph& assemblyGraph;
-        AppearanceSorter(const AssemblyGraph& assemblyGraph) : assemblyGraph(assemblyGraph) {}
-        bool operator()(const Appearance& x, const Appearance& y) const
-        {
-            return assemblyGraph[x.segment].id < assemblyGraph[y.segment].id;
-        }
-
-    };
     for(vector<Appearance>& v: initialAppearances) {
-        sort(v.begin(), v.end(), AppearanceSorter(assemblyGraph));
+        sort(v.begin(), v.end(), OrderAppearancesBySegmentId(assemblyGraph));
     }
     for(vector<Appearance>& v: finalAppearances) {
-        sort(v.begin(), v.end(), AppearanceSorter(assemblyGraph));
+        sort(v.begin(), v.end(), OrderAppearancesBySegmentId(assemblyGraph));
     }
 }
 

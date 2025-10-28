@@ -21,6 +21,8 @@ namespace shasta {
         class Vertex;
         class Edge;
         class Appearance;
+        class OrderAppearancesByPositionInJourney;
+        class OrderAppearancesBySegmentId;
 
         using GraphBaseClass = boost::adjacency_list<
             boost::listS,
@@ -66,10 +68,32 @@ public:
         position(position)
         {}
 
-    bool operator<(const Appearance& that) const
+};
+
+
+
+// Order Appearances by positionInJourney.
+class shasta::ReadFollowing::OrderAppearancesByPositionInJourney {
+public:
+    bool operator()(const Appearance& x, const Appearance& y) const
     {
-        return positionInJourney < that.positionInJourney;
+        return x.positionInJourney < y.positionInJourney;
     }
+
+};
+
+
+
+// Order Appearances by Segment id.
+class shasta::ReadFollowing::OrderAppearancesBySegmentId {
+public:
+    const AssemblyGraph& assemblyGraph;
+    OrderAppearancesBySegmentId(const AssemblyGraph& assemblyGraph) : assemblyGraph(assemblyGraph) {}
+    bool operator()(const Appearance& x, const Appearance& y) const
+    {
+        return assemblyGraph[x.segment].id < assemblyGraph[y.segment].id;
+    }
+
 };
 
 
