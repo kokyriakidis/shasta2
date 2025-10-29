@@ -739,7 +739,7 @@ void Assembler::exploreSegmentSteps(
 
 
 
-void Assembler::exploreSegmentOrientedReads(
+void Assembler::exploreSegmentStepSupport(
     const vector<string>& request,
     ostream& html)
 {
@@ -773,7 +773,7 @@ void Assembler::exploreSegmentOrientedReads(
 
 
     // Start the form.
-    html << "<h2>Assembly graph segment supporting oriented reads</h2><form><table>";
+    html << "<h2>Segment steps support</h2><form><table>";
 
     html <<
         "<tr>"
@@ -833,7 +833,7 @@ void Assembler::exploreSegmentOrientedReads(
     // End the form.
     html <<
         "</table>"
-        "<p><input type=submit value='Get segment information'>"
+        "<p><input type=submit value='Get segment support'>"
         "</form>";
 
     if(segmentName.empty()) {
@@ -968,7 +968,7 @@ void Assembler::exploreSegmentOrientedReads(
 
 
     // Begin the table.
-    html <<"<table>";
+    html <<"<br><table>";
 
 
 
