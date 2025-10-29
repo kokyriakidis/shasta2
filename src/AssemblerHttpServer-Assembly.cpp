@@ -8,6 +8,7 @@
 #include "LocalAssembly.hpp"
 #include "LocalAssembly3.hpp"
 #include "LocalAssemblyGraph.hpp"
+#include "Markers.hpp"
 #include "RestrictedAnchorGraph.hpp"
 #include "Superbubble.hpp"
 #include "Tangle.hpp"
@@ -1630,6 +1631,179 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
         }
 
     }
+}
+
+
+
+void Assembler::exploreSegmentPair(const vector<string>& request, ostream& html)
+{
+    // Get the options from the request.
+    string assemblyStage;
+    HttpServer::getParameterValue(request, "assemblyStage", assemblyStage);
+    boost::trim(assemblyStage);
+
+    uint64_t segmentId0 = invalid<uint64_t>;
+    HttpServer::getParameterValue(request, "segmentId0", segmentId0);
+
+    uint64_t segmentId1 = invalid<uint64_t>;
+    HttpServer::getParameterValue(request, "segmentId1", segmentId1);
+
+
+
+    // Start the form.
+    html << "<form>";
+
+    html <<
+        "<table>"
+        "<tr>"
+        "<th class=left>Assembly stage"
+        "<td class=centered><input type=text name=assemblyStage style='text-align:center' required";
+    if(not assemblyStage.empty()) {
+        html << " value='" << assemblyStage + "'";
+    }
+    html << " size=10>";
+
+    html <<
+        "<tr>"
+        "<th class=left>SegmentId0"
+        "<td class=centered>"
+        "<input type=text name=segmentId0 style='text-align:center'";
+    if(segmentId0 != invalid<uint64_t>) {
+        html << " value='" << segmentId0 << "'";
+    }
+    html << " size=10>";
+
+    html <<
+        "<tr>"
+        "<th class=left>SegmentId1"
+        "<td class=centered>"
+        "<input type=text name=segmentId1 style='text-align:center'";
+    if(segmentId1 != invalid<uint64_t>) {
+        html << " value='" << segmentId1 << "'";
+    }
+    html << " size=10>";
+
+
+    // End the form.
+    html <<
+        "</table>"
+        "<input type=submit value='Go'>"
+        "</form>";
+
+    if((segmentId0 == invalid<uint64_t>) or (segmentId1 == invalid<uint64_t>)) {
+        return;
+    }
+
+    // Get the AssemblyGraph for this assembly stage.
+    AssemblyGraphPostprocessor& assemblyGraph = getAssemblyGraph(
+        assemblyStage,
+        *httpServerData.options);
+
+
+
+    // Find the edges corresponding to these ids.
+    auto it0 = assemblyGraph.edgeMap.find(segmentId0);
+    if(it0 == assemblyGraph.edgeMap.end()) {
+        html << "<br>Assembly stage " << assemblyStage <<
+            " does not have segment " << segmentId0;
+        return;
+    }
+    const AssemblyGraph::edge_descriptor e0 = it0->second;
+    const AssemblyGraphEdge& edge0 = assemblyGraph[e0];
+    const uint64_t stepCount0 = edge0.size();
+
+    auto it1 = assemblyGraph.edgeMap.find(segmentId1);
+    if(it1 == assemblyGraph.edgeMap.end()) {
+        html << "<br>Assembly stage " << assemblyStage <<
+            " does not have segment " << segmentId1;
+        return;
+    }
+    const AssemblyGraph::edge_descriptor e1 = it1->second;
+    const AssemblyGraphEdge& edge1 = assemblyGraph[e1];
+    const uint64_t stepCount1 = edge1.size();
+
+
+
+    // The length, in steps, of the initial/final
+    // representative region of each segment.
+    const uint64_t representativeRegionLength = 10;
+
+    // Class used to describe an appearance of an oriented read in a segment.
+    class Appearance {
+    public:
+        uint64_t stepId;
+        uint64_t offset; // To/from end/beginning of segment.
+
+        OrientedReadId orientedReadId;
+        uint32_t positionInJourney;
+        uint32_t ordinal;
+        uint32_t position;
+
+        Appearance(
+            uint64_t stepId,
+            uint64_t offset,
+            OrientedReadId orientedReadId,
+            uint32_t positionInJourney,
+            uint32_t ordinal,
+            uint32_t position) :
+            stepId(stepId),
+            offset(offset),
+            orientedReadId(orientedReadId),
+            positionInJourney(positionInJourney),
+            ordinal(ordinal),
+            position(position)
+            {}
+
+        bool operator<(const Appearance& that) const
+        {
+            return positionInJourney < that.positionInJourney;
+        }
+    };
+
+
+    const uint32_t kHalf = uint32_t(anchors().k / 2);
+
+    // Loop over  appearances of oriented reads in the
+    // final representative region of segmentId0.
+    const uint64_t final0End = stepCount0;
+    const uint64_t final0Begin =
+        ((stepCount0 >= representativeRegionLength) ? (stepCount0 - representativeRegionLength) : 0);
+    std::map<OrientedReadId, vector<Appearance> > finalAppearances0Map;
+    for(uint64_t stepId=final0Begin; stepId!=final0End; stepId++) {
+
+        // Compute the base offset from the beginning of the segment.
+        uint64_t offset = 0;
+        for(uint64_t i=final0Begin; i<stepId; i++) {
+            if(edge0.wasAssembled) {
+                offset += edge0[i].sequence.size();
+            } else {
+                offset += edge0[i].offset;
+            }
+        }
+        const AssemblyGraphEdgeStep& step = edge0[stepId];
+        const AnchorId anchorId = step.anchorPair.anchorIdB;
+        for(const OrientedReadId orientedReadId: step.anchorPair.orientedReadIds) {
+            const AnchorMarkerInfo& anchorMarkerInfo = assemblyGraph.anchors.getAnchorMarkerInfo(anchorId, orientedReadId);
+            const uint32_t positionInJourney = anchorMarkerInfo.positionInJourney;
+            const uint32_t ordinal = anchorMarkerInfo.ordinal;
+            const auto orientedReadMarkers = assemblyGraph.anchors.markers[orientedReadId.getValue()];
+            const uint32_t position = orientedReadMarkers[ordinal].position + kHalf;
+            finalAppearances0Map[orientedReadId].push_back(
+                Appearance(stepId, offset, orientedReadId, positionInJourney, ordinal, position));
+        }
+    }
+
+    // For each OrientedReadId, store the last Appearance in order of position in journey.
+    vector<Appearance> finalAppearances0;
+    for(auto& p: finalAppearances0Map) {
+        vector<Appearance>& appearances = p.second;
+        sort(appearances.begin(), appearances.end());
+        finalAppearances0.push_back(appearances.back());
+    }
+
+
+
+    html << "<h2>Segment pair " << segmentId0 << " " << segmentId1 << "</h2>";
 }
 
 
