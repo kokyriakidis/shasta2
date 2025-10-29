@@ -7,7 +7,19 @@
 
 namespace shasta {
     class SegmentStepSupport;
+    class SegmentPairInformation;
 }
+
+
+
+class shasta::SegmentPairInformation {
+public:
+    uint64_t commonCount = 0;
+    int32_t segmentOffset = invalid<uint32_t>;
+    double jaccard = 0.;
+    double correctedJaccard = 0.;
+};
+
 
 
 class shasta::SegmentStepSupport {
@@ -105,4 +117,23 @@ public:
 
     // Output a vector of SegmentStepSupport to a html table.
     static void writeHtml(ostream& html, const AssemblyGraph&, const vector<SegmentStepSupport>&);
+
+    // Analyze SegmentStepSupport by comparing
+    // the final representative region of e0
+    // with the initial representative region of e1.
+    static SegmentPairInformation analyzeSegmentPair(
+        ostream& html,
+        const AssemblyGraph&,
+        edge_descriptor e0,
+        edge_descriptor e1,
+        uint32_t representativeRegionStepCount
+        );
+
+    // Estimate the offset between two segments using a SegmentStepSupport
+    // on the first segment and a SegmentStepSupport on the second segment,
+    // both for the same OrientedReadId.
+    static int32_t estimateOffset(
+        const AssemblyGraph&,
+        SegmentStepSupport&,
+        SegmentStepSupport&);
 };

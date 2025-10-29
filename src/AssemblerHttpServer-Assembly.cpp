@@ -1731,28 +1731,15 @@ void Assembler::exploreSegmentPair(const vector<string>& request, ostream& html)
         return;
     }
     const AssemblyGraph::edge_descriptor e1 = it1->second;
-    // const AssemblyGraphEdge& edge1 = assemblyGraph[e1];
 
-    const uint32_t representativeRegionStepCount =
-        uint32_t(assemblyGraph.options.representativeRegionStepCount);
 
-    // Get SegmentStepSupport for the final representative region of e0,
-    // then for each OrientedReadId keep only the one with the largest stepId.
-    vector<SegmentStepSupport> support0;
-    SegmentStepSupport::getFinalLast(assemblyGraph, e0, representativeRegionStepCount, support0);
 
-    // Get SegmentStepSupport for the initial representative region of e1,
-    // then for each OrientedReadId keep only the one with the largest stepId.
-    vector<SegmentStepSupport> support1;
-    SegmentStepSupport::getInitialFirst(assemblyGraph, e1, representativeRegionStepCount, support1);
 
     html << "<h2>Segment pair " << segmentId0 << " " << segmentId1 << "</h2>";
 
-    html << "<h3>Final support for " << segmentId0 << "</h3>";
-    SegmentStepSupport::writeHtml(html, assemblyGraph, support0);
-
-    html << "<h3>Initial support for " << segmentId1 << "</h3>";
-    SegmentStepSupport::writeHtml(html, assemblyGraph, support1);
+    const uint32_t representativeRegionStepCount =
+        uint32_t(assemblyGraph.options.representativeRegionStepCount);
+    SegmentStepSupport::analyzeSegmentPair(html, assemblyGraph, e0, e1, representativeRegionStepCount);
 }
 
 
