@@ -45,6 +45,20 @@ void SegmentStepSupport::getInitial(
 
 
 
+void SegmentStepSupport::getInitialFirst(
+    const AssemblyGraph& assemblyGraph,
+    edge_descriptor e,
+    uint32_t stepCount,
+    vector<SegmentStepSupport>& v
+    )
+{
+    getInitial(assemblyGraph, e, stepCount, v);
+    keepFirst(v);
+}
+
+
+
+
 // Get a vector of SegmentStepSupport for the last stepCount steps
 // of an AssemblyGraphEdge. This discard any previous contents of the vector.
 void SegmentStepSupport::getFinal(
@@ -61,6 +75,19 @@ void SegmentStepSupport::getFinal(
 
     get(assemblyGraph, e, begin, end, v);
 
+}
+
+
+
+void SegmentStepSupport::getFinalLast(
+    const AssemblyGraph& assemblyGraph,
+    edge_descriptor e,
+    uint32_t stepCount,
+    vector<SegmentStepSupport>& v
+    )
+{
+    getFinal(assemblyGraph, e, stepCount, v);
+    keepLast(v);
 }
 
 
@@ -107,3 +134,130 @@ void SegmentStepSupport::append(
 
     }
 }
+
+
+
+// Given a vector of SegmentStepSupport, for each OrientedReadId keep only the one
+// with the largest stepId.
+void SegmentStepSupport::keepLast(vector<SegmentStepSupport>& v)
+{
+    // Sort by OrientedReadId, then by stepId.
+    std::ranges::sort(v, std::ranges::less(),
+        [](const SegmentStepSupport& s) {return std::tie(s.orientedReadId, s.stepId);}
+        );
+
+    // For each streak with the same OrientedReadId, keep the last.
+    auto it = v.begin();
+    const auto end = v.end();
+    auto out = v.begin();
+    while(it != end) {
+        const OrientedReadId orientedReadId = it->orientedReadId;
+
+        // Find the streak with this OrientedReadId.
+        auto streakBegin = it;
+        auto streakEnd = streakBegin + 1;
+        while((streakEnd != end) and (streakEnd->orientedReadId == orientedReadId)) {
+            ++streakEnd;
+        }
+
+        // Store the last one in the streak.
+        *out++ = *(streakEnd - 1);
+
+        // Prepare to process the next streak;
+        it = streakEnd;
+    }
+
+    // Only keep the portion we filled in.
+    v.resize(out - v.begin());
+}
+
+
+
+// Given a vector of SegmentStepSupport, for each OrientedReadId keep only the one
+// with the smallest stepId.
+void SegmentStepSupport::keepFirst(vector<SegmentStepSupport>& v)
+{
+    // Sort by OrientedReadId, then by stepId.
+    std::ranges::sort(v, std::ranges::less(),
+        [](const SegmentStepSupport& s) {return std::tie(s.orientedReadId, s.stepId);}
+        );
+
+    // For each streak with the same OrientedReadId, keep the last.
+    auto it = v.begin();
+    const auto end = v.end();
+    auto out = v.begin();
+    while(it != end) {
+        const OrientedReadId orientedReadId = it->orientedReadId;
+
+        // Find the streak with this OrientedReadId.
+        auto streakBegin = it;
+        auto streakEnd = streakBegin + 1;
+        while((streakEnd != end) and (streakEnd->orientedReadId == orientedReadId)) {
+            ++streakEnd;
+        }
+
+        // Store the last one in the streak.
+        *out++ = *streakBegin;
+
+        // Prepare to process the next streak;
+        it = streakEnd;
+    }
+
+    // Only keep the portion we filled in.
+    v.resize(out - v.begin());
+}
+
+
+
+// Output a vector of SegmentStepSupport to a html table.
+void SegmentStepSupport::writeHtml(
+    ostream& html,
+    const AssemblyGraph& assemblyGraph,
+    const vector<SegmentStepSupport>& v)
+{
+    html << "<table><tr>"
+        "<th>Segment"
+        "<th>Step"
+        "<th>Left<br>AnchorId"
+        "<th>Right<br>AnchorId"
+        "<th>OrientedReadId"
+        "<th>Left<br>position<br>in journey"
+        "<th>Right<br>position<br>in journey"
+        "<th>Position<br>in journey<br>offset"
+        "<th>Left<br>ordinal"
+        "<th>Right<br>ordinal"
+        "<th>Ordinal<br>offset"
+        "<th>Left<br>position"
+        "<th>Right<br>position"
+        "<th>Position<br>offset";
+
+    for(const SegmentStepSupport& stepSupport: v) {
+        const edge_descriptor e = stepSupport.e;
+        const AssemblyGraphEdge& edge = assemblyGraph[e];
+        const AssemblyGraphEdgeStep& step = edge[stepSupport.stepId];
+        html <<
+            "<tr>" <<
+            "<td class=centered>" << edge.id <<
+            "<td class=centered>" << stepSupport.stepId <<
+            "<td class=centered>" << anchorIdToString(step.anchorPair.anchorIdA) <<
+            "<td class=centered>" << anchorIdToString(step.anchorPair.anchorIdB) <<
+
+            "<td class=centered>" << stepSupport.orientedReadId <<
+
+            "<td class=centered>" << stepSupport.positionInJourneyA <<
+            "<td class=centered>" << stepSupport.positionInJourneyB <<
+            "<td class=centered>" << stepSupport.positionInJourneyOffset() <<
+
+            "<td class=centered>" << stepSupport.ordinalA <<
+            "<td class=centered>" << stepSupport.ordinalB <<
+            "<td class=centered>" << stepSupport.ordinalOffset() <<
+
+            "<td class=centered>" << stepSupport.positionA <<
+            "<td class=centered>" << stepSupport.positionB <<
+            "<td class=centered>" << stepSupport.positionOffset();
+    }
+    html << "</table>";
+
+}
+
+

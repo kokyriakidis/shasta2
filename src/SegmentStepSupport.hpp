@@ -62,10 +62,24 @@ public:
         uint32_t stepCount,
         vector<SegmentStepSupport>&
         );
+    // Same, followed by a call to keepFirst.
+    static void getInitialFirst(
+        const AssemblyGraph&,
+        edge_descriptor,
+        uint32_t stepCount,
+        vector<SegmentStepSupport>&
+        );
 
     // Get a vector of SegmentStepSupport for the last stepCount steps
     // of an AssemblyGraphEdge. This discard any previous contents of the vector.
     static void getFinal(
+        const AssemblyGraph&,
+        edge_descriptor,
+        uint32_t stepCount,
+        vector<SegmentStepSupport>&
+        );
+    // Same, followed by a call to keepLast.
+    static void getFinalLast(
         const AssemblyGraph&,
         edge_descriptor,
         uint32_t stepCount,
@@ -81,4 +95,14 @@ public:
         vector<SegmentStepSupport>&
         );
 
+    // Given a vector of SegmentStepSupport, for each OrientedReadId keep only the one
+    // with the largest stepId.
+    static void keepLast(vector<SegmentStepSupport>&);
+
+    // Given a vector of SegmentStepSupport, for each OrientedReadId keep only the one
+    // with the smallest stepId.
+    static void keepFirst(vector<SegmentStepSupport>&);
+
+    // Output a vector of SegmentStepSupport to a html table.
+    static void writeHtml(ostream& html, const AssemblyGraph&, const vector<SegmentStepSupport>&);
 };

@@ -1079,43 +1079,8 @@ void Assembler::exploreSegmentStepSupport(
         [](const SegmentStepSupport& s) {return std::tie(s.orientedReadId, s.stepId);}
         );
 
-    html << "<br><h3>Details</h3><table><tr>"
-        "<th>OrientedReadId"
-        "<th>Step"
-        "<th>Left<br>AnchorId"
-        "<th>Right<br>AnchorId"
-        "<th>Left<br>position<br>in journey"
-        "<th>Right<br>position<br>in journey"
-        "<th>Position<br>in journey<br>offset"
-        "<th>Left<br>ordinal"
-        "<th>Right<br>ordinal"
-        "<th>Ordinal<br>offset"
-        "<th>Left<br>position"
-        "<th>Right<br>position"
-        "<th>Position<br>offset";
-
-    for(const SegmentStepSupport& stepSupport: stepSupports) {
-        const AssemblyGraphEdgeStep& step = edge[stepSupport.stepId];
-        html <<
-            "<tr>" <<
-            "<td class=centered>" << stepSupport.orientedReadId <<
-            "<td class=centered>" << stepSupport.stepId <<
-            "<td class=centered>" << anchorIdToString(step.anchorPair.anchorIdA) <<
-            "<td class=centered>" << anchorIdToString(step.anchorPair.anchorIdB) <<
-
-            "<td class=centered>" << stepSupport.positionInJourneyA <<
-            "<td class=centered>" << stepSupport.positionInJourneyB <<
-            "<td class=centered>" << stepSupport.positionInJourneyOffset() <<
-
-            "<td class=centered>" << stepSupport.ordinalA <<
-            "<td class=centered>" << stepSupport.ordinalB <<
-            "<td class=centered>" << stepSupport.ordinalOffset() <<
-
-            "<td class=centered>" << stepSupport.positionA <<
-            "<td class=centered>" << stepSupport.positionB <<
-            "<td class=centered>" << stepSupport.positionOffset();
-    }
-    html << "</table>";
+    html << "<br><h3>Details</h3>";
+    SegmentStepSupport::writeHtml(html, assemblyGraph, stepSupports);
 
 }
 
@@ -1757,8 +1722,7 @@ void Assembler::exploreSegmentPair(const vector<string>& request, ostream& html)
         return;
     }
     const AssemblyGraph::edge_descriptor e0 = it0->second;
-    const AssemblyGraphEdge& edge0 = assemblyGraph[e0];
-    const uint64_t stepCount0 = edge0.size();
+    // const AssemblyGraphEdge& edge0 = assemblyGraph[e0];
 
     auto it1 = assemblyGraph.edgeMap.find(segmentId1);
     if(it1 == assemblyGraph.edgeMap.end()) {
@@ -1766,89 +1730,29 @@ void Assembler::exploreSegmentPair(const vector<string>& request, ostream& html)
             " does not have segment " << segmentId1;
         return;
     }
-    // const AssemblyGraph::edge_descriptor e1 = it1->second;
+    const AssemblyGraph::edge_descriptor e1 = it1->second;
     // const AssemblyGraphEdge& edge1 = assemblyGraph[e1];
-    // const uint64_t stepCount1 = edge1.size();
 
+    const uint32_t representativeRegionStepCount =
+        uint32_t(assemblyGraph.options.representativeRegionStepCount);
 
+    // Get SegmentStepSupport for the final representative region of e0,
+    // then for each OrientedReadId keep only the one with the largest stepId.
+    vector<SegmentStepSupport> support0;
+    SegmentStepSupport::getFinalLast(assemblyGraph, e0, representativeRegionStepCount, support0);
 
-    // Class used to describe an appearance of an oriented read in a segment.
-    class Appearance {
-    public:
-        uint64_t stepId;
-        uint64_t offset; // To/from end/beginning of segment.
-
-        OrientedReadId orientedReadId;
-        uint32_t positionInJourney;
-        uint32_t ordinal;
-        uint32_t position;
-
-        Appearance(
-            uint64_t stepId,
-            uint64_t offset,
-            OrientedReadId orientedReadId,
-            uint32_t positionInJourney,
-            uint32_t ordinal,
-            uint32_t position) :
-            stepId(stepId),
-            offset(offset),
-            orientedReadId(orientedReadId),
-            positionInJourney(positionInJourney),
-            ordinal(ordinal),
-            position(position)
-            {}
-
-        bool operator<(const Appearance& that) const
-        {
-            return positionInJourney < that.positionInJourney;
-        }
-    };
-
-
-    const uint32_t kHalf = uint32_t(anchors().k / 2);
-
-    // Loop over  appearances of oriented reads in the
-    // final representative region of segmentId0.
-    const uint64_t representativeRegionStepCount = httpServerData.options->representativeRegionStepCount;
-    const uint64_t final0End = stepCount0;
-    const uint64_t final0Begin =
-        ((stepCount0 >= representativeRegionStepCount) ? (stepCount0 - representativeRegionStepCount) : 0);
-    std::map<OrientedReadId, vector<Appearance> > finalAppearances0Map;
-    for(uint64_t stepId=final0Begin; stepId!=final0End; stepId++) {
-
-        // Compute the base offset from the beginning of the segment.
-        uint64_t offset = 0;
-        for(uint64_t i=final0Begin; i<stepId; i++) {
-            if(edge0.wasAssembled) {
-                offset += edge0[i].sequence.size();
-            } else {
-                offset += edge0[i].offset;
-            }
-        }
-        const AssemblyGraphEdgeStep& step = edge0[stepId];
-        const AnchorId anchorId = step.anchorPair.anchorIdB;
-        for(const OrientedReadId orientedReadId: step.anchorPair.orientedReadIds) {
-            const AnchorMarkerInfo& anchorMarkerInfo = assemblyGraph.anchors.getAnchorMarkerInfo(anchorId, orientedReadId);
-            const uint32_t positionInJourney = anchorMarkerInfo.positionInJourney;
-            const uint32_t ordinal = anchorMarkerInfo.ordinal;
-            const auto orientedReadMarkers = assemblyGraph.anchors.markers[orientedReadId.getValue()];
-            const uint32_t position = orientedReadMarkers[ordinal].position + kHalf;
-            finalAppearances0Map[orientedReadId].push_back(
-                Appearance(stepId, offset, orientedReadId, positionInJourney, ordinal, position));
-        }
-    }
-
-    // For each OrientedReadId, store the last Appearance in order of position in journey.
-    vector<Appearance> finalAppearances0;
-    for(auto& p: finalAppearances0Map) {
-        vector<Appearance>& appearances = p.second;
-        sort(appearances.begin(), appearances.end());
-        finalAppearances0.push_back(appearances.back());
-    }
-
-
+    // Get SegmentStepSupport for the initial representative region of e1,
+    // then for each OrientedReadId keep only the one with the largest stepId.
+    vector<SegmentStepSupport> support1;
+    SegmentStepSupport::getInitialFirst(assemblyGraph, e1, representativeRegionStepCount, support1);
 
     html << "<h2>Segment pair " << segmentId0 << " " << segmentId1 << "</h2>";
+
+    html << "<h3>Final support for " << segmentId0 << "</h3>";
+    SegmentStepSupport::writeHtml(html, assemblyGraph, support0);
+
+    html << "<h3>Initial support for " << segmentId1 << "</h3>";
+    SegmentStepSupport::writeHtml(html, assemblyGraph, support1);
 }
 
 
