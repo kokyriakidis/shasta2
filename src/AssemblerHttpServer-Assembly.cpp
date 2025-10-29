@@ -10,6 +10,7 @@
 #include "LocalAssemblyGraph.hpp"
 #include "Markers.hpp"
 #include "RestrictedAnchorGraph.hpp"
+#include "SegmentStepSupport.hpp"
 #include "Superbubble.hpp"
 #include "Tangle.hpp"
 #include "TangleMatrix.hpp"
@@ -1069,6 +1070,53 @@ void Assembler::exploreSegmentStepSupport(
     // End the table.
     html << "</table>";
 
+
+
+    // Use SegmentStepSupport instead.
+    vector<SegmentStepSupport> stepSupports;
+    SegmentStepSupport::get(assemblyGraph, e, uint32_t(stepBegin), uint32_t(stepEnd), stepSupports);
+    std::ranges::sort(stepSupports, std::ranges::less(),
+        [](const SegmentStepSupport& s) {return std::tie(s.orientedReadId, s.stepId);}
+        );
+
+    html << "<br><h3>Details</h3><table><tr>"
+        "<th>OrientedReadId"
+        "<th>Step"
+        "<th>Left<br>AnchorId"
+        "<th>Right<br>AnchorId"
+        "<th>Left<br>position<br>in journey"
+        "<th>Right<br>position<br>in journey"
+        "<th>Position<br>in journey<br>offset"
+        "<th>Left<br>ordinal"
+        "<th>Right<br>ordinal"
+        "<th>Ordinal<br>offset"
+        "<th>Left<br>position"
+        "<th>Right<br>position"
+        "<th>Position<br>offset";
+
+    for(const SegmentStepSupport& stepSupport: stepSupports) {
+        const AssemblyGraphEdgeStep& step = edge[stepSupport.stepId];
+        html <<
+            "<tr>" <<
+            "<td class=centered>" << stepSupport.orientedReadId <<
+            "<td class=centered>" << stepSupport.stepId <<
+            "<td class=centered>" << anchorIdToString(step.anchorPair.anchorIdA) <<
+            "<td class=centered>" << anchorIdToString(step.anchorPair.anchorIdB) <<
+
+            "<td class=centered>" << stepSupport.positionInJourneyA <<
+            "<td class=centered>" << stepSupport.positionInJourneyB <<
+            "<td class=centered>" << stepSupport.positionInJourneyOffset() <<
+
+            "<td class=centered>" << stepSupport.ordinalA <<
+            "<td class=centered>" << stepSupport.ordinalB <<
+            "<td class=centered>" << stepSupport.ordinalOffset() <<
+
+            "<td class=centered>" << stepSupport.positionA <<
+            "<td class=centered>" << stepSupport.positionB <<
+            "<td class=centered>" << stepSupport.positionOffset();
+    }
+    html << "</table>";
+
 }
 
 
@@ -1718,9 +1766,9 @@ void Assembler::exploreSegmentPair(const vector<string>& request, ostream& html)
             " does not have segment " << segmentId1;
         return;
     }
-    const AssemblyGraph::edge_descriptor e1 = it1->second;
-    const AssemblyGraphEdge& edge1 = assemblyGraph[e1];
-    const uint64_t stepCount1 = edge1.size();
+    // const AssemblyGraph::edge_descriptor e1 = it1->second;
+    // const AssemblyGraphEdge& edge1 = assemblyGraph[e1];
+    // const uint64_t stepCount1 = edge1.size();
 
 
 
