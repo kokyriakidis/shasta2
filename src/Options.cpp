@@ -208,6 +208,12 @@ void Options::addOptions()
         "Minimum coverage that phasing and detangling are allowed to generate."
         )->capture_default_str();
 
+    add_option("--representative-region-step-count",
+        representativeRegionStepCount,
+        "Number of steps for the representative region of a segment "
+        "used in detangling and read following."
+        )->capture_default_str();
+
     add_option("--prune-length",
         pruneLength,
         "Maximum length of a hanging segments to be pruned."

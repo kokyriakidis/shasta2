@@ -4,6 +4,7 @@
 #include "ReadFollowing.hpp"
 #include "Journeys.hpp"
 #include "Markers.hpp"
+#include "Options.hpp"
 using namespace shasta;
 using namespace ReadFollowing;
 
@@ -47,13 +48,14 @@ void Graph::createVertices()
         vertexMap.insert(make_pair(segment, v));
 
         // Locate the initial representative region.
+        const uint64_t representativeRegionStepCount = assemblyGraph.options.representativeRegionStepCount;
         const uint64_t initialBegin = 0;
-        const uint64_t initialEnd = min(stepCount, representativeRegionLength);
+        const uint64_t initialEnd = min(stepCount, representativeRegionStepCount);
 
         // Locate the final representative region.
         const uint64_t finalEnd = stepCount;
         const uint64_t finalBegin =
-            ((stepCount >= representativeRegionLength) ? (stepCount - representativeRegionLength) : 0);
+            ((stepCount >= representativeRegionStepCount) ? (stepCount - representativeRegionStepCount) : 0);
 
 
 

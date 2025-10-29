@@ -118,9 +118,6 @@ public:
 private:
     const AssemblyGraph& assemblyGraph;
 
-    // EXPOSE WHEN CODE STABILIZES.
-    const uint64_t representativeRegionLength = 10;
-
     // Create vertices of the ReadFollowing graph.
     // Each vertex corresponds to a Segment.
     std::map<Segment, vertex_descriptor> vertexMap;

@@ -1,6 +1,7 @@
 #include "TangleMatrix1.hpp"
 #include "Anchor.hpp"
 #include "deduplicate.hpp"
+#include "Options.hpp"
 using namespace shasta;
 
 #include <fstream.hpp>
@@ -17,15 +18,13 @@ TangleMatrix1::TangleMatrix1(
     entrances(entrances),
     exits(exits)
 {
-    // EXPOSE WHEN CODE STABILIZES.
-    const uint64_t representativeRegionLength = 10;
 
     // Sanity checks.
     SHASTA_ASSERT(std::ranges::is_sorted(entrances, assemblyGraph.orderById));
     SHASTA_ASSERT(std::ranges::is_sorted(exits, assemblyGraph.orderById));
 
     // Gather oriented reads in the representative region of each entrance and exit.
-    gatherOrientedReads(representativeRegionLength);
+    gatherOrientedReads(assemblyGraph.options.representativeRegionStepCount);
     if(html) {
         html << std::setprecision(2) << std::defaultfloat << "<h3>Tangle matrix</h3>";
         writeOrientedReads(html);

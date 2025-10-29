@@ -1772,10 +1772,6 @@ void Assembler::exploreSegmentPair(const vector<string>& request, ostream& html)
 
 
 
-    // The length, in steps, of the initial/final
-    // representative region of each segment.
-    const uint64_t representativeRegionLength = 10;
-
     // Class used to describe an appearance of an oriented read in a segment.
     class Appearance {
     public:
@@ -1813,9 +1809,10 @@ void Assembler::exploreSegmentPair(const vector<string>& request, ostream& html)
 
     // Loop over  appearances of oriented reads in the
     // final representative region of segmentId0.
+    const uint64_t representativeRegionStepCount = httpServerData.options->representativeRegionStepCount;
     const uint64_t final0End = stepCount0;
     const uint64_t final0Begin =
-        ((stepCount0 >= representativeRegionLength) ? (stepCount0 - representativeRegionLength) : 0);
+        ((stepCount0 >= representativeRegionStepCount) ? (stepCount0 - representativeRegionStepCount) : 0);
     std::map<OrientedReadId, vector<Appearance> > finalAppearances0Map;
     for(uint64_t stepId=final0Begin; stepId!=final0End; stepId++) {
 
