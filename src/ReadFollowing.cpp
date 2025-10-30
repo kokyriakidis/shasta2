@@ -24,15 +24,24 @@ Graph::Graph(const AssemblyGraph& assemblyGraph) :
     createEdges();
     write("A");
 
-    // Remove edges with low commonCount.
-    uint64_t minCommonCount = 6;
-    removeLowCommonCountEdges(minCommonCount);
+    // Remove edges with negative offsets.
+    removeNegativeOffsetEdges();
     write("B");
+
+    // Remove edges with low commonCount.
+    const uint64_t minCommonCount = 6;
+    removeLowCommonCountEdges(minCommonCount);
+    write("C");
 
     // Remove edges with low correctedJaccard.
     const double minCorrectedJaccard = 0.7;
     removeLowCommonCorrectedJaccardEdges(minCorrectedJaccard);
-    write("C");
+    write("D");
+
+    // Prune short leaves.
+    const uint64_t minimumLength = 100000;
+    prune(minimumLength);
+    write("E");
 }
 
 
@@ -162,6 +171,25 @@ void Graph::removeLowCommonCountEdges(uint64_t minCommonCount)
     for(const edge_descriptor e: edgesToBeRemoved) {
         boost::remove_edge(e, graph);
     }
+}
+
+
+
+void Graph::removeNegativeOffsetEdges()
+{
+    Graph& graph = *this;
+
+    vector<edge_descriptor> edgesToBeRemoved;
+    BGL_FORALL_EDGES(e, graph, Graph) {
+        if(graph[e].segmentPairInformation.segmentOffset < 0) {
+            edgesToBeRemoved.push_back(e);
+        }
+    }
+
+    for(const edge_descriptor e: edgesToBeRemoved) {
+        boost::remove_edge(e, graph);
+    }
+
 }
 
 
@@ -421,3 +449,34 @@ void Graph::writePath(Segment /* segment */, uint64_t /* direction */) const
 #endif
 }
 
+
+
+
+void Graph::prune(uint64_t minimumLength)
+{
+    while(pruneIteration(minimumLength));
+}
+
+
+
+bool Graph::pruneIteration(uint64_t minimumLength)
+{
+    Graph& graph = *this;
+
+    vector<vertex_descriptor> verticesToBeRemoved;
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        if(graph[v].length < minimumLength) {
+            const bool isLeaf = (in_degree(v, graph) == 0) or (out_degree(v, graph) == 0);
+            if(isLeaf) {
+                verticesToBeRemoved.push_back(v);
+            }
+        }
+    }
+
+    for(const vertex_descriptor v: verticesToBeRemoved) {
+        boost::clear_vertex(v, graph);
+        boost::remove_vertex(v, graph);
+    }
+
+    return not verticesToBeRemoved.empty();
+}

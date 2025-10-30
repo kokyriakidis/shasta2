@@ -68,12 +68,21 @@ public:
 private:
     const AssemblyGraph& assemblyGraph;
 
+    // Initial creation.
     std::map<Segment, vertex_descriptor> vertexMap;
     void createVertices();
     void createEdges();
 
+    // Remove edges with negative offset.
+    void removeNegativeOffsetEdges();
+
+    // Remove weak edges.
     void removeLowCommonCountEdges(uint64_t minCommonCount);
     void removeLowCommonCorrectedJaccardEdges(double minCorrectedJaccard);
+
+    // Prune sort leaves.
+    void prune(uint64_t minimumLength);
+    bool pruneIteration(uint64_t minimumLength);
 
     void write(const string& name) const;
     void writeCsv(const string& name) const;
