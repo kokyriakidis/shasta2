@@ -19,118 +19,34 @@ using namespace ReadFollowing;
 Graph::Graph(const AssemblyGraph& assemblyGraph) :
     assemblyGraph(assemblyGraph)
 {
+    // Initial creation with all possible vertices and edges.
     createVertices();
     createEdges();
-    writeEdgeDetails();
+    write("A");
 
-    // Enforce a minimum Jaccard when writing the graph.
-    writeGraph(0.2);
+    // Remove edges with low commonCount.
+    uint64_t minCommonCount = 6;
+    removeLowCommonCountEdges(minCommonCount);
+    write("B");
+
+    // Remove edges with low correctedJaccard.
+    const double minCorrectedJaccard = 0.7;
+    removeLowCommonCorrectedJaccardEdges(minCorrectedJaccard);
+    write("C");
 }
 
 
 
 // Create vertices of the ReadFollowing graph.
-// Each vertex corresponds to a Segment, but not
-// all Segments generate a vertex.
+// Each vertex corresponds to a Segment of the AssemblyGraph.
 void Graph::createVertices()
 {
     Graph& graph = *this;
-    const uint32_t kHalf = uint32_t(assemblyGraph.anchors.k / 2);
 
     // Each Segment generates a Vertex.
     BGL_FORALL_EDGES(segment, assemblyGraph, AssemblyGraph) {
-        const AssemblyGraphEdge& edge = assemblyGraph[segment];
-        const uint64_t stepCount = edge.size();
-
-        // Create a Vertex for this Segment.
         const vertex_descriptor v = add_vertex(Vertex(assemblyGraph, segment), graph);
-        Vertex& vertex = graph[v];
         vertexMap.insert(make_pair(segment, v));
-
-        // Locate the initial representative region.
-        const uint64_t representativeRegionStepCount = assemblyGraph.options.representativeRegionStepCount;
-        const uint64_t initialBegin = 0;
-        const uint64_t initialEnd = min(stepCount, representativeRegionStepCount);
-
-        // Locate the final representative region.
-        const uint64_t finalEnd = stepCount;
-        const uint64_t finalBegin =
-            ((stepCount >= representativeRegionStepCount) ? (stepCount - representativeRegionStepCount) : 0);
-
-
-
-        // Appearances in the initial representative region of this Segment.
-        // For each OrientedReadId, store the last appearance in journey order.
-        std::map<OrientedReadId, vector<Appearance> > initialAppearancesMap;
-        for(uint64_t stepId=initialBegin; stepId!=initialEnd; stepId++) {
-
-            // Compute the base offset to the end of the segment.
-            uint64_t offset = 0;
-            for(uint64_t i=stepId+1; i<initialEnd; i++) {
-                const AssemblyGraphEdge& assemblyGraphEdge = assemblyGraph[segment];
-                if(assemblyGraphEdge.wasAssembled) {
-                    offset += assemblyGraphEdge[i].sequence.size();
-                } else {
-                    offset += assemblyGraphEdge[i].offset;
-                }
-            }
-
-            const AssemblyGraphEdgeStep& step = edge[stepId];
-            const AnchorId anchorId = step.anchorPair.anchorIdA;
-            for(const OrientedReadId orientedReadId: step.anchorPair.orientedReadIds) {
-                const AnchorMarkerInfo& anchorMarkerInfo = assemblyGraph.anchors.getAnchorMarkerInfo(anchorId, orientedReadId);
-                const uint32_t positionInJourney = anchorMarkerInfo.positionInJourney;
-                const uint32_t ordinal = anchorMarkerInfo.ordinal;
-                const auto orientedReadMarkers = assemblyGraph.anchors.markers[orientedReadId.getValue()];
-                const uint32_t position = orientedReadMarkers[ordinal].position + kHalf;
-                initialAppearancesMap[orientedReadId].push_back(
-                    Appearance(segment, stepId, offset, orientedReadId, positionInJourney, ordinal, position));
-            }
-        }
-
-        // For each OrientedReadId, store the first Appearance in order of position in journey.
-        for(auto& p: initialAppearancesMap) {
-            vector<Appearance>& appearances = p.second;
-            sort(appearances.begin(), appearances.end());
-            vertex.initialAppearances.push_back(appearances.front());
-        }
-
-
-
-        // Appearances in the final representative region of this Segment.
-        // For each OrientedReadId. store the first appearance in journey order.
-        std::map<OrientedReadId, vector<Appearance> > finalAppearancesMap;
-        for(uint64_t stepId=finalBegin; stepId!=finalEnd; stepId++) {
-
-            // Compute the base offset from the beginning of the segment.
-            uint64_t offset = 0;
-            for(uint64_t i=finalBegin; i<stepId; i++) {
-                const AssemblyGraphEdge& assemblyGraphEdge = assemblyGraph[segment];
-                if(assemblyGraphEdge.wasAssembled) {
-                    offset += assemblyGraphEdge[i].sequence.size();
-                } else {
-                    offset += assemblyGraphEdge[i].offset;
-                }
-            }
-            const AssemblyGraphEdgeStep& step = edge[stepId];
-            const AnchorId anchorId = step.anchorPair.anchorIdB;
-            for(const OrientedReadId orientedReadId: step.anchorPair.orientedReadIds) {
-                const AnchorMarkerInfo& anchorMarkerInfo = assemblyGraph.anchors.getAnchorMarkerInfo(anchorId, orientedReadId);
-                const uint32_t positionInJourney = anchorMarkerInfo.positionInJourney;
-                const uint32_t ordinal = anchorMarkerInfo.ordinal;
-                const auto orientedReadMarkers = assemblyGraph.anchors.markers[orientedReadId.getValue()];
-                const uint32_t position = orientedReadMarkers[ordinal].position + kHalf;
-                finalAppearancesMap[orientedReadId].push_back(
-                    Appearance(segment, stepId, offset, orientedReadId, positionInJourney, ordinal, position));
-            }
-        }
-
-        // For each OrientedReadId, store the last Appearance in order of position in journey.
-        for(auto& p: finalAppearancesMap) {
-            vector<Appearance>& appearances = p.second;
-            sort(appearances.begin(), appearances.end());
-            vertex.finalAppearances.push_back(appearances.back());
-        }
     }
 
 }
@@ -148,109 +64,141 @@ Vertex::Vertex(
     } else {
         length = edge.offset();
     }
+
+    // Compute initial/final support.
+    const uint32_t representativeRegionStepCount =  uint32_t(assemblyGraph.options.representativeRegionStepCount);
+    SegmentStepSupport::getInitialFirst(assemblyGraph, segment, representativeRegionStepCount, initialSupport);
+    SegmentStepSupport::getFinalLast   (assemblyGraph, segment, representativeRegionStepCount, finalSupport  );
 }
 
 
 
 // Create edges of the ReadFollowing graph.
+// An edge v0->v1 is created if the final support of v0
+// shares at least one OrientedReadId with the initial support of v1.
 void Graph::createEdges()
 {
     Graph& graph = *this;
     const uint64_t orientedReadCount = assemblyGraph.journeys.size();
 
-    // Gather Appearances and store them by OrientedReadId.
-    vector< vector<Appearance> > initialAppearances(orientedReadCount);
-    vector< vector<Appearance> > finalAppearances(orientedReadCount);
+    // For each OrientedReadId, gather the vertices that the OrientedReadId
+    // appears in, in the initial/final support.
+    vector< vector<vertex_descriptor> > initialSupportVertices(orientedReadCount);
+    vector< vector<vertex_descriptor> > finalSupportVertices(orientedReadCount);
     BGL_FORALL_VERTICES(v, graph, Graph) {
         const Vertex& vertex = graph[v];
 
-        for(const Appearance& appearance: vertex.initialAppearances) {
-            initialAppearances[appearance.orientedReadId.getValue()].push_back(appearance);
+        for(const SegmentStepSupport& s: vertex.initialSupport) {
+            initialSupportVertices[s.orientedReadId.getValue()].push_back(v);
         }
 
-        for(const Appearance& appearance: vertex.finalAppearances) {
-            finalAppearances[appearance.orientedReadId.getValue()].push_back(appearance);
+        for(const SegmentStepSupport& s: vertex.finalSupport) {
+            finalSupportVertices[s.orientedReadId.getValue()].push_back(v);
         }
     }
 
 
 
-    // Loop over all OrientedReadIds.
+    // An edge v0->v1 will be created if the final support of v0
+    // shares at least one OrientedReadId with the initial support of v1.
+    std::set< pair<vertex_descriptor, vertex_descriptor> > vertexPairs;
     for(uint64_t i=0; i<orientedReadCount; i++) {
-
-        // Look over pairs (final appearance, initial appearance).
-        for(const Appearance appearance0: finalAppearances[i]) {
-            const Segment segment0 = appearance0.segment;
-            const auto it0 = vertexMap.find(segment0);
-            SHASTA_ASSERT(it0 != vertexMap.end());
-            const vertex_descriptor v0 = it0->second;
-
-            for(const Appearance appearance1: initialAppearances[i]) {
-                const Segment segment1 = appearance1.segment;
-                if(segment1 == segment0) {
-                    continue;
-                }
-                const auto it1 = vertexMap.find(segment1);
-                SHASTA_ASSERT(it1 != vertexMap.end());
-                const vertex_descriptor v1 = it1->second;
-
-                SHASTA_ASSERT(appearance0.orientedReadId == appearance1.orientedReadId);
-
-                if((appearance0.positionInJourney >= appearance1.positionInJourney)) {
+        const vector<vertex_descriptor>& initialVertices = initialSupportVertices[i];
+        const vector<vertex_descriptor>& finalVertices = finalSupportVertices[i];
+        for(const vertex_descriptor v0: finalVertices) {
+            for(const vertex_descriptor v1: initialVertices) {
+                if(v1 == v0) {
                     continue;
                 }
 
-                // Store this Appearance pair in edge segment0->segment1,
-                // creating the edge if necessary.
-                edge_descriptor e;
-                bool edgeExists;
-                tie(e, edgeExists) = boost::edge(v0, v1, graph);
-                if(not edgeExists) {
-                    tie(e, edgeExists) = add_edge(v0, v1, graph);
-                }
-                graph[e].appearancePairs.emplace_back(appearance0, appearance1);
+                // This OrientedReadId appears in the final support of v0 and in the
+                // initial support of v1, so we will create an edge v0->v1.
+                vertexPairs.insert({v0, v1});
             }
         }
     }
 
 
-    // Fill in the Jaccard similarities of all the edges.
+    // Generate an edge for each of these pairs.
+    for(const auto& p: vertexPairs) {
+        const vertex_descriptor v0 = p.first;
+        const vertex_descriptor v1 = p.second;
+
+        const Segment segment0 = graph[v0].segment;
+        const Segment segment1 = graph[v1].segment;
+
+        add_edge(v0, v1, Edge(assemblyGraph, segment0, segment1), graph);
+    }
+}
+
+
+
+Edge::Edge(
+    const AssemblyGraph& assemblyGraph,
+    Segment segment0,
+    Segment segment1)
+{
+    const uint32_t representativeRegionStepCount =  uint32_t(assemblyGraph.options.representativeRegionStepCount);
+    ostream html(0);
+    segmentPairInformation = SegmentStepSupport::analyzeSegmentPair(
+        html, assemblyGraph, segment0, segment1, representativeRegionStepCount);
+
+    SHASTA_ASSERT(segmentPairInformation.commonCount > 0);
+}
+
+
+
+void Graph::removeLowCommonCountEdges(uint64_t minCommonCount)
+{
+    Graph& graph = *this;
+
+    vector<edge_descriptor> edgesToBeRemoved;
     BGL_FORALL_EDGES(e, graph, Graph) {
-        graph[e].jaccard = jaccard(e);
+        if(graph[e].segmentPairInformation.commonCount < minCommonCount) {
+            edgesToBeRemoved.push_back(e);
+        }
     }
 
-}
-
-
-// Jaccard similarity for an EdgePairsGraph edge.
-// Computed using the finalAppearancesCount of the source vertex
-// and the initialAppearancesCount of the target vertex.
-double Graph::jaccard(edge_descriptor e) const
-{
-    const Graph& graph = *this;
-
-    const vertex_descriptor v0 = source(e, graph);
-    const vertex_descriptor v1 = target(e, graph);
-
-    const uint64_t n0 = graph[v0].finalAppearances.size();
-    const uint64_t n1 = graph[v1].initialAppearances.size();
-
-    const uint64_t n01 = graph[e].coverage();
-
-    const uint64_t intersectionSize = n01;
-    const uint64_t unionSize = n0 + n1 - intersectionSize;
-
-    return double(intersectionSize) / double(unionSize);
-
+    for(const edge_descriptor e: edgesToBeRemoved) {
+        boost::remove_edge(e, graph);
+    }
 }
 
 
 
-void Graph::writeGraph(double minJaccard) const
+void Graph::removeLowCommonCorrectedJaccardEdges(double minCorrectedJaccard)
+{
+    Graph& graph = *this;
+
+    vector<edge_descriptor> edgesToBeRemoved;
+    BGL_FORALL_EDGES(e, graph, Graph) {
+        if(graph[e].segmentPairInformation.correctedJaccard < minCorrectedJaccard) {
+            edgesToBeRemoved.push_back(e);
+        }
+    }
+
+    for(const edge_descriptor e: edgesToBeRemoved) {
+        boost::remove_edge(e, graph);
+    }
+}
+
+
+
+void Graph::write(const string& name) const
+{
+    cout << "ReadFollowing-" << name << ": " << num_vertices(*this) <<
+        " vertices, " << num_edges(*this) << " edges." << endl;
+    writeGraphviz(name);
+    writeCsv(name);
+}
+
+
+
+void Graph::writeGraphviz(const string& name) const
 {
     const Graph& graph = *this;
 
-    ofstream dot("ReadFollowing.dot");
+    ofstream dot("ReadFollowing-" + name + ".dot");
     dot << "digraph ReadFollowing1 {\n";
     dot << std::fixed << std::setprecision(2);
 
@@ -261,8 +209,8 @@ void Graph::writeGraph(double minJaccard) const
         dot << assemblyGraphEdge.id <<
             " [label=\"" << assemblyGraphEdge.id << "\\n" <<
             vertex.length << "\\n" <<
-            vertex.initialAppearances.size() << "/" <<
-            vertex.finalAppearances.size() <<
+            vertex.initialSupport.size() << "/" <<
+            vertex.finalSupport.size() <<
             "\"";
         dot <<
             "]"
@@ -270,28 +218,31 @@ void Graph::writeGraph(double minJaccard) const
     }
 
     BGL_FORALL_EDGES(e, graph, Graph) {
+        const Edge& edge = graph[e];
+
         const vertex_descriptor v0 = source(e, graph);
         const vertex_descriptor v1 = target(e, graph);
         const Segment segment0 = graph[v0].segment;
         const Segment segment1 = graph[v1].segment;
-        const uint64_t coverage = graph[e].coverage();
-        const double j = graph[e].jaccard;
-        SHASTA_ASSERT(j <= 1.);
 
-        if(j < minJaccard) {
-            continue;
-        }
+        dot << assemblyGraph[segment0].id << "->" << assemblyGraph[segment1].id;
 
-        const double hue = j / 3.; // So 0=red, 1=green.
+        // Begin attributes.
+        dot << "[";
 
-        dot <<
-            assemblyGraph[segment0].id << "->" <<
-            assemblyGraph[segment1].id <<
-            " [penwidth=\"" << 0.4 * double(coverage) << "\""
-            " tooltip=\"" << coverage << " " << j << "\""
-            " color=\"" << hue << ",1,.9\""
-            "]"
-            ";\n";
+        // Label.
+        dot << "label=\"" <<
+            edge.segmentPairInformation.commonCount << "/" <<
+            std::fixed << std::setprecision(2) <<
+            edge.segmentPairInformation.correctedJaccard << "\\n" <<
+            edge.segmentPairInformation.segmentOffset << "\"";
+
+        // End attributes.
+        dot << "]";
+
+        // End the line for this edge.
+        dot << ";\n";
+
     }
 
     dot << "}\n";
@@ -299,47 +250,76 @@ void Graph::writeGraph(double minJaccard) const
 
 
 
-void Graph::writeEdgeDetails()
+void Graph::writeCsv(const string& name) const
+{
+    writeVerticesCsv(name);
+    writeEdgesCsv(name);
+}
+
+
+
+void Graph::writeVerticesCsv(const string& name) const
 {
     const Graph& graph = *this;
 
-    ofstream csv("ReadFollowing-EdgeDetails.csv");
-    csv << "Segment0,Segment1,OrientedReadId,Position0,Position1,Offset0,Offset1,Offset,\n";
+    ofstream csv("ReadFollowing-Vertices-" + name + ".csv");
+    csv << "Segment,Length,InitialSupport,FinalSupport,\n";
 
-    BGL_FORALL_EDGES(e, graph, Graph) {
-        const vertex_descriptor v0 = source(e, graph);
-        const vertex_descriptor v1 = target(e, graph);
-        const uint64_t id0 = assemblyGraph[graph[v0].segment].id;
-        const uint64_t id1 = assemblyGraph[graph[v1].segment].id;
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        const Vertex& vertex = graph[v];
+        const Segment segment = vertex.segment;
+        const AssemblyGraphEdge& assemblyGraphEdge = assemblyGraph[segment];
 
-        for(const pair<Appearance, Appearance>& appearancePair: graph[e].appearancePairs) {
-            const Appearance& appearance0 = appearancePair.first;
-            const Appearance& appearance1 = appearancePair.second;
-            const OrientedReadId orientedReadId = appearance0.orientedReadId;
-            SHASTA_ASSERT(orientedReadId == appearance1.orientedReadId);
-
-            const int64_t offset =
-                int64_t(appearance1.position) -
-                int64_t(appearance0.position) -
-                int64_t(appearance0.offset) -
-                int64_t(appearance1.offset);
-
-            csv << id0 << ",";
-            csv << id1 << ",";
-            csv << orientedReadId << ",";
-            csv << appearance0.position << ",";
-            csv << appearance1.position << ",";
-            csv << appearance0.offset << ",";
-            csv << appearance1.offset << ",";
-            csv << offset << ",";
-            csv << "\n";
-
-        }
+        csv << assemblyGraphEdge.id << ",";
+        csv << vertex.length << ",";
+        csv << vertex.initialSupport.size() << ",";
+        csv << vertex.finalSupport.size() << ",";
+        csv << "\n";
     }
 }
 
 
 
+void Graph::writeEdgesCsv(const string& name) const
+{
+    const Graph& graph = *this;
+
+    ofstream csv("ReadFollowing-Edges-" + name + ".csv");
+    csv << "Segment0,Segment1,Length0,Length1,FinalSupport0,InitialSupport1,"
+        "Common,Missing0,Missing1,MissingTotal,CorrectedJaccard,Offset,\n";
+    csv << std::fixed << std::setprecision(2);
+
+    BGL_FORALL_EDGES(e, graph, Graph) {
+        const Edge& edge = graph[e];
+
+        const vertex_descriptor v0 = source(e, graph);
+        const vertex_descriptor v1 = target(e, graph);
+
+        const Vertex& vertex0 = graph[v0];
+        const Vertex& vertex1 = graph[v1];
+
+        const Segment segment0 = vertex0.segment;
+        const Segment segment1 = vertex1.segment;
+
+        csv << assemblyGraph[segment0].id << ",";
+        csv << assemblyGraph[segment1].id << ",";
+        csv << vertex0.length << ",";
+        csv << vertex1.length << ",";
+        csv << vertex0.finalSupport.size() << ",";
+        csv << vertex1.initialSupport.size() << ",";
+        csv << edge.segmentPairInformation.commonCount << ",";
+        csv << edge.segmentPairInformation.missing0 << ",";
+        csv << edge.segmentPairInformation.missing1 << ",";
+        csv << edge.segmentPairInformation.missing0 + edge.segmentPairInformation.missing1 << ",";
+        csv << edge.segmentPairInformation.correctedJaccard << ",";
+        csv << edge.segmentPairInformation.segmentOffset << ",";
+        csv << "\n";
+    }
+}
+
+
+
+#if 0
 void Graph::findPath(Segment segment, uint64_t direction, vector<vertex_descriptor>& path) const
 {
     if(direction == 0) {
@@ -415,11 +395,15 @@ void Graph::findBackwardPath(Segment, vector<vertex_descriptor>& /* path */) con
 {
     SHASTA_ASSERT(0);
 }
+#endif
 
 
 
-void Graph::writePath(Segment segment, uint64_t direction) const
+void Graph::writePath(Segment /* segment */, uint64_t /* direction */) const
 {
+    cout << "Not implemented." << endl;
+
+#if 0
     const Graph& graph = *this;
 
     vector<vertex_descriptor> path;
@@ -434,4 +418,6 @@ void Graph::writePath(Segment segment, uint64_t direction) const
         cout << assemblyGraph[segment].id << " ";
     }
     cout << endl;
+#endif
 }
+

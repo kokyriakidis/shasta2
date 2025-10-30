@@ -472,6 +472,8 @@ SegmentPairInformation SegmentStepSupport::analyzeSegmentPair(
 
     SegmentPairInformation info;
     info.commonCount = commonCount;
+    info.missing0 = missing0;
+    info.missing1 = missing1;
     info.segmentOffset = segmentOffset;
     info.jaccard = jaccard;
     info.correctedJaccard = correctedJaccard;

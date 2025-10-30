@@ -15,6 +15,8 @@ namespace shasta {
 class shasta::SegmentPairInformation {
 public:
     uint64_t commonCount = 0;
+    uint64_t missing0 = 0;
+    uint64_t missing1 = 0;
     int32_t segmentOffset = invalid<uint32_t>;
     double jaccard = 0.;
     double correctedJaccard = 0.;
