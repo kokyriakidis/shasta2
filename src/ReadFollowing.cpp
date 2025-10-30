@@ -42,6 +42,10 @@ Graph::Graph(const AssemblyGraph& assemblyGraph) :
     const uint64_t minimumLength = 100000;
     prune(minimumLength);
     write("E");
+
+    // Remove edges that have both isLowestOffset0 and isLowestOffset1 set to false.
+    removeNonLowestOffsetEdges();
+    write("F");
 }
 
 
@@ -194,6 +198,26 @@ void Graph::removeNegativeOffsetEdges()
 
 
 
+// Remove edges that have both isLowestOffset0 and isLowestOffset1 set to false.
+void Graph::removeNonLowestOffsetEdges()
+{
+    Graph& graph = *this;
+
+    vector<edge_descriptor> edgesToBeRemoved;
+    BGL_FORALL_EDGES(e, graph, Graph) {
+        const Edge& edge = graph[e];
+        if(not (edge.isLowestOffset0 or edge.isLowestOffset1)) {
+            edgesToBeRemoved.push_back(e);
+        }
+    }
+
+    for(const edge_descriptor e: edgesToBeRemoved) {
+        boost::remove_edge(e, graph);
+    }
+}
+
+
+
 void Graph::removeLowCommonCorrectedJaccardEdges(double minCorrectedJaccard)
 {
     Graph& graph = *this;
@@ -212,7 +236,7 @@ void Graph::removeLowCommonCorrectedJaccardEdges(double minCorrectedJaccard)
 
 
 
-void Graph::write(const string& name) const
+void Graph::write(const string& name)
 {
     cout << "ReadFollowing-" << name << ": " << num_vertices(*this) <<
         " vertices, " << num_edges(*this) << " edges." << endl;
@@ -222,9 +246,12 @@ void Graph::write(const string& name) const
 
 
 
-void Graph::writeGraphviz(const string& name) const
+void Graph::writeGraphviz(const string& name)
 {
     const Graph& graph = *this;
+
+    // Make sure the lowest offset flags are valid.
+    setLowestOffsetFlags();
 
     ofstream dot("ReadFollowing-" + name + ".dot");
     dot << "digraph ReadFollowing1 {\n";
@@ -247,6 +274,7 @@ void Graph::writeGraphviz(const string& name) const
 
     BGL_FORALL_EDGES(e, graph, Graph) {
         const Edge& edge = graph[e];
+        const int32_t offset = edge.segmentPairInformation.segmentOffset;
 
         const vertex_descriptor v0 = source(e, graph);
         const vertex_descriptor v1 = target(e, graph);
@@ -263,7 +291,19 @@ void Graph::writeGraphviz(const string& name) const
             edge.segmentPairInformation.commonCount << "/" <<
             std::fixed << std::setprecision(2) <<
             edge.segmentPairInformation.correctedJaccard << "\\n" <<
-            edge.segmentPairInformation.segmentOffset << "\"";
+            offset << "\"";
+
+        // Thickness.
+        dot << " penwidth=" << 0.2 * double(edge.segmentPairInformation.commonCount);
+
+        // Color.
+        string color= "Black";
+        if(edge.isLowestOffset0 and edge.isLowestOffset1) {
+            color = "Green";
+        } else if(edge.isLowestOffset0 or edge.isLowestOffset1) {
+            color = "Cyan";
+        }
+        dot << " color=" << color;
 
         // End attributes.
         dot << "]";
@@ -479,4 +519,54 @@ bool Graph::pruneIteration(uint64_t minimumLength)
     }
 
     return not verticesToBeRemoved.empty();
+}
+
+
+
+// For each edge v0->v1:
+// - isLowestOffset0 is set if this edge has the lowest offset out of all out-edges of v0.
+// - isLowestOffset1 is set if this edge has the lowest offset out of all in-edges of v1.
+void Graph::setLowestOffsetFlags()
+{
+    Graph& graph = *this;
+
+    // First set all the flags to false;
+    BGL_FORALL_EDGES(e, graph, Graph) {
+        Edge& edge = graph[e];
+        edge.isLowestOffset0 = false;
+        edge.isLowestOffset1 = false;
+    }
+
+
+
+    // Then loop over all vertices to set the flags.
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+
+        // Set the isLowestOffset0 flag for out-edge with the lowest offset.
+        edge_descriptor eLowest;
+        int32_t lowestOffset = std::numeric_limits<int32_t>::max();
+        BGL_FORALL_OUTEDGES(v, e, graph, Graph) {
+            const int32_t offset = graph[e].segmentPairInformation.segmentOffset;
+            if(offset < lowestOffset) {
+                lowestOffset = offset;
+                eLowest = e;
+            }
+        }
+        if(lowestOffset != std::numeric_limits<int32_t>::max()) {
+            graph[eLowest].isLowestOffset0 = true;
+        }
+
+        // Set the isLowestOffset1 flag for in-edge with the lowest offset.
+        lowestOffset = std::numeric_limits<int32_t>::max();
+        BGL_FORALL_INEDGES(v, e, graph, Graph) {
+            const int32_t offset = graph[e].segmentPairInformation.segmentOffset;
+            if(offset < lowestOffset) {
+                lowestOffset = offset;
+                eLowest = e;
+            }
+        }
+        if(lowestOffset != std::numeric_limits<int32_t>::max()) {
+            graph[eLowest].isLowestOffset1 = true;
+        }
+    }
 }

@@ -57,6 +57,13 @@ class shasta::ReadFollowing::Edge {
 public:
     Edge(const AssemblyGraph&, Segment, Segment);
     SegmentPairInformation segmentPairInformation;
+
+    // For each edge v0->v1:
+    // - isLowestOffset0 is set if this edge has the lowest offset out of all out-edges of v0.
+    // - isLowestOffset1 is set if this edge has the lowest offset out of all in-edges of v1.
+    // These are not maintained. They are set by setLowestOffsetFlags().
+    bool isLowestOffset0 = false;
+    bool isLowestOffset1 = false;
 };
 
 
@@ -84,11 +91,16 @@ private:
     void prune(uint64_t minimumLength);
     bool pruneIteration(uint64_t minimumLength);
 
-    void write(const string& name) const;
+    // Remove edges that have both isLowestOffset0 and isLowestOffset1 set to false.
+    void removeNonLowestOffsetEdges();
+
+    void setLowestOffsetFlags();
+
+    void write(const string& name);
     void writeCsv(const string& name) const;
     void writeVerticesCsv(const string& name) const;
     void writeEdgesCsv(const string& name) const;
-    void writeGraphviz(const string& name) const;
+    void writeGraphviz(const string& name);
 
 public:
     void findPath(Segment, uint64_t direction, vector<vertex_descriptor>& path) const;
