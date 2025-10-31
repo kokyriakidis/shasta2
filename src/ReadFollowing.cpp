@@ -29,18 +29,15 @@ Graph::Graph(const AssemblyGraph& assemblyGraph) :
     write("B");
 
     // Remove edges with low commonCount.
-    const uint64_t minCommonCount = 6;
     removeLowCommonCountEdges(minCommonCount);
     write("C");
 
     // Remove edges with low correctedJaccard.
-    const double minCorrectedJaccard = 0.7;
     removeLowCommonCorrectedJaccardEdges(minCorrectedJaccard);
     write("D");
 
     // Prune short leaves.
-    const uint64_t minimumLength = 100000;
-    prune(minimumLength);
+    prune();
     write("E");
 
     // Remove edges that have both isLowestOffset0 and isLowestOffset1 set to false.
@@ -517,20 +514,20 @@ void Graph::writePath(Segment segment, uint64_t direction) const
 
 
 
-void Graph::prune(uint64_t minimumLength)
+void Graph::prune()
 {
-    while(pruneIteration(minimumLength));
+    while(pruneIteration());
 }
 
 
 
-bool Graph::pruneIteration(uint64_t minimumLength)
+bool Graph::pruneIteration()
 {
     Graph& graph = *this;
 
     vector<vertex_descriptor> verticesToBeRemoved;
     BGL_FORALL_VERTICES(v, graph, Graph) {
-        if(graph[v].length < minimumLength) {
+        if(graph[v].length < pruneLength) {
             const bool isLeaf = (in_degree(v, graph) == 0) or (out_degree(v, graph) == 0);
             if(isLeaf) {
                 verticesToBeRemoved.push_back(v);

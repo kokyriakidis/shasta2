@@ -75,6 +75,12 @@ public:
 private:
     const AssemblyGraph& assemblyGraph;
 
+    // EXPOSE WHEN CODE STABILIZES.
+    const uint64_t minCommonCount = 6;
+    const double minCorrectedJaccard = 0.7;
+    const uint32_t pruneLength = 100000;
+
+
     // Initial creation.
     std::map<Segment, vertex_descriptor> vertexMap;
     void createVertices();
@@ -88,8 +94,8 @@ private:
     void removeLowCommonCorrectedJaccardEdges(double minCorrectedJaccard);
 
     // Prune sort leaves.
-    void prune(uint64_t minimumLength);
-    bool pruneIteration(uint64_t minimumLength);
+    void prune();
+    bool pruneIteration();
 
     // Remove edges that have both isLowestOffset0 and isLowestOffset1 set to false.
     void removeNonLowestOffsetEdges();
