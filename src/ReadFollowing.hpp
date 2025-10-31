@@ -79,6 +79,7 @@ private:
     const uint64_t minCommonCount = 6;
     const double minCorrectedJaccard = 0.7;
     const uint32_t pruneLength = 100000;
+    const uint64_t segmentLengthThreshold = 500000;
 
 
     // Initial creation.

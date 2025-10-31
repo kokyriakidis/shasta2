@@ -258,16 +258,32 @@ void Graph::writeGraphviz(const string& name)
         const Vertex& vertex = graph[v];
         const Segment segment = vertex.segment;
         const AssemblyGraphEdge& assemblyGraphEdge = assemblyGraph[segment];
-        dot << assemblyGraphEdge.id <<
-            " [label=\"" << assemblyGraphEdge.id << "\\n" <<
+        dot << assemblyGraphEdge.id;
+
+        // Begin attributes.
+        dot << " [";
+
+        // Label.
+        dot <<
+            "label=\"" << assemblyGraphEdge.id << "\\n" <<
             vertex.length << "\\n" <<
             vertex.initialSupport.size() << "/" <<
             vertex.finalSupport.size() <<
             "\"";
-        dot <<
-            "]"
-            ";\n";
+
+        // Color.
+        if(vertex.length >= segmentLengthThreshold) {
+            dot << " style=filled fillcolor=cyan";
+        }
+
+        // End attributes.
+        dot << "]";
+
+        // End the line for this vertex.
+        dot << ";\n";
     }
+
+
 
     BGL_FORALL_EDGES(e, graph, Graph) {
         const Edge& edge = graph[e];
