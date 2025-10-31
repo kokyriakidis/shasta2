@@ -297,11 +297,19 @@ void Graph::writeGraphviz(const string& name)
         dot << " penwidth=" << 0.2 * double(edge.segmentPairInformation.commonCount);
 
         // Color.
-        string color= "Black";
-        if(edge.isLowestOffset0 and edge.isLowestOffset1) {
-            color = "Green";
-        } else if(edge.isLowestOffset0 or edge.isLowestOffset1) {
-            color = "Cyan";
+        string color;
+        if(edge.isLowestOffset0) {
+            if (edge.isLowestOffset1) {
+                color = "Green";
+            } else {
+                color = "Cyan";
+            }
+        } else {
+            if (edge.isLowestOffset1) {
+                color = "Magenta";
+            } else {
+                color = "Black";
+            }
         }
         dot << " color=" << color;
 
@@ -387,106 +395,123 @@ void Graph::writeEdgesCsv(const string& name) const
 
 
 
-#if 0
-void Graph::findPath(Segment segment, uint64_t direction, vector<vertex_descriptor>& path) const
+// Find a minimum offset path starting at the given vertex and
+// ending if one of the terminalVertices is encountered.
+// Direction is 0 for forward and 1 backward.
+void Graph::findPath(
+    Segment segment, uint64_t direction,
+    vector<vertex_descriptor>& path,
+    const std::set<vertex_descriptor>& terminalVertices) const
 {
     if(direction == 0) {
-        findForwardPath(segment, path);
-    } else if(direction == 1) {
-        findBackwardPath(segment, path);
+        findForwardPath(segment, path, terminalVertices);
     } else {
-        SHASTA_ASSERT(0);
+        findBackwardPath(segment, path, terminalVertices);
     }
 }
 
 
 
-void Graph::findForwardPath(Segment segment, vector<vertex_descriptor>& path) const
+void Graph::findForwardPath(
+    Segment segment,
+    vector<vertex_descriptor>& path,
+    const std::set<vertex_descriptor>& terminalVertices) const
 {
     const Graph& graph = *this;
 
-    // Find the start vertex.
+    // Locate the vertex  corresponding to this segment.
     const auto it = vertexMap.find(segment);
     SHASTA_ASSERT(it != vertexMap.end());
     vertex_descriptor v = it->second;
 
-    // Each iteration adds one vertex to the path.
+    // Start with a path consisting of just this vertex.
     path.clear();
     path.push_back(v);
-    std::set<vertex_descriptor> pathVertices;
-    pathVertices.insert(v);
-    while(true) {
 
-         // Find the best next vertex.
-         vertex_descriptor vNext = null_vertex();
-         double bestJaccardSum = 0.;
-         BGL_FORALL_OUTEDGES(v, e, graph, Graph) {
-             vertex_descriptor v1 = target(e, graph);
-             if(pathVertices.contains(v1)) {
-                 continue;
-             }
 
-             // Compute the sum of Jaccard similarities between all
-             // previous vertices in the path and v1.
-             double jaccardSum = 0.;
-             for(const vertex_descriptor vPrevious: path) {
-                 edge_descriptor ePrevious;
-                 bool edgeWasFound;
-                 tie(ePrevious, edgeWasFound) = edge(vPrevious, v1, graph);
-                 if(edgeWasFound) {
-                    jaccardSum += graph[ePrevious].jaccard;
-                 }
-             }
 
-             if(jaccardSum > bestJaccardSum) {
-                 vNext = v1;
-                 bestJaccardSum = jaccardSum;
-             }
+    // At each iteration, add one vertex to the path.
+    // Use the edge with minimum offset.
+    while((not terminalVertices.contains(v)) and (out_degree(v, assemblyGraph) > 0)) {
 
-         }
+        // Find the edge with lowest offset.
+        int32_t lowestOffset = std::numeric_limits<int32_t>::max();
+        edge_descriptor eLowestOffset;
+        BGL_FORALL_OUTEDGES(v, e, graph, Graph) {
+            const int32_t offset = graph[e].segmentPairInformation.segmentOffset;
+            if(offset < lowestOffset) {
+                lowestOffset = offset;
+                eLowestOffset = e;
+            }
+        }
+        SHASTA_ASSERT(lowestOffset != std::numeric_limits<int32_t>::max());
 
-         if(vNext == null_vertex()) {
-             break;
-         }
-
-         v = vNext;
-
-         path.push_back(v);
-         pathVertices.insert(v);
-     }
-
+        // Add to the path the target of this vertex and continue from here.
+        v = target(eLowestOffset, graph);
+        path.push_back(v);
+    }
 }
 
 
 
-void Graph::findBackwardPath(Segment, vector<vertex_descriptor>& /* path */) const
+void Graph::findBackwardPath(
+    Segment segment,
+    vector<vertex_descriptor>& path,
+    const std::set<vertex_descriptor>& terminalVertices) const
 {
-    SHASTA_ASSERT(0);
+    const Graph& graph = *this;
+
+    // Locate the vertex  corresponding to this segment.
+    const auto it = vertexMap.find(segment);
+    SHASTA_ASSERT(it != vertexMap.end());
+    vertex_descriptor v = it->second;
+
+    // Start with a path consisting of just this vertex.
+    path.clear();
+    path.push_back(v);
+
+
+
+    // At each iteration, add one vertex to the path.
+    // Use the edge with minimum offset.
+    while((not terminalVertices.contains(v)) and (in_degree(v, assemblyGraph) > 0)) {
+
+        // Find the edge with lowest offset.
+        int32_t lowestOffset = std::numeric_limits<int32_t>::max();
+        edge_descriptor eLowestOffset;
+        BGL_FORALL_INEDGES(v, e, graph, Graph) {
+            const int32_t offset = graph[e].segmentPairInformation.segmentOffset;
+            if(offset < lowestOffset) {
+                lowestOffset = offset;
+                eLowestOffset = e;
+            }
+        }
+        SHASTA_ASSERT(lowestOffset != std::numeric_limits<int32_t>::max());
+
+        // Add to the path the source of this vertex and continue from here.
+        v = source(eLowestOffset, graph);
+        path.push_back(v);
+    }
+
+    // Reverse the path so it goes forward.
+    std::ranges::reverse(path);
 }
-#endif
 
 
 
-void Graph::writePath(Segment /* segment */, uint64_t /* direction */) const
+void Graph::writePath(Segment segment, uint64_t direction) const
 {
-    cout << "Not implemented." << endl;
-
-#if 0
     const Graph& graph = *this;
 
     vector<vertex_descriptor> path;
-    findPath(segment, direction, path);
-
-    if(direction == 1) {
-        std::ranges::reverse(path);
-    }
+    std::set<vertex_descriptor> terminalVertices;
+    findPath(segment, direction, path, terminalVertices);
 
     for(const vertex_descriptor v: path) {
         const Segment segment = graph[v].segment;
-        cout << assemblyGraph[segment].id << " ";
+        cout << assemblyGraph[segment].id << ",";
     }
     cout << endl;
-#endif
 }
 
 

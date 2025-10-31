@@ -103,8 +103,23 @@ private:
     void writeGraphviz(const string& name);
 
 public:
-    void findPath(Segment, uint64_t direction, vector<vertex_descriptor>& path) const;
-    void findForwardPath(Segment, vector<vertex_descriptor>& path) const;
-    void findBackwardPath(Segment, vector<vertex_descriptor>& path) const;
+
+    // Find a minimum offset path starting at the given vertex and
+    // ending if one of the terminalVertices is encountered.
+    // Direction is 0 for forward and 1 backward.
+    void findPath(
+        Segment, uint64_t direction,
+        vector<vertex_descriptor>& path,
+        const std::set<vertex_descriptor>& terminalVertices) const;
+    void findForwardPath(
+        Segment,
+        vector<vertex_descriptor>& path,
+        const std::set<vertex_descriptor>& terminalVertices) const;
+    void findBackwardPath(
+        Segment,
+        vector<vertex_descriptor>& path,
+        const std::set<vertex_descriptor>& terminalVertices) const;
+
+    // Python callable.
     void writePath(Segment, uint64_t direction) const;
 };
