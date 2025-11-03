@@ -412,30 +412,25 @@ void Graph::writeEdgesCsv(const string& name) const
 // ending if one of the terminalVertices is encountered.
 // Direction is 0 for forward and 1 backward.
 void Graph::findPath(
-    Segment segment, uint64_t direction,
+    vertex_descriptor v, uint64_t direction,
     vector<vertex_descriptor>& path,
-    const std::set<vertex_descriptor>& terminalVertices) const
+    const std::set<vertex_descriptor>& stopVertices) const
 {
     if(direction == 0) {
-        findForwardPath(segment, path, terminalVertices);
+        findForwardPath(v, path, stopVertices);
     } else {
-        findBackwardPath(segment, path, terminalVertices);
+        findBackwardPath(v, path, stopVertices);
     }
 }
 
 
 
 void Graph::findForwardPath(
-    Segment segment,
+    vertex_descriptor v,
     vector<vertex_descriptor>& path,
-    const std::set<vertex_descriptor>& terminalVertices) const
+    const std::set<vertex_descriptor>& stopVertices) const
 {
     const Graph& graph = *this;
-
-    // Locate the vertex  corresponding to this segment.
-    const auto it = vertexMap.find(segment);
-    SHASTA_ASSERT(it != vertexMap.end());
-    vertex_descriptor v = it->second;
 
     // Start with a path consisting of just this vertex.
     path.clear();
@@ -445,7 +440,7 @@ void Graph::findForwardPath(
 
     // At each iteration, add one vertex to the path.
     // Use the edge with minimum offset.
-    while((not terminalVertices.contains(v)) and (out_degree(v, assemblyGraph) > 0)) {
+    while(out_degree(v, assemblyGraph) > 0) {
 
         // Find the edge with lowest offset.
         int32_t lowestOffset = std::numeric_limits<int32_t>::max();
@@ -462,22 +457,21 @@ void Graph::findForwardPath(
         // Add to the path the target of this vertex and continue from here.
         v = target(eLowestOffset, graph);
         path.push_back(v);
+
+        if(stopVertices.contains(v)) {
+            break;
+        }
     }
 }
 
 
 
 void Graph::findBackwardPath(
-    Segment segment,
+    vertex_descriptor v,
     vector<vertex_descriptor>& path,
-    const std::set<vertex_descriptor>& terminalVertices) const
+    const std::set<vertex_descriptor>& stopVertices) const
 {
     const Graph& graph = *this;
-
-    // Locate the vertex  corresponding to this segment.
-    const auto it = vertexMap.find(segment);
-    SHASTA_ASSERT(it != vertexMap.end());
-    vertex_descriptor v = it->second;
 
     // Start with a path consisting of just this vertex.
     path.clear();
@@ -487,7 +481,7 @@ void Graph::findBackwardPath(
 
     // At each iteration, add one vertex to the path.
     // Use the edge with minimum offset.
-    while((not terminalVertices.contains(v)) and (in_degree(v, assemblyGraph) > 0)) {
+    while(in_degree(v, assemblyGraph) > 0) {
 
         // Find the edge with lowest offset.
         int32_t lowestOffset = std::numeric_limits<int32_t>::max();
@@ -504,6 +498,10 @@ void Graph::findBackwardPath(
         // Add to the path the source of this vertex and continue from here.
         v = source(eLowestOffset, graph);
         path.push_back(v);
+
+        if(stopVertices.contains(v)) {
+            break;
+        }
     }
 
     // Reverse the path so it goes forward.
@@ -516,9 +514,13 @@ void Graph::writePath(Segment segment, uint64_t direction) const
 {
     const Graph& graph = *this;
 
+    const auto it = vertexMap.find(segment);
+    SHASTA_ASSERT(it != vertexMap.end());
+    const vertex_descriptor v = it->second;
+
     vector<vertex_descriptor> path;
-    std::set<vertex_descriptor> terminalVertices;
-    findPath(segment, direction, path, terminalVertices);
+    std::set<vertex_descriptor> stopVertices;
+    findPath(v, direction, path, stopVertices);
 
     for(const vertex_descriptor v: path) {
         const Segment segment = graph[v].segment;
@@ -607,4 +609,42 @@ void Graph::setLowestOffsetFlags()
             graph[eLowest].isLowestOffset1 = true;
         }
     }
+}
+
+
+
+// Find minimum offset paths between vertices corresponding to long segments.
+// Note these are paths in the ReadFollowing::Graph but not in the AssemblyGraph.
+void Graph::findPaths() const
+{
+    const Graph& graph = *this;
+
+    // Gather the long vertices.
+    std::set<vertex_descriptor> longVertices;
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        if(graph[v].length >= segmentLengthThreshold) {
+            longVertices.insert(v);
+        }
+    }
+
+
+    // For each of the long vertices, compute a path in each direction,
+    // always stopping when a long vertex is encountered.
+    vector<vertex_descriptor> path;
+    cout << "digraph G {" << endl;
+    for(const vertex_descriptor v: longVertices) {
+        for(uint64_t direction=0; direction<2; direction++) {
+            findPath(v, direction, path, longVertices);
+
+            if(path.size() > 1) {
+                const vertex_descriptor v0 = path.front();
+                const vertex_descriptor v1 = path.back();
+                const Segment segment0 = graph[v0].segment;
+                const Segment segment1 = graph[v1].segment;
+                cout << assemblyGraph[segment0].id << "->" <<
+                    assemblyGraph[segment1].id << endl;
+            }
+        }
+    }
+    cout << "}" << endl;
 }

@@ -208,6 +208,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
     class_<ReadFollowing::Graph>(shasta2Module, "ReadFollowing")
         .def(pybind11::init<const AssemblyGraph&>())
         .def("writePath", &ReadFollowing::Graph::writePath)
+        .def("findPaths", &ReadFollowing::Graph::findPaths)
         ;
 
     // Class ExternalAnchors.
