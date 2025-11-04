@@ -15,7 +15,7 @@ packages = [
     "python3-pybind11",
     "pybind11-dev",
     ]    
-command = "sudo apt install " + " ".join(packages)
+command = "sudo apt-get install " + " ".join(packages)
 os.system(command)
 
 # Build abpoa.
