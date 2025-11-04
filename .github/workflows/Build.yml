@@ -1,0 +1,23 @@
+name: build
+
+on:
+  push:
+    branches:
+      - '*'
+
+jobs:
+
+  ubuntu-24-04:
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@master
+    - name: Install-prerequisites
+      run: ./scripts/InstallBuildPrerequisites.py
+    - name: Build-ubuntu-24.04
+      run: |
+        mkdir shasta2-build
+        cd shasta2-build 
+        cmake .. 
+        make -j 2 all
+        make install/strip
+
