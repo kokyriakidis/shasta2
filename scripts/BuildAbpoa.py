@@ -62,12 +62,12 @@ commonFlags = "-I ../include -O3 -Wall -Wno-unused-function -Wno-misleading-inde
 # Build the static library.
 print("Building the abpoa static library.")
 os.system("cc -c " + commonFlags + " *.c")
-os.system("ar -csr ../lib/libapoa.a *.o")
+os.system("ar -csr ../lib/libabpoa.a *.o")
 os.system("rm *.o")
 
 # Build the shared library
 print("Building the abpoa shared library.")
 os.system("cc -c -fPIC " + commonFlags + " *.c")
-os.system("cc -shared -o ../lib/libapoa.so *.o")
+os.system("cc -shared -o ../lib/libabpoa.so *.o")
 os.system("rm *.o")
 
