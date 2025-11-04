@@ -24,6 +24,9 @@ file(GLOB SOURCES ../src/*.cpp)
 # Include directory.
 include_directories(../src ~/.shasta2Build/abpoa/abPOA/include)
 
+# Additional link directory.
+link_directories(~/.shasta2Build/abpoa/abPOA/lib)
+
 # Define our executable.
 add_executable(shasta2Executable ${SOURCES})
 set_target_properties(shasta2Executable PROPERTIES OUTPUT_NAME "shasta2")

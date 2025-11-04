@@ -28,6 +28,9 @@ file(GLOB SOURCES ../src/*.cpp)
 # Include directory.
 include_directories(../src ~/.shasta2Build/abpoa/abPOA/include)
 
+# Additional link directory.
+link_directories(~/.shasta2Build/abpoa/abPOA/lib)
+
 # Define our library.
 add_library(shasta2PythonModule SHARED ${SOURCES})
 
