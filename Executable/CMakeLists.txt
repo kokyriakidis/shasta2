@@ -22,7 +22,7 @@ endif(BUILD_DEBUG)
 file(GLOB SOURCES ../src/*.cpp)
 
 # Include directory.
-include_directories(../src ~/abpoa/abPOA/include)
+include_directories(../src ~/.shasta2Build/abpoa/abPOA/include)
 
 # Define our executable.
 add_executable(shasta2Executable ${SOURCES})

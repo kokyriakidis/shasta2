@@ -26,7 +26,7 @@ add_definitions(-DSHASTA_PYTHON_API)
 file(GLOB SOURCES ../src/*.cpp)
 
 # Include directory.
-include_directories(../src ~/abpoa/abPOA/include)
+include_directories(../src ~/.shasta2Build/abpoa/abPOA/include)
 
 # Define our library.
 add_library(shasta2PythonModule SHARED ${SOURCES})
