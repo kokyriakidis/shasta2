@@ -1,0 +1,24 @@
+#!/usr/bin/python3
+
+# This installs dependencies required to build shasta2.
+
+import os
+
+# Install the packages we need.
+packages = [
+    "g++",
+    "libboost-all-dev",
+    "libcli11-dev",
+    "libpng-dev",
+    "liblapack-dev",
+    "python3-dev",
+    "python3-pybind11",
+    "pybind11-dev",
+    ]    
+command = "sudo apt install " + " ".join(packages)
+os.system(command)
+
+# Build abpoa.
+import BuildAbpoa
+
+
