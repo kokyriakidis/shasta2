@@ -18,6 +18,6 @@ jobs:
         mkdir shasta2-build
         cd shasta2-build 
         cmake .. 
-        make -j 2 all
+        make -j 8 all
         make install/strip
 
