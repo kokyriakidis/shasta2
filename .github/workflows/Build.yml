@@ -20,4 +20,13 @@ jobs:
         cmake .. 
         make -j 8 all
         make install/strip
-
+        mv shasta2-install shasta2-Ubuntu-24.04
+        tar -cvf shasta2-Ubuntu-24.04.tar shasta2-Ubuntu-24.04  
+   - uses: actions/upload-artifact@master
+      with:
+        name: shasta2-Linux
+        path: shasta2-build/shasta2-Ubuntu-24.04/bin/shasta2
+    - uses: actions/upload-artifact@master
+      with:
+        name: shasta2-Ubuntu-24.04.tar
+        path: shasta2-build/shasta2-Ubuntu-24.04.tar
