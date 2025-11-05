@@ -619,30 +619,92 @@ void Graph::findPaths() const
 {
     const Graph& graph = *this;
 
-    // Gather the long vertices.
-    std::set<vertex_descriptor> longVertices;
+
+    // A graph to store the minimum offset paths we find.
+    // Each vertex corresponds to a long segment.
+    // An edge u0->u1 contains a path that starts at segment(u0)
+    // and ends at segment(u1). We only keep one path u0->u1,
+    // even though in many/most cases we will find two,
+    // one in each direction.
+    class PathGraphVertex {
+    public:
+        Segment segment;
+    };
+    class PathGraphEdge {
+    public:
+        vector<Segment> path;
+    };
+    using PathGraph = boost::adjacency_list<
+        boost::listS,
+        boost::listS,
+        boost::bidirectionalS,
+        PathGraphVertex,
+        PathGraphEdge>;
+    PathGraph pathGraph;
+    std::map<Segment, PathGraph::vertex_descriptor> pathGraphVertexMap;
+
+    // Each long Segment generates a PathGraphVertex.
+    std::set<vertex_descriptor> longSegments;
     BGL_FORALL_VERTICES(v, graph, Graph) {
-        if(graph[v].length >= segmentLengthThreshold) {
-            longVertices.insert(v);
+        const Vertex& vertex = graph[v];
+        if(vertex.length >= segmentLengthThreshold) {
+            longSegments.insert(v);
+            const PathGraph::vertex_descriptor u = boost::add_vertex({vertex.segment}, pathGraph);
+            pathGraphVertexMap.insert({vertex.segment, u});
         }
     }
 
 
-    // For each of the long vertices, compute a path in each direction,
-    // always stopping when a long vertex is encountered.
+
+    // For each PathGraphVertex, compute a minimum offset path in each direction,
+    // always stopping when another long segment is encountered.
+    // Each path generate a PathGraphEdge, as long as an edge between
+    // the same two PathGraph vertices does not already exist.
     vector<vertex_descriptor> path;
-    cout << "digraph G {" << endl;
-    for(const vertex_descriptor v: longVertices) {
+    cout << "digraph PathGraph {" << endl;
+    BGL_FORALL_VERTICES(u, pathGraph, PathGraph) {
+        const Segment segment = pathGraph[u].segment;
+        const auto it = vertexMap.find(segment);
+        SHASTA_ASSERT(it != vertexMap.end());
+        const vertex_descriptor v = it->second;
         for(uint64_t direction=0; direction<2; direction++) {
-            findPath(v, direction, path, longVertices);
+            findPath(v, direction, path, longSegments);
 
             if(path.size() > 1) {
+
+                // Find the first/last segment of the path.
                 const vertex_descriptor v0 = path.front();
                 const vertex_descriptor v1 = path.back();
                 const Segment segment0 = graph[v0].segment;
                 const Segment segment1 = graph[v1].segment;
-                cout << assemblyGraph[segment0].id << "->" <<
-                    assemblyGraph[segment1].id << endl;
+
+                // Locate the corresponding PathGraph vertices.
+                const auto it0 = pathGraphVertexMap.find(segment0);
+                const auto it1 = pathGraphVertexMap.find(segment1);
+                if((it0 != pathGraphVertexMap.end()) and (it1 != pathGraphVertexMap.end())) {
+                    const PathGraph::vertex_descriptor u0 = it0->second;
+                    const PathGraph::vertex_descriptor u1 = it1->second;
+
+                    // Create an edge, as long as an edge between
+                    // the same two PathGraph vertices does not already exist.
+                    bool edgeExists = false;
+                    tie(ignore, edgeExists) = boost::edge(u0, u1, pathGraph);
+                    if(not edgeExists) {
+
+                        // Ok, we are going to add a PathGraph edge.
+
+                        edge_descriptor e;
+                        tie(e, ignore) = boost::add_edge(u0, u1, pathGraph);
+                        cout << assemblyGraph[segment0].id << "->" << 
+                            assemblyGraph[segment1].id << ";" << endl;
+
+                        // Fill in the path of this PathGraphEdge.
+                        PathGraphEdge& pathGraphEdge = pathGraph[e];
+                        for(const vertex_descriptor v: path) {
+                            pathGraphEdge.path.push_back(graph[v].segment);
+                        }
+                    }
+                }
             }
         }
     }
