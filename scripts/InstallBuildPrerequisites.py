@@ -6,6 +6,7 @@ import os
 
 # Install the packages we need.
 packages = [
+    "cmake",
     "g++",
     "libboost-all-dev",
     "libcli11-dev",
