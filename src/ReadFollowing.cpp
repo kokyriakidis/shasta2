@@ -2,6 +2,7 @@
 
 // Shasta.
 #include "ReadFollowing.hpp"
+#include "findLinearChains.hpp"
 #include "Journeys.hpp"
 #include "Markers.hpp"
 #include "Options.hpp"
@@ -615,7 +616,7 @@ void Graph::setLowestOffsetFlags()
 
 // Find minimum offset paths between vertices corresponding to long segments.
 // Note these are paths in the ReadFollowing::Graph but not in the AssemblyGraph.
-void Graph::findPaths() const
+void Graph::findPaths(vector< vector<Segment> >& segmentSequences) const
 {
     const Graph& graph = *this;
 
@@ -709,4 +710,74 @@ void Graph::findPaths() const
         }
     }
     cout << "}" << endl;
+
+    // Find linear chains of vertices in the PathGraph.
+    vector< vector<PathGraph::vertex_descriptor> > chains;
+    findLinearVertexChains(pathGraph, chains);
+
+
+
+    // Each linear vertex chain generates a Segment sequence,
+    // that is, a sequence of Segments that
+    // should be assembled into a single Segment.
+    segmentSequences.clear();
+    for(const vector<PathGraph::vertex_descriptor>& chain: chains) {
+        const Segment segment0 = pathGraph[chain.front()].segment;
+        const Segment segment1 = pathGraph[chain.back()].segment;
+
+        cout << "Found a segment sequence that begins at " <<
+            assemblyGraph[segment0].id << " and ends at " <<
+            assemblyGraph[segment1].id << endl;
+
+        // Create a new Segment sequence.
+        segmentSequences.emplace_back();
+        vector<Segment>& segmentSequence = segmentSequences.back();
+        for(uint64_t i1=1; i1<chain.size(); i1++) {
+            const uint64_t i0 = i1 - 1;
+            const PathGraph::vertex_descriptor u0 = chain[i0];
+            const PathGraph::vertex_descriptor u1 = chain[i1];
+
+            // Locate the PathGraph edge.
+            PathGraph::edge_descriptor e;
+            bool edgeExists = false;
+            tie(e, edgeExists) = boost::edge(u0, u1, pathGraph);
+            SHASTA_ASSERT(edgeExists);
+            const PathGraphEdge& pathGraphEdge = pathGraph[e];
+            const vector<Segment>& path = pathGraphEdge.path;
+
+            SHASTA_ASSERT(pathGraph[u0].segment == path.front());
+            SHASTA_ASSERT(pathGraph[u1].segment == path.back());
+
+            // The path for this vertex already contains the segments
+            // corresponding to u0 and u1. So, to avoid duplications,
+            // for each edge except the last we copy the path
+            // without the last segment.
+            // For the last edge we copy the entire path.
+            auto end = path.end();
+            if(i1 != chain.size() - 1) {
+                --end;
+            }
+            copy(path.begin(), end, back_inserter(segmentSequence));
+        }
+    }
+}
+
+
+void Graph::writePaths() const
+{
+    vector< vector<Segment> > segmentSequences;
+    findPaths(segmentSequences);
+
+    ofstream csv("SegmentSequences.csv");
+    cout << "Found " << segmentSequences.size() << " segment sequences." << endl;
+    for(const vector<Segment>& segmentSequence: segmentSequences) {
+        cout << "Sequence with " << segmentSequence.size() <<
+        " segments beginning at " << assemblyGraph[segmentSequence.front()].id <<
+        " and ending at " << assemblyGraph[segmentSequence.back()].id << endl;
+
+        for(const Segment& segment: segmentSequence) {
+            csv << assemblyGraph[segment].id << ",";
+        }
+        csv << "\n";
+    }
 }

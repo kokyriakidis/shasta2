@@ -129,9 +129,11 @@ public:
         vector<vertex_descriptor>& path,
         const std::set<vertex_descriptor>& stopVertices) const;
 
-    // Find minimum offset paths between vertices corresponding to long segments.
-    void findPaths() const;
+    // Find minimum offset paths between vertices corresponding to long segments
+    // and the corresponding Segment sequences.
+    void findPaths(vector< vector<Segment> >& segmentSequences) const;
 
     // Python callable.
     void writePath(Segment, uint64_t direction) const;
+    void writePaths() const;
 };
