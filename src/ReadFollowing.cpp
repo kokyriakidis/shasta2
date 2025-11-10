@@ -614,9 +614,10 @@ void Graph::setLowestOffsetFlags()
 
 
 
-// Find minimum offset paths between vertices corresponding to long segments.
+// Find assembly paths.
+// These are minimum offset paths between vertices corresponding to long segments.
 // Note these are paths in the ReadFollowing::Graph but not in the AssemblyGraph.
-void Graph::findPaths(vector< vector<Segment> >& segmentSequences) const
+void Graph::findPaths(vector< vector<Segment> >& assemblyPaths) const
 {
     const Graph& graph = *this;
 
@@ -720,7 +721,7 @@ void Graph::findPaths(vector< vector<Segment> >& segmentSequences) const
     // Each linear vertex chain generates a Segment sequence,
     // that is, a sequence of Segments that
     // should be assembled into a single Segment.
-    segmentSequences.clear();
+    assemblyPaths.clear();
     for(const vector<PathGraph::vertex_descriptor>& chain: chains) {
         const Segment segment0 = pathGraph[chain.front()].segment;
         const Segment segment1 = pathGraph[chain.back()].segment;
@@ -729,9 +730,9 @@ void Graph::findPaths(vector< vector<Segment> >& segmentSequences) const
             assemblyGraph[segment0].id << " and ends at " <<
             assemblyGraph[segment1].id << endl;
 
-        // Create a new Segment sequence.
-        segmentSequences.emplace_back();
-        vector<Segment>& segmentSequence = segmentSequences.back();
+        // Create a new assembly path.
+        assemblyPaths.emplace_back();
+        vector<Segment>& assemblyPath = assemblyPaths.back();
         for(uint64_t i1=1; i1<chain.size(); i1++) {
             const uint64_t i0 = i1 - 1;
             const PathGraph::vertex_descriptor u0 = chain[i0];
@@ -757,25 +758,26 @@ void Graph::findPaths(vector< vector<Segment> >& segmentSequences) const
             if(i1 != chain.size() - 1) {
                 --end;
             }
-            copy(path.begin(), end, back_inserter(segmentSequence));
+            copy(path.begin(), end, back_inserter(assemblyPath));
         }
     }
 }
 
 
+
 void Graph::writePaths() const
 {
-    vector< vector<Segment> > segmentSequences;
-    findPaths(segmentSequences);
+    vector< vector<Segment> > assemblyPaths;
+    findPaths(assemblyPaths);
 
-    ofstream csv("SegmentSequences.csv");
-    cout << "Found " << segmentSequences.size() << " segment sequences." << endl;
-    for(const vector<Segment>& segmentSequence: segmentSequences) {
-        cout << "Sequence with " << segmentSequence.size() <<
-        " segments beginning at " << assemblyGraph[segmentSequence.front()].id <<
-        " and ending at " << assemblyGraph[segmentSequence.back()].id << endl;
+    ofstream csv("AssemblyPaths.csv");
+    cout << "Found " << assemblyPaths.size() << " assembly paths." << endl;
+    for(const vector<Segment>& assemblyPath: assemblyPaths) {
+        cout << "Assembly path with " << assemblyPath.size() <<
+        " segments beginning at " << assemblyGraph[assemblyPath.front()].id <<
+        " and ending at " << assemblyGraph[assemblyPath.back()].id << endl;
 
-        for(const Segment& segment: segmentSequence) {
+        for(const Segment& segment: assemblyPath) {
             csv << assemblyGraph[segment].id << ",";
         }
         csv << "\n";
