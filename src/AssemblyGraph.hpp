@@ -486,6 +486,16 @@ public:
     void colorStrongComponents() const;
 
 
+
+    // Read following.
+    // Note assemlbyPaths are not necessarily paths in the AssemblyGraph.
+    // There may be jumps, which are bridged using local assemblies.
+    void findAssemblyPaths(vector< vector<edge_descriptor> >& assemblyPaths) const;
+    void connectAssemblyPaths(const vector< vector<edge_descriptor> >&  assemblyPaths);
+    void findAndConnectAssemblyPaths();
+
+
+
     // Output.
     void write(const string& stage);
     void writeFasta(const string& stage) const;

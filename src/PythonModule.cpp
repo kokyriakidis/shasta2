@@ -177,6 +177,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def("testSearch", &AssemblyGraph::testSearch)
         .def("testLocalSearch", &AssemblyGraph::testLocalSearch)
         .def("createSearchGraph", &AssemblyGraph::createSearchGraph)
+        .def("findAndConnectAssemblyPaths", &AssemblyGraph::findAndConnectAssemblyPaths)
         ;
 
     // Expose AssemblyGraph vertex_descriptor and edge_descriptor.

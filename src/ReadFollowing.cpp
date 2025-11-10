@@ -20,30 +20,53 @@ using namespace ReadFollowing;
 Graph::Graph(const AssemblyGraph& assemblyGraph) :
     assemblyGraph(assemblyGraph)
 {
+	const bool debug = false;
+
     // Initial creation with all possible vertices and edges.
     createVertices();
     createEdges();
-    write("A");
+    if(debug) {
+    	setLowestOffsetFlags();
+    	write("A");
+    }
 
     // Remove edges with negative offsets.
     removeNegativeOffsetEdges();
-    write("B");
+    if(debug) {
+    	setLowestOffsetFlags();
+    	write("B");
+    }
 
     // Remove edges with low commonCount.
     removeLowCommonCountEdges(minCommonCount);
-    write("C");
+    if(debug) {
+    	setLowestOffsetFlags();
+    	write("C");
+    }
 
     // Remove edges with low correctedJaccard.
     removeLowCommonCorrectedJaccardEdges(minCorrectedJaccard);
-    write("D");
+    if(debug) {
+    	setLowestOffsetFlags();
+    	write("D");
+    }
 
     // Prune short leaves.
     prune();
-    write("E");
+    if(debug) {
+    	setLowestOffsetFlags();
+    	write("E");
+    }
+
+    // Make sure the lowest offset flags are valid.
+    setLowestOffsetFlags();
 
     // Remove edges that have both isLowestOffset0 and isLowestOffset1 set to false.
     removeNonLowestOffsetEdges();
-    write("F");
+    if(debug) {
+    	setLowestOffsetFlags();
+    	write("F");
+    }
 }
 
 
@@ -234,7 +257,7 @@ void Graph::removeLowCommonCorrectedJaccardEdges(double minCorrectedJaccard)
 
 
 
-void Graph::write(const string& name)
+void Graph::write(const string& name) const
 {
     cout << "ReadFollowing-" << name << ": " << num_vertices(*this) <<
         " vertices, " << num_edges(*this) << " edges." << endl;
@@ -244,12 +267,9 @@ void Graph::write(const string& name)
 
 
 
-void Graph::writeGraphviz(const string& name)
+void Graph::writeGraphviz(const string& name) const
 {
     const Graph& graph = *this;
-
-    // Make sure the lowest offset flags are valid.
-    setLowestOffsetFlags();
 
     ofstream dot("ReadFollowing-" + name + ".dot");
     dot << "digraph ReadFollowing1 {\n";
@@ -620,6 +640,7 @@ void Graph::setLowestOffsetFlags()
 void Graph::findPaths(vector< vector<Segment> >& assemblyPaths) const
 {
     const Graph& graph = *this;
+    const bool debug = false;
 
 
     // A graph to store the minimum offset paths we find.
@@ -663,7 +684,9 @@ void Graph::findPaths(vector< vector<Segment> >& assemblyPaths) const
     // Each path generate a PathGraphEdge, as long as an edge between
     // the same two PathGraph vertices does not already exist.
     vector<vertex_descriptor> path;
-    cout << "digraph PathGraph {" << endl;
+    if(debug) {
+    	cout << "digraph PathGraph {" << endl;
+    }
     BGL_FORALL_VERTICES(u, pathGraph, PathGraph) {
         const Segment segment = pathGraph[u].segment;
         const auto it = vertexMap.find(segment);
@@ -697,8 +720,10 @@ void Graph::findPaths(vector< vector<Segment> >& assemblyPaths) const
 
                         edge_descriptor e;
                         tie(e, ignore) = boost::add_edge(u0, u1, pathGraph);
-                        cout << assemblyGraph[segment0].id << "->" << 
-                            assemblyGraph[segment1].id << ";" << endl;
+                        if(debug) {
+							cout << assemblyGraph[segment0].id << "->" <<
+								assemblyGraph[segment1].id << ";" << endl;
+                        }
 
                         // Fill in the path of this PathGraphEdge.
                         PathGraphEdge& pathGraphEdge = pathGraph[e];
@@ -710,7 +735,9 @@ void Graph::findPaths(vector< vector<Segment> >& assemblyPaths) const
             }
         }
     }
-    cout << "}" << endl;
+    if(debug) {
+    	cout << "}" << endl;
+    }
 
     // Find linear chains of vertices in the PathGraph.
     vector< vector<PathGraph::vertex_descriptor> > chains;
@@ -726,9 +753,11 @@ void Graph::findPaths(vector< vector<Segment> >& assemblyPaths) const
         const Segment segment0 = pathGraph[chain.front()].segment;
         const Segment segment1 = pathGraph[chain.back()].segment;
 
-        cout << "Found a segment sequence that begins at " <<
-            assemblyGraph[segment0].id << " and ends at " <<
-            assemblyGraph[segment1].id << endl;
+        if(debug) {
+			cout << "Found an assembly path that begins at " <<
+				assemblyGraph[segment0].id << " and ends at " <<
+				assemblyGraph[segment1].id << endl;
+        }
 
         // Create a new assembly path.
         assemblyPaths.emplace_back();

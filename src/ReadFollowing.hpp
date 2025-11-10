@@ -103,11 +103,11 @@ private:
 
     void setLowestOffsetFlags();
 
-    void write(const string& name);
+    void write(const string& name) const;
     void writeCsv(const string& name) const;
     void writeVerticesCsv(const string& name) const;
     void writeEdgesCsv(const string& name) const;
-    void writeGraphviz(const string& name);
+    void writeGraphviz(const string& name) const;
 
 public:
 

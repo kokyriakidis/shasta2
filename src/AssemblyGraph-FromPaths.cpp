@@ -2,9 +2,12 @@
 #include "Anchor.hpp"
 #include "Assembler.hpp"
 #include "deduplicate.hpp"
+#include "ReadFollowing.hpp"
 #include "RestrictedAnchorGraph.hpp"
 #include "TangleMatrix1.hpp"
 using namespace shasta;
+
+#include <boost/graph/iteration_macros.hpp>
 
 
 // Constructor from another AssemblyGraph and assembly paths
@@ -154,3 +157,118 @@ AssemblyGraph::AssemblyGraph(
     newAssemblyGraph.removeEmptyEdges();
     newAssemblyGraph.compress();
 }
+
+
+
+// Note assemlbyPaths are not necessarily paths in the AssemblyGraph.
+// There may be jumps, which are bridged using local assemblies.
+void AssemblyGraph::findAssemblyPaths(vector< vector<edge_descriptor> >& assemblyPaths) const
+{
+	ReadFollowing::Graph readFollowingGraph(*this);
+	readFollowingGraph.findPaths(assemblyPaths);
+}
+
+
+
+// Note assemlbyPaths are not necessarily paths in the AssemblyGraph.
+// There may be jumps, which are bridged using local assemblies.
+// The assembly paths must satisfy the following rules:
+// - They must consist of at least 2 edge_descriptors.
+// - If an edge_descriptor appears at the beginning or end of an assembly path,
+//   it cannot appear elsewhere, in other paths or in the same path.
+// - Edges that appear inside assembly paths can appear multiple times
+//   in the same assembly paths or different assembly paths.
+// These rules are satisfied when the assembly paths are computed using
+// findAssemblyPaths.
+void AssemblyGraph::connectAssemblyPaths(const vector< vector<edge_descriptor> >&  assemblyPaths)
+{
+	AssemblyGraph& assemblyGraph = *this;
+
+	const bool debug = true;
+	if(debug) {
+		cout << "Connecting " << assemblyPaths.size() << " assembly paths:" << endl;
+		for(const vector<edge_descriptor>& assemblyPath: assemblyPaths) {
+			SHASTA_ASSERT(assemblyPath.size() > 1);
+			const edge_descriptor e0 = assemblyPath.front();
+			const edge_descriptor e1 = assemblyPath.back();
+			cout << "Assembly path with " << assemblyPath.size() << " segments beginning at " <<
+				assemblyGraph[e0].id << " and ending at " <<
+				assemblyGraph[e1].id << endl;
+		}
+	}
+
+	// Gather edge_descriptors that appear at the beginning/end of assembly paths.
+	std::set<edge_descriptor> pathInitialSegments;
+	std::set<edge_descriptor> pathFinalSegments;
+	for(const vector<edge_descriptor>& assemblyPath: assemblyPaths) {
+		SHASTA_ASSERT(assemblyPath.size() > 1);
+		const edge_descriptor e0 = assemblyPath.front();
+		const edge_descriptor e1 = assemblyPath.back();
+		SHASTA_ASSERT(e0 != e1);
+		SHASTA_ASSERT(not pathInitialSegments.contains(e0));
+		SHASTA_ASSERT(not pathFinalSegments.contains(e0));
+		SHASTA_ASSERT(not pathInitialSegments.contains(e1));
+		SHASTA_ASSERT(not pathFinalSegments.contains(e1));
+		pathInitialSegments.insert(e0);
+		pathFinalSegments.insert(e1);
+	}
+
+	// Gather edge_descriptors that appear internally to assembly paths.
+	// Count how many times each of them appear.
+	// The ones that appear only once will keep their id.
+	std::map<edge_descriptor, uint64_t> pathInternalSegments;
+	for(const vector<edge_descriptor>& assemblyPath: assemblyPaths) {
+		for(uint64_t i=1; i<assemblyPath.size()-1; i++) {
+			const edge_descriptor e = assemblyPath[i];
+			SHASTA_ASSERT(not pathInitialSegments.contains(e));
+			SHASTA_ASSERT(not pathFinalSegments.contains(e));
+			const auto it = pathInternalSegments.find(e);
+			if(it == pathInternalSegments.end()) {
+				pathInternalSegments.insert({e, 1});
+			} else {
+				++it->second;
+			}
+		}
+	}
+
+	if(debug) {
+		for(const auto& p: pathInternalSegments) {
+			if(p.second > 1) {
+				const edge_descriptor e = p.first;
+				cout << "Segment " << assemblyGraph[e].id <<
+					" appears more than once in assembly paths." << endl;
+			}
+		}
+	}
+
+
+	// Each assembly path generates a linear sequence of new edges that
+	// can be later collapsed into a single edge by compress.
+
+
+	// Remove all edges that appear in one or more assembly paths.
+	vector<edge_descriptor> edgesToBeRemoved;
+	BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+		if(
+			pathInitialSegments.contains(e) or
+			pathFinalSegments.contains(e) or
+			pathInternalSegments.contains(e)) {
+			edgesToBeRemoved.push_back(e);
+		}
+	}
+	for(const edge_descriptor e: edgesToBeRemoved) {
+		boost::remove_edge(e, assemblyGraph);
+	}
+	cout << "Removed " << edgesToBeRemoved.size() << " assembly graph edges." << endl;
+
+}
+
+
+
+void AssemblyGraph::findAndConnectAssemblyPaths()
+{
+	vector< vector<edge_descriptor> > assemblyPaths;
+	findAssemblyPaths(assemblyPaths);
+	connectAssemblyPaths(assemblyPaths);
+}
+
