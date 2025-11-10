@@ -242,8 +242,114 @@ void AssemblyGraph::connectAssemblyPaths(const vector< vector<edge_descriptor> >
 	}
 
 
+
 	// Each assembly path generates a linear sequence of new edges that
-	// can be later collapsed into a single edge by compress.
+	// can be later collapsed into a single edge by calling compress.
+	for(const vector<edge_descriptor>& assemblyPath: assemblyPaths) {
+
+		// Generate the new edges.
+		vector<edge_descriptor> newAssemblyPath;
+		for(uint64_t i=0; i<assemblyPath.size(); i++) {
+			const edge_descriptor e = assemblyPath[i];
+			const AssemblyGraphEdge& edge = assemblyGraph[e];
+			const vertex_descriptor v0 = source(e, assemblyGraph);
+			const vertex_descriptor v1 = target(e, assemblyGraph);
+			const AnchorId anchorId0 = assemblyGraph[v0].anchorId;
+			const AnchorId anchorId1 = assemblyGraph[v1].anchorId;
+
+			// Define the source and target vertices of the new edge, and its id.
+			vertex_descriptor v0New = null_vertex();
+			vertex_descriptor v1New = null_vertex();
+			uint64_t idNew = invalid<uint64_t>;
+			if(i == 0) {
+				// Initial segment.
+				v0New = v0;
+				v1New = add_vertex(AssemblyGraphVertex(anchorId1, nextVertexId++), assemblyGraph);
+				idNew = edge.id;
+			} else if(i == assemblyPath.size() - 1) {
+				// Final segment.
+				v0New = add_vertex(AssemblyGraphVertex(anchorId0, nextVertexId++), assemblyGraph);
+				v1New = v1;
+				idNew = edge.id;
+			} else {
+				// Internal segment.
+				v0New = add_vertex(AssemblyGraphVertex(anchorId0, nextVertexId++), assemblyGraph);
+				v1New = add_vertex(AssemblyGraphVertex(anchorId1, nextVertexId++), assemblyGraph);
+				if(pathInternalSegments[e] == 1) {
+					idNew = edge.id;
+				} else {
+					idNew = nextEdgeId++;
+				}
+			}
+
+			// Create the new edge.
+	        edge_descriptor eNew;
+	        tie(eNew, ignore) = add_edge(v0New, v1New, AssemblyGraphEdge(idNew), assemblyGraph);
+	        AssemblyGraphEdge& edgeNew = assemblyGraph[eNew];
+	        edgeNew = edge;
+	        edgeNew.id = idNew;
+	        newAssemblyPath.push_back(eNew);
+		}
+
+
+
+	    // For each pair of consecutive edges in this path,
+	    // generate a new edge in-between to bridge between them.
+	    // The code is similar to Tangle1::addConnectPair and Tangle1::detangle,
+	    // but simpler.
+		for(uint64_t i1=1; i1<newAssemblyPath.size(); i1++) {
+			const uint64_t i0 = i1 - 1;
+			const edge_descriptor e0 = newAssemblyPath[i0];
+			const edge_descriptor e1 = newAssemblyPath[i1];
+
+			const vertex_descriptor v0 = target(e0, assemblyGraph);
+			const vertex_descriptor v1 = source(e1, assemblyGraph);
+
+			const AnchorId anchorId0 = assemblyGraph[v0].anchorId;
+			const AnchorId anchorId1 = assemblyGraph[v1].anchorId;
+
+			// Create the new edge.
+			// If the two anchors are the same, leave it empty without any steps.
+			// Otherwise use the same process in Tangle1::addConnectPair.
+			edge_descriptor eNew;
+			tie(eNew, ignore) = add_edge(v0, v1, AssemblyGraphEdge(nextEdgeId++), assemblyGraph);
+			AssemblyGraphEdge& newEdge = assemblyGraph[eNew];
+			if(anchorId0 != anchorId1) {
+
+				// Create the RestrictedAnchorGraph, then:
+				// - Remove vertices not accessible from anchorId0 and anchorId1.
+				// - Remove cycles.
+				// - Find the longest path.
+				// - Add one step for each edge of the longest path of the RestrictedAnchorGraph.
+
+				ostream html(0);
+				const TangleMatrix1 tangleMatrix(
+					assemblyGraph,
+					vector<edge_descriptor>(1, e0),
+					vector<edge_descriptor>(1, e1),
+					html);
+
+				RestrictedAnchorGraph restrictedAnchorGraph(anchors, journeys, tangleMatrix, 0, 0, html);
+				restrictedAnchorGraph.removeLowCoverageEdges(anchorId0, anchorId1);
+				restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
+				restrictedAnchorGraph.removeCycles();
+				restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
+				vector<RestrictedAnchorGraph::edge_descriptor> longestPath;
+				// restrictedAnchorGraph.findLongestPath(longestPath);
+				restrictedAnchorGraph.findOptimalPath(anchorId0, anchorId1, longestPath);
+
+				for(const RestrictedAnchorGraph::edge_descriptor re: longestPath) {
+					const auto& rEdge = restrictedAnchorGraph[re];
+					if(rEdge.anchorPair.size() < options.detangleMinCoverage) {
+						newEdge.clear();
+						SHASTA_ASSERT(0);
+					}
+					newEdge.push_back(AssemblyGraphEdgeStep(rEdge.anchorPair, rEdge.offset));
+				}
+			}
+	    }
+	}
+
 
 
 	// Remove all edges that appear in one or more assembly paths.
@@ -259,8 +365,9 @@ void AssemblyGraph::connectAssemblyPaths(const vector< vector<edge_descriptor> >
 	for(const edge_descriptor e: edgesToBeRemoved) {
 		boost::remove_edge(e, assemblyGraph);
 	}
-	cout << "Removed " << edgesToBeRemoved.size() << " assembly graph edges." << endl;
 
+	// Compress the lienar chains we created.
+	compress();
 }
 
 
