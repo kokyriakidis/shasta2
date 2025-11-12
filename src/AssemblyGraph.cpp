@@ -206,8 +206,8 @@ void AssemblyGraph::simplifyAndAssemble()
 
     // Sequence assembly.
     assembleAll();
-    write("Z");
-    writeFasta("Z");
+    write("Final");
+    writeFasta("Final");
 
     performanceLog << timestamp << "Assembly graph::simplifyAndAssemble ends." << endl;
 }
@@ -265,9 +265,9 @@ void AssemblyGraph::write(const string& stage)
         num_edges(*this) << " edges. Next edge id is " << nextEdgeId << "." << endl;
 
     save(stage);
-    writeGfa("AssemblyGraph-" + stage + ".gfa");
-    writeGraphviz("AssemblyGraph-" + stage + ".dot");
-    writeCsv("AssemblyGraph-" + stage + ".csv");
+    writeGfa("Assembly-" + stage + ".gfa");
+    writeGraphviz("Assembly-" + stage + ".dot");
+    writeCsv("Assembly-" + stage + ".csv");
 }
 
 
@@ -276,7 +276,7 @@ void AssemblyGraph::writeFasta(const string& stage) const
 {
     const AssemblyGraph& assemblyGraph = *this;;
 
-    ofstream fasta("AssemblyGraph-" + stage + ".fasta");
+    ofstream fasta("Assembly-" + stage + ".fasta");
 
     vector<shasta::Base> sequence;
     BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
@@ -1124,8 +1124,6 @@ void AssemblyGraph::save(const string& stage) const
     std::ostringstream s;
     save(s);
     const string dataString = s.str();
-
-    // cout << "Serialization of AssemblyGraph-" + stage << " needs " << dataString.size() << " bytes." << endl;
 
     // Now save the string to binary data.
     const string name = largeDataName("AssemblyGraph-" + stage);
