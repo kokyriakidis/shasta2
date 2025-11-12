@@ -224,6 +224,26 @@ void Options::addOptions()
         "Maximum number of pruning iterations."
         )->capture_default_str();
 
+    add_option("--read-following-min-common-count",
+    	readFollowingMinCommonCount,
+        "Minimum number of common oriented reads for read following."
+        )->capture_default_str();
+
+    add_option("--read-following-min-corrected-jaccard",
+    	readFollowingMinCorrectedJaccard,
+        "Minimum corrected Jaccard for read following."
+        )->capture_default_str();
+
+    add_option("--read-following-prine-length",
+    	readFollowingPruneLength,
+        "Prune length for read following."
+        )->capture_default_str();
+
+    add_option("--read-following-segment-length-threshold",
+    	readFollowingSegmentLengthThreshold,
+        "Segment length threshold for read following."
+        )->capture_default_str();
+
     add_option("--max-abpoa-length", maxAbpoaLength,
         "Maximum MSA length for abpoa (switch to poasta above that)."
         )->capture_default_str();

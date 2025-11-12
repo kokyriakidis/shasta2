@@ -100,6 +100,13 @@ public:
     uint64_t pruneLength = 50000;
     uint64_t pruneIterationCount = 3;
 
+    // Options that control read following.
+    uint64_t readFollowingMinCommonCount = 6;
+    double readFollowingMinCorrectedJaccard = 0.7;
+    uint32_t readFollowingPruneLength = 100000;
+    uint64_t readFollowingSegmentLengthThreshold = 500000;
+
+
     // Maximum MSA length for abpoa (switch to poasta above that).
     uint64_t maxAbpoaLength = 5000;
 

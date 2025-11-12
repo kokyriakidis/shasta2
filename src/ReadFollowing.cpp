@@ -38,14 +38,14 @@ Graph::Graph(const AssemblyGraph& assemblyGraph) :
     }
 
     // Remove edges with low commonCount.
-    removeLowCommonCountEdges(minCommonCount);
+    removeLowCommonCountEdges(assemblyGraph.options.readFollowingMinCommonCount);
     if(debug) {
     	setLowestOffsetFlags();
     	write("C");
     }
 
     // Remove edges with low correctedJaccard.
-    removeLowCommonCorrectedJaccardEdges(minCorrectedJaccard);
+    removeLowCommonCorrectedJaccardEdges(assemblyGraph.options.readFollowingMinCorrectedJaccard);
     if(debug) {
     	setLowestOffsetFlags();
     	write("D");
@@ -293,7 +293,7 @@ void Graph::writeGraphviz(const string& name) const
             "\"";
 
         // Color.
-        if(vertex.length >= segmentLengthThreshold) {
+        if(vertex.length >= assemblyGraph.options.readFollowingSegmentLengthThreshold) {
             dot << " style=filled fillcolor=cyan";
         }
 
@@ -566,7 +566,7 @@ bool Graph::pruneIteration()
 
     vector<vertex_descriptor> verticesToBeRemoved;
     BGL_FORALL_VERTICES(v, graph, Graph) {
-        if(graph[v].length < pruneLength) {
+        if(graph[v].length < assemblyGraph.options.readFollowingPruneLength) {
             const bool isLeaf = (in_degree(v, graph) == 0) or (out_degree(v, graph) == 0);
             if(isLeaf) {
                 verticesToBeRemoved.push_back(v);
@@ -670,7 +670,7 @@ void Graph::findPaths(vector< vector<Segment> >& assemblyPaths) const
     std::set<vertex_descriptor> longSegments;
     BGL_FORALL_VERTICES(v, graph, Graph) {
         const Vertex& vertex = graph[v];
-        if(vertex.length >= segmentLengthThreshold) {
+        if(vertex.length >= assemblyGraph.options.readFollowingSegmentLengthThreshold) {
             longSegments.insert(v);
             const PathGraph::vertex_descriptor u = boost::add_vertex({vertex.segment}, pathGraph);
             pathGraphVertexMap.insert({vertex.segment, u});
