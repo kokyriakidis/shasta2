@@ -200,6 +200,9 @@ void AssemblyGraph::simplifyAndAssemble()
         cout << "Total change count at iteration " << iteration << " was " << changeCount << endl;
     }
 
+    // Read following.
+    findAndConnectAssemblyPaths();
+    write("F");
 
     // Sequence assembly.
     assembleAll();
