@@ -38,6 +38,7 @@ add_library(shasta2PythonModule SHARED ${SOURCES})
 set_target_properties(shasta2PythonModule PROPERTIES OUTPUT_NAME "shasta2")
 set_target_properties(shasta2PythonModule PROPERTIES PREFIX "")
 set_target_properties(shasta2PythonModule PROPERTIES DEFINE_SYMBOL "")
+set_target_properties(shasta2PythonModule PROPERTIES INSTALL_RPATH "$ORIGIN")
 
 
 
@@ -55,8 +56,9 @@ target_link_libraries(
     shasta2PythonModule 
     atomic png boost_program_options boost_serialization pthread abpoa z m lapack blas ${SHASTA2_PYTHON_LIBRARIES})
 
-# Install the shared library into the bin directory.
+# Install the shared library and the abpoa library it needs into the bin directory.
 install(TARGETS shasta2PythonModule DESTINATION shasta2-install/bin)
+install(FILES ~/.shasta2Build/abpoa/abPOA/lib/libabpoa.so DESTINATION shasta2-install/bin)
 
 
 

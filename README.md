@@ -22,5 +22,5 @@ make install
 
 This creates:
 * Static executable `shasta2Build/shasta2-install/bin/shasta2`. It is highly portable to other 64-bit `x86_64` Linux systems. It can be moved to other systems and immediately used without requiring installation.
-* Python3 module `shasta2Build/shasta2-install/bin/shasta2.so`. This is not portable to other Linux distributions. Using the Python API requires `export LD_LIBRARY_PATH=~/.shasta2Build/abpoa/abPOA/lib`.
+* Python3 module `shasta2Build/shasta2-install/bin/shasta2.so`. This is not portable to other Linux distributions.
 
