@@ -13,7 +13,7 @@ Options::Options(int argc, char** argv) :
     CLI::App("Shasta2. Under development.")
 {
     allow_config_extras(false);
-    set_config("--config", "", "Configuration file.");
+    set_config("--config", "", "Specify a configuration file.", true);
 
     get_formatter()->column_width(20);
 
