@@ -67,6 +67,9 @@ set(CMAKE_INSTALL_PREFIX .)
 file(GLOB SCRIPTS scripts/*.py scripts/*.sh)
 install(PROGRAMS ${SCRIPTS} DESTINATION shasta2-install/bin)
 
+# Install the configuration files.
+install(DIRECTORY conf DESTINATION shasta2-install)
+
 
 
 
