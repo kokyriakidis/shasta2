@@ -28,7 +28,6 @@ public:
 
     bool isHelp = false;
 
-    string configName;
     vector <string> inputFileNames;
     string assemblyDirectory = "ShastaRun";
     string command = "assemble";

@@ -4,7 +4,7 @@ using namespace shasta;
 
 // Standard library.
 #include <array.hpp>
-#include "stdexcept.hpp"
+#include <stdexcept.hpp>
 #include <thread>
 
 
@@ -13,7 +13,7 @@ Options::Options(int argc, char** argv) :
     CLI::App("Shasta2. Under development.")
 {
     allow_config_extras(false);
-    set_config("--config", "", "Specify a configuration file.", true);
+    set_config("--config", "", "Specify a configuration file.");
 
     get_formatter()->column_width(20);
 
@@ -34,6 +34,7 @@ Options::Options(int argc, char** argv) :
     if(threadCount == 0) {
         threadCount = std::thread::hardware_concurrency();
     }
+
 }
 
 
