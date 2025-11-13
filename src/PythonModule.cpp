@@ -34,7 +34,8 @@ using namespace pybind11;
 
 PYBIND11_MODULE(shasta2, shasta2Module)
 {
-    // Class Options.
+
+	// Class Options.
     class_<Options>(shasta2Module, "Options")
 
         // Constructor from the name of a configuration file.
@@ -53,6 +54,12 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def_readwrite("detangleMaxLogP", &Options::detangleMaxLogP)
         .def_readwrite("detangleMinLogPDelta", &Options::detangleMinLogPDelta)
         .def_readwrite("detangleMinCoverage", &Options::detangleMinCoverage)
+
+		// Options defined in OptionsDefine.hpp
+		#define SHASTA2_OPTION_DEFINE(type, name, optionName, defaultValue, description) \
+			.def_readwrite(#name, &Options::name)
+		#include "OptionsDefine.hpp"
+		#undef SHASTA2_OPTION_DEFINE
         ;
 
     // Class Assembler.

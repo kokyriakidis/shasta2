@@ -100,15 +100,11 @@ public:
     uint64_t pruneLength = 50000;
     uint64_t pruneIterationCount = 3;
 
-    // Options that control read following.
-    uint64_t readFollowingMinCommonCount = 6;
-    double readFollowingMinCorrectedJaccard = 0.7;
-    uint32_t readFollowingPruneLength = 100000;
-    uint64_t readFollowingSegmentLengthThreshold = 500000;
-
-
-    // Maximum MSA length for abpoa (switch to poasta above that).
-    uint64_t maxAbpoaLength = 5000;
+	// Options defined in OptionsDefine.hpp
+	#define SHASTA2_OPTION_DEFINE(type, name, optionName, defaultValue, description) \
+		type name = defaultValue;
+	#include "OptionsDefine.hpp"
+	#undef SHASTA2_OPTION_DEFINE
 
 private:
     void addOptions();
