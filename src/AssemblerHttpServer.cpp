@@ -40,6 +40,7 @@ void Assembler::fillServerFunctionTable()
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreMarkerKmerAnalysisWithBaseOffset);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreLocalKmerGraph);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreMarkerKmerPair);
+    SHASTA_ADD_TO_FUNCTION_TABLE(exploreFindMarkerKmers);
 
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreAnchor);
     SHASTA_ADD_TO_FUNCTION_TABLE(exploreAnchorPair);
@@ -222,7 +223,8 @@ void Assembler::writeNavigation(ostream& html) const
         {"Marker k-mer analysis (marker offset)", "exploreMarkerKmerAnalysisWithMarkerOffset"},
         {"Marker k-mer analysis (base offset)", "exploreMarkerKmerAnalysisWithBaseOffset"},
         {"Local k-mer graph", "exploreLocalKmerGraph"},
-        {"Marker k-mer pair", "exploreMarkerKmerPair"}
+        {"Marker k-mer pair", "exploreMarkerKmerPair"},
+        {"Find marker k-mers in sequence", "exploreFindMarkerKmers"}
         });
 
 

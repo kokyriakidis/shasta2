@@ -209,7 +209,7 @@ void Assembler::exploreMarkerKmer(const vector<string>& request, ostream& html)
         "size=" << k << " "
         "value='" << kmerString << "'" <<
         " title='Enter a " << k << "-base k-mer.'>"
-        "</table><input type=submit value='Get k-mer information'></form>";
+        "</table><br><input type=submit value='Get k-mer information'></form>";
 
     // If the k-mer string is empty, do nothing.
     if(kmerString.empty()) {
@@ -218,7 +218,7 @@ void Assembler::exploreMarkerKmer(const vector<string>& request, ostream& html)
 
     // Check the length.
     if(kmerString.size() != k) {
-        html << "This k-mer is " << kmerString.size() << " bases long. "
+        html << "<br>This k-mer is " << kmerString.size() << " bases long. "
             "This assembly uses " << k << "-base markers. "
             "Specify a " << k << "-mer." << endl;
         return;
@@ -247,7 +247,7 @@ void Assembler::exploreMarkerKmer(const vector<string>& request, ostream& html)
     const uint64_t coverage = markerKmers->getFrequency(kmer);
     const Kmer kmerRc = kmer.reverseComplement(k);
     html <<
-        "<table><tr><th class=left>K-mer<td class=centered style='font-family:monospace'>";
+        "<br><table><tr><th class=left>K-mer<td class=centered style='font-family:monospace'>";
     kmer.write(html, k);
     html <<
         "<tr><th class=left>Reverse complement K-mer<td class=centered style='font-family:monospace'>";
@@ -262,7 +262,7 @@ void Assembler::exploreMarkerKmer(const vector<string>& request, ostream& html)
     markerKmers->get(kmer, markerInfos);
 
     html <<
-        "<p>"
+        "<br>"
         "<table>"
         "<tr><th>Oriented<br>read<th>Ordinal<th>Position<th>Repeated<br>ReadId";
     for(uint64_t i=0; i<markerInfos.size(); i++) {
@@ -1199,4 +1199,88 @@ void Assembler::exploreMarkerKmerPair(
     markerKmerPair.writeAlignment(html);
     markerKmerPair.writePairAlignmentDistances(html);
 
+}
+
+
+
+void Assembler::exploreFindMarkerKmers(const vector<string>& request, ostream& html)
+{
+	html << "<h2>Find markers in sequence</h2>";
+
+    // Get the request parameters.
+    string sequenceString;
+    getParameterValue(request, "sequence", sequenceString);
+    boost::trim(sequenceString);
+
+    // Write the form.
+    html <<
+        "<p><form><table>"
+        "<tr><th class=left>Sequence"
+        "<td><textarea name=sequence style='font-family:monospace' "
+        "rows=\"4\" cols=\"" << 100 << "\">" <<
+		sequenceString << "</textarea>"
+        "</table><br><input type=submit value='Get marker k-mers in this sequence'></form>";
+
+    // If the sequence is empty, do nothing.
+    if(sequenceString.empty()) {
+    	return;
+    }
+
+    // Convert it to a vector of Bases.
+    vector<Base> sequence;
+    for(const char c: sequenceString) {
+    	const Base b = Base::fromCharacterNoException(c);
+    	if(not b.isValid()) {
+    		html << "Invalid base character " << c << endl;
+    		return;
+    	}
+    	sequence.push_back(b);
+    }
+
+    // Check if the sequence is shorter than a marker k-mer.
+    const uint64_t k = assemblerInfo->k;
+    if(sequence.size() < k) {
+    	html << "<br>Sequence is " << sequence.size() << " bases long, which is shorter than marker length " << k << ".";
+    	return;
+    }
+
+
+
+    // Find marker k-mers in this sequence.
+    // Loop over starting positions of the k-mer.
+    html << "<h3>Marker k-mers in this sequence</h3>"
+    	"<table><tr><th>Begin<th>End<th>K-mer";
+    uint64_t markerKmerCount = 0;
+    for(uint64_t begin=0; ; ++begin) {
+    	const uint64_t end = begin + k;
+    	if(end > sequence.size()) {
+    		break;
+    	}
+
+    	// Gather the k-mer starting here.
+    	Kmer kmer;
+    	for(uint64_t i=0; i<k; i++) {
+    		kmer.set(i, sequence[begin + i]);
+    	}
+
+    	if(not kmerChecker->isMarker(kmer)) {
+    		continue;
+    	}
+    	++markerKmerCount;
+
+    	html <<
+    		"<tr>"
+        	"<td class=centered>" << begin <<
+	    	"<td class=centered>" << end <<
+			"<td style='font-family:monospace'>"
+			"<a href='exploreMarkerKmer?kmer=";
+    	kmer.write(html, k);
+    	html << "'>";
+    	kmer.write(html, k);
+    	html << "</a>";
+    }
+    html << "</table>";
+    html << "<br>Found " << markerKmerCount << " markers in " <<
+    	sequence.size() << " bases of sequence."
+		"<br>Marker density is " << double(markerKmerCount) / double(sequence.size() - k + 1);
 }
