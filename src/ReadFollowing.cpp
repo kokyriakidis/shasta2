@@ -640,7 +640,7 @@ void Graph::setLowestOffsetFlags()
 void Graph::findPaths(vector< vector<Segment> >& assemblyPaths) const
 {
     const Graph& graph = *this;
-    const bool debug = false;
+    const bool debug = true;
 
 
     // A graph to store the minimum offset paths we find.
@@ -681,12 +681,9 @@ void Graph::findPaths(vector< vector<Segment> >& assemblyPaths) const
 
     // For each PathGraphVertex, compute a minimum offset path in each direction,
     // always stopping when another long segment is encountered.
-    // Each path generate a PathGraphEdge, as long as an edge between
+    // Each path generates a PathGraphEdge, as long as an edge between
     // the same two PathGraph vertices does not already exist.
     vector<vertex_descriptor> path;
-    if(debug) {
-    	cout << "digraph PathGraph {" << endl;
-    }
     BGL_FORALL_VERTICES(u, pathGraph, PathGraph) {
         const Segment segment = pathGraph[u].segment;
         const auto it = vertexMap.find(segment);
@@ -720,10 +717,6 @@ void Graph::findPaths(vector< vector<Segment> >& assemblyPaths) const
 
                         edge_descriptor e;
                         tie(e, ignore) = boost::add_edge(u0, u1, pathGraph);
-                        if(debug) {
-							cout << assemblyGraph[segment0].id << "->" <<
-								assemblyGraph[segment1].id << ";" << endl;
-                        }
 
                         // Fill in the path of this PathGraphEdge.
                         PathGraphEdge& pathGraphEdge = pathGraph[e];
@@ -735,9 +728,30 @@ void Graph::findPaths(vector< vector<Segment> >& assemblyPaths) const
             }
         }
     }
+
+
+
     if(debug) {
-    	cout << "}" << endl;
+    	ofstream dot("PathGraph.dot");
+        dot << "digraph PathGraph {\n";
+
+        BGL_FORALL_VERTICES(v, pathGraph, PathGraph) {
+        	const Segment segment = pathGraph[v].segment;
+        	dot << assemblyGraph[segment].id << ";\n";
+        }
+
+        BGL_FORALL_EDGES(e, pathGraph, PathGraph) {
+        	const PathGraph::vertex_descriptor v0 = source(e, pathGraph);
+        	const PathGraph::vertex_descriptor v1 = target(e, pathGraph);
+        	const Segment segment0 = pathGraph[v0].segment;
+        	const Segment segment1 = pathGraph[v1].segment;
+        	dot << assemblyGraph[segment0].id << "->" << assemblyGraph[segment1].id << ";\n";
+        }
+
+    	dot << "}\n";
     }
+
+
 
     // Find linear chains of vertices in the PathGraph.
     vector< vector<PathGraph::vertex_descriptor> > chains;
@@ -750,6 +764,9 @@ void Graph::findPaths(vector< vector<Segment> >& assemblyPaths) const
     // should be assembled into a single Segment.
     assemblyPaths.clear();
     for(const vector<PathGraph::vertex_descriptor>& chain: chains) {
+    	if(chain.size() < 2) {
+    		continue;
+    	}
         const Segment segment0 = pathGraph[chain.front()].segment;
         const Segment segment1 = pathGraph[chain.back()].segment;
 
