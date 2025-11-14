@@ -50,10 +50,6 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def_readwrite("maxAnchorCoverage", &Options::maxAnchorCoverage)
         .def_readwrite("maxAnchorRepeatLength", &Options::maxAnchorRepeatLength)
         .def_readwrite("minAnchorGraphEdgeCoverage", &Options::minAnchorGraphEdgeCoverage)
-        .def_readwrite("detangleEpsilon", &Options::detangleEpsilon)
-        .def_readwrite("detangleMaxLogP", &Options::detangleMaxLogP)
-        .def_readwrite("detangleMinLogPDelta", &Options::detangleMinLogPDelta)
-        .def_readwrite("detangleMinCoverage", &Options::detangleMinCoverage)
 
 		// Options defined in OptionsDefine.hpp
 		#define SHASTA2_OPTION_DEFINE(type, name, optionName, defaultValue, description) \
@@ -61,6 +57,8 @@ PYBIND11_MODULE(shasta2, shasta2Module)
 		#include "OptionsDefine.hpp"
 		#undef SHASTA2_OPTION_DEFINE
         ;
+
+
 
     // Class Assembler.
     class_<Assembler>(shasta2Module, "Assembler")

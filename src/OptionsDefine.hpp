@@ -1,3 +1,45 @@
+// Options that control detangling.
+SHASTA2_OPTION_DEFINE(
+    double, detangleEpsilon, "--detangle-epsilon", 0.05,
+    "Epsilon value for likelihood ratio detangling.")
+
+SHASTA2_OPTION_DEFINE(
+    double, detangleMaxLogP, "--detangle-maxLogP", 30.,
+    "MaxLogP value for likelihood ratio detangling.")
+
+SHASTA2_OPTION_DEFINE(
+    double, detangleMinLogPDelta, "--detangle-minLogPDelta", 10.,
+    "MinLogPDelta value for likelihood ratio detangling.")
+
+SHASTA2_OPTION_DEFINE(
+    uint64_t, detangleMaxIterationCount, "--detangle-max-iteration-count", 10,
+    "Maximum number of detangling iterations at each iteration of assembly graph simplify.")
+
+SHASTA2_OPTION_DEFINE(
+    uint64_t, detangleMaxCrossEdgeLength, "--detangle-max-cross-edge-length", 10000,
+    "Maximum cross-edge length for detangling.")
+
+SHASTA2_OPTION_DEFINE(
+    uint64_t, detangleMinCoverage, "--detangle-min-coverage", 3,
+    "Minimum coverage that phasing and detangling are allowed to generate.")
+
+SHASTA2_OPTION_DEFINE(
+    uint64_t ,representativeRegionStepCount, "--representative-region-step-count", 10,
+    "Number of steps for the representative region of a segment "
+    "used in detangling and read following.")
+
+
+
+// Options that control pruning.
+SHASTA2_OPTION_DEFINE(
+    uint64_t, pruneLength, "--prune-length", 50000,
+    "Maximum length of a hanging segments to be pruned.")
+
+SHASTA2_OPTION_DEFINE(
+    uint64_t, pruneIterationCount, "--prune-iteration-count", 3,
+    "Maximum number of pruning iterations.")
+
+
 
 // Options that control read following.
 SHASTA2_OPTION_DEFINE(

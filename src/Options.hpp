@@ -86,19 +86,6 @@ public:
     uint64_t phasingMinDegree = 2;
     uint64_t phasingMinCoverage = 4;
 
-    // Options that control detangling.
-    double detangleEpsilon = 0.05;
-    double detangleMaxLogP = 30.;
-    double detangleMinLogPDelta = 10.;
-    uint64_t detangleMaxIterationCount = 10;
-    uint64_t detangleMaxCrossEdgeLength = 10000;
-    uint64_t detangleMinCoverage = 3;
-    uint64_t representativeRegionStepCount = 10;
-
-    // Options that control pruning.
-    uint64_t pruneLength = 50000;
-    uint64_t pruneIterationCount = 3;
-
 	// Options defined in OptionsDefine.hpp
 	#define SHASTA2_OPTION_DEFINE(type, name, optionName, defaultValue, description) \
 		type name = defaultValue;
