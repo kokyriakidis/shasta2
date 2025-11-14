@@ -117,6 +117,10 @@ public:
     uint64_t sequenceLength() const;
     void getSequence(vector<Base>&) const;
 
+    // If wasAssembled is set, this returns sequenceLength().
+    // Otherwise, it returns offset().
+    uint64_t length() const;
+
     double averageCoverage() const;
 
     template<class Archive> void serialize(Archive& ar, unsigned int /* version */)

@@ -595,6 +595,17 @@ uint64_t AssemblyGraphEdge::sequenceLength() const
 
 
 
+uint64_t AssemblyGraphEdge::length() const
+{
+    if(wasAssembled) {
+        return sequenceLength();
+    } else {
+        return offset();
+    }
+}
+
+
+
 void AssemblyGraph::findBubbles(vector<Bubble>& bubbles) const
 {
     const AssemblyGraph& assemblyGraph = *this;
