@@ -13,7 +13,7 @@ if(BUILD_DEBUG)
     add_definitions(-ggdb3)
     add_definitions(-O0)
 else(BUILD_DEBUG)
-    add_definitions(-g0)
+    add_definitions(-ggdb3)
     add_definitions(-O3)
     # NDEBUG is required to turn off SeqAn debug code.
     add_definitions(-DNDEBUG)
