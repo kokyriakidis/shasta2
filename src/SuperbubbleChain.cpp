@@ -197,7 +197,10 @@ uint64_t SuperbubbleChain::phase1(
                         } catch (const std::exception& e) {
                             coverageCheckFailed = true;
                             if(debug) {
-                                cout << "Creation of the RestrictedAnchorGraph failed." << endl;
+                                std::lock_guard<std::mutex> lock(assemblyGraph.mutex);
+                                cout << "Creation of the RestrictedAnchorGraph failed at " <<
+                                    assemblyGraph[tangleMatrix.entrances[iEntrance]].id << " " <<
+                                    assemblyGraph[tangleMatrix.exits[iExit]].id << endl;
                             }
                          }
 
