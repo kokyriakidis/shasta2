@@ -179,10 +179,6 @@ uint64_t SuperbubbleChain::phase1(
                                     num_vertices(restrictedAnchorGraph) << " vertices and " <<
                                     num_edges(restrictedAnchorGraph) << " edges." << endl;
                             }
-                            restrictedAnchorGraph.removeLowCoverageEdges(anchorId0, anchorId1);
-                            restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
-                            restrictedAnchorGraph.removeCycles();
-                            restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
                             vector<RestrictedAnchorGraph::edge_descriptor> longestPath;
                             restrictedAnchorGraph.findOptimalPath(anchorId0, anchorId1, longestPath);
                             if(debug) {

@@ -36,6 +36,16 @@ RestrictedAnchorGraph::RestrictedAnchorGraph(
 {
     fillJourneyPortions(journeys, tangleMatrix1, iEntrance, iExit);
     create(anchors, journeys, html);
+
+    const AssemblyGraph::edge_descriptor entrance = tangleMatrix1.entrances[iEntrance];
+    const AssemblyGraph::edge_descriptor exit = tangleMatrix1.exits[iExit];
+    const AnchorId anchorId0 = tangleMatrix1.assemblyGraph[entrance].back().anchorPair.anchorIdB;
+    const AnchorId anchorId1 = tangleMatrix1.assemblyGraph[exit].front().anchorPair.anchorIdA;
+
+    removeLowCoverageEdges(anchorId0, anchorId1);
+    keepBetween(anchorId0, anchorId1);
+    removeCycles();
+    keepBetween(anchorId0, anchorId1);
 }
 
 
@@ -729,4 +739,3 @@ RestrictedAnchorGraph::RestrictedAnchorGraph(
     // Create the RestrictedAnchorGraph using these JourneyPortions.
     create(anchors, journeys, html);
 }
-

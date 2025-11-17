@@ -134,10 +134,6 @@ AssemblyGraph::AssemblyGraph(
 
                 RestrictedAnchorGraph restrictedAnchorGraph(
                     newAssemblyGraph.anchors, newAssemblyGraph.journeys, tangleMatrix, 0, 0, html);
-                restrictedAnchorGraph.removeLowCoverageEdges(anchorId0, anchorId1);
-                restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
-                restrictedAnchorGraph.removeCycles();
-                restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
                 vector<RestrictedAnchorGraph::edge_descriptor> longestPath;
                 // restrictedAnchorGraph.findLongestPath(longestPath);
                 restrictedAnchorGraph.findOptimalPath(anchorId0, anchorId1, longestPath);

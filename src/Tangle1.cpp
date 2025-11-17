@@ -137,10 +137,6 @@ bool Tangle1::addConnectPair(uint64_t entranceIndex, uint64_t exitIndex, uint64_
             ostream html(0);
             RestrictedAnchorGraph restrictedAnchorGraph(
                 assemblyGraph.anchors, assemblyGraph.journeys, tangleMatrix(), entranceIndex, exitIndex, html);
-            restrictedAnchorGraph.removeLowCoverageEdges(anchorId0, anchorId1);
-            restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
-            restrictedAnchorGraph.removeCycles();
-            restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
             vector<RestrictedAnchorGraph::edge_descriptor> longestPath;
             // restrictedAnchorGraph.findLongestPath(longestPath);
             restrictedAnchorGraph.findOptimalPath(anchorId0, anchorId1, longestPath);
