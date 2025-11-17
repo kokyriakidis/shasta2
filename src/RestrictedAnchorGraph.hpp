@@ -25,7 +25,7 @@ namespace shasta {
 
     using RestrictedAnchorGraphBaseClass = boost::adjacency_list<
         boost::listS,
-        boost::listS,
+        boost::vecS,
         boost::bidirectionalS,
         RestrictedAnchorGraphVertex,
         RestrictedAnchorGraphEdge>;
