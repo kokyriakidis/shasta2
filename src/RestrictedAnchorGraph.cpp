@@ -313,6 +313,8 @@ void RestrictedAnchorGraph::writeHtml(
 
 // Only keep vertices that are forward reachable from the
 // vertex at anchorId0 and backward reachable from the vertex at anchorId1.
+// To permit future optimizations, we don't really remove
+// the vertices - we only disconnect them for the rest of the graph.
 void RestrictedAnchorGraph::keepBetween(AnchorId anchorId0, AnchorId anchorId1)
 {
     using Graph = RestrictedAnchorGraph;
@@ -330,6 +332,8 @@ void RestrictedAnchorGraph::keepBetween(AnchorId anchorId0, AnchorId anchorId1)
     vector<vertex_descriptor> verticesToBeRemoved;
 
     // Remove vertices that are not forward reachable from v0.
+    // To permit future optimizations, we don't really remove
+    // the vertices - we only disconnect them for the rest of the graph.
     findReachableVertices(graph, v0, 0, reachableVertices);
     SHASTA_ASSERT(reachableVertices.contains(v1));
     BGL_FORALL_VERTICES(v, graph, Graph) {
@@ -338,14 +342,16 @@ void RestrictedAnchorGraph::keepBetween(AnchorId anchorId0, AnchorId anchorId1)
         }
     }
     for(const vertex_descriptor v: verticesToBeRemoved) {
-        vertexMap.erase(graph[v].anchorId);
+        // vertexMap.erase(graph[v].anchorId);
         boost::clear_vertex(v, graph);
-        boost::remove_vertex(v, graph);
+        // boost::remove_vertex(v, graph);
     }
     reachableVertices.clear();
     verticesToBeRemoved.clear();
 
     // Remove vertices that are not backward reachable from v1.
+    // To permit future optimizations, we don't really remove
+    // the vertices - we only disconnect them for the rest of the graph.
     findReachableVertices(graph, v1, 1, reachableVertices);
     SHASTA_ASSERT(reachableVertices.contains(v0));
     BGL_FORALL_VERTICES(v, graph, Graph) {
@@ -354,9 +360,9 @@ void RestrictedAnchorGraph::keepBetween(AnchorId anchorId0, AnchorId anchorId1)
         }
     }
     for(const vertex_descriptor v: verticesToBeRemoved) {
-        vertexMap.erase(graph[v].anchorId);
+        // vertexMap.erase(graph[v].anchorId);
         boost::clear_vertex(v, graph);
-        boost::remove_vertex(v, graph);
+        // boost::remove_vertex(v, graph);
     }
 }
 
@@ -546,6 +552,8 @@ void RestrictedAnchorGraph::findOptimalPath(
 // of anchorId1 from anchorId0. In the process, this also
 // removes vertices that become unreachable from anchorId0 (forward)
 // or anchorId1 (backward).
+// To permit future optimizations, we don't really remove
+// the vertices - we only disconnect them for the rest of the graph.
 void RestrictedAnchorGraph::removeLowCoverageEdges(
     AnchorId anchorId0,
     AnchorId anchorId1)
@@ -617,9 +625,9 @@ void RestrictedAnchorGraph::removeLowCoverageEdges(
                 }
             }
             for(const vertex_descriptor v: verticesToBeRemoved) {
-                vertexMap.erase(graph[v].anchorId);
+                // vertexMap.erase(graph[v].anchorId);
                 boost::clear_vertex(v, graph);
-                boost::remove_vertex(v, graph);
+                // boost::remove_vertex(v, graph);
             }
         }
 
