@@ -127,6 +127,10 @@ public:
     // creating the vertex if necessary.
     vertex_descriptor getVertex(AnchorId);
 
+    // Return the vertex_descriptor corresponding to an AnchorId.
+    // This asserts if there is not such vertex.
+    vertex_descriptor getExistingVertex(AnchorId) const;
+
     // Only keep vertices that are forward reachable from the
     // vertex at anchorId0 and backward reachable from the vertex at anchorId1.
     void keepBetween(AnchorId anchorId0, AnchorId anchorId1);
