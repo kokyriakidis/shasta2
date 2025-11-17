@@ -1621,12 +1621,14 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
 
                     RestrictedAnchorGraph restrictedAnchorGraph(
                         anchors(), journeys(), tangleMatrix, iEntrance, iExit, html);
+                    html << "<br>The initial RestrictedAnchorGraph has " << num_vertices(restrictedAnchorGraph) <<
+                        " vertices and " << num_edges(restrictedAnchorGraph) << " edges ";
                     restrictedAnchorGraph.removeLowCoverageEdges(entranceAnchorId, exitAnchorId);
                     restrictedAnchorGraph.keepBetween(entranceAnchorId, exitAnchorId);
                     restrictedAnchorGraph.removeCycles();
                     restrictedAnchorGraph.keepBetween(entranceAnchorId, exitAnchorId);
 
-                    html << "<br>The RestrictedAnchorGraph has " << num_vertices(restrictedAnchorGraph) <<
+                    html << "<br>The final RestrictedAnchorGraph has " << num_vertices(restrictedAnchorGraph) <<
                         " vertices and " << num_edges(restrictedAnchorGraph) << " edges ";
 
                     html << "<br>";

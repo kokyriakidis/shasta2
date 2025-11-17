@@ -174,12 +174,22 @@ uint64_t SuperbubbleChain::phase1(
                             ostream html(0);
                             RestrictedAnchorGraph restrictedAnchorGraph(
                                 assemblyGraph.anchors, assemblyGraph.journeys, tangleMatrix, iEntrance, iExit, html);
+                            if(debug) {
+                                cout << "The initial RestrictedAnchorGraph has " <<
+                                    num_vertices(restrictedAnchorGraph) << " vertices and " <<
+                                    num_edges(restrictedAnchorGraph) << " edges." << endl;
+                            }
                             restrictedAnchorGraph.removeLowCoverageEdges(anchorId0, anchorId1);
                             restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
                             restrictedAnchorGraph.removeCycles();
                             restrictedAnchorGraph.keepBetween(anchorId0, anchorId1);
                             vector<RestrictedAnchorGraph::edge_descriptor> longestPath;
                             restrictedAnchorGraph.findOptimalPath(anchorId0, anchorId1, longestPath);
+                            if(debug) {
+                                cout << "The final RestrictedAnchorGraph has " <<
+                                    num_vertices(restrictedAnchorGraph) << " vertices and " <<
+                                    num_edges(restrictedAnchorGraph) << " edges." << endl;
+                            }
 
                             uint64_t minCoverage = std::numeric_limits<uint64_t>::max();
                             for(const RestrictedAnchorGraph::edge_descriptor e: longestPath) {
