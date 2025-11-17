@@ -121,13 +121,12 @@ public:
         ostream& html);
 
 
-    std::map<AnchorId, vertex_descriptor> vertexMap;
+    // Table that contains the AnchorId of each vertex:
+    // vertexTable[v] == (*this)[v].anchorId
+    // It is sorted, so getVertex and getExistingVertex can use a binary search.
+    vector<AnchorId> vertexTable;
 
-    // Return the vertex_descriptor corresponding to an AnchorId,
-    // creating the vertex if necessary.
-    vertex_descriptor getVertex(AnchorId);
-
-    // Return the vertex_descriptor corresponding to an AnchorId.
+   // Return the vertex_descriptor corresponding to an AnchorId.
     // This asserts if there is not such vertex.
     vertex_descriptor getExistingVertex(AnchorId) const;
 

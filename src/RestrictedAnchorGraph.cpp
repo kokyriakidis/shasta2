@@ -1,6 +1,7 @@
 // Shasta.
 #include "RestrictedAnchorGraph.hpp"
 #include "approximateTopologicalSort.hpp"
+#include "deduplicate.hpp"
 #include "dominatorTree.hpp"
 #include "findReachableVertices.hpp"
 #include "graphvizToHtml.hpp"
@@ -168,8 +169,9 @@ void RestrictedAnchorGraph::create(
     }
 
 
-
-    // Loop over the JourneyPortions to create the vertices.
+    // Gather the AnchorIds that appear in the JourneyPortions.
+    // Each distinct AnchorId will generate a vertex.
+    vertexTable.clear();
     for(const JourneyPortion&  journeyPortion:journeyPortions) {
         const OrientedReadId orientedReadId = journeyPortion.orientedReadId;
         const Journey journey = journeys[orientedReadId];
@@ -177,7 +179,25 @@ void RestrictedAnchorGraph::create(
         const uint32_t end = journeyPortion.end;
         for(uint32_t i=begin; i<end; i++) {
             const AnchorId anchorId = journey[i];
-            const vertex_descriptor v = getVertex(anchorId);
+            vertexTable.push_back(anchorId);
+        }
+    }
+    deduplicate(vertexTable);
+
+    // Each distinct AnchorId generates a vertex.
+    for(const AnchorId anchorId: vertexTable) {
+        add_vertex(RestrictedAnchorGraphVertex(anchorId), *this);
+    }
+
+    // Loop over the JourneyPortions to add oriented reads to the vertices.
+    for(const JourneyPortion&  journeyPortion:journeyPortions) {
+        const OrientedReadId orientedReadId = journeyPortion.orientedReadId;
+        const Journey journey = journeys[orientedReadId];
+        const uint32_t begin = journeyPortion.begin;
+        const uint32_t end = journeyPortion.end;
+        for(uint32_t i=begin; i<end; i++) {
+            const AnchorId anchorId = journey[i];
+            const vertex_descriptor v = getExistingVertex(anchorId);
             graph[v].orientedReadIds.push_back(orientedReadId);
         }
     }
@@ -221,29 +241,14 @@ void RestrictedAnchorGraph::create(
 
 
 
-// Return the vertex_descriptor corresponding to an AnchorId,
-// creating the vertex if necessary.
-RestrictedAnchorGraph::vertex_descriptor RestrictedAnchorGraph::getVertex(AnchorId anchorId)
-{
-    const auto it = vertexMap.find(anchorId);
-    if(it == vertexMap.end()) {
-        const vertex_descriptor v = add_vertex(RestrictedAnchorGraphVertex(anchorId), *this);
-        vertexMap.insert({anchorId, v});
-        return v;
-    } else {
-        return it->second;
-    }
-}
-
-
-
 // Return the vertex_descriptor corresponding to an AnchorId.
 // This asserts if there is not such vertex.
 RestrictedAnchorGraph::vertex_descriptor RestrictedAnchorGraph::getExistingVertex(AnchorId anchorId) const
 {
-    const auto it = vertexMap.find(anchorId);
-    SHASTA_ASSERT(it != vertexMap.end());
-    return it->second;
+    const auto it = std::ranges::lower_bound(vertexTable, anchorId);
+    SHASTA_ASSERT(it != vertexTable.end());
+    SHASTA_ASSERT(*it == anchorId);
+    return it - vertexTable.begin();
 }
 
 
