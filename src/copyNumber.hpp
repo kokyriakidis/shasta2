@@ -1,5 +1,4 @@
-#ifndef SHASTA_COPY_NUMBER_HPP
-#define SHASTA_COPY_NUMBER_HPP
+#pragma once
 
 #include "prefixLength.hpp"
 #include "SHASTA2_ASSERT.hpp"
@@ -124,6 +123,4 @@ template<class Container> uint64_t shasta::isCopyNumberDifference(
     return 0;
 
 }
-
-#endif
 

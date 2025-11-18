@@ -1,5 +1,4 @@
-#ifndef SHASTA_ALGORITHM_HPP
-#define SHASTA_ALGORITHM_HPP
+#pragma once
 
 #include <algorithm>
 
@@ -17,6 +16,4 @@ namespace shasta {
     using std::swap;
     using std::unique;
 }
-
-#endif
 

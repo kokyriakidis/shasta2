@@ -1,5 +1,4 @@
-#ifndef SHASTA_BASE_HPP
-#define SHASTA_BASE_HPP
+#pragma once
 
 
 // Class Base is used to represent a base, A, C, G, or T,
@@ -326,6 +325,3 @@ inline std::ostream& shasta::operator<<(
     return s;
 }
 
-
-
-#endif

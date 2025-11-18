@@ -1,5 +1,4 @@
-#ifndef SHASTA_DEDUPLICATE_HPP
-#define SHASTA_DEDUPLICATE_HPP
+#pragma once
 
 // Shasta.
 #include "algorithm.hpp"
@@ -220,4 +219,3 @@ namespace shasta {
     }
 }
 
-#endif

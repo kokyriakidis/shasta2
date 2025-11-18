@@ -1,5 +1,4 @@
-#ifndef SHASTA_CSTDINT_HPP
-#define SHASTA_CSTDINT_HPP
+#pragma once
 
 #include <cstdint>
 
@@ -23,4 +22,3 @@ namespace shasta {
 
 }
 
-#endif

@@ -1,5 +1,4 @@
-#ifndef SHASTA_CHRONO_HPP
-#define SHASTA_CHRONO_HPP
+#pragma once
 
 #include <chrono>
 
@@ -22,4 +21,3 @@ namespace shasta {
     }
 }
 
-#endif
