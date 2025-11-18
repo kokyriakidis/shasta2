@@ -305,7 +305,7 @@ void Assembler::writePngToHtml(
     }
     html << " src=\"data:image/png;base64,";
     ifstream png(base64FileName);
-    SHASTA_ASSERT(png);
+    SHASTA2_ASSERT(png);
     html << png.rdbuf();
     html << "\"/>";
 

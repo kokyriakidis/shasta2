@@ -20,8 +20,8 @@ TangleMatrix1::TangleMatrix1(
 {
 
     // Sanity checks.
-    SHASTA_ASSERT(std::ranges::is_sorted(entrances, assemblyGraph.orderById));
-    SHASTA_ASSERT(std::ranges::is_sorted(exits, assemblyGraph.orderById));
+    SHASTA2_ASSERT(std::ranges::is_sorted(entrances, assemblyGraph.orderById));
+    SHASTA2_ASSERT(std::ranges::is_sorted(exits, assemblyGraph.orderById));
 
     // Gather oriented reads in the representative region of each entrance and exit.
     gatherOrientedReads(assemblyGraph.options.representativeRegionStepCount);
@@ -116,9 +116,9 @@ void TangleMatrix1::gatherEntranceOrientedReads(
         for(const OrientedReadId orientedReadId: anchorPair.orientedReadIds) {
             while(itB->orientedReadId < orientedReadId) {
                 ++itB;
-                SHASTA_ASSERT(itB != anchorB.end());
+                SHASTA2_ASSERT(itB != anchorB.end());
             }
-            SHASTA_ASSERT(itB->orientedReadId == orientedReadId);
+            SHASTA2_ASSERT(itB->orientedReadId == orientedReadId);
             workInfos.emplace_back(orientedReadId, itB->positionInJourney);
         }
     }
@@ -203,9 +203,9 @@ void TangleMatrix1::gatherExitOrientedReads(
         for(const OrientedReadId orientedReadId: anchorPair.orientedReadIds) {
             while(itA->orientedReadId < orientedReadId) {
                 ++itA;
-                SHASTA_ASSERT(itA != anchorA.end());
+                SHASTA2_ASSERT(itA != anchorA.end());
             }
-            SHASTA_ASSERT(itA->orientedReadId == orientedReadId);
+            SHASTA2_ASSERT(itA->orientedReadId == orientedReadId);
             workInfos.emplace_back(orientedReadId, itA->positionInJourney);
         }
     }

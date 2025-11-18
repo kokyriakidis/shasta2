@@ -1,4 +1,4 @@
-#include "SHASTA_ASSERT.hpp"
+#include "SHASTA2_ASSERT.hpp"
 #include "shastaLapack.hpp"
 using namespace shasta;
 
@@ -20,8 +20,8 @@ void shasta::dgesvd(
 
     int M = int(A.size1());
     int N = int(A.size2());
-    SHASTA_ASSERT(M > 0);
-    SHASTA_ASSERT(N > 0);
+    SHASTA2_ASSERT(M > 0);
+    SHASTA2_ASSERT(N > 0);
 
     int LDA = M;
 
@@ -39,5 +39,5 @@ void shasta::dgesvd(
     int INFO = 0;
 
     dgesvd_(&JOBU, &JOBVT, M, N, &A(0, 0), LDA, &S[0], &U(0, 0), LDU, &VT(0, 0), LDVT, &WORK[0], LWORK, INFO);
-    SHASTA_ASSERT(INFO == 0);
+    SHASTA2_ASSERT(INFO == 0);
 }

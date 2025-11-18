@@ -1,4 +1,4 @@
-#include "SHASTA_ASSERT.hpp"
+#include "SHASTA2_ASSERT.hpp"
 
 #include <stdexcept>
 #include <string>

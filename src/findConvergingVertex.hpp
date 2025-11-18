@@ -4,7 +4,7 @@
 #include "CondensedGraph.hpp"
 #include "invalid.hpp"
 #include "LocalSubgraph.hpp"
-#include "SHASTA_ASSERT.hpp"
+#include "SHASTA2_ASSERT.hpp"
 
 // Boost libraries.
 #include <boost/graph/adjacency_list.hpp>
@@ -86,7 +86,7 @@ template<class Graph> typename Graph::vertex_descriptor shasta::findConvergingVe
         const VertexDescriptor v0 = q.front();
         q.pop();
         auto it0 = m.find(v0);
-        SHASTA_ASSERT(it0 != m.end());
+        SHASTA2_ASSERT(it0 != m.end());
         const LocalVertexDescriptor& lv0 = it0->second;
         const LocalVertex& localVertex0 = localGraph[lv0];
         const uint64_t distance0 = localVertex0.distance;
@@ -193,8 +193,8 @@ template<class Graph> typename Graph::vertex_descriptor shasta::findConvergingVe
 #endif
 
     // Sanity check on the topological ordering.
-    SHASTA_ASSERT(topologicalOrder.size() == num_vertices(localGraph));
-    SHASTA_ASSERT(localGraph[topologicalOrder.front()].v == vA);
+    SHASTA2_ASSERT(topologicalOrder.size() == num_vertices(localGraph));
+    SHASTA2_ASSERT(localGraph[topologicalOrder.front()].v == vA);
 
 
     // Compute flow in topological order.
@@ -258,7 +258,7 @@ template<class Graph> typename Graph::vertex_descriptor shasta::findConvergingVe
 
     // Sanity check.
     const VL vLStart = 0;
-    SHASTA_ASSERT(localGraph[vLStart].v == vStart);
+    SHASTA2_ASSERT(localGraph[vLStart].v == vStart);
 
 
 
@@ -294,7 +294,7 @@ template<class Graph> typename Graph::vertex_descriptor shasta::findConvergingVe
     } catch(const boost::not_a_dag&) {
         // This cannot happen because the condensed local subgraph is guaranteed
         // to be acyclic.
-        SHASTA_ASSERT(0);
+        SHASTA2_ASSERT(0);
     }
     reverse(topologicalOrder.begin(), topologicalOrder.end());
 
@@ -302,8 +302,8 @@ template<class Graph> typename Graph::vertex_descriptor shasta::findConvergingVe
     // We already checked that the start vertex is not in a non-trivial
     // strong component. So it must correspond to the first CondensedGraph vertex
     // in topological order.
-    SHASTA_ASSERT(topologicalOrder.size() == num_vertices(condensedGraph));
-    SHASTA_ASSERT(topologicalOrder.front() == vCStart);
+    SHASTA2_ASSERT(topologicalOrder.size() == num_vertices(condensedGraph));
+    SHASTA2_ASSERT(topologicalOrder.front() == vCStart);
 
 
 

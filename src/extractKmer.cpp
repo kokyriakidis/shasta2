@@ -1,7 +1,7 @@
 // Extract the kmer at a given position in a LongBaseSequenceView.
 #include "extractKmer.hpp"
 #include "LongBaseSequence.hpp"
-#include "SHASTA_ASSERT.hpp"
+#include "SHASTA2_ASSERT.hpp"
 #include "ShortBaseSequence.hpp"
 using namespace shasta;
 
@@ -31,7 +31,7 @@ template<class Int> inline void shasta::extractBits(
     Int& y1 = y[1];
 
 
-    SHASTA_ASSERT(xPosition + n <= 64);
+    SHASTA2_ASSERT(xPosition + n <= 64);
 
     // Shift x right so the n bits are the least significant.
     const uint64_t xShift = 64 - xPosition - n;
@@ -65,8 +65,8 @@ template<class Int> void shasta::extractKmer(
 {
 
     // Sanity checks.
-    SHASTA_ASSERT(length <= s.capacity);
-    SHASTA_ASSERT(position + length <= v.baseCount);
+    SHASTA2_ASSERT(length <= s.capacity);
+    SHASTA2_ASSERT(position + length <= v.baseCount);
 
     // Access the first two words containing the k-mer we want.
     const uint64_t i0 = (position >> 6) << 1;

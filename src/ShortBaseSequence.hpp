@@ -113,8 +113,8 @@ public:
 
 #if 0
         // Testing.
-        SHASTA_ASSERT(reverseComplementedSequence == reverseComplementSlow(n));
-        SHASTA_ASSERT(reverseComplementedSequence.reverseComplementSlow(n) == *this);
+        SHASTA2_ASSERT(reverseComplementedSequence == reverseComplementSlow(n));
+        SHASTA2_ASSERT(reverseComplementedSequence.reverseComplementSlow(n) == *this);
 #endif
 
         return reverseComplementedSequence;
@@ -258,7 +258,7 @@ public:
         case 4: return countExactRepeatCopies<4>(k);
         case 5: return countExactRepeatCopies<5>(k);
         case 6: return countExactRepeatCopies<6>(k);
-        default: SHASTA_ASSERT(0);
+        default: SHASTA2_ASSERT(0);
         }
     }
 

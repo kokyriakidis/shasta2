@@ -102,10 +102,10 @@ private:
         // Get the MarkerInfo for a given ordinal.
         const MarkerInfo& getMarkerInfo(uint32_t ordinal) const
         {
-            SHASTA_ASSERT(ordinal >= ordinalA);
-            SHASTA_ASSERT(ordinal <= ordinalB);
+            SHASTA2_ASSERT(ordinal >= ordinalA);
+            SHASTA2_ASSERT(ordinal <= ordinalB);
             const MarkerInfo& markerInfo = markerInfos[ordinal - ordinalA];
-            SHASTA_ASSERT(markerInfo.ordinal == ordinal);
+            SHASTA2_ASSERT(markerInfo.ordinal == ordinal);
             return markerInfo;
         }
 

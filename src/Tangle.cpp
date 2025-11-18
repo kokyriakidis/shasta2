@@ -87,8 +87,8 @@ Tangle::Tangle(
 
 
 void Tangle::connect(uint64_t iEntrance, uint64_t iExit) {
-    SHASTA_ASSERT(iEntrance < tangleMatrix->entrances.size());
-    SHASTA_ASSERT(iExit < tangleMatrix->exits.size());
+    SHASTA2_ASSERT(iEntrance < tangleMatrix->entrances.size());
+    SHASTA2_ASSERT(iExit < tangleMatrix->exits.size());
     connectList.push_back({iEntrance, iExit});
 }
 
@@ -158,7 +158,7 @@ void Tangle::detangle()
         const vertex_descriptor v1 = newExitVertices[iExit];
 
         const AnchorPair& anchorPair = (*tangleMatrix).tangleMatrix[iEntrance][iExit];
-        SHASTA_ASSERT(anchorPair.orientedReadIds.size() > 0);
+        SHASTA2_ASSERT(anchorPair.orientedReadIds.size() > 0);
         const uint64_t offset = anchorPair.getAverageOffset(assemblyGraph.anchors);
 
         edge_descriptor e;

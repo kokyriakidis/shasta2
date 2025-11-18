@@ -69,7 +69,7 @@ MarkerKmers::MarkerKmers(
     // This is no longer true because only a subset of the reads
     // (the ones with low marker error rate) are used to
     // create marker kmers.
-    // SHASTA_ASSERT(2 * markerInfos.totalSize() == markers.totalSize());
+    // SHASTA2_ASSERT(2 * markerInfos.totalSize() == markers.totalSize());
 
     writeFrequencyHistogram();
     performanceLog << timestamp << "Marker k-mer creation ends." << endl;
@@ -297,7 +297,7 @@ void MarkerKmers::fillKmerInfosPass2(uint64_t /* threadId */)
                 streakBegin = streakEnd;
             }
 
-            SHASTA_ASSERT(kmerInfoBucketIndex == kmerInfoBucket.size());
+            SHASTA2_ASSERT(kmerInfoBucketIndex == kmerInfoBucket.size());
         }
     }
 

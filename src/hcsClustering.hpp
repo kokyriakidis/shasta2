@@ -10,7 +10,7 @@
 // The min-cut steps uses stoer_wagner_min_cut
 // https://www.boost.org/doc/libs/latest/libs/graph/doc/stoer_wagner_min_cut.html
 
-#include "SHASTA_ASSERT.hpp"
+#include "SHASTA2_ASSERT.hpp"
 
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/connected_components.hpp>
@@ -62,7 +62,7 @@ public:
         // Add edges.
         for(const typename InputGraph::vertex_descriptor v0: component) {
             const auto it0 = vertexMap.find(v0);
-            SHASTA_ASSERT(it0 != vertexMap.end());
+            SHASTA2_ASSERT(it0 != vertexMap.end());
             const typename WorkGraph::vertex_descriptor w0 = it0->second;
             typename InputGraph::out_edge_iterator it1, it1End;
             tie(it1, it1End) = boost::out_edges(v0, inputGraph);
@@ -70,7 +70,7 @@ public:
                 const typename InputGraph::edge_descriptor e = *it1;
                 const typename InputGraph::vertex_descriptor v1 = boost::target(e, inputGraph);
                 const auto it1 = vertexMap.find(v1);
-                SHASTA_ASSERT(it1 != vertexMap.end());
+                SHASTA2_ASSERT(it1 != vertexMap.end());
                 const typename WorkGraph::vertex_descriptor w1 = it1->second;
 
                 // Don't add the edge twice.
@@ -96,7 +96,7 @@ public:
         for(; it!=itEnd; ++it) {
             const typename WorkGraph::vertex_descriptor wOld = *it;
             const auto it = parityMap.find(wOld);
-            SHASTA_ASSERT(it != parityMap.end());
+            SHASTA2_ASSERT(it != parityMap.end());
             if(it->second == side) {
                 const typename InputGraph::vertex_descriptor v = that[wOld];
                 const typename WorkGraph::vertex_descriptor wNew = boost::add_vertex(v, *this);
@@ -228,7 +228,7 @@ template<class InputGraph> void shasta::hcsClustering(
     for(const auto& p: componentMap) {
         const typename InputGraph::vertex_descriptor v = p.first;
         const uint64_t componentId = p.second;
-        SHASTA_ASSERT(componentId < componentCount);
+        SHASTA2_ASSERT(componentId < componentCount);
         components[componentId].push_back(v);
     }
 
@@ -239,7 +239,7 @@ template<class InputGraph> void shasta::hcsClustering(
     clusters.clear();
     for(const vector<typename InputGraph::vertex_descriptor>& component: components) {
         const WorkGraph workGraph(inputGraph, component);
-        SHASTA_ASSERT(boost::num_vertices(workGraph) == component.size());
+        SHASTA2_ASSERT(boost::num_vertices(workGraph) == component.size());
         workGraph.hcsClustering(inputGraph, clusters);
     }
 }

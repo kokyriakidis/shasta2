@@ -2,7 +2,7 @@
 
 // Shasta.
 #include "MultithreadedObject.hpp"
-#include "SHASTA_ASSERT.hpp"
+#include "SHASTA2_ASSERT.hpp"
 #include "timestamp.hpp"
 
 // Standard library.
@@ -34,7 +34,7 @@ template<class T> void shasta::MultithreadedObject<T>::startThreads(
     ThreadFunction f,
     size_t threadCount)
 {
-    SHASTA_ASSERT(threadCount > 0);
+    SHASTA2_ASSERT(threadCount > 0);
 
     if(!threads.empty()) {
         throw runtime_error("Unsupported attempt to start new threads while other threads have not been joined.");

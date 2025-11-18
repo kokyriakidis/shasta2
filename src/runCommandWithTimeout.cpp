@@ -1,5 +1,5 @@
 #include "runCommandWithTimeout.hpp"
-#include "SHASTA_ASSERT.hpp"
+#include "SHASTA2_ASSERT.hpp"
 using namespace shasta;
 
 // #include <cstdlib>
@@ -71,7 +71,7 @@ void shasta::runCommandWithTimeout(
         return;
 
     } else {
-        SHASTA_ASSERT(0);
+        SHASTA2_ASSERT(0);
     }
 }
 

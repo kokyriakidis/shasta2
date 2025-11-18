@@ -1,6 +1,6 @@
 #include "simpleFastaRead.hpp"
 #include "Base.hpp"
-#include "SHASTA_ASSERT.hpp"
+#include "SHASTA2_ASSERT.hpp"
 using namespace shasta;
 
 #include <iostream.hpp>
@@ -32,7 +32,7 @@ void shasta::simpleFastaRead(istream& fasta, vector< vector<AlignedBase> >& sequ
 
         // In all other cases, append the rest of the line to the
         // last sequence.
-        SHASTA_ASSERT(not sequences.empty());
+        SHASTA2_ASSERT(not sequences.empty());
         vector<AlignedBase>& sequence = sequences.back();
         for(const char c: line) {
             sequence.push_back(AlignedBase::fromCharacter(c));

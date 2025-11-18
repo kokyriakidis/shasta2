@@ -10,7 +10,7 @@
 // The second overload also requires the LocalSubgraph edge
 // to have a field Graph::edge_descriptor e.
 
-#include "SHASTA_ASSERT.hpp"
+#include "SHASTA2_ASSERT.hpp"
 
 #include <cstdint.hpp>
 #include <map>
@@ -73,7 +73,7 @@ template<class Graph, class LocalSubgraph> LocalSubgraph shasta::createLocalSubg
         const VertexDescriptor v0 = q.front();
         q.pop();
         auto it0 = m.find(v0);
-        SHASTA_ASSERT(it0 != m.end());
+        SHASTA2_ASSERT(it0 != m.end());
 
         // Get the corresponding local vertex.
         const LocalVertexDescriptor& lv0 = it0->second;
@@ -166,7 +166,7 @@ template<class Graph, class LocalSubgraph> LocalSubgraph shasta::createLocalSubg
          const VertexDescriptor v0 = q.front();
          q.pop();
          auto it0 = m.find(v0);
-         SHASTA_ASSERT(it0 != m.end());
+         SHASTA2_ASSERT(it0 != m.end());
 
          // Get the corresponding local vertex.
          const LocalVertexDescriptor& lv0 = it0->second;
@@ -241,7 +241,7 @@ template<class Graph, class LocalSubgraph> LocalSubgraph shasta::createLocalSubg
                  LocalEdgeDescriptor le;
                  bool edgeWasAdded = false;
                  tie(le, edgeWasAdded) = add_edge(lv0, lv1, localSubgraph);
-                 SHASTA_ASSERT(edgeWasAdded);
+                 SHASTA2_ASSERT(edgeWasAdded);
                  localSubgraph[le].e = e;
              }
          }

@@ -145,12 +145,12 @@ template<class DirectedGraph> inline void shasta::createLocalSubgraph(
 
         // Find the corresponding vertex of the subgraph.
         const auto it0 = vertexMap.right.find(v0);
-        SHASTA_ASSERT(it0 != vertexMap.right.end());
+        SHASTA2_ASSERT(it0 != vertexMap.right.end());
         const vertex_descriptor u0 = it0->second;
 
         // Find its distance.
         const auto jt0 = distanceMap.find(u0);
-        SHASTA_ASSERT(jt0 != distanceMap.end());
+        SHASTA2_ASSERT(jt0 != distanceMap.end());
         const uint64_t distance0 = jt0->second;
         const uint64_t distance1 = distance0 + 1;
 
@@ -196,7 +196,7 @@ template<class DirectedGraph> inline void shasta::createLocalSubgraph(
                 edge_descriptor e01New;
                 bool edgeWasAdded;
                 tie(e01New, edgeWasAdded) = boost::add_edge(u0, u1, graph[e01], subgraph);
-                SHASTA_ASSERT(edgeWasAdded);
+                SHASTA2_ASSERT(edgeWasAdded);
                 edgeMap.insert(EdgeMapValueType(e01New, e01));
             }
         }

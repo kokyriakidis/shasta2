@@ -1,6 +1,6 @@
 #include "abpoaWrapper.hpp"
 #include "Base.hpp"
-#include "SHASTA_ASSERT.hpp"
+#include "SHASTA2_ASSERT.hpp"
 using namespace shasta;
 
 #include "abpoa.h"

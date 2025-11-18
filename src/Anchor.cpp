@@ -54,7 +54,7 @@ Anchors::Anchors(
     markers(markers),
     markerKmers(markerKmers)
 {
-    SHASTA_ASSERT((k %2) == 0);
+    SHASTA2_ASSERT((k %2) == 0);
     kHalf = k / 2;
 
     anchorMarkerInfos.accessExisting(largeDataName("AnchorMarkerInfos"), writeAccess);
@@ -141,7 +141,7 @@ void Anchor::check() const
     const Anchor& anchor = *this;
 
     for(uint64_t i=1; i<size(); i++) {
-        SHASTA_ASSERT(anchor[i-1].orientedReadId.getReadId() < anchor[i].orientedReadId.getReadId());
+        SHASTA2_ASSERT(anchor[i-1].orientedReadId.getReadId() < anchor[i].orientedReadId.getReadId());
     }
 }
 
@@ -224,7 +224,7 @@ uint64_t Anchors::countCommon(
 
                 const uint64_t position0 = uint64_t(orientedReadMarkers[ordinal0].position);
                 const uint64_t position1 = uint64_t(orientedReadMarkers[ordinal1].position);
-                SHASTA_ASSERT(position1 > position0);
+                SHASTA2_ASSERT(position1 > position0);
                 sumBaseOffsets += position1 - position0;
             }
 
@@ -382,8 +382,8 @@ void Anchors::analyzeAnchorPair(
             ++itB;
         }
     }
-    SHASTA_ASSERT(onlyACheck == info.onlyA);
-    SHASTA_ASSERT(onlyBCheck == info.onlyB);
+    SHASTA2_ASSERT(onlyACheck == info.onlyA);
+    SHASTA2_ASSERT(onlyBCheck == info.onlyB);
 }
 
 
@@ -742,7 +742,7 @@ uint32_t Anchors::getOrdinal(AnchorId anchorId, OrientedReadId orientedReadId) c
         }
     }
 
-    SHASTA_ASSERT(0);
+    SHASTA2_ASSERT(0);
 }
 
 
@@ -759,7 +759,7 @@ uint32_t Anchors::getPositionInJourney(AnchorId anchorId, OrientedReadId oriente
         }
     }
 
-    SHASTA_ASSERT(0);
+    SHASTA2_ASSERT(0);
 }
 
 
@@ -774,7 +774,7 @@ const AnchorMarkerInfo& Anchors::getAnchorMarkerInfo(AnchorId anchorId, Oriented
         }
     }
 
-    SHASTA_ASSERT(0);
+    SHASTA2_ASSERT(0);
 }
 
 
@@ -969,13 +969,13 @@ Anchors::Anchors(
     }
     data.coverage.remove();
     const uint64_t anchorCount = anchorMarkerInfos.size();
-    SHASTA_ASSERT(anchorId == anchorCount);
-    SHASTA_ASSERT(anchorInfos.size() == anchorCount);
+    SHASTA2_ASSERT(anchorId == anchorCount);
+    SHASTA2_ASSERT(anchorInfos.size() == anchorCount);
 
 
 
     // In pass 2 we fill in the AnchorMarkerInfos for each anchor.
-    SHASTA_ASSERT((batchSize % 2) == 0);
+    SHASTA2_ASSERT((batchSize % 2) == 0);
     setupLoadBalancing(anchorCount, batchSize);
     runThreads(&Anchors::constructThreadFunctionPass2, threadCount);
 
@@ -1004,7 +1004,7 @@ void Anchors::constructThreadFunctionPass1(uint64_t /* threadId */)
         // Loop over marker k-mers assigned to this batch.
         for(uint64_t kmerIndex=begin; kmerIndex!=end; kmerIndex++) {
 
-            SHASTA_ASSERT(data.coverage[kmerIndex] == 0);
+            SHASTA2_ASSERT(data.coverage[kmerIndex] == 0);
 
             // Get the MarkerInfos for this marker Kmer.
             const span<const MarkerInfo> markerInfos = markerKmers[kmerIndex];
@@ -1100,7 +1100,7 @@ void Anchors::constructThreadFunctionPass2(uint64_t /* threadId */)
             const span<const MarkerInfo> markerInfos = markerKmers[kmerIndex];
 
             // We already checked for high coverage during pass 1.
-            SHASTA_ASSERT(markerInfos.size() <= maxAnchorCoverage);
+            SHASTA2_ASSERT(markerInfos.size() <= maxAnchorCoverage);
 
             // Gather the usable MarkerInfos.
             // These are the ones for which the ReadId is different from the ReadId
@@ -1130,11 +1130,11 @@ void Anchors::constructThreadFunctionPass2(uint64_t /* threadId */)
             }
 
             // We already checked for low coverage durign pass1.
-            SHASTA_ASSERT(usableMarkerInfos.size() >= minAnchorCoverage);
+            SHASTA2_ASSERT(usableMarkerInfos.size() >= minAnchorCoverage);
 
             // Fill in the AnchorMarkerInfos for this anchor.
             const auto& anchorMarkerInfos0 = anchorMarkerInfos[anchorId];
-            SHASTA_ASSERT(anchorMarkerInfos0.size() == usableMarkerInfos.size());
+            SHASTA2_ASSERT(anchorMarkerInfos0.size() == usableMarkerInfos.size());
             copy(usableMarkerInfos.begin(), usableMarkerInfos.end(), anchorMarkerInfos0.begin());
 
             // Reverse complement the usableMarkerInfos, then
@@ -1143,7 +1143,7 @@ void Anchors::constructThreadFunctionPass2(uint64_t /* threadId */)
                 markerInfo = markerInfo.reverseComplement(markers);
             }
             const auto& anchorMarkerInfos1 = anchorMarkerInfos[anchorId + 1];
-            SHASTA_ASSERT(anchorMarkerInfos1.size() == usableMarkerInfos.size());
+            SHASTA2_ASSERT(anchorMarkerInfos1.size() == usableMarkerInfos.size());
             copy(usableMarkerInfos.begin(), usableMarkerInfos.end(), anchorMarkerInfos1.begin());
         }
     }
@@ -1255,8 +1255,8 @@ void Anchors::clusterAnchorPairOrientedReads(
         for(auto position=positionInJourneyA+1; position<positionInJourneyB; position++) {
             const AnchorId anchorId = journey[position];
             const auto it = std::lower_bound(anchorIds.begin(), anchorIds.end(), anchorId);
-            SHASTA_ASSERT(it != anchorIds.end());
-            SHASTA_ASSERT(*it == anchorId);
+            SHASTA2_ASSERT(it != anchorIds.end());
+            SHASTA2_ASSERT(*it == anchorId);
             const uint64_t bitPosition = it - anchorIds.begin();
             bitVector.set(bitPosition);
         }
@@ -2204,7 +2204,7 @@ Anchors::Anchors(
 {
 
     // Access the ExternalAnchors.
-    SHASTA_ASSERT(not externalAnchorsName.empty());
+    SHASTA2_ASSERT(not externalAnchorsName.empty());
     if(externalAnchorsName[0] != '/') {
         throw runtime_error("--external-anchors-name must specify an absolute path.");
     }

@@ -4,7 +4,7 @@
 #define SHASTA_MEMORY_MAPPED_OBJECT_HPP
 
 // Shasta.
-#include "SHASTA_ASSERT.hpp"
+#include "SHASTA2_ASSERT.hpp"
 
 // Standard libraries.
 #include "array.hpp"
@@ -281,7 +281,7 @@ template<class T> inline void shasta::MemoryMapped::Object<T>::createNew(
     const string& name,
     size_t pageSize)
 {
-    SHASTA_ASSERT(pageSize==4096 || pageSize==2*1024*1024);
+    SHASTA2_ASSERT(pageSize==4096 || pageSize==2*1024*1024);
 
     if(name.empty()) {
         createNewAnonymous(pageSize);
@@ -290,7 +290,7 @@ template<class T> inline void shasta::MemoryMapped::Object<T>::createNew(
 
     try {
         // If already open, should have called close first.
-        SHASTA_ASSERT(!isOpen);
+        SHASTA2_ASSERT(!isOpen);
 
         // Create the header.
         const Header headerOnStack(pageSize);
@@ -342,7 +342,7 @@ template<class T> inline void shasta::MemoryMapped::Object<T>::createNewAnonymou
 {
     try {
         // If already open, should have called close first.
-        SHASTA_ASSERT(!isOpen);
+        SHASTA2_ASSERT(!isOpen);
 
         // Create the header.
         const Header headerOnStack(pageSize);
@@ -392,7 +392,7 @@ template<class T> inline void shasta::MemoryMapped::Object<T>::accessExisting(co
 {
     try {
         // If already open, should have called close first.
-        SHASTA_ASSERT(!isOpen);
+        SHASTA2_ASSERT(!isOpen);
 
         // Create the file.
         const int fileDescriptor = openExisting(name, readWriteAccess);
@@ -459,7 +459,7 @@ template<class T> inline void shasta::MemoryMapped::Object<T>::accessExistingRea
 // Sync the mapped memory to disk.
 template<class T> inline void shasta::MemoryMapped::Object<T>::syncToDisk()
 {
-    SHASTA_ASSERT(isOpen);
+    SHASTA2_ASSERT(isOpen);
     const int msyncReturnCode = ::msync(header, header->fileSize, MS_SYNC);
     if(msyncReturnCode == -1) {
         throw runtime_error("Error during msync for " + fileName);
@@ -469,7 +469,7 @@ template<class T> inline void shasta::MemoryMapped::Object<T>::syncToDisk()
 // Unmap the memory.
 template<class T> inline void shasta::MemoryMapped::Object<T>::unmap()
 {
-    SHASTA_ASSERT(isOpen);
+    SHASTA2_ASSERT(isOpen);
 
     const int munmapReturnCode = ::munmap(header, header->fileSize);
     if(munmapReturnCode == -1) {
@@ -490,7 +490,7 @@ template<class T> inline void shasta::MemoryMapped::Object<T>::unmap()
 // Sync the mapped memory to disk, then unmap it.
 template<class T> inline void shasta::MemoryMapped::Object<T>::close()
 {
-    SHASTA_ASSERT(isOpen);
+    SHASTA2_ASSERT(isOpen);
 
     if(!fileName.empty()) {
         syncToDisk();
@@ -546,14 +546,14 @@ template<class T> inline bool shasta::MemoryMapped::Object<T>::save(const string
 // Return a pointer to the stored object.
 template<class T> inline T* shasta::MemoryMapped::Object<T>::operator->()
 {
-    SHASTA_ASSERT(isOpen);
-    SHASTA_ASSERT(data);
+    SHASTA2_ASSERT(isOpen);
+    SHASTA2_ASSERT(data);
     return data;
 }
 template<class T> inline const T* shasta::MemoryMapped::Object<T>::operator->() const
 {
-    SHASTA_ASSERT(isOpen);
-    SHASTA_ASSERT(data);
+    SHASTA2_ASSERT(isOpen);
+    SHASTA2_ASSERT(data);
     return data;
 }
 
@@ -562,14 +562,14 @@ template<class T> inline const T* shasta::MemoryMapped::Object<T>::operator->() 
 // Return a reference to the stored object.
 template<class T> inline T& shasta::MemoryMapped::Object<T>::object()
 {
-    SHASTA_ASSERT(isOpen);
-    SHASTA_ASSERT(data);
+    SHASTA2_ASSERT(isOpen);
+    SHASTA2_ASSERT(data);
     return *data;
 }
 template<class T> inline const T& shasta::MemoryMapped::Object<T>::object() const
 {
-    SHASTA_ASSERT(isOpen);
-    SHASTA_ASSERT(data);
+    SHASTA2_ASSERT(isOpen);
+    SHASTA2_ASSERT(data);
     return *data;
 }
 

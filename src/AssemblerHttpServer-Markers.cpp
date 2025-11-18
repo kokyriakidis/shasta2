@@ -190,7 +190,7 @@ void Assembler::exploreReadMarkers(const vector<string>& request, ostream& html)
 
 void Assembler::exploreMarkerKmer(const vector<string>& request, ostream& html)
 {
-    SHASTA_ASSERT(markerKmers and markerKmers->isOpen());
+    SHASTA2_ASSERT(markerKmers and markerKmers->isOpen());
 
     const uint64_t k = assemblerInfo->k;
 
@@ -236,7 +236,7 @@ void Assembler::exploreMarkerKmer(const vector<string>& request, ostream& html)
     }
 
     // Check if it is a marker.
-    SHASTA_ASSERT(kmerChecker);
+    SHASTA2_ASSERT(kmerChecker);
     if(not kmerChecker->isMarker(kmer)) {
         throw runtime_error("This assembly does not use this as a marker.");
     }
@@ -301,7 +301,7 @@ void Assembler::exploreMarkerKmer(const vector<string>& request, ostream& html)
 
 void Assembler::exploreMarkerKmerAnalysisWithMarkerOffset(const vector<string>& request, ostream& html)
 {
-    SHASTA_ASSERT(markerKmers and markerKmers->isOpen());
+    SHASTA2_ASSERT(markerKmers and markerKmers->isOpen());
 
     const uint64_t k = assemblerInfo->k;
 
@@ -359,7 +359,7 @@ void Assembler::exploreMarkerKmerAnalysisWithMarkerOffset(const vector<string>& 
     }
 
     // Check if it is a marker.
-    SHASTA_ASSERT(kmerChecker);
+    SHASTA2_ASSERT(kmerChecker);
     if(not kmerChecker->isMarker(kmer)) {
         throw runtime_error("This assembly does not use this as a marker.");
     }
@@ -415,15 +415,15 @@ void Assembler::exploreMarkerKmerAnalysisWithMarkerOffset(const vector<string>& 
                 kmers.push_back(kmer);
             }
         }
-        SHASTA_ASSERT(kmerInfos[i].size() == 2 * uint64_t(ordinalOffset) + 1);
+        SHASTA2_ASSERT(kmerInfos[i].size() == 2 * uint64_t(ordinalOffset) + 1);
     }
     vector<uint64_t> count;
     deduplicateAndCount(kmers, count);
 
     // Locate our start k-mer in the table.
     const auto it = lower_bound(kmers.begin(), kmers.end(), kmer);
-    SHASTA_ASSERT(it != kmers.end());
-    SHASTA_ASSERT(*it == kmer);
+    SHASTA2_ASSERT(it != kmers.end());
+    SHASTA2_ASSERT(*it == kmer);
     const uint64_t iStart = it - kmers.begin();
 
     html <<
@@ -564,7 +564,7 @@ void Assembler::exploreMarkerKmerAnalysisWithMarkerOffset(const vector<string>& 
 
 void Assembler::exploreMarkerKmerAnalysisWithBaseOffset(const vector<string>& request, ostream& html)
 {
-    SHASTA_ASSERT(markerKmers and markerKmers->isOpen());
+    SHASTA2_ASSERT(markerKmers and markerKmers->isOpen());
 
     const uint64_t k = assemblerInfo->k;
 
@@ -622,7 +622,7 @@ void Assembler::exploreMarkerKmerAnalysisWithBaseOffset(const vector<string>& re
     }
 
     // Check if it is a marker.
-    SHASTA_ASSERT(kmerChecker);
+    SHASTA2_ASSERT(kmerChecker);
     if(not kmerChecker->isMarker(kmer0)) {
         throw runtime_error("This assembly does not use this as a marker.");
     }
@@ -725,8 +725,8 @@ void Assembler::exploreMarkerKmerAnalysisWithBaseOffset(const vector<string>& re
     for(vector<KmerInfo>& v: kmerInfos) {
         for(KmerInfo& kmerInfo: v) {
             const auto it = std::lower_bound(kmers.begin(), kmers.end(), kmerInfo.kmer);
-            SHASTA_ASSERT(it != kmers.end());
-            SHASTA_ASSERT(*it == kmerInfo.kmer);
+            SHASTA2_ASSERT(it != kmers.end());
+            SHASTA2_ASSERT(*it == kmerInfo.kmer);
             kmerInfo.id = it - kmers.begin();
         }
     }
@@ -735,8 +735,8 @@ void Assembler::exploreMarkerKmerAnalysisWithBaseOffset(const vector<string>& re
 
     // Locate our start k-mer in the table.
     const auto it0 = lower_bound(kmers.begin(), kmers.end(), kmer0);
-    SHASTA_ASSERT(it0 != kmers.end());
-    SHASTA_ASSERT(*it0 == kmer0);
+    SHASTA2_ASSERT(it0 != kmers.end());
+    SHASTA2_ASSERT(*it0 == kmer0);
     const uint64_t i0 = it0 - kmers.begin();
 
     // Write the k-mer table.
@@ -831,7 +831,7 @@ void Assembler::exploreMarkerKmerAnalysisWithBaseOffset(const vector<string>& re
 
 void Assembler::exploreLocalKmerGraph(const vector<string>& request, ostream& html)
 {
-    SHASTA_ASSERT(markerKmers and markerKmers->isOpen());
+    SHASTA2_ASSERT(markerKmers and markerKmers->isOpen());
 
     const uint64_t k = assemblerInfo->k;
 
@@ -911,7 +911,7 @@ void Assembler::exploreLocalKmerGraph(const vector<string>& request, ostream& ht
         }
 
         // Check if it is a marker.
-        SHASTA_ASSERT(kmerChecker);
+        SHASTA2_ASSERT(kmerChecker);
         if(not kmerChecker->isMarker(kmer)) {
             html << "<br>This assembly does not use this k-mer as a marker:"
                 "<br>" << kmerString;
@@ -1103,7 +1103,7 @@ void Assembler::exploreMarkerKmerPair(
     const vector<string>& request,
     ostream& html)
 {
-    SHASTA_ASSERT(markerKmers and markerKmers->isOpen());
+    SHASTA2_ASSERT(markerKmers and markerKmers->isOpen());
 
     const uint64_t k = assemblerInfo->k;
 
@@ -1180,7 +1180,7 @@ void Assembler::exploreMarkerKmerPair(
     }
 
     // Check if they are markers.
-    SHASTA_ASSERT(kmerChecker);
+    SHASTA2_ASSERT(kmerChecker);
     if(not kmerChecker->isMarker(kmer0)) {
         html << "<p>The left k-mer is not a marker.";
         return;

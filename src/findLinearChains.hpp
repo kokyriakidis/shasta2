@@ -4,7 +4,7 @@
 // Find linear chains in a directed graph
 
 // Shasta.
-#include "SHASTA_ASSERT.hpp"
+#include "SHASTA2_ASSERT.hpp"
 
 // Boost libraries.
 #include <boost/graph/adjacency_list.hpp>
@@ -106,7 +106,7 @@ template<class Graph> inline void shasta::findLinearChains(
                 break;
             }
             chain.push_back(e);
-            SHASTA_ASSERT(edgesFound.find(e) == edgesFound.end());
+            SHASTA2_ASSERT(edgesFound.find(e) == edgesFound.end());
             edgesFound.insert(e);
         }
 
@@ -131,7 +131,7 @@ template<class Graph> inline void shasta::findLinearChains(
                     break;
                 }
                 chain.push_front(e);
-                SHASTA_ASSERT(edgesFound.find(e) == edgesFound.end());
+                SHASTA2_ASSERT(edgesFound.find(e) == edgesFound.end());
                 edgesFound.insert(e);
             }
         }
@@ -145,12 +145,12 @@ template<class Graph> inline void shasta::findLinearChains(
 
     // Check that all edges were found.
     // Just using num_edges does not work if the graph is a filtered_graph.
-    // SHASTA_ASSERT(edgesFound.size() == num_edges(graph));
+    // SHASTA2_ASSERT(edgesFound.size() == num_edges(graph));
     uint64_t edgeCount = 0;
     BGL_FORALL_EDGES_T(e, graph, Graph) {
         ++edgeCount;
     }
-    SHASTA_ASSERT(edgesFound.size() == edgeCount);
+    SHASTA2_ASSERT(edgesFound.size() == edgeCount);
 }
 
 
@@ -200,7 +200,7 @@ template<class Graph> void shasta::findLinearVertexChains(
                 break;
             }
             chain.push_back(v);
-            SHASTA_ASSERT(verticesFound.find(v) == verticesFound.end());
+            SHASTA2_ASSERT(verticesFound.find(v) == verticesFound.end());
             verticesFound.insert(v);
         }
 
@@ -219,7 +219,7 @@ template<class Graph> void shasta::findLinearVertexChains(
                     break;
                 }
                 chain.push_front(v);
-                SHASTA_ASSERT(verticesFound.find(v) == verticesFound.end());
+                SHASTA2_ASSERT(verticesFound.find(v) == verticesFound.end());
                 verticesFound.insert(v);
             }
         }
@@ -229,14 +229,14 @@ template<class Graph> void shasta::findLinearVertexChains(
 
     // Check that all vertices were found.
     // Just using num_vertices does not work if the graph is a filtered_graph.
-    // SHASTA_ASSERT(verticesFound.size() == num_vertices(graph));
+    // SHASTA2_ASSERT(verticesFound.size() == num_vertices(graph));
     uint64_t vertexCount = 0;
     BGL_FORALL_VERTICES_T(v, graph, Graph) {
         if(v != Graph::null_vertex()) { // Just to avoid compiler warning.
             ++vertexCount;
         }
     }
-    SHASTA_ASSERT(verticesFound.size() == vertexCount);
+    SHASTA2_ASSERT(verticesFound.size() == vertexCount);
 }
 
 

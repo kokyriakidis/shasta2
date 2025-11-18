@@ -42,7 +42,7 @@ LocalAssembly3::LocalAssembly3(
     // EXPOSE WHEN CODE STABILIZES.
     const double drift = 0.1;
 
-    SHASTA_ASSERT(std::ranges::is_sorted(additionalOrientedReadIds));
+    SHASTA2_ASSERT(std::ranges::is_sorted(additionalOrientedReadIds));
     if(html) {
         writeInput(html, debug, anchorPair, additionalOrientedReadIds);
     }
@@ -139,11 +139,11 @@ void LocalAssembly3::gatherOrientedReadsOnAnchorPair(
         while((itLeft != endLeft) and (itLeft->orientedReadId < orientedReadId)) {
             ++itLeft;
         }
-        SHASTA_ASSERT(itLeft != endLeft);
+        SHASTA2_ASSERT(itLeft != endLeft);
         while((itRight != endRight) and (itRight->orientedReadId < orientedReadId)) {
             ++itRight;
         }
-        SHASTA_ASSERT(itRight != endRight);
+        SHASTA2_ASSERT(itRight != endRight);
 
 
         OrientedReadInfo& orientedReadInfo = orientedReadInfos.emplace_back();
@@ -244,12 +244,12 @@ void LocalAssembly3::estimateOffset()
     uint64_t n = 0;
     uint64_t offsetSum = 0;
     for(const OrientedReadInfo& orientedReadInfo: orientedReadInfos) {
-        SHASTA_ASSERT(orientedReadInfo.isOnAnchorPair);
-        SHASTA_ASSERT(orientedReadInfo.isOnBothAnchors());
+        SHASTA2_ASSERT(orientedReadInfo.isOnAnchorPair);
+        SHASTA2_ASSERT(orientedReadInfo.isOnBothAnchors());
         ++n;
         offsetSum += orientedReadInfo.positionOffset();
     }
-    SHASTA_ASSERT(n > 0);
+    SHASTA2_ASSERT(n > 0);
 
     const double preciseOffset = double(offsetSum) / double(n);
     offset = uint32_t(std::round(preciseOffset));
@@ -309,7 +309,7 @@ void LocalAssembly3::OrientedReadInfo::fillFirstLastOrdinalForAssembly(
     }
 
     else {
-        SHASTA_ASSERT(0);
+        SHASTA2_ASSERT(0);
     }
 }
 
@@ -378,8 +378,8 @@ void LocalAssembly3::gatherKmers(const Anchors& anchors)
 uint64_t LocalAssembly3::getKmerIndex(const Kmer& kmer) const
 {
     const auto it = std::lower_bound(kmers.begin(), kmers.end(), kmer);
-    SHASTA_ASSERT(it != kmers.end());
-    SHASTA_ASSERT(*it == kmer);
+    SHASTA2_ASSERT(it != kmers.end());
+    SHASTA2_ASSERT(*it == kmer);
     return it - kmers.begin();
 }
 
@@ -647,7 +647,7 @@ void LocalAssembly3::createEdges()
             tie(e, edgeExists) = boost::edge(v0, v1, graph);
             if(not edgeExists) {
                 tie(e, edgeExists) = boost::add_edge(v0, v1, graph);
-                SHASTA_ASSERT(edgeExists);
+                SHASTA2_ASSERT(edgeExists);
             }
 
             // Store this v0->v1 transition in the edge.
@@ -691,7 +691,7 @@ void LocalAssembly3::createEdges()
             tie(e, edgeExists) = boost::edge(v0, v1, graph);
             if(not edgeExists) {
                 tie(e, edgeExists) = boost::add_edge(v0, v1, graph);
-                SHASTA_ASSERT(edgeExists);
+                SHASTA2_ASSERT(edgeExists);
             }
 
             const LocalAssembly3Edge::Data data({orientedReadIndex, ordinal0, ordinal1});
@@ -853,8 +853,8 @@ void LocalAssembly3::computeDominatorTree()
     for(const vertex_descriptor v: dominatorTreePath) {
         graph[v].isOnDominatorTreePath = true;
     }
-    SHASTA_ASSERT(dominatorTreePath.front() == leftAnchorVertex);
-    SHASTA_ASSERT(dominatorTreePath.back() == rightAnchorVertex);
+    SHASTA2_ASSERT(dominatorTreePath.front() == leftAnchorVertex);
+    SHASTA2_ASSERT(dominatorTreePath.back() == rightAnchorVertex);
 }
 
 
@@ -1062,7 +1062,7 @@ void LocalAssembly3::assemble(
 
             // Ok, we found a usable replacement.
             const MarkerKmerPair::SequenceInfo& bestSequenceInfo = markerKmerPair.sequencesByRank[bestRank]->second;
-            SHASTA_ASSERT(not bestSequenceInfo.orientedReadIndexes.empty());
+            SHASTA2_ASSERT(not bestSequenceInfo.orientedReadIndexes.empty());
             const uint64_t bestOrientedReadIndex = bestSequenceInfo.orientedReadIndexes.front();
             const MarkerKmerPair::CommonOrientedRead& bestCommonOrientedRead =
                 markerKmerPair.commonOrientedReads[bestOrientedReadIndex];
@@ -1106,7 +1106,7 @@ void LocalAssembly3::assemble(
         vector< vector<Base> > distinctSequences = sequences;
         vector<uint64_t> coverage;
         deduplicateAndCount(distinctSequences, coverage);
-        SHASTA_ASSERT(coverage.size() == distinctSequences.size());
+        SHASTA2_ASSERT(coverage.size() == distinctSequences.size());
         vector< pair< vector<Base>, uint64_t > > distinctSequencesWithCoverage;
         for(uint64_t i=0; i<distinctSequences.size(); i++) {
             distinctSequencesWithCoverage.emplace_back(distinctSequences[i], coverage[i]);

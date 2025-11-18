@@ -2,7 +2,7 @@
 using namespace shasta;
 
 #include "MurmurHash2.hpp"
-#include "SHASTA_ASSERT.hpp"
+#include "SHASTA2_ASSERT.hpp"
 
 #include <algorithm.hpp>
 #include <array.hpp>
@@ -62,7 +62,7 @@ std::array<double, 3> shasta::hslToRgb(double H, double S, double L)
     } else if(Hprime >= 5. and Hprime <6.) {
         rgb = {C, 0., X};
     } else {
-        SHASTA_ASSERT(0);
+        SHASTA2_ASSERT(0);
     }
 
     // cout << "RGB1 " << rgb[0] << " " << rgb[1] << " " << rgb[2] << endl;

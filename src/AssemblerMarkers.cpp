@@ -16,7 +16,7 @@ using namespace shasta;
 void Assembler::createMarkers(size_t threadCount)
 {
     readsPointer->checkReadsAreOpen();
-    SHASTA_ASSERT(kmerChecker);
+    SHASTA2_ASSERT(kmerChecker);
 
     markersPointer = make_shared<Markers>(
         *this,
@@ -130,7 +130,7 @@ void Assembler::accessMarkerKmers()
 void Assembler::computeMarkerErrorRates(
     vector<uint64_t>& lowFrequencyMarkerCount) const
 {
-    SHASTA_ASSERT(markerKmers);
+    SHASTA2_ASSERT(markerKmers);
     const uint64_t k = assemblerInfo->k;
     const uint64_t readCount = reads().readCount();
 

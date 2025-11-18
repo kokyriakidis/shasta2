@@ -63,12 +63,12 @@ LocalAssemblyGraph::LocalAssemblyGraph(
 
         const AssemblyGraph::vertex_descriptor v0 = source(e, assemblyGraph);
         const auto it0 = vertexMap.find(v0);
-        SHASTA_ASSERT(it0 != vertexMap.end());
+        SHASTA2_ASSERT(it0 != vertexMap.end());
         const vertex_descriptor lv0 = it0->second;
 
         const AssemblyGraph::vertex_descriptor v1 = target(e, assemblyGraph);
         const auto it1 = vertexMap.find(v1);
-        SHASTA_ASSERT(it1 != vertexMap.end());
+        SHASTA2_ASSERT(it1 != vertexMap.end());
         const vertex_descriptor lv1 = it1->second;
 
         add_edge(lv0, lv1, LocalAssemblyGraphEdge(e), localAssemblyGraph);
@@ -257,8 +257,8 @@ void LocalAssemblyGraph::analyze(
             const AnchorPair anchorPair = step.anchorPair;
             for(const OrientedReadId orientedReadId: anchorPair.orientedReadIds) {
                 const auto it = std::ranges::lower_bound(orientedReadIds, orientedReadId);
-                SHASTA_ASSERT(it != orientedReadIds.end());
-                SHASTA_ASSERT(*it == orientedReadId);
+                SHASTA2_ASSERT(it != orientedReadIds.end());
+                SHASTA2_ASSERT(*it == orientedReadId);
                 const uint64_t iOrientedRead = it - orientedReadIds.begin();
                 ++integerMatrix(iOrientedRead, iEdge);
             }

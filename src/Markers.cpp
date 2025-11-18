@@ -115,9 +115,9 @@ void Markers::threadFunction(uint64_t)
                 incrementCount(OrientedReadId(readId, 0).getValue(), markerCount);
                 incrementCount(OrientedReadId(readId, 1).getValue(), markerCount);
             } else {
-                SHASTA_ASSERT(markerPointerStrand0 ==
+                SHASTA2_ASSERT(markerPointerStrand0 ==
                     this->end(OrientedReadId(readId, 0).getValue()));
-                SHASTA_ASSERT(markerPointerStrand1 ==
+                SHASTA2_ASSERT(markerPointerStrand1 ==
                     this->begin(OrientedReadId(readId, 1).getValue()) - 1ULL);
             }
         }

@@ -1,7 +1,7 @@
 // Shasta2.
 #include "poastaWrapper.hpp"
 #include "Base.hpp"
-#include "SHASTA_ASSERT.hpp"
+#include "SHASTA2_ASSERT.hpp"
 #include "simpleFastaRead.hpp"
 #include "tmpDirectory.hpp"
 using namespace shasta;
@@ -59,21 +59,21 @@ void shasta::poasta(
     // This is only practical for long alignments.
     const string command = "poasta align -O fasta -o " + msaFileName + " " + sequencesFileName + " 2>/dev/null";
     const int commandStatus = std::system(command.c_str());
-    SHASTA_ASSERT(commandStatus == 0);
+    SHASTA2_ASSERT(commandStatus == 0);
     std::filesystem::remove(sequencesFileName);
 
     // Read poasta output containing the alignment.
     {
         ifstream fasta(msaFileName);
         simpleFastaRead(fasta, alignment);
-        SHASTA_ASSERT(alignment.size() == sequences.size());
+        SHASTA2_ASSERT(alignment.size() == sequences.size());
     }
     std::filesystem::remove(msaFileName);
 
     // Get the alignment length and sanity check.
     const uint64_t alignmentLength = alignment.front().size();
     for(uint64_t i=1; i<alignment.size(); i++) {
-        SHASTA_ASSERT(alignment[i].size() == alignmentLength);
+        SHASTA2_ASSERT(alignment[i].size() == alignmentLength);
     }
 
 

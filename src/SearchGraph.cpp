@@ -188,13 +188,13 @@ SearchGraph::SearchGraph(
     for(const vertex_descriptor v0Global: componentVertices) {
         const AssemblyGraph::edge_descriptor e0 = searchGraph[v0Global].e;
         const auto it0 = vertexMap.find(e0);
-        SHASTA_ASSERT(it0 != vertexMap.end());
+        SHASTA2_ASSERT(it0 != vertexMap.end());
         const vertex_descriptor v0 = it0->second;
         BGL_FORALL_OUTEDGES(v0Global, eGlobal, searchGraph, SearchGraph) {
             const vertex_descriptor v1Global = target(eGlobal, searchGraph);
             const AssemblyGraph::edge_descriptor e1 = searchGraph[v1Global].e;
             const auto it1 = vertexMap.find(e1);
-            SHASTA_ASSERT(it1 != vertexMap.end());
+            SHASTA2_ASSERT(it1 != vertexMap.end());
             const vertex_descriptor v1 = it1->second;
             add_edge(v0, v1, component);
         }

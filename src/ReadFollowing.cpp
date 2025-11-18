@@ -177,7 +177,7 @@ Edge::Edge(
     segmentPairInformation = SegmentStepSupport::analyzeSegmentPair(
         html, assemblyGraph, segment0, segment1, representativeRegionStepCount);
 
-    SHASTA_ASSERT(segmentPairInformation.commonCount > 0);
+    SHASTA2_ASSERT(segmentPairInformation.commonCount > 0);
 }
 
 
@@ -473,7 +473,7 @@ void Graph::findForwardPath(
                 eLowestOffset = e;
             }
         }
-        SHASTA_ASSERT(lowestOffset != std::numeric_limits<int32_t>::max());
+        SHASTA2_ASSERT(lowestOffset != std::numeric_limits<int32_t>::max());
 
         // Add to the path the target of this vertex and continue from here.
         v = target(eLowestOffset, graph);
@@ -514,7 +514,7 @@ void Graph::findBackwardPath(
                 eLowestOffset = e;
             }
         }
-        SHASTA_ASSERT(lowestOffset != std::numeric_limits<int32_t>::max());
+        SHASTA2_ASSERT(lowestOffset != std::numeric_limits<int32_t>::max());
 
         // Add to the path the source of this vertex and continue from here.
         v = source(eLowestOffset, graph);
@@ -536,7 +536,7 @@ void Graph::writePath(Segment segment, uint64_t direction) const
     const Graph& graph = *this;
 
     const auto it = vertexMap.find(segment);
-    SHASTA_ASSERT(it != vertexMap.end());
+    SHASTA2_ASSERT(it != vertexMap.end());
     const vertex_descriptor v = it->second;
 
     vector<vertex_descriptor> path;
@@ -687,7 +687,7 @@ void Graph::findPaths(vector< vector<Segment> >& assemblyPaths) const
     BGL_FORALL_VERTICES(u, pathGraph, PathGraph) {
         const Segment segment = pathGraph[u].segment;
         const auto it = vertexMap.find(segment);
-        SHASTA_ASSERT(it != vertexMap.end());
+        SHASTA2_ASSERT(it != vertexMap.end());
         const vertex_descriptor v = it->second;
         for(uint64_t direction=0; direction<2; direction++) {
             findPath(v, direction, path, longSegments);
@@ -788,12 +788,12 @@ void Graph::findPaths(vector< vector<Segment> >& assemblyPaths) const
             PathGraph::edge_descriptor e;
             bool edgeExists = false;
             tie(e, edgeExists) = boost::edge(u0, u1, pathGraph);
-            SHASTA_ASSERT(edgeExists);
+            SHASTA2_ASSERT(edgeExists);
             const PathGraphEdge& pathGraphEdge = pathGraph[e];
             const vector<Segment>& path = pathGraphEdge.path;
 
-            SHASTA_ASSERT(pathGraph[u0].segment == path.front());
-            SHASTA_ASSERT(pathGraph[u1].segment == path.back());
+            SHASTA2_ASSERT(pathGraph[u0].segment == path.front());
+            SHASTA2_ASSERT(pathGraph[u1].segment == path.back());
 
             // The path for this vertex already contains the segments
             // corresponding to u0 and u1. So, to avoid duplications,

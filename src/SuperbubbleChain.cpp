@@ -370,14 +370,14 @@ uint64_t SuperbubbleChain::phase1(
 
             // Create the tangle from these vertices.
             Tangle1 tangle(assemblyGraph, tangleVertices);
-            SHASTA_ASSERT(tangle.tangleMatrix().entrances.size());
+            SHASTA2_ASSERT(tangle.tangleMatrix().entrances.size());
 
             if(debug) {
                 cout << "The tangle matrix has " <<
                     tangle.tangleMatrix().entrances.size() << " entrances and " <<
                     tangle.tangleMatrix().exits.size() << " exits." << endl;
-                SHASTA_ASSERT(tangle.tangleMatrix().entrances.size() == bubble0.internalEdges.size());
-                SHASTA_ASSERT(tangle.tangleMatrix().exits.size() == bubble1.internalEdges.size());
+                SHASTA2_ASSERT(tangle.tangleMatrix().entrances.size() == bubble0.internalEdges.size());
+                SHASTA2_ASSERT(tangle.tangleMatrix().exits.size() == bubble1.internalEdges.size());
                 for(uint64_t iEntrance=0; iEntrance<tangle.tangleMatrix().entrances.size(); iEntrance++) {
                     for(uint64_t iExit=0; iExit<tangle.tangleMatrix().exits.size(); iExit++) {
                         cout << tangle.tangleMatrix().tangleMatrix[iEntrance][iExit] << " ";
@@ -407,7 +407,7 @@ uint64_t SuperbubbleChain::phase1(
                                 tangle.tangleMatrix().tangleMatrix[iEntrance][iExit] << endl;
                         }
                         // We already checked above that detangleMinCoverage is satisfied.
-                        SHASTA_ASSERT(tangle.addConnectPair(iEntrance, iExit, detangleMinCoverage));
+                        SHASTA2_ASSERT(tangle.addConnectPair(iEntrance, iExit, detangleMinCoverage));
                     }
                 }
             }

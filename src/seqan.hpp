@@ -5,7 +5,7 @@
 // Wrappers to simplify SeqAn calls.
 
 // Shasta.
-#include "SHASTA_ASSERT.hpp"
+#include "SHASTA2_ASSERT.hpp"
 
 // Seqan.
 #include <seqan/align.h>
@@ -87,8 +87,8 @@ template<class Iterator>
 {
 
     // SeqAn does not handle empty sequences.
-    SHASTA_ASSERT(begin0 != end0);
-    SHASTA_ASSERT(begin1 != end1);
+    SHASTA2_ASSERT(begin0 != end0);
+    SHASTA2_ASSERT(begin1 != end1);
 
     // SeqAn types used below.
     using namespace seqan2;
@@ -162,7 +162,7 @@ template<class Iterator>
     Sequence align;
     convertAlignment(graph, align);
     const uint64_t totalAlignmentLength = length(align);
-    SHASTA_ASSERT((totalAlignmentLength % 2) == 0);
+    SHASTA2_ASSERT((totalAlignmentLength % 2) == 0);
     const uint64_t alignmentLength = totalAlignmentLength / 2;
 
     // Fill in the bool pairs representing the alignment.
@@ -195,8 +195,8 @@ template<class Iterator>
 {
 
     // SeqAn does not handle empty sequences.
-    SHASTA_ASSERT(begin0 != end0);
-    SHASTA_ASSERT(begin1 != end1);
+    SHASTA2_ASSERT(begin0 != end0);
+    SHASTA2_ASSERT(begin1 != end1);
 
     // SeqAn types used below.
     using namespace seqan2;
@@ -274,7 +274,7 @@ template<class Iterator>
     Sequence align;
     convertAlignment(graph, align);
     const uint64_t totalAlignmentLength = length(align);
-    SHASTA_ASSERT((totalAlignmentLength % 2) == 0);
+    SHASTA2_ASSERT((totalAlignmentLength % 2) == 0);
     const uint64_t alignmentLength = totalAlignmentLength / 2;
 
     // Fill in the bool pairs representing the alignment.
@@ -313,8 +313,8 @@ template<class Iterator>
             ++it1;
         }
     }
-    SHASTA_ASSERT(it0 == end0);
-    SHASTA_ASSERT(it1 == end1);
+    SHASTA2_ASSERT(it0 == end0);
+    SHASTA2_ASSERT(it1 == end1);
     return false;
 }
 
@@ -351,8 +351,8 @@ template<class Iterator>
             ++position1;
         }
     }
-    SHASTA_ASSERT(it0 == end0);
-    SHASTA_ASSERT(it1 == end1);
+    SHASTA2_ASSERT(it0 == end0);
+    SHASTA2_ASSERT(it1 == end1);
 }
 
 #endif

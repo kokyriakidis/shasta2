@@ -247,7 +247,7 @@ void Assembler::exploreReadRaw(
             const Kmer kmer = markers().getKmer(orientedReadId, uint32_t(ordinal));
 
             // Write the required number of spaces.
-            SHASTA_ASSERT((position==0) or (position > oldPosition));  // There must be at least a blank.
+            SHASTA2_ASSERT((position==0) or (position > oldPosition));  // There must be at least a blank.
             for(uint64_t i=oldPosition; i<position; i++) {
                 html << "&nbsp;";
             }
@@ -484,7 +484,7 @@ void Assembler::exploreReadSequence(const vector<string>& request, ostream& html
             const Kmer kmer = markers().getKmer(orientedReadId, uint32_t(ordinal));
 
             // Write the required number of spaces.
-            SHASTA_ASSERT((position==0) or (position > oldPosition));  // There must be at least a blank.
+            SHASTA2_ASSERT((position==0) or (position > oldPosition));  // There must be at least a blank.
             for(uint64_t i=oldPosition; i<position; i++) {
                 html << "&nbsp;";
             }
@@ -496,7 +496,7 @@ void Assembler::exploreReadSequence(const vector<string>& request, ostream& html
             // For assembly mode 3 we write the first half of the marker
             // a different color than the second half.
             // This helps visualize the anchors.
-            SHASTA_ASSERT((k % 2) == 0);
+            SHASTA2_ASSERT((k % 2) == 0);
             html << "<span title='Marker " << ordinal <<
                 ", position " << marker.position <<
                 "'>";

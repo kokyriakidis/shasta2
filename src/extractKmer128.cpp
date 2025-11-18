@@ -22,8 +22,8 @@ void shasta::extractKmer128(
     ShortBaseSequence<__uint128_t>& kmer)
 {
     // Sanity checks.
-    SHASTA_ASSERT(n <= 128);
-    SHASTA_ASSERT(position + n <= v.baseCount);
+    SHASTA2_ASSERT(n <= 128);
+    SHASTA2_ASSERT(position + n <= v.baseCount);
 
     // Start by clearing the kmer.
     kmer.data[0] = __uint128_t(0);
@@ -80,7 +80,7 @@ void shasta::extractKmer128(
 
     // There can't be any more bases to add.
     n -= length45;
-    SHASTA_ASSERT(n == 0);
+    SHASTA2_ASSERT(n == 0);
 
 
 }
@@ -111,7 +111,7 @@ void shasta::extractBits128(
     __uint128_t& y1 = y[1];
 
 
-    SHASTA_ASSERT(xPosition + n <= 64);
+    SHASTA2_ASSERT(xPosition + n <= 64);
 
     // Shift x right so the n bits are the least significant.
     const uint64_t xShift = 64 - xPosition - n;
@@ -168,16 +168,16 @@ void shasta::testExtractKmer128()
 
         for(uint64_t n=1; n<=min(128UL, N - startPosition); n++) {
             cout << startPosition << " " << n << endl;
-            SHASTA_ASSERT(n <= 128);
+            SHASTA2_ASSERT(n <= 128);
 
             ShortBaseSequence128 kmer;
             extractKmer128(sequence, startPosition, n, kmer);
 
             for(uint64_t i=0; i<n; i++) {
-                SHASTA_ASSERT(kmer[i] == sequence[startPosition+i]);
+                SHASTA2_ASSERT(kmer[i] == sequence[startPosition+i]);
             }
             for(uint64_t i=n; i<128; i++) {
-                SHASTA_ASSERT(kmer[i] == Base::fromInteger(uint64_t(0)));
+                SHASTA2_ASSERT(kmer[i] == Base::fromInteger(uint64_t(0)));
             }
         }
     }

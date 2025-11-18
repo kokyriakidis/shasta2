@@ -2,7 +2,7 @@
 #define SHASTA_READ_ID_HPP
 
 // Shasta.
-#include "SHASTA_ASSERT.hpp"
+#include "SHASTA2_ASSERT.hpp"
 #include "shastaTypes.hpp"
 
 // Standard libraries.
@@ -37,7 +37,7 @@ public:
     OrientedReadId() : value(std::numeric_limits<ReadId>::max()) {}
     OrientedReadId(ReadId readId, Strand strand) : value((readId<<1) | strand)
     {
-        SHASTA_ASSERT(strand < 2);
+        SHASTA2_ASSERT(strand < 2);
     }
 
     // This constructor is confusing so I am removing it

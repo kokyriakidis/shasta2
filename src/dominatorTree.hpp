@@ -137,7 +137,7 @@ namespace shasta {
 
         // Compute the dominator tree of the AuxiliaryGraph.
         const auto itEntry = vertexMap.find(entry);
-        SHASTA_ASSERT(itEntry != vertexMap.end());
+        SHASTA2_ASSERT(itEntry != vertexMap.end());
         const AV auxEntry = itEntry->second;
         shasta::lengauer_tarjan_dominator_tree(
             auxiliaryGraph,

@@ -33,7 +33,7 @@ v x y
 // Shasta.
 #include "tmpDirectory.hpp"
 #include "runCommandWithTimeout.hpp"
-#include "SHASTA_ASSERT.hpp"
+#include "SHASTA2_ASSERT.hpp"
 
 // Boost libraries.
 #include <boost/algorithm/string.hpp>
@@ -182,15 +182,15 @@ template<class Graph> shasta::ComputeLayoutReturnCode shasta::computeLayoutGraph
         if(tokens.front() != "node") {
             continue;
         }
-        SHASTA_ASSERT(tokens.size() >= 4);
+        SHASTA2_ASSERT(tokens.size() >= 4);
 
         // Get the vertex id.
         const string& vertexName = tokens[1];
-        SHASTA_ASSERT(not vertexName.empty());
+        SHASTA2_ASSERT(not vertexName.empty());
         const uint64_t vertexId = std::stoul(vertexName);
 
         // Get the corresponding vertex descriptor.
-        SHASTA_ASSERT(vertexId < vertexVector.size());
+        SHASTA2_ASSERT(vertexId < vertexVector.size());
         const vertex_descriptor v = vertexVector[vertexId];
 
         // Store it in the layout.
@@ -240,7 +240,7 @@ template<class Graph> shasta::ComputeLayoutReturnCode shasta::computeLayoutCusto
 
     BGL_FORALL_EDGES_T(e, graph, Graph) {
         auto it = edgeLengthMap.find(e);
-        SHASTA_ASSERT(it != edgeLengthMap.end());
+        SHASTA2_ASSERT(it != edgeLengthMap.end());
         const vertex_descriptor v0 = source(e, graph);
         const vertex_descriptor v1 = target(e, graph);
         inputFile << vertexIndexMap[v0] << " " << vertexIndexMap[v1] << " " <<
@@ -279,7 +279,7 @@ template<class Graph> shasta::ComputeLayoutReturnCode shasta::computeLayoutCusto
         uint64_t i;
         double x, y;
         outputFile >> i >> x >> y;
-        SHASTA_ASSERT(vertexIndexMap[v] == i);
+        SHASTA2_ASSERT(vertexIndexMap[v] == i);
         positionMap.insert(make_pair(v, array<double, 2>({x, y})));
 
     }

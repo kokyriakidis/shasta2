@@ -78,7 +78,7 @@ void RestrictedAnchorGraph::constructFromTangleMatrix1(
     fillJourneyPortionsAnchorIndexes(journeys);
     gatherTransitions(html);
 
-    SHASTA_ASSERT(0);
+    SHASTA2_ASSERT(0);
 }
 
 
@@ -109,8 +109,8 @@ void RestrictedAnchorGraph::gatherAllAnchorIds(const Journeys& journeys)
 uint64_t RestrictedAnchorGraph::getAnchorIndex(AnchorId anchorId) const
 {
     const auto it = find(allAnchorIds.begin(), allAnchorIds.end(), anchorId);
-    SHASTA_ASSERT(it != allAnchorIds.end());
-    SHASTA_ASSERT(*it == anchorId);
+    SHASTA2_ASSERT(it != allAnchorIds.end());
+    SHASTA2_ASSERT(*it == anchorId);
     return it - allAnchorIds.begin();
 }
 
@@ -156,8 +156,8 @@ void RestrictedAnchorGraph::gatherTransitions(ostream& html)
             const uint64_t i0 = i1 - 1;
             const uint64_t anchorIndex0 = journeyPortionAnchorIndexes[i0];
             const uint64_t anchorIndex1 = journeyPortionAnchorIndexes[i1];
-            SHASTA_ASSERT(anchorIndex0 < allAnchorIds.size());
-            SHASTA_ASSERT(anchorIndex1 < allAnchorIds.size());
+            SHASTA2_ASSERT(anchorIndex0 < allAnchorIds.size());
+            SHASTA2_ASSERT(anchorIndex1 < allAnchorIds.size());
             anchorIndexes1[anchorIndex0].push_back(anchorIndex1);
         }
     }
@@ -284,7 +284,7 @@ void RestrictedAnchorGraph::fillJourneyPortions(
 
         // All cases have been covered.
         else {
-            SHASTA_ASSERT(0);
+            SHASTA2_ASSERT(0);
         }
     }
 }
@@ -410,8 +410,8 @@ RestrictedAnchorGraph::vertex_descriptor RestrictedAnchorGraph::getExistingVerte
     const auto it = std::ranges::lower_bound(
         vertexTable, make_pair(anchorId, null_vertex()),
         OrderPairsByFirstOnly<AnchorId, vertex_descriptor>());
-    SHASTA_ASSERT(it != vertexTable.end());
-    SHASTA_ASSERT(it->first == anchorId);
+    SHASTA2_ASSERT(it != vertexTable.end());
+    SHASTA2_ASSERT(it->first == anchorId);
     return it->second;
 }
 
@@ -512,7 +512,7 @@ void RestrictedAnchorGraph::keepBetween(AnchorId anchorId0, AnchorId anchorId1)
     // To permit future optimizations, we don't really remove
     // the vertices - we only disconnect them for the rest of the graph.
     findReachableVertices(graph, v0, 0, reachableVertices);
-    SHASTA_ASSERT(reachableVertices.contains(v1));
+    SHASTA2_ASSERT(reachableVertices.contains(v1));
     BGL_FORALL_VERTICES(v, graph, Graph) {
         if(not reachableVertices.contains(v)) {
             verticesToBeRemoved.push_back(v);
@@ -530,7 +530,7 @@ void RestrictedAnchorGraph::keepBetween(AnchorId anchorId0, AnchorId anchorId1)
     // To permit future optimizations, we don't really remove
     // the vertices - we only disconnect them for the rest of the graph.
     findReachableVertices(graph, v1, 1, reachableVertices);
-    SHASTA_ASSERT(reachableVertices.contains(v0));
+    SHASTA2_ASSERT(reachableVertices.contains(v0));
     BGL_FORALL_VERTICES(v, graph, Graph) {
         if(not reachableVertices.contains(v)) {
             verticesToBeRemoved.push_back(v);
@@ -631,9 +631,9 @@ void RestrictedAnchorGraph::findOptimalPath(
 
     // Compute the longest path.
     shasta::longestPath(graph, optimalPath);
-    SHASTA_ASSERT(not optimalPath.empty());
-    SHASTA_ASSERT(source(optimalPath.front(), graph) == v0);
-    SHASTA_ASSERT(target(optimalPath.back(), graph) == v1);
+    SHASTA2_ASSERT(not optimalPath.empty());
+    SHASTA2_ASSERT(source(optimalPath.front(), graph) == v0);
+    SHASTA2_ASSERT(target(optimalPath.back(), graph) == v1);
 
     // Set the isOptimalPathEdge flags.
     for(const edge_descriptor e: optimalPath) {
@@ -712,8 +712,8 @@ void RestrictedAnchorGraph::removeLowCoverageEdges(
             vector<vertex_descriptor> verticesToBeRemoved;
             BGL_FORALL_VERTICES(v, graph, Graph) {
                 if(not (reachableVertices0.contains(v) and reachableVertices1.contains(v))) {
-                    SHASTA_ASSERT(v != v0);
-                    SHASTA_ASSERT(v != v1);
+                    SHASTA2_ASSERT(v != v0);
+                    SHASTA2_ASSERT(v != v1);
                     verticesToBeRemoved.push_back(v);
                 }
             }
@@ -771,9 +771,9 @@ void RestrictedAnchorGraph::removeLowCoverageEdges(
     }
     cout << endl;
 #endif
-    SHASTA_ASSERT(dominatorSequence.size() >= 2);
-    SHASTA_ASSERT(dominatorSequence.front() == v0);
-    SHASTA_ASSERT(dominatorSequence.back() == v1);
+    SHASTA2_ASSERT(dominatorSequence.size() >= 2);
+    SHASTA2_ASSERT(dominatorSequence.front() == v0);
+    SHASTA2_ASSERT(dominatorSequence.back() == v1);
 
 
 

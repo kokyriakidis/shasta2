@@ -754,8 +754,8 @@ void Assembler::exploreAnchorPair(const vector<string>& request, ostream& html)
             for(auto position=positionInJourneyA+1; position<positionInJourneyB; position++) {
                 const AnchorId anchorId = journey[position];
                 const auto it = std::lower_bound(anchorIds.begin(), anchorIds.end(), anchorId);
-                SHASTA_ASSERT(it != anchorIds.end());
-                SHASTA_ASSERT(*it == anchorId);
+                SHASTA2_ASSERT(it != anchorIds.end());
+                SHASTA2_ASSERT(*it == anchorId);
                 const uint64_t bitPosition = it - anchorIds.begin();
                 bitVector.set(bitPosition);
             }
@@ -814,8 +814,8 @@ void Assembler::exploreAnchorPair(const vector<string>& request, ostream& html)
             bitVector.resize(allKmers.size());
             for(const Kmer& kmer: orientedReadsKmers[i]) {
                 const auto it = std::lower_bound(allKmers.begin(), allKmers.end(), kmer);
-                SHASTA_ASSERT(it != allKmers.end());
-                SHASTA_ASSERT(*it == kmer);
+                SHASTA2_ASSERT(it != allKmers.end());
+                SHASTA2_ASSERT(*it == kmer);
                 const uint64_t bitPosition = it - allKmers.begin();
                 bitVector.set(bitPosition);
             }
@@ -879,10 +879,10 @@ void Assembler::exploreAnchorPair1(const vector<string>& request, ostream& html)
     // AnchorIds.
     anchorPair.anchorIdA = anchorIdFromString(anchorIdAString);
     anchorPair.anchorIdB = anchorIdFromString(anchorIdBString);
-    SHASTA_ASSERT(anchorPair.anchorIdA != invalid<AnchorId>);
-    SHASTA_ASSERT(anchorPair.anchorIdB != invalid<AnchorId>);
-    SHASTA_ASSERT(anchorPair.anchorIdA < anchors().size());
-    SHASTA_ASSERT(anchorPair.anchorIdB < anchors().size());
+    SHASTA2_ASSERT(anchorPair.anchorIdA != invalid<AnchorId>);
+    SHASTA2_ASSERT(anchorPair.anchorIdB != invalid<AnchorId>);
+    SHASTA2_ASSERT(anchorPair.anchorIdA < anchors().size());
+    SHASTA2_ASSERT(anchorPair.anchorIdB < anchors().size());
 
     // OrientedReadIds.
     boost::tokenizer< boost::char_separator<char> > tokenizer(orientedReadIdsString, boost::char_separator<char>(","));
@@ -1080,8 +1080,8 @@ void Assembler::exploreJourney(const vector<string>& request, ostream& html)
     // Access the information we need.
     const OrientedReadId orientedReadId(readId, strand);
     const span<const Marker> orientedReadMarkers = markers()[orientedReadId.getValue()];
-    SHASTA_ASSERT(journeys().isOpen());
-    SHASTA_ASSERT(journeys().size() == 2 * reads().readCount());
+    SHASTA2_ASSERT(journeys().isOpen());
+    SHASTA2_ASSERT(journeys().size() == 2 * reads().readCount());
     const span<const AnchorId> journey = journeys()[orientedReadId];
 
     // Page title.

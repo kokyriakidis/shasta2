@@ -3,7 +3,7 @@
 // Shasta.
 #include "HttpServer.hpp"
 #include "tmpDirectory.hpp"
-#include "SHASTA_ASSERT.hpp"
+#include "SHASTA2_ASSERT.hpp"
 #include "timestamp.hpp"
 using namespace shasta;
 
@@ -137,7 +137,7 @@ void HttpServer::explore(uint16_t port, bool localOnly, bool sameUserOnly)
           // connection originating from a process owned by the same
           // user running the server.
           if(sameUserOnly) {
-              SHASTA_ASSERT(localOnly);
+              SHASTA2_ASSERT(localOnly);
               if(!isLocalConnectionSameUser(port)) {
                   // Unceremoniously close the connection.
                   cout << timestamp << "Reset a local connection originating from a process "
@@ -487,11 +487,11 @@ void PostData::readHeaders(istream& s)
 
         // Get a header line.
         getline(s, line);
-        SHASTA_ASSERT(s);
+        SHASTA2_ASSERT(s);
 
         // Remove the final '\r'.
-        SHASTA_ASSERT(line.size() > 0);
-        SHASTA_ASSERT(line.back() == '\r');
+        SHASTA2_ASSERT(line.size() > 0);
+        SHASTA2_ASSERT(line.back() == '\r');
         line.resize(line.size() - 1);
 
         // If empty, we have reached the end of the headers.

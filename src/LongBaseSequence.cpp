@@ -29,8 +29,8 @@ void LongBaseSequences::rename(const string& name) {
         baseCount.rename(name + "-BaseCount");
         data.rename(name + "-Bases");
     } else {
-        SHASTA_ASSERT(baseCount.fileName.empty());
-        SHASTA_ASSERT(data.getName().empty());
+        SHASTA2_ASSERT(baseCount.fileName.empty());
+        SHASTA2_ASSERT(data.getName().empty());
     }
 }
 
@@ -40,7 +40,7 @@ void LongBaseSequences::accessExistingReadOnly(const string& name)
 {
     baseCount.accessExistingReadOnly(name + "-BaseCount");
     data.accessExistingReadOnly(name + "-Bases");
-    SHASTA_ASSERT(baseCount.size() == data.size());
+    SHASTA2_ASSERT(baseCount.size() == data.size());
 }
 
 
@@ -49,7 +49,7 @@ void LongBaseSequences::accessExistingReadWrite(const string& name)
 {
     baseCount.accessExistingReadWrite(name + "-BaseCount");
     data.accessExistingReadWrite(name + "-Bases");
-    SHASTA_ASSERT(baseCount.size() == data.size());
+    SHASTA2_ASSERT(baseCount.size() == data.size());
 }
 
 
@@ -60,7 +60,7 @@ void LongBaseSequences::accessExistingReadWriteOrCreateNew(
 {
     baseCount.accessExistingReadWriteOrCreateNew(name + "-BaseCount", pageSize);
     data.accessExistingReadWriteOrCreateNew(name + "-Bases", pageSize);
-    SHASTA_ASSERT(baseCount.size() == data.size());
+    SHASTA2_ASSERT(baseCount.size() == data.size());
 }
 
 
@@ -102,7 +102,7 @@ void LongBaseSequences::append(size_t baseCountArgument)
     baseCount.push_back(baseCountArgument);
     const size_t wordCount = LongBaseSequenceView::wordCount(baseCountArgument);
     data.appendVector(wordCount);
-    SHASTA_ASSERT(baseCount.size() == data.size());
+    SHASTA2_ASSERT(baseCount.size() == data.size());
 }
 
 

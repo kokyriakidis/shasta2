@@ -42,7 +42,7 @@ inline std::pair<size_t, size_t> shasta::splitRange(
     size_t i
     )
 {
-    SHASTA_ASSERT(m > 0);
+    SHASTA2_ASSERT(m > 0);
     const size_t n = end - begin;
     const size_t a = n / m;
     const size_t b = n % m;

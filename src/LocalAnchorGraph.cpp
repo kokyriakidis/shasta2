@@ -41,7 +41,7 @@ LocalAnchorGraph::LocalAnchorGraph(
     // Initialize a BFS from these AnchorIds.
     std::queue<vertex_descriptor> q;
     for(const AnchorId anchorId: anchorIds) {
-        SHASTA_ASSERT(not vertexMap.contains(anchorId));
+        SHASTA2_ASSERT(not vertexMap.contains(anchorId));
         const vertex_descriptor vL = boost::add_vertex(LocalAnchorGraphVertex(anchorId, 0), localAnchorGraph);
         vertexMap.insert({anchorId, vL});
         q.push(vL);
@@ -166,11 +166,11 @@ void LocalAnchorGraph::writeGraphviz(
     const AssemblyGraphPostprocessor* assemblyGraph3Pointer) const
 {
     const LocalAnchorGraph& graph = *this;
-    SHASTA_ASSERT(anchorGraphPointer);
+    SHASTA2_ASSERT(anchorGraphPointer);
     const AnchorGraph& anchorGraph = *anchorGraphPointer;
 
     if(options.vertexColoring == "byAssemblyAnnotations") {
-        SHASTA_ASSERT(assemblyGraph3Pointer);
+        SHASTA2_ASSERT(assemblyGraph3Pointer);
     }
 
     AnchorId referenceAnchorId = invalid<AnchorId>;
@@ -328,8 +328,8 @@ void LocalAnchorGraph::writeGraphviz(
         const AnchorGraph::edge_descriptor eG = edge.eG;
         const AnchorGraphEdge& edgeG = anchorGraph[eG];
         const AnchorPair& anchorPair = edgeG.anchorPair;
-        SHASTA_ASSERT(anchorPair.anchorIdA == anchorId0);
-        SHASTA_ASSERT(anchorPair.anchorIdB == anchorId1);
+        SHASTA2_ASSERT(anchorPair.anchorIdA == anchorId0);
+        SHASTA2_ASSERT(anchorPair.anchorIdB == anchorId1);
 
         const uint64_t coverage = anchorPair.orientedReadIds.size();
         const uint64_t offset = edgeG.offset;
@@ -414,7 +414,7 @@ LocalAnchorGraphDisplayOptions::LocalAnchorGraphDisplayOptions(const vector<stri
 {
     // Figure out if command "customLayout" is available.
     const int commandStatus = std::system("which customLayout > /dev/null");
-    SHASTA_ASSERT(WIFEXITED(commandStatus));
+    SHASTA2_ASSERT(WIFEXITED(commandStatus));
     const int returnCode = WEXITSTATUS(commandStatus);
     const bool customLayoutIsAvailable = (returnCode == 0);
 
@@ -474,7 +474,7 @@ void LocalAnchorGraphDisplayOptions::writeForm(ostream& html) const
 {
     // Figure out if command "customLayout" is available.
     const int commandStatus = std::system("which customLayout > /dev/null");
-    SHASTA_ASSERT(WIFEXITED(commandStatus));
+    SHASTA2_ASSERT(WIFEXITED(commandStatus));
     const int returnCode = WEXITSTATUS(commandStatus);
     const bool customLayoutIsAvailable = (returnCode == 0);
 
@@ -737,7 +737,7 @@ void LocalAnchorGraph::writeHtml2(
 void LocalAnchorGraph::computeLayout(const LocalAnchorGraphDisplayOptions& options)
 {
     const LocalAnchorGraph& graph = *this;
-    SHASTA_ASSERT(anchorGraphPointer);
+    SHASTA2_ASSERT(anchorGraphPointer);
     const AnchorGraph& anchorGraph = *anchorGraphPointer;
 
 
@@ -841,7 +841,7 @@ void LocalAnchorGraph::writeVertices(
     const LocalAnchorGraph& graph = *this;
 
     if(options.vertexColoring == "byAssemblyAnnotations") {
-        SHASTA_ASSERT(assemblyGraph3Pointer);
+        SHASTA2_ASSERT(assemblyGraph3Pointer);
     }
 
     const double scalingFactor =
@@ -869,7 +869,7 @@ void LocalAnchorGraph::writeVertices(
 
         // Get the position of this vertex in the computed layout.
         const auto it = layout.find(v);
-        SHASTA_ASSERT(it != layout.end());
+        SHASTA2_ASSERT(it != layout.end());
         const auto& p = it->second;
         const double x = p[0];
         const double y = p[1];
@@ -982,7 +982,7 @@ void LocalAnchorGraph::writeEdges(
     const LocalAnchorGraphDisplayOptions& options) const
 {
     const LocalAnchorGraph& graph = *this;
-    SHASTA_ASSERT(anchorGraphPointer);
+    SHASTA2_ASSERT(anchorGraphPointer);
     const AnchorGraph& anchorGraph = *anchorGraphPointer;
 
     const double scalingFactor =
@@ -1002,12 +1002,12 @@ void LocalAnchorGraph::writeEdges(
 
         // Get the position of these vertices in the computed layout.
         const auto it0 = layout.find(v0);
-        SHASTA_ASSERT(it0 != layout.end());
+        SHASTA2_ASSERT(it0 != layout.end());
         const auto& p0 = it0->second;
         const double x0 = p0[0];
         const double y0 = p0[1];
         const auto it1 = layout.find(v1);
-        SHASTA_ASSERT(it1 != layout.end());
+        SHASTA2_ASSERT(it1 != layout.end());
         const auto& p1 = it1->second;
         const double x1 = p1[0];
         const double y1 = p1[1];
@@ -1086,12 +1086,12 @@ void LocalAnchorGraph::writeEdges(
 
         // Get the position of these vertices in the computed layout.
         const auto it0 = layout.find(v0);
-        SHASTA_ASSERT(it0 != layout.end());
+        SHASTA2_ASSERT(it0 != layout.end());
         const auto& p0 = it0->second;
         const double x0 = p0[0];
         const double y0 = p0[1];
         const auto it1 = layout.find(v1);
-        SHASTA_ASSERT(it1 != layout.end());
+        SHASTA2_ASSERT(it1 != layout.end());
         const auto& p1 = it1->second;
         const double x1 = p1[0];
         const double y1 = p1[1];

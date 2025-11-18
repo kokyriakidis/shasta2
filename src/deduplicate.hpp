@@ -3,7 +3,7 @@
 
 // Shasta.
 #include "algorithm.hpp"
-#include "SHASTA_ASSERT.hpp"
+#include "SHASTA2_ASSERT.hpp"
 
 // Standard library.
 #include "iostream.hpp"
@@ -213,7 +213,7 @@ namespace shasta {
         vector<int> v = {7, 4, 5, 7, 4, 18, 2, 4};
         vector<int> count;
         deduplicateAndCountWithThreshold(v, count, 2);
-        SHASTA_ASSERT(v.size() == count.size());
+        SHASTA2_ASSERT(v.size() == count.size());
         for(uint64_t i=0; i<v.size(); i++) {
             cout << v[i] << " " << count[i] << endl;
         }

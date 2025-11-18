@@ -5,7 +5,7 @@
 
 // Shasta.
 #include "array.hpp"
-#include "SHASTA_ASSERT.hpp"
+#include "SHASTA2_ASSERT.hpp"
 
 // Standard libraries.
 #include <cstring>
@@ -140,8 +140,8 @@ public:
 
     uint64_t getPageSize() const
     {
-        SHASTA_ASSERT(isOpen);
-        SHASTA_ASSERT(header);
+        SHASTA2_ASSERT(isOpen);
+        SHASTA2_ASSERT(header);
         return header->pageSize;
     }
 
@@ -200,7 +200,7 @@ private:
         // Actual capacity will a bit larger, rounded up to the next oage boundary.
         Header(size_t n, size_t requestedCapacity, size_t pageSizeArgument)
         {
-            SHASTA_ASSERT(requestedCapacity >= n);
+            SHASTA2_ASSERT(requestedCapacity >= n);
             clear();
             headerSize = sizeof(Header);
             objectSize = sizeof(T);
@@ -290,62 +290,62 @@ template<class T> inline size_t shasta::MemoryMapped::Vector<T>::capacity() cons
 
 template<class T> inline T& shasta::MemoryMapped::Vector<T>::operator[](size_t i)
 {
-    // SHASTA_ASSERT(isOpen);
+    // SHASTA2_ASSERT(isOpen);
     return data[i];
 }
 template<class T> inline const T& shasta::MemoryMapped::Vector<T>::operator[](size_t i) const
 {
-    // SHASTA_ASSERT(isOpen);
+    // SHASTA2_ASSERT(isOpen);
     return data[i];
 }
 
 template<class T> inline T& shasta::MemoryMapped::Vector<T>::front()
 {
-    SHASTA_ASSERT(isOpen);
+    SHASTA2_ASSERT(isOpen);
     return *data;
 }
 template<class T> inline const T& shasta::MemoryMapped::Vector<T>::front() const
 {
-    SHASTA_ASSERT(isOpen);
-    SHASTA_ASSERT(size() > 0);
+    SHASTA2_ASSERT(isOpen);
+    SHASTA2_ASSERT(size() > 0);
     return *data;
 }
 
 template<class T> inline T& shasta::MemoryMapped::Vector<T>::back()
 {
-    SHASTA_ASSERT(isOpen);
+    SHASTA2_ASSERT(isOpen);
     return data[size() - 1ULL];
 }
 template<class T> inline const T& shasta::MemoryMapped::Vector<T>::back() const
 {
-    SHASTA_ASSERT(isOpen);
+    SHASTA2_ASSERT(isOpen);
     return data[size() - 1ULL];
 }
 template<class T> inline T* shasta::MemoryMapped::Vector<T>::begin()
 {
-    SHASTA_ASSERT(isOpen);
+    SHASTA2_ASSERT(isOpen);
     return data;
 }
 template<class T> inline const T* shasta::MemoryMapped::Vector<T>::begin() const
 {
-    SHASTA_ASSERT(isOpen);
+    SHASTA2_ASSERT(isOpen);
     return data;
 }
 
 template<class T> inline T* shasta::MemoryMapped::Vector<T>::end()
 {
-    SHASTA_ASSERT(isOpen);
+    SHASTA2_ASSERT(isOpen);
     return data + size();
 }
 
 template<class T> inline const T* shasta::MemoryMapped::Vector<T>::end() const
 {
-    SHASTA_ASSERT(isOpen);
+    SHASTA2_ASSERT(isOpen);
     return data + size();
 }
 template<class T> inline void shasta::MemoryMapped::Vector<T>::push_back(const T& t)
 {
-    SHASTA_ASSERT(isOpen);
+    SHASTA2_ASSERT(isOpen);
     resize(size()+1ULL);
     back() = t;
 
@@ -473,7 +473,7 @@ template<class T> inline void shasta::MemoryMapped::Vector<T>::createNew(
     size_t n,
     size_t requiredCapacity)
 {
-    SHASTA_ASSERT(pageSize==4096 || pageSize==2*1024*1024);
+    SHASTA2_ASSERT(pageSize==4096 || pageSize==2*1024*1024);
 
     if(name.empty()) {
         createNewAnonymous(pageSize, n, requiredCapacity);
@@ -482,7 +482,7 @@ template<class T> inline void shasta::MemoryMapped::Vector<T>::createNew(
 
     try {
         // If already open, should have called close first.
-        SHASTA_ASSERT(!isOpen);
+        SHASTA2_ASSERT(!isOpen);
 
         // Create the header.
         requiredCapacity = std::max(requiredCapacity, n);
@@ -537,7 +537,7 @@ template<class T> inline void shasta::MemoryMapped::Vector<T>::createNewAnonymou
 {
     try {
         // If already open, should have called close first.
-        SHASTA_ASSERT(!isOpen);
+        SHASTA2_ASSERT(!isOpen);
 
         // Create the header.
         requiredCapacity = std::max(requiredCapacity, n);
@@ -592,7 +592,7 @@ template<class T> inline void shasta::MemoryMapped::Vector<T>::accessExisting(co
 {
     try {
         // If already open, should have called close first.
-        SHASTA_ASSERT(!isOpen);
+        SHASTA2_ASSERT(!isOpen);
 
         // Create the file.
         const int fileDescriptor = openExisting(name, readWriteAccess);
@@ -663,7 +663,7 @@ template<class T> inline void shasta::MemoryMapped::Vector<T>::accessExistingRea
 {
     try {
         accessExistingReadWrite(name);
-        SHASTA_ASSERT(pageSize == header->pageSize);
+        SHASTA2_ASSERT(pageSize == header->pageSize);
     } catch(...) {
         createNew(name, pageSize);
     }
@@ -674,7 +674,7 @@ template<class T> inline void shasta::MemoryMapped::Vector<T>::accessExistingRea
 // Sync the mapped memory to disk.
 template<class T> inline void shasta::MemoryMapped::Vector<T>::syncToDisk()
 {
-    SHASTA_ASSERT(isOpen);
+    SHASTA2_ASSERT(isOpen);
     const int msyncReturnCode = ::msync(header, header->fileSize, MS_SYNC);
     if(msyncReturnCode == -1) {
         throw runtime_error("Error " + to_string(errno) + " during msync for " + fileName
@@ -685,7 +685,7 @@ template<class T> inline void shasta::MemoryMapped::Vector<T>::syncToDisk()
 // Unmap the memory.
 template<class T> inline void shasta::MemoryMapped::Vector<T>::unmap()
 {
-    SHASTA_ASSERT(isOpen);
+    SHASTA2_ASSERT(isOpen);
 
     const int munmapReturnCode = ::munmap(header, header->fileSize);
     if(munmapReturnCode == -1) {
@@ -705,7 +705,7 @@ template<class T> inline void shasta::MemoryMapped::Vector<T>::unmap()
 
 template<class T> inline void shasta::MemoryMapped::Vector<T>::unmapAnonymous()
 {
-    SHASTA_ASSERT(isOpen);
+    SHASTA2_ASSERT(isOpen);
 
     const int munmapReturnCode = ::munmap(header, header->fileSize);
     if(munmapReturnCode == -1) {
@@ -726,7 +726,7 @@ template<class T> inline void shasta::MemoryMapped::Vector<T>::unmapAnonymous()
 // Sync the mapped memory to disk, then unmap it.
 template<class T> inline void shasta::MemoryMapped::Vector<T>::close()
 {
-    SHASTA_ASSERT(isOpen);
+    SHASTA2_ASSERT(isOpen);
     syncToDisk();
     unmap();
 }
@@ -783,7 +783,7 @@ template<class T> inline bool shasta::MemoryMapped::Vector<T>::save(const string
 // Resize works as for std::vector.
 template<class T> inline void shasta::MemoryMapped::Vector<T>::resize(size_t newSize)
 {
-    SHASTA_ASSERT(isOpenWithWriteAccess);
+    SHASTA2_ASSERT(isOpenWithWriteAccess);
 
     if(fileName.empty()) {
         resizeAnonymous(newSize);
@@ -997,15 +997,15 @@ template<class T> inline void
 
 template<class T> inline void shasta::MemoryMapped::Vector<T>::reserve()
 {
-    SHASTA_ASSERT(isOpenWithWriteAccess);
+    SHASTA2_ASSERT(isOpenWithWriteAccess);
     reserve(size());
 }
 
 
 template<class T> inline void shasta::MemoryMapped::Vector<T>::reserve(size_t capacity)
 {
-    SHASTA_ASSERT(isOpenWithWriteAccess);
-    SHASTA_ASSERT(capacity >= size());
+    SHASTA2_ASSERT(isOpenWithWriteAccess);
+    SHASTA2_ASSERT(capacity >= size());
     if(capacity == header->capacity) {
         return;
     }
@@ -1143,10 +1143,10 @@ template<class T> inline void shasta::MemoryMapped::Vector<T>::makeCopy(
 
 template<class T> inline void shasta::MemoryMapped::Vector<T>::rename(const string& newFileName)
 {
-    SHASTA_ASSERT(isOpen);
+    SHASTA2_ASSERT(isOpen);
 
     if(fileName.empty()) {
-        SHASTA_ASSERT(newFileName.empty());
+        SHASTA2_ASSERT(newFileName.empty());
     } else {
         const string oldFileName = fileName;
         const bool writeAccess = isOpenWithWriteAccess;

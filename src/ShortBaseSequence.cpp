@@ -1,7 +1,7 @@
 #include "ShortBaseSequence.hpp"
 #include "ShortBaseSequenceEdit.hpp"
 #include "algorithm.hpp"
-#include "SHASTA_ASSERT.hpp"
+#include "SHASTA2_ASSERT.hpp"
 using namespace shasta;
 
 #include <iomanip>

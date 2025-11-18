@@ -81,7 +81,7 @@ public:
 
     // Set the base at a given position.
     void set(uint64_t i, Base base) {
-        SHASTA_ASSERT(!readOnly);
+        SHASTA2_ASSERT(!readOnly);
         const uint64_t word0Index = (i >> 6ULL) << 1ULL;  // Because there are two words for each block of 64 bases.
         const uint64_t bitIndex = 63ULL - (i & 63ULL);
         const uint64_t mask = 1ULL << bitIndex;
@@ -111,7 +111,7 @@ public:
     // In-place reverse complement.
     void reverseComplement()
     {
-        SHASTA_ASSERT(!readOnly);
+        SHASTA2_ASSERT(!readOnly);
 
         for(uint64_t i=0; i<baseCount/2; i++) {
             const uint64_t j = baseCount - 1 - i;
@@ -267,19 +267,19 @@ public:
     // Return a LongBaseSequenceView representing the i-th sequence stored.
     LongBaseSequenceView operator[](uint64_t i)
     {
-        SHASTA_ASSERT(i < data.size());
+        SHASTA2_ASSERT(i < data.size());
         return LongBaseSequenceView(data[i].data(), baseCount[i]);
     }
     LongBaseSequenceView operator[](uint64_t i) const
     {
-        SHASTA_ASSERT(i < data.size());
+        SHASTA2_ASSERT(i < data.size());
         return LongBaseSequenceView(data[i].data(), baseCount[i]);
     }
 
     uint64_t size() const
     {
         const uint64_t n = baseCount.size();
-        SHASTA_ASSERT(data.size() == n);
+        SHASTA2_ASSERT(data.size() == n);
         return n;
     }
     bool empty() const {

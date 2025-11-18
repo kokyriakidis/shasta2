@@ -387,7 +387,7 @@ bool AnchorGraph::search(
             anchorPairArgument, offsetArgument
             );
     } else {
-        SHASTA_ASSERT(0);
+        SHASTA2_ASSERT(0);
     }
 }
 
@@ -975,7 +975,7 @@ bool AnchorGraph::transitiveReductionCanRemove(
         const vertex_descriptor vA = q.front();
         q.pop();
         const auto itA = m.find(vA);
-        SHASTA_ASSERT(itA != m.end());
+        SHASTA2_ASSERT(itA != m.end());
         const uint64_t distanceA = itA->second;
         const uint64_t distanceB = distanceA + 1;
 

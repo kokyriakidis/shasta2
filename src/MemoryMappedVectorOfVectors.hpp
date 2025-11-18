@@ -166,7 +166,7 @@ public:
     // Add a T at the end of the last vector.
     void append(const T& t)
     {
-        // SHASTA_ASSERT(!empty());
+        // SHASTA2_ASSERT(!empty());
         ++toc.back();
         data.push_back(t);
     }
@@ -228,19 +228,19 @@ public:
 
     // Front and back, in const and non-const versions.
     span<T> front() {
-        SHASTA_ASSERT(size() > 0);
+        SHASTA2_ASSERT(size() > 0);
         return (*this)[0];
     }
     span<const T> front() const {
-        SHASTA_ASSERT(size() > 0);
+        SHASTA2_ASSERT(size() > 0);
         return (*this)[0];
     }
     span<T> back() {
-        SHASTA_ASSERT(size() > 0);
+        SHASTA2_ASSERT(size() > 0);
         return (*this)[size() - 1];
     }
     span<const T> back() const {
-        SHASTA_ASSERT(size() > 0);
+        SHASTA2_ASSERT(size() > 0);
         return (*this)[size() - 1];
     }
 
@@ -286,7 +286,7 @@ public:
     void rename(const string& newName)
     {
         if(name.empty()) {
-            SHASTA_ASSERT(newName.empty());
+            SHASTA2_ASSERT(newName.empty());
         } else {
             toc.rename(newName + ".toc");
             data.rename(newName + ".data");
@@ -349,7 +349,7 @@ template<class T, class Int>
     if(check) {
         const Int n = Int(count.size());
         for(Int i=0; i<n; i++) {
-            SHASTA_ASSERT(count[i] == 0);;
+            SHASTA2_ASSERT(count[i] == 0);;
         }
     }
 
@@ -402,8 +402,8 @@ template<class T, class Int>
     const auto it = std::upper_bound(toc.begin(), toc.end(), k) - 1;
     const Int i = it - toc.begin();
     const Int j = k - *it;
-    SHASTA_ASSERT(i < size());
-    SHASTA_ASSERT(j < size(i));
+    SHASTA2_ASSERT(i < size());
+    SHASTA2_ASSERT(j < size(i));
     return make_pair(i, j);
 }
 

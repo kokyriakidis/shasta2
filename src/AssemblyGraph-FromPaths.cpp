@@ -142,7 +142,7 @@ AssemblyGraph::AssemblyGraph(
                     const auto& rEdge = restrictedAnchorGraph[re];
                     if(rEdge.anchorPair.size() < newAssemblyGraph.options.detangleMinCoverage) {
                         newEdge.clear();
-                        SHASTA_ASSERT(0);
+                        SHASTA2_ASSERT(0);
                     }
                     newEdge.push_back(AssemblyGraphEdgeStep(rEdge.anchorPair, rEdge.offset));
                 }
@@ -184,7 +184,7 @@ void AssemblyGraph::connectAssemblyPaths(const vector< vector<edge_descriptor> >
 	if(debug) {
 		cout << "Connecting " << assemblyPaths.size() << " assembly paths:" << endl;
 		for(const vector<edge_descriptor>& assemblyPath: assemblyPaths) {
-			SHASTA_ASSERT(assemblyPath.size() > 1);
+			SHASTA2_ASSERT(assemblyPath.size() > 1);
 			const edge_descriptor e0 = assemblyPath.front();
 			const edge_descriptor e1 = assemblyPath.back();
 			cout << "Assembly path with " << assemblyPath.size() << " segments beginning at " <<
@@ -197,14 +197,14 @@ void AssemblyGraph::connectAssemblyPaths(const vector< vector<edge_descriptor> >
 	std::set<edge_descriptor> pathInitialSegments;
 	std::set<edge_descriptor> pathFinalSegments;
 	for(const vector<edge_descriptor>& assemblyPath: assemblyPaths) {
-		SHASTA_ASSERT(assemblyPath.size() > 1);
+		SHASTA2_ASSERT(assemblyPath.size() > 1);
 		const edge_descriptor e0 = assemblyPath.front();
 		const edge_descriptor e1 = assemblyPath.back();
-		SHASTA_ASSERT(e0 != e1);
-		SHASTA_ASSERT(not pathInitialSegments.contains(e0));
-		SHASTA_ASSERT(not pathFinalSegments.contains(e0));
-		SHASTA_ASSERT(not pathInitialSegments.contains(e1));
-		SHASTA_ASSERT(not pathFinalSegments.contains(e1));
+		SHASTA2_ASSERT(e0 != e1);
+		SHASTA2_ASSERT(not pathInitialSegments.contains(e0));
+		SHASTA2_ASSERT(not pathFinalSegments.contains(e0));
+		SHASTA2_ASSERT(not pathInitialSegments.contains(e1));
+		SHASTA2_ASSERT(not pathFinalSegments.contains(e1));
 		pathInitialSegments.insert(e0);
 		pathFinalSegments.insert(e1);
 	}
@@ -216,8 +216,8 @@ void AssemblyGraph::connectAssemblyPaths(const vector< vector<edge_descriptor> >
 	for(const vector<edge_descriptor>& assemblyPath: assemblyPaths) {
 		for(uint64_t i=1; i<assemblyPath.size()-1; i++) {
 			const edge_descriptor e = assemblyPath[i];
-			SHASTA_ASSERT(not pathInitialSegments.contains(e));
-			SHASTA_ASSERT(not pathFinalSegments.contains(e));
+			SHASTA2_ASSERT(not pathInitialSegments.contains(e));
+			SHASTA2_ASSERT(not pathFinalSegments.contains(e));
 			const auto it = pathInternalSegments.find(e);
 			if(it == pathInternalSegments.end()) {
 				pathInternalSegments.insert({e, 1});
@@ -338,7 +338,7 @@ void AssemblyGraph::connectAssemblyPaths(const vector< vector<edge_descriptor> >
 					const auto& rEdge = restrictedAnchorGraph[re];
 					if(rEdge.anchorPair.size() < options.detangleMinCoverage) {
 						newEdge.clear();
-						SHASTA_ASSERT(0);
+						SHASTA2_ASSERT(0);
 					}
 					newEdge.push_back(AssemblyGraphEdgeStep(rEdge.anchorPair, rEdge.offset));
 				}

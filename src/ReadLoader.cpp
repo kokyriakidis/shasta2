@@ -141,7 +141,7 @@ void ReadLoader::processFastaFileThreadFunction(size_t threadId)
     string readName;
     vector<Base> read;
     while(offset < end) {
-        SHASTA_ASSERT(fastaReadBeginsHere(offset));
+        SHASTA2_ASSERT(fastaReadBeginsHere(offset));
 
         // Consume the ">".
         ++offset;
@@ -316,7 +316,7 @@ void ReadLoader::processFastqFileThreadFunction(size_t threadId)
     LongBaseSequences& thisThreadReads = *threadReads[threadId];
 
     // Find the total number of reads in the file.
-    SHASTA_ASSERT((lineEnds.size() % 4) == 0); // We already checked for that.
+    SHASTA2_ASSERT((lineEnds.size() % 4) == 0); // We already checked for that.
     const ReadId readCountInFile = ReadId(lineEnds.size() / 4);
 
     // Compute the range of reads in the file assigned to this thread.
@@ -340,22 +340,22 @@ void ReadLoader::processFastqFileThreadFunction(size_t threadId)
         // Locate the header line for this read.
         const auto headerBegin = fileBegin + ((i == 0) ? 0 : (1 + *(thisReadLineEnds - 1)));
         const auto headerEnd = fileBegin + thisReadLineEnds[0];
-        SHASTA_ASSERT(headerEnd > headerBegin);
+        SHASTA2_ASSERT(headerEnd > headerBegin);
 
         // Locate the sequence line for this read.
         const auto sequenceBegin = headerEnd + 1;
         const auto sequenceEnd = fileBegin + thisReadLineEnds[1];
-        SHASTA_ASSERT(sequenceEnd > sequenceBegin);
+        SHASTA2_ASSERT(sequenceEnd > sequenceBegin);
 
         // Locate the line containing the '+' for this read.
         const auto plusBegin = sequenceEnd + 1;
         const auto plusEnd = fileBegin + thisReadLineEnds[2];
-        SHASTA_ASSERT(plusEnd > plusBegin);
+        SHASTA2_ASSERT(plusEnd > plusBegin);
 
         // Locate the header line for this read.
         const auto scoresBegin = plusEnd + 1;
         const auto scoresEnd = fileBegin + thisReadLineEnds[3];
-        SHASTA_ASSERT(scoresEnd > scoresBegin);
+        SHASTA2_ASSERT(scoresEnd > scoresBegin);
 
         // Check the header line.
         if (headerEnd == headerBegin) {
@@ -618,7 +618,7 @@ void ReadLoader::storeReads()
         // Access the reads.
         LongBaseSequences& thisThreadReads = *(threadReads[threadId]);
         const size_t n = thisThreadReadNames.size();
-        SHASTA_ASSERT(thisThreadReads.size() == n);
+        SHASTA2_ASSERT(thisThreadReads.size() == n);
 
         // Store the reads.
         for(size_t i=0; i<n; i++) {

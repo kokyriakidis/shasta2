@@ -69,7 +69,7 @@ AnchorPair::AnchorPair(
         }
 
         const OrientedReadId orientedReadId = itA->orientedReadId;
-        SHASTA_ASSERT(orientedReadId == itB->orientedReadId);
+        SHASTA2_ASSERT(orientedReadId == itB->orientedReadId);
 
         if(adjacentInJourney) {
             if(itB->positionInJourney == itA->positionInJourney + 1) {
@@ -140,7 +140,7 @@ void AnchorPair::get(
 
         // We found a common OrientedReadId.
         const OrientedReadId orientedReadId = itA->orientedReadId;
-        SHASTA_ASSERT(orientedReadId == itB->orientedReadId);
+        SHASTA2_ASSERT(orientedReadId == itB->orientedReadId);
 
         // Only process is this is one of our OrientedReadIds;
         if(orientedReadId == *it) {
@@ -150,7 +150,7 @@ void AnchorPair::get(
 
             const uint32_t positionInJourneyA = itA->positionInJourney;
             const uint32_t positionInJourneyB = itB->positionInJourney;
-            SHASTA_ASSERT(positionInJourneyB >= positionInJourneyA);    // Allow degenerate AnchorPair witn anchorIdA==anchorIdB
+            SHASTA2_ASSERT(positionInJourneyB >= positionInJourneyA);    // Allow degenerate AnchorPair witn anchorIdA==anchorIdB
             const uint32_t ordinalA = itA->ordinal;
             const uint32_t ordinalB = itB->ordinal;
             const uint32_t positionA = orientedReadMarkers[ordinalA].position + kHalf;
@@ -174,7 +174,7 @@ void AnchorPair::removeNegativeOffsets(const Anchors& anchors)
 {
     vector< pair<uint32_t, uint32_t> > ordinals;
     getOrdinals(anchors, ordinals);
-    SHASTA_ASSERT(ordinals.size() == orientedReadIds.size());
+    SHASTA2_ASSERT(ordinals.size() == orientedReadIds.size());
 
     vector<OrientedReadId> newOrientedReadIds;
     for(uint64_t i=0; i<orientedReadIds.size(); i++) {
@@ -253,7 +253,7 @@ void AnchorPair::getOrdinals(
 
         // We found a common OrientedReadId.
         const OrientedReadId orientedReadId = itA->orientedReadId;
-        SHASTA_ASSERT(orientedReadId == itB->orientedReadId);
+        SHASTA2_ASSERT(orientedReadId == itB->orientedReadId);
 
         // Only process is this is one of our OrientedReadIds;
         if(orientedReadId == *it) {
@@ -269,7 +269,7 @@ void AnchorPair::getOrdinals(
         ++itB;
     }
 
-    SHASTA_ASSERT(it == orientedReadIds.end());
+    SHASTA2_ASSERT(it == orientedReadIds.end());
 }
 
 
@@ -307,7 +307,7 @@ void AnchorPair::getPositionsInJourneys(
 
         // We found a common OrientedReadId.
         const OrientedReadId orientedReadId = itA->orientedReadId;
-        SHASTA_ASSERT(orientedReadId == itB->orientedReadId);
+        SHASTA2_ASSERT(orientedReadId == itB->orientedReadId);
 
         // Only process is this is one of our OrientedReadIds;
         if(orientedReadId == *it) {
@@ -323,7 +323,7 @@ void AnchorPair::getPositionsInJourneys(
         ++itB;
     }
 
-    SHASTA_ASSERT(it == orientedReadIds.end());
+    SHASTA2_ASSERT(it == orientedReadIds.end());
 
 }
 
@@ -377,8 +377,8 @@ AnchorPair::AnchorPair(
 
     const uint64_t n0 = anchorPair0.size();
     const uint64_t n1 = anchorPair1.size();
-    SHASTA_ASSERT(positions0.size() == n0);
-    SHASTA_ASSERT(positions1.size() == n1);
+    SHASTA2_ASSERT(positions0.size() == n0);
+    SHASTA2_ASSERT(positions1.size() == n1);
 
     // Joint loop over OrientedReadIds of the two AnchorPairs.
     uint64_t i0 = 0;
@@ -397,7 +397,7 @@ AnchorPair::AnchorPair(
             continue;
         }
 
-        SHASTA_ASSERT(orientedReadId0 == orientedReadId1);
+        SHASTA2_ASSERT(orientedReadId0 == orientedReadId1);
         const OrientedReadId orientedReadId = orientedReadId0;
 
         // We found an OrientedReadId common between anchorPair0 and anchorPair1.
@@ -445,7 +445,7 @@ uint32_t AnchorPair::getAverageOffset(const Anchors& anchors) const
 
         // We found a common OrientedReadId.
         const OrientedReadId orientedReadId = itA->orientedReadId;
-        SHASTA_ASSERT(orientedReadId == itB->orientedReadId);
+        SHASTA2_ASSERT(orientedReadId == itB->orientedReadId);
 
         // Only process is this is one of our OrientedReadIds;
         if(orientedReadId == *it) {
@@ -466,7 +466,7 @@ uint32_t AnchorPair::getAverageOffset(const Anchors& anchors) const
             }
             const uint32_t positionA = orientedReadMarkers[ordinalA].position + kHalf;
             const uint32_t positionB = orientedReadMarkers[ordinalB].position + kHalf;
-            SHASTA_ASSERT(positionB >= positionA);      // Degenerate AnchorPair with AnchorIdA==AnchorIdB is ok.
+            SHASTA2_ASSERT(positionB >= positionA);      // Degenerate AnchorPair with AnchorIdA==AnchorIdB is ok.
 
             const uint32_t offset = positionB - positionA;
             sumBaseOffset += offset;
@@ -476,7 +476,7 @@ uint32_t AnchorPair::getAverageOffset(const Anchors& anchors) const
         ++itB;
     }
 
-    SHASTA_ASSERT(it == orientedReadIds.end());
+    SHASTA2_ASSERT(it == orientedReadIds.end());
 
     return uint32_t(std::round(double(sumBaseOffset) / double(size())));
 }
@@ -521,7 +521,7 @@ void AnchorPair::getOffsets(
 
         // We found a common OrientedReadId.
         const OrientedReadId orientedReadId = itA->orientedReadId;
-        SHASTA_ASSERT(orientedReadId == itB->orientedReadId);
+        SHASTA2_ASSERT(orientedReadId == itB->orientedReadId);
 
         // Only process is this is one of our OrientedReadIds;
         if(orientedReadId == *it) {
@@ -542,7 +542,7 @@ void AnchorPair::getOffsets(
             }
             const uint32_t positionA = orientedReadMarkers[ordinalA].position + kHalf;
             const uint32_t positionB = orientedReadMarkers[ordinalB].position + kHalf;
-            SHASTA_ASSERT(positionB > positionA);
+            SHASTA2_ASSERT(positionB > positionA);
 
             const uint32_t offset = positionB - positionA;
             sumBaseOffset += offset;
@@ -554,7 +554,7 @@ void AnchorPair::getOffsets(
         ++itB;
     }
 
-    SHASTA_ASSERT(it == orientedReadIds.end());
+    SHASTA2_ASSERT(it == orientedReadIds.end());
 
     averageBaseOffset = uint32_t(std::round(double(sumBaseOffset) / double(size())));
 }
@@ -574,7 +574,7 @@ void AnchorPair::splitByOffsets(
     vector< pair<Positions, Positions> > positions;
     get(anchors, positions);
     const uint64_t n = orientedReadIds.size();
-    SHASTA_ASSERT(positions.size() == n);
+    SHASTA2_ASSERT(positions.size() == n);
 
     // Gather pairs(index, offset) where index is the index
     // in the OrientedReadIds, vector.
@@ -582,7 +582,7 @@ void AnchorPair::splitByOffsets(
     for(uint64_t i=0; i<n; i++) {
         const uint32_t positionA = positions[i].first.basePosition;
         const uint32_t positionB = positions[i].second.basePosition;
-        SHASTA_ASSERT(positionB >= positionA);  // Allow degenerate AnchorPair with anchorIdA = anchorIdB.
+        SHASTA2_ASSERT(positionB >= positionA);  // Allow degenerate AnchorPair with anchorIdA = anchorIdB.
         const uint64_t offset = positionB - positionA;
         offsets.push_back(make_pair(i, offset));
     }
@@ -643,7 +643,7 @@ bool AnchorPair::isConsistent(
 
     get(anchors, positions);
     const uint64_t n = orientedReadIds.size();
-    SHASTA_ASSERT(positions.size() == n);
+    SHASTA2_ASSERT(positions.size() == n);
 
     // Gather offsets.
     offsets.clear();
@@ -651,7 +651,7 @@ bool AnchorPair::isConsistent(
     for(uint64_t i=0; i<n; i++) {
         const uint32_t positionA = positions[i].first.basePosition;
         const uint32_t positionB = positions[i].second.basePosition;
-        SHASTA_ASSERT(positionB > positionA);
+        SHASTA2_ASSERT(positionB > positionA);
         const uint64_t offset = positionB - positionA;
         offsets[i] = offset;
     }
@@ -764,8 +764,8 @@ void AnchorPair::computeClusteringMatrix(
 
             // Find the index of this AnchorId in internalAnchorIds.
             const auto it = std::ranges::lower_bound(internalAnchorIds, anchorId);
-            SHASTA_ASSERT(it != internalAnchorIds.end());
-            SHASTA_ASSERT(*it == anchorId);
+            SHASTA2_ASSERT(it != internalAnchorIds.end());
+            SHASTA2_ASSERT(*it == anchorId);
             const uint64_t j = it - internalAnchorIds.begin();
 
             // Set this element of the ClusteringMatrix.
@@ -859,7 +859,7 @@ AnchorPair::OrientedReadIdSimilarityGraph::OrientedReadIdSimilarityGraph(
     Graph& graph = *this;
 
     const uint64_t n = distanceMatrix.size1();
-    SHASTA_ASSERT(distanceMatrix.size2() == n);
+    SHASTA2_ASSERT(distanceMatrix.size2() == n);
 
     for(uint64_t i=0; i<n; i++) {
         add_vertex(graph);
@@ -1161,8 +1161,8 @@ void AnchorPair::writeClusteringMatrix(
             // This is also the column index of the corresponding column
             // in the clustering matrix.
             auto it = std::ranges::lower_bound(internalAnchorIds, anchorId);
-            SHASTA_ASSERT(it != internalAnchorIds.end());
-            SHASTA_ASSERT(*it == anchorId);
+            SHASTA2_ASSERT(it != internalAnchorIds.end());
+            SHASTA2_ASSERT(*it == anchorId);
             const int64_t j = it - internalAnchorIds.begin();
 
             html << "<td class=centered";
@@ -1256,8 +1256,8 @@ void AnchorPair::writeClusteringMatrixSvd(
         // Find the index of this AnchorId in internalAnchorIds.
         // This is also the index of the corresponding column in rightSingularValues.
         const auto it = std::ranges::lower_bound(internalAnchorIds, anchorId);
-        SHASTA_ASSERT(it != internalAnchorIds.end());
-        SHASTA_ASSERT(*it == anchorId);
+        SHASTA2_ASSERT(it != internalAnchorIds.end());
+        SHASTA2_ASSERT(*it == anchorId);
         const uint64_t j = it - internalAnchorIds.begin();
 
         html << "<tr><th>" << anchorIdToString(anchorId);
@@ -1357,7 +1357,7 @@ AnchorPair::SimpleLocalAnchorGraph::SimpleLocalAnchorGraph(
     vector<AnchorId> anchorIds;
     vector<uint64_t> localCoverage;
     anchorPair.getAllAnchorIdsAndLocalCoverage(journeys, positionsInJourney, anchorIds, localCoverage);
-    SHASTA_ASSERT(anchorIds.size() == localCoverage.size());
+    SHASTA2_ASSERT(anchorIds.size() == localCoverage.size());
     for(uint64_t i=0; i<anchorIds.size(); i++) {
         add_vertex(SimpleLocalAnchorGraphVertex(anchorIds[i], localCoverage[i]), graph);
     }
@@ -1381,15 +1381,15 @@ AnchorPair::SimpleLocalAnchorGraph::SimpleLocalAnchorGraph(
             tie(e, edgeExists) = edge(i0, i1, graph);
             if(not edgeExists) {
                 tie(e, edgeExists) = boost::add_edge(i0, i1, graph);
-                SHASTA_ASSERT(edgeExists);
+                SHASTA2_ASSERT(edgeExists);
             }
             ++graph[e].localCoverage;
         }
     }
 
     approximateTopologicalSort();
-    SHASTA_ASSERT(graph[approximateTopologicalOrder.front()].anchorId == anchorPair.anchorIdA);
-    SHASTA_ASSERT(graph[approximateTopologicalOrder.back()].anchorId == anchorPair.anchorIdB);
+    SHASTA2_ASSERT(graph[approximateTopologicalOrder.front()].anchorId == anchorPair.anchorIdA);
+    SHASTA2_ASSERT(graph[approximateTopologicalOrder.back()].anchorId == anchorPair.anchorIdB);
 }
 
 

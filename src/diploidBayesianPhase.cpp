@@ -1,5 +1,5 @@
 #include "diploidBayesianPhase.hpp"
-#include "SHASTA_ASSERT.hpp"
+#include "SHASTA2_ASSERT.hpp"
 using namespace shasta;
 
 #include "iostream.hpp"
@@ -61,7 +61,7 @@ pair<double, double> shasta::diploidBayesianPhase(
 
     // Compute the total number of common reads, n.
     const double n = n0[0] + n0[1];
-    SHASTA_ASSERT(n == n1[0] + n1[1]);
+    SHASTA2_ASSERT(n == n1[0] + n1[1]);
     const double nm2 = 1. / (n * n);
 
     // Compute Prandom[side0][side1], the probability that a

@@ -49,7 +49,7 @@ public:
             for(uint64_t j=0; j<n; j++) {
                 s += x[i] * y[j];
             }
-            SHASTA_ASSERT(z[i] == s);
+            SHASTA2_ASSERT(z[i] == s);
         }
     }
     void run(

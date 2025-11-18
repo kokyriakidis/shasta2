@@ -1,4 +1,4 @@
-// Definition of macro SHASTA_ASSERT.
+// Definition of macro SHASTA2_ASSERT.
 // It is always compiled in, regardless of compilation settings.
 // It throws a standard exception if the assertion fails.
 
@@ -15,7 +15,7 @@ namespace shasta {
 }
 
 
-#define SHASTA_ASSERT(expression) ((expression) ? (static_cast<void>(0)) : \
+#define SHASTA2_ASSERT(expression) ((expression) ? (static_cast<void>(0)) : \
     (shasta::handleFailedAssertion(#expression, __PRETTY_FUNCTION__,  __FILE__ , __LINE__)))
 
 

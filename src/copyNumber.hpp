@@ -2,7 +2,7 @@
 #define SHASTA_COPY_NUMBER_HPP
 
 #include "prefixLength.hpp"
-#include "SHASTA_ASSERT.hpp"
+#include "SHASTA2_ASSERT.hpp"
 #include "cstdint.hpp"
 
 namespace shasta {
@@ -40,7 +40,7 @@ template<class Container> uint64_t shasta::isCopyNumberDifference(
     if(ny < nx) {
         return isCopyNumberDifference(y, x, maxPeriod);
     }
-    SHASTA_ASSERT(nx < ny);
+    SHASTA2_ASSERT(nx < ny);
 
     const uint64_t prefixLength = commonPrefixLength(x, y);
     const uint64_t suffixLength = commonSuffixLength(x, y);
@@ -65,8 +65,8 @@ template<class Container> uint64_t shasta::isCopyNumberDifference(
 
     // If getting here, x and y differ by an insertion in iy of range [iy, jy).
     const uint64_t dn = ny - nx;
-    SHASTA_ASSERT(ix == jx);
-    SHASTA_ASSERT(jy - iy == dn);
+    SHASTA2_ASSERT(ix == jx);
+    SHASTA2_ASSERT(jy - iy == dn);
 
 
 

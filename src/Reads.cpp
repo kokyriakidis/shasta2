@@ -149,8 +149,8 @@ void Reads::writeReadLengthHistogram(const string& fileName) {
             }
         }
         
-        SHASTA_ASSERT(cumulativeReadCount == 0);
-        SHASTA_ASSERT(cumulativeBaseCount == 0);
+        SHASTA2_ASSERT(cumulativeReadCount == 0);
+        SHASTA2_ASSERT(cumulativeBaseCount == 0);
     }
 
     // Binned Histogram.
@@ -178,8 +178,8 @@ void Reads::writeReadLengthHistogram(const string& fileName) {
             cumulativeReadCount -= readCount;
             cumulativeBaseCount -= baseCount;
         }
-        SHASTA_ASSERT(cumulativeReadCount == 0);
-        SHASTA_ASSERT(cumulativeBaseCount == 0);
+        SHASTA2_ASSERT(cumulativeReadCount == 0);
+        SHASTA2_ASSERT(cumulativeBaseCount == 0);
     }
 
 }

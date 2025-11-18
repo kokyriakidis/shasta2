@@ -66,10 +66,10 @@ public:
     }
 
     const uint64_t ploidy() const {
-        SHASTA_ASSERT(isBubble());
+        SHASTA2_ASSERT(isBubble());
         const uint64_t ploidyAtSource = sourcePloidy();
         const uint64_t ploidyAtTarget = targetPloidy();
-        SHASTA_ASSERT(ploidyAtSource == ploidyAtTarget);
+        SHASTA2_ASSERT(ploidyAtSource == ploidyAtTarget);
         return ploidyAtSource;
     }
 

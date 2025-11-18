@@ -4,7 +4,7 @@
 // Uses bit operations for speed, so it can be used in
 // performance critical code.
 
-#include "SHASTA_ASSERT.hpp"
+#include "SHASTA2_ASSERT.hpp"
 
 #include <concepts>
 #include "cstdint.hpp"

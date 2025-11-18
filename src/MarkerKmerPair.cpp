@@ -62,7 +62,7 @@ void MarkerKmerPair::gatherCommonOrientedReads(
 
         // We found a common OrientedReadId.
         const OrientedReadId orientedReadId = it0->orientedReadId;
-        SHASTA_ASSERT(orientedReadId == it1->orientedReadId);
+        SHASTA2_ASSERT(orientedReadId == it1->orientedReadId);
 
         // Find the streaks containing this OrientedReadId in markerInfos0 and markerInfos1.
         const auto streakBegin0 = it0;
@@ -169,7 +169,7 @@ void MarkerKmerPair::gatherCommonOrientedReads(
         // If both streaks have length greater than 1, to avoid the ambiguity
         // we don't add this OrientedReadId to the MarkerPair.
         else {
-            SHASTA_ASSERT(streakLength0>1 and streakLength1>1);
+            SHASTA2_ASSERT(streakLength0>1 and streakLength1>1);
         }
 
 
@@ -586,11 +586,11 @@ uint64_t MarkerKmerPair::editDistance(uint64_t rank0, uint64_t rank1) const
     abpoa(sequences, consensus, alignment, alignedConsensus, true);
 
     // Sanity checks.
-    SHASTA_ASSERT(alignment.size() == 2);
+    SHASTA2_ASSERT(alignment.size() == 2);
     const vector<AlignedBase>& alignment0 = alignment.front();
     const vector<AlignedBase>& alignment1 = alignment.back();
     const uint64_t alignmentLength = alignment0.size();
-    SHASTA_ASSERT(alignment1.size() == alignmentLength);
+    SHASTA2_ASSERT(alignment1.size() == alignmentLength);
 
     // Compute edit distance.
     uint64_t editDistance = 0;

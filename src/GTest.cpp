@@ -1,6 +1,6 @@
 // Shasta.
 #include "GTest.hpp"
-#include "SHASTA_ASSERT.hpp"
+#include "SHASTA2_ASSERT.hpp"
 using namespace shasta;
 
 // Standard library.
@@ -56,14 +56,14 @@ void GTest::run(
     // Get the number of entrances.
     // This is the number of rows in the tangle matrix.
     const uint64_t entranceCount = tangleMatrix.size();
-    SHASTA_ASSERT(entranceCount > 0);
+    SHASTA2_ASSERT(entranceCount > 0);
 
     // Get the number of exits.
     // This is the number of columns in the tangle matrix.
     const uint64_t exitCount = tangleMatrix.front().size();
-    SHASTA_ASSERT(exitCount > 0);
+    SHASTA2_ASSERT(exitCount > 0);
     for(uint64_t i=0; i<entranceCount;i++) {
-        SHASTA_ASSERT(tangleMatrix[i].size() == exitCount);
+        SHASTA2_ASSERT(tangleMatrix[i].size() == exitCount);
     }
 
     // Limit to a maximum of 16 tangle matrix entries.

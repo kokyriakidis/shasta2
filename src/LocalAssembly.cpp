@@ -32,7 +32,7 @@ LocalAssembly::LocalAssembly(
     debug(debugArgument)
 {
     gatherOrientedReads(anchorIdA, anchorIdB, aDrift, bDrift);
-    SHASTA_ASSERT(not orientedReads.empty());
+    SHASTA2_ASSERT(not orientedReads.empty());
 }
 
 
@@ -115,7 +115,7 @@ void LocalAssembly::run(
 // that can be used to run faster. It returns true if successful.
 bool LocalAssembly::runFast(bool computeAlignment)
 {
-    SHASTA_ASSERT(not orientedReads.empty());
+    SHASTA2_ASSERT(not orientedReads.empty());
     const uint32_t kHalf = uint32_t(anchors.k / 2);
 
     // Check if all the position offsets (sequence lengths) are identical.
@@ -204,7 +204,7 @@ bool LocalAssembly::runFast(bool computeAlignment)
     // If the position offsets are all identical and no greater than k/2, all the sequences
     // must also be identical.
     if(positionOffsetsAreIdentical and positionOffset0 <= kHalf) {
-        SHASTA_ASSERT(sequencesAreIdentical);
+        SHASTA2_ASSERT(sequencesAreIdentical);
     }
 
     // If the sequences are not all identical, we have to do it the hard way.
@@ -303,7 +303,7 @@ void LocalAssembly::gatherOrientedReads(
     // Also get the ordinals of each oriented read in anchorIdA and anchorIdB.
     vector<pair<uint32_t, uint32_t> > ordinals;
     anchorPair.getOrdinals(anchors, ordinals);
-    SHASTA_ASSERT(ordinals.size() == n);
+    SHASTA2_ASSERT(ordinals.size() == n);
 
     // Store the OrientedReads. This does not fill in the markerInfos.
     orientedReads.clear();
@@ -360,8 +360,8 @@ void LocalAssembly::gatherKmers()
     for(OrientedRead& orientedRead: orientedReads) {
         for(MarkerInfo& markerInfo: orientedRead.markerInfos) {
             auto it = std::lower_bound(kmers.begin(), kmers.end(), markerInfo.kmer);
-            SHASTA_ASSERT(it != kmers.end());
-            SHASTA_ASSERT(*it == markerInfo.kmer);
+            SHASTA2_ASSERT(it != kmers.end());
+            SHASTA2_ASSERT(*it == markerInfo.kmer);
             markerInfo.kmerId = it - kmers.begin();
         }
     }
@@ -456,7 +456,7 @@ void LocalAssembly::gatherOrientedReadsKmers()
             orientedRead.kmers.push_back(make_pair(kmer, ordinal));
         }
 
-        SHASTA_ASSERT(orientedRead.kmers.size() == orientedRead.ordinalB - orientedRead.ordinalA - 1);
+        SHASTA2_ASSERT(orientedRead.kmers.size() == orientedRead.ordinalB - orientedRead.ordinalA - 1);
         totalKmerCount += orientedRead.kmers.size();
     }
 
@@ -522,8 +522,8 @@ void LocalAssembly::gatherKmers()
         for(auto& p: orientedRead.kmers) {
             const Kmer& kmer = p.first;
             auto it = std::lower_bound(kmers.begin(), kmers.end(), kmer);
-            SHASTA_ASSERT(it != kmers.end());
-            SHASTA_ASSERT(*it == kmer);
+            SHASTA2_ASSERT(it != kmers.end());
+            SHASTA2_ASSERT(*it == kmer);
             p.second = it - kmers.begin();
         }
 
@@ -614,7 +614,7 @@ void LocalAssembly::alignMarkers()
             const OrientedRead& firstOrientedRead = orientedReads.front();
             const uint32_t firstOrientedReadOrdinal = alignedMarkers.ordinals.front();
             const MarkerInfo& firstOrientedReadMarkerInfo = firstOrientedRead.getMarkerInfo(firstOrientedReadOrdinal);
-            SHASTA_ASSERT(markerInfo.kmerId == firstOrientedReadMarkerInfo.kmerId);
+            SHASTA2_ASSERT(markerInfo.kmerId == firstOrientedReadMarkerInfo.kmerId);
         }
     }
 
@@ -754,7 +754,7 @@ void LocalAssembly::split(
     // All OrientedReads must have exactly the same number of commonUniqueInternalMarkers.
     const uint64_t commonUniqueInternalMarkersCount = orientedReads.front().commonUniqueInternalMarkers.size();
     for(const OrientedRead& orientedRead: orientedReads) {
-        SHASTA_ASSERT(orientedRead.commonUniqueInternalMarkers.size() == commonUniqueInternalMarkersCount);
+        SHASTA2_ASSERT(orientedRead.commonUniqueInternalMarkers.size() == commonUniqueInternalMarkersCount);
     }
     if(debug and html) {
         html << "<br>Found " << commonUniqueInternalMarkersCount << " common internal unique marker k-mers.";

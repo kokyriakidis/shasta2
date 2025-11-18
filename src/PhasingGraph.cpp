@@ -2,7 +2,7 @@
 #include "PhasingGraph.hpp"
 #include "color.hpp"
 #include "orderVectors.hpp"
-#include "SHASTA_ASSERT.hpp"
+#include "SHASTA2_ASSERT.hpp"
 using namespace shasta;
 
 // Boost libraries.
@@ -23,7 +23,7 @@ void PhasingGraph::addVertex(uint64_t position)
     }
 
     // Check that we don't already have a vertex at this position.
-    SHASTA_ASSERT(vertexTable[position] == null_vertex());
+    SHASTA2_ASSERT(vertexTable[position] == null_vertex());
 
     // Add the vertex.
     const vertex_descriptor v = boost::add_vertex(PhasingGraphVertex(position), *this);
@@ -37,13 +37,13 @@ void PhasingGraph::addEdge(
     uint64_t position1,
     const GTest::Hypothesis& bestHypothesis)
 {
-    SHASTA_ASSERT(position0 < vertexTable.size());
+    SHASTA2_ASSERT(position0 < vertexTable.size());
     const vertex_descriptor v0 = vertexTable[position0];
-    SHASTA_ASSERT(v0 != null_vertex());
+    SHASTA2_ASSERT(v0 != null_vertex());
 
-    SHASTA_ASSERT(position1 < vertexTable.size());
+    SHASTA2_ASSERT(position1 < vertexTable.size());
     const vertex_descriptor v1 = vertexTable[position1];
-    SHASTA_ASSERT(v1 != null_vertex());
+    SHASTA2_ASSERT(v1 != null_vertex());
 
     boost::add_edge(v0, v1, PhasingGraphEdge(bestHypothesis), *this);
 }
@@ -131,8 +131,8 @@ void PhasingGraph::computeConnectedComponents()
         const uint64_t position0 = phasingGraph[v0].position;
         const uint64_t position1 = phasingGraph[v1].position;
 
-        SHASTA_ASSERT(position0 < n);
-        SHASTA_ASSERT(position1 < n);
+        SHASTA2_ASSERT(position0 < n);
+        SHASTA2_ASSERT(position1 < n);
 
         disjointSets.union_set(position0, position1);
     }
@@ -159,7 +159,7 @@ void PhasingGraph::computeConnectedComponents()
         const vector<uint64_t> component = components[componentId];
         for(const uint64_t position: component) {
             const vertex_descriptor v = vertexTable[position];
-            SHASTA_ASSERT(v != null_vertex());
+            SHASTA2_ASSERT(v != null_vertex());
             phasingGraph[v].componentId = componentId;
         }
     }
@@ -219,7 +219,7 @@ void PhasingGraph::findLongestPaths()
         for(const uint64_t position: component) {
             const vertex_descriptor v = vertexTable[position];
             const PhasingGraphVertex& vertex = phasingGraph[v];
-            SHASTA_ASSERT(v != null_vertex());
+            SHASTA2_ASSERT(v != null_vertex());
 
             if(vLast == null_vertex()) {
                 vLast = v;
@@ -249,7 +249,7 @@ void PhasingGraph::findLongestPaths()
                     break;
                 }
             }
-            SHASTA_ASSERT(found);
+            SHASTA2_ASSERT(found);
         }
         std::reverse(path.begin(), path.end());
 

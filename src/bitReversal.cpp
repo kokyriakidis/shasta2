@@ -1,5 +1,5 @@
 #include "bitReversal.hpp"
-#include "SHASTA_ASSERT.hpp"
+#include "SHASTA2_ASSERT.hpp"
 using namespace shasta;
 
 #include <algorithm.hpp>
@@ -52,7 +52,7 @@ void shasta::testBitReversal()
         cout << endl;
 
         // They should be the same as what we started with.
-        SHASTA_ASSERT(reversedBits == bits);
+        SHASTA2_ASSERT(reversedBits == bits);
 
     }
 }

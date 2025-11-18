@@ -106,7 +106,7 @@ void SegmentStepSupport::append(
     const uint32_t kHalf = uint32_t(assemblyGraph.anchors.k / 2);
 
     const AssemblyGraphEdge& edge = assemblyGraph[e];
-    SHASTA_ASSERT(stepId < uint32_t(edge.size()));
+    SHASTA2_ASSERT(stepId < uint32_t(edge.size()));
     const AssemblyGraphEdgeStep& step = edge[stepId];
     const AnchorPair& anchorPair = step.anchorPair;
 
@@ -490,7 +490,7 @@ int32_t SegmentStepSupport::estimateOffset(
     SegmentStepSupport& s0,
     SegmentStepSupport& s1)
 {
-    SHASTA_ASSERT(s0.orientedReadId == s1.orientedReadId);
+    SHASTA2_ASSERT(s0.orientedReadId == s1.orientedReadId);
 
     const edge_descriptor e0 = s0.e;
     const edge_descriptor e1 = s1.e;

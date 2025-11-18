@@ -109,8 +109,8 @@ bool Tangle1::isTangleVertex(vertex_descriptor v) const
 
 
 bool Tangle1::addConnectPair(uint64_t entranceIndex, uint64_t exitIndex, uint64_t detangleMinCoverage) {
-    SHASTA_ASSERT(entranceIndex < entrances.size());
-    SHASTA_ASSERT(exitIndex < exits.size());
+    SHASTA2_ASSERT(entranceIndex < entrances.size());
+    SHASTA2_ASSERT(exitIndex < exits.size());
     connectPairs.emplace_back(entranceIndex, exitIndex);
     AssemblyGraphEdge& newEdge = connectPairs.back().newEdge;
 

@@ -168,7 +168,7 @@ void shasta::main::main(int argumentCount, char** arguments)
 
     // We already checked for a valid command above, so if we get here
     // the above logic is missing code for one of the valid commands.
-    SHASTA_ASSERT(0);
+    SHASTA2_ASSERT(0);
 
 }
 
@@ -179,7 +179,7 @@ void shasta::main::assemble(
     const Options& options,
     int argumentCount, char** arguments)
 {
-    SHASTA_ASSERT(options.command == "assemble");
+    SHASTA2_ASSERT(options.command == "assemble");
 
 
     // Various checks for option validity.
@@ -225,7 +225,7 @@ void shasta::main::assemble(
             "or use --assemblyDirectory to specify a different assembly directory."
         );
     } else {
-        SHASTA_ASSERT(std::filesystem::create_directory(options.assemblyDirectory));
+        SHASTA2_ASSERT(std::filesystem::create_directory(options.assemblyDirectory));
     }
 
     // Make the assembly directory current.
@@ -319,7 +319,7 @@ void shasta::main::setupRunDirectory(
 
             // Binary files on disk.
             // This does not require root privilege.
-            SHASTA_ASSERT(std::filesystem::create_directory("Data"));
+            SHASTA2_ASSERT(std::filesystem::create_directory("Data"));
             dataDirectory = "Data/";
             pageSize = 4096;
 
@@ -329,7 +329,7 @@ void shasta::main::setupRunDirectory(
             // (filesystem in memory backed by 4K pages).
             // This requires root privilege, which is obtained using sudo
             // and may result in a password prompting depending on sudo set up.
-            SHASTA_ASSERT(std::filesystem::create_directory("Data"));
+            SHASTA2_ASSERT(std::filesystem::create_directory("Data"));
             dataDirectory = "Data/";
             pageSize = 4096;
             const string command = "sudo mount -t tmpfs -o size=0 tmpfs Data";
@@ -346,7 +346,7 @@ void shasta::main::setupRunDirectory(
             // This requires root privilege, which is obtained using sudo
             // and may result in a password prompting depending on sudo set up.
             setupHugePages();
-            SHASTA_ASSERT(std::filesystem::create_directory("Data"));
+            SHASTA2_ASSERT(std::filesystem::create_directory("Data"));
             dataDirectory = "Data/";
             pageSize = 2 * 1024 * 1024;
             const uid_t userId = ::getuid();
@@ -427,7 +427,7 @@ void shasta::main::setupHugePages()
 void shasta::main::saveBinaryData(
     const Options& options)
 {
-    SHASTA_ASSERT(options.command == "saveBinaryData");
+    SHASTA2_ASSERT(options.command == "saveBinaryData");
 
     // Locate the Data directory.
     const string dataDirectory =
@@ -459,7 +459,7 @@ void shasta::main::saveBinaryData(
 void shasta::main::cleanupBinaryData(
     const Options& options)
 {
-    SHASTA_ASSERT(options.command == "cleanupBinaryData");
+    SHASTA2_ASSERT(options.command == "cleanupBinaryData");
 
     // Locate the Data directory.
     const string dataDirectory =

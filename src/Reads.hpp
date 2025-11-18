@@ -6,7 +6,7 @@
 #include "LongBaseSequence.hpp"
 #include "MemoryMappedObject.hpp"
 #include "shastaTypes.hpp"
-#include "SHASTA_ASSERT.hpp"
+#include "SHASTA2_ASSERT.hpp"
 #include "span.hpp"
 
 namespace shasta {
@@ -73,13 +73,13 @@ public:
 
     // Assertions for data integrity.
     inline void checkSanity() const {
-        SHASTA_ASSERT(readNames.size() == reads.size());
+        SHASTA2_ASSERT(readNames.size() == reads.size());
     }
     inline void checkReadsAreOpen() const {
-        SHASTA_ASSERT(reads.isOpen());
+        SHASTA2_ASSERT(reads.isOpen());
     }
     inline void checkReadNamesAreOpen() const {
-        SHASTA_ASSERT(readNames.isOpen());
+        SHASTA2_ASSERT(readNames.isOpen());
     }
 
     inline void checkReadId(ReadId readId) const {

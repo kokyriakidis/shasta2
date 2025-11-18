@@ -29,11 +29,11 @@ bool shasta::areSimilarSequences(
     abpoa(sequences, consensus, alignment, alignedConsensus, true);
 
     // Sanity checks.
-    SHASTA_ASSERT(alignment.size() == 2);
+    SHASTA2_ASSERT(alignment.size() == 2);
     const vector<AlignedBase>& X = alignment[0];
     const vector<AlignedBase>& Y = alignment[1];
     const uint64_t alignmentLength = X.size();
-    SHASTA_ASSERT(Y.size() == alignmentLength);
+    SHASTA2_ASSERT(Y.size() == alignmentLength);
 
 
 

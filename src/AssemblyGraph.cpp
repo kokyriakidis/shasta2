@@ -106,7 +106,7 @@ AssemblyGraph::AssemblyGraph(
             vertexMap.insert(make_pair(anchorId1, v1));
         }
     }
-    SHASTA_ASSERT(vertexMap.size() == num_vertices(assemblyGraph));
+    SHASTA2_ASSERT(vertexMap.size() == num_vertices(assemblyGraph));
 
 
 
@@ -220,7 +220,7 @@ void AssemblyGraph::check() const
 
     BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
         const AssemblyGraphEdge& edge = assemblyGraph[e];
-        SHASTA_ASSERT(not edge.empty());
+        SHASTA2_ASSERT(not edge.empty());
 
 
 
@@ -232,15 +232,15 @@ void AssemblyGraph::check() const
         const AnchorId anchorId0 = assemblyGraph[v0].anchorId;
         const AnchorId anchorId1 = assemblyGraph[v1].anchorId;
 
-        SHASTA_ASSERT(edge.front().anchorPair.anchorIdA == anchorId0);
-        SHASTA_ASSERT(edge.back().anchorPair.anchorIdB == anchorId1);
+        SHASTA2_ASSERT(edge.front().anchorPair.anchorIdA == anchorId0);
+        SHASTA2_ASSERT(edge.back().anchorPair.anchorIdB == anchorId1);
 
 
 
         // Check that AnchorPairs in this edge are adjacent to each other.
         for(uint64_t i1=1; i1<edge.size(); i1++) {
             const uint64_t i0 = i1 - 1;
-            SHASTA_ASSERT(edge[i0].anchorPair.anchorIdB == edge[i1].anchorPair.anchorIdA);
+            SHASTA2_ASSERT(edge[i0].anchorPair.anchorIdB == edge[i1].anchorPair.anchorIdA);
         }    }
 
 }
@@ -547,7 +547,7 @@ void AssemblyGraph::assembleThreadFunction(uint64_t /* threadId */)
             const edge_descriptor e = p.first;
             const uint64_t i = p.second;
             AssemblyGraphEdge& edge = assemblyGraph[e];
-            SHASTA_ASSERT(i < edge.size());
+            SHASTA2_ASSERT(i < edge.size());
             assembleStep(e, i);
         }
     }
@@ -584,7 +584,7 @@ void AssemblyGraphEdge::getSequence(vector<Base>& sequence) const
 
 uint64_t AssemblyGraphEdge::sequenceLength() const
 {
-    SHASTA_ASSERT(wasAssembled);
+    SHASTA2_ASSERT(wasAssembled);
 
     uint64_t length = 0;
     for(const auto& step: *this) {
@@ -849,7 +849,7 @@ bool AssemblyGraph::bubbleCleanup(const Bubble& bubble)
     vector< vector<uint64_t> > branchGroups;
     if(ploidy == 2) {
 
-        SHASTA_ASSERT(similarPairs.size() == 1);    // We already checked that is is not empty.
+        SHASTA2_ASSERT(similarPairs.size() == 1);    // We already checked that is is not empty.
         // Create a single branch group that includes both branches.
         branchGroups.push_back({0, 1});
 
@@ -955,8 +955,8 @@ bool AssemblyGraph::bubbleCleanup(const Bubble& bubble)
         }
     }
 
-    SHASTA_ASSERT(out_degree(bubble.v0, assemblyGraph) > 0);
-    SHASTA_ASSERT(in_degree(bubble.v1, assemblyGraph) > 0);
+    SHASTA2_ASSERT(out_degree(bubble.v0, assemblyGraph) > 0);
+    SHASTA2_ASSERT(in_degree(bubble.v1, assemblyGraph) > 0);
 
     return true;
 }
@@ -983,13 +983,13 @@ bool AssemblyGraph::analyzeBubble(
         cout << endl;
     }
 
-    SHASTA_ASSERT(bubble.edges.size() > 1);
+    SHASTA2_ASSERT(bubble.edges.size() > 1);
 
     // Gather the sequences of all the sides of this bubble
     vector< vector<Base> > sequences;
     for(const edge_descriptor e: bubble.edges) {
         sequences.emplace_back();
-        SHASTA_ASSERT(assemblyGraph[e].wasAssembled);
+        SHASTA2_ASSERT(assemblyGraph[e].wasAssembled);
         assemblyGraph[e].getSequence(sequences.back());
     }
 
@@ -1039,7 +1039,7 @@ uint64_t AssemblyGraph::compress()
     findLinearChains(assemblyGraph, 2, chains);
 
     for(const auto& chain: chains) {
-        SHASTA_ASSERT(chain.size() > 1);
+        SHASTA2_ASSERT(chain.size() > 1);
 
         // Get the first and last edge of this chain.
         const edge_descriptor e0 = chain.front();
@@ -1603,7 +1603,7 @@ void AssemblyGraph::removeContainedSuperbubbles(vector<Superbubble>& superbubble
             cout << endl;
             cout << "Found " << commonEdges.size() << " common edges." << endl;
             // This should never happen, but just in case we remove both of them.
-            SHASTA_ASSERT(0);
+            SHASTA2_ASSERT(0);
             // superbubblesToBeRemoved.push_back(superbubbleId0);
             // superbubblesToBeRemoved.push_back(superbubbleId1);
         }
@@ -2131,8 +2131,8 @@ bool AssemblyGraph::simplifySuperbubbleByClustering(
 
     // Also remove the internal vertices of the Superbubble.
     for(const vertex_descriptor v: superbubble.internalVertices) {
-        SHASTA_ASSERT(in_degree(v, assemblyGraph) == 0);
-        SHASTA_ASSERT(out_degree(v, assemblyGraph) == 0);
+        SHASTA2_ASSERT(in_degree(v, assemblyGraph) == 0);
+        SHASTA2_ASSERT(out_degree(v, assemblyGraph) == 0);
         boost::remove_vertex(v, assemblyGraph);
     }
 
@@ -2158,10 +2158,10 @@ void AssemblyGraph::findSuperbubbleChains(
 
     // Sanity check: a vertex can only be a source or target of a single Superbubble.
     for(const auto& p: mapBySource) {
-        SHASTA_ASSERT(p.second.size() == 1);
+        SHASTA2_ASSERT(p.second.size() == 1);
     }
     for(const auto& p: mapByTarget) {
-        SHASTA_ASSERT(p.second.size() == 1);
+        SHASTA2_ASSERT(p.second.size() == 1);
     }
 
     // A vector to keep track of the Superbubbles we already added to a chain.
@@ -2191,7 +2191,7 @@ void AssemblyGraph::findSuperbubbleChains(
                 break;
             }
             const vector<uint64_t>& nextVector = it->second;
-            SHASTA_ASSERT(nextVector.size() == 1);
+            SHASTA2_ASSERT(nextVector.size() == 1);
             const uint64_t nextSuperbubbleId = nextVector.front();
             forward.push_back(nextSuperbubbleId);
             // cout << "Forward: " << nextSuperbubbleId << endl;
@@ -2208,7 +2208,7 @@ void AssemblyGraph::findSuperbubbleChains(
                 break;
             }
             const vector<uint64_t>& previousVector = it->second;
-            SHASTA_ASSERT(previousVector.size() == 1);
+            SHASTA2_ASSERT(previousVector.size() == 1);
             const uint64_t previousSuperbubbleId = previousVector.front();
             backward.push_back(previousSuperbubbleId);
             // cout << "Backward: " << previousSuperbubbleId << endl;
@@ -2369,13 +2369,13 @@ void AssemblyGraph::computeJourneys()
 
                 // Locate this OrientedReadId in the two anchors.
                 for(; (itA != anchorA.end()) and (itA->orientedReadId != orientedReadId); ++itA) {}
-                SHASTA_ASSERT(itA != anchorA.end());
-                SHASTA_ASSERT(itA->orientedReadId == orientedReadId);
+                SHASTA2_ASSERT(itA != anchorA.end());
+                SHASTA2_ASSERT(itA->orientedReadId == orientedReadId);
                 const AnchorMarkerInfo& infoA = *itA;
                 for(; (itB != anchorB.end()) and (itB->orientedReadId != orientedReadId); ++itB) {}
-                SHASTA_ASSERT(itB != anchorB.end());
+                SHASTA2_ASSERT(itB != anchorB.end());
                 const AnchorMarkerInfo& infoB = *itB;
-                SHASTA_ASSERT(itB->orientedReadId == orientedReadId);
+                SHASTA2_ASSERT(itB->orientedReadId == orientedReadId);
 
                 const uint32_t positionInJourneyA = infoA.positionInJourney;
                 const uint32_t positionInJourneyB = infoB.positionInJourney;
@@ -2581,11 +2581,11 @@ void AssemblyGraph::computeExtendedTangleMatrix(
     ) const
 {
     const AssemblyGraph& assemblyGraph = *this;
-    SHASTA_ASSERT(not orientedReadEdgeInformation.empty());
+    SHASTA2_ASSERT(not orientedReadEdgeInformation.empty());
     const bool debug = false;
 
-    SHASTA_ASSERT(std::ranges::is_sorted(entrances, orderById));
-    SHASTA_ASSERT(std::ranges::is_sorted(exits, orderById));
+    SHASTA2_ASSERT(std::ranges::is_sorted(entrances, orderById));
+    SHASTA2_ASSERT(std::ranges::is_sorted(exits, orderById));
 
 
 
@@ -2987,10 +2987,10 @@ void AssemblyGraph::testSearch(uint64_t edgeId0, uint64_t direction, uint64_t mi
     std::map<edge_descriptor, vector<edge_descriptor> >::const_iterator it;
     if(direction == 0) {
         it = edgePairsBySource.find(e0);
-        SHASTA_ASSERT(it != edgePairsBySource.end());
+        SHASTA2_ASSERT(it != edgePairsBySource.end());
     } else {
         it = edgePairsByTarget.find(e0);
-        SHASTA_ASSERT(it != edgePairsByTarget.end());
+        SHASTA2_ASSERT(it != edgePairsByTarget.end());
     }
     const vector<edge_descriptor> e1s = it->second;
     cout << "Found " << e1s.size() << " edges." << endl;
@@ -3423,14 +3423,14 @@ void AssemblyGraph::gatherOrientedReadInformationOnEdge(
         for(const OrientedReadId orientedReadId: anchorPair.orientedReadIds) {
             while(itA->orientedReadId < orientedReadId) {
                 ++itA;
-                SHASTA_ASSERT(itA != anchorA.end());
+                SHASTA2_ASSERT(itA != anchorA.end());
             }
-            SHASTA_ASSERT(itA->orientedReadId == orientedReadId);
+            SHASTA2_ASSERT(itA->orientedReadId == orientedReadId);
             while(itB->orientedReadId < orientedReadId) {
                 ++itB;
-                SHASTA_ASSERT(itB != anchorB.end());
+                SHASTA2_ASSERT(itB != anchorB.end());
             }
-            SHASTA_ASSERT(itB->orientedReadId == orientedReadId);
+            SHASTA2_ASSERT(itB->orientedReadId == orientedReadId);
             workInfos.emplace_back(orientedReadId, itA->positionInJourney, itB->positionInJourney);
         }
     }
@@ -3680,13 +3680,13 @@ uint64_t AssemblyGraph::detangleShortTangles(Detangler& detangler)
         // Find the index corresponding to the source vertex.
         const vertex_descriptor v0 = source(e, assemblyGraph);
         const auto it0 = vertexIndexMap.find(v0);
-        SHASTA_ASSERT(it0 != vertexIndexMap.end());
+        SHASTA2_ASSERT(it0 != vertexIndexMap.end());
         const uint64_t i0 = it0->second;
 
         // Find the index corresponding to the target vertex.
         const vertex_descriptor v1 = target(e, assemblyGraph);
         const auto it1 = vertexIndexMap.find(v1);
-        SHASTA_ASSERT(it1 != vertexIndexMap.end());
+        SHASTA2_ASSERT(it1 != vertexIndexMap.end());
         const uint64_t i1 = it1->second;
 
         // Update the disjoint sets for this edge.

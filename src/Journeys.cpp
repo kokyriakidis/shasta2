@@ -144,7 +144,7 @@ void Journeys::threadFunction4(uint64_t /* threadId */)
             // Copy the journeysWithOrdinals to the journeys.
             const auto v = journeysWithOrdinals[orientedReadValue];
             const auto journey = journeys[orientedReadValue];
-            SHASTA_ASSERT(journey.size() == v.size());
+            SHASTA2_ASSERT(journey.size() == v.size());
             for(uint64_t i=0; i<v.size(); i++) {
                 journey[i] = v[i].first;
             }
@@ -161,7 +161,7 @@ void Journeys::threadFunction4(uint64_t /* threadId */)
                         break;
                     }
                 }
-                SHASTA_ASSERT(found);
+                SHASTA2_ASSERT(found);
             }
         }
     }

@@ -130,8 +130,8 @@ public:
         uint32_t rightOrdinal = invalid<uint32_t>;
         uint32_t ordinalOffset() const
         {
-            SHASTA_ASSERT(isOnLeftAnchor);
-            SHASTA_ASSERT(isOnRightAnchor);
+            SHASTA2_ASSERT(isOnLeftAnchor);
+            SHASTA2_ASSERT(isOnRightAnchor);
             return rightOrdinal - leftOrdinal;
         }
 
@@ -143,8 +143,8 @@ public:
         uint32_t rightPosition = invalid<uint32_t>;
         uint32_t positionOffset() const
         {
-            SHASTA_ASSERT(isOnLeftAnchor);
-            SHASTA_ASSERT(isOnRightAnchor);
+            SHASTA2_ASSERT(isOnLeftAnchor);
+            SHASTA2_ASSERT(isOnRightAnchor);
             return rightPosition - leftPosition;
         }
 

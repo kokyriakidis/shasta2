@@ -8,7 +8,7 @@
 // to be '-' represented as 4. This is useful when
 // dealing with multiple sequence alignments.
 
-#include "SHASTA_ASSERT.hpp"
+#include "SHASTA2_ASSERT.hpp"
 
 #include "array.hpp"
 #include "cstdint.hpp"
@@ -281,7 +281,7 @@ public:
     // Convert to a Base. This asserts if the current value is 4 ('-').
     explicit operator Base() const
     {
-        SHASTA_ASSERT(value != 4);
+        SHASTA2_ASSERT(value != 4);
         return Base::fromInteger(value);
     }
 

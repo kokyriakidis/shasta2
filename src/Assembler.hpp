@@ -106,7 +106,7 @@ public:
     // Reads.
     shared_ptr<Reads> readsPointer;
     const Reads& reads() const {
-        SHASTA_ASSERT(readsPointer);
+        SHASTA2_ASSERT(readsPointer);
         return *readsPointer;
     }
     void computeReadIdsSortedByName();
@@ -157,7 +157,7 @@ public:
     shared_ptr<Markers> markersPointer;
     const Markers& markers() const
     {
-        SHASTA_ASSERT(markersPointer);
+        SHASTA2_ASSERT(markersPointer);
         return *markersPointer;
     }
     void checkMarkersAreOpen() const;
@@ -182,7 +182,7 @@ public:
     shared_ptr<Anchors> anchorsPointer;
     const Anchors& anchors() const
     {
-        SHASTA_ASSERT(anchorsPointer);
+        SHASTA2_ASSERT(anchorsPointer);
         return *anchorsPointer;
     }
 
@@ -205,7 +205,7 @@ public:
     shared_ptr<Journeys> journeysPointer;
     const Journeys& journeys() const
     {
-        SHASTA_ASSERT(journeysPointer);
+        SHASTA2_ASSERT(journeysPointer);
         return *journeysPointer;
     }
     void createJourneys(uint64_t threadCount);
