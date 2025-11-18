@@ -189,14 +189,16 @@ void RestrictedAnchorGraph::create(
         const uint32_t end = journeyPortion.end;
         for(uint32_t i=begin; i<end; i++) {
             const AnchorId anchorId = journey[i];
-            vertexTable.push_back(anchorId);
+            vertexTable.push_back(make_pair(anchorId, null_vertex()));
         }
     }
     deduplicate(vertexTable);
 
     // Each distinct AnchorId generates a vertex.
-    for(const AnchorId anchorId: vertexTable) {
-        add_vertex(RestrictedAnchorGraphVertex(anchorId), *this);
+    for(pair<AnchorId, vertex_descriptor>& p: vertexTable) {
+        const AnchorId anchorId = p.first;
+        const vertex_descriptor v = add_vertex(RestrictedAnchorGraphVertex(anchorId), *this);
+        p.second = v;
     }
 
     // Loop over the JourneyPortions to add oriented reads to the vertices.
@@ -255,10 +257,12 @@ void RestrictedAnchorGraph::create(
 // This asserts if there is not such vertex.
 RestrictedAnchorGraph::vertex_descriptor RestrictedAnchorGraph::getExistingVertex(AnchorId anchorId) const
 {
-    const auto it = std::ranges::lower_bound(vertexTable, anchorId);
+    const auto it = std::ranges::lower_bound(
+        vertexTable, make_pair(anchorId, null_vertex()),
+        OrderPairsByFirstOnly<AnchorId, vertex_descriptor>());
     SHASTA_ASSERT(it != vertexTable.end());
-    SHASTA_ASSERT(*it == anchorId);
-    return it - vertexTable.begin();
+    SHASTA_ASSERT(it->first == anchorId);
+    return it->second;
 }
 
 

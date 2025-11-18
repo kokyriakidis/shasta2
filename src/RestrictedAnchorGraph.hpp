@@ -121,10 +121,9 @@ public:
         ostream& html);
 
 
-    // Table that contains the AnchorId of each vertex:
-    // vertexTable[v] == (*this)[v].anchorId
-    // It is sorted, so getVertex and getExistingVertex can use a binary search.
-    vector<AnchorId> vertexTable;
+    // Table that contains pairs (AnchorId, vertex_descriptor) for each vertex.
+    // We keep it sorted by AnchorId, so getExistingVertex can use a binary search.
+    vector< pair<AnchorId, vertex_descriptor> > vertexTable;
 
    // Return the vertex_descriptor corresponding to an AnchorId.
     // This asserts if there is not such vertex.
