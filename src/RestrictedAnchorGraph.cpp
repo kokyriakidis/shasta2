@@ -34,6 +34,20 @@ RestrictedAnchorGraph::RestrictedAnchorGraph(
     filteringPredicate(this),
     filteredGraph(*this, filteringPredicate, filteringPredicate)
 {
+    constructFromTangleMatrix(anchors, journeys, tangleMatrix1, iEntrance, iExit, html);
+}
+
+
+
+// Original version.
+void RestrictedAnchorGraph::constructFromTangleMatrix(
+    const Anchors& anchors,
+    const Journeys& journeys,
+    const TangleMatrix1& tangleMatrix1,
+    uint64_t iEntrance,
+    uint64_t iExit,
+    ostream& html)
+{
     fillJourneyPortions(journeys, tangleMatrix1, iEntrance, iExit);
     create(anchors, journeys, html);
 
@@ -47,6 +61,142 @@ RestrictedAnchorGraph::RestrictedAnchorGraph(
     removeCycles();
     keepBetween(anchorId0, anchorId1);
 }
+
+
+
+// More efficient version
+void RestrictedAnchorGraph::constructFromTangleMatrix1(
+    const Anchors& anchors,
+    const Journeys& journeys,
+    const TangleMatrix1& tangleMatrix1,
+    uint64_t iEntrance,
+    uint64_t iExit,
+    ostream& html)
+{
+    fillJourneyPortions(journeys, tangleMatrix1, iEntrance, iExit);
+    gatherAllAnchorIds(journeys);
+    fillJourneyPortionsAnchorIndexes(journeys);
+    gatherTransitions(html);
+
+    SHASTA_ASSERT(0);
+}
+
+
+
+// Gather all the distinct AnchorIds that appear in the JourneyPortions
+// and store them sorted.
+void RestrictedAnchorGraph::gatherAllAnchorIds(const Journeys& journeys)
+{
+    allAnchorIds.clear();
+    for(const JourneyPortion&  journeyPortion:journeyPortions) {
+        const OrientedReadId orientedReadId = journeyPortion.orientedReadId;
+        const Journey journey = journeys[orientedReadId];
+        const uint32_t begin = journeyPortion.begin;
+        const uint32_t end = journeyPortion.end;
+        for(uint32_t i=begin; i<end; i++) {
+            const AnchorId anchorId = journey[i];
+            allAnchorIds.push_back(anchorId);
+        }
+    }
+    deduplicate(allAnchorIds);
+}
+
+
+
+// The index of an AnchorId in the allAnchorIds vector is called "anchorIndex"
+// in constructFromTangleMatrix1 code,
+// and serves as a perfect hash function for these AnchorIds.
+uint64_t RestrictedAnchorGraph::getAnchorIndex(AnchorId anchorId) const
+{
+    const auto it = find(allAnchorIds.begin(), allAnchorIds.end(), anchorId);
+    SHASTA_ASSERT(it != allAnchorIds.end());
+    SHASTA_ASSERT(*it == anchorId);
+    return it - allAnchorIds.begin();
+}
+
+
+
+void RestrictedAnchorGraph::fillJourneyPortionsAnchorIndexes(const Journeys& journeys)
+{
+    const uint64_t orientedReadCount = journeyPortions.size();
+    journeyPortionsAnchorIndexes.clear();
+    journeyPortionsAnchorIndexes.resize(orientedReadCount);
+
+    // Loop over the oriented reads.
+    for(uint64_t j=0; j<orientedReadCount; j++) {
+        const JourneyPortion& journeyPortion = journeyPortions[j];
+        vector<uint64_t>& journeyPortionAnchorIndexes =journeyPortionsAnchorIndexes[j];
+
+        // Loop over the journey portion of this oriented read.
+        const OrientedReadId orientedReadId = journeyPortion.orientedReadId;
+        const Journey journey = journeys[orientedReadId];
+        const uint32_t begin = journeyPortion.begin;
+        const uint32_t end = journeyPortion.end;
+        journeyPortionAnchorIndexes.reserve(end - begin);
+        for(uint32_t i=begin; i<end; i++) {
+            const AnchorId anchorId = journey[i];
+            journeyPortionAnchorIndexes.push_back(getAnchorIndex(anchorId));
+        }
+    }
+}
+
+
+
+// Gather all transitions(anchorIndex0, anchorIndex1) for consecutive
+// anchors in the journey portions. The number of times each
+// transition appears in the journeys is its coverage.
+// Store the transitions in a vector indexed by coverage.
+void RestrictedAnchorGraph::gatherTransitions(ostream& html)
+{
+    // First, gather all transitions and store the anchorIndexes1
+    // in a vector indexed by anchorIndex0.
+    vector< vector<uint64_t> > anchorIndexes1(allAnchorIds.size());
+    for(const vector<uint64_t>& journeyPortionAnchorIndexes: journeyPortionsAnchorIndexes) {
+        for(uint64_t i1=1; i1<journeyPortionAnchorIndexes.size(); i1++) {
+            const uint64_t i0 = i1 - 1;
+            const uint64_t anchorIndex0 = journeyPortionAnchorIndexes[i0];
+            const uint64_t anchorIndex1 = journeyPortionAnchorIndexes[i1];
+            SHASTA_ASSERT(anchorIndex0 < allAnchorIds.size());
+            SHASTA_ASSERT(anchorIndex1 < allAnchorIds.size());
+            anchorIndexes1[anchorIndex0].push_back(anchorIndex1);
+        }
+    }
+
+
+
+    // Now for each anchorIndex0 deduplicate and count the anchorIndexes1.
+    // Store its transitions according to its coverage.
+    transitions.clear();
+    vector<uint64_t> coverage;
+    for(uint64_t anchorIndex0=0; anchorIndex0<allAnchorIds.size(); anchorIndex0++) {
+        vector<uint64_t>& v = anchorIndexes1[anchorIndex0];
+        deduplicateAndCount(v, coverage);
+
+        for(uint64_t i=0; i<v.size(); i++) {
+            const uint64_t c = coverage[i];
+            if(c >= transitions.size()) {
+                transitions.resize(c + 1);
+            }
+            transitions[c].push_back(Transition({anchorIndex0, v[i]}));
+        }
+    }
+
+    if(html) {
+        html << "<h3>Number of journey transitions by coverage</h3>"
+            "<table><tr><th>Coverage<th>Frequency";
+        for(uint64_t coverage=0; coverage<transitions.size(); coverage++) {
+            const uint64_t frequency = transitions[coverage].size();
+            if(frequency) {
+                html << "<tr><td class=centered>" << coverage <<
+                    "<td class=centered>" << frequency;
+            }
+        }
+        html << "</table>";
+    }
+
+}
+
+
 
 
 

@@ -103,6 +103,22 @@ public:
         uint64_t iEntrance,
         uint64_t iExit,
         ostream& html);
+    // Original version.
+    void constructFromTangleMatrix(
+        const Anchors&,
+        const Journeys&,
+        const TangleMatrix1&,
+        uint64_t iEntrance,
+        uint64_t iExit,
+        ostream& html);
+    // More efficient version
+    void constructFromTangleMatrix1(
+        const Anchors&,
+        const Journeys&,
+        const TangleMatrix1&,
+        uint64_t iEntrance,
+        uint64_t iExit,
+        ostream& html);
 
     // The journey portions that define this RestrictedAnchorGraph.
     vector<JourneyPortion> journeyPortions;
@@ -190,4 +206,35 @@ public:
     // Store the immediate dominator of each vertex in
     // RestrictedAnchorGraphVertex::immediateDominator.
     void computeDominatorTree(vertex_descriptor);
+
+
+
+    // Functions and data used by constructFromTangleMatrix1.
+
+    // Gather all the distinct AnchorIds that appear o\in the JourneyPortions
+    // and store them sorted.
+    vector<AnchorId> allAnchorIds;
+    void gatherAllAnchorIds(const Journeys&);
+
+    // The index of an AnchorId in the allAnchorIds vector is called "anchorIndex"
+    // in constructFromTangleMatrix1 code,
+    // and serves as a perfect hash function for these AnchorIds.
+    uint64_t getAnchorIndex(AnchorId anchorId) const;
+
+    // The anchorIndexes for each Anchor of the JourneyPortions.
+    vector< vector<uint64_t> > journeyPortionsAnchorIndexes;
+    void fillJourneyPortionsAnchorIndexes(const Journeys&);
+
+    // Gather all transitions(anchorIndex0, anchorIndex1) for consecutive
+    // anchors in the journey portions. The number of times each
+    // transition appears in the journeys is its coverage.
+    // Store the transitions in a vector indexed by coverage.
+    class Transition {
+    public:
+        uint64_t anchorIndex0;
+        uint64_t anchorIndex1;
+    };
+    vector< vector<Transition> > transitions;
+    void gatherTransitions(ostream& html);
+
 };
