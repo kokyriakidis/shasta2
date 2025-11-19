@@ -140,10 +140,21 @@ public:
     // Table that contains pairs (AnchorId, vertex_descriptor) for each vertex.
     // We keep it sorted by AnchorId, so getExistingVertex can use a binary search.
     vector< pair<AnchorId, vertex_descriptor> > vertexTable;
+    void sortVertexTable();
+    bool vertexTableIsValid = true;
 
-   // Return the vertex_descriptor corresponding to an AnchorId.
+    // Create a new vertex and add it to the vertexTable, without resorting
+    // the vertexTable. This invalidates the vertexTable.
+    // If this is called with the AnchorId of an existing vertex,
+    // the call succeeds but the subsequent call to sortVertexTable will assert.
+    vertex_descriptor addVertex(AnchorId);
+
+    // Return the vertex_descriptor corresponding to an AnchorId.
     // This asserts if there is not such vertex.
     vertex_descriptor getExistingVertex(AnchorId) const;
+
+    // Find out if a vertex with the given AnchorId exists.
+    bool vertexExists(AnchorId) const;
 
     // Only keep vertices that are forward reachable from the
     // vertex at anchorId0 and backward reachable from the vertex at anchorId1.

@@ -66,7 +66,7 @@ void RestrictedAnchorGraph::constructFromTangleMatrix(
 
 // More efficient version
 void RestrictedAnchorGraph::constructFromTangleMatrix1(
-    const Anchors& anchors,
+    const Anchors& /* anchors */,
     const Journeys& journeys,
     const TangleMatrix1& tangleMatrix1,
     uint64_t iEntrance,
@@ -407,12 +407,60 @@ void RestrictedAnchorGraph::create(
 // This asserts if there is not such vertex.
 RestrictedAnchorGraph::vertex_descriptor RestrictedAnchorGraph::getExistingVertex(AnchorId anchorId) const
 {
+    SHASTA2_ASSERT(vertexTableIsValid);
+
     const auto it = std::ranges::lower_bound(
         vertexTable, make_pair(anchorId, null_vertex()),
         OrderPairsByFirstOnly<AnchorId, vertex_descriptor>());
     SHASTA2_ASSERT(it != vertexTable.end());
     SHASTA2_ASSERT(it->first == anchorId);
     return it->second;
+}
+
+
+
+// Find out if a vertex with the given AnchorId exists.
+bool RestrictedAnchorGraph::vertexExists(AnchorId anchorId) const
+{
+    SHASTA2_ASSERT(vertexTableIsValid);
+
+    const auto it = std::ranges::lower_bound(
+        vertexTable, make_pair(anchorId, null_vertex()),
+        OrderPairsByFirstOnly<AnchorId, vertex_descriptor>());
+
+    return (it != vertexTable.end())  and (it->first == anchorId);
+}
+
+
+
+// Create a new vertex and add it to the vertexTable, without resorting
+// the vertexTable. This invalidates the vertexTable.
+// If this is called with the AnchorId of an existing vertex,
+// the call succeeds but the subsequent call to sortVertexTable will assert.
+RestrictedAnchorGraph::vertex_descriptor RestrictedAnchorGraph::addVertex(AnchorId anchorId)
+{
+
+    // Add the vertex and update the vertexTable.
+    // The vertexTable is no longer sorted and so it becomes invalid.
+    const vertex_descriptor v = add_vertex(RestrictedAnchorGraphVertex(anchorId), *this);
+    vertexTable.push_back(make_pair(anchorId, v));
+    vertexTableIsValid = false;
+
+    return v;
+}
+
+
+
+void RestrictedAnchorGraph::sortVertexTable()
+{
+    sort(vertexTable.begin(), vertexTable.end());
+
+    // Check that we don't have any duplicates.
+    for(uint64_t i=1; i<vertexTable.size(); i++) {
+        SHASTA2_ASSERT(vertexTable[i-1].first != vertexTable[i].first);
+    }
+
+    vertexTableIsValid = true;
 }
 
 
