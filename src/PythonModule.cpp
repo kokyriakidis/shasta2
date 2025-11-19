@@ -5,6 +5,7 @@
 #include "Assembler.hpp"
 #include "AssemblyGraphPostprocessor.hpp"
 #include "Base.hpp"
+#include "CycleAvoider.hpp"
 #include "deduplicate.hpp"
 #include "Detangler.hpp"
 #include "diploidBayesianPhase.hpp"
@@ -277,6 +278,9 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         );
     shasta2Module.def("anchorIdFromString",
         anchorIdFromString
+        );
+    shasta2Module.def("testCycleAvoider",
+        testCycleAvoider
         );
 }
 
