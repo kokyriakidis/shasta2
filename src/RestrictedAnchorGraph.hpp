@@ -5,6 +5,7 @@
 
 // Shasta
 #include "AnchorPair.hpp"
+#include "CycleAvoider.hpp"
 #include "ReadId.hpp"
 
 // Boost libraries.
@@ -12,8 +13,8 @@
 #include <boost/graph/filtered_graph.hpp>
 
 // Standard library.
-#include <utility.hpp>
-#include <vector.hpp>
+#include "utility.hpp"
+#include "vector.hpp"
 
 
 
@@ -49,15 +50,11 @@ public:
 
 
 
-class shasta::RestrictedAnchorGraphVertex {
+class shasta::RestrictedAnchorGraphVertex : public CycleAvoiderVertex {
 public:
     AnchorId anchorId;
     vector<OrientedReadId> orientedReadIds;
     RestrictedAnchorGraphVertex(AnchorId anchorId = invalid<AnchorId>) : anchorId(anchorId) {}
-
-    // Fields used by approximateTopologicalSort.
-    uint64_t color = invalid<uint64_t>;
-    uint64_t rank = invalid<uint64_t>;
 
     // Field used by removeLowCoverageEdges.
     bool wasRemoved = false;
@@ -153,8 +150,16 @@ public:
     // This asserts if there is not such vertex.
     vertex_descriptor getExistingVertex(AnchorId) const;
 
+    // Return the vertex_descriptor corresponding to an AnchorId.
+    // This returns nul_vertex() there is not such vertex.
+    vertex_descriptor getVertex(AnchorId) const;
+
     // Find out if a vertex with the given AnchorId exists.
     bool vertexExists(AnchorId) const;
+
+    // A pointer to CycleAvoider, if we are using one.
+    // I was not able to get this to compile with a shared_ptr.
+    CycleAvoider<RestrictedAnchorGraph>* cycleAvoider = 0;
 
     // Only keep vertices that are forward reachable from the
     // vertex at anchorId0 and backward reachable from the vertex at anchorId1.

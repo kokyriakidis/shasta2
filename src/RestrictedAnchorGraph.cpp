@@ -15,12 +15,13 @@ using namespace shasta;
 // Boost libraries.
 #include <boost/graph/dijkstra_shortest_paths.hpp>
 #include <boost/graph/iteration_macros.hpp>
+#include <boost/pending/disjoint_sets.hpp>
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
 
 // Standard library.
-#include <fstream.hpp>
+#include "fstream.hpp"
 
 
 
@@ -34,7 +35,7 @@ RestrictedAnchorGraph::RestrictedAnchorGraph(
     filteringPredicate(this),
     filteredGraph(*this, filteringPredicate, filteringPredicate)
 {
-    constructFromTangleMatrix(anchors, journeys, tangleMatrix1, iEntrance, iExit, html);
+    constructFromTangleMatrix1(anchors, journeys, tangleMatrix1, iEntrance, iExit, html);
 }
 
 
@@ -66,19 +67,164 @@ void RestrictedAnchorGraph::constructFromTangleMatrix(
 
 // More efficient version
 void RestrictedAnchorGraph::constructFromTangleMatrix1(
-    const Anchors& /* anchors */,
+    const Anchors& anchors,
     const Journeys& journeys,
     const TangleMatrix1& tangleMatrix1,
     uint64_t iEntrance,
     uint64_t iExit,
     ostream& html)
 {
+    using Graph = RestrictedAnchorGraph;
+    Graph& graph = *this;
+
     fillJourneyPortions(journeys, tangleMatrix1, iEntrance, iExit);
     gatherAllAnchorIds(journeys);
     fillJourneyPortionsAnchorIndexes(journeys);
     gatherTransitions(html);
 
-    SHASTA2_ASSERT(0);
+    // Create the CycleAvoider.
+    cycleAvoider = new CycleAvoider<RestrictedAnchorGraph>(*this);
+
+
+    // A vector<bool>, indexed by anchorIndex, to contain anchorIndexes
+    // for vertices we already added.
+    vector<bool> verticesAdded(allAnchorIds.size(), false);
+
+    // Add the entrance and exit vertices.
+    const AssemblyGraph::edge_descriptor entrance = tangleMatrix1.entrances[iEntrance];
+    const AssemblyGraph::edge_descriptor exit = tangleMatrix1.exits[iExit];
+    const AnchorId anchorId0 = tangleMatrix1.assemblyGraph[entrance].back().anchorPair.anchorIdB;
+    const AnchorId anchorId1 = tangleMatrix1.assemblyGraph[exit].front().anchorPair.anchorIdA;
+    SHASTA2_ASSERT(anchorId0 != anchorId1);
+    const vertex_descriptor v0 = addVertex(anchorId0);
+    const vertex_descriptor v1 = addVertex(anchorId1);
+    sortVertexTable();
+    const uint64_t anchorIndex0 = getAnchorIndex(anchorId0);
+    const uint64_t anchorIndex1 = getAnchorIndex(anchorId1);
+    verticesAdded[anchorIndex0] = true;
+    verticesAdded[anchorIndex1] = true;
+
+    // Initialize the disjoint sets data structure.
+    vector<uint64_t> rank(allAnchorIds.size());
+    vector<uint64_t> parent(allAnchorIds.size());
+    boost::disjoint_sets<uint64_t*, uint64_t*> disjointSets(&rank[0], &parent[0]);
+    for(uint64_t i=0; i<allAnchorIds.size(); i++) {
+        disjointSets.make_set(i);
+    }
+
+
+
+    // Add edges in order of decreasing coverage.
+    vector<uint64_t> anchorIndexesToAdd;
+    for(uint64_t coverage=transitions.size()-1; coverage>0; coverage--) {
+        const vector<Transition> transitionsToAdd = transitions[coverage];
+
+        // Gather the anchorIndexes for the vertices that we need to add.
+        anchorIndexesToAdd.clear();
+        for(const Transition& transition: transitionsToAdd) {
+            const uint64_t anchorIndex0 = transition.anchorIndex0;
+            if(not verticesAdded[anchorIndex0]) {
+                anchorIndexesToAdd.push_back(anchorIndex0);
+                verticesAdded[anchorIndex0] = true;
+            }
+            const uint64_t anchorIndex1 = transition.anchorIndex1;
+            if(not verticesAdded[anchorIndex1]) {
+                anchorIndexesToAdd.push_back(anchorIndex1);
+                verticesAdded[anchorIndex1] = true;
+            }
+        }
+
+        // Add these vertices.
+        for(const uint64_t anchorIndex: anchorIndexesToAdd) {
+            const AnchorId anchorId = allAnchorIds[anchorIndex];
+            addVertex(anchorId);
+        }
+        sortVertexTable();
+
+        // Now we can add an edge for each of these transitions.
+        for(const Transition& transition: transitionsToAdd) {
+            const uint64_t anchorIndex0 = transition.anchorIndex0;
+            const uint64_t anchorIndex1 = transition.anchorIndex1;
+            const AnchorId anchorId0 = allAnchorIds[anchorIndex0];
+            const AnchorId anchorId1 = allAnchorIds[anchorIndex1];
+            const vertex_descriptor v0 = getExistingVertex(anchorId0);
+            const vertex_descriptor v1 = getExistingVertex(anchorId1);
+
+            edge_descriptor e;
+            bool edgeWasAdded = false;
+            tie(e, edgeWasAdded) = cycleAvoider->addEdge(v0, v1);
+            if(edgeWasAdded) {
+                RestrictedAnchorGraphEdge& edge = graph[e];
+                edge.anchorPair.anchorIdA = anchorId0;
+                edge.anchorPair.anchorIdB = anchorId1;
+                disjointSets.union_set(anchorIndex0, anchorIndex1);
+            }
+        }
+
+        // If the entrance and exit are different connected components,
+        // continue the loop over coverage.
+        if(disjointSets.find_set(anchorIndex0) != disjointSets.find_set(anchorIndex1)) {
+            continue;
+        }
+
+        // If the exit is reachable from the entrance, stop the loop over coverage.
+        if(isReachable(graph, v0, v1, 0)) {
+            break;
+        }
+    }
+
+
+
+    // Destroy the CycleAvoider.
+    delete cycleAvoider;
+    cycleAvoider = 0;
+
+
+
+    // Now fill in the OrientedReadIds of each vertex and edge.
+    for(uint64_t j=0; j<journeyPortions.size(); j++) {
+        const JourneyPortion& journeyPortion = journeyPortions[j];
+        const OrientedReadId orientedReadId = journeyPortion.orientedReadId;
+        const vector<uint64_t>& journeyPortionAnchorIndexes = journeyPortionsAnchorIndexes[j];
+
+        // Vertices.
+        for(const uint64_t anchorIndex: journeyPortionAnchorIndexes) {
+            const uint64_t anchorId = allAnchorIds[anchorIndex];
+            const vertex_descriptor v = getVertex(anchorId);
+            if(v != null_vertex()) {
+                graph[v].orientedReadIds.push_back(orientedReadId);
+            }
+        }
+
+        // Edges.
+        for(uint64_t i1=1; i1<journeyPortionAnchorIndexes.size(); i1++) {
+            const uint64_t i0 = i1 - 1;
+            const uint64_t anchorIndex0 = journeyPortionAnchorIndexes[i0];
+            const uint64_t anchorIndex1 = journeyPortionAnchorIndexes[i1];
+            const uint64_t anchorId0 = allAnchorIds[anchorIndex0];
+            const vertex_descriptor v0 = getVertex(anchorId0);
+            if(v0 == null_vertex()) {
+                continue;
+            }
+            const uint64_t anchorId1 = allAnchorIds[anchorIndex1];
+            const vertex_descriptor v1 = getVertex(anchorId1);
+            if(v1 == null_vertex()) {
+                continue;
+            }
+            edge_descriptor e;
+            bool edgeExists = false;
+            tie(e, edgeExists) = edge(v0, v1, graph);
+            if(edgeExists) {
+                graph[e].anchorPair.orientedReadIds.push_back(orientedReadId);
+            }
+        }
+    }
+
+    // Fill in the offsets.
+    BGL_FORALL_EDGES(e, graph, Graph) {
+        RestrictedAnchorGraphEdge& edge = graph[e];
+        edge.offset = edge.anchorPair.getAverageOffset(anchors);
+    }
 }
 
 
@@ -418,6 +564,25 @@ RestrictedAnchorGraph::vertex_descriptor RestrictedAnchorGraph::getExistingVerte
 }
 
 
+// Return the vertex_descriptor corresponding to an AnchorId.
+// This returns null_vertex() there is not such vertex.
+RestrictedAnchorGraph::vertex_descriptor RestrictedAnchorGraph::getVertex(AnchorId anchorId) const
+{
+    SHASTA2_ASSERT(vertexTableIsValid);
+
+    const auto it = std::ranges::lower_bound(
+        vertexTable, make_pair(anchorId, null_vertex()),
+        OrderPairsByFirstOnly<AnchorId, vertex_descriptor>());
+
+    if((it == vertexTable.end()) or (it->first != anchorId)) {
+        return null_vertex();
+    } else {
+        return it->second;
+    }
+
+}
+
+
 
 // Find out if a vertex with the given AnchorId exists.
 bool RestrictedAnchorGraph::vertexExists(AnchorId anchorId) const
@@ -442,7 +607,15 @@ RestrictedAnchorGraph::vertex_descriptor RestrictedAnchorGraph::addVertex(Anchor
 
     // Add the vertex and update the vertexTable.
     // The vertexTable is no longer sorted and so it becomes invalid.
-    const vertex_descriptor v = add_vertex(RestrictedAnchorGraphVertex(anchorId), *this);
+    vertex_descriptor v = null_vertex();
+    if(cycleAvoider) {
+        v = cycleAvoider->addVertex();
+        (*this)[v].anchorId = anchorId;
+    }
+    else {
+        v = add_vertex(RestrictedAnchorGraphVertex(anchorId), *this);
+    }
+
     vertexTable.push_back(make_pair(anchorId, v));
     vertexTableIsValid = false;
 
