@@ -48,7 +48,7 @@ void RestrictedAnchorGraph::constructFromTangleMatrix(
     uint64_t iExit,
     ostream& html)
 {
-    fillJourneyPortions(journeys, tangleMatrix1, iEntrance, iExit);
+    fillJourneyPortions(journeys, tangleMatrix1, iEntrance, iExit, html);
     create(anchors, journeys, html);
 
     const AssemblyGraph::edge_descriptor entrance = tangleMatrix1.entrances[iEntrance];
@@ -76,7 +76,7 @@ void RestrictedAnchorGraph::constructFromTangleMatrix1(
     using Graph = RestrictedAnchorGraph;
     Graph& graph = *this;
 
-    fillJourneyPortions(journeys, tangleMatrix1, iEntrance, iExit);
+    fillJourneyPortions(journeys, tangleMatrix1, iEntrance, iExit, html);
     gatherAllAnchorIds(journeys);
     fillJourneyPortionsAnchorIndexes(journeys);
     gatherTransitions(html);
@@ -102,6 +102,14 @@ void RestrictedAnchorGraph::constructFromTangleMatrix1(
     const uint64_t anchorIndex1 = getAnchorIndex(anchorId1);
     verticesAdded[anchorIndex0] = true;
     verticesAdded[anchorIndex1] = true;
+
+    /*
+    cout << tangleMatrix1.assemblyGraph[entrance].id << " " << tangleMatrix1.assemblyGraph[exit].id <<
+        " " << allAnchorIds.size() << endl;
+    */
+    if(html) {
+        html << "<br>Total number of distinct AnchorIds on the JourneyPortions is " << allAnchorIds.size();
+    }
 
     // Initialize the disjoint sets data structure.
     vector<uint64_t> rank(allAnchorIds.size());
@@ -337,7 +345,8 @@ void RestrictedAnchorGraph::fillJourneyPortions(
     const Journeys& journeys,
     const TangleMatrix1& tangleMatrix1,
     uint64_t iEntrance,
-    uint64_t iExit)
+    uint64_t iExit,
+    ostream& html)
 {
     using OrientedReadInfo = TangleMatrix1::OrientedReadInfo;
 
@@ -418,6 +427,20 @@ void RestrictedAnchorGraph::fillJourneyPortions(
         else {
             SHASTA2_ASSERT(0);
         }
+    }
+
+    if(html) {
+        html << "<h4>Journey portions used in this RestrictedAnchorGraph</h4>"
+            "<table><tr>"
+            "<th>OrientedReadId<th>Begin<th>End<th>Length";
+        for(const JourneyPortion journeyPortion: journeyPortions) {
+            html << "<tr>"
+                "<td class=centered>" << journeyPortion.orientedReadId <<
+                "<td class=centered>" << journeyPortion.begin <<
+                "<td class=centered>" << journeyPortion.end <<
+                "<td class=centered>" << journeyPortion.end - journeyPortion.begin;
+        }
+        html << "</table>";
     }
 }
 

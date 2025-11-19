@@ -126,7 +126,8 @@ public:
         const Journeys&,
         const TangleMatrix1&,
         uint64_t iEntrance,
-        uint64_t iExit);
+        uint64_t iExit,
+        ostream& html);
 
     // Create the graph from the journey portions.
     void create(
