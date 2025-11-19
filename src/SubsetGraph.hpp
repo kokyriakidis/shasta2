@@ -1,5 +1,4 @@
-#ifndef SHASTA_SUBSET_GRAPH_HPP
-#define SHASTA_SUBSET_GRAPH_HPP
+#pragma once
 
 /******************************************************************************
 
@@ -135,4 +134,3 @@ template<class Item> class shasta::SubsetGraph :
 };
 
 
-#endif

@@ -1,6 +1,4 @@
-#ifndef SHASTA_SHASTA_LAPACK_HPP
-#define SHASTA_SHASTA_LAPACK_HPP
-
+#pragma once
 
 /*******************************************************************************
 
@@ -104,4 +102,3 @@ namespace shasta {
         );
 }
 
-#endif

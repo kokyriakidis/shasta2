@@ -1,5 +1,4 @@
-#ifndef SHASTA_UINT_HPP
-#define SHASTA_UINT_HPP
+#pragma once
 
 // Template class used to implement bare bones integer types
 // that represent integers with any number of bytes
@@ -101,4 +100,3 @@ private:
     static_assert(sizeof(UintHelper)>=N, "UintHelper is too short for this N.");
 };
 
-#endif

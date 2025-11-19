@@ -1,5 +1,4 @@
-#ifndef SHASTA_SPLIT_RANGE_HPP
-#define SHASTA_SPLIT_RANGE_HPP
+#pragma once
 
 // Given an half-open range [begin, end), of length n=end-begin,
 // divide it in m slices that are as uniform in length as
@@ -76,6 +75,3 @@ inline void shasta::testSplitRange()
 
 }
 
-
-
-#endif

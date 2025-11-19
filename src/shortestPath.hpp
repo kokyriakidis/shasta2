@@ -1,5 +1,4 @@
-#ifndef SHASTA_SHORTEST_PATH_HPP
-#define SHASTA_SHORTEST_PATH_HPP
+#pragma once
 
 // THIS CODE IS BUGGY BECAUSE IT DOES NOT UPDATE THE PRIORITY QUEUE
 // AS REQUIRED BY THE DIJKSTRA ALGORITHM.
@@ -162,7 +161,3 @@ template<class Graph> inline void shasta::findShortestPath(
     path.clear();
 }
 
-
-
-
-#endif

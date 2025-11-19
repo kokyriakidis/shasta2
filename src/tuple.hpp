@@ -1,5 +1,4 @@
-#ifndef SHASTA_TUPLE_HPP
-#define SHASTA_TUPLE_HPP
+#pragma once
 
 #include <tuple>
 
@@ -9,5 +8,3 @@ namespace shasta {
     using std::tuple;
     using std::make_tuple;
 }
-
-#endif

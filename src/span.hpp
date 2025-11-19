@@ -1,5 +1,4 @@
-#ifndef SHASTA_SPAN_HPP
-#define SHASTA_SPAN_HPP
+#pragma once
 
 #include "algorithm.hpp"
 #include "cstdint.hpp"
@@ -95,6 +94,3 @@ inline std::string shasta::convertToString(const std::span<char>& m)
     return string(view);
 }
 
-
-
-#endif

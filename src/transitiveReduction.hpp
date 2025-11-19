@@ -1,5 +1,4 @@
-#ifndef SHASTA_TRANSITIVE_REDUCTION_HPP
-#define SHASTA_TRANSITIVE_REDUCTION_HPP
+#pragma once
 
 // Shasta.
 #include "deduplicate.hpp"
@@ -260,4 +259,3 @@ template<class Graph> void shasta::transitiveReductionAny(Graph &graph)
 
 }
 
-#endif

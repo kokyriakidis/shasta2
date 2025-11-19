@@ -1,7 +1,6 @@
-#ifndef SHASTA_TEST_SUBSET_GRAPH_HPP
+#pragma once
 
 namespace shasta {
     void testSubsetGraph();
 }
 
-#endif

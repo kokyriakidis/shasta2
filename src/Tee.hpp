@@ -1,5 +1,4 @@
-#ifndef SHASTA_TEE_HPP
-#define SHASTA_TEE_HPP
+#pragma once
 
 // Class to "tee" an ostream to another ostream.
 // That is, all output to the first ostream is duplicated
@@ -39,6 +38,4 @@ public:
     }
 };
 
-
-#endif
 

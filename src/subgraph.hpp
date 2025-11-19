@@ -1,5 +1,4 @@
-#ifndef SHASTA_SUBGRAPH_HPP
-#define SHASTA_SUBGRAPH_HPP
+#pragma once
 
 // Function to create a local subgraph of a given Boost directed graph.
 // The local subgraph is a copy of the original graph that
@@ -203,5 +202,3 @@ template<class DirectedGraph> inline void shasta::createLocalSubgraph(
     }
 }
 
-
-#endif
