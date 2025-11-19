@@ -1,5 +1,4 @@
-#ifndef SHASTA_FIND_LINEAR_CHAINS_HPP
-#define SHASTA_FIND_LINEAR_CHAINS_HPP
+#pragma once
 
 // Find linear chains in a directed graph
 
@@ -260,6 +259,4 @@ template<class Graph> void shasta::findLinearVertexChains(
     }
 }
 
-
-#endif
 

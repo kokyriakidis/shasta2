@@ -1,5 +1,4 @@
-#ifndef SHASTA_APPROXIMATE_TOPOLOGICAL_SORT_HPP
-#define SHASTA_APPROXIMATE_TOPOLOGICAL_SORT_HPP
+#pragma once
 
 /*******************************************************************************
 
@@ -233,4 +232,3 @@ template<class Graph> void shasta::approximateTopologicalSort(
     }
 }
 
-#endif

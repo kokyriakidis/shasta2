@@ -2,8 +2,7 @@
 // It is always compiled in, regardless of compilation settings.
 // It throws a standard exception if the assertion fails.
 
-#ifndef SHASTA_SHASTA_ASSERT_HPP
-#define SHASTA_SHASTA_ASSERT_HPP
+#pragma once
 
 namespace shasta {
     void handleFailedAssertion(
@@ -19,5 +18,4 @@ namespace shasta {
     (shasta::handleFailedAssertion(#expression, __PRETTY_FUNCTION__,  __FILE__ , __LINE__)))
 
 
-#endif
 

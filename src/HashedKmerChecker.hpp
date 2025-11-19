@@ -1,5 +1,4 @@
-#ifndef SHASTA_HASHED_KMER_CHECKER_HPP
-#define SHASTA_HASHED_KMER_CHECKER_HPP
+#pragma once
 
 #include "KmerChecker.hpp"
 #include "MappedMemoryOwner.hpp"
@@ -37,7 +36,4 @@ private:
     };
 };
 
-
-
-#endif
 

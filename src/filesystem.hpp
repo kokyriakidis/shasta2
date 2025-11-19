@@ -1,5 +1,4 @@
-#ifndef SHASTA_FILESYSTEM_HPP
-#define SHASTA_FILESYSTEM_HPP
+#pragma once
 
 #include "string.hpp"
 #include "vector.hpp"
@@ -18,6 +17,3 @@ namespace shasta {
     }
 }
 
-
-
-#endif

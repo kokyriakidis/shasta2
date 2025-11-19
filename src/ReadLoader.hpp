@@ -1,5 +1,4 @@
-#ifndef SHASTA_READ_LOADER_HPP
-#define SHASTA_READ_LOADER_HPP
+#pragma once
 
 // Shasta
 #include "LongBaseSequence.hpp"
@@ -101,6 +100,3 @@ private:
 
 };
 
-
-
-#endif

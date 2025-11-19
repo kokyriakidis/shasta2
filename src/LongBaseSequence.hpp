@@ -1,7 +1,6 @@
-#ifndef SHASTA_LONG_BASE_SEQUENCE_HPP
-#define SHASTA_LONG_BASE_SEQUENCE_HPP
+#pragma once
 
-// shasta.
+// Shasta.
 #include "Base.hpp"
 #include "MemoryMappedVectorOfVectors.hpp"
 
@@ -335,4 +334,3 @@ inline void shasta::reverseComplement(vector<Base>&v)
     }
 }
 
-#endif

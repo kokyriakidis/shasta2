@@ -1,5 +1,4 @@
-#ifndef SHASTA_SEQAN_HPP
-#define SHASTA_SEQAN_HPP
+#pragma once
 
 
 // Wrappers to simplify SeqAn calls.
@@ -355,5 +354,4 @@ template<class Iterator>
     SHASTA2_ASSERT(it1 == end1);
 }
 
-#endif
 

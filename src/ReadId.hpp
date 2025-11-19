@@ -1,5 +1,4 @@
-#ifndef SHASTA_READ_ID_HPP
-#define SHASTA_READ_ID_HPP
+#pragma once
 
 // Shasta.
 #include "SHASTA2_ASSERT.hpp"
@@ -174,5 +173,3 @@ inline std::ostream& shasta::operator<<(
     return s;
 }
 
-
-#endif

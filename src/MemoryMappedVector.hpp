@@ -1,7 +1,6 @@
 // Class to describe a vector stored in a file mapped to memory.
 
-#ifndef SHASTA_MEMORY_MAPPED_VECTOR_HPP
-#define SHASTA_MEMORY_MAPPED_VECTOR_HPP
+#pragma once
 
 // Shasta.
 #include "array.hpp"
@@ -1156,5 +1155,3 @@ template<class T> inline void shasta::MemoryMapped::Vector<T>::rename(const stri
     }
 }
 
-
-#endif

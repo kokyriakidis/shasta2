@@ -1,5 +1,4 @@
-#ifndef SHASTA_PERFORMANCE_LOG_HPP
-#define SHASTA_PERFORMANCE_LOG_HPP
+#pragma once
 
 #include "fstream.hpp"
 #include "string.hpp"
@@ -12,5 +11,3 @@ namespace shasta {
     void openPerformanceLog(const string& fileName);
 }
 
-
-#endif

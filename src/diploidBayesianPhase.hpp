@@ -1,5 +1,4 @@
-#ifndef SHASTA_DIPLOID_BAYESIAN_PHASE_HPP
-#define SHASTA_DIPLOID_BAYESIAN_PHASE_HPP
+#pragma once
 
 #include "array.hpp"
 #include "cstdint.hpp"
@@ -64,5 +63,3 @@ namespace shasta {
 
 }
 
-
-#endif

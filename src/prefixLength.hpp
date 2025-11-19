@@ -1,5 +1,4 @@
-#ifndef SHASTA_PREFIX_LENGTH_HPP
-#define SHASTA_PREFIX_LENGTH_HPP
+#pragma once
 
 #include "algorithm.hpp"
 
@@ -30,6 +29,3 @@ namespace shasta {
     }
 }
 
-
-
-#endif

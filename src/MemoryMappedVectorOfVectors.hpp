@@ -1,8 +1,7 @@
 // Class to describe a vector of vectors stored contiguously in mapped memory.
 // A table of contents (toc) contains indexes pointing to the first element of each vector.
 
-#ifndef SHASTA_MEMORY_MAPPED_VECTOR_OF_VECTORS_HPP
-#define SHASTA_MEMORY_MAPPED_VECTOR_OF_VECTORS_HPP
+#pragma once
 
 // Shasta.
 #include "MemoryMappedVector.hpp"
@@ -407,4 +406,3 @@ template<class T, class Int>
     return make_pair(i, j);
 }
 
-#endif

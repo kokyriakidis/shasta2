@@ -1,5 +1,4 @@
-#ifndef SHASTA_FSTREAM_HPP
-#define SHASTA_FSTREAM_HPP
+#pragma once
 
 #include <fstream>
 
@@ -7,5 +6,3 @@ namespace shasta {
     using std::ifstream;
     using std::ofstream;
 }
-
-#endif

@@ -1,5 +1,4 @@
-#ifndef SHASTA_HTTP_SERVER_HPP
-#define SHASTA_HTTP_SERVER_HPP
+#pragma once
 
 // Class http server can be used as a base class to provide simple
 // http server functionality to facilitate data exploration and debugging.
@@ -228,5 +227,5 @@ private:
 
 
 };
-#endif
+
 

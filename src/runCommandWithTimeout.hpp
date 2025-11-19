@@ -1,5 +1,4 @@
-#ifndef SHASTA_RUN_COMMAND_WITH_TIMEOUT_HPP
-#define SHASTA_RUN_COMMAND_WITH_TIMEOUT_HPP
+#pragma once
 
 #include "string.hpp"
 
@@ -27,5 +26,3 @@ namespace shasta {
         );
 }
 
-
-#endif

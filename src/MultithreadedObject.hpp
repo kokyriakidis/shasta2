@@ -1,7 +1,4 @@
-#ifndef SHASTA_MULTITHREADED_OBJECT_HPP
-#define SHASTA_MULTITHREADED_OBJECT_HPP
-
-
+#pragma once
 
 // Template class MultithreadedObject can be used as a base class
 // to provide basic multithreading functionality.
@@ -100,6 +97,3 @@ private:
     static void runThreadFunction(T& t, ThreadFunction f, size_t threadId);
 };
 
-
-
-#endif

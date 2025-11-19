@@ -1,5 +1,4 @@
-#ifndef SHASTA_MAPPED_COPY_HPP
-#define SHASTA_MAPPED_COPY_HPP
+#pragma once
 
 #include "string.hpp"
 
@@ -13,4 +12,3 @@ namespace shasta {
         const string& outputPath);
 }
 
-#endif

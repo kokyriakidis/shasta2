@@ -1,5 +1,4 @@
-#ifndef SHASTA_ITERATOR_HPP
-#define SHASTA_ITERATOR_HPP
+#pragma once
 
 #include <iterator>
 
@@ -8,4 +7,3 @@ namespace shasta {
     using std::ostream_iterator;
 }
 
-#endif

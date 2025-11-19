@@ -1,5 +1,4 @@
-#ifndef SHASTA_MAPPED_MEMORY_OWNER_HPP
-#define SHASTA_MAPPED_MEMORY_OWNER_HPP
+#pragma once
 
 #include "cstdint.hpp"
 #include "string.hpp"
@@ -48,5 +47,3 @@ public:
     }
 };
 
-
-#endif

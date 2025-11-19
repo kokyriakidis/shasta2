@@ -1,5 +1,4 @@
-#ifndef SHASTA_ORDER_VECTORS_HPP
-#define SHASTA_ORDER_VECTORS_HPP
+#pragma once
 
 #include "vector.hpp"
 
@@ -31,6 +30,4 @@ public:
          return x.size() > y.size();
     }
 };
-
-#endif
 

@@ -1,7 +1,6 @@
 // Class to describe a single class object stored in a file mapped to memory.
 
-#ifndef SHASTA_MEMORY_MAPPED_OBJECT_HPP
-#define SHASTA_MEMORY_MAPPED_OBJECT_HPP
+#pragma once
 
 // Shasta.
 #include "SHASTA2_ASSERT.hpp"
@@ -573,6 +572,3 @@ template<class T> inline const T& shasta::MemoryMapped::Object<T>::object() cons
     return *data;
 }
 
-
-
-#endif

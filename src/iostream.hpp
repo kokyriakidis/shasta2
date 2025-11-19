@@ -1,5 +1,4 @@
-#ifndef SHASTA_IOSTREAM_HPP
-#define SHASTA_IOSTREAM_HPP
+#pragma once
 
 #include <iostream>
 
@@ -23,5 +22,3 @@ namespace shasta {
         return s;
     }
 }
-
-#endif

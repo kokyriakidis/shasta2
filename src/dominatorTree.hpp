@@ -1,5 +1,4 @@
-#ifndef SHASTA_DOMINATOR_TREE_HPP
-#define SHASTA_DOMINATOR_TREE_HPP
+#pragma once
 
 /*******************************************************************************
 
@@ -157,5 +156,4 @@ namespace shasta {
     }
 }
 
-#endif
 

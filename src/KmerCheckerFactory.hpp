@@ -1,5 +1,4 @@
-#ifndef SHASTA_KMER_CHECKER_FACTORY_HPP
-#define SHASTA_KMER_CHECKER_FACTORY_HPP
+#pragma once
 
 // Shasta.
 #include "KmerChecker.hpp"
@@ -28,5 +27,4 @@ public:
     static shared_ptr<KmerChecker> createFromBinaryData(const MappedMemoryOwner&);
 };
 
-#endif
 

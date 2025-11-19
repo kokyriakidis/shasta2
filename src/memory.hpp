@@ -1,5 +1,4 @@
-#ifndef SHASTA_MEMORY_HPP
-#define SHASTA_MEMORY_HPP
+#pragma once
 
 #include <memory>
 
@@ -9,5 +8,3 @@ namespace shasta {
     using std::make_unique;
     using std::unique_ptr;
 }
-
-#endif

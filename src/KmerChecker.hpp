@@ -1,5 +1,4 @@
-#ifndef SHASTA_KMER_CHECKER_HPP
-#define SHASTA_KMER_CHECKER_HPP
+#pragma once
 
 // Shasta.
 #include "Kmer.hpp"
@@ -19,4 +18,3 @@ public:
     virtual bool isMarker(const Kmer&) const = 0;
 };
 
-#endif

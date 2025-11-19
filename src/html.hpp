@@ -1,5 +1,4 @@
-#ifndef SHASTA_HTML_HPP
-#define SHASTA_HTML_HPP
+#pragma once
 
 #include "iosfwd.hpp"
 #include "string.hpp"
@@ -17,4 +16,3 @@ namespace shasta {
     void writeInformationIcon(ostream& html, const string& message);
 }
 
-#endif
