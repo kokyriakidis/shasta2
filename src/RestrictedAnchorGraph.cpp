@@ -7,7 +7,6 @@
 #include "graphvizToHtml.hpp"
 #include "Journeys.hpp"
 #include "longestPath.hpp"
-#include "orderPairs.hpp"
 #include "TangleMatrix1.hpp"
 #include "tmpDirectory.hpp"
 using namespace shasta;
@@ -245,19 +244,6 @@ void RestrictedAnchorGraph::gatherAllAnchorIds(const Journeys& journeys)
         }
     }
     deduplicate(allAnchorIds);
-}
-
-
-
-// The index of an AnchorId in the allAnchorIds vector is called "anchorIndex"
-// in constructFromTangleMatrix1 code,
-// and serves as a perfect hash function for these AnchorIds.
-uint64_t RestrictedAnchorGraph::getAnchorIndex(AnchorId anchorId) const
-{
-    const auto it = find(allAnchorIds.begin(), allAnchorIds.end(), anchorId);
-    SHASTA2_ASSERT(it != allAnchorIds.end());
-    SHASTA2_ASSERT(*it == anchorId);
-    return it - allAnchorIds.begin();
 }
 
 
@@ -549,55 +535,6 @@ void RestrictedAnchorGraph::create(
 
 
 
-// Return the vertex_descriptor corresponding to an AnchorId.
-// This asserts if there is not such vertex.
-RestrictedAnchorGraph::vertex_descriptor RestrictedAnchorGraph::getExistingVertex(AnchorId anchorId) const
-{
-    SHASTA2_ASSERT(vertexTableIsValid);
-
-    const auto it = std::ranges::lower_bound(
-        vertexTable, make_pair(anchorId, null_vertex()),
-        OrderPairsByFirstOnly<AnchorId, vertex_descriptor>());
-    SHASTA2_ASSERT(it != vertexTable.end());
-    SHASTA2_ASSERT(it->first == anchorId);
-    return it->second;
-}
-
-
-// Return the vertex_descriptor corresponding to an AnchorId.
-// This returns null_vertex() there is not such vertex.
-RestrictedAnchorGraph::vertex_descriptor RestrictedAnchorGraph::getVertex(AnchorId anchorId) const
-{
-    SHASTA2_ASSERT(vertexTableIsValid);
-
-    const auto it = std::ranges::lower_bound(
-        vertexTable, make_pair(anchorId, null_vertex()),
-        OrderPairsByFirstOnly<AnchorId, vertex_descriptor>());
-
-    if((it == vertexTable.end()) or (it->first != anchorId)) {
-        return null_vertex();
-    } else {
-        return it->second;
-    }
-
-}
-
-
-
-// Find out if a vertex with the given AnchorId exists.
-bool RestrictedAnchorGraph::vertexExists(AnchorId anchorId) const
-{
-    SHASTA2_ASSERT(vertexTableIsValid);
-
-    const auto it = std::ranges::lower_bound(
-        vertexTable, make_pair(anchorId, null_vertex()),
-        OrderPairsByFirstOnly<AnchorId, vertex_descriptor>());
-
-    return (it != vertexTable.end())  and (it->first == anchorId);
-}
-
-
-
 // Create a new vertex and add it to the vertexTable, without resorting
 // the vertexTable. This invalidates the vertexTable.
 // If this is called with the AnchorId of an existing vertex,
@@ -781,7 +718,7 @@ void RestrictedAnchorGraph::approximateTopologicalSort()
     }
 
     // Sort by decreasing coverage.
-    std::ranges::sort(edgeTable, OrderPairsBySecondOnlyGreater<edge_descriptor, uint64_t>());
+    sort(edgeTable.begin(), edgeTable.end(), OrderPairsBySecondOnlyGreater<edge_descriptor, uint64_t>());
     vector<edge_descriptor> edgesSortedByDecreasingCoverage;
     for(const auto& p: edgeTable) {
         edgesSortedByDecreasingCoverage.push_back(p.first);

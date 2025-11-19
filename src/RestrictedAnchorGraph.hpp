@@ -6,6 +6,7 @@
 // Shasta
 #include "AnchorPair.hpp"
 #include "CycleAvoider.hpp"
+#include "orderPairs.hpp"
 #include "ReadId.hpp"
 
 // Boost libraries.
@@ -148,14 +149,54 @@ public:
 
     // Return the vertex_descriptor corresponding to an AnchorId.
     // This asserts if there is not such vertex.
-    vertex_descriptor getExistingVertex(AnchorId) const;
+    vertex_descriptor getExistingVertex(AnchorId anchorId) const
+    {
+        SHASTA2_ASSERT(vertexTableIsValid);
+
+        const auto it = lower_bound(
+            vertexTable.begin(), vertexTable.end(),
+            make_pair(anchorId, null_vertex()),
+            OrderPairsByFirstOnly<AnchorId, vertex_descriptor>());
+        SHASTA2_ASSERT(it != vertexTable.end());
+        SHASTA2_ASSERT(it->first == anchorId);
+        return it->second;
+    }
+
+
 
     // Return the vertex_descriptor corresponding to an AnchorId.
-    // This returns nul_vertex() there is not such vertex.
-    vertex_descriptor getVertex(AnchorId) const;
+    // This returns null_vertex() there is not such vertex.
+    vertex_descriptor getVertex(AnchorId anchorId) const
+    {
+        SHASTA2_ASSERT(vertexTableIsValid);
+        const auto it = lower_bound(
+            vertexTable.begin(), vertexTable.end(),
+            make_pair(anchorId, null_vertex()),
+            OrderPairsByFirstOnly<AnchorId, vertex_descriptor>());
+
+        if((it == vertexTable.end()) or (it->first != anchorId)) {
+            return null_vertex();
+        } else {
+            return it->second;
+        }
+    }
+
+
 
     // Find out if a vertex with the given AnchorId exists.
-    bool vertexExists(AnchorId) const;
+    bool vertexExists(AnchorId anchorId) const
+    {
+        SHASTA2_ASSERT(vertexTableIsValid);
+
+        const auto it = lower_bound(
+            vertexTable.begin(), vertexTable.end(),
+            make_pair(anchorId, null_vertex()),
+            OrderPairsByFirstOnly<AnchorId, vertex_descriptor>());
+
+        return (it != vertexTable.end())  and (it->first == anchorId);
+    }
+
+
 
     // A pointer to CycleAvoider, if we are using one.
     // I was not able to get this to compile with a shared_ptr.
@@ -235,7 +276,13 @@ public:
     // The index of an AnchorId in the allAnchorIds vector is called "anchorIndex"
     // in constructFromTangleMatrix1 code,
     // and serves as a perfect hash function for these AnchorIds.
-    uint64_t getAnchorIndex(AnchorId anchorId) const;
+    uint64_t getAnchorIndex(AnchorId anchorId) const
+    {
+        const auto it = find(allAnchorIds.begin(), allAnchorIds.end(), anchorId);
+        // SHASTA2_ASSERT(it != allAnchorIds.end());
+        // SHASTA2_ASSERT(*it == anchorId);
+        return it - allAnchorIds.begin();
+    }
 
     // The anchorIndexes for each Anchor of the JourneyPortions.
     vector< vector<uint64_t> > journeyPortionsAnchorIndexes;
