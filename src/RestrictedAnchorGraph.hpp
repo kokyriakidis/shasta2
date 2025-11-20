@@ -56,10 +56,6 @@ public:
     AnchorId anchorId;
     vector<OrientedReadId> orientedReadIds;
     RestrictedAnchorGraphVertex(AnchorId anchorId = invalid<AnchorId>) : anchorId(anchorId) {}
-
-    // Field used by removeLowCoverageEdges.
-    bool wasRemoved = false;
-
 };
 
 
@@ -82,14 +78,6 @@ public:
 
 class shasta::RestrictedAnchorGraph : public RestrictedAnchorGraphBaseClass {
 public:
-
-    // Constructor from an AnchorId.
-    RestrictedAnchorGraph(
-        const Anchors&,
-        const Journeys&,
-        AnchorId,
-        uint32_t distanceInJourney,
-        ostream& html);
 
     // Constructor using a TangleMatrix1.
     RestrictedAnchorGraph(
@@ -116,12 +104,6 @@ public:
         const TangleMatrix1&,
         uint64_t iEntrance,
         uint64_t iExit,
-        ostream& html);
-
-    // Create the graph from the journey portions.
-    void create(
-        const Anchors&,
-        const Journeys&,
         ostream& html);
 
 
@@ -214,7 +196,7 @@ public:
     void writeGraphviz(ostream&, const vector<AnchorId>& highlightVertices) const;
     void writeHtml(ostream&, const vector<AnchorId>& highlightVertices) const;
 
-    // Gather all the distinct AnchorIds that appear o\in the JourneyPortions
+    // Gather all the distinct AnchorIds that appear in the JourneyPortions
     // and store them sorted.
     vector<AnchorId> allAnchorIds;
     void gatherAllAnchorIds(const Journeys&);
