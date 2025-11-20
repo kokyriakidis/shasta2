@@ -31,9 +31,7 @@ RestrictedAnchorGraph::RestrictedAnchorGraph(
     const TangleMatrix1& tangleMatrix1,
     uint64_t iEntrance,
     uint64_t iExit,
-    ostream& html) :
-    filteringPredicate(this),
-    filteredGraph(*this, filteringPredicate, filteringPredicate)
+    ostream& html)
 {
     constructFromTangleMatrix1(anchors, journeys, tangleMatrix1, iEntrance, iExit, html);
 }
@@ -836,50 +834,6 @@ void RestrictedAnchorGraph::approximateTopologicalSort()
 
 
 
-
-// Remove cycles by doing an approximate topological ordering,
-// the removing edges that are not DAG edges.
-void RestrictedAnchorGraph::removeCycles()
-{
-    using Graph = RestrictedAnchorGraph;
-    Graph& graph = *this;
-
-    approximateTopologicalSort();
-
-    // Gather the edges to be removed.
-    vector<edge_descriptor> edgesToBeRemoved;
-    BGL_FORALL_EDGES(e, graph, Graph)
-    {
-        if(not graph[e].isDagEdge) {
-            edgesToBeRemoved.push_back(e);
-        }
-    }
-
-    // Remove these edges.
-    for(const edge_descriptor e: edgesToBeRemoved) {
-        boost::remove_edge(e, graph);
-    }
-
-
-}
-
-
-
-// Find the longest path.
-void RestrictedAnchorGraph::findLongestPath(vector<edge_descriptor>& longestPath)
-{
-    using Graph = RestrictedAnchorGraph;
-    Graph& graph = *this;
-
-    shasta::longestPath(graph, longestPath);
-
-    for(const edge_descriptor e: longestPath) {
-        graph[e].isOptimalPathEdge = true;
-    }
-}
-
-
-
 // Find the optimal assembly path.
 void RestrictedAnchorGraph::findOptimalPath(
     AnchorId anchorId0,
@@ -913,176 +867,6 @@ void RestrictedAnchorGraph::findOptimalPath(
     }
 
 
-}
-
-
-
-// Remove low coverage edges without destroying reachability
-// of anchorId1 from anchorId0. In the process, this also
-// removes vertices that become unreachable from anchorId0 (forward)
-// or anchorId1 (backward).
-// To permit future optimizations, we don't really remove
-// the vertices - we only disconnect them for the rest of the graph.
-void RestrictedAnchorGraph::removeLowCoverageEdges(
-    AnchorId anchorId0,
-    AnchorId anchorId1)
-{
-    using Graph = RestrictedAnchorGraph;
-    Graph& graph = *this;
-
-    // Find the vertices corresponding to anchorId0 and anchorId1.
-    const vertex_descriptor v0 = getExistingVertex(anchorId0);
-    const vertex_descriptor v1 = getExistingVertex(anchorId1);
-
-    // First, clear all "wasRemoved" flags.
-    BGL_FORALL_VERTICES(v, graph, Graph) {
-        graph[v].wasRemoved = false;
-    }
-    BGL_FORALL_EDGES(e, graph, Graph) {
-        graph[e].wasRemoved = false;
-    }
-
-
-
-    // Loop over increasing values of minCoverage.
-    for(uint64_t minCoverage=1; ; ++minCoverage) {
-
-        // Tentatively flag as removed the edges with coverage less than minCoverage.
-        // Keep track of them.
-        vector<edge_descriptor> edgesTentativelyRemoved;
-        BGL_FORALL_EDGES(e, graph, Graph) {
-            RestrictedAnchorGraphEdge& edge = graph[e];
-            if(edge.anchorPair.size() < minCoverage) {
-                edge.wasRemoved = true;
-                edgesTentativelyRemoved.push_back(e);
-            }
-        }
-
-
-
-        // If v1 is still reachable from v0 (on the filteredGraph),
-        // remove from the RestrictedAnchorGraph all edges
-        // we tentatively marked as removed, plus the vertices
-        // that are no longer reachable from anchorId0 (forward)
-        // and anchorId1 (backward).
-        // Then try increasing minCoverage more.
-        if(isReachable(filteredGraph, v0, v1, 0)) {
-
-            for(const edge_descriptor e: edgesTentativelyRemoved) {
-                boost::remove_edge(e, graph);
-            }
-
-            // Find vertices that are still forward reachable from v0.
-            std::set<vertex_descriptor> reachableVertices0;
-            findReachableVertices(graph, v0, 0, reachableVertices0);
-
-            // Find vertices that are still backward reachable from v1.
-            std::set<vertex_descriptor> reachableVertices1;
-            findReachableVertices(graph, v1, 1, reachableVertices1);
-
-            // Remove vertices that are no longer reachable in both directions.
-            vector<vertex_descriptor> verticesToBeRemoved;
-            BGL_FORALL_VERTICES(v, graph, Graph) {
-                if(not (reachableVertices0.contains(v) and reachableVertices1.contains(v))) {
-                    SHASTA2_ASSERT(v != v0);
-                    SHASTA2_ASSERT(v != v1);
-                    verticesToBeRemoved.push_back(v);
-                }
-            }
-            for(const vertex_descriptor v: verticesToBeRemoved) {
-                // vertexMap.erase(graph[v].anchorId);
-                boost::clear_vertex(v, graph);
-                // boost::remove_vertex(v, graph);
-            }
-        }
-
-        else {
-            // If v1 is no longer reachable from v0 (on the filteredGraph),
-            // put back the edgesTentativelyRemoved in the filtered graph
-            // and exit the loop over minCoverage.
-            for(const edge_descriptor e: edgesTentativelyRemoved) {
-                graph[e].wasRemoved = false;
-            }
-            break;
-        }
-    }
-
-
-#if 0
-
-    // Compute the dominator tree starting at v0.
-    computeDominatorTree(v0);
-#if 0
-    cout << "Dominator tree:" << endl;
-    BGL_FORALL_VERTICES(v, graph, Graph) {
-        const vertex_descriptor dominator = graph[v].dominator;
-        if(dominator != null_vertex()) {
-            cout << anchorIdToString(graph[v].anchorId) << " " <<
-                anchorIdToString(graph[dominator].anchorId) << endl;
-        }
-    }
-#endif
-
-
-    // Walk back the dominator tree starting at v1.
-    vector<vertex_descriptor> dominatorSequence({v1});
-    while(true) {
-        const vertex_descriptor v = dominatorSequence.back();
-        const vertex_descriptor dominator = graph[v].dominator;
-        if(dominator == null_vertex()) {
-            break;
-        } else {
-            dominatorSequence.push_back(dominator);
-        }
-    }
-    std::ranges::reverse(dominatorSequence);
-#if 0
-    cout << "Dominator sequence:";
-    for(const vertex_descriptor v: dominatorSequence) {
-        cout << " " << anchorIdToString(graph[v].anchorId);
-    }
-    cout << endl;
-#endif
-    SHASTA2_ASSERT(dominatorSequence.size() >= 2);
-    SHASTA2_ASSERT(dominatorSequence.front() == v0);
-    SHASTA2_ASSERT(dominatorSequence.back() == v1);
-
-
-
-    // Each pair of adjacent vertices (vA, vB) in the dominatorSequence
-    // define a "segment" in the RestrictedAnchorGraph such that all paths
-    // starting at v0 that go through vB must also go through vA first.
-    // So vA and vB are "choke points" of the RestrictedAnchorGraph
-    // and define a "segment" of the RestrictedAnchorGraph.
-    for(uint64_t i=1; i<dominatorSequence.size(); i++) {
-        const vertex_descriptor vA = dominatorSequence[i-1];
-        const vertex_descriptor vB = dominatorSequence[i];
-
-        // Skip trivial segments.
-        bool edgeExists = false;
-        tie(ignore, edgeExists) = boost::edge(vA, vB, graph);
-        if(edgeExists and (out_degree(vA, graph) == 1) and (in_degree(vB, graph) == 1)) {
-            continue;
-        }
-
-        cout << "Working on non-trivial RestrictedAnchorGraph segment " <<
-            anchorIdToString(graph[vA].anchorId) << " " <<
-            anchorIdToString(graph[vB].anchorId) << endl;
-    }
-#endif
-}
-
-
-
-// Compute the dominator tree starting at a given vertex.
-// Store the immediate dominator of each vertex in
-// RestrictedAnchorGraphVertex::immediateDominator.
-void RestrictedAnchorGraph::computeDominatorTree(vertex_descriptor v0)
-{
-    using Graph = RestrictedAnchorGraph;
-    Graph& graph = *this;
-
-    shasta::lengauer_tarjan_dominator_tree_general(graph, v0);
 }
 
 
@@ -1142,9 +926,7 @@ RestrictedAnchorGraph::RestrictedAnchorGraph(
     const Journeys& journeys,
     AnchorId anchorId,
     uint32_t distanceInJourney,
-    ostream& html) :
-    filteringPredicate(this),
-    filteredGraph(*this, filteringPredicate, filteringPredicate)
+    ostream& html)
 {
 
     // Fill in the JourneyPortions by looking around this Anchor.
