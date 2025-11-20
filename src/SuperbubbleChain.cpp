@@ -26,7 +26,7 @@ uint64_t SuperbubbleChain::phase1(
 {
 
     SuperbubbleChain& superbubbleChain = *this;
-    const bool debug = false; // (superbubbleChainId == 18);
+    const bool debug = false;
 
     const uint64_t phasingDistance = assemblyGraph.options.phasingDistance;
     const uint64_t phasingMinDegree = assemblyGraph.options.phasingMinDegree;
@@ -159,7 +159,9 @@ uint64_t SuperbubbleChain::phase1(
                 const AnchorId anchorId0 = assemblyGraph[v0].anchorId;
                 for(uint64_t iExit=0; iExit<tangleMatrix.exits.size(); iExit++) {
                     if(gTest.hypotheses.front().connectivityMatrix[iEntrance][iExit]) {
-                        // cout << "Creating RestrictedAnchorGraph for entrance " << iEntrance << " exit " << iExit << endl;
+                        if(debug) {
+                            cout << "Creating RestrictedAnchorGraph for entrance " << iEntrance << " exit " << iExit << endl;
+                        }
                         const AssemblyGraph::vertex_descriptor v1 = source(tangleMatrix.exits[iExit], assemblyGraph);
                         const AnchorId anchorId1 = assemblyGraph[v1].anchorId;
 
