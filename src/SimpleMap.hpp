@@ -43,15 +43,30 @@ public:
     // A vector that will hold (Key, Value) pairs.
     // Empty slots have the Key set to invalid<Key>.
     vector<value_type> data;
-    Key mask;
+    Key mask = invalid<Key>;
     uint64_t itemCount = 0UL;
 
     // Construct with n slots.
     // The actual number of slots is rounded up to the next power of 2.
-    SimpleMap(uint64_t n) :
-        data(1UL << (64 - __builtin_clzl(n)), value_type(invalid<Key>, Value())),
-        mask(data.size() - 1UL)
-    {}
+    SimpleMap(uint64_t n)
+    {
+        initialize(n);
+    }
+
+    SimpleMap() {}
+
+
+
+    void initialize(uint64_t n)
+    {
+        // Round up to next power of 2.
+        const Key N = Key(1UL) << (64 - __builtin_clzl(n));
+
+        data.clear();
+        data.resize(N, value_type(invalid<Key>, Value()));
+
+        mask = N - 1;
+    }
 
 
 
