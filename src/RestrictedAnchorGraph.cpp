@@ -214,6 +214,9 @@ void RestrictedAnchorGraph::constructFromTangleMatrix1(
         RestrictedAnchorGraphEdge& edge = graph[e];
         edge.offset = edge.anchorPair.getAverageOffset(anchors);
     }
+
+    // Remove unreachable portions.
+    keepBetween(anchorId0, anchorId1);
 }
 
 
@@ -892,9 +895,17 @@ void RestrictedAnchorGraph::findOptimalPath(
 
     // Compute the longest path.
     shasta::longestPath(graph, optimalPath);
+    if(
+        optimalPath.empty() or
+        (source(optimalPath.front(), graph) != v0) or
+        (target(optimalPath.back(), graph) != v1)) {
+        ofstream dot("RestrictedAnchorGraphFailure.dot");
+        writeGraphviz(dot, vector<AnchorId>{anchorId0, anchorId1});
+    }
     SHASTA2_ASSERT(not optimalPath.empty());
     SHASTA2_ASSERT(source(optimalPath.front(), graph) == v0);
     SHASTA2_ASSERT(target(optimalPath.back(), graph) == v1);
+
 
     // Set the isOptimalPathEdge flags.
     for(const edge_descriptor e: optimalPath) {
