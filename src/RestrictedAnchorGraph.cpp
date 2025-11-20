@@ -40,32 +40,6 @@ RestrictedAnchorGraph::RestrictedAnchorGraph(
 
 
 
-// Original version.
-void RestrictedAnchorGraph::constructFromTangleMatrix(
-    const Anchors& anchors,
-    const Journeys& journeys,
-    const TangleMatrix1& tangleMatrix1,
-    uint64_t iEntrance,
-    uint64_t iExit,
-    ostream& html)
-{
-    fillJourneyPortions(journeys, tangleMatrix1, iEntrance, iExit, html);
-    create(anchors, journeys, html);
-
-    const AssemblyGraph::edge_descriptor entrance = tangleMatrix1.entrances[iEntrance];
-    const AssemblyGraph::edge_descriptor exit = tangleMatrix1.exits[iExit];
-    const AnchorId anchorId0 = tangleMatrix1.assemblyGraph[entrance].back().anchorPair.anchorIdB;
-    const AnchorId anchorId1 = tangleMatrix1.assemblyGraph[exit].front().anchorPair.anchorIdA;
-
-    removeLowCoverageEdges(anchorId0, anchorId1);
-    keepBetween(anchorId0, anchorId1);
-    removeCycles();
-    keepBetween(anchorId0, anchorId1);
-}
-
-
-
-// More efficient version
 void RestrictedAnchorGraph::constructFromTangleMatrix1(
     const Anchors& anchors,
     const Journeys& journeys,

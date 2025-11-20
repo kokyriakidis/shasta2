@@ -101,15 +101,6 @@ public:
         uint64_t iEntrance,
         uint64_t iExit,
         ostream& html);
-    // Original version.
-    void constructFromTangleMatrix(
-        const Anchors&,
-        const Journeys&,
-        const TangleMatrix1&,
-        uint64_t iEntrance,
-        uint64_t iExit,
-        ostream& html);
-    // More efficient version
     void constructFromTangleMatrix1(
         const Anchors&,
         const Journeys&,
