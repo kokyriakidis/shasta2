@@ -7,6 +7,7 @@
 #include "graphvizToHtml.hpp"
 #include "Journeys.hpp"
 #include "longestPath.hpp"
+#include "Markers.hpp"
 #include "TangleMatrix1.hpp"
 #include "tmpDirectory.hpp"
 using namespace shasta;
@@ -178,6 +179,13 @@ void RestrictedAnchorGraph::constructFromTangleMatrix1(
         if(isReachable(graph, v0, v1, 0)) {
             break;
         }
+
+        // If still not reachable and coverage is 1, we can't reduce coverage further.
+        if(coverage == 1) {
+            delete cycleAvoider;
+            cycleAvoider = 0;
+            throw Unreachable();
+        }
     }
 
 
@@ -334,6 +342,9 @@ void RestrictedAnchorGraph::gatherTransitions(ostream& html)
         html << "</table>";
     }
 
+    if(transitions.empty()) {
+        throw NoTransitions();
+    }
 }
 
 
@@ -348,18 +359,65 @@ void RestrictedAnchorGraph::fillJourneyPortions(
     uint64_t iExit,
     ostream& html)
 {
+    // EXPOSE WHEN CODE STABILIZES.
+    const double drift = 0.2;
+
     using OrientedReadInfo = TangleMatrix1::OrientedReadInfo;
+
+    const Anchors& anchors = tangleMatrix1.assemblyGraph.anchors;
+    const Markers& markers = anchors.markers;
 
     const vector<OrientedReadInfo>& entranceOrientedReadInfos = tangleMatrix1.entranceOrientedReadInfos[iEntrance];
     const vector<OrientedReadInfo>& exitOrientedReadInfos = tangleMatrix1.exitOrientedReadInfos[iExit];
 
 
 
-    // Joint loop over the oriented reads of the entrance and exit.
+    // Loop over the common oriented reads to estimate an offset.
     auto itEntrance = entranceOrientedReadInfos.begin();
     auto itExit = exitOrientedReadInfos.begin();
     const auto itEntranceEnd = entranceOrientedReadInfos.end();
     const auto itExitEnd = exitOrientedReadInfos.end();
+    uint64_t offsetSum = 0;
+    uint64_t offsetCount = 0;
+    while((itEntrance!=itEntranceEnd) and (itExit!=itExitEnd)) {
+        if(itEntrance->orientedReadId < itExit->orientedReadId) {
+            ++itEntrance;
+            continue;
+        }
+        if(itExit->orientedReadId < itEntrance->orientedReadId) {
+            ++itExit;
+            continue;
+        }
+        const OrientedReadId orientedReadId = itEntrance->orientedReadId;
+        SHASTA2_ASSERT(orientedReadId == itExit->orientedReadId);
+
+        if(not tangleMatrix1.goesBackward(orientedReadId)) {
+            const Journey journey = journeys[orientedReadId];
+            const uint32_t entrancePositionInJourney = itEntrance->positionInJourney;
+            const uint32_t exitPositionInJourney = itExit->positionInJourney;
+            const AnchorId entranceAnchorId = journey[entrancePositionInJourney];
+            const AnchorId exitAnchorId = journey[exitPositionInJourney];
+            const uint32_t entranceOrdinal = anchors.getOrdinal(entranceAnchorId, orientedReadId);
+            const uint32_t exitOrdinal = anchors.getOrdinal(exitAnchorId, orientedReadId);
+            const auto orientedReadMarkers = markers[orientedReadId.getValue()];
+            const uint64_t offset =
+                orientedReadMarkers[exitOrdinal].position -
+                orientedReadMarkers[entranceOrdinal].position;
+            offsetSum += offset;
+            ++offsetCount;
+        }
+
+        ++itEntrance;
+        ++itExit;
+    }
+    const double averageOffset = double(offsetSum) / double(offsetCount);
+    const uint32_t maxOffset = uint32_t(std::round(averageOffset * (1. + drift)));
+
+
+
+    // Joint loop over the oriented reads of the entrance and exit.
+    itEntrance = entranceOrientedReadInfos.begin();
+    itExit = exitOrientedReadInfos.begin();
     while(true) {
 
         // If both iterators are at their end, we are done.
@@ -367,10 +425,12 @@ void RestrictedAnchorGraph::fillJourneyPortions(
             break;
         }
 
+
+
         // Case where the OrientedReadId appears only in the entrance.
         // In this case we use a journey portion that begins at the
         // journey position stored in the OrientedReadInfo and
-        // ends at the end of the journey.
+        // ends at a distance maxOffset after that.
         if(
             (itEntrance != itEntranceEnd) and
             (itExit==itExitEnd or (itEntrance->orientedReadId < itExit->orientedReadId))) {
@@ -378,12 +438,33 @@ void RestrictedAnchorGraph::fillJourneyPortions(
             if(not tangleMatrix1.goesBackward(orientedReadId)) {
                 const Journey journey = journeys[orientedReadId];
                 const uint32_t begin = itEntrance->positionInJourney;
-                const uint32_t end = uint32_t(journey.size());
+                uint32_t end = uint32_t(journey.size());
+
+                // End the JourneyPortion at a distance maxOffset after begin.
+                const auto orientedReadMarkers = markers[orientedReadId.getValue()];
+                uint32_t beginPosition = invalid<uint32_t>;
+                for(uint32_t positionInJourney=begin; positionInJourney<end; positionInJourney++) {
+                    const AnchorId anchorId = journey[positionInJourney];
+                    const uint32_t ordinal = anchors.getOrdinal(anchorId, orientedReadId);
+                    const uint32_t position = orientedReadMarkers[ordinal].position;
+                    if(positionInJourney == begin) {
+                        beginPosition = position;
+                    } else {
+                        const uint32_t offset = position - beginPosition;
+                        if(offset >maxOffset) {
+                            end = positionInJourney;
+                            break;
+                        }
+                    }
+                }
+
                 journeyPortions.emplace_back(orientedReadId, begin, end);
                 // cout << "Entrance only " << orientedReadId << endl;
             }
             ++itEntrance;
         }
+
+
 
         // Case where the OrientedReadId appears only in the exit.
         // In this case we use a journey portion that begins at the
@@ -395,13 +476,38 @@ void RestrictedAnchorGraph::fillJourneyPortions(
             const OrientedReadId orientedReadId = itExit->orientedReadId;
             if(not tangleMatrix1.goesBackward(orientedReadId)) {
                 const Journey journey = journeys[orientedReadId];
-                const uint32_t begin = 0;
+                uint32_t begin = 0;
                 const uint32_t end = itExit->positionInJourney + 1;
+
+                // Begin the JourneyPortion at a distance maxOffset before begin.
+                const auto orientedReadMarkers = markers[orientedReadId.getValue()];
+                uint32_t endPosition = invalid<uint32_t>;
+                for(uint32_t positionInJourney=end-1; /* Check later */ ; positionInJourney--) {
+                    const AnchorId anchorId = journey[positionInJourney];
+                    const uint32_t ordinal = anchors.getOrdinal(anchorId, orientedReadId);
+                    const uint32_t position = orientedReadMarkers[ordinal].position;
+                    if(positionInJourney == end - 1) {
+                        endPosition = position;
+                    } else {
+                        const uint32_t offset = endPosition - position;
+                        if(offset > maxOffset) {
+                            begin = positionInJourney + 1;
+                            break;
+                        }
+                    }
+
+                    if(positionInJourney == 0) {
+                        break;
+                    }
+                }
+
                 journeyPortions.emplace_back(orientedReadId, begin, end);
                 // cout << "Exit only " << orientedReadId << endl;
             }
             ++itExit;
         }
+
+
 
         // Case where the OrientedReadId appears in both the entrance and the exit.
         // In this case we use a journey portion that begins at the
