@@ -46,6 +46,11 @@ public:
     Key mask = invalid<Key>;
     uint64_t itemCount = 0UL;
 
+    uint64_t size() const
+    {
+        return itemCount;
+    }
+
     // Construct with n slots.
     // The actual number of slots is rounded up to the next power of 2.
     SimpleMap(uint64_t n)

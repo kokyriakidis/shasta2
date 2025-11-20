@@ -8,6 +8,7 @@
 #include "CycleAvoider.hpp"
 #include "orderPairs.hpp"
 #include "ReadId.hpp"
+#include "SimpleMap.hpp"
 
 // Boost libraries.
 #include <boost/graph/adjacency_list.hpp>
@@ -106,66 +107,59 @@ public:
         uint64_t iExit,
         ostream& html);
 
+    // A SimpleMap containing information about all the N distinct AnchorIds
+    // used in this RestrictedAnchorGraph.
+    // The anchorIndex of an AnchorId is a number in [0, N) that uniquely
+    // identifies each of these distinct AnchorIds.
+    // In other words, it is a perfect hash function for these N AnchorIds.
+    class AnchorInformation {
+    public:
+        uint64_t anchorIndex = invalid<uint64_t>;
+        vertex_descriptor v = null_vertex();
+    };
+    SimpleMap<AnchorId, AnchorInformation> anchorMap;
+    vector<AnchorId> anchorIds;    // Indexed by anchorIndex.
 
-    // Table that contains pairs (AnchorId, vertex_descriptor) for each vertex.
-    // We keep it sorted by AnchorId, so getExistingVertex can use a binary search.
-    vector< pair<AnchorId, vertex_descriptor> > vertexTable;
-    void sortVertexTable();
-    bool vertexTableIsValid = true;
+    void writeAnchorMap() const;
+    void writeAnchorIds() const;
 
-    // Create a new vertex and add it to the vertexTable, without resorting
-    // the vertexTable. This invalidates the vertexTable.
-    // If this is called with the AnchorId of an existing vertex,
-    // the call succeeds but the subsequent call to sortVertexTable will assert.
+
+
+    // Create a new vertex and add it to the anchorMap.
     vertex_descriptor addVertex(AnchorId);
 
     // Return the vertex_descriptor corresponding to an AnchorId.
     // This asserts if there is not such vertex.
-    vertex_descriptor getExistingVertex(AnchorId anchorId) const
+    vertex_descriptor getExistingVertex(AnchorId anchorId)
     {
-        SHASTA2_ASSERT(vertexTableIsValid);
-
-        const auto it = lower_bound(
-            vertexTable.begin(), vertexTable.end(),
-            make_pair(anchorId, null_vertex()),
-            OrderPairsByFirstOnly<AnchorId, vertex_descriptor>());
-        SHASTA2_ASSERT(it != vertexTable.end());
-        SHASTA2_ASSERT(it->first == anchorId);
-        return it->second;
+        const auto p = anchorMap.getExisting(anchorId);
+        SHASTA2_ASSERT(p);
+        const vertex_descriptor v = p->second.v;
+        SHASTA2_ASSERT(v != null_vertex());
+        return v;
     }
 
 
 
     // Return the vertex_descriptor corresponding to an AnchorId.
     // This returns null_vertex() there is not such vertex.
-    vertex_descriptor getVertex(AnchorId anchorId) const
+    vertex_descriptor getVertex(AnchorId anchorId)
     {
-        SHASTA2_ASSERT(vertexTableIsValid);
-        const auto it = lower_bound(
-            vertexTable.begin(), vertexTable.end(),
-            make_pair(anchorId, null_vertex()),
-            OrderPairsByFirstOnly<AnchorId, vertex_descriptor>());
-
-        if((it == vertexTable.end()) or (it->first != anchorId)) {
-            return null_vertex();
-        } else {
-            return it->second;
-        }
+        const auto p = anchorMap.getExisting(anchorId);
+        SHASTA2_ASSERT(p);
+        const AnchorInformation& anchorInformation = p->second;
+        return anchorInformation.v;
     }
 
 
 
     // Find out if a vertex with the given AnchorId exists.
-    bool vertexExists(AnchorId anchorId) const
+    bool vertexExists(AnchorId anchorId)
     {
-        SHASTA2_ASSERT(vertexTableIsValid);
-
-        const auto it = lower_bound(
-            vertexTable.begin(), vertexTable.end(),
-            make_pair(anchorId, null_vertex()),
-            OrderPairsByFirstOnly<AnchorId, vertex_descriptor>());
-
-        return (it != vertexTable.end())  and (it->first == anchorId);
+        const auto p = anchorMap.getExisting(anchorId);
+        SHASTA2_ASSERT(p);
+        const AnchorInformation& anchorInformation = p->second;
+        return anchorInformation.v != null_vertex();
     }
 
 
@@ -196,20 +190,17 @@ public:
     void writeGraphviz(ostream&, const vector<AnchorId>& highlightVertices) const;
     void writeHtml(ostream&, const vector<AnchorId>& highlightVertices) const;
 
+
+
     // Gather all the distinct AnchorIds that appear in the JourneyPortions
-    // and store them sorted.
-    vector<AnchorId> allAnchorIds;
+    // and store them in the anchorMap.
     void gatherAllAnchorIds(const Journeys&);
 
-    // The index of an AnchorId in the allAnchorIds vector is called "anchorIndex"
-    // in constructFromTangleMatrix1 code,
-    // and serves as a perfect hash function for these AnchorIds.
-    uint64_t getAnchorIndex(AnchorId anchorId) const
+    uint64_t getAnchorIndex(AnchorId anchorId)
     {
-        const auto it = find(allAnchorIds.begin(), allAnchorIds.end(), anchorId);
-        // SHASTA2_ASSERT(it != allAnchorIds.end());
-        // SHASTA2_ASSERT(*it == anchorId);
-        return it - allAnchorIds.begin();
+        const auto p = anchorMap.getExisting(anchorId);
+        SHASTA2_ASSERT(p);
+        return p->second.anchorIndex;
     }
 
     // The anchorIndexes for each Anchor of the JourneyPortions.
