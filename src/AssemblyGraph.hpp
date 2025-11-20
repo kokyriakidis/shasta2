@@ -167,16 +167,6 @@ public:
         const Options&,
         const string& stage);
 
-    // Constructor from another AssemblyGraph and assembly paths
-    // like the ones computed by ReadFollowing.
-    // (Those are not actually paths in the AssemblyGraph but simply
-    // sequences of edges).
-    AssemblyGraph(
-        const Assembler&,
-        const Options&,
-        const AssemblyGraph&,
-        const vector< vector<edge_descriptor> >&);
-
     // Detangle, phase, assemble sequence, output.
     void simplifyAndAssemble();
 

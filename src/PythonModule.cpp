@@ -150,12 +150,6 @@ PYBIND11_MODULE(shasta2, shasta2Module)
 
     class_<AssemblyGraph> assemblyGraphClass(shasta2Module, "AssemblyGraph");
     assemblyGraphClass
-        .def(pybind11::init<
-            const Assembler&,
-            const Options&,
-            const AssemblyGraph&,
-            const vector< vector<AssemblyGraph::edge_descriptor> >&
-            >())
         .def_readwrite("compressDebugLevel", &AssemblyGraph::compressDebugLevel)
         .def("prune", &AssemblyGraph::prune)
         .def("bubbleCleanupIteration", &AssemblyGraph::bubbleCleanupIteration)
