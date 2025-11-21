@@ -2,8 +2,8 @@
 #include "SHASTA2_ASSERT.hpp"
 using namespace shasta;
 
-#include <algorithm.hpp>
-#include <array.hpp>
+#include "algorithm.hpp"
+#include "array.hpp"
 #include "iostream.hpp"
 #include <random>
 

@@ -30,7 +30,7 @@ using namespace shasta;
 
 // Standard library.
 #include "fstream.hpp"
-#include <stdexcept.hpp>
+#include "stdexcept.hpp"
 
 
 

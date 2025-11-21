@@ -9,7 +9,7 @@
 
 // Standard library.
 #include "cstdint.hpp"
-#include <span.hpp>
+#include "span.hpp"
 
 namespace shasta {
     class Journeys;

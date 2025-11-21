@@ -1,7 +1,7 @@
 #pragma once
 
 // Shasta
-#include <invalid.hpp>
+#include "invalid.hpp"
 
 // Standard library.
 #include "cstdint.hpp"

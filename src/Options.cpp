@@ -3,8 +3,8 @@
 using namespace shasta;
 
 // Standard library.
-#include <array.hpp>
-#include <stdexcept.hpp>
+#include "array.hpp"
+#include "stdexcept.hpp"
 #include <thread>
 
 

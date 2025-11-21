@@ -4,7 +4,7 @@
 using namespace shasta;
 
 // Standard library.
-#include <algorithm.hpp>
+#include "algorithm.hpp"
 #include <cmath>
 #include <iomanip>
 #include "iostream.hpp"

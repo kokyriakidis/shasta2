@@ -4,8 +4,8 @@ using namespace shasta;
 #include "MurmurHash2.hpp"
 #include "SHASTA2_ASSERT.hpp"
 
-#include <algorithm.hpp>
-#include <array.hpp>
+#include "algorithm.hpp"
+#include "array.hpp"
 #include <cmath>
 #include <format>
 // #include "iostream.hpp"

@@ -4,7 +4,7 @@
 #include "AssemblyGraph.hpp"
 
 // Standard library.
-#include <span.hpp>
+#include "span.hpp"
 
 
 namespace shasta {

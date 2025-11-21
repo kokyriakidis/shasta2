@@ -12,10 +12,10 @@ using namespace shasta;
 #include <boost/uuid/uuid_io.hpp>
 
 // Standard library.
-#include <algorithm.hpp>
+#include "algorithm.hpp"
 #include <filesystem>
 #include "fstream.hpp"
-#include <iterator.hpp>
+#include "iterator.hpp"
 
 
 

@@ -10,7 +10,7 @@ using namespace shasta;
 #include <boost/pending/disjoint_sets.hpp>
 
 // Standard library.
-#include <algorithm.hpp>
+#include "algorithm.hpp"
 #include "fstream.hpp"
 
 
