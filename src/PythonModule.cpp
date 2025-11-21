@@ -1,4 +1,4 @@
-#ifdef SHASTA_PYTHON_API
+#ifdef SHASTA2_PYTHON_API
 
 // Shasta.
 #include "Anchor.hpp"

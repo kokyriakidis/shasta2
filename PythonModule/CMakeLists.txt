@@ -20,7 +20,7 @@ else(BUILD_DEBUG)
 endif(BUILD_DEBUG)
 
 # This makes sure the code in PythonModule.cpp is compiled.
-add_definitions(-DSHASTA_PYTHON_API)
+add_definitions(-DSHASTA2_PYTHON_API)
 
 # Sources files.
 file(GLOB SOURCES ../src/*.cpp)
