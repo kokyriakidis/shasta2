@@ -4,7 +4,7 @@
 #include "Options.hpp"
 using namespace shasta;
 
-#include <fstream.hpp>
+#include "fstream.hpp"
 #include <iomanip>
 
 

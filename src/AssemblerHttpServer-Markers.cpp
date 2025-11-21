@@ -20,7 +20,7 @@ using namespace shasta;
 #include <boost/uuid/uuid_io.hpp>
 
 // Standard library.
-#include <fstream.hpp>
+#include "fstream.hpp"
 #include <queue>
 
 

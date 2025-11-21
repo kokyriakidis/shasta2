@@ -41,8 +41,8 @@ using namespace shasta;
 #include <boost/graph/strong_components.hpp>
 
 // Standard library.
-#include <fstream.hpp>
-#include <tuple.hpp>
+#include "fstream.hpp"
+#include "tuple.hpp"
 
 // Explicit instantiation.
 #include "MultithreadedObject.tpp"

@@ -8,7 +8,7 @@ using namespace shasta;
 #include <boost/pending/disjoint_sets.hpp>
 
 // Standard library.
-#include <fstream.hpp>
+#include "fstream.hpp"
 
 
 

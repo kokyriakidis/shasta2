@@ -8,7 +8,7 @@ using namespace shasta;
 #include <boost/graph/iteration_macros.hpp>
 
 // Standard library.
-#include <tuple.hpp>
+#include "tuple.hpp"
 
 
 

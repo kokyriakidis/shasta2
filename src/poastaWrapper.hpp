@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstdint.hpp>
-#include <utility.hpp>
+#include "utility.hpp"
 #include <vector.hpp>
 
 namespace shasta {

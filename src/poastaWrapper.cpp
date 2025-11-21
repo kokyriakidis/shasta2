@@ -14,7 +14,7 @@ using namespace shasta;
 // Standard library.
 #include <algorithm.hpp>
 #include <filesystem>
-#include <fstream.hpp>
+#include "fstream.hpp"
 #include <iterator.hpp>
 
 

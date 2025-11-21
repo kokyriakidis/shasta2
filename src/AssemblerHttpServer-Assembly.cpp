@@ -24,8 +24,8 @@ using namespace shasta;
 #include <boost/tokenizer.hpp>
 
 // Standard library.
-#include <fstream.hpp>
-#include <tuple.hpp>
+#include "fstream.hpp"
+#include "tuple.hpp"
 
 
 

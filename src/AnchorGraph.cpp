@@ -22,9 +22,9 @@ using namespace shasta;
 #include <boost/serialization/vector.hpp>
 
 // Standard library.
-#include <fstream.hpp>
+#include "fstream.hpp"
 #include <queue>
-#include <tuple.hpp>
+#include "tuple.hpp"
 
 // Explicit instantiation.
 #include "MultithreadedObject.tpp"

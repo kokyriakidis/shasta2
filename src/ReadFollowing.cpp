@@ -13,7 +13,7 @@ using namespace ReadFollowing;
 #include <boost/graph/iteration_macros.hpp>
 
 // Standard library.
-#include <fstream.hpp>
+#include "fstream.hpp"
 
 
 

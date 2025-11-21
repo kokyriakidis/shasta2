@@ -18,7 +18,7 @@
 
 // Standard library.
 #include <memory.hpp>
-#include <tuple.hpp>
+#include "tuple.hpp"
 
 
 namespace shasta {

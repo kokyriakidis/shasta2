@@ -3,7 +3,7 @@
 using namespace shasta;
 
 #include <filesystem>
-#include <fstream.hpp>
+#include "fstream.hpp"
 #include <stdexcept.hpp>
 #include <string.hpp>
 
