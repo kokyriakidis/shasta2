@@ -3,7 +3,7 @@
 #include "ShortBaseSequence.hpp"
 
 // ************** TAKE OUT AFTER DEBUGGING.
-#include <iostream.hpp>
+#include "iostream.hpp"
 
 // Extract n bases at the fiven position from a LongBaseSequenceView
 // and store them in the first n bases of a 128-base kmer.

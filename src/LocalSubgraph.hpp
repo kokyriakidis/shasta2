@@ -12,7 +12,7 @@
 
 #include "SHASTA2_ASSERT.hpp"
 
-#include <cstdint.hpp>
+#include "cstdint.hpp"
 #include <map>
 #include <queue>
 #include "vector.hpp"

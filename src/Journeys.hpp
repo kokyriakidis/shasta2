@@ -8,7 +8,7 @@
 #include "ReadId.hpp"
 
 // Standard library.
-#include <cstdint.hpp>
+#include "cstdint.hpp"
 #include <span.hpp>
 
 namespace shasta {

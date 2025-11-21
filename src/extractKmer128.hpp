@@ -5,7 +5,7 @@
 // Uses bit operations for speed, so it can be used in
 // performance critical code.
 
-#include <cstdint.hpp>
+#include "cstdint.hpp"
 
 namespace shasta {
     class LongBaseSequenceView;

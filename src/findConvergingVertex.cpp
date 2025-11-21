@@ -3,7 +3,7 @@
 using namespace shasta;
 
 // Standard library.
-#include <iostream.hpp>
+#include "iostream.hpp"
 #include "vector.hpp"
 
 

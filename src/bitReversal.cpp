@@ -4,7 +4,7 @@ using namespace shasta;
 
 #include <algorithm.hpp>
 #include <array.hpp>
-#include <iostream.hpp>
+#include "iostream.hpp"
 #include <random>
 
 void shasta::testBitReversal()

@@ -7,7 +7,7 @@
 // and cannot be extended.
 
 // Standard library.
-#include <cstdint.hpp>
+#include "cstdint.hpp"
 
 namespace shasta {
 

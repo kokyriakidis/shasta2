@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cstdint.hpp>
+#include "cstdint.hpp"
 
 namespace shasta {
     using ReadId = uint32_t;

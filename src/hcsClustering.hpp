@@ -20,7 +20,7 @@
 #include <boost/graph/stoer_wagner_min_cut.hpp>
 #pragma GCC diagnostic pop
 
-#include <cstdint.hpp>
+#include "cstdint.hpp"
 #include <map>
 #include "tuple.hpp"
 #include "vector.hpp"

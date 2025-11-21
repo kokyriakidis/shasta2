@@ -4,7 +4,7 @@
 #include <invalid.hpp>
 
 // Standard library.
-#include <cstdint.hpp>
+#include "cstdint.hpp"
 #include "iosfwd.hpp"
 #include "vector.hpp"
 

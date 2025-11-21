@@ -10,7 +10,7 @@
 #include <boost/numeric/ublas/matrix.hpp>
 
 // Standard library.
-#include <cstdint.hpp>
+#include "cstdint.hpp"
 #include "utility.hpp"
 #include "vector.hpp"
 

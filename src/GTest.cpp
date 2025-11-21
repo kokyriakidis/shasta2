@@ -7,7 +7,7 @@ using namespace shasta;
 #include <algorithm.hpp>
 #include <cmath>
 #include <iomanip>
-#include <iostream.hpp>
+#include "iostream.hpp"
 #include <numeric>
 
 

@@ -1,7 +1,7 @@
 #pragma once
 
 // Shasta.
-#include <cstdint.hpp>
+#include "cstdint.hpp"
 #include "iosfwd.hpp"
 #include "string.hpp"
 #include "vector.hpp"

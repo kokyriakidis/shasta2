@@ -3,7 +3,7 @@
 #include "SHASTA2_ASSERT.hpp"
 using namespace shasta;
 
-#include <iostream.hpp>
+#include "iostream.hpp"
 #include "string.hpp"
 
 
