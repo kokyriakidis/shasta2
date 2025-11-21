@@ -4,8 +4,8 @@
 #include "AssemblyGraph.hpp"
 
 // Standard library.
-#include <memory.hpp>
-#include <vector.hpp>
+#include "memory.hpp"
+#include "vector.hpp"
 
 namespace shasta {
     class Tangle;

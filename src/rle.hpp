@@ -3,7 +3,7 @@
 
 #include <Base.hpp>
 
-#include <vector.hpp>
+#include "vector.hpp"
 
 // Convert a vector<Base> to RLE.
 namespace shasta {

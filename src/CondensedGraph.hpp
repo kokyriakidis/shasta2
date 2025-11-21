@@ -18,7 +18,7 @@
 #include <boost/graph/strong_components.hpp>
 
 #include <map>
-#include <vector.hpp>
+#include "vector.hpp"
 
 
 namespace shasta {

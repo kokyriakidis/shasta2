@@ -1,7 +1,7 @@
 #pragma once
 
 #include <iosfwd.hpp>
-#include <vector.hpp>
+#include "vector.hpp"
 
 namespace shasta {
 

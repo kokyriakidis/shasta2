@@ -12,7 +12,7 @@ A TangleMatrix1 is defined by two sets of AssemblyGraphe edges (segments):
 #include "AssemblyGraph.hpp"
 
 // Standard library.
-#include <vector.hpp>
+#include "vector.hpp"
 
 namespace shasta {
     class TangleMatrix1;

@@ -17,7 +17,7 @@
 #include <boost/serialization/vector.hpp>
 
 // Standard library.
-#include <memory.hpp>
+#include "memory.hpp"
 #include "tuple.hpp"
 
 

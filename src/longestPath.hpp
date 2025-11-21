@@ -13,7 +13,7 @@
 
 // Standard library.
 #include <map>
-#include <vector.hpp>
+#include "vector.hpp"
 
 
 namespace shasta {

@@ -45,7 +45,7 @@ Lapack and Blas come with this license:
 
 #include <boost/numeric/ublas/matrix.hpp>
 
-#include <vector.hpp>
+#include "vector.hpp"
 
 extern "C" void dgemv_(
     const char* TRANS,

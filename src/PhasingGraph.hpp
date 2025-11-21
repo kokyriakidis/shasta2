@@ -19,7 +19,7 @@ the corresponding bubbles can be phased relative to each other.
 
 // Standard library.
 #include <string.hpp>
-#include <vector.hpp>
+#include "vector.hpp"
 
 
 

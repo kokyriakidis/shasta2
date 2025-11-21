@@ -15,7 +15,7 @@ and the first step of each exit.
 #include "AssemblyGraph.hpp"
 
 // Standard library.
-#include <vector.hpp>
+#include "vector.hpp"
 
 namespace shasta {
     class TangleMatrix;

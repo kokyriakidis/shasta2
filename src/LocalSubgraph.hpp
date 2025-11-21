@@ -15,7 +15,7 @@
 #include <cstdint.hpp>
 #include <map>
 #include <queue>
-#include <vector.hpp>
+#include "vector.hpp"
 
 
 namespace shasta {
