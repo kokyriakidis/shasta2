@@ -20,7 +20,7 @@ using namespace shasta2;
 
 
 
-#define SHASTA_ADD_TO_FUNCTION_TABLE(name) httpServerData.functionTable[string("/") + #name ] = &Assembler::name
+#define SHASTA2_ADD_TO_FUNCTION_TABLE(name) httpServerData.functionTable[string("/") + #name ] = &Assembler::name
 
 
 
@@ -31,38 +31,38 @@ void Assembler::fillServerFunctionTable()
     httpServerData.functionTable["/"]       = &Assembler::exploreSummary;
     httpServerData.functionTable["/index"]  = &Assembler::exploreSummary;
 
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreReadRaw);
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreLookupRead);
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreReadSequence);
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreReadMarkers);
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreMarkerKmer);
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreMarkerKmerAnalysisWithMarkerOffset);
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreMarkerKmerAnalysisWithBaseOffset);
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreLocalKmerGraph);
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreMarkerKmerPair);
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreFindMarkerKmers);
+    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreReadRaw);
+    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreLookupRead);
+    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreReadSequence);
+    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreReadMarkers);
+    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreMarkerKmer);
+    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreMarkerKmerAnalysisWithMarkerOffset);
+    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreMarkerKmerAnalysisWithBaseOffset);
+    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreLocalKmerGraph);
+    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreMarkerKmerPair);
+    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreFindMarkerKmers);
 
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreAnchor);
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreAnchorPair);
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreAnchorPair1);
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreAnchorPair2);
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreJourney);
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreReadFollowing);
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreLocalAssembly);
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreSimilarSequences);
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreLocalAnchorGraph);
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreLocalAssemblyGraph);
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreSuperbubble);
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreSegments);
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreSegmentSequence);
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreSegmentSteps);
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreSegmentStepSupport);
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreSegmentStep);
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreBridgeSegmentSteps);
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreTangleMatrix);
-    SHASTA_ADD_TO_FUNCTION_TABLE(exploreSegmentPair);
+    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreAnchor);
+    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreAnchorPair);
+    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreAnchorPair1);
+    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreAnchorPair2);
+    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreJourney);
+    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreReadFollowing);
+    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreLocalAssembly);
+    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreSimilarSequences);
+    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreLocalAnchorGraph);
+    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreLocalAssemblyGraph);
+    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreSuperbubble);
+    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreSegments);
+    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreSegmentSequence);
+    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreSegmentSteps);
+    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreSegmentStepSupport);
+    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreSegmentStep);
+    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreBridgeSegmentSteps);
+    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreTangleMatrix);
+    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreSegmentPair);
 }
-#undef SHASTA_ADD_TO_FUNCTION_TABLE
+#undef SHASTA2_ADD_TO_FUNCTION_TABLE
 
 
 
