@@ -18,7 +18,7 @@ the corresponding bubbles can be phased relative to each other.
 #include <boost/graph/adjacency_list.hpp>
 
 // Standard library.
-#include <string.hpp>
+#include "string.hpp"
 #include "vector.hpp"
 
 

@@ -10,7 +10,7 @@ using namespace shasta;
 #include <format>
 // #include <iostream.hpp>
 #include <limits>
-#include <string.hpp>
+#include "string.hpp"
 #include "utility.hpp"
 
 

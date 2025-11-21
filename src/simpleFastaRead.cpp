@@ -4,7 +4,7 @@
 using namespace shasta;
 
 #include <iostream.hpp>
-#include <string.hpp>
+#include "string.hpp"
 
 
 

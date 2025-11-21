@@ -5,7 +5,7 @@ using namespace shasta;
 #include <filesystem>
 #include "fstream.hpp"
 #include <stdexcept.hpp>
-#include <string.hpp>
+#include "string.hpp"
 
 
 
