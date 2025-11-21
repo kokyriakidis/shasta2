@@ -9,7 +9,7 @@
 #include "stdexcept.hpp"
 #include "string.hpp"
 
-namespace shasta {
+namespace shasta2 {
 
     // A long sequence of bases. Memory is not owned.
     class LongBaseSequenceView;
@@ -38,7 +38,7 @@ namespace shasta {
 // This choice of representation facilitates the implementation of various
 // operations for high performance using low level bit manipulation.
 // This class does not own the memory it manipulates.
-class shasta::LongBaseSequenceView {
+class shasta2::LongBaseSequenceView {
 public:
     uint64_t* begin;
     uint64_t baseCount;
@@ -171,9 +171,9 @@ public:
 
 
 
-inline std::ostream& shasta::operator<<(
+inline std::ostream& shasta2::operator<<(
     std::ostream& s,
-    const shasta::LongBaseSequenceView& sequence)
+    const shasta2::LongBaseSequenceView& sequence)
 {
     return sequence.write(s);
 }
@@ -182,7 +182,7 @@ inline std::ostream& shasta::operator<<(
 
 // Class that uses a vector of uint64_t values
 // to represent a sequence of bases as a LongBaseSequence.
-class shasta::LongBaseSequence : public  LongBaseSequenceView {
+class shasta2::LongBaseSequence : public  LongBaseSequenceView {
 public:
     LongBaseSequence(uint64_t baseCountArgument = 0): LongBaseSequenceView(false)
     {
@@ -242,7 +242,7 @@ private:
 
 // Many long sequences of bases stored in memory mapped files.
 // This is used to store nanopore reads.
-class shasta::LongBaseSequences {
+class shasta2::LongBaseSequences {
 public:
 
     void createNew(const string& name, size_t pageSize);
@@ -314,7 +314,7 @@ private:
 
 
 // Reverse complement a vector of bases.
-inline void shasta::reverseComplement(vector<Base>&v)
+inline void shasta2::reverseComplement(vector<Base>&v)
 {
     const size_t n = v.size();
     const size_t nm1 = n - 1;

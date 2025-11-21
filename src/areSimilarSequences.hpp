@@ -42,7 +42,7 @@ If html is open, details of the computation are output there.
 #include "iosfwd.hpp"
 #include "vector.hpp"
 
-namespace shasta {
+namespace shasta2 {
 
     class Base;
 

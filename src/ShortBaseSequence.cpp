@@ -2,13 +2,13 @@
 #include "ShortBaseSequenceEdit.hpp"
 #include "algorithm.hpp"
 #include "SHASTA2_ASSERT.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 #include <iomanip>
 
 
 
-void shasta::testShortBaseSequence()
+void shasta2::testShortBaseSequence()
 {
     while(true) {
 

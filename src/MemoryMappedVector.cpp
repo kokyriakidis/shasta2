@@ -1,7 +1,7 @@
 #include "MemoryMappedObject.hpp"
 #include "MemoryMappedVector.hpp"
 
-namespace shasta {
+namespace shasta2 {
     class MemoryMappedObjectTest {
     public:
         int a;
@@ -11,7 +11,7 @@ namespace shasta {
 
 
 
-void shasta::testMemoryMappedVector()
+void shasta2::testMemoryMappedVector()
 {
 #if 0
     MemoryMapped::Vector<int> x;

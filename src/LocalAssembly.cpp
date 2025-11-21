@@ -9,7 +9,7 @@
 #include "orderVectors.hpp"
 #include "poastaWrapper.hpp"
 #include "Reads.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 // Standard library.
 #include "chrono.hpp"

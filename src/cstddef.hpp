@@ -2,7 +2,7 @@
 
 #include <cstddef>
 
-namespace shasta {
+namespace shasta2 {
     using std::size_t;
 }
 

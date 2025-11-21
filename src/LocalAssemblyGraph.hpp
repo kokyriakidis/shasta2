@@ -6,7 +6,7 @@
 // Boost libraries.
 #include <boost/graph/adjacency_list.hpp>
 
-namespace shasta {
+namespace shasta2 {
     class LocalAssemblyGraph;
     class LocalAssemblyGraphVertex;
     class LocalAssemblyGraphEdge;
@@ -20,7 +20,7 @@ namespace shasta {
 }
 
 
-class shasta::LocalAssemblyGraphVertex {
+class shasta2::LocalAssemblyGraphVertex {
 public:
     AssemblyGraph::vertex_descriptor v;
 
@@ -36,7 +36,7 @@ public:
 
 
 
-class shasta::LocalAssemblyGraphEdge {
+class shasta2::LocalAssemblyGraphEdge {
 public:
     AssemblyGraph::edge_descriptor e;
 
@@ -49,7 +49,7 @@ public:
 
 
 
-class shasta::LocalAssemblyGraph : public LocalAssemblyGraphBaseClass {
+class shasta2::LocalAssemblyGraph : public LocalAssemblyGraphBaseClass {
 public:
 
     // Constructor from a set of AssemblyGraph start vertices and maximum distance.

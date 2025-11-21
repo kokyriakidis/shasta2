@@ -1,6 +1,6 @@
 #include "graphvizToHtml.hpp"
 #include "runCommandWithTimeout.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 #include <filesystem>
 #include "fstream.hpp"
@@ -21,7 +21,7 @@ using namespace shasta;
 // If successful, thi removes the input Graphviz file and the svg file.
 // Otherwise, it throws an exception and does not remove the input graphviz file.
 
-void shasta::graphvizToHtml(
+void shasta2::graphvizToHtml(
 
     // The name of the Graphviz file (dot format) containing the graph to be displayed.
     const string& dotFileName,
@@ -38,7 +38,7 @@ void shasta::graphvizToHtml(
     const string& options,
 
     // Svg output goes here.
-    shasta::ostream& html
+    shasta2::ostream& html
     )
 {
     // Construct the Graphviz command.

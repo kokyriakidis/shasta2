@@ -12,7 +12,7 @@
 
 
 
-namespace shasta {
+namespace shasta2 {
 
     template<class Graph, class Subgraph> class InducedGraphIsomorphismsCallback;
 
@@ -25,7 +25,7 @@ namespace shasta {
 
 
 
-template<class Graph, class Subgraph> class shasta::InducedGraphIsomorphismsCallback {
+template<class Graph, class Subgraph> class shasta2::InducedGraphIsomorphismsCallback {
 public:
 
     InducedGraphIsomorphismsCallback(
@@ -57,7 +57,7 @@ private:
 // Find induced subgraph isomorphism.
 // The Subgraph type must use vecS for its VertexList.
 template<class Graph, class Subgraph>
-    void shasta::inducedSubgraphIsomorphisms(
+    void shasta2::inducedSubgraphIsomorphisms(
     const Graph& graph,
     const Subgraph& subgraph,
     vector< vector<typename Graph::vertex_descriptor> >& isomorphisms)

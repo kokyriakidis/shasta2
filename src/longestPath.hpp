@@ -16,7 +16,7 @@
 #include "vector.hpp"
 
 
-namespace shasta {
+namespace shasta2 {
     template<class Graph> void longestPath(
         const Graph &graph,
         vector<typename Graph::edge_descriptor>& longestPath);
@@ -24,7 +24,7 @@ namespace shasta {
 
 
 
-template<class Graph> void shasta::longestPath(
+template<class Graph> void shasta2::longestPath(
     const Graph &graph,
     vector<typename Graph::edge_descriptor>& longestPath)
 {

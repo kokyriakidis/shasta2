@@ -5,14 +5,14 @@
 
 #include "AssemblyGraph.hpp"
 
-namespace shasta {
+namespace shasta2 {
     class SegmentStepSupport;
     class SegmentPairInformation;
 }
 
 
 
-class shasta::SegmentPairInformation {
+class shasta2::SegmentPairInformation {
 public:
     uint64_t commonCount = 0;
     uint64_t missing0 = 0;
@@ -24,7 +24,7 @@ public:
 
 
 
-class shasta::SegmentStepSupport {
+class shasta2::SegmentStepSupport {
 public:
     using edge_descriptor = AssemblyGraph::edge_descriptor;
 

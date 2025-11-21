@@ -46,7 +46,7 @@ log(Pin/Prandom) and log(Pout/Prandom) expressed in decibels (dB).
 
 *******************************************************************************/
 
-namespace shasta {
+namespace shasta2 {
 
 
     pair<double, double> diploidBayesianPhase(

@@ -15,7 +15,7 @@
 // The MarkerKmers object keeps track of the locations in the oriented reads
 // where each marker k-mer appears.
 
-namespace shasta {
+namespace shasta2 {
     class MarkerKmers;
 
     class Reads;
@@ -25,7 +25,7 @@ namespace shasta {
 
 
 
-class shasta::MarkerKmers :
+class shasta2::MarkerKmers :
     public MappedMemoryOwner,
     public MultithreadedObject<MarkerKmers> {
 public:

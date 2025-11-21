@@ -5,7 +5,7 @@
 #include "Markers.hpp"
 #include "performanceLog.hpp"
 #include "Reads.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 #include <cmath>
 #include "fstream.hpp"

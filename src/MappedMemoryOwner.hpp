@@ -3,13 +3,13 @@
 #include "cstdint.hpp"
 #include "string.hpp"
 
-namespace shasta {
+namespace shasta2 {
     class MappedMemoryOwner;
 }
 
 
 
-class shasta::MappedMemoryOwner {
+class shasta2::MappedMemoryOwner {
 public:
 
     string largeDataFileNamePrefix;

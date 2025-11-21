@@ -15,7 +15,7 @@
 
 
 
-namespace shasta {
+namespace shasta2 {
 
     namespace ReadFollowing {
         class Graph;
@@ -36,7 +36,7 @@ namespace shasta {
 
 
 
-class shasta::ReadFollowing::Vertex {
+class shasta2::ReadFollowing::Vertex {
 public:
     // A Segment is an edge of the AssemblyGraph.
     Segment segment;
@@ -53,7 +53,7 @@ public:
 
 
 
-class shasta::ReadFollowing::Edge {
+class shasta2::ReadFollowing::Edge {
 public:
     Edge(const AssemblyGraph&, Segment, Segment);
     SegmentPairInformation segmentPairInformation;
@@ -68,7 +68,7 @@ public:
 
 
 
-class shasta::ReadFollowing::Graph : public GraphBaseClass {
+class shasta2::ReadFollowing::Graph : public GraphBaseClass {
 public:
     Graph(const AssemblyGraph&);
 

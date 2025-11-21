@@ -2,7 +2,7 @@
 
 #include <vector>
 
-namespace shasta {
+namespace shasta2 {
     using std::vector;
 }
 

@@ -9,7 +9,7 @@
 // Standard library.
 #include "cstdint.hpp"
 
-namespace shasta {
+namespace shasta2 {
 
     template<class Int> class BitCounter {
     public:

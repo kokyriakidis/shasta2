@@ -11,7 +11,7 @@
 #include <map>
 #include "vector.hpp"
 
-namespace shasta {
+namespace shasta2 {
     class LocalAnchorGraph;
     class LocalAnchorGraphVertex;
     class LocalAnchorGraphEdge;
@@ -31,7 +31,7 @@ namespace shasta {
 
 
 
-class shasta::LocalAnchorGraphDisplayOptions {
+class shasta2::LocalAnchorGraphDisplayOptions {
 public:
     uint64_t sizePixels;
     string layoutMethod;
@@ -62,7 +62,7 @@ public:
 
 
 
-class shasta::LocalAnchorGraphVertex {
+class shasta2::LocalAnchorGraphVertex {
 public:
     AnchorId anchorId;
     uint64_t distance;
@@ -75,7 +75,7 @@ public:
 };
 
 
-class shasta::LocalAnchorGraphEdge {
+class shasta2::LocalAnchorGraphEdge {
 public:
     // The edge of the global AnchorGraph that corresponds to this LocalAnchorGraphEdge.
     AnchorGraph::edge_descriptor eG;
@@ -84,7 +84,7 @@ public:
 
 
 
-class shasta::LocalAnchorGraph : public LocalAnchorGraphAssemblyGraphBaseClass {
+class shasta2::LocalAnchorGraph : public LocalAnchorGraphAssemblyGraphBaseClass {
 public:
 
     LocalAnchorGraph(

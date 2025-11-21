@@ -8,7 +8,7 @@
 #endif
 
 
-namespace shasta {
+namespace shasta2 {
 
     using std::uint8_t;
     using std::uint16_t;

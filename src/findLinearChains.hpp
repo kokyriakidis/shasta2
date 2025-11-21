@@ -11,7 +11,7 @@
 #include <list>
 #include "vector.hpp"
 
-namespace shasta {
+namespace shasta2 {
 
     // Find linear chains of edges (paths).
     template<class Graph> void findLinearChains(
@@ -36,7 +36,7 @@ namespace shasta {
 
 
 // Version that uses vectors.
-template<class Graph> void shasta::findLinearChains(
+template<class Graph> void shasta2::findLinearChains(
     const Graph& graph,
     uint64_t minimumLength,
     vector< vector<typename Graph::edge_descriptor> >& chainVectors)
@@ -57,7 +57,7 @@ template<class Graph> void shasta::findLinearChains(
 
 
 // Find linear chains of edges (paths).
-template<class Graph> inline void shasta::findLinearChains(
+template<class Graph> inline void shasta2::findLinearChains(
     const Graph& graph,
     uint64_t minimumLength,
     vector< std::list<typename Graph::edge_descriptor> >& chains)
@@ -155,7 +155,7 @@ template<class Graph> inline void shasta::findLinearChains(
 
 
 // Find linear chains of vertices.
-template<class Graph> void shasta::findLinearVertexChains(
+template<class Graph> void shasta2::findLinearVertexChains(
     const Graph& graph,
     vector< std::list<typename Graph::vertex_descriptor> >& chains)
 {
@@ -240,7 +240,7 @@ template<class Graph> void shasta::findLinearVertexChains(
 
 
 
-template<class Graph> void shasta::findLinearVertexChains(
+template<class Graph> void shasta2::findLinearVertexChains(
     const Graph& graph,
     vector< vector<typename Graph::vertex_descriptor> >& chains)
 {

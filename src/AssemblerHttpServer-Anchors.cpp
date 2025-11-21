@@ -15,7 +15,7 @@
 #include "ReadId.hpp"
 #include "RestrictedAnchorGraph.hpp"
 #include "tmpDirectory.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 // Boost libraries.
 #include <boost/algorithm/string.hpp>

@@ -13,7 +13,7 @@
 // by shasta2 instead of the ones using the standard
 // anchor generation process.
 
-namespace shasta {
+namespace shasta2 {
     class ExternalAnchors;
     class Markers;
     class Reads;
@@ -21,7 +21,7 @@ namespace shasta {
 
 
 
-class shasta::ExternalAnchors {
+class shasta2::ExternalAnchors {
 public:
     // This will generate four files:
     // name.toc name.data, name-Names.toc, name-names.data.

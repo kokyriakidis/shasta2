@@ -2,7 +2,7 @@
 
 #include <fstream>
 
-namespace shasta {
+namespace shasta2 {
     using std::ifstream;
     using std::ofstream;
 }

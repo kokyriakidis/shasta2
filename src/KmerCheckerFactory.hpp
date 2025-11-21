@@ -4,7 +4,7 @@
 #include "KmerChecker.hpp"
 #include "memory.hpp"
 
-namespace shasta {
+namespace shasta2 {
     class KmerCheckerFactory;
 
     class KmerChecker;
@@ -16,7 +16,7 @@ namespace shasta {
 
 // The KmerCheckerFactory knows how to create the appropriate
 // type of KmerChecker for the options used.
-class shasta::KmerCheckerFactory {
+class shasta2::KmerCheckerFactory {
 public:
 
     static shared_ptr<KmerChecker> createNew(

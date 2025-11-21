@@ -10,7 +10,7 @@
 #include "Markers.hpp"
 #include "TangleMatrix1.hpp"
 #include "tmpDirectory.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 // Boost libraries.
 #include <boost/graph/dijkstra_shortest_paths.hpp>
@@ -723,7 +723,7 @@ void RestrictedAnchorGraph::approximateTopologicalSort()
     }
 
     // Do the approximate topological sort.
-    shasta::approximateTopologicalSort(graph, edgesSortedByDecreasingCoverage);
+    shasta2::approximateTopologicalSort(graph, edgesSortedByDecreasingCoverage);
 }
 
 
@@ -742,7 +742,7 @@ void RestrictedAnchorGraph::findOptimalPath(
     const vertex_descriptor v1 = getExistingVertex(anchorId1);
 
     // Compute the longest path.
-    shasta::longestPath(graph, optimalPath);
+    shasta2::longestPath(graph, optimalPath);
     if(
         optimalPath.empty() or
         (source(optimalPath.front(), graph) != v0) or

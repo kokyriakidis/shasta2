@@ -1,5 +1,5 @@
 
-// shasta.
+// shasta2.
 #include "mappedCopy.hpp"
 #include "timestamp.hpp"
 
@@ -21,7 +21,7 @@
 // This can be used to copy a file to the huge page filesystem.
 // The regular cp command does not work (but it works to copy
 // the other way around, from the huge page filesystem).
-void shasta::mappedCopy(
+void shasta2::mappedCopy(
     const string& inputPath,
     const string& outputPath)
 {

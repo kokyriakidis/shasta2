@@ -5,7 +5,7 @@
 #include "ReadId.hpp"
 #include "Reads.hpp"
 #include "timestamp.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 // Explicit instantiation.
 #include "MultithreadedObject.tpp"

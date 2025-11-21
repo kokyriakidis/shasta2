@@ -14,7 +14,7 @@
 #include "string.hpp"
 #include "utility.hpp"
 
-namespace shasta {
+namespace shasta2 {
 
     class Assembler;
 
@@ -48,7 +48,7 @@ namespace shasta {
 
 
 // Class used to store various pieces of assembler information in shared memory.
-class shasta::AssemblerInfo {
+class shasta2::AssemblerInfo {
 public:
 
     // The length of k-mers used to define markers.
@@ -60,7 +60,7 @@ public:
 
 
 
-class shasta::Assembler :
+class shasta2::Assembler :
     public MultithreadedObject<Assembler>,
     public MappedMemoryOwner,
     public HttpServer {

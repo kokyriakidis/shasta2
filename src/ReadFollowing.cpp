@@ -6,7 +6,7 @@
 #include "Journeys.hpp"
 #include "Markers.hpp"
 #include "Options.hpp"
-using namespace shasta;
+using namespace shasta2;
 using namespace ReadFollowing;
 
 // Boost libraries.

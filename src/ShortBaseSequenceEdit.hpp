@@ -5,7 +5,7 @@
 
 #include "vector.hpp"
 
-namespace shasta
+namespace shasta2
 {
     template<class Int> void applySingleEdit(
         const ShortBaseSequence<Int>&,
@@ -16,7 +16,7 @@ namespace shasta
 
 
 
-template<class Int> void shasta::applySingleEdit(
+template<class Int> void shasta2::applySingleEdit(
     const ShortBaseSequence<Int>& x,
     uint64_t k,
     vector< ShortBaseSequence<Int> >& v

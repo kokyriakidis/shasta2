@@ -29,7 +29,7 @@
 #include "TangleMatrix.hpp"
 #include "TangleMatrix1.hpp"
 #include "transitiveReduction.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 // Boost libraries.
 #include <boost/archive/binary_oarchive.hpp>
@@ -278,13 +278,13 @@ void AssemblyGraph::writeFasta(const string& stage) const
 
     ofstream fasta("Assembly-" + stage + ".fasta");
 
-    vector<shasta::Base> sequence;
+    vector<shasta2::Base> sequence;
     BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
         const AssemblyGraphEdge& edge = assemblyGraph[e];
         edge.getSequence(sequence);
 
         fasta << ">" << edge.id << "\n";
-        copy(sequence.begin(), sequence.end(), ostream_iterator<shasta::Base>(fasta));
+        copy(sequence.begin(), sequence.end(), ostream_iterator<shasta2::Base>(fasta));
         fasta << "\n";
     }
 }
@@ -307,7 +307,7 @@ void AssemblyGraph::writeGfa(ostream& gfa) const
     gfa << "H\tVN:Z:1.0\n";
 
     // Each edge generates a gfa segment.
-    vector<shasta::Base> sequence;
+    vector<shasta2::Base> sequence;
     BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
         const AssemblyGraphEdge& edge = assemblyGraph[e];
         const double coverage = edge.averageCoverage();
@@ -321,7 +321,7 @@ void AssemblyGraph::writeGfa(ostream& gfa) const
         // Sequence.
         if(edge.wasAssembled) {
             edge.getSequence(sequence);
-            copy(sequence.begin(), sequence.end(), ostream_iterator<shasta::Base>(gfa));
+            copy(sequence.begin(), sequence.end(), ostream_iterator<shasta2::Base>(gfa));
             const uint64_t length = sequence.size();
             gfa << "\tLN:i:" << length;
             gfa << "\tRC:i:" << uint64_t(std::round(coverage * double(length)));
@@ -972,7 +972,7 @@ bool AssemblyGraph::analyzeBubble(
     ) const
 {
     const AssemblyGraph& assemblyGraph = *this;
-    using shasta::Base;
+    using shasta2::Base;
 
     const bool debug = false; // (assemblyGraph[bubble.edges.front()].id == 130581);
     if(debug) {
@@ -2060,10 +2060,10 @@ bool AssemblyGraph::simplifySuperbubbleByClustering(
                 options.bDrift,
                 newAnchorPair);
             localAssembly.run(false, options.maxAbpoaLength);
-            vector<shasta::Base> sequence;
+            vector<shasta2::Base> sequence;
             localAssembly.getSequence(sequence);
             cout << ">" << i << endl;
-            copy(sequence.begin(), sequence.end(), ostream_iterator<shasta::Base>(cout));
+            copy(sequence.begin(), sequence.end(), ostream_iterator<shasta2::Base>(cout));
             cout << endl;
         }
 #endif
@@ -3269,7 +3269,7 @@ void AssemblyGraph::createSearchGraph(
     uint64_t lowCoverageThreshold,
     uint64_t highCoverageThreshold)
 {
-    using shasta::SearchGraph;
+    using shasta2::SearchGraph;
     AssemblyGraph& assemblyGraph = *this;
 
     // Create the SearchGraph.

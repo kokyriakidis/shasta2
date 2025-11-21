@@ -2,13 +2,13 @@
 
 #include "Superbubble.hpp"
 
-namespace shasta {
+namespace shasta2 {
     class SuperbubbleChain;
 }
 
 
 
-class shasta::SuperbubbleChain: public vector<Superbubble> {
+class shasta2::SuperbubbleChain: public vector<Superbubble> {
 public:
     using vertex_descriptor = AssemblyGraph::vertex_descriptor;
     using edge_descriptor = AssemblyGraph::edge_descriptor;

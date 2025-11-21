@@ -9,7 +9,7 @@
 #include "SHASTA2_ASSERT.hpp"
 #include "span.hpp"
 
-namespace shasta {
+namespace shasta2 {
     class Reads;
     class OrientedReadId;
 }
@@ -18,7 +18,7 @@ namespace shasta {
 
 // The reads used for this assembly, indexed by ReadId.
 
-class shasta::Reads {
+class shasta2::Reads {
 public:
   
     // Default Constructor

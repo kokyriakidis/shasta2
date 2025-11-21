@@ -53,7 +53,7 @@ Only the last edge processed will be classified as causing a cycle.
 #include "utility.hpp"
 #include "vector.hpp"
 
-namespace shasta {
+namespace shasta2 {
     template<class Graph> class ApproximateTopologicalSortEdgePredicate;
     template<class Graph> void approximateTopologicalSort(
         Graph&,
@@ -63,7 +63,7 @@ namespace shasta {
 
 
 // Predicate class used by function approximateTopologicalSort.
-template<class Graph> class shasta::ApproximateTopologicalSortEdgePredicate {
+template<class Graph> class shasta2::ApproximateTopologicalSortEdgePredicate {
 public:
     ApproximateTopologicalSortEdgePredicate(const Graph& graph) : graph(&graph) {}
     const Graph* graph;
@@ -75,7 +75,7 @@ public:
 
 
 
-template<class Graph> void shasta::approximateTopologicalSort(
+template<class Graph> void shasta2::approximateTopologicalSort(
     Graph& graph,
     const vector<typename Graph::edge_descriptor>& edgesToProcess)
 {

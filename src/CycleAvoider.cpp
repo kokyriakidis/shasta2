@@ -1,11 +1,11 @@
 #include "CycleAvoider.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 #include "iostream.hpp"
 
 
 
-void shasta::testCycleAvoider()
+void shasta2::testCycleAvoider()
 {
     // Define the graph.
     class Vertex : public CycleAvoiderVertex {};

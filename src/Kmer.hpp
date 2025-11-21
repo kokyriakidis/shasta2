@@ -2,7 +2,7 @@
 
 #include "ShortBaseSequence.hpp"
 
-namespace shasta {
+namespace shasta2 {
 
     // Type used to represent a k-mer.
     // This limits the maximum k-mer length that can be used.

@@ -3,7 +3,7 @@
 #include "LongBaseSequence.hpp"
 #include "SHASTA2_ASSERT.hpp"
 #include "ShortBaseSequence.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 
 
@@ -14,7 +14,7 @@ using namespace shasta;
 // 0 at the most significant bit and moving towards the least
 // significant bit.
 // THIS IS DONE SEPARATELY ON x[0], y[0] AND x[1], y[1].
-template<class Int> inline void shasta::extractBits(
+template<class Int> inline void shasta2::extractBits(
     const uint64_t* x,
     uint64_t xPosition, // 0 = MSB
     uint64_t n,
@@ -57,7 +57,7 @@ template<class Int> inline void shasta::extractBits(
 
 
 
-template<class Int> void shasta::extractKmer(
+template<class Int> void shasta2::extractKmer(
     const LongBaseSequenceView& v,
     uint64_t position,
     uint64_t length,
@@ -108,25 +108,25 @@ template<class Int> void shasta::extractKmer(
 
 
 // Explicit instantiations.
-template void shasta::extractKmer(
+template void shasta2::extractKmer(
     const LongBaseSequenceView&,
     uint64_t position,
     uint64_t length,
     ShortBaseSequence<uint8_t>&);
 
-template void shasta::extractKmer(
+template void shasta2::extractKmer(
     const LongBaseSequenceView&,
     uint64_t position,
     uint64_t length,
     ShortBaseSequence<uint16_t>&);
 
-template void shasta::extractKmer(
+template void shasta2::extractKmer(
     const LongBaseSequenceView&,
     uint64_t position,
     uint64_t length,
     ShortBaseSequence<uint32_t>&);
 
-template void shasta::extractKmer(
+template void shasta2::extractKmer(
     const LongBaseSequenceView&,
     uint64_t position,
     uint64_t length,

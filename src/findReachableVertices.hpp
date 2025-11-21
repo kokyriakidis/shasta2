@@ -12,7 +12,7 @@
 #include <queue>
 #include <set>
 
-namespace shasta {
+namespace shasta2 {
     template<class Graph> void findReachableVertices(
         const Graph&,
         typename Graph::vertex_descriptor,
@@ -29,7 +29,7 @@ namespace shasta {
 
 
 
-template<class Graph> void shasta::findReachableVertices(
+template<class Graph> void shasta2::findReachableVertices(
     const Graph& graph,
     typename Graph::vertex_descriptor vStart,
     uint64_t direction,
@@ -71,7 +71,7 @@ template<class Graph> void shasta::findReachableVertices(
 
 
 
-template<class Graph> bool shasta::isReachable(
+template<class Graph> bool shasta2::isReachable(
     const Graph& graph,
     typename Graph::vertex_descriptor vStart,
     typename Graph::vertex_descriptor vEnd,

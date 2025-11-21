@@ -4,7 +4,7 @@
 #include "SHASTA2_ASSERT.hpp"
 #include "cstdint.hpp"
 
-namespace shasta {
+namespace shasta2 {
 
     // Figure out if two sequences differ only by copy numbers in
     // a repeat with given period, 2 <= period <= maxPeriod.
@@ -20,7 +20,7 @@ namespace shasta {
 
 
 
-template<class Container> uint64_t shasta::isCopyNumberDifference(
+template<class Container> uint64_t shasta2::isCopyNumberDifference(
     const Container& x,
     const Container& y,
     uint64_t maxPeriod)

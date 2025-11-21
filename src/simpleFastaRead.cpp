@@ -1,14 +1,14 @@
 #include "simpleFastaRead.hpp"
 #include "Base.hpp"
 #include "SHASTA2_ASSERT.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 #include "iostream.hpp"
 #include "string.hpp"
 
 
 
-void shasta::simpleFastaRead(istream& fasta, vector< vector<AlignedBase> >& sequences)
+void shasta2::simpleFastaRead(istream& fasta, vector< vector<AlignedBase> >& sequences)
 {
     sequences.clear();
 

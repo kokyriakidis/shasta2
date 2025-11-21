@@ -19,7 +19,7 @@
 #include "iostream.hpp"
 #include "utility.hpp"
 
-namespace shasta {
+namespace shasta2 {
 
     inline pair<size_t, size_t> splitRange(
         size_t begin,
@@ -34,7 +34,7 @@ namespace shasta {
 
 
 
-inline std::pair<size_t, size_t> shasta::splitRange(
+inline std::pair<size_t, size_t> shasta2::splitRange(
     size_t begin,
     size_t end,
     size_t m,
@@ -59,7 +59,7 @@ inline std::pair<size_t, size_t> shasta::splitRange(
 
 
 
-inline void shasta::testSplitRange()
+inline void shasta2::testSplitRange()
 {
     while(true) {
         cout << "Enter begin, end, m:" << endl;

@@ -11,7 +11,7 @@
 #include "cstdint.hpp"
 #include "span.hpp"
 
-namespace shasta {
+namespace shasta2 {
     class Journeys;
     using Journey = span<const AnchorId>;
 }
@@ -20,7 +20,7 @@ namespace shasta {
 
 // The journey of each oriented read is the sequence of AnchorIds
 // encountered by the oriented read.
-class shasta::Journeys :
+class shasta2::Journeys :
     public MultithreadedObject<Journeys>,
     public MappedMemoryOwner {
 public:

@@ -3,7 +3,7 @@
 #include "Anchor.hpp"
 #include "RestrictedAnchorGraph.hpp"
 #include "TangleMatrix1.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 // Boost libraries.
 #include <boost/graph/iteration_macros.hpp>

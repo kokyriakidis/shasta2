@@ -5,7 +5,7 @@
 #include "tmpDirectory.hpp"
 #include "SHASTA2_ASSERT.hpp"
 #include "timestamp.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 // Boost libraries.
 #include <boost/algorithm/string.hpp>

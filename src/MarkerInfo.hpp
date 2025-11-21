@@ -6,7 +6,7 @@
 // Standard library.
 #include "cstdint.hpp"
 
-namespace shasta {
+namespace shasta2 {
     class MarkerInfo;
     class MarkerInterval;
     class Markers;
@@ -15,7 +15,7 @@ namespace shasta {
 
 
 // Class to describe a single marker of an oriented read.
-class shasta::MarkerInfo {
+class shasta2::MarkerInfo {
 public:
     OrientedReadId orientedReadId;
     uint32_t ordinal;
@@ -29,7 +29,7 @@ public:
 
 
 
-class shasta::MarkerInterval {
+class shasta2::MarkerInterval {
 public:
     OrientedReadId orientedReadId;
     uint32_t ordinalA;

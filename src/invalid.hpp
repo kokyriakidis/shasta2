@@ -5,7 +5,7 @@
 
 #include <numeric>
 
-namespace shasta {
+namespace shasta2 {
     template<class T> static const T invalid = std::numeric_limits<T>::max();
     template<class T> static const T unlimited = std::numeric_limits<T>::max();
 }

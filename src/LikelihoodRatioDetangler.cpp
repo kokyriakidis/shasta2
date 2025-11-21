@@ -3,7 +3,7 @@
 #include "GTest.hpp"
 #include "Tangle1.hpp"
 #include "TangleMatrix1.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 
 

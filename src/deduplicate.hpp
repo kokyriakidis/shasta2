@@ -8,7 +8,7 @@
 #include "iostream.hpp"
 #include "vector.hpp"
 
-namespace shasta {
+namespace shasta2 {
 
     // Remove duplicate elements in a vector.
     template<class T> void deduplicate(vector<T>& v)

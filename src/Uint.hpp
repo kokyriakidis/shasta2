@@ -17,7 +17,7 @@
 #error "Shasta can only be built on an x86_64 machine (64-bit Intel/AMD) or an ARM64 machine. "
 #endif
 
-namespace shasta {
+namespace shasta2 {
 
     template<int N, class UintHelper> class Uint;
 
@@ -40,7 +40,7 @@ namespace shasta {
 // UintHelper = built-in integer type that Uint converts to-from.
 // UintHelper must be an unsigned integer type at least N bytes long.
 
-template<int N, class UintHelper> class shasta::Uint {
+template<int N, class UintHelper> class shasta2::Uint {
 public:
 
     Uint(const UintHelper& i)

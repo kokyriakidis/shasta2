@@ -3,7 +3,7 @@
 #include "MappedMemoryOwner.hpp"
 #include "MemoryMappedVector.hpp"
 
-namespace shasta {
+namespace shasta2 {
     class ReadLengthDistribution;
     class ReadLengthDistributionEntry;
 
@@ -12,7 +12,7 @@ namespace shasta {
 
 
 // There is one ReadLengthDistributionEntry for each length bin.
-class shasta::ReadLengthDistributionEntry {
+class shasta2::ReadLengthDistributionEntry {
 public:
 
     // P(l), the fraction of reads with length in this length bin.
@@ -35,7 +35,7 @@ public:
 
 
 
-class shasta::ReadLengthDistribution : public MappedMemoryOwner {
+class shasta2::ReadLengthDistribution : public MappedMemoryOwner {
 public:
 
     // The width in bases of each length bin.

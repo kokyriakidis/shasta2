@@ -5,7 +5,7 @@
 #include "orderPairs.hpp"
 #include "ReadId.hpp"
 #include "Reads.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 
 

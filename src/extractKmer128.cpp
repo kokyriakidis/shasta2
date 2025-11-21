@@ -15,7 +15,7 @@
 
 // We have to process up to 3 pairs of 2 words in the LongBaseSequenceView.
 
-void shasta::extractKmer128(
+void shasta2::extractKmer128(
     const LongBaseSequenceView& v,
     uint64_t position,
     uint64_t n,
@@ -94,7 +94,7 @@ void shasta::extractKmer128(
 // 0 at the most significant bit and moving towards the least
 // significant bit.
 // THIS IS DONE SEPARATELY ON x[0], y[0] AND x[1], y[1].
-void shasta::extractBits128(
+void shasta2::extractBits128(
     const uint64_t* x,
     uint64_t xPosition, // 0 = MSB
     uint64_t n,
@@ -138,7 +138,7 @@ void shasta::extractBits128(
 
 
 
-void shasta::testExtractKmer128()
+void shasta2::testExtractKmer128()
 {
     const string longBaseSequenceString =
         "TCTAGAGTGTCTAATATAGCACTTCTCTTGTGATAAGGGTCCCATAAATA"

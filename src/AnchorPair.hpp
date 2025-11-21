@@ -14,7 +14,7 @@
 #include "utility.hpp"
 #include "vector.hpp"
 
-namespace shasta {
+namespace shasta2 {
     class AnchorPair;
     class Anchors;
     class Base;
@@ -29,7 +29,7 @@ namespace shasta {
 // and the position at anchorIdB is greater than the position at anchorIdA.
 // The AnchorPair can use a subset of all possible OrientedReadIds
 // that satisfy the above.
-class shasta::AnchorPair {
+class shasta2::AnchorPair {
 public:
 
     // The constructor creates an AnchorPair between anchorIdA and anchorIdB.

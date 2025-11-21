@@ -9,12 +9,12 @@
 // CLI11. Requires package libcli11-dev.
 #include "CLI/CLI.hpp"
 
-namespace shasta {
+namespace shasta2 {
     class Options;
 }
 
 
-class shasta::Options : public CLI::App {
+class shasta2::Options : public CLI::App {
 public:
 
     // Constructor from command line options.

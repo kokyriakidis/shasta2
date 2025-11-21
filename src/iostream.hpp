@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-namespace shasta {
+namespace shasta2 {
     using std::cin;
     using std::cout;
     using std::dec;

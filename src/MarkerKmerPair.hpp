@@ -11,7 +11,7 @@
 #include <map>
 #include "vector.hpp"
 
-namespace shasta {
+namespace shasta2 {
     class MarkerKmerPair;
 
     class MarkerKmers;
@@ -29,7 +29,7 @@ namespace shasta {
 // the MarkerPair uses the lowest kmer1 ordinal that is greater than the kmer0 ordinal.
 // If an OrientedReadId appears once in kmer1 and more than once in kmer0,
 // the MarkerPair uses the highest kmer0 ordinal that is less than the kmer1 ordinal.
-class shasta::MarkerKmerPair {
+class shasta2::MarkerKmerPair {
 public:
 
     MarkerKmerPair(

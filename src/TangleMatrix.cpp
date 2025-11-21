@@ -1,7 +1,7 @@
 #include "TangleMatrix.hpp"
 #include "Anchor.hpp"
 #include "Base.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 
 

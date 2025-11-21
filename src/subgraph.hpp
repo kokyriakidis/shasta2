@@ -13,7 +13,7 @@
 #include <queue>
 #include "vector.hpp"
 
-namespace shasta {
+namespace shasta2 {
 
     template<class DirectedGraph> void createLocalSubgraph(
 
@@ -61,7 +61,7 @@ namespace shasta {
 
 
 
-template<class DirectedGraph> inline void shasta::createLocalSubgraph(
+template<class DirectedGraph> inline void shasta2::createLocalSubgraph(
 
     // The input graph.
     const DirectedGraph& graph,

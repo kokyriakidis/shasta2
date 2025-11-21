@@ -10,7 +10,7 @@
 #include "Tangle1.hpp"
 #include "TangleMatrix1.hpp"
 #include "timestamp.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 #include "algorithm.hpp"
 #include "fstream.hpp"

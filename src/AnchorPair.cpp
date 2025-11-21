@@ -16,7 +16,7 @@
 #include "shastaLapack.hpp"
 #include "tmpDirectory.hpp"
 #include "Reads.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 // Boost libraries.
 #include <boost/dynamic_bitset.hpp>
@@ -1411,7 +1411,7 @@ void AnchorPair::SimpleLocalAnchorGraph::approximateTopologicalSort()
     }
 
     // Do an approximate topological sort using edges in this order.
-    shasta::approximateTopologicalSort(graph, edgesByCoverage);
+    shasta2::approximateTopologicalSort(graph, edgesByCoverage);
     vector< pair<Graph::vertex_descriptor, uint64_t> > vertexTable;
     BGL_FORALL_VERTICES(v, graph, Graph) {
         vertexTable.emplace_back(v, graph[v].rank);

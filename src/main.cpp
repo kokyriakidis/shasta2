@@ -7,7 +7,7 @@
 #include "ReadSummary.hpp"
 #include "Tee.hpp"
 #include "timestamp.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 // Boost libraries.
 #include <boost/program_options.hpp>
@@ -28,7 +28,7 @@ using namespace shasta;
 
 
 
-namespace shasta {
+namespace shasta2 {
     namespace main {
 
         void main(int argumentCount, char** arguments);
@@ -70,7 +70,7 @@ namespace shasta {
 int main(int argumentCount, char** arguments)
 {
     try {
-        shasta::main::main(argumentCount, arguments);
+        shasta2::main::main(argumentCount, arguments);
     }
 
     catch(const boost::program_options::error_with_option_name& e) {
@@ -106,7 +106,7 @@ int main(int argumentCount, char** arguments)
 
 
 
-void shasta::main::segmentFaultHandler(int)
+void shasta2::main::segmentFaultHandler(int)
 {
     char message[] = "\nA segment fault occurred. Please report it by filing an "
         "issue on the Shasta2 repository and attaching the entire log output. "
@@ -117,7 +117,7 @@ void shasta::main::segmentFaultHandler(int)
 
 
 
-void shasta::main::setupSegmentFaultHandler()
+void shasta2::main::setupSegmentFaultHandler()
 {
     struct sigaction action;
     ::memset(&action, 0, sizeof(action));
@@ -127,7 +127,7 @@ void shasta::main::setupSegmentFaultHandler()
 
 
 
-void shasta::main::main(int argumentCount, char** arguments)
+void shasta2::main::main(int argumentCount, char** arguments)
 {
     setupSegmentFaultHandler();
 
@@ -175,7 +175,7 @@ void shasta::main::main(int argumentCount, char** arguments)
 
 
 // Implementation of --command assemble.
-void shasta::main::assemble(
+void shasta2::main::assemble(
     const Options& options,
     int argumentCount, char** arguments)
 {
@@ -274,7 +274,7 @@ void shasta::main::assemble(
 
 
 // Set up the run directory as required by the memoryMode and memoryBacking options.
-void shasta::main::setupRunDirectory(
+void shasta2::main::setupRunDirectory(
     const string& memoryMode,
     const string& memoryBacking,
     size_t& pageSize,
@@ -379,7 +379,7 @@ void shasta::main::setupRunDirectory(
 // If the setting needs to be modified, it acquires
 // root privilege via sudo. This may result in the
 // user having to enter a password.
-void shasta::main::setupHugePages()
+void shasta2::main::setupHugePages()
 {
 
     // Get the total memory size.
@@ -424,7 +424,7 @@ void shasta::main::setupHugePages()
 
 // Implementation of --command saveBinaryData.
 // This copies Data to DataOnDisk.
-void shasta::main::saveBinaryData(
+void shasta2::main::saveBinaryData(
     const Options& options)
 {
     SHASTA2_ASSERT(options.command == "saveBinaryData");
@@ -456,7 +456,7 @@ void shasta::main::saveBinaryData(
 
 
 // Implementation of --command cleanupBinaryData.
-void shasta::main::cleanupBinaryData(
+void shasta2::main::cleanupBinaryData(
     const Options& options)
 {
     SHASTA2_ASSERT(options.command == "cleanupBinaryData");
@@ -491,7 +491,7 @@ void shasta::main::cleanupBinaryData(
 }
 
 // Implementation of --command explore.
-void shasta::main::explore(
+void shasta2::main::explore(
     const Options& options)
 {
 
@@ -545,7 +545,7 @@ void shasta::main::explore(
 
 
 
-void shasta::main::listCommands()
+void shasta2::main::listCommands()
 {
     cout << "Valid commands are:" << endl;
     for(const string& command: commands) {

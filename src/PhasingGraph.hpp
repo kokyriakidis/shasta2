@@ -23,7 +23,7 @@ the corresponding bubbles can be phased relative to each other.
 
 
 
-namespace shasta {
+namespace shasta2 {
 
     class PhasingGraph;
     class PhasingGraphVertex;
@@ -39,7 +39,7 @@ namespace shasta {
 
 
 
-class shasta::PhasingGraphVertex {
+class shasta2::PhasingGraphVertex {
 public:
 
     // The position in the SuperbubbleChain of the bubble
@@ -59,7 +59,7 @@ public:
 
 
 
-class shasta::PhasingGraphEdge {
+class shasta2::PhasingGraphEdge {
 public:
     bool isShortestPathEdge = false;
     GTest::Hypothesis bestHypothesis;
@@ -70,7 +70,7 @@ public:
 
 
 
-class shasta::PhasingGraph: public PhasingGraphBaseClass {
+class shasta2::PhasingGraph: public PhasingGraphBaseClass {
 public:
 
     void addVertex(uint64_t position);

@@ -1,12 +1,12 @@
 #include "runCommandWithTimeout.hpp"
 #include "SHASTA2_ASSERT.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 // #include <cstdlib>
 
 
 
-void shasta::runCommandWithTimeout(
+void shasta2::runCommandWithTimeout(
 
     // The command to run.
     const string& command,

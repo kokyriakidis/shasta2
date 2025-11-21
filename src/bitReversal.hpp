@@ -4,7 +4,7 @@
 
 #include "cstdint.hpp"
 
-namespace shasta {
+namespace shasta2 {
     inline uint16_t bitReversal(uint16_t);
     inline uint32_t bitReversal(uint32_t);
     inline uint64_t bitReversal(uint64_t);
@@ -15,7 +15,7 @@ namespace shasta {
 
 
 
-inline uint16_t shasta::bitReversal(uint16_t x)
+inline uint16_t shasta2::bitReversal(uint16_t x)
 {
     const uint16_t m1 = uint16_t(0x5555);
     const uint16_t m2 = uint16_t(0x3333);
@@ -30,7 +30,7 @@ inline uint16_t shasta::bitReversal(uint16_t x)
 
 
 
-inline uint32_t shasta::bitReversal(uint32_t x)
+inline uint32_t shasta2::bitReversal(uint32_t x)
 {
     x = ((x >> 1) & 0x55555555) | ((x & 0x55555555) << 1);
     x = ((x >> 2) & 0x33333333) | ((x & 0x33333333) << 2);
@@ -42,7 +42,7 @@ inline uint32_t shasta::bitReversal(uint32_t x)
 
 
 
-inline uint64_t shasta::bitReversal(uint64_t x)
+inline uint64_t shasta2::bitReversal(uint64_t x)
 {
     x = ((x >> 1)  & 0x5555555555555555UL) | ((x & 0x5555555555555555UL) << 1 );
     x = ((x >> 2)  & 0x3333333333333333UL) | ((x & 0x3333333333333333UL) << 2 );
@@ -55,7 +55,7 @@ inline uint64_t shasta::bitReversal(uint64_t x)
 
 
 
-inline __uint128_t shasta::bitReversal(__uint128_t x)
+inline __uint128_t shasta2::bitReversal(__uint128_t x)
 {
     static const __uint128_t x1  = 0x5555555555555555UL;
     static const __uint128_t x2  = 0x3333333333333333UL;

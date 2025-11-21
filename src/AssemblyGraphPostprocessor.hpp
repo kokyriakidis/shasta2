@@ -7,7 +7,7 @@
 #include "span.hpp"
 
 
-namespace shasta {
+namespace shasta2 {
     class AssemblyGraphPostprocessor;
 }
 
@@ -15,7 +15,7 @@ namespace shasta {
 
 // AssemblyGraph functionality needed only during postprocessing.
 // It is used in the http server and in the Python API.
-class shasta::AssemblyGraphPostprocessor : public AssemblyGraph {
+class shasta2::AssemblyGraphPostprocessor : public AssemblyGraph {
 public:
     AssemblyGraphPostprocessor(
         const Anchors&,

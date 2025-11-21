@@ -3,7 +3,7 @@
 #include "color.hpp"
 #include "orderVectors.hpp"
 #include "SHASTA2_ASSERT.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 // Boost libraries.
 #include <boost/graph/iteration_macros.hpp>

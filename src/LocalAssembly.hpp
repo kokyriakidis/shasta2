@@ -4,13 +4,13 @@
 
 #include <list>
 
-namespace shasta {
+namespace shasta2 {
     class LocalAssembly;
     class AnchorPair;
 }
 
 
-class shasta::LocalAssembly {
+class shasta2::LocalAssembly {
 public:
 
     // This constructor uses an AnchorPair between the two specified anchors.

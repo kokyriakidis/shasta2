@@ -4,7 +4,7 @@
 #include "cstdint.hpp"
 #include "string.hpp"
 
-namespace shasta {
+namespace shasta2 {
 
     array<double, 2> hsvToHsl(double SV, double V);
 

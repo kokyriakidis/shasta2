@@ -1,13 +1,13 @@
 #include "bitReversal.hpp"
 #include "SHASTA2_ASSERT.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 #include "algorithm.hpp"
 #include "array.hpp"
 #include "iostream.hpp"
 #include <random>
 
-void shasta::testBitReversal()
+void shasta2::testBitReversal()
 {
     array<int, 128> bits;
     array<int, 128> reversedBits;

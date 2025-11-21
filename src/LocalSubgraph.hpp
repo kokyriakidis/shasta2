@@ -18,7 +18,7 @@
 #include "vector.hpp"
 
 
-namespace shasta {
+namespace shasta2 {
 
     // Forward only, single start vertex.
     template<class Graph, class LocalSubgraph> LocalSubgraph createLocalSubgraph(
@@ -38,7 +38,7 @@ namespace shasta {
 
 
 // Forward only, single start vertex.
-template<class Graph, class LocalSubgraph> LocalSubgraph shasta::createLocalSubgraph(
+template<class Graph, class LocalSubgraph> LocalSubgraph shasta2::createLocalSubgraph(
     const Graph& graph,
     typename Graph::vertex_descriptor vStart,
     uint64_t maxDistance)
@@ -121,7 +121,7 @@ template<class Graph, class LocalSubgraph> LocalSubgraph shasta::createLocalSubg
 // Forward and/or backward, multiple start vertices.
 // We want to make sure to get edges between vertices at maximum distance,
 // so we first find all vertices, then all edges.
- template<class Graph, class LocalSubgraph> LocalSubgraph shasta::createLocalSubgraph(
+ template<class Graph, class LocalSubgraph> LocalSubgraph shasta2::createLocalSubgraph(
      const Graph& graph,
      const vector<typename Graph::vertex_descriptor>& startVertices,
      bool forward,

@@ -1,11 +1,11 @@
 #include "html.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 #include "iostream.hpp"
 
 
 
-void shasta::writeHtmlBegin(ostream& html, const string& title)
+void shasta2::writeHtmlBegin(ostream& html, const string& title)
 {
     html <<
         "<!DOCTYPE html>"
@@ -19,14 +19,14 @@ void shasta::writeHtmlBegin(ostream& html, const string& title)
 
 
 
-void shasta::writeHtmlEnd(ostream& html)
+void shasta2::writeHtmlEnd(ostream& html)
 {
     html << "</html>";
 }
 
 
 
-void shasta::writeStyle(ostream& html)
+void shasta2::writeStyle(ostream& html)
 {
     html << R"%(
 <style>
@@ -79,7 +79,7 @@ void shasta::writeStyle(ostream& html)
 
 
 
-void shasta::addSvgDragAndZoom(ostream& html)
+void shasta2::addSvgDragAndZoom(ostream& html)
 {
     html << R"zzz(  
 <script>
@@ -208,7 +208,7 @@ function zoomSvg(factor)
 
 
 
-void shasta::writeInformationIcon(ostream& html, const string& message)
+void shasta2::writeInformationIcon(ostream& html, const string& message)
 {
     html << "<span style='color:Blue;font-weight:bold' title=\"" <<
             message << "\">&#9432;</span>";

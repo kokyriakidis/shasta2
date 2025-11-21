@@ -52,7 +52,7 @@ v x y
 #include "vector.hpp"
 
 
-namespace shasta {
+namespace shasta2 {
 
     enum class ComputeLayoutReturnCode {
         Success,
@@ -83,7 +83,7 @@ namespace shasta {
 
 
 // The edge length map is only effective with neato and fdp layouts.
-template<class Graph> shasta::ComputeLayoutReturnCode shasta::computeLayoutGraphviz(
+template<class Graph> shasta2::ComputeLayoutReturnCode shasta2::computeLayoutGraphviz(
     const Graph& graph,
     const string& layoutMethod,
     double timeout,
@@ -210,7 +210,7 @@ template<class Graph> shasta::ComputeLayoutReturnCode shasta::computeLayoutGraph
 
 // The edge length map is only effective with neato and fdp layouts.
 // See the comments at the beginning of this file for details.
-template<class Graph> shasta::ComputeLayoutReturnCode shasta::computeLayoutCustom(
+template<class Graph> shasta2::ComputeLayoutReturnCode shasta2::computeLayoutCustom(
     const Graph& graph,
     const std::map<typename Graph::edge_descriptor, double>& edgeLengthMap,
     std::map<typename Graph::vertex_descriptor, array<double, 2> >& positionMap,

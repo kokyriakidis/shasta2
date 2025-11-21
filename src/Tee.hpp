@@ -8,13 +8,13 @@
 #include <ios>
 
 
-namespace shasta {
+namespace shasta2 {
     class Tee;
 }
 
 
 
-class shasta::Tee : public std::streambuf {
+class shasta2::Tee : public std::streambuf {
 public:
     std::streambuf* original = 0;
     std::streambuf* copy = 0;

@@ -5,7 +5,7 @@
 #include "ReadFollowing.hpp"
 #include "RestrictedAnchorGraph.hpp"
 #include "TangleMatrix1.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 #include <boost/graph/iteration_macros.hpp>
 

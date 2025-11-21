@@ -1,13 +1,13 @@
 #include "abpoaWrapper.hpp"
 #include "Base.hpp"
 #include "SHASTA2_ASSERT.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 #include "abpoa.h"
 
 
 // C++ wrapper to abpoa.
-void shasta::abpoa(
+void shasta2::abpoa(
 
     // The input sequences to be aligned.
     // They are presented to abpoa in this order.

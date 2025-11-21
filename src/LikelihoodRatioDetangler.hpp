@@ -4,13 +4,13 @@
 
 #include "cstdint.hpp"
 
-namespace shasta {
+namespace shasta2 {
     class LikelihoodRatioDetangler;
 }
 
 
 
-class shasta::LikelihoodRatioDetangler : public Detangler {
+class shasta2::LikelihoodRatioDetangler : public Detangler {
 public:
     bool operator()(Tangle1&);
 

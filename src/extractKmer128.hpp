@@ -7,7 +7,7 @@
 
 #include "cstdint.hpp"
 
-namespace shasta {
+namespace shasta2 {
     class LongBaseSequenceView;
     template<class Int> class ShortBaseSequence;
 

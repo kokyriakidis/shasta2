@@ -1,7 +1,7 @@
 // Shasta.
 #include "GTest.hpp"
 #include "SHASTA2_ASSERT.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 // Standard library.
 #include "algorithm.hpp"

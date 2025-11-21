@@ -12,13 +12,13 @@
 
 // Likelihood ratio test of the tangle matrix (G test).
 // https://en.wikipedia.org/wiki/G-test
-namespace shasta {
+namespace shasta2 {
     class GTest;
 }
 
 
 
-class shasta::GTest {
+class shasta2::GTest {
 public:
     GTest(
         const vector< vector<uint64_t> >& tangleMatrix,

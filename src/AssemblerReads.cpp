@@ -4,7 +4,7 @@
 #include "ReadLengthDistribution.hpp"
 #include "ReadLoader.hpp"
 #include "timestamp.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 // Standard libraries.
 #include "algorithm.hpp"

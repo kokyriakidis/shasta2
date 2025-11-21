@@ -3,7 +3,7 @@
 #include "string.hpp"
 #include "vector.hpp"
 
-namespace shasta {
+namespace shasta2 {
     namespace filesystem {
 
         // Return the extension of a path - that is, everything following

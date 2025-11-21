@@ -15,7 +15,7 @@
 #include "Tangle.hpp"
 #include "TangleMatrix.hpp"
 #include "TangleMatrix1.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 // Boost libraries.
 #include <boost/algorithm/string.hpp>

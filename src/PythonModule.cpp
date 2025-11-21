@@ -24,7 +24,7 @@
 #include "SimpleMap.hpp"
 #include "splitRange.hpp"
 #include "testSubsetGraph.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 // Pybind11
 #include <pybind11/pybind11.h>

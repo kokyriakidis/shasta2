@@ -2,7 +2,7 @@
 #include "Anchor.hpp"
 #include "deduplicate.hpp"
 #include "Options.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 #include "fstream.hpp"
 #include <iomanip>

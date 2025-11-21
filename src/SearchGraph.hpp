@@ -2,7 +2,7 @@
 
 #include "AssemblyGraph.hpp"
 
-namespace shasta {
+namespace shasta2 {
     class SearchGraphVertex;
     class SearchGraph;
 
@@ -15,7 +15,7 @@ namespace shasta {
 
 
 
-class shasta::SearchGraphVertex {
+class shasta2::SearchGraphVertex {
 public:
     AssemblyGraph::edge_descriptor e;
 
@@ -25,7 +25,7 @@ public:
 
 
 
-class shasta::SearchGraph : public SearchGraphBaseClass {
+class shasta2::SearchGraph : public SearchGraphBaseClass {
 public:
 
     // Initial construction from the AssemblyGraph.

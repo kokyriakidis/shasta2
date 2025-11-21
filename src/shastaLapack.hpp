@@ -91,7 +91,7 @@ extern "C" void dsyev_(
     );
 
 
-namespace shasta {
+namespace shasta2 {
 
     // dgesvd wrapper for boost ublas matrix.
     void dgesvd(

@@ -7,7 +7,7 @@
 #include "Reads.hpp"
 #include "ReadSummary.hpp"
 #include "timestamp.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 // Standard library.
 #include "fstream.hpp"

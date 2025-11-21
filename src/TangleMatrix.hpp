@@ -17,13 +17,13 @@ and the first step of each exit.
 // Standard library.
 #include "vector.hpp"
 
-namespace shasta {
+namespace shasta2 {
     class TangleMatrix;
 
 }
 
 
-class shasta::TangleMatrix {
+class shasta2::TangleMatrix {
 public:
     using edge_descriptor = AssemblyGraph::edge_descriptor;
 

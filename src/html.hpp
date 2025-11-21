@@ -5,7 +5,7 @@
 
 // Miscellaneous html related functions.
 
-namespace shasta {
+namespace shasta2 {
 
     void writeHtmlBegin(ostream&, const string& title);
     void writeHtmlEnd(ostream&);

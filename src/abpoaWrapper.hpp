@@ -4,7 +4,7 @@
 #include "utility.hpp"
 #include "vector.hpp"
 
-namespace shasta {
+namespace shasta2 {
 
     class Base;
     class AlignedBase;

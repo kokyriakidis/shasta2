@@ -1,5 +1,5 @@
 #include "Base.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 #include "algorithm.hpp"
 
@@ -40,7 +40,7 @@ AlignedBaseInitializer::AlignedBaseInitializer()
 
 
 
-void shasta::testBase()
+void shasta2::testBase()
 {
     const Base A = Base::fromCharacter('A');
     if(A.value != 0) throw runtime_error("A is not 0.");

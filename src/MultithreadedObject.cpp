@@ -2,7 +2,7 @@
 #include "MultithreadedObject.hpp"
 #include "MultithreadedObject.tpp"
 #include "timestamp.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 // Linux.
 #include <pthread.h>
@@ -13,7 +13,7 @@ using namespace shasta;
 
 
 // Class used only by function testMultithreadedObject.
-class shasta::MultithreadedObjectTestClass :
+class shasta2::MultithreadedObjectTestClass :
     public MultithreadedObject<MultithreadedObjectTestClass> {
 public:
 
@@ -70,7 +70,7 @@ public:
 
 
 
-void shasta::MultithreadedObjectBaseClass::waitForThreads()
+void shasta2::MultithreadedObjectBaseClass::waitForThreads()
 {
     for(std::shared_ptr<std::thread> thread: threads) {
         thread->join();
@@ -85,7 +85,7 @@ void shasta::MultithreadedObjectBaseClass::waitForThreads()
 
 
 
-void shasta::MultithreadedObjectBaseClass::setupLoadBalancing(
+void shasta2::MultithreadedObjectBaseClass::setupLoadBalancing(
     uint64_t nArgument,
     uint64_t batchSizeArgument)
 {
@@ -96,7 +96,7 @@ void shasta::MultithreadedObjectBaseClass::setupLoadBalancing(
 
 
 
-bool shasta::MultithreadedObjectBaseClass::getNextBatch(
+bool shasta2::MultithreadedObjectBaseClass::getNextBatch(
     uint64_t& begin,
     uint64_t& end)
 {
@@ -111,7 +111,7 @@ bool shasta::MultithreadedObjectBaseClass::getNextBatch(
 
 
 
-void shasta::MultithreadedObjectBaseClass::killAllThreadsExceptMe(size_t me)
+void shasta2::MultithreadedObjectBaseClass::killAllThreadsExceptMe(size_t me)
 {
     for(size_t threadId=0; threadId<threads.size(); threadId++) {
         if(threadId == me) {
@@ -126,7 +126,7 @@ void shasta::MultithreadedObjectBaseClass::killAllThreadsExceptMe(size_t me)
 }
 
 
-void shasta::testMultithreadedObject()
+void shasta2::testMultithreadedObject()
 {
 
     const uint64_t n = 32 * 1024;

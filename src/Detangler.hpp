@@ -1,11 +1,11 @@
 #pragma once
 
-namespace shasta {
+namespace shasta2 {
     class Detangler;
     class Tangle1;
 }
 
-class shasta::Detangler {
+class shasta2::Detangler {
 public:
 
     // This evaluates the TangleMatrix and:

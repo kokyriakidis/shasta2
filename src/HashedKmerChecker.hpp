@@ -3,7 +3,7 @@
 #include "KmerChecker.hpp"
 #include "MappedMemoryOwner.hpp"
 
-namespace shasta {
+namespace shasta2 {
     class HashedKmerChecker;
 }
 
@@ -12,7 +12,7 @@ namespace shasta {
 // and uses hashing instead.
 // It only supports marker generation method 0 (random generation)
 // but allow marker lengths k<32.
-class shasta::HashedKmerChecker :
+class shasta2::HashedKmerChecker :
     public KmerChecker,
     public MappedMemoryOwner {
 public:

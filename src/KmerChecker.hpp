@@ -3,7 +3,7 @@
 // Shasta.
 #include "Kmer.hpp"
 
-namespace shasta {
+namespace shasta2 {
     class KmerChecker;
 }
 
@@ -13,7 +13,7 @@ namespace shasta {
 // out if a k-mer is a marker.
 // All implementations must guarantee that if a Kmer is a marker
 // its reverse complement is also a marker.
-class shasta::KmerChecker {
+class shasta2::KmerChecker {
 public:
     virtual bool isMarker(const Kmer&) const = 0;
 };

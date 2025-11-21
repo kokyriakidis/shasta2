@@ -1,6 +1,6 @@
 #pragma once
 
-namespace shasta {
+namespace shasta2 {
     void testSubsetGraph();
 }
 

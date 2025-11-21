@@ -13,14 +13,14 @@
 
 
 
-template<class T> shasta::MultithreadedObject<T>::MultithreadedObject(T& t) :
+template<class T> shasta2::MultithreadedObject<T>::MultithreadedObject(T& t) :
     t(t)
 {
 }
 
 
 
-template<class T> void shasta::MultithreadedObject<T>::runThreads(
+template<class T> void shasta2::MultithreadedObject<T>::runThreads(
     ThreadFunction f,
     size_t threadCount)
 {
@@ -30,7 +30,7 @@ template<class T> void shasta::MultithreadedObject<T>::runThreads(
 
 
 
-template<class T> void shasta::MultithreadedObject<T>::startThreads(
+template<class T> void shasta2::MultithreadedObject<T>::startThreads(
     ThreadFunction f,
     size_t threadCount)
 {
@@ -74,7 +74,7 @@ template<class T> void shasta::MultithreadedObject<T>::startThreads(
 // to propagate the exception, but even that way a completely
 // clean termination is not possible without waiting
 // for all threads to finish.
-template<class T> void shasta::MultithreadedObject<T>::runThreadFunction(
+template<class T> void shasta2::MultithreadedObject<T>::runThreadFunction(
     T& t,
     ThreadFunction f,
     size_t threadId)

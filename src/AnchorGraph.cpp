@@ -8,7 +8,7 @@
 #include "ReadId.hpp"
 #include "ReadLengthDistribution.hpp"
 #include "timestamp.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 // Boost libraries.
 #include <boost/archive/binary_oarchive.hpp>

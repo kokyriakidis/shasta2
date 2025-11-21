@@ -37,7 +37,7 @@ It can be improving by using bitmaps.
 #include "vector.hpp"
 #include <map>
 
-namespace shasta {
+namespace shasta2 {
 
     // The SubsetGraph is a directed graph in which each vertex represents a set of
     // items stored in a vector (which gets sorted at the beginning of edge creation).
@@ -48,7 +48,7 @@ namespace shasta {
 }
 
 
-template<class Item> class shasta::SubsetGraph :
+template<class Item> class shasta2::SubsetGraph :
     public SubsetGraphBaseClass<Item> {
     public:
 

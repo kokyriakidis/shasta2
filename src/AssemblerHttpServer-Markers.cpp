@@ -8,7 +8,7 @@
 #include "MarkerKmerPair.hpp"
 #include "MarkerKmers.hpp"
 #include "tmpDirectory.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 // Boost libraries.
 #include <boost/algorithm/string.hpp>

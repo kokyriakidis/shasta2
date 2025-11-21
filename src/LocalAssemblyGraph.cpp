@@ -8,7 +8,7 @@
 #include "orderPairs.hpp"
 #include "shastaLapack.hpp"
 #include "tmpDirectory.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 // Boost libraries.
 #include <boost/numeric/ublas/matrix.hpp>
@@ -96,7 +96,7 @@ void LocalAssemblyGraph::approximateTopologicalSort(const AssemblyGraph& assembl
     }
 
     // Do the approximate topological sort.
-    shasta::approximateTopologicalSort(localAssemblyGraph, edgesSortedByCoverage);
+    shasta2::approximateTopologicalSort(localAssemblyGraph, edgesSortedByCoverage);
 
     // Gather vertices sorted by rank.
     vector< pair<vertex_descriptor, uint64_t> > verticesWithRank;

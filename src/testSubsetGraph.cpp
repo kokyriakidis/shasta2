@@ -1,6 +1,6 @@
 #include "SubsetGraph.hpp"
 #include "testSubsetGraph.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 #include "iostream.hpp"
 #include "fstream.hpp"
@@ -8,7 +8,7 @@ using namespace shasta;
 
 
 
-void shasta::testSubsetGraph()
+void shasta2::testSubsetGraph()
 {
     using Graph = SubsetGraph<int>;
     Graph graph;

@@ -21,7 +21,7 @@
 #include "vector.hpp"
 
 
-namespace shasta {
+namespace shasta2 {
 
     template<class Graph, class CondensedGraph> CondensedGraph createCondensedGraph(
         const Graph&,
@@ -30,7 +30,7 @@ namespace shasta {
 
 
 
-template<class Graph, class CondensedGraph> CondensedGraph shasta::createCondensedGraph(
+template<class Graph, class CondensedGraph> CondensedGraph shasta2::createCondensedGraph(
     const Graph& graph,
     std::map<typename Graph::vertex_descriptor, typename CondensedGraph::vertex_descriptor>& vertexMap)
 {

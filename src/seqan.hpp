@@ -13,7 +13,7 @@
 #include "utility.hpp"
 #include "vector.hpp"
 
-namespace shasta {
+namespace shasta2 {
 
     // Align two integer sequences using SeqAn and
     // return the alignment score.
@@ -74,7 +74,7 @@ namespace shasta {
 
 
 template<class Iterator>
-    int64_t shasta::seqanAlign(
+    int64_t shasta2::seqanAlign(
     Iterator begin0, Iterator end0,
     Iterator begin1, Iterator end1,
     int64_t matchScore,
@@ -180,7 +180,7 @@ template<class Iterator>
 
 // Same, banded.
 template<class Iterator>
-    int64_t shasta::seqanAlign(
+    int64_t shasta2::seqanAlign(
     Iterator begin0, Iterator end0,
     Iterator begin1, Iterator end1,
     int64_t matchScore,
@@ -292,7 +292,7 @@ template<class Iterator>
 
 // Find out if the alignment computed by seqanAlign contains mismatches.
 template<class Iterator>
-    bool shasta::containsMismatches(
+    bool shasta2::containsMismatches(
     Iterator begin0, Iterator end0,
     Iterator begin1, Iterator end1,
     const vector< pair<bool, bool> >& alignment)
@@ -322,7 +322,7 @@ template<class Iterator>
 // Given an alignment computed by seqanAlign, find positions in the
 // two sequences that contain aligned identical symbols.
 template<class Iterator>
-    void shasta::findAlignedIdentical(
+    void shasta2::findAlignedIdentical(
     Iterator begin0, Iterator end0,
     Iterator begin1, Iterator end1,
     const vector< pair<bool, bool> >& alignment,

@@ -15,7 +15,7 @@
 #include <thread>
 #include "vector.hpp"
 
-namespace shasta {
+namespace shasta2 {
     class MultithreadedObjectBaseClass;
     template<class T> class MultithreadedObject;
 
@@ -27,7 +27,7 @@ namespace shasta {
 
 
 // The base class contains code that is not templated.
-class shasta::MultithreadedObjectBaseClass {
+class shasta2::MultithreadedObjectBaseClass {
 protected:
 
     // The running threads.
@@ -66,7 +66,7 @@ private:
 
 
 
-template<class T> class shasta::MultithreadedObject : public MultithreadedObjectBaseClass {
+template<class T> class shasta2::MultithreadedObject : public MultithreadedObjectBaseClass {
 public:
 
     // A function passed as argument to runThreads or startThreads

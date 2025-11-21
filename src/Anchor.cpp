@@ -18,7 +18,7 @@
 #include "runCommandWithTimeout.hpp"
 #include "timestamp.hpp"
 #include "tmpDirectory.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 // Boost libraries.
 #include <boost/dynamic_bitset.hpp>
@@ -633,7 +633,7 @@ void Anchors::writeHtml(
 // - AnchorId n+1 is represented as m-
 // For example, the reverse complemented pair (150, 151) is represented as (75+, 75-).
 
-string shasta::anchorIdToString(AnchorId n)
+string shasta2::anchorIdToString(AnchorId n)
 {
     std::ostringstream s;
 
@@ -651,7 +651,7 @@ string shasta::anchorIdToString(AnchorId n)
 
 
 
-AnchorId shasta::anchorIdFromString(const string& s)
+AnchorId shasta2::anchorIdFromString(const string& s)
 {
 
     if(s.size() < 2) {

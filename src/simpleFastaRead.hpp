@@ -3,7 +3,7 @@
 #include "iosfwd.hpp"
 #include "vector.hpp"
 
-namespace shasta {
+namespace shasta2 {
 
     class AlignedBase;
     void simpleFastaRead(istream&, vector< vector<AlignedBase> >&);

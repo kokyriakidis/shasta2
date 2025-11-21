@@ -1,5 +1,5 @@
 #include "color.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 #include "MurmurHash2.hpp"
 #include "SHASTA2_ASSERT.hpp"
@@ -19,7 +19,7 @@ using namespace shasta;
 // Given S and V for an HSV color, returns the S and L
 // values for the corresponding HSL color.
 // See https://en.wikipedia.org/wiki/HSL_and_HSV#HSV_to_HSL
-std::array<double, 2> shasta::hsvToHsl(double SV, double V)
+std::array<double, 2> shasta2::hsvToHsl(double SV, double V)
 {
     const double L = V * (1. - 0.5 * SV);
     const double denominator = min(L, 1. - L);
@@ -31,7 +31,7 @@ std::array<double, 2> shasta::hsvToHsl(double SV, double V)
 
 // Convert HSL values in [0.,1.] to RGB values also in [0.,1.].
 // https://en.wikipedia.org/wiki/HSL_and_HSV#HSL_to_RGB
-std::array<double, 3> shasta::hslToRgb(double H, double S, double L)
+std::array<double, 3> shasta2::hslToRgb(double H, double S, double L)
 {
     using std::fabs;
     using std::fmod;
@@ -79,7 +79,7 @@ std::array<double, 3> shasta::hslToRgb(double H, double S, double L)
 
 
 
-string shasta::hslToRgbString(double H, double S, double L)
+string shasta2::hslToRgbString(double H, double S, double L)
 {
     using std::format;
     const array<double, 3> rgb = hslToRgb(H, S, L);
@@ -99,7 +99,7 @@ string shasta::hslToRgbString(double H, double S, double L)
 // Generate a RGB color string #RRGGBB corresponding to a HSL
 // color with a random hue computed by hashing the given id
 // and the given SL values.
-string shasta::randomHslColor(uint64_t id, double S, double L)
+string shasta2::randomHslColor(uint64_t id, double S, double L)
 {
     using std::format;
 

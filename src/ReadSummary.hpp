@@ -1,13 +1,13 @@
 #pragma once
 
-namespace shasta {
+namespace shasta2 {
     class ReadSummary;
 }
 
 
 
 // Summary information about a read in the assembly.
-class shasta::ReadSummary {
+class shasta2::ReadSummary {
 public:
 
     bool isUsedForAssembly = true;

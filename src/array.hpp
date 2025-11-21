@@ -2,6 +2,6 @@
 
 #include <array>
 
-namespace shasta {
+namespace shasta2 {
     using std::array;
 }

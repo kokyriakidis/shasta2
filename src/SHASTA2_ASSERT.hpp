@@ -4,7 +4,7 @@
 
 #pragma once
 
-namespace shasta {
+namespace shasta2 {
     void handleFailedAssertion(
         const char* expression,
         const char* function,
@@ -15,7 +15,7 @@ namespace shasta {
 
 
 #define SHASTA2_ASSERT(expression) ((expression) ? (static_cast<void>(0)) : \
-    (shasta::handleFailedAssertion(#expression, __PRETTY_FUNCTION__,  __FILE__ , __LINE__)))
+    (shasta2::handleFailedAssertion(#expression, __PRETTY_FUNCTION__,  __FILE__ , __LINE__)))
 
 
 

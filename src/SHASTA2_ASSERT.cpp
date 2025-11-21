@@ -5,7 +5,7 @@
 
 #if 0
 #include "execinfo.h"
-static void shasta::writeStackTrace()
+static void shasta2::writeStackTrace()
 {
     const int bufferSize = 64;  // To avoid extremely long, useless backtraces.
     void* buffer[bufferSize];
@@ -15,7 +15,7 @@ static void shasta::writeStackTrace()
 #endif
 
 
-void shasta::handleFailedAssertion(
+void shasta2::handleFailedAssertion(
     const char* expression,
     const char* function,
     const char* file,

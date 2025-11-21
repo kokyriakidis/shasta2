@@ -2,7 +2,7 @@
 #include "ReadLengthDistribution.hpp"
 #include "Reads.hpp"
 #include "shastaTypes.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 // Standard library.
 #include "fstream.hpp"

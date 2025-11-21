@@ -1,13 +1,13 @@
 #include "SHASTA2_ASSERT.hpp"
 #include "shastaLapack.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 #include "algorithm.hpp"
 
 
 
 // dgesvd wrapper for boost ublas matrix.
-void shasta::dgesvd(
+void shasta2::dgesvd(
     boost::numeric::ublas::matrix<double, boost::numeric::ublas::column_major>& A,
     vector<double>& S,
     boost::numeric::ublas::matrix<double, boost::numeric::ublas::column_major>& U,

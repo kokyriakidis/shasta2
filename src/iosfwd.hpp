@@ -2,7 +2,7 @@
 
 #include <iosfwd>
 
-namespace shasta {
+namespace shasta2 {
     using std::istream;
     using std::ostream;
 }

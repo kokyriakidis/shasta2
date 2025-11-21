@@ -7,14 +7,14 @@
 #include "memory.hpp"
 #include "vector.hpp"
 
-namespace shasta {
+namespace shasta2 {
     class Tangle1;
     class TangleMatrix1;
 }
 
 
 
-class shasta::Tangle1 {
+class shasta2::Tangle1 {
 public:
     using vertex_descriptor = AssemblyGraph::vertex_descriptor;
     using edge_descriptor = AssemblyGraph::edge_descriptor;

@@ -21,7 +21,7 @@
 #include "tuple.hpp"
 
 
-namespace shasta {
+namespace shasta2 {
 
     class AssemblyGraph;
     class AssemblyGraphVertex;
@@ -53,7 +53,7 @@ namespace shasta {
 // When the AssemblyGraph is initially created from the AnchorGraph,
 // there can be at most one vertex for each AnchorId.
 // However that is no longer true after detangling.
-class shasta::AssemblyGraphVertex {
+class shasta2::AssemblyGraphVertex {
 public:
     AnchorId anchorId = invalid<AnchorId>;
     uint64_t id = invalid<uint64_t>;
@@ -71,7 +71,7 @@ public:
 
 
 
-class shasta::AssemblyGraphEdgeStep {
+class shasta2::AssemblyGraphEdgeStep {
 public:
     AnchorPair anchorPair;
     uint64_t offset = invalid<uint64_t>;
@@ -97,7 +97,7 @@ public:
 
 
 
-class shasta::AssemblyGraphEdge : public vector<AssemblyGraphEdgeStep> {
+class shasta2::AssemblyGraphEdge : public vector<AssemblyGraphEdgeStep> {
 public:
     uint64_t id = invalid<uint64_t>;
     bool wasAssembled = false;
@@ -147,7 +147,7 @@ public:
 
 
 
-class shasta::AssemblyGraph :
+class shasta2::AssemblyGraph :
     public AssemblyGraphBaseClass,
     public MappedMemoryOwner,
     public MultithreadedObject<AssemblyGraph> {

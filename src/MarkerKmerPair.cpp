@@ -3,7 +3,7 @@
 #include "MarkerKmers.hpp"
 #include "orderPairs.hpp"
 #include "Reads.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 
 

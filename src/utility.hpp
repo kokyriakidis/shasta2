@@ -2,7 +2,7 @@
 
 #include <utility>
 
-namespace shasta {
+namespace shasta2 {
     using std::make_pair;
     using std::pair;
 }

@@ -1,6 +1,6 @@
 #include "diploidBayesianPhase.hpp"
 #include "SHASTA2_ASSERT.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 #include "iostream.hpp"
 #include <cmath>
@@ -22,7 +22,7 @@ static void writeMatrix(const array<array<double, 2>, 2>& m)
 }
 
 
-pair<double, double> shasta::diploidBayesianPhase(
+pair<double, double> shasta2::diploidBayesianPhase(
     const array<array<uint64_t, 2>, 2>& matrix,
     double epsilon)
 {
@@ -127,7 +127,7 @@ pair<double, double> shasta::diploidBayesianPhase(
 
 
 
-void shasta::testDiploidBayesianPhase(
+void shasta2::testDiploidBayesianPhase(
     double epsilon,
     uint64_t m00,
     uint64_t m01,

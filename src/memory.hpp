@@ -2,7 +2,7 @@
 
 #include <memory>
 
-namespace shasta {
+namespace shasta2 {
     using std::make_shared;
     using std::shared_ptr;
     using std::make_unique;

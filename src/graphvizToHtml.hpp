@@ -4,7 +4,7 @@
 #include "string.hpp"
 
 
-namespace shasta {
+namespace shasta2 {
 
     // This  can be used to display a graph in Graphviz format to html.
     // It does the following:

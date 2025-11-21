@@ -3,7 +3,7 @@
 #include "abpoaWrapper.hpp"
 #include "Base.hpp"
 #include "isPeriodic.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 // Standard library.
 #include "algorithm.hpp"
@@ -13,7 +13,7 @@ using namespace shasta;
 
 
 
-bool shasta::areSimilarSequences(
+bool shasta2::areSimilarSequences(
         const vector<Base>& x,
         const vector<Base>& y,
         const vector<uint64_t>& minRepeatCount,

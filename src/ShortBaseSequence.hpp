@@ -15,7 +15,7 @@
 
 
 
-namespace shasta {
+namespace shasta2 {
 
     // A short sequence of bases.
     // Uses only two integers, so its capacity is limited
@@ -42,7 +42,7 @@ namespace shasta {
 // Position 1: the MSB bit of the bases (with base 0 corresponding to the MSB bit).
 // This class does not keep track of the number of bases
 // actually stored. All unused positions are left set at "A".
-template<class Int> class shasta::ShortBaseSequence {
+template<class Int> class shasta2::ShortBaseSequence {
 public:
 
     // The number of bases that can be represented equals the number of bits
@@ -269,9 +269,9 @@ public:
 
 
 
-template<class Int> inline std::ostream& shasta::operator<<(
+template<class Int> inline std::ostream& shasta2::operator<<(
     std::ostream& s,
-    const shasta::ShortBaseSequence<Int>& sequence)
+    const shasta2::ShortBaseSequence<Int>& sequence)
 {
     for(size_t i=0; i<sequence.capacity; i++) {
         s << sequence[i];

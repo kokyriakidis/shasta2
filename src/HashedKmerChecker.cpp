@@ -2,7 +2,7 @@
 #include "HashedKmerChecker.hpp"
 #include "Kmer.hpp"
 #include "MemoryMappedObject.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 // MurmurHash.
 #include "MurmurHash2.hpp"

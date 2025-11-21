@@ -21,7 +21,7 @@
 
 
 
-namespace shasta {
+namespace shasta2 {
 
     class AnchorGraph;
     class AnchorGraphEdge;
@@ -39,7 +39,7 @@ namespace shasta {
 
 
 
-class shasta::AnchorGraphEdge {
+class shasta2::AnchorGraphEdge {
 public:
     AnchorPair anchorPair;
     uint64_t offset = invalid<uint64_t>;
@@ -71,7 +71,7 @@ public:
 
 
 
-class shasta::AnchorGraph :
+class shasta2::AnchorGraph :
     public AnchorGraphBaseClass,
     public MappedMemoryOwner,
     public MultithreadedObject<AnchorGraph> {

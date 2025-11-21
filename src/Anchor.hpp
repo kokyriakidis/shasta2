@@ -17,7 +17,7 @@
 
 
 
-namespace shasta {
+namespace shasta2 {
 
     class Base;
     class Marker;
@@ -44,7 +44,7 @@ namespace shasta {
 
 
 // An Anchor is a set of AnchorMarkerInfos.
-class shasta::AnchorMarkerInfo : public MarkerInfo {
+class shasta2::AnchorMarkerInfo : public MarkerInfo {
 public:
     uint32_t positionInJourney = invalid<uint32_t>;
 
@@ -72,7 +72,7 @@ public:
 
 
 
-class shasta::AnchorInfo {
+class shasta2::AnchorInfo {
 public:
     // The k-mer index in the MarkerKmers for the k-mer
     // that generated this anchor and its reverse complement.
@@ -86,7 +86,7 @@ public:
 
 
 // An Anchor is a set of AnchorMarkerInfos.
-class shasta::Anchor : public AnchorBaseClass {
+class shasta2::Anchor : public AnchorBaseClass {
 public:
 
     Anchor(const AnchorBaseClass& s) : AnchorBaseClass(s) {}
@@ -101,7 +101,7 @@ public:
 
 
 
-class shasta::Anchors :
+class shasta2::Anchors :
     public MultithreadedObject<Anchors>,
     public MappedMemoryOwner {
 public:
@@ -332,7 +332,7 @@ private:
 
 
 // Information about the read composition similarity of two anchors A and B.
-class shasta::AnchorPairInfo {
+class shasta2::AnchorPairInfo {
 public:
 
     // The total number of OrientedReadIds in each of the anchors A and B.

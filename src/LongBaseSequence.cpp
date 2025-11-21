@@ -2,7 +2,7 @@
 #include "LongBaseSequence.hpp"
 #include "extractKmer.hpp"
 #include "ShortBaseSequence.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 // Standard library.
 #include <numeric>
@@ -107,7 +107,7 @@ void LongBaseSequences::append(size_t baseCountArgument)
 
 
 
-void shasta::testLongBaseSequence()
+void shasta2::testLongBaseSequence()
 {
 
 

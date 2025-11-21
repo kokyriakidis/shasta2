@@ -7,7 +7,7 @@
 #include "fstream.hpp"
 #include "tuple.hpp"
 
-using namespace shasta;
+using namespace shasta2;
 
 
 void Reads::createNew(

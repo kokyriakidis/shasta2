@@ -3,13 +3,13 @@
 
 #include "performanceLog.hpp"
 
-namespace shasta {
+namespace shasta2 {
     ofstream performanceLog;
 }
 
 
 
-void shasta::openPerformanceLog(const string& fileName)
+void shasta2::openPerformanceLog(const string& fileName)
 {
     performanceLog.open(fileName);
 }

@@ -1,6 +1,6 @@
 // Shasta.
 #include "Options.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 // Standard library.
 #include "array.hpp"

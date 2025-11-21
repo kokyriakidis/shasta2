@@ -6,7 +6,7 @@
 // For more information see:
 // https://en.cppreference.com/w/cpp/algorithm/ranges
 
-namespace shasta {
+namespace shasta2 {
     using std::ranges::copy;
     using std::fill;
     using std::find;

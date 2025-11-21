@@ -27,7 +27,7 @@
 
 
 
-namespace shasta {
+namespace shasta2 {
     template<class InputGraph> void hcsClustering(
         const InputGraph&,
         vector< vector<typename InputGraph::vertex_descriptor> >& clusters
@@ -40,7 +40,7 @@ namespace shasta {
 
 // We recursively use a WorkGraph in which each vertex contains
 // a vertex_descriptor of the InputGraph.
-template <class InputGraph> class shasta::WorkGraph :
+template <class InputGraph> class shasta2::WorkGraph :
     public boost::adjacency_list<
     boost::vecS,
     boost::vecS,
@@ -201,7 +201,7 @@ public:
 
 
 
-template<class InputGraph> void shasta::hcsClustering(
+template<class InputGraph> void shasta2::hcsClustering(
     const InputGraph& inputGraph,
     vector< vector<typename InputGraph::vertex_descriptor> >& clusters)
 {

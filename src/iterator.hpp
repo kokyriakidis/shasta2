@@ -2,7 +2,7 @@
 
 #include <iterator>
 
-namespace shasta {
+namespace shasta2 {
     using std::back_inserter;
     using std::ostream_iterator;
 }

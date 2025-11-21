@@ -24,13 +24,13 @@ The Value type must be default constructible.
 
 
 
-namespace shasta {
+namespace shasta2 {
     template <class Key, class Value> class SimpleMap;
     void testSimpleMap();
 }
 
 
-template <class Key, class Value> class shasta::SimpleMap
+template <class Key, class Value> class shasta2::SimpleMap
 {
 public:
 

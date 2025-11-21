@@ -11,7 +11,7 @@
 #include "Reads.hpp"
 #include "ReadLengthDistribution.hpp"
 #include "ReadSummary.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 #include "MultithreadedObject.tpp"
 template class MultithreadedObject<Assembler>;

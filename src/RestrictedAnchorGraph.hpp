@@ -20,7 +20,7 @@
 
 
 
-namespace shasta {
+namespace shasta2 {
 
     class RestrictedAnchorGraph;
     class RestrictedAnchorGraphVertex;
@@ -41,7 +41,7 @@ namespace shasta {
 
 
 
-class shasta::JourneyPortion {
+class shasta2::JourneyPortion {
 public:
     OrientedReadId orientedReadId;
     uint32_t begin;
@@ -52,7 +52,7 @@ public:
 
 
 
-class shasta::RestrictedAnchorGraphVertex : public CycleAvoiderVertex {
+class shasta2::RestrictedAnchorGraphVertex : public CycleAvoiderVertex {
 public:
     AnchorId anchorId;
     vector<OrientedReadId> orientedReadIds;
@@ -61,7 +61,7 @@ public:
 
 
 
-class shasta::RestrictedAnchorGraphEdge {
+class shasta2::RestrictedAnchorGraphEdge {
 public:
     AnchorPair anchorPair;
     uint64_t offset = invalid<uint64_t>;
@@ -77,7 +77,7 @@ public:
 
 
 
-class shasta::RestrictedAnchorGraph : public RestrictedAnchorGraphBaseClass {
+class shasta2::RestrictedAnchorGraph : public RestrictedAnchorGraphBaseClass {
 public:
 
     // Constructor using a TangleMatrix1.

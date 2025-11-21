@@ -3,7 +3,7 @@
 #include "filesystem.hpp"
 #include "performanceLog.hpp"
 #include "splitRange.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 // Standard library.
 #include "chrono.hpp"

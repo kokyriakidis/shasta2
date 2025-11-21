@@ -15,7 +15,7 @@
 #include "stdexcept.hpp"
 #include "string.hpp"
 
-namespace shasta {
+namespace shasta2 {
     class Base;
     class BaseInitializer;
     inline ostream& operator<<(ostream&, Base);
@@ -29,7 +29,7 @@ namespace shasta {
 // Class used only to store a static look up table
 // use by the Base::fromCharacter to convert
 // characters to bases.
-class shasta::BaseInitializer{
+class shasta2::BaseInitializer{
 public:
     BaseInitializer();
     static array<uint8_t, 256> table;
@@ -41,7 +41,7 @@ public:
 // Describes a single base.
 // Represented as 1=byte integer as: A=0, C=1, G=2, T=3.
 // This choice of representation facilitates the computation of the complement.
-class shasta::Base {
+class shasta2::Base {
 public:
 
     // The byte value is always one of 0, 1, 2, 3.
@@ -163,9 +163,9 @@ public:
 
 
 
-inline std::ostream& shasta::operator<<(
+inline std::ostream& shasta2::operator<<(
     std::ostream& s,
-    shasta::Base base)
+    shasta2::Base base)
 {
     s << base.character();
     return s;
@@ -176,7 +176,7 @@ inline std::ostream& shasta::operator<<(
 // Class used only to store a static look up table
 // use by the AlignedBase::fromCharacter to convert
 // characters to bases.
-class shasta::AlignedBaseInitializer{
+class shasta2::AlignedBaseInitializer{
 public:
     AlignedBaseInitializer();
     static array<uint8_t, 256> table;
@@ -188,7 +188,7 @@ public:
 // Class AlignedBase is similar to class Base, but also allows the base
 // to be '-' represented as 4. This is useful when
 // dealing with multiple sequence alignments.
-class shasta::AlignedBase {
+class shasta2::AlignedBase {
 public:
 
     // The byte value is always one of 0, 1, 2, 3, 4.
@@ -317,9 +317,9 @@ public:
 
 
 
-inline std::ostream& shasta::operator<<(
+inline std::ostream& shasta2::operator<<(
     std::ostream& s,
-    shasta::AlignedBase base)
+    shasta2::AlignedBase base)
 {
     s << base.character();
     return s;

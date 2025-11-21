@@ -2,6 +2,6 @@
 
 #include "iosfwd.hpp"
 
-namespace shasta {
+namespace shasta2 {
     std::ostream& timestamp(std::ostream&);
 }

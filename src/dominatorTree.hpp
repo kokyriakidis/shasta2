@@ -5,7 +5,7 @@
 
 This provides a bug fix for the 3-argument version of
 boost::lengauer_tarjan_dominator_tree.
-The fixed version is in the shasta namespace.
+The fixed version is in the shasta2 namespace.
 
 The bug fix is as follows.
 
@@ -35,7 +35,7 @@ The fixed version below works correctly even if the graph contains unreachable v
 #include <boost/graph/iteration_macros.hpp>
 #include <boost/graph/dominator_tree.hpp>
 
-namespace shasta {
+namespace shasta2 {
 
     template<class Graph, class DomTreePredMap>
     void lengauer_tarjan_dominator_tree(const Graph &g,
@@ -138,7 +138,7 @@ namespace shasta {
         const auto itEntry = vertexMap.find(entry);
         SHASTA2_ASSERT(itEntry != vertexMap.end());
         const AV auxEntry = itEntry->second;
-        shasta::lengauer_tarjan_dominator_tree(
+        shasta2::lengauer_tarjan_dominator_tree(
             auxiliaryGraph,
             auxEntry,
             boost::get(&AuxiliaryGraphVertex::dominator, auxiliaryGraph));

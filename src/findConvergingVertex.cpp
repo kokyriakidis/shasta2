@@ -1,6 +1,6 @@
 // Shasta.
 #include "findConvergingVertex.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 // Standard library.
 #include "iostream.hpp"
@@ -8,7 +8,7 @@ using namespace shasta;
 
 
 
-void shasta::testFindConvergingVertex()
+void shasta2::testFindConvergingVertex()
 {
     using Graph = boost::adjacency_list<boost::listS, boost::listS, boost::bidirectionalS, uint64_t>;
     using vertex_descriptor = Graph::vertex_descriptor;

@@ -30,7 +30,7 @@
 // If such a vertex is not found or a loop was encountered,
 // this returns Graph::null_vertex().
 
-namespace shasta {
+namespace shasta2 {
    template<class Graph> typename Graph::vertex_descriptor
        findConvergingVertexAcyclic(const Graph&, typename Graph::vertex_descriptor, uint64_t maxDistance);
 
@@ -43,7 +43,7 @@ namespace shasta {
 
 
 
-template<class Graph> typename Graph::vertex_descriptor shasta::findConvergingVertexAcyclic(
+template<class Graph> typename Graph::vertex_descriptor shasta2::findConvergingVertexAcyclic(
     const Graph& graph,
     typename Graph::vertex_descriptor vA,
     uint64_t maxDistance)
@@ -239,7 +239,7 @@ template<class Graph> typename Graph::vertex_descriptor shasta::findConvergingVe
 // No suffix = Graph
 // L suffix = LocalGraph
 // C suffix = CondensedGraph
-template<class Graph> typename Graph::vertex_descriptor shasta::findConvergingVertexGeneral(
+template<class Graph> typename Graph::vertex_descriptor shasta2::findConvergingVertexGeneral(
     const Graph& graph,
     typename Graph::vertex_descriptor vStart,
     uint64_t maxDistance)

@@ -14,7 +14,7 @@
 #include "string.hpp"
 #include "vector.hpp"
 
-namespace shasta {
+namespace shasta2 {
     class HttpServer;
     class PostData;
 }
@@ -68,7 +68,7 @@ access to the data to the same user running the server.
 
 
 
-class shasta::HttpServer {
+class shasta2::HttpServer {
 public:
 
     // This function puts the server into an endless loop of processing requests.
@@ -195,7 +195,7 @@ private:
 
 
 // Class describing a POST request.
-class shasta::PostData {
+class shasta2::PostData {
 public:
 
     // The request already parsed in tokens.

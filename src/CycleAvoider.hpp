@@ -46,7 +46,7 @@ description in the paper.
 
 
 
-namespace shasta {
+namespace shasta2 {
     template<class Graph> class CycleAvoider;
     class CycleAvoiderVertex;
 
@@ -55,7 +55,7 @@ namespace shasta {
 
 
 
-class shasta::CycleAvoiderVertex {
+class shasta2::CycleAvoiderVertex {
 public:
     uint64_t rank = invalid<uint64_t>;
     uint64_t color = 0;
@@ -63,7 +63,7 @@ public:
 
 
 
-template<class Graph> class shasta::CycleAvoider {
+template<class Graph> class shasta2::CycleAvoider {
 public:
 
     CycleAvoider(Graph& graph) :

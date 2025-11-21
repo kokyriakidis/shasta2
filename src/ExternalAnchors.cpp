@@ -2,7 +2,7 @@
 #include "invalid.hpp"
 #include "Markers.hpp"
 #include "Reads.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 
 

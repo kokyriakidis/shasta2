@@ -15,7 +15,7 @@
 
 
 
-namespace shasta {
+namespace shasta2 {
     class LocalAssembly3;
     class LocalAssembly3Vertex;
     class LocalAssembly3Edge;
@@ -34,7 +34,7 @@ namespace shasta {
 
 
 
-class shasta::LocalAssembly3Vertex {
+class shasta2::LocalAssembly3Vertex {
 public:
 
     // The index of the Kmer corresponding to this vertex
@@ -64,7 +64,7 @@ public:
 
 
 
-class shasta::LocalAssembly3Edge {
+class shasta2::LocalAssembly3Edge {
 public:
 
     // The oriented reads that transition from the source of this vertex
@@ -84,9 +84,9 @@ public:
 
 
 
-class shasta::LocalAssembly3 : public LocalAssembly3BaseClass {
+class shasta2::LocalAssembly3 : public LocalAssembly3BaseClass {
 public:
-    using Base = shasta::Base;
+    using Base = shasta2::Base;
 
     // This assembles between anchorIdA and anchorIdB
     // of the given AnchorPair. It uses all the OrientedReadIds

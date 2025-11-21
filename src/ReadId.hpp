@@ -14,7 +14,7 @@
 
 
 
-namespace shasta {
+namespace shasta2 {
 
     const ReadId invalidReadId = std::numeric_limits<ReadId>::max();
 
@@ -31,7 +31,7 @@ namespace shasta {
 // The strand stored in the least significant
 // bit is 0 if the oriented read is identical
 // to the original read and 1 if it is reverse complemented
-class shasta::OrientedReadId {
+class shasta2::OrientedReadId {
 public:
     OrientedReadId() : value(std::numeric_limits<ReadId>::max()) {}
     OrientedReadId(ReadId readId, Strand strand) : value((readId<<1) | strand)
@@ -165,7 +165,7 @@ private:
 
 
 
-inline std::ostream& shasta::operator<<(
+inline std::ostream& shasta2::operator<<(
     std::ostream& s,
     OrientedReadId orientedReadId)
 {

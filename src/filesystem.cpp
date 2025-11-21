@@ -12,11 +12,11 @@ which is the version used in CentOs 7).
 
 *******************************************************************************/
 
-// shasta
+// shasta2
 #include "filesystem.hpp"
 #include "SHASTA2_ASSERT.hpp"
 #include "stdexcept.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 // Linux.
 #include <dirent.h>
@@ -32,7 +32,7 @@ using namespace shasta;
 // Return the extension of a path - that is, everything following
 // the last dot after the last slash.
 // If there is no dot after the last slash, throw an exception.
-string shasta::filesystem::extension(const string& path)
+string shasta2::filesystem::extension(const string& path)
 {
     // If the path is empty, throw an exception.
     if(path.empty()) {
@@ -67,7 +67,7 @@ string shasta::filesystem::extension(const string& path)
 
 
 // Find the absolute path.
-string shasta::filesystem::getAbsolutePath(const string& path)
+string shasta2::filesystem::getAbsolutePath(const string& path)
 {
     const size_t bufferSize = PATH_MAX;
     array<char, bufferSize> buffer;

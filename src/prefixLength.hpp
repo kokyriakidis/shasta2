@@ -2,7 +2,7 @@
 
 #include "algorithm.hpp"
 
-namespace shasta {
+namespace shasta2 {
 
     template<class Container> uint64_t commonPrefixLength(
         const Container& x,

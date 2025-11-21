@@ -10,7 +10,7 @@
 #include "memory.hpp"
 #include "string.hpp"
 
-namespace shasta {
+namespace shasta2 {
     class ReadLoader;
 
     extern template class MultithreadedObject<ReadLoader>;
@@ -19,7 +19,7 @@ namespace shasta {
 
 
 // Class used to load reads from a fasta file.
-class shasta::ReadLoader :
+class shasta2::ReadLoader :
     public MultithreadedObject<ReadLoader>{
 public:
 

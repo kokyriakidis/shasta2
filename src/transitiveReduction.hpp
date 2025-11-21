@@ -15,7 +15,7 @@
 #include <set>
 #include "vector.hpp"
 
-namespace shasta {
+namespace shasta2 {
 
     // Version that requires the graph to use vecS.
     template<class Graph> void transitiveReduction(Graph&);
@@ -30,7 +30,7 @@ namespace shasta {
 // Class Graph must be a boost::adjacency_list with
 // the first three template arguments set to <listS, vecS, directedS or bidirectionalS>.
 // If the graph has cycles, this throws boost::not_a_dag.
-template<class Graph> void shasta::transitiveReduction(Graph &graph)
+template<class Graph> void shasta2::transitiveReduction(Graph &graph)
     {
     using namespace boost;
     using vertex_descriptor = typename Graph::vertex_descriptor;
@@ -41,17 +41,17 @@ template<class Graph> void shasta::transitiveReduction(Graph &graph)
     // Use C++20 concepts instead.
     static_assert(
         std::is_same<typename Graph::out_edge_list_selector, listS>::value,
-        "shasta::transitiveReduction requires an adjacency_list "
+        "shasta2::transitiveReduction requires an adjacency_list "
         "with the first template argument set to boost::listS.");
     static_assert(
         std::is_same<typename Graph::vertex_list_selector, vecS>::value,
-        "shasta::transitiveReduction requires an adjacency_list "
+        "shasta2::transitiveReduction requires an adjacency_list "
         "with the second template argument set to boost::vecS.");
     static_assert(
         std::is_same<typename Graph::directed_selector, directedS>::value
         or
         std::is_same<typename Graph::directed_selector, bidirectionalS>::value,
-        "shasta::transitiveReduction requires an adjacency_list "
+        "shasta2::transitiveReduction requires an adjacency_list "
         "with the third template argument set to boost::directedS or boost::bidirectionalS.");
 
     // Use boost topological_sort to get a vector of vertex descriptors
@@ -154,7 +154,7 @@ template<class Graph> void shasta::transitiveReduction(Graph &graph)
 
 
 // Less performant version which works on any acyclic boost directed graph.
-template<class Graph> void shasta::transitiveReductionAny(Graph &graph)
+template<class Graph> void shasta2::transitiveReductionAny(Graph &graph)
     {
     using namespace boost;
     using vertex_descriptor = typename Graph::vertex_descriptor;

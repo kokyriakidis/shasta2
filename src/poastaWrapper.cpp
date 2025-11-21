@@ -4,7 +4,7 @@
 #include "SHASTA2_ASSERT.hpp"
 #include "simpleFastaRead.hpp"
 #include "tmpDirectory.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 // Boost libraries.
 #include <boost/uuid/uuid.hpp>
@@ -19,7 +19,7 @@ using namespace shasta;
 
 
 
-void shasta::poasta(
+void shasta2::poasta(
 
     // The input sequences to be aligned.
     // They are presented to poasta in this order.

@@ -6,7 +6,7 @@
 #include "tmpDirectory.hpp"
 #include "Reads.hpp"
 #include "ReadSummary.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 // Boost libraries.
 #include <boost/tokenizer.hpp>
@@ -584,7 +584,7 @@ void Assembler::writeHtmlEnd(ostream& html) const
 
 
 
-void shasta::writeStrandSelection(
+void shasta2::writeStrandSelection(
     ostream& html,          // The html stream to write the form to.
     const string& name,     // The selection name.
     bool select0,           // Whether strand 0 is selected.

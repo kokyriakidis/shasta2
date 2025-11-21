@@ -8,7 +8,7 @@
 #include "stdexcept.hpp"
 #include "string.hpp"
 
-namespace shasta {
+namespace shasta2 {
     using std::span;
 
     // Output a span<const char> as a string.
@@ -47,7 +47,7 @@ namespace shasta {
 
 
 // Output a span<const char> as a string.
-inline std::ostream& shasta::operator<<(
+inline std::ostream& shasta2::operator<<(
     std::ostream& s,
     const std::span<const char>&  m)
 {
@@ -61,7 +61,7 @@ inline std::ostream& shasta::operator<<(
 // This cannot be done using std::atol because the
 // span<const char> is not null terminated.
 // The string can only contain numeric characters.
-inline uint64_t shasta::atoul(const std::span<const char>& s)
+inline uint64_t shasta2::atoul(const std::span<const char>& s)
 {
     uint64_t n = 0;
     for(uint64_t i=0; ; i++) {
@@ -83,12 +83,12 @@ inline uint64_t shasta::atoul(const std::span<const char>& s)
 
 
 // Convert a span<const char> to an std::string.
-inline std::string shasta::convertToString(const std::span<const char>& m)
+inline std::string shasta2::convertToString(const std::span<const char>& m)
 {
     auto view = std::string_view(m.data(), m.size());
     return string(view);
 }
-inline std::string shasta::convertToString(const std::span<char>& m)
+inline std::string shasta2::convertToString(const std::span<char>& m)
 {
     auto view = std::string_view(m.data(), m.size());
     return string(view);

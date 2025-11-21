@@ -1,8 +1,8 @@
 #include "rle.hpp"
 #include "Base.hpp"
-using namespace shasta;
+using namespace shasta2;
 
-void shasta::rle(const vector<Base>& sequence, vector<Base>& rleSequence)
+void shasta2::rle(const vector<Base>& sequence, vector<Base>& rleSequence)
 {
     rleSequence.clear();
 

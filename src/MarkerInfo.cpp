@@ -1,6 +1,6 @@
 #include "MarkerInfo.hpp"
 #include "Markers.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 
 

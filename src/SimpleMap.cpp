@@ -1,11 +1,11 @@
 #include "SimpleMap.hpp"
-using namespace shasta;
+using namespace shasta2;
 
 #include "iostream.hpp"
 
 
 
-void shasta::testSimpleMap()
+void shasta2::testSimpleMap()
 {
     class A {
     public:

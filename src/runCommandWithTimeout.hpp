@@ -2,7 +2,7 @@
 
 #include "string.hpp"
 
-namespace shasta {
+namespace shasta2 {
 
     void runCommandWithTimeout(
 

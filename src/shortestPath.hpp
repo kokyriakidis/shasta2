@@ -24,7 +24,7 @@
 
 
 
-// shasta
+// shasta2
 #include "orderPairs.hpp"
 
 // Boost Graph library.
@@ -37,7 +37,7 @@
 #include <queue>
 #include "vector.hpp"
 
-namespace shasta {
+namespace shasta2 {
 
     // The last argument to findShortestPath is a work area with this type.
     template<class Graph> using FindShortestPathQueue  =
@@ -63,7 +63,7 @@ namespace shasta {
 
 
 
-template<class Graph> inline void shasta::findShortestPath(
+template<class Graph> inline void shasta2::findShortestPath(
     Graph& graph,
     typename Graph::vertex_descriptor vSource,
     typename Graph::vertex_descriptor vTarget,

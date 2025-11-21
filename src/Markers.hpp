@@ -21,7 +21,7 @@ is also a marker.
 // Standard library.
 #include "memory.hpp"
 
-namespace shasta {
+namespace shasta2 {
 
     class Marker;
     class Markers;
@@ -34,7 +34,7 @@ namespace shasta {
 
 
 // Markers in shared memory are stored using class Marker.
-class shasta::Marker {
+class shasta2::Marker {
 public:
 
     // The position of this marker in the oriented read.
@@ -50,7 +50,7 @@ public:
 
 
 // The markers on all oriented reads. Indexed by OrientedReadId::getValue().
-class shasta::Markers:
+class shasta2::Markers:
     public MappedMemoryOwner,
     public MultithreadedObject<Markers>,
     public MemoryMapped::VectorOfVectors<Marker, uint64_t> {
