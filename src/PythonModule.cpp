@@ -12,6 +12,7 @@
 #include "ExternalAnchors.hpp"
 #include "extractKmer128.hpp"
 #include "findConvergingVertex.hpp"
+#include "HashedKmerChecker.hpp"
 #include "LikelihoodRatioDetangler.hpp"
 #include "LongBaseSequence.hpp"
 #include "mappedCopy.hpp"
@@ -36,8 +37,14 @@ using namespace pybind11;
 
 PYBIND11_MODULE(shasta2, shasta2Module)
 {
+    // Kmer.
     class_<Kmer>(shasta2Module, "Kmer")
         .def(pybind11::init<const string&>());
+
+    // HashedKmerChecker
+    class_<HashedKmerChecker>(shasta2Module, "HashedKmerChecker")
+        .def(pybind11::init<uint64_t, double>())
+        .def("isMarker", &HashedKmerChecker::isMarker);
 
 	// Class Options.
     class_<Options>(shasta2Module, "Options")
