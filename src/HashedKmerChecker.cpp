@@ -33,9 +33,7 @@ bool HashedKmerChecker::isMarker(const Kmer& kmer) const
 // Initial creation.
 HashedKmerChecker::HashedKmerChecker(
     uint64_t k,
-    double markerDensity,
-    const MappedMemoryOwner& mappedMemoryOwner) :
-    MappedMemoryOwner(mappedMemoryOwner),
+    double markerDensity) :
     k(k)
 {
     // Sanity check on the marker density.
@@ -92,23 +90,4 @@ HashedKmerChecker::HashedKmerChecker(
     const double hashMax = std::numeric_limits<uint32_t> :: max();
     hashThreshold = uint32_t(std::round(double(hashMax) * p));
 
-    // Store k and the hash threshold in binary data.
-    MemoryMapped::Object<HashedKmerCheckerData> data;
-    data.createNew(largeDataName("HashedKmerChecker"), largeDataPageSize);
-    data->k = k;
-    data->hashThreshold = hashThreshold;
-
-}
-
-
-
-// Creation from binary data.
-HashedKmerChecker::HashedKmerChecker(
-    const MappedMemoryOwner& mappedMemoryOwner) :
-    MappedMemoryOwner(mappedMemoryOwner)
-{
-    MemoryMapped::Object<HashedKmerCheckerData> data;
-    data.accessExistingReadOnly(largeDataName("HashedKmerChecker"));
-    k = data->k;
-    hashThreshold = data->hashThreshold;
 }

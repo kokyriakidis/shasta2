@@ -8,8 +8,6 @@ namespace shasta2 {
     class KmerCheckerFactory;
 
     class KmerChecker;
-    class MappedMemoryOwner;
-
 }
 
 
@@ -21,10 +19,8 @@ public:
 
     static shared_ptr<KmerChecker> createNew(
         uint64_t k,
-        double markerDensity,
-        const MappedMemoryOwner&);
+        double markerDensity);
 
-    static shared_ptr<KmerChecker> createFromBinaryData(const MappedMemoryOwner&);
 };
 
 

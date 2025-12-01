@@ -373,7 +373,7 @@ void Assembler::accessAllSoft()
     }
 
     try {
-        accessKmerChecker();
+        createKmerChecker(assemblerInfo->k, assemblerInfo->markerDensity);
     } catch(const exception& e) {
         cout << "The k-mer checker is not accessible." << endl;
         allDataAreAvailable = false;

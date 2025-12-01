@@ -1,7 +1,6 @@
 #pragma once
 
 #include "KmerChecker.hpp"
-#include "MappedMemoryOwner.hpp"
 
 namespace shasta2 {
     class HashedKmerChecker;
@@ -13,27 +12,17 @@ namespace shasta2 {
 // It only supports marker generation method 0 (random generation)
 // but allow marker lengths k<32.
 class shasta2::HashedKmerChecker :
-    public KmerChecker,
-    public MappedMemoryOwner {
+    public KmerChecker {
 public:
     bool isMarker(const Kmer&) const;
 
     // Initial creation.
-    HashedKmerChecker(uint64_t k, double markerDensity, const MappedMemoryOwner&);
-
-    // Creation from binary data.
-    HashedKmerChecker(const MappedMemoryOwner&);
+    HashedKmerChecker(uint64_t k, double markerDensity);
 
 private:
     uint64_t k;
     uint32_t hashThreshold;
 
-    // This is used to store the hashThreshold in binary data.
-    class HashedKmerCheckerData {
-    public:
-        uint64_t k;
-        uint32_t hashThreshold;
-    };
 };
 
 

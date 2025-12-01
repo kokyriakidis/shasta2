@@ -78,7 +78,7 @@ void Assembler::assemble(
     createReadLengthDistribution();
     createReadSummaries();
 
-    createKmerChecker(options.k, options.markerDensity, options.threadCount);
+    createKmerChecker(options.k, options.markerDensity);
     createMarkers(options.threadCount);
     createMarkerKmers(options.maxMarkerErrorRate, options.threadCount);
 
@@ -110,23 +110,14 @@ void Assembler::assemble(
 
 void Assembler::createKmerChecker(
     uint64_t k,
-    double markerDensity,
-    uint64_t /* threadCount */) // To permit future multithreaded KmerChecker constructors.
+    double markerDensity)
 {
 
     assemblerInfo->k = k;
     assemblerInfo->markerDensity = markerDensity;
     kmerChecker = KmerCheckerFactory::createNew(
         k,
-        markerDensity,
-        *this);
-}
-
-
-
-void Assembler::accessKmerChecker()
-{
-    kmerChecker = KmerCheckerFactory::createFromBinaryData(*this);
+        markerDensity);
 }
 
 

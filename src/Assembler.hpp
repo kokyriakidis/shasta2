@@ -148,11 +148,7 @@ public:
     // The KmerChecker is used to find out if a given Kmer is a marker.
     shared_ptr<KmerChecker> kmerChecker;
     public:
-    void createKmerChecker(
-        uint64_t k,
-        double markerDensity,
-        uint64_t threadCount);
-    void accessKmerChecker();
+    void createKmerChecker(uint64_t k, double markerDensity);
 
 
 

@@ -86,10 +86,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def("createKmerChecker",
             &Assembler::createKmerChecker,
             arg("k"),
-            arg("markerDensity"),
-            arg("threadCount") = 0)
-        .def("accessKmerChecker",
-            &Assembler::accessKmerChecker)
+            arg("markerDensity"))
 
          // Markers.
         .def("accessMarkers",
