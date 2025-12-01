@@ -115,6 +115,7 @@ void Assembler::createKmerChecker(
 {
 
     assemblerInfo->k = k;
+    assemblerInfo->markerDensity = markerDensity;
     kmerChecker = KmerCheckerFactory::createNew(
         k,
         markerDensity,

@@ -52,10 +52,13 @@ class shasta2::AssemblerInfo {
 public:
 
     // The length of k-mers used to define markers.
-    size_t k;
+    uint64_t k;
+
+    // The marker density.
+    double markerDensity;
 
     // The page size in use for this run.
-    size_t largeDataPageSize;
+    uint64_t largeDataPageSize;
 };
 
 
