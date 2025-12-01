@@ -123,6 +123,8 @@ public:
         size_t threadCount);
     void histogramReadLength(const string& fileName);
 
+    void findPalindromicReads() const;
+
 
 
     // Read summary information.

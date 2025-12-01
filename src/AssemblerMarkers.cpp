@@ -1,5 +1,6 @@
 // Shasta.
 #include "Assembler.hpp"
+#include "deduplicate.hpp"
 #include "extractKmer128.hpp"
 #include "Markers.hpp"
 #include "MarkerKmers.hpp"
@@ -154,5 +155,87 @@ void Assembler::computeMarkerErrorRates(
                 ++lowFrequencyMarkerCount[readId];
             }
         }
+    }
+}
+
+
+
+void Assembler::findPalindromicReads() const
+{
+    const uint64_t k = assemblerInfo->k;
+    const ReadId readCount = reads().readCount();
+
+    ofstream csv("PalindromicMetrics.csv");
+    csv << "ReadId,Intersection,Union,Jaccard,\n";
+
+    // Work vectors used below but defined here to reduce
+    // memory allocation activity.
+    vector<Kmer> kmers0;
+    vector<Kmer> kmers1;
+    vector<uint64_t> count0;
+    vector<uint64_t> count1;
+
+    // Loop over all reads.
+    for(ReadId readId=0; readId<readCount; readId++) {
+
+        // Access the sequence of this read (without reverse complementing).
+        const LongBaseSequenceView sequence0 = reads().getRead(readId);
+
+        // Access the markers of this read (without reverse complementing.
+        const auto markers0 = markers()[OrientedReadId(readId, 0).getValue()];
+
+        // Gather all marker Kmers of this read and its reverse complement.
+        kmers0.clear();
+        kmers1.clear();
+        for(const Marker& marker0: markers0) {
+            const uint32_t position = marker0.position;
+            Kmer kmer0;
+            extractKmer128(sequence0, position, k, kmer0);
+            kmers0.push_back(kmer0);
+            const Kmer kmer1 = kmer0.reverseComplement(k);
+            kmers1.push_back(kmer1);
+        }
+
+        // Deduplicate and count. Effectively we compute multisets (bags) of Kmers.
+        deduplicateAndCount(kmers0, count0);
+        deduplicateAndCount(kmers1, count1);
+
+
+
+        // Compute the Jaccard similarity of the two multisets (bags).
+        // See https://en.wikipedia.org/wiki/Multiset
+        // and https://en.wikipedia.org/wiki/Jaccard_index
+        // (in the second link, look for "multisets" under "Overview".
+
+        // For the union we just need the total size of the two multisets.
+        const uint64_t sum0 = std::accumulate(count0.begin(), count0.end(), 0);
+        const uint64_t sum1 = std::accumulate(count1.begin(), count1.end(), 0);
+        const uint64_t unionSize = sum0 + sum1;
+
+        // For the intersection we do a joint loop over the common Kmers,
+        // which are now sorted.
+        uint64_t intersectionSize = 0;
+        uint64_t i0 = 0;
+        uint64_t i1 = 0;
+        while((i0 < kmers0.size()) and (i1 < kmers1.size())) {
+            const Kmer& kmer0 = kmers0[i0];
+            const Kmer& kmer1 = kmers1[i1];
+            if(kmer0 < kmer1) {
+                ++i0;
+            } else if(kmer1 < kmer0) {
+                ++i1;
+            } else {
+                intersectionSize += min(count0[i0], count1[i1]);
+                ++i0;
+                ++i1;
+            }
+        }
+
+        const double jaccard = double(intersectionSize) / double(unionSize);
+        csv << readId << ",";
+        csv << intersectionSize << ",";
+        csv << unionSize << ",";
+        csv << jaccard << ",";
+        csv << "\n";
     }
 }
