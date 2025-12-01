@@ -36,6 +36,8 @@ using namespace pybind11;
 
 PYBIND11_MODULE(shasta2, shasta2Module)
 {
+    class_<Kmer>(shasta2Module, "Kmer")
+        .def(pybind11::init<const string&>());
 
 	// Class Options.
     class_<Options>(shasta2Module, "Options")

@@ -56,6 +56,18 @@ public:
         std::fill(data.begin(), data.end(), Int(0));
     }
 
+    // Python-callable constructor from a string.
+    ShortBaseSequence(const string& s)
+    {
+        if(s.size() > capacity) {
+            throw runtime_error("Attempting to store " + to_string(s.size()) +
+                " bases in a ShortBaseSequence with capacity " + to_string(capacity));
+        }
+        for(uint64_t i=0; i<s.size(); i++) {
+            set(i, Base::fromCharacter(s[i]));
+        }
+    }
+
     // Return the base at a given position.
     Base operator[](uint64_t i) const
     {
