@@ -2297,16 +2297,6 @@ Anchors::Anchors(
         anchorMarkerInfos.appendVector(markerInfos);
         anchorInfos.push_back(AnchorInfo());
 
-        // Reverse complement the MarkerInfos, then generate
-        // the reverse complemented Anchor.
-        // We are not filling AnchorInfo::kmerIndex.
-        for(AnchorMarkerInfo& markerInfo: markerInfos) {
-            const uint32_t orientedReadMarkerCount = uint32_t(markers.size(markerInfo.orientedReadId.getValue()));
-            markerInfo.orientedReadId.flipStrand();
-            markerInfo.ordinal = orientedReadMarkerCount - 1 - markerInfo.ordinal;
-        }
-        anchorMarkerInfos.appendVector(markerInfos);
-        anchorInfos.push_back(AnchorInfo());
     }
 
     cout << "Generated " << anchorMarkerInfos.size() << " anchors from " <<
