@@ -127,6 +127,14 @@ public:
         const MarkerKmers&,
         const string& externalAnchorsName);
 
+    // Constructor to create an empty Anchors object.
+    Anchors(
+        const MappedMemoryOwner&,
+        const Reads& reads,
+        uint64_t k,
+        const Markers& markers,
+        const MarkerKmers&);
+
     // Constructor to accesses existing Anchors.
     Anchors(
         const MappedMemoryOwner&,

@@ -124,6 +124,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
        .def("accessAnchors",
            &Assembler::accessAnchors,
            arg("writeAccess") = false)
+       .def("strandSeparation", &Assembler::strandSeparation)
 
        // Journeys.
       .def("createJourneys",

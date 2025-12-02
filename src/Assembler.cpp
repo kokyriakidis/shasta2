@@ -11,6 +11,7 @@
 #include "Reads.hpp"
 #include "ReadLengthDistribution.hpp"
 #include "ReadSummary.hpp"
+#include "StrandSeparator.hpp"
 using namespace shasta2;
 
 #include "MultithreadedObject.tpp"
@@ -371,4 +372,18 @@ void Assembler::writeReadSummaries() const
             readSummary.finalAnchorGap << "," <<
             "\n";
     }
+}
+
+
+
+// Strand separation. For now this is const.
+void Assembler::strandSeparation() const
+{
+    Anchors anchors1(
+        MappedMemoryOwner(*this),
+        reads(),
+        assemblerInfo->k,
+        markers(),
+        *markerKmers);
+    StrandSeparator strandSeparator(anchors(), anchors1);
 }

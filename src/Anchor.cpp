@@ -2302,3 +2302,21 @@ Anchors::Anchors(
     cout << "Generated " << anchorMarkerInfos.size() << " anchors from " <<
         externalAnchors.data.size() << " external anchors." << endl;
 }
+
+
+
+// Constructor to create an empty Anchors object.
+Anchors::Anchors(
+    const MappedMemoryOwner& mappedMemoryOwner,
+    const Reads& reads,
+    uint64_t k,
+    const Markers& markers,
+    const MarkerKmers& markerKmers) :
+    MultithreadedObject<Anchors>(*this),
+    MappedMemoryOwner(mappedMemoryOwner),
+    reads(reads),
+    k(k),
+    markers(markers),
+    markerKmers(markerKmers)
+{
+}
