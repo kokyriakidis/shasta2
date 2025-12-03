@@ -200,9 +200,6 @@ public:
     // Access existing Anchors.
     void accessAnchors(bool writeAccess);
 
-    // Strand separation. For now this is const.
-    void strandSeparation() const;
-
 
 
     // Journeys.

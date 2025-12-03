@@ -2331,3 +2331,12 @@ Anchors::Anchors(
     anchorInfos.createNew(largeDataName(baseName + "-AnchorInfos"), largeDataPageSize);
     kmerToAnchorTable.createNew(largeDataName(baseName + "-KmerToAnchorTable"), largeDataPageSize);
 }
+
+
+
+void Anchors::remove()
+{
+    anchorMarkerInfos.remove();
+    anchorInfos.remove();
+    kmerToAnchorTable.remove();
+}

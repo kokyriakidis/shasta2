@@ -148,6 +148,8 @@ public:
         const MarkerKmers&,
         bool writeAccess);
 
+    void remove();
+
     Anchor operator[](AnchorId) const;
     uint64_t size() const;
 

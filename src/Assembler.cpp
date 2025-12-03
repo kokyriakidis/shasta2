@@ -130,17 +130,58 @@ void Assembler::createAnchors(
     const vector<uint64_t>& maxAnchorRepeatLength,
     uint64_t threadCount)
 {
-    anchorsPointer = make_shared<Anchors>(
-        "Anchors",
-        MappedMemoryOwner(*this),
-        reads(),
-        assemblerInfo->k,
-        markers(),
-        *markerKmers,
-        minAnchorCoverage,
-        maxAnchorCoverage,
-        maxAnchorRepeatLength,
-        threadCount);
+    const bool useStrandSeparation = false;
+
+    if(useStrandSeparation) {
+        // Generate the double-stranded Anchors from the MarkerKmers.
+        shared_ptr<Anchors> doubleStrandedAnchors = make_shared<Anchors>(
+            "DoubleStrandedAnchors",
+            MappedMemoryOwner(*this),
+            reads(),
+            assemblerInfo->k,
+            markers(),
+            *markerKmers,
+            minAnchorCoverage,
+            maxAnchorCoverage,
+            maxAnchorRepeatLength,
+            threadCount);
+
+        // Generate the single-stranded anchors.
+        const shared_ptr<Anchors> singleStrandedAnchors = make_shared<Anchors>(
+            "Anchors",
+            MappedMemoryOwner(*this),
+            reads(),
+            assemblerInfo->k,
+            markers(),
+            *markerKmers);
+       StrandSeparator strandSeparator(*doubleStrandedAnchors, *singleStrandedAnchors);
+
+       // Keep the single-stranded anchors.
+       anchorsPointer = singleStrandedAnchors;
+
+       // Remove the double-stranded anchors.
+       doubleStrandedAnchors->remove();
+       doubleStrandedAnchors = 0;
+    }
+
+
+
+    // Generate double-stranded anchors.
+    else {
+       anchorsPointer = make_shared<Anchors>(
+            "Anchors",
+            MappedMemoryOwner(*this),
+            reads(),
+            assemblerInfo->k,
+            markers(),
+            *markerKmers,
+            minAnchorCoverage,
+            maxAnchorCoverage,
+            maxAnchorRepeatLength,
+            threadCount);
+    }
+
+    cout << "There are " << anchors().size() << " anchors." << endl;
 }
 
 
@@ -374,19 +415,4 @@ void Assembler::writeReadSummaries() const
             readSummary.finalAnchorGap << "," <<
             "\n";
     }
-}
-
-
-
-// Strand separation. For now this is const.
-void Assembler::strandSeparation() const
-{
-    Anchors anchors1(
-        "SingleStrandedAnchors",
-        MappedMemoryOwner(*this),
-        reads(),
-        assemblerInfo->k,
-        markers(),
-        *markerKmers);
-    StrandSeparator strandSeparator(anchors(), anchors1);
 }
