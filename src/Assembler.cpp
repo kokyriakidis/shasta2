@@ -131,6 +131,7 @@ void Assembler::createAnchors(
     uint64_t threadCount)
 {
     anchorsPointer = make_shared<Anchors>(
+        "Anchors",
         MappedMemoryOwner(*this),
         reads(),
         assemblerInfo->k,
@@ -148,6 +149,7 @@ void Assembler::createAnchors(
 void Assembler::readExternalAnchors(const string& externalAnchorsName)
 {
     anchorsPointer = make_shared<Anchors>(
+        "Anchors",
         MappedMemoryOwner(*this),
         reads(),
         assemblerInfo->k,
@@ -161,7 +163,7 @@ void Assembler::readExternalAnchors(const string& externalAnchorsName)
 // Access existing Anchors.
 void Assembler::accessAnchors(bool writeAccess)
 {
-     anchorsPointer = make_shared<Anchors>(
+     anchorsPointer = make_shared<Anchors>("Anchors",
          MappedMemoryOwner(*this), reads(), assemblerInfo->k, markers(), *markerKmers, writeAccess);
 }
 
@@ -380,6 +382,7 @@ void Assembler::writeReadSummaries() const
 void Assembler::strandSeparation() const
 {
     Anchors anchors1(
+        "SingleStrandedAnchors",
         MappedMemoryOwner(*this),
         reads(),
         assemblerInfo->k,

@@ -108,6 +108,7 @@ public:
 
     // Constructor to create Anchors from MarkerKmers.
     Anchors(
+        const string& baseName,
         const MappedMemoryOwner&,
         const Reads& reads,
         uint64_t k,
@@ -120,6 +121,7 @@ public:
 
     // Constructor to read Anchors from ExternalAnchors.
     Anchors(
+        const string& baseName,
         const MappedMemoryOwner&,
         const Reads& reads,
         uint64_t k,
@@ -129,6 +131,7 @@ public:
 
     // Constructor to create an empty Anchors object.
     Anchors(
+        const string& baseName,
         const MappedMemoryOwner&,
         const Reads& reads,
         uint64_t k,
@@ -137,6 +140,7 @@ public:
 
     // Constructor to accesses existing Anchors.
     Anchors(
+        const string& baseName,
         const MappedMemoryOwner&,
         const Reads& reads,
         uint64_t k,
@@ -222,9 +226,10 @@ public:
     // Find out if the given AnchorId contains the specified OrientedReadId.
     bool anchorContains(AnchorId, OrientedReadId) const;
 
+    const string baseName;
     const Reads& reads;
-    uint64_t k;
-    uint64_t kHalf;
+    const uint64_t k;
+    const uint64_t kHalf;
     const Markers& markers;
     const MarkerKmers& markerKmers;
 

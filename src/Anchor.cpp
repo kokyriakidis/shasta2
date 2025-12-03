@@ -41,6 +41,7 @@ template class MultithreadedObject<Anchors>;
 
 // Constructor to accesses existing Anchors.
 Anchors::Anchors(
+    const string& baseName,
     const MappedMemoryOwner& mappedMemoryOwner,
     const Reads& reads,
     uint64_t k,
@@ -49,17 +50,16 @@ Anchors::Anchors(
     bool writeAccess) :
     MultithreadedObject<Anchors>(*this),
     MappedMemoryOwner(mappedMemoryOwner),
+    baseName(baseName),
     reads(reads),
     k(k),
+    kHalf(k/2),
     markers(markers),
     markerKmers(markerKmers)
 {
-    SHASTA2_ASSERT((k %2) == 0);
-    kHalf = k / 2;
-
-    anchorMarkerInfos.accessExisting(largeDataName("AnchorMarkerInfos"), writeAccess);
-    anchorInfos.accessExistingReadOnly(largeDataName("AnchorInfos"));
-    kmerToAnchorTable.accessExistingReadOnly(largeDataName("KmerToAnchorTable"));
+    anchorMarkerInfos.accessExisting(largeDataName(baseName + "-AnchorMarkerInfos"), writeAccess);
+    anchorInfos.accessExistingReadOnly(largeDataName(baseName + "-AnchorInfos"));
+    kmerToAnchorTable.accessExistingReadOnly(largeDataName(baseName + "-KmerToAnchorTable"));
 }
 
 
@@ -897,6 +897,7 @@ void Anchors::followOrientedReads(
 
 // Constructor to create Anchors from MarkerKmers.
 Anchors::Anchors(
+    const string& baseName,
     const MappedMemoryOwner& mappedMemoryOwner,
     const Reads& reads,
     uint64_t k,
@@ -908,12 +909,13 @@ Anchors::Anchors(
     uint64_t threadCount) :
     MultithreadedObject<Anchors>(*this),
     MappedMemoryOwner(mappedMemoryOwner),
+    baseName(baseName),
     reads(reads),
     k(k),
+    kHalf(k/2),
     markers(markers),
     markerKmers(markerKmers)
 {
-    kHalf = k / 2;
 
     performanceLog << timestamp << "Anchor creation begins." << endl;
 
@@ -946,10 +948,10 @@ Anchors::Anchors(
     // Assign AnchorIds to marker k-mers and allocate space for
     // each anchor.
     anchorMarkerInfos.createNew(
-            largeDataName("AnchorMarkerInfos"),
+            largeDataName(baseName + "-AnchorMarkerInfos"),
             largeDataPageSize);
-    anchorInfos.createNew(largeDataName("AnchorInfos"), largeDataPageSize);
-    kmerToAnchorTable.createNew(largeDataName("KmerToAnchorTable"), largeDataPageSize);
+    anchorInfos.createNew(largeDataName(baseName + "-AnchorInfos"), largeDataPageSize);
+    kmerToAnchorTable.createNew(largeDataName(baseName + "-KmerToAnchorTable"), largeDataPageSize);
     kmerToAnchorTable.resize(markerKmerCount);
     AnchorId anchorId = 0;
     for(uint64_t kmerIndex=0; kmerIndex<markerKmerCount; kmerIndex++) {
@@ -2189,6 +2191,7 @@ AnchorId Anchors::getAnchorIdFromKmer(const Kmer& kmer) const
 
 // Constructor to read Anchors from ExternalAnchors.
 Anchors::Anchors(
+    const string& baseName,
     const MappedMemoryOwner& mappedMemoryOwner,
     const Reads& reads,
     uint64_t k,
@@ -2197,8 +2200,10 @@ Anchors::Anchors(
     const string& externalAnchorsName) :
     MultithreadedObject<Anchors>(*this),
     MappedMemoryOwner(mappedMemoryOwner),
+    baseName(baseName),
     reads(reads),
     k(k),
+    kHalf(k/2),
     markers(markers),
     markerKmers(markerKmers)
 {
@@ -2216,12 +2221,12 @@ Anchors::Anchors(
 
     // Initialize the binary data owned by Anchors.
     anchorMarkerInfos.createNew(
-        largeDataName("AnchorMarkerInfos"),
+        largeDataName(baseName + "-AnchorMarkerInfos"),
         largeDataPageSize);
-    anchorInfos.createNew(largeDataName("AnchorInfos"), largeDataPageSize);
+    anchorInfos.createNew(largeDataName(baseName + "-AnchorInfos"), largeDataPageSize);
 
     // Create the kmerToAnchorTable and fill it in with invalid<AnchorId>.
-    kmerToAnchorTable.createNew(largeDataName("KmerToAnchorTable"), largeDataPageSize);
+    kmerToAnchorTable.createNew(largeDataName(baseName + "-KmerToAnchorTable"), largeDataPageSize);
     kmerToAnchorTable.resize(markerKmers.size());
     fill(kmerToAnchorTable.begin(), kmerToAnchorTable.end(), invalid<AnchorId>);
 
@@ -2307,6 +2312,7 @@ Anchors::Anchors(
 
 // Constructor to create an empty Anchors object.
 Anchors::Anchors(
+    const string& baseName,
     const MappedMemoryOwner& mappedMemoryOwner,
     const Reads& reads,
     uint64_t k,
@@ -2314,9 +2320,14 @@ Anchors::Anchors(
     const MarkerKmers& markerKmers) :
     MultithreadedObject<Anchors>(*this),
     MappedMemoryOwner(mappedMemoryOwner),
+    baseName(baseName),
     reads(reads),
     k(k),
+    kHalf(k/2),
     markers(markers),
     markerKmers(markerKmers)
 {
+    anchorMarkerInfos.createNew(largeDataName(baseName + "-AnchorMarkerInfos"), largeDataPageSize);
+    anchorInfos.createNew(largeDataName(baseName + "-AnchorInfos"), largeDataPageSize);
+    kmerToAnchorTable.createNew(largeDataName(baseName + "-KmerToAnchorTable"), largeDataPageSize);
 }
