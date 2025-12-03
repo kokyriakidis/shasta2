@@ -34,7 +34,7 @@ StrandSeparator::StrandSeparator(
 
     gatherEdges(anchors2);
     computeComponents2();
-    separate(anchors2);
+    computeComponents1(anchors2);
 
     cout << timestamp << "Strand separation ends." << endl;
 }
@@ -121,6 +121,8 @@ void StrandSeparator::computeComponents2()
         SHASTA2_ASSERT(rawComponent.orientedReadIds.size() == orientedReadCount);
         components2.emplace_back(rawComponent);
     }
+    cout << "The double-stranded bipartite graph has " << components1.size() <<
+        " connected components." << endl;
 
     // Store anchorComponent2 and orientedReadComponent2.
     anchorComponent2.clear();
@@ -140,12 +142,13 @@ void StrandSeparator::computeComponents2()
 
 
 
-void StrandSeparator::separate(const Anchors& anchors2)
+void StrandSeparator::computeComponents1(const Anchors& anchors2)
 {
     // Work vector used below and defined here to reduce
     // memory allocation activity.
     vector<uint64_t> edgeIds;
 
+    // Random generator used for shuffles.
     std::mt19937 random;
 
     // Initialize the disjoint sets data structure for the single-stranded biopartite graph.
@@ -157,6 +160,12 @@ void StrandSeparator::separate(const Anchors& anchors2)
         disjointSets.make_set(i);
     }
 
+    // Initialize the components of the single-stranded bipartite graph.
+    components1.clear();
+
+
+
+    // Process one component of the double-stranded bipartite graph at a time.
     for(uint64_t componentId2=0; componentId2<components2.size(); componentId2++) {
         const Component& component2 = components2[componentId2];
         cout << "Working on connected component " << componentId2 << " with " <<
@@ -169,10 +178,13 @@ void StrandSeparator::separate(const Anchors& anchors2)
             component2.orientedReadIds[0].getReadId() == component2.orientedReadIds[1].getReadId();
 
         // Single-stranded component.
-        // I will only implement this when I firts encounter this case.
+        // We want to keep only one of each pair of complementari single-stranded components.
+        // So we choose the one where the lowest number OrientedReadId is on strand 0.
         if(not isDoubleStranded) {
             cout << "This connected component is single-stranded." << endl;
-            SHASTA2_ASSERT(0);
+            if(component2.orientedReadIds.front().getStrand() == 0) {
+                components1.emplace_back(component2);
+            }
         }
 
         // Double-stranded component.
@@ -199,7 +211,7 @@ void StrandSeparator::separate(const Anchors& anchors2)
 
             // Iterate. At each iteration we use a strand-aware version of
             // Krager's min-cut algorithm.
-            const uint64_t iterationCount = 20;
+            const uint64_t iterationCount = 6;
             uint64_t bestSkippedCount = std::numeric_limits<uint64_t>::max();
             Component component1;
             for(uint64_t iteration=0; iteration<iterationCount; iteration++) {
@@ -252,7 +264,7 @@ void StrandSeparator::separate(const Anchors& anchors2)
                         disjointSets.union_set(anchorVertexB, orientedReadVertexB);
                     }
                 }
-                cout << "Skipped " << skippedCount << " edges to avoid strand mixing." << endl;
+                cout << "Iteration " << iteration << ": skipped " << skippedCount << " edges to avoid strand mixing." << endl;
 
                 // Figure out how many single-stranded components we ended up with.
                 std::map<uint64_t, Component> component1Map;
@@ -266,12 +278,14 @@ void StrandSeparator::separate(const Anchors& anchors2)
                     const uint64_t orientedReadComponent = disjointSets.find_set(orientedReadVertex);
                     component1Map[orientedReadComponent].orientedReadIds.push_back(orientedReadId);
                 }
-                cout << "Found " << component1Map.size() << " single-stranded components.:" << endl;
+                cout << "Found " << component1Map.size() << " single-stranded components." << endl;
+                /*
                 for(const auto& p: component1Map) {
                     const Component& component = p.second;
                     cout << component.orientedReadIds.size() << " oriented reads, " <<
                         component.anchorIds.size() << " anchors." << endl;
                 }
+                */
 
                 // Only use it if we have exactly 2 single-stranded connected components.
                 if(component1Map.size() == 2) {
@@ -280,8 +294,33 @@ void StrandSeparator::separate(const Anchors& anchors2)
                         bestSkippedCount = skippedCount;
                         component1 = component1Map.begin()->second;
                     }
+                } else {
+                    cout << "This iteration did not create exactly 2 components." << endl;
                 }
             }
+            components1.emplace_back(component1);
+            cout << "The single-stranded component has " <<
+                component1.orientedReadIds.size() << " oriented reads and " <<
+                component1.anchorIds.size() << " anchors." << endl;
+        }
+    }
+    cout << "The single-stranded bipartite graph has " << components1.size() <<
+        " connected components." << endl;
+
+
+
+    // Store anchorComponent1 and orientedReadComponent1.
+    anchorComponent1.clear();
+    anchorComponent1.resize(anchorCount, invalid<uint64_t>);
+    orientedReadComponent1.clear();
+    orientedReadComponent1.resize(orientedReadCount, invalid<uint64_t>);
+    for(uint64_t componentId1=0; componentId1<components1.size(); componentId1++) {
+        const Component& component1 = components1[componentId1];
+        for(const AnchorId anchorId: component1.anchorIds) {
+            anchorComponent1[anchorId] = componentId1;
+        }
+        for(const OrientedReadId orientedReadId: component1.orientedReadIds) {
+            orientedReadComponent1[orientedReadId.getValue()] = componentId1;
         }
     }
 }

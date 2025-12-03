@@ -75,26 +75,44 @@ private:
 
 
 
-    // Compute connected components of the double-stranded
-    // bipartite graph. They are sorted by decreasing number
-    // of oriented reads. Components with just one
-    // oriented read are not stored.
+    // A connected components of the double-stranded or single-stranded
+    // bipartite graph.
     class Component {
     public:
         vector<AnchorId> anchorIds;
         vector<OrientedReadId> orientedReadIds;
     };
+
+
+
+    // The components of the double-sranded bipartite graph.
     vector<Component> components2;
     void computeComponents2();
 
-    // The index of the component that each AnchorId belongs to.
+    // The index of the component2 that each AnchorId belongs to.
     // Indexed by the AnchorId.
     vector<uint64_t> anchorComponent2;
 
-    // The index of the component that each OrientedReadId belongs to.
+    // The index of the component2 that each OrientedReadId belongs to.
     // Indexed by OrientedReadId::getValue()
     vector<uint64_t> orientedReadComponent2;
 
-    // Strand separation.
-    void separate(const Anchors& anchors2);
+
+
+    // The components of the single-sranded bipartite graph.
+    vector<Component> components1;
+    void computeComponents1(const Anchors& anchors2);
+
+    // The index of the component1 that each AnchorId belongs to.
+    // Indexed by the AnchorId.
+    // This can be invalid<uint64_t> if the AnchorId does not belong
+    // to any component of the single-stranded bipartite graph.
+    vector<uint64_t> anchorComponent1;
+
+    // The index of the component1 that each OrientedReadId belongs to.
+    // Indexed by OrientedReadId::getValue()
+    // This can be invalid<uint64_t> if the OrientedReadId does not belong
+    // to any component of the single-stranded bipartite graph.
+    vector<uint64_t> orientedReadComponent1;
+
 };
