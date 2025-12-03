@@ -115,4 +115,12 @@ private:
     // to any component of the single-stranded bipartite graph.
     vector<uint64_t> orientedReadComponent1;
 
+
+
+    // Use the single-stranded biprtite graph to generate the
+    // single-stranded anchors.
+    void generateSingleStrandedAnchors(
+        const Anchors& anchors2,
+        Anchors& anchors1
+        );
 };

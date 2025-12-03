@@ -1,5 +1,6 @@
 // Shasta.
 #include "StrandSeparator.hpp"
+#include "MarkerKmers.hpp"
 #include "orderPairs.hpp"
 #include "Reads.hpp"
 #include "timestamp.hpp"
@@ -20,8 +21,8 @@ StrandSeparator::StrandSeparator(
     const Anchors& anchors2,
 
     // The output single-stranded Anchors.
-    // They must be empty on input.
-    Anchors& /* anchors1 */
+    // They must be initialized but empty on input.
+    Anchors& anchors1
     ) :
     anchorCount(anchors2.anchorMarkerInfos.size()),
     readCount(anchors2.reads.readCount()),
@@ -35,6 +36,7 @@ StrandSeparator::StrandSeparator(
     gatherEdges(anchors2);
     computeComponents2();
     computeComponents1(anchors2);
+    generateSingleStrandedAnchors(anchors2, anchors1);
 
     cout << timestamp << "Strand separation ends." << endl;
 }
@@ -211,7 +213,7 @@ void StrandSeparator::computeComponents1(const Anchors& anchors2)
 
             // Iterate. At each iteration we use a strand-aware version of
             // Krager's min-cut algorithm.
-            const uint64_t iterationCount = 6;
+            const uint64_t iterationCount = 1000;
             uint64_t bestSkippedCount = std::numeric_limits<uint64_t>::max();
             Component component1;
             for(uint64_t iteration=0; iteration<iterationCount; iteration++) {
@@ -321,6 +323,53 @@ void StrandSeparator::computeComponents1(const Anchors& anchors2)
         }
         for(const OrientedReadId orientedReadId: component1.orientedReadIds) {
             orientedReadComponent1[orientedReadId.getValue()] = componentId1;
+        }
+    }
+}
+
+
+
+// Use the single-stranded biprtite graph to generate the
+// single-stranded anchors.
+void StrandSeparator::generateSingleStrandedAnchors(
+    const Anchors& anchors2,
+    Anchors& anchors1)
+{
+    // Initialize the kmerToAnchorTable.
+    anchors1.kmerToAnchorTable.resize(anchors2.markerKmers.size());
+    std::ranges::fill(anchors1.kmerToAnchorTable, invalid<AnchorId>);
+
+
+    // Loop over connected components of the single-stranded bipartite graph.
+    for(uint64_t componentId1=0; componentId1<components1.size(); componentId1++) {
+        const Component& component1 = components1[componentId1];
+
+        // Loop over anchors in this comnponent.
+        // Each Anchor in this component generates a new single-stranded anchor.
+        for(const AnchorId anchorId2: component1.anchorIds) {
+            const Anchor anchor2 = anchors2[anchorId2];
+
+            // Get the anchorId for the new anchor we are generating.
+            const AnchorId anchorId1 = anchors1.size();
+
+            // Copy the AnchorInfo.
+            const AnchorInfo& anchorInfo2 = anchors2.anchorInfos[anchorId2];
+            anchors1.anchorInfos.push_back(anchorInfo2);
+
+            // Update the kmerToAnchorTable.
+            anchors1.kmerToAnchorTable[anchorInfo2.kmerIndex] = anchorId1;
+
+            // Generate the AnchorMarkerInfos for this new anchor.
+            // They are the same as for anchor2, but we can only use
+            // OrientedReadIds in the same component.
+            anchors1.anchorMarkerInfos.appendVector();
+            for(const AnchorMarkerInfo& anchorMarkerInfo: anchor2) {
+                const OrientedReadId orientedReadId= anchorMarkerInfo.orientedReadId;
+                if(orientedReadComponent1[orientedReadId.getValue()] == componentId1) {
+                    anchors1.anchorMarkerInfos.append(anchorMarkerInfo);
+                }
+            }
+
         }
     }
 }
