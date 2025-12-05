@@ -1048,6 +1048,10 @@ void Anchors::constructThreadFunctionPass1(uint64_t /* threadId */)
                 }
             }
 
+            if(markerInfos.size() - usableMarkerInfosCount > 0) {
+                continue;
+            }
+
             // If coverage is too low, don't generate an anchor.
             if(usableMarkerInfosCount < minAnchorCoverage) {
                 continue;
@@ -1129,6 +1133,10 @@ void Anchors::constructThreadFunctionPass2(uint64_t /* threadId */)
                 if(isUsable) {
                     usableMarkerInfos.push_back(markerInfo);
                 }
+            }
+
+            if(markerInfos.size() - usableMarkerInfos.size() > 0) {
+                continue;
             }
 
             // We already checked for low coverage durign pass1.
@@ -2302,6 +2310,16 @@ Anchors::Anchors(
         anchorMarkerInfos.appendVector(markerInfos);
         anchorInfos.push_back(AnchorInfo());
 
+        // Reverse complement the MarkerInfos, then generate
+        // the reverse complemented Anchor.
+        // We are not filling AnchorInfo::kmerIndex.
+        for(AnchorMarkerInfo& markerInfo: markerInfos) {
+            const uint32_t orientedReadMarkerCount = uint32_t(markers.size(markerInfo.orientedReadId.getValue()));
+            markerInfo.orientedReadId.flipStrand();
+            markerInfo.ordinal = orientedReadMarkerCount - 1 - markerInfo.ordinal;
+        }
+        anchorMarkerInfos.appendVector(markerInfos);
+        anchorInfos.push_back(AnchorInfo());
     }
 
     cout << "Generated " << anchorMarkerInfos.size() << " anchors from " <<
