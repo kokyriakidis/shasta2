@@ -211,10 +211,11 @@ void StrandSeparator::computeComponents1(const Anchors& anchors2)
 
 
 
-            // Iterate. At each iteration we use a strand-aware version of
-            // Krager's min-cut algorithm.
-            const uint64_t iterationCount = 1000;
-            uint64_t bestSkippedCount = std::numeric_limits<uint64_t>::max();
+            // Iterate. At each iteration we generate a cut between strands
+            // using a strand-aware version of Krager's min-cut algorithm.
+            const uint64_t iterationCount = 10;
+            vector<uint64_t> bestCutEdges;
+            bool isFirstSuccessfulIteration = true;
             Component component1;
             for(uint64_t iteration=0; iteration<iterationCount; iteration++) {
 
@@ -234,7 +235,7 @@ void StrandSeparator::computeComponents1(const Anchors& anchors2)
                 // Add the edges in shuffled order to the single-stranded bipartite graph,
                 // but don't add the ones that would cause strand mixing.
                 // Every time we add an edge we also add its reverse complement.
-                uint64_t skippedCount = 0;
+                vector<uint64_t> cutEdges;
                 for(const uint64_t edgeId: edgeIds) {
                     const Edge& edge = edges[edgeId];
                     const AnchorId anchorIdA = edge.anchorId;
@@ -259,14 +260,15 @@ void StrandSeparator::computeComponents1(const Anchors& anchors2)
                     if(anchorComponentA == orientedReadComponentB) {
                         SHASTA2_ASSERT(anchorComponentB == orientedReadComponentA);
                         // Adding this edge would cause strand mixing. Don't add the edge.
-                        ++skippedCount;
+                        cutEdges.push_back(edgeId);
                     } else {
                         SHASTA2_ASSERT(anchorComponentB != orientedReadComponentA);
                         disjointSets.union_set(anchorVertexA, orientedReadVertexA);
                         disjointSets.union_set(anchorVertexB, orientedReadVertexB);
                     }
                 }
-                cout << "Iteration " << iteration << ": skipped " << skippedCount << " edges to avoid strand mixing." << endl;
+                cout << "Iteration " << iteration << ": found a cut with " << cutEdges.size() <<
+                    " edges." << endl;
 
                 // Figure out how many single-stranded components we ended up with.
                 std::map<uint64_t, Component> component1Map;
@@ -289,22 +291,80 @@ void StrandSeparator::computeComponents1(const Anchors& anchors2)
                 }
                 */
 
+
+
                 // Only use it if we have exactly 2 single-stranded connected components.
                 if(component1Map.size() == 2) {
-                    if(skippedCount < bestSkippedCount) {
-                        cout << "Updating the single-stranded component." << endl;
-                        bestSkippedCount = skippedCount;
+                    if(isFirstSuccessfulIteration or (cutEdges.size() < bestCutEdges.size())) {
+                        isFirstSuccessfulIteration = false;
+                        cout << "Updating the best cut." << endl;
+                        bestCutEdges = cutEdges;
                         component1 = component1Map.begin()->second;
+
                     }
+
+                    // To find strand contact regions, compute connected components using
+                    // only the edges of the best cut.
+                    // Remove all edges from the single-stranded counterpart of this component.
+                    cout << "Looking for strand contact regions given this cut." << endl;
+                    for(const AnchorId anchorId: component2.anchorIds) {
+                        const uint64_t anchorVertex = anchorId;
+                        disjointSets.make_set(anchorVertex);
+                    }
+                    for(const OrientedReadId orientedReadId: component2.orientedReadIds) {
+                        const uint64_t orientedReadVertex = anchorCount + orientedReadId.getValue();
+                        disjointSets.make_set(orientedReadVertex);
+                    }
+                    for(const uint64_t edgeId: cutEdges) {
+                        const Edge& edge = edges[edgeId];
+                        const AnchorId anchorIdA = edge.anchorId;
+                        const OrientedReadId orientedReadIdA = edge.orientedReadId;
+                        OrientedReadId orientedReadIdB = orientedReadIdA;
+                        orientedReadIdB.flipStrand();
+                        const AnchorId anchorIdB = anchorIdA ^ 1UL;
+                        const uint64_t anchorVertexA = anchorIdA;
+                        const uint64_t anchorVertexB = anchorIdB;
+                        const uint64_t orientedReadVertexA = anchorCount + orientedReadIdA.getValue();
+                        const uint64_t orientedReadVertexB = anchorCount + orientedReadIdB.getValue();
+                        disjointSets.union_set(anchorVertexA, orientedReadVertexA);
+                        disjointSets.union_set(anchorVertexB, orientedReadVertexB);
+                    }
+
+                    // The strand regions are the non-trivial connected components.
+                    std::map<uint64_t, Component> contactRegionMap;
+                    for(const AnchorId anchorId: component2.anchorIds) {
+                        const uint64_t anchorVertex = anchorId;
+                        const uint64_t anchorComponent = disjointSets.find_set(anchorVertex);
+                        contactRegionMap[anchorComponent].anchorIds.push_back(anchorId);
+                    }
+                    for(const OrientedReadId orientedReadId: component2.orientedReadIds) {
+                        const uint64_t orientedReadVertex = anchorCount + orientedReadId.getValue();
+                        const uint64_t orientedReadComponent = disjointSets.find_set(orientedReadVertex);
+                        contactRegionMap[orientedReadComponent].orientedReadIds.push_back(orientedReadId);
+                    }
+
+                    for(const auto& p: contactRegionMap) {
+                        const Component& component = p.second;
+                        if((component.anchorIds.size() > 1) or (component.orientedReadIds.size() > 1) ) {
+                            cout << "Found a strand contact region with " <<
+                                component.orientedReadIds.size() << " oriented reads and " <<
+                                component.anchorIds.size() << " anchors." << endl;
+                        }
+                    }
+
+
                 } else {
                     cout << "This iteration did not create exactly 2 components." << endl;
                 }
             }
             components1.emplace_back(component1);
-            cout << "The single-stranded component has " <<
+            cout << "The best cut has " << bestCutEdges.size() << " edges." << endl;
+            cout << "The single-stranded component with the best cut has " <<
                 component1.orientedReadIds.size() << " oriented reads and " <<
                 component1.anchorIds.size() << " anchors." << endl;
+
         }
+        cout << "Done with connected component " << componentId2 << "." << endl;
     }
     cout << "The single-stranded bipartite graph has " << components1.size() <<
         " connected components." << endl;

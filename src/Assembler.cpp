@@ -11,7 +11,7 @@
 #include "Reads.hpp"
 #include "ReadLengthDistribution.hpp"
 #include "ReadSummary.hpp"
-#include "StrandSeparator.hpp"
+#include "StrandSeparator1.hpp"
 using namespace shasta2;
 
 #include "MultithreadedObject.tpp"
@@ -154,7 +154,7 @@ void Assembler::createAnchors(
             assemblerInfo->k,
             markers(),
             *markerKmers);
-       StrandSeparator strandSeparator(*doubleStrandedAnchors, *singleStrandedAnchors);
+       StrandSeparator1 strandSeparator(*doubleStrandedAnchors, *singleStrandedAnchors);
 
        // Keep the single-stranded anchors.
        anchorsPointer = singleStrandedAnchors;
