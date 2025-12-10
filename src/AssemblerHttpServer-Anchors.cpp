@@ -9,6 +9,7 @@
 #include "graphvizToHtml.hpp"
 #include "Journeys.hpp"
 #include "LocalAnchorGraph.hpp"
+#include "LocalReadAnchorGraph.hpp"
 #include "Markers.hpp"
 #include "orderPairs.hpp"
 #include "Reads.hpp"
@@ -1384,4 +1385,13 @@ void Assembler::exploreLocalAnchorGraph(
     // Write it to html.
     graph.writeHtml(html, displayOptions, assemblyGraphPointer);
 
+}
+
+
+
+void Assembler::exploreLocalReadAnchorGraph(
+    const vector<string>& request,
+    ostream& html)
+{
+    LocalReadAnchorGraph graph(anchors(), journeys(), request, html);
 }

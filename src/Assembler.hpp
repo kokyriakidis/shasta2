@@ -319,6 +319,7 @@ public:
     void exploreAnchorPair2(const vector<string>&, ostream&);
     void exploreJourney(const vector<string>&, ostream&);
     void exploreReadFollowing(const vector<string>&, ostream&);
+    void exploreLocalReadAnchorGraph(const vector<string>&, ostream&);
     void exploreLocalAnchorGraph(const vector<string>&, ostream&);
     void exploreLocalAssemblyGraph(const vector<string>&, ostream&);
     void exploreSuperbubble(const vector<string>&, ostream&);
