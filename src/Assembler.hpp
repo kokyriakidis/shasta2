@@ -29,6 +29,7 @@ namespace shasta2 {
     class LongBaseSequences;
     class Markers;
     class MarkerKmers;
+    class ReadGraph;
     class ReadLengthDistribution;
     class Reads;
     class ReadSummary;
@@ -223,6 +224,16 @@ public:
         double bDrift
         ) const;
 
+
+    // The ReadGraph is only used for strand separation.
+    // See ReadGraph.hpp for more information.
+    shared_ptr<ReadGraph> readGraphPointer;
+    ReadGraph& readGraph() const
+    {
+        return *readGraphPointer;
+    }
+    void createReadGraph(uint64_t threadCount);
+    void accessReadGraph();
 
 
     // AnchorGraph.

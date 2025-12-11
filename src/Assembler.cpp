@@ -1,13 +1,15 @@
 #include "Assembler.hpp"
 #include "Anchor.hpp"
 #include "AnchorGraph.hpp"
-#include "Options.hpp"
 #include "AssemblyGraph.hpp"
+#include "deduplicate.hpp"
 #include "Journeys.hpp"
 #include "KmerCheckerFactory.hpp"
 #include "Markers.hpp"
 #include "MurmurHash2.hpp"
+#include "Options.hpp"
 #include "performanceLog.hpp"
+#include "ReadGraph.hpp"
 #include "Reads.hpp"
 #include "ReadLengthDistribution.hpp"
 #include "ReadSummary.hpp"
@@ -415,4 +417,18 @@ void Assembler::writeReadSummaries() const
             readSummary.finalAnchorGap << "," <<
             "\n";
     }
+}
+
+
+
+void Assembler::createReadGraph(uint64_t threadCount)
+{
+    readGraphPointer = make_shared<ReadGraph>(anchors(), threadCount);
+}
+
+
+
+void Assembler::accessReadGraph()
+{
+    readGraphPointer = make_shared<ReadGraph>(anchors());
 }

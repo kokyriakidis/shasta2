@@ -6,6 +6,7 @@
 
 // Standard library.
 #include "iostream.hpp"
+#include "span.hpp"
 #include "vector.hpp"
 
 namespace shasta2 {
@@ -113,6 +114,57 @@ namespace shasta2 {
 
         }
         v.resize(count.size());
+    }
+
+
+
+    // Remove duplicate elements in a span and count occurrences of each.
+    // Keep only the ones that occur at least minCount times.
+    template<class T, class Int> void deduplicateAndCountWithThreshold(
+        span<T>& v,
+        vector<Int>& count,
+        Int minCount
+        )
+    {
+        // Clear the count vector.
+        count.clear();
+
+        // If the given vector is empty, return now.
+        if(v.empty()) {
+            return;
+        }
+
+        // Sort the span.
+        sort(v.begin(), v.end());
+
+        // Add elements, keeping track of the number
+        // of occurrences of each.
+        typename span<T>::iterator output = v.begin();
+        typename span<T>::iterator input = v.begin();
+        while(input != v.end()) {
+
+
+            // Count how many there are.
+            typename span<T>::iterator it = input;
+            while(it!=v.end() && *it==*input) {
+                ++it;
+            }
+            const Int n = Int(it - input);
+
+            if(n >= minCount) {
+
+                // Store this element.
+                *output = *input;
+                ++output;
+
+                // Store the count.
+                count.push_back(n);
+            }
+
+            // Update our output iterator.
+            input = it;
+
+        }
     }
 
 
