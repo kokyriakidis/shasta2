@@ -2,6 +2,7 @@
 #include "ReadGraph.hpp"
 #include "Anchor.hpp"
 #include "deduplicate.hpp"
+#include "DisjointSets.hpp"
 #include "Reads.hpp"
 using namespace shasta2;
 
@@ -62,12 +63,14 @@ ReadGraph::ReadGraph(
         thisThreadEdgePairs.remove();
         threadEdgePairs[threadId] = 0;
     }
+    cout << "The ReadGraph has " << 2 * readCount << " vertices and " <<
+        2 * edgePairs.size() << " edges." << endl;
 
     // Don't keep the orientedReadIds.
     orientedReadIds.remove();
 
-    cout << "The ReadGraph has " << 2 * readCount << " vertices and " <<
-        2 * edgePairs.size() << " edges." << endl;
+    // Compute the connected components of the complete, double-stranded ReadGraph.
+    computeComponents2();
 
     writeGraphviz();
 
@@ -268,4 +271,82 @@ void ReadGraph::writeGraphviz() const
     }
 
     dot << "}\n";
+}
+
+
+
+void ReadGraph::computeComponents2()
+{
+    const ReadId readCount = anchors.reads.readCount();
+    const uint64_t orientedReadCount = 2 * readCount;
+
+    DisjointSets disjointSets(orientedReadCount);
+    for(const EdgePair& edgePair: edgePairs) {
+        OrientedReadId orientedReadId0(edgePair.readId0, 0);
+        OrientedReadId orientedReadId1(edgePair.readId1, edgePair.isSameStrand ? 0 : 1);
+
+        disjointSets.unionSet(orientedReadId0.getValue(), orientedReadId1.getValue());
+
+        orientedReadId0.flipStrand();
+        orientedReadId1.flipStrand();
+
+        disjointSets.unionSet(orientedReadId0.getValue(), orientedReadId1.getValue());
+    }
+
+    vector< vector<uint64_t> > rawComponents;
+    disjointSets.gatherComponents(2, rawComponents);
+
+    // Store the components.
+    components2.clear();
+    for(const vector<uint64_t>& rawComponent: rawComponents) {
+        Component& component2 = components2.emplace_back();
+        component2.reserve(rawComponent.size());
+        for(const uint64_t i: rawComponent) {
+            component2.push_back(OrientedReadId::fromValue(ReadId(i)));
+        }
+    }
+    components2.fillComponentId(orientedReadCount);
+
+    cout << "Found " << components2.size() <<
+        " non-trivial connected components of the read graph." << endl;
+    for(uint64_t componentId=0; componentId<components2.size(); componentId++) {
+        const Component& component2 = components2[componentId];
+        cout << "Component " << componentId << " has " <<
+            component2.size() << " oriented reads and is " <<
+            (component2.isDoubleStranded() ? "double" : "single") <<
+            "-stranded." << endl;
+    }
+}
+
+
+
+bool ReadGraph::Component::isDoubleStranded() const
+{
+    const Component& component = *this;
+
+    if(size() < 2) {
+        return false;
+    } else {
+        return component[0].getReadId() == component[1].getReadId();
+    }
+}
+
+
+
+bool ReadGraph::Component::isSingleStranded() const
+{
+    return not isDoubleStranded();
+}
+
+
+void ReadGraph::Components::fillComponentId(uint64_t orientedReadCount)
+{
+    componentId.clear();
+    componentId.resize(orientedReadCount, invalid<uint64_t>);
+    for(uint64_t i=0; i<size(); i++) {
+        const Component& component = (*this)[i];
+        for(const OrientedReadId orientedReadId: component) {
+            componentId[orientedReadId.getValue()] = i;
+        }
+    }
 }

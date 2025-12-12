@@ -95,4 +95,33 @@ public:
 
     void writeGraphviz() const;
 
+
+
+    // Class to describe a set of connected components of the ReadGraph.
+    // These components don't necessarily include the entire ReadGraph.
+    // They can include a subset.
+    // Each component is sorted.
+    class Component :public vector<OrientedReadId> {
+    public:
+        bool isDoubleStranded() const;
+        bool isSingleStranded() const;
+    };
+    class Components : public vector<Component> {
+    public:
+
+        // The id (index in the base class vector) of the component that
+        // each OrientedReadId belongs to.
+        // Indexed by OrientedReadId::getValue().
+        vector<uint64_t> componentId;
+
+        // This should be called when all the components have been added.
+        void fillComponentId(uint64_t orientedReadCount);
+
+    };
+
+
+
+    // The connected components of the complete, double-stranded ReadGraph.
+    Components components2;
+    void computeComponents2();
 };
