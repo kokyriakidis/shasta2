@@ -13,7 +13,8 @@ The ReadGraph is generated using as input the initial Anchors,
 which include both strands. As a result, the ReadGraph is exactly
 strand symmetric. This allows us to store only half of the edges.
 We store the edges in which the lowest numbered OrientedReadId
-is on strand 0.
+is on strand 0. Each stored edge correspond to a pair
+of reverse complemented edges.
 
 ******************************************************************/
 
@@ -23,6 +24,9 @@ is on strand 0.
 #include "MemoryMappedVectorOfVectors.hpp"
 #include "MultithreadedObject.hpp"
 #include "ReadId.hpp"
+
+// Standard library.
+#include "memory.hpp"
 
 namespace shasta2 {
     class ReadGraph;
@@ -45,42 +49,50 @@ public:
     // Access the ReadGraph from binary data.
     ReadGraph(const Anchors&);
 
-private:
     const Anchors& anchors;
 
     // EXPOSE WHEN CODE STABILIZES.
     const uint64_t minCoverage = 6;
 
+    // During creation, we store all the OrientedReadIds,
+    // including duplicates, encountered for each readId0.
+    MemoryMapped::VectorOfVectors<OrientedReadId, ReadId> orientedReadIds;
 
 
-    // We only store edges in which the lowest number ReadId, readId0,
-    // is on strand 0. Indexed by readId0.
-    // Each of the stored edges corresponds to a pair of reverse
-    // complemented edges in the ReadGraph.
-    class Edge {
+
+    class EdgePair {
     public:
-        OrientedReadId orientedReadId = OrientedReadId(invalid<ReadId>, 0);;
-        uint32_t coverage = invalid<uint32_t>;
-        Edge() {}
-        Edge(
-            OrientedReadId orientedReadId,
-            uint32_t coverage) :
-            orientedReadId(orientedReadId),
+        ReadId readId0 = invalid<ReadId>;
+        ReadId readId1 = invalid<ReadId>;
+        bool isSameStrand = false;
+        uint16_t coverage = invalid<uint16_t>;
+        EdgePair() {}
+        EdgePair(
+            ReadId readId0,
+            ReadId readId1,
+            bool isSameStrand,
+            uint16_t coverage) :
+            readId0(readId0),
+            readId1(readId1),
+            isSameStrand(isSameStrand),
             coverage(coverage)
         {}
     };
-    MemoryMapped::VectorOfVectors<Edge, ReadId> edges;
-
-
-
-    // During creation of the ReadGraph, we store all the OrientedReadIds,
-    // including duplicates, encountered for each readId0.
-    MemoryMapped::VectorOfVectors<OrientedReadId, ReadId> orientedReadIds;
+    MemoryMapped::Vector<EdgePair> edgePairs;
+    vector< shared_ptr<MemoryMapped::Vector<EdgePair> > > threadEdgePairs;
 
     void threadFunctionPass1(uint64_t threadId);
     void threadFunctionPass2(uint64_t threadId);
     void threadFunctionPass12(uint64_t pass);
     void threadFunctionPass3(uint64_t threadId);
+
+    // Store the indexes of the edge pairs that each ReadId is involved in.
+    // These are indexes relative to edgePairs.begin().
+    MemoryMapped::VectorOfVectors<uint64_t, uint64_t> connectivityTable;
     void threadFunctionPass4(uint64_t threadId);
-    void threadFunctionPass34(uint64_t pass);
+    void threadFunctionPass5(uint64_t threadId);
+    void threadFunctionPass45(uint64_t pass);
+
+    void writeGraphviz() const;
+
 };

@@ -1,8 +1,12 @@
+// Shasta.
 #include "ReadGraph.hpp"
 #include "Anchor.hpp"
 #include "deduplicate.hpp"
 #include "Reads.hpp"
 using namespace shasta2;
+
+// Standard library.
+#include "fstream.hpp"
 
 // Explicit instantiation.
 #include "MultithreadedObject.tpp"
@@ -42,24 +46,46 @@ ReadGraph::ReadGraph(
     runThreads(&ReadGraph::threadFunctionPass2, threadCount);
     orientedReadIds.endPass2(true, true);
 
-    // Pass3: for each readId0, count the number of times each OrientedReadId appears,
-    // and figure out how many edges we will generate for that readId0.
-    edges.createNew(largeDataName("ReadGraph-Edges"), largeDataPageSize);
-    edges.beginPass1(readCount);
+    // Pass 3: for each readId0, count the number of times each OrientedReadId appears
+    // and generate EdgePairs.
+    threadEdgePairs.resize(threadCount);
     setupLoadBalancing(readCount, 10);
     runThreads(&ReadGraph::threadFunctionPass3, threadCount);
 
-    // Pass4: do it again, this time storing the edges.
-    edges.beginPass2();
-    setupLoadBalancing(readCount, 10);
-    runThreads(&ReadGraph::threadFunctionPass4, threadCount);
-    edges.endPass2(true, true);
+    // Gather the EdgePairs found by each thread.
+    edgePairs.createNew(largeDataName("ReadGraph-EdgePairs"), largeDataPageSize);
+    for(uint64_t threadId=0; threadId<threadCount; threadId++) {
+        MemoryMapped::Vector<EdgePair>& thisThreadEdgePairs = *threadEdgePairs[threadId];
+        for(const EdgePair& edgePair: thisThreadEdgePairs) {
+            edgePairs.push_back(edgePair);
+        }
+        thisThreadEdgePairs.remove();
+        threadEdgePairs[threadId] = 0;
+    }
 
     // Don't keep the orientedReadIds.
     orientedReadIds.remove();
 
     cout << "The ReadGraph has " << 2 * readCount << " vertices and " <<
-        2 * edges.totalSize() << " edges." << endl;
+        2 * edgePairs.size() << " edges." << endl;
+
+    writeGraphviz();
+
+
+
+    // Fill in the connectivity table.
+    connectivityTable.createNew(largeDataName("ReadGraph-ConnectivityTable"), largeDataPageSize);
+    connectivityTable.beginPass1(readCount);
+    setupLoadBalancing(edgePairs.size(), 1000);
+    runThreads(&ReadGraph::threadFunctionPass4, threadCount);
+
+    connectivityTable.beginPass2();
+    setupLoadBalancing(edgePairs.size(), 1000);
+    runThreads(&ReadGraph::threadFunctionPass5, threadCount);
+    connectivityTable.endPass2(true, true);
+    SHASTA2_ASSERT(connectivityTable.totalSize() == 2 * edgePairs.size());
+
+
 }
 
 
@@ -70,7 +96,8 @@ ReadGraph::ReadGraph(const Anchors& anchors) :
     MultithreadedObject<ReadGraph>(*this),
     anchors(anchors)
 {
-
+    edgePairs.accessExistingReadOnly(largeDataName("ReadGraph-EdgePairs"));
+    connectivityTable.accessExistingReadOnly(largeDataName("ReadGraph-ConnectivityTable"));
 }
 
 
@@ -132,25 +159,17 @@ void ReadGraph::threadFunctionPass12(uint64_t pass)
 
 
 
-void ReadGraph::threadFunctionPass3(uint64_t)
+void ReadGraph::threadFunctionPass3(uint64_t threadId)
 {
-    threadFunctionPass34(3);
-}
+    // Allocate the EdgePairs found by this thread.
+    shared_ptr< MemoryMapped::Vector<EdgePair> >& thisThreadEdgePairsPointer = threadEdgePairs[threadId];
+    thisThreadEdgePairsPointer = make_shared< MemoryMapped::Vector<EdgePair> >();
+    MemoryMapped::Vector<EdgePair>& thisThreadEdgePairs = *thisThreadEdgePairsPointer;
+    thisThreadEdgePairs.createNew(largeDataName("tmp-ReadGraph-EdgePairs-" + to_string(threadId)), largeDataPageSize);
 
-
-
-void ReadGraph::threadFunctionPass4(uint64_t)
-{
-    threadFunctionPass34(4);
-}
-
-
-
-void ReadGraph::threadFunctionPass34(uint64_t pass)
-{
-    // Work vector used below but defined here to reduce
+    // Work vectors used below but defined here to reduce
     // memory allocation activity.
-    vector<OrientedReadId> v;
+    vector<OrientedReadId> orientedReadIds1;
     vector<uint64_t> count;
 
     // Loop over all batches assigned to this thread.
@@ -158,25 +177,95 @@ void ReadGraph::threadFunctionPass34(uint64_t pass)
     while(getNextBatch(begin, end)) {
 
         // Loop over the ReadIds assigned to this batch.
-        for(ReadId readId=ReadId(begin); readId!=ReadId(end); readId++) {
+        for(ReadId readId0=ReadId(begin); readId0!=ReadId(end); readId0++) {
 
             // Make a copy of the orientedReadIds for this ReadId.
-            span<OrientedReadId> s = orientedReadIds[readId];
-            v.resize(s.size());
-            std::ranges::copy(s, v.begin());
+            span<OrientedReadId> orientedReadIds1Span = orientedReadIds[readId0];
+            orientedReadIds1.resize(orientedReadIds1Span.size());
+            std::ranges::copy(orientedReadIds1Span, orientedReadIds1.begin());
 
             // Deduplicate and count.
-            deduplicateAndCountWithThreshold(v, count, minCoverage);
+            deduplicateAndCountWithThreshold(orientedReadIds1, count, minCoverage);
 
-            if(pass == 3) {
-                edges.incrementCountMultithreaded(readId, ReadId(count.size()));
-            } else {
-                for(uint64_t i=0; i<count.size(); i++) {
-                    Edge edge(v[i], uint32_t(count[i]));
-                    edges.storeMultithreaded(readId, edge);
-                }
+            for(uint64_t i=0; i<orientedReadIds1.size(); i++) {
+                const OrientedReadId orientedReadId1 = orientedReadIds1[i];
+                const bool isSameStrand = orientedReadId1.getStrand() == 0;
+                const uint16_t coverage = uint16_t(count[i]);
+
+                EdgePair edgePair(readId0, orientedReadId1.getReadId(), isSameStrand, coverage);
+                thisThreadEdgePairs.push_back(edgePair);
             }
 
         }
     }
+}
+
+
+void ReadGraph::threadFunctionPass4(uint64_t)
+{
+    threadFunctionPass45(4);
+}
+
+
+
+void ReadGraph::threadFunctionPass5(uint64_t)
+{
+    threadFunctionPass45(5);
+}
+
+
+
+void ReadGraph::threadFunctionPass45(uint64_t pass)
+{
+    // Loop over all batches assigned to this thread.
+    uint64_t begin, end;
+    while(getNextBatch(begin, end)) {
+
+        // Loop over all EdgePairs assigned to this batch.
+        for(uint64_t edgePairIndex=begin; edgePairIndex!=end; ++edgePairIndex) {
+            const EdgePair& edgePair = edgePairs.begin()[edgePairIndex];
+
+            if(pass == 4) {
+                connectivityTable.incrementCountMultithreaded(edgePair.readId0);
+                connectivityTable.incrementCountMultithreaded(edgePair.readId1);
+            } else {
+                connectivityTable.storeMultithreaded(edgePair.readId0, edgePairIndex);
+                connectivityTable.storeMultithreaded(edgePair.readId1, edgePairIndex);
+            }
+        }
+    }
+}
+
+
+
+void ReadGraph::writeGraphviz() const
+{
+    const ReadId readCount = anchors.reads.readCount();
+
+    ofstream dot("ReadGraph.dot");
+
+    dot << "graph ReadGraph {\n";
+
+    // Vertices.
+    for(ReadId readId=0; readId<readCount; readId++) {
+        for(Strand strand=0; strand<2; strand++) {
+            const OrientedReadId orientedReadId(readId, strand);
+            dot << "\"" << orientedReadId << "\";\n";
+        }
+    }
+
+    // Edges.
+    for(const EdgePair& edgePair: edgePairs) {
+
+        OrientedReadId orientedReadId0(edgePair.readId0, 0);
+        OrientedReadId orientedReadId1(edgePair.readId1, edgePair.isSameStrand ? 0 : 1);
+        dot <<  "\"" << orientedReadId0 << "\"--\"" << orientedReadId1 << "\";\n";
+
+        orientedReadId0.flipStrand();
+        orientedReadId1.flipStrand();
+        dot <<  "\"" << orientedReadId0 << "\"--\"" << orientedReadId1 << "\";\n";
+
+    }
+
+    dot << "}\n";
 }

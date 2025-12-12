@@ -9,6 +9,7 @@
 #include "graphvizToHtml.hpp"
 #include "Journeys.hpp"
 #include "LocalAnchorGraph.hpp"
+#include "LocalReadGraph.hpp"
 #include "LocalReadAnchorGraph.hpp"
 #include "Markers.hpp"
 #include "orderPairs.hpp"
@@ -1394,4 +1395,16 @@ void Assembler::exploreLocalReadAnchorGraph(
     ostream& html)
 {
     LocalReadAnchorGraph graph(anchors(), journeys(), request, html);
+}
+
+
+
+void Assembler::exploreLocalReadGraph(
+    const vector<string>& request,
+    ostream& html)
+{
+    if(not readGraphPointer) {
+        throw runtime_error("The ReadGraph is not available.");
+    }
+    LocalReadGraph graph(readGraph(), request, html);
 }
