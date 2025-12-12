@@ -53,6 +53,7 @@ public:
 
     // EXPOSE WHEN CODE STABILIZES.
     const uint64_t minCoverage = 6;
+    const uint64_t maxKargerIterationCount = 10;
 
     // During creation, we store all the OrientedReadIds,
     // including duplicates, encountered for each readId0.
@@ -124,4 +125,18 @@ public:
     // The connected components of the complete, double-stranded ReadGraph.
     Components components2;
     void computeComponents2();
+
+
+
+    // We compute a single-stranded version of the ReadGraph as follows:
+    // - For each reverse complemented pair of single-stranded connected
+    //   component, we only keep one (the one in which the lowest numbered
+    //   OrientedReadId is on strand 0).
+    // - For each double-stranded component, we do a strand-aware
+    //   approximate min-cut to approximately separate strands.
+    //   The cut separates that component in two single-stranded
+    //   components and we keep only one of them (the one in which
+    //   the lowest numbered OrientedReadId is on strand 0).
+    Components components1;
+    void computeComponents1();
 };

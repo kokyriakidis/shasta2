@@ -28,6 +28,13 @@ void DisjointSets::initializeDisconnected()
 
 
 
+void DisjointSets::initializeDisconnected(uint64_t i)
+{
+    disjointSets.make_set(i);
+}
+
+
+
 void DisjointSets::unionSet(uint64_t i, uint64_t j)
 {
     disjointSets.union_set(i, j);

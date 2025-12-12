@@ -8,6 +8,7 @@ using namespace shasta2;
 
 // Standard library.
 #include "fstream.hpp"
+#include <random>
 
 // Explicit instantiation.
 #include "MultithreadedObject.tpp"
@@ -71,6 +72,9 @@ ReadGraph::ReadGraph(
 
     // Compute the connected components of the complete, double-stranded ReadGraph.
     computeComponents2();
+
+    // Compute the connected components of a partial, single-stranded ReadGraph.
+    computeComponents1();
 
     writeGraphviz();
 
@@ -253,7 +257,14 @@ void ReadGraph::writeGraphviz() const
     for(ReadId readId=0; readId<readCount; readId++) {
         for(Strand strand=0; strand<2; strand++) {
             const OrientedReadId orientedReadId(readId, strand);
-            dot << "\"" << orientedReadId << "\";\n";
+            const bool isInSingleStrandedGraph =
+                components1.componentId[orientedReadId.getValue()] != invalid<uint64_t>;
+
+            dot << "\"" << orientedReadId << "\"";
+            if(isInSingleStrandedGraph) {
+                dot << " [color=green]";
+            }
+            dot << ";\n";
         }
     }
 
@@ -308,7 +319,7 @@ void ReadGraph::computeComponents2()
     components2.fillComponentId(orientedReadCount);
 
     cout << "Found " << components2.size() <<
-        " non-trivial connected components of the read graph." << endl;
+        " non-trivial connected components of the read graph:" << endl;
     for(uint64_t componentId=0; componentId<components2.size(); componentId++) {
         const Component& component2 = components2[componentId];
         cout << "Component " << componentId << " has " <<
@@ -349,4 +360,173 @@ void ReadGraph::Components::fillComponentId(uint64_t orientedReadCount)
             componentId[orientedReadId.getValue()] = i;
         }
     }
+}
+
+
+
+// We compute a single-stranded version of the ReadGraph as follows:
+// - For each reverse complemented pair of single-stranded connected
+//   component, we only keep one (the one in which the lowest numbered
+//   OrientedReadId is on strand 0).
+// - For each double-stranded component, we do a strand-aware
+//   approximate min-cut to approximately separate strands.
+//   The cut separates that component in two single-stranded
+//   components and we keep only one of them (the one in which
+//   the lowest numbered OrientedReadId is on strand 0).
+void ReadGraph::computeComponents1()
+{
+    components1.clear();
+
+    // Create a DisjointSets object that will be used repeatedly below.
+    const ReadId readCount = anchors.reads.readCount();
+    const uint64_t orientedReadCount = 2 * readCount;
+    DisjointSets disjointSets(orientedReadCount);
+
+    // Random generator used for shuffles.
+    std::mt19937 random;
+
+    // Loop over component of the complete double-stranded ReadGraph.
+    for(uint64_t component2Id=0; component2Id<components2.size(); component2Id++) {
+        const Component& component2 = components2[component2Id];
+        const bool isDoubleStranded = component2.isDoubleStranded();
+        cout << "Working on " << (isDoubleStranded ? "double" : "single") <<
+            "-stranded component " << component2Id << " with " <<
+            component2.size() << " orientedReads." << endl;
+
+        // If a single stranded component, add it to components1
+        // if its lowest number OrientedReaId is on strand0, and otherwise
+        // do nothing with it.
+        if(not isDoubleStranded) {
+            if(component2.front().getStrand() == 0) {
+                cout << "Copying this single-stranded component to the single-stranded ReadGraph." << endl;
+            } else {
+                cout << "Ignoring this single-stranded component." << endl;
+            }
+        } else {
+
+
+
+            // This is a double-stranded component.
+            // Compute an approximate, strand-aware min-cut using Karger's algorithm.
+            cout << "Computing an approximate, strand-aware min-cut for this component." << endl;
+
+            // Gather the indexes of EdgePairs in this component.
+            vector<uint64_t> edgePairIndexes;
+            for(uint64_t edgePairIndex=0; edgePairIndex<edgePairs.size(); edgePairIndex++) {
+                const EdgePair& edgePair = edgePairs[edgePairIndex];
+
+                const OrientedReadId orientedReadId0(edgePair.readId0, 0);
+                const OrientedReadId orientedReadId1(edgePair.readId1, edgePair.isSameStrand ? 0 : 1);
+                uint64_t componentId = components2.componentId[orientedReadId0.getValue()];
+                SHASTA2_ASSERT(componentId == components2.componentId[orientedReadId1.getValue()]);
+
+                const OrientedReadId orientedReadId0rc(edgePair.readId0, 1);
+                const OrientedReadId orientedReadId1rc(edgePair.readId1, edgePair.isSameStrand ? 1 : 0);
+                uint64_t componentIdrc = components2.componentId[orientedReadId0rc.getValue()];
+                SHASTA2_ASSERT(componentIdrc == components2.componentId[orientedReadId1rc.getValue()]);
+
+                // Sanity check valid because we know we are in a double-stranded component.
+                SHASTA2_ASSERT((componentId == component2Id) == (componentIdrc == component2Id));
+
+                if(componentId == component2Id) {
+                    edgePairIndexes.push_back(edgePairIndex);
+                }
+            }
+            cout << "This component has " << 2 * edgePairIndexes.size() << " edges." << endl;
+
+
+
+            // Iterate the Karger min-cut algorithm.
+            vector<uint64_t> cutEdgePairIndexes;
+            vector<uint64_t> bestCutEdgePairIndexes;
+            vector< vector<uint64_t> > rawComponents;
+            vector< vector<uint64_t> > bestRawComponents;
+            uint64_t bestCutSize = std::numeric_limits<uint64_t>::max();
+            for(uint64_t iteration=0; iteration<maxKargerIterationCount; iteration++) {
+                cout << "Begin min-cut iteration " << iteration << endl;
+
+                // Disconnect all OrientedReadIds in this component.
+                for(const OrientedReadId orientedReadId: component2) {
+                    disjointSets.initializeDisconnected(orientedReadId.getValue());
+                }
+
+                // Shuffle the edge pair indexes.
+                std::shuffle(edgePairIndexes.begin(), edgePairIndexes.end(), random);
+
+                // Process the EdgePairs in this shuffle order.
+                cutEdgePairIndexes.clear();
+                for(const uint64_t edgePairIndex: edgePairIndexes) {
+                    const EdgePair& edgePair = edgePairs[edgePairIndex];
+
+                    // Gather the OrientedReadIds involved in this EdgePair.
+                    const OrientedReadId orientedReadId0(edgePair.readId0, 0);
+                    const OrientedReadId orientedReadId1(edgePair.readId1, edgePair.isSameStrand ? 0 : 1);
+                    const OrientedReadId orientedReadId0rc(edgePair.readId0, 1);
+                    const OrientedReadId orientedReadId1rc(edgePair.readId1, edgePair.isSameStrand ? 1 : 0);
+
+                    // Gather the corresponding components for the current cut.
+                    const uint64_t component0 = disjointSets.findSet(orientedReadId0.getValue());
+                    const uint64_t component1 = disjointSets.findSet(orientedReadId1.getValue());
+                    const uint64_t component0rc = disjointSets.findSet(orientedReadId0rc.getValue());
+                    const uint64_t component1rc = disjointSets.findSet(orientedReadId1rc.getValue());
+
+                    // Sanity check that we are maintaining strand symmetry.
+                    SHASTA2_ASSERT((component0 == component1) == (component0rc == component1rc));
+
+                    // Sanity check that we are keeping strands separate.
+                    SHASTA2_ASSERT(component0 != component0rc);
+                    SHASTA2_ASSERT(component1 != component1rc);
+
+                    // Only continue if not the same components
+                    if(component0 != component1) {
+                        SHASTA2_ASSERT(component0rc != component1rc);
+
+                        // Find out if adding this adge pair would connect strands.
+                        const bool wouldConnectStrands = (component0 == component1rc);
+                        SHASTA2_ASSERT(wouldConnectStrands == (component0rc == component1));
+
+                        if(wouldConnectStrands) {
+                            cutEdgePairIndexes.push_back(edgePairIndex);
+                        } else {
+                            disjointSets.link(component0, component1);
+                            disjointSets.link(component0rc, component1rc);
+                        }
+                    }
+                }
+
+                disjointSets.gatherComponents(2, rawComponents);
+
+                cout << "Component " << component2Id << " iteration " << iteration <<
+                    " produced a cut with " << 2 * cutEdgePairIndexes.size() << " edges and " <<
+                    rawComponents.size() << " components." << endl;
+
+                const uint64_t cutSize = cutEdgePairIndexes.size();
+                if((rawComponents.size() == 2) and (cutSize < bestCutSize)) {
+                    cout << "Updating the best cut." << endl;
+                    bestCutSize = cutSize;
+                    bestCutEdgePairIndexes = cutEdgePairIndexes;
+                    bestRawComponents = rawComponents;
+                }
+            }
+
+            cout << "The best cut for component " << component2Id <<
+                " has " << 2 * bestCutSize << " edges." << endl;
+
+            // Keep only one of the two components defined by the best cut.
+            SHASTA2_ASSERT(bestRawComponents.size() == 2);
+            const vector<uint64_t>& bestRawComponent0 = bestRawComponents[0];
+            const vector<uint64_t>& bestRawComponent1 = bestRawComponents[1];
+            const vector<uint64_t>& keepRawComponent =
+                (bestRawComponent0.front() < bestRawComponent1.front()) ?
+                bestRawComponent0 : bestRawComponent1;
+
+            Component& component1 = components1.emplace_back();
+            component1.reserve(keepRawComponent.size());
+            for(const uint64_t i: keepRawComponent) {
+                component1.push_back(OrientedReadId::fromValue(ReadId(i)));
+            }
+        }
+    }
+
+    components1.fillComponentId(orientedReadCount);
 }

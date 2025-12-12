@@ -24,6 +24,9 @@ public:
     // can be called again to reuse the same DisjointSets object.
     void initializeDisconnected();
 
+    // Same, but just for one element.
+    void initializeDisconnected(uint64_t i);
+
     // These call the corresponding functions of boost::disjoint_sets.
     void unionSet(uint64_t, uint64_t);
     void link(uint64_t, uint64_t);
