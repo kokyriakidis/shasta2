@@ -88,7 +88,6 @@ public:
     void threadFunctionPass3(uint64_t threadId);
 
     // Store the indexes of the edge pairs that each ReadId is involved in.
-    // These are indexes relative to edgePairs.begin().
     MemoryMapped::VectorOfVectors<uint64_t, uint64_t> connectivityTable;
     void threadFunctionPass4(uint64_t threadId);
     void threadFunctionPass5(uint64_t threadId);
@@ -139,4 +138,8 @@ public:
     //   the lowest numbered OrientedReadId is on strand 0).
     Components components1;
     void computeComponents1();
+
+
+    // Experiments with local strand-aware min-cuts.
+    void localMinCut(ReadId, vector<uint64_t>& cutEdgePairIndexes) const;
 };

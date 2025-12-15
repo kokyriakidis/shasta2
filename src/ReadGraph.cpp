@@ -70,11 +70,13 @@ ReadGraph::ReadGraph(
     // Don't keep the orientedReadIds.
     orientedReadIds.remove();
 
+#if 0
     // Compute the connected components of the complete, double-stranded ReadGraph.
     computeComponents2();
 
     // Compute the connected components of a partial, single-stranded ReadGraph.
     computeComponents1();
+#endif
 
     writeGraphviz();
 
@@ -92,6 +94,12 @@ ReadGraph::ReadGraph(
     connectivityTable.endPass2(true, true);
     SHASTA2_ASSERT(connectivityTable.totalSize() == 2 * edgePairs.size());
 
+
+
+    // Experiments with local strand-aware min-cuts.
+    vector<uint64_t> cutEdgePairIndexes;
+    // localMinCut(6686, cutEdgePairIndexes);
+    localMinCut(6691, cutEdgePairIndexes);
 
 }
 
@@ -257,13 +265,19 @@ void ReadGraph::writeGraphviz() const
     for(ReadId readId=0; readId<readCount; readId++) {
         for(Strand strand=0; strand<2; strand++) {
             const OrientedReadId orientedReadId(readId, strand);
+            /*
             const bool isInSingleStrandedGraph =
                 components1.componentId[orientedReadId.getValue()] != invalid<uint64_t>;
+            */
 
             dot << "\"" << orientedReadId << "\"";
+
+            /*
             if(isInSingleStrandedGraph) {
                 dot << " [color=green]";
             }
+            */
+
             dot << ";\n";
         }
     }
@@ -529,4 +543,176 @@ void ReadGraph::computeComponents1()
     }
 
     components1.fillComponentId(orientedReadCount);
+}
+
+
+
+// Experiments with local strand-aware min-cuts.
+void ReadGraph::localMinCut(
+    ReadId readId,
+    vector<uint64_t>& cutEdgePairIndexes) const
+{
+    // Gather OrientedReadIds that are at distance 1 from
+    // readId-0 or readId-1.
+    const span<const uint64_t> edgePairIndexesSpan = connectivityTable[readId];
+    vector<uint64_t> edgePairIndexes(edgePairIndexesSpan.size());
+    std::ranges::copy(edgePairIndexesSpan, edgePairIndexes.begin());
+
+    vector<OrientedReadId> orientedReadIds;
+    for(const uint64_t edgePairIndex: edgePairIndexes) {
+        const EdgePair& edgePair = edgePairs[edgePairIndex];
+        orientedReadIds.emplace_back(edgePair.readId0, 0);
+        orientedReadIds.emplace_back(edgePair.readId0, 1);
+        orientedReadIds.emplace_back(edgePair.readId1, 0);
+        orientedReadIds.emplace_back(edgePair.readId1, 1);
+    }
+    deduplicate(orientedReadIds);
+    cout << "The neighborhood of read " << readId <<
+        " has " << orientedReadIds.size() << " vertices and " <<
+        2 * edgePairIndexes.size() << " edges." << endl;
+
+    cout << "The vertices correspond to the following OrientedReadIds:" << endl;
+    for(uint64_t i=0; i<orientedReadIds.size(); i++) {
+        cout << i << " " << orientedReadIds[i] << endl;
+    }
+
+
+    // Try a Karger mean cut.
+    DisjointSets disjointSets(orientedReadIds.size());
+
+    // Shuffle the edge pair indexes.
+    std::mt19937 random;
+    std::shuffle(edgePairIndexes.begin(), edgePairIndexes.end(), random);
+
+    // Process the edge pairs in this order.
+    cutEdgePairIndexes.clear();
+    for(const uint64_t edgePairIndex: edgePairIndexes) {
+        const EdgePair& edgePair = edgePairs[edgePairIndex];
+
+        // Gather the OrientedReadIds involved in this EdgePair.
+        const OrientedReadId orientedReadId0(edgePair.readId0, 0);
+        const OrientedReadId orientedReadId1(edgePair.readId1, edgePair.isSameStrand ? 0 : 1);
+        const OrientedReadId orientedReadId0rc(edgePair.readId0, 1);
+        const OrientedReadId orientedReadId1rc(edgePair.readId1, edgePair.isSameStrand ? 1 : 0);
+
+        cout << "Processing edge pair " << orientedReadId0 << " " << orientedReadId1 << " " <<
+            orientedReadId0rc << " " << orientedReadId1rc << endl;
+
+        // Gather the corresponding indexes in the OrientedReadIds.
+        const auto it0 = std::ranges::lower_bound(orientedReadIds, orientedReadId0);
+        const auto it1 = std::ranges::lower_bound(orientedReadIds, orientedReadId1);
+        const auto it0rc = std::ranges::lower_bound(orientedReadIds, orientedReadId0rc);
+        const auto it1rc = std::ranges::lower_bound(orientedReadIds, orientedReadId1rc);
+        SHASTA2_ASSERT(it0 != orientedReadIds.end());
+        SHASTA2_ASSERT(it1 != orientedReadIds.end());
+        SHASTA2_ASSERT(it0rc != orientedReadIds.end());
+        SHASTA2_ASSERT(it1rc != orientedReadIds.end());
+        SHASTA2_ASSERT(*it0 == orientedReadId0);
+        SHASTA2_ASSERT(*it1 == orientedReadId1);
+        SHASTA2_ASSERT(*it0rc == orientedReadId0rc);
+        SHASTA2_ASSERT(*it1rc == orientedReadId1rc);
+        const uint64_t i0 = it0 - orientedReadIds.begin();
+        const uint64_t i1 = it1 - orientedReadIds.begin();
+        const uint64_t i0rc = it0rc - orientedReadIds.begin();
+        const uint64_t i1rc = it1rc - orientedReadIds.begin();
+
+        // Gather the corresponding components for the current cut.
+        const uint64_t component0 = disjointSets.findSet(i0);
+        const uint64_t component1 = disjointSets.findSet(i1);
+        const uint64_t component0rc = disjointSets.findSet(i0rc);
+        const uint64_t component1rc = disjointSets.findSet(i1rc);
+
+        // Sanity check that we are maintaining strand symmetry.
+        SHASTA2_ASSERT((component0 == component1) == (component0rc == component1rc));
+
+        // Sanity check that we are keeping strands separate.
+        SHASTA2_ASSERT(component0 != component0rc);
+        SHASTA2_ASSERT(component1 != component1rc);
+
+        // Only continue if not the same components
+        if(component0 != component1) {
+            SHASTA2_ASSERT(component0rc != component1rc);
+
+            // Find out if adding this edge pair would connect strands.
+            const bool wouldConnectStrands = (component0 == component1rc);
+            SHASTA2_ASSERT(wouldConnectStrands == (component1 == component0rc));
+
+            if(wouldConnectStrands) {
+                cout << "Edge not added, becomes a cut edge." << endl;
+                cutEdgePairIndexes.push_back(edgePairIndex);
+            } else {
+                cout << "Edge added." << endl;
+                cout << "Merging " << component0 << " with " <<component1 << endl;
+                cout << "Merging " << component0rc<< " with " <<component1rc << endl;
+                disjointSets.link(component0, component1);
+                disjointSets.link(component0rc, component1rc);
+            }
+        }
+
+
+        // Big sanity check. REMOVE WHEN DONE DEBUGGING.
+        SHASTA2_ASSERT((orientedReadIds.size() % 2) == 0);
+        for(uint64_t i0=0; i0<orientedReadIds.size(); i0+=2) {
+            const uint64_t i1 = i0 + 1;
+            const OrientedReadId orientedReadId0 = orientedReadIds[i0];
+            const OrientedReadId orientedReadId1 = orientedReadIds[i1];
+            SHASTA2_ASSERT(orientedReadId0.getReadId() == orientedReadId1.getReadId());
+            SHASTA2_ASSERT(orientedReadId0.getStrand() == 0);
+            SHASTA2_ASSERT(orientedReadId1.getStrand() == 1);
+            const uint64_t component0 = disjointSets.findSet(i0);
+            const uint64_t component1 = disjointSets.findSet(i1);
+            if(component0 == component1) {
+                cout << "Assertion fails for " << orientedReadId0 << " " << orientedReadId1 << " " <<
+                    component0 << " " << component1 << endl;
+                SHASTA2_ASSERT(0);
+            }
+        }
+    }
+
+    cout << "Found a cut with " << cutEdgePairIndexes.size() << " edges." << endl;
+    std::ranges::sort(cutEdgePairIndexes);
+
+    vector< vector<uint64_t> > rawComponents;
+    disjointSets.gatherComponents(1, rawComponents);
+    cout << "This cut generates " << rawComponents.size() << " components with sizes";
+    for(const vector<uint64_t>& rawComponent: rawComponents) {
+        cout << " " << rawComponent.size();
+    }
+    cout << endl;
+
+
+    // Graphviz output
+    ofstream dot("LocalMinCut.dot");
+    dot << "graph LocalMinCut {\n";
+
+    for(const OrientedReadId orientedReadId: orientedReadIds) {
+        const uint64_t i = std::ranges::lower_bound(orientedReadIds, orientedReadId) - orientedReadIds.begin();
+        const bool isInComponent0 = std::ranges::binary_search(rawComponents[0], i);
+        dot << "\"" << orientedReadId << "\" [color=" << (isInComponent0 == 0 ? "red" : "green") <<
+            "];\n";
+    }
+
+    for(const uint64_t edgePairIndex: edgePairIndexes) {
+        const EdgePair& edgePair = edgePairs[edgePairIndex];
+
+        const bool isMinCutEdge = std::ranges::binary_search(cutEdgePairIndexes, edgePairIndex);
+
+        const OrientedReadId orientedReadId0(edgePair.readId0, 0);
+        const OrientedReadId orientedReadId1(edgePair.readId1, edgePair.isSameStrand ? 0 : 1);
+        const OrientedReadId orientedReadId0rc(edgePair.readId0, 1);
+        const OrientedReadId orientedReadId1rc(edgePair.readId1, edgePair.isSameStrand ? 1 : 0);
+
+        dot << "\"" << orientedReadId0 << "\"--\"" << orientedReadId1 << "\"";
+        if(isMinCutEdge) {
+            dot << " [color=yellow]";
+        }
+        dot << ";\n";
+        dot << "\"" << orientedReadId0rc << "\"--\"" << orientedReadId1rc << "\"";
+        if(isMinCutEdge) {
+            dot << " [color=yellow]";
+        }
+        dot << ";\n";
+    }
+
+    dot << "}\n";
 }
