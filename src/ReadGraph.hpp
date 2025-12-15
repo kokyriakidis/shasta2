@@ -66,6 +66,7 @@ public:
         ReadId readId0 = invalid<ReadId>;
         ReadId readId1 = invalid<ReadId>;
         bool isSameStrand = false;
+        bool isCrossStrand = false;
         uint16_t coverage = invalid<uint16_t>;
         EdgePair() {}
         EdgePair(
@@ -105,6 +106,10 @@ public:
     void threadFunctionPass45(uint64_t pass);
     void threadFunctionPass6(uint64_t threadId);
     void writeConnectivityTable() const;
+
+    // Use self-complementary quadrilaterals in the ReadGraph
+    // to flag cross-strand EdgePairs.
+    void flagCrossStrandEdgePairs();
 
     void writeGraphviz() const;
 

@@ -79,8 +79,6 @@ ReadGraph::ReadGraph(
     computeComponents1();
 #endif
 
-    writeGraphviz();
-
 
 
     // Fill in the connectivity table.
@@ -98,7 +96,10 @@ ReadGraph::ReadGraph(
     setupLoadBalancing(readCount, 100);
     runThreads(&ReadGraph::threadFunctionPass6, threadCount);
 
+    flagCrossStrandEdgePairs();
+
     writeConnectivityTable();
+    writeGraphviz();
 
 
 #if 0
@@ -335,14 +336,25 @@ void ReadGraph::writeGraphviz() const
 
     // Edges.
     for(const EdgePair& edgePair: edgePairs) {
+        if(edgePair.isCrossStrand) {
+            continue;
+        }
 
         OrientedReadId orientedReadId0(edgePair.readId0, 0);
         OrientedReadId orientedReadId1(edgePair.readId1, edgePair.isSameStrand ? 0 : 1);
-        dot <<  "\"" << orientedReadId0 << "\"--\"" << orientedReadId1 << "\";\n";
+        dot <<  "\"" << orientedReadId0 << "\"--\"" << orientedReadId1 << "\"";
+        if(edgePair.isCrossStrand) {
+            dot << " [color=yellow]";
+        }
+        dot << ";\n";
 
         orientedReadId0.flipStrand();
         orientedReadId1.flipStrand();
-        dot <<  "\"" << orientedReadId0 << "\"--\"" << orientedReadId1 << "\";\n";
+        dot <<  "\"" << orientedReadId0 << "\"--\"" << orientedReadId1 << "\"";
+        if(edgePair.isCrossStrand) {
+            dot << " [color=yellow]";
+        }
+        dot << ";\n";
 
     }
 
@@ -786,6 +798,41 @@ void ReadGraph::writeConnectivityTable() const
         }
 
         csv << "\n";
+    }
+
+}
+
+
+
+// Use self-complementary quadrilaterals in the ReadGraph
+// to flag cross-strand EdgePairs.
+void ReadGraph::flagCrossStrandEdgePairs()
+{
+    const ReadId readCount = anchors.reads.readCount();
+
+    // First make sure all the isCrossStrand flags are false.
+    for(EdgePair& edgePair: edgePairs) {
+        edgePair.isCrossStrand = false;
+    }
+
+    // Loop over ReadIds, looking for self-complementary quadrilaterals.
+    for(ReadId readId=0; readId<readCount; readId++) {
+        const span<const uint64_t>& edgePairIndexes = connectivityTable[readId];
+
+        // Look for EdgePairs with the same other readId and opposite strands.
+        for(uint64_t i1=1; i1<edgePairIndexes.size(); i1++) {
+            const uint64_t i0 = i1 - 1;
+            const uint64_t edgePairIndex0 = edgePairIndexes[i0];
+            const uint64_t edgePairIndex1 = edgePairIndexes[i1];
+            EdgePair& edgePair0 = edgePairs[edgePairIndex0];
+            EdgePair& edgePair1 = edgePairs[edgePairIndex1];
+            if(edgePair0.getOther(readId) == edgePair1.getOther(readId)) {
+                SHASTA2_ASSERT(not edgePair0.isSameStrand);
+                SHASTA2_ASSERT(edgePair1.isSameStrand);
+                edgePair0.isCrossStrand = true;
+                edgePair1.isCrossStrand = true;
+            }
+        }
     }
 
 }
