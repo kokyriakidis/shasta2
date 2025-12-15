@@ -9,6 +9,7 @@ using namespace shasta2;
 // Standard library.
 #include "fstream.hpp"
 #include <random>
+#include "tuple.hpp"
 
 // Explicit instantiation.
 #include "MultithreadedObject.tpp"
@@ -93,6 +94,9 @@ ReadGraph::ReadGraph(
     runThreads(&ReadGraph::threadFunctionPass5, threadCount);
     connectivityTable.endPass2(true, true);
     SHASTA2_ASSERT(connectivityTable.totalSize() == 2 * edgePairs.size());
+
+    setupLoadBalancing(readCount, 100);
+    runThreads(&ReadGraph::threadFunctionPass6, threadCount);
 
     writeConnectivityTable();
 
@@ -248,6 +252,63 @@ void ReadGraph::threadFunctionPass45(uint64_t pass)
             } else {
                 connectivityTable.storeMultithreaded(edgePair.readId0, edgePairIndex);
                 connectivityTable.storeMultithreaded(edgePair.readId1, edgePairIndex);
+            }
+        }
+    }
+}
+
+
+
+// This sort the connectivityTable entries for each read.
+void ReadGraph::threadFunctionPass6(uint64_t)
+{
+    // Class used below to sort connectivity table entries.
+    class Info {
+    public:
+        uint64_t edgePairIndex;
+        ReadId otherReadId;
+        bool isSameStrand;
+
+        Info(
+            uint64_t edgePairIndex,
+            ReadId otherReadId,
+            bool isSameStrand) :
+            edgePairIndex(edgePairIndex),
+            otherReadId(otherReadId),
+            isSameStrand(isSameStrand)
+        {}
+
+        bool operator<(const Info& that) const
+        {
+            return tie(otherReadId, isSameStrand) < tie(that.otherReadId, that.isSameStrand);
+        }
+    };
+    vector<Info> infos;
+
+
+
+    // Loop over all batches assigned to this thread.
+    uint64_t begin, end;
+    while(getNextBatch(begin, end)) {
+
+        // Loop over all ReadIds assigned to this batch.
+        for(uint64_t readId=begin; readId!=end; ++readId) {
+
+            // Gather the Infos for this ReadId.
+            span<uint64_t> edgePairIndexes = connectivityTable[readId];
+            infos.clear();
+            for(uint64_t edgePairIndex: edgePairIndexes) {
+                const EdgePair& edgePair = edgePairs[edgePairIndex];
+                infos.emplace_back(edgePairIndex, edgePair.getOther(ReadId(readId)), edgePair.isSameStrand);
+            }
+
+            // Sort them.
+            sort(infos.begin(), infos.end());
+
+            // Overwrite the edgePairIndexes.
+            for(uint64_t i=0; i<infos.size(); i++) {
+                const Info& info = infos[i];
+                edgePairIndexes[i] = info.edgePairIndex;
             }
         }
     }

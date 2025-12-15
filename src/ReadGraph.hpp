@@ -103,6 +103,7 @@ public:
     void threadFunctionPass4(uint64_t threadId);
     void threadFunctionPass5(uint64_t threadId);
     void threadFunctionPass45(uint64_t pass);
+    void threadFunctionPass6(uint64_t threadId);
     void writeConnectivityTable() const;
 
     void writeGraphviz() const;
