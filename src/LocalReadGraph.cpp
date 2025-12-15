@@ -70,6 +70,10 @@ void LocalReadGraph::getRequestOptions(const vector<string>& request)
     suppressEdgesBetweenVerticesAtMaxDistance = HttpServer::getParameterValue(request,
         "suppressEdgesBetweenVerticesAtMaxDistance", suppressEdgesBetweenVerticesAtMaxDistanceString);
 
+    string suppressCrossStrandEdgesString;
+    suppressCrossStrandEdges = HttpServer::getParameterValue(request,
+        "suppressCrossStrandEdges", suppressCrossStrandEdgesString);
+
     // The default layout is custom, if available, instead of sfdp.
     if(customLayoutIsAvailable) {
         layoutMethod = "custom";
@@ -118,7 +122,7 @@ void LocalReadGraph::writeForm()
 
     html <<
         "<tr>"
-        "<th>Layout method"
+        "<th class=left>Layout method"
         "<td class=left>"
         "<input type=radio required name=layoutMethod value='sfdp'" <<
         (layoutMethod == "sfdp" ? " checked=on" : "") <<
@@ -142,9 +146,15 @@ void LocalReadGraph::writeForm()
     }
 
     html <<
-        "<tr><th>Suppress edges between vertices at maximum distance"
+        "<tr><th class=left>Suppress edges between vertices at maximum distance"
         "<td class=centered><input type=checkbox name=suppressEdgesBetweenVerticesAtMaxDistance" <<
         (suppressEdgesBetweenVerticesAtMaxDistance ? " checked" : "") <<
+        ">";
+
+    html <<
+        "<tr><th class=left>Suppress cross-strand edges"
+        "<td class=centered><input type=checkbox name=suppressCrossStrandEdges" <<
+        (suppressCrossStrandEdges ? " checked" : "") <<
         ">";
 
     html <<
@@ -211,6 +221,9 @@ void LocalReadGraph::createVertices()
         const span<const uint64_t> edgePairIndexes = readGraph.connectivityTable[readId0];
         for(const uint64_t edgePairIndex: edgePairIndexes) {
             const ReadGraph::EdgePair& edgePair = readGraph.edgePairs[edgePairIndex];
+            if(suppressCrossStrandEdges and edgePair.isCrossStrand) {
+                continue;
+            }
 
             ReadId readId1;
             Strand strand1;
@@ -259,6 +272,9 @@ void LocalReadGraph::createEdges()
         const span<const uint64_t> edgePairIndexes = readGraph.connectivityTable[readId0];
         for(const uint64_t edgePairIndex: edgePairIndexes) {
             const ReadGraph::EdgePair& edgePair = readGraph.edgePairs[edgePairIndex];
+            if(suppressCrossStrandEdges and edgePair.isCrossStrand) {
+                continue;
+            }
 
             ReadId readId1;
             Strand strand1;
