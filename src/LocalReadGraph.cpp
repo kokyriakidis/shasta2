@@ -66,6 +66,10 @@ void LocalReadGraph::getRequestOptions(const vector<string>& request)
     HttpServer::getParameterValue(request, "maxDistance", maxDistance);
     HttpServer::getParameterValue(request, "sizePixels", sizePixels);
 
+    string suppressEdgesBetweenVerticesAtMaxDistanceString;
+    suppressEdgesBetweenVerticesAtMaxDistance = HttpServer::getParameterValue(request,
+        "suppressEdgesBetweenVerticesAtMaxDistance", suppressEdgesBetweenVerticesAtMaxDistanceString);
+
     // The default layout is custom, if available, instead of sfdp.
     if(customLayoutIsAvailable) {
         layoutMethod = "custom";
@@ -97,7 +101,7 @@ void LocalReadGraph::writeForm()
         " size=20>";
 
     html << "<tr>"
-        "<th class=left>Distance"
+        "<th class=left>Maximum distance"
         "<td class=centered>"
         "<input type=text name=maxDistance style='text-align:center' required size=8 value=" <<
         maxDistance << ">";
@@ -136,6 +140,12 @@ void LocalReadGraph::writeForm()
             (layoutMethod == "custom" ? " checked=on" : "") <<
             ">custom";
     }
+
+    html <<
+        "<tr><th>Suppress edges between vertices at maximum distance"
+        "<td class=centered><input type=checkbox name=suppressEdgesBetweenVerticesAtMaxDistance" <<
+        (suppressEdgesBetweenVerticesAtMaxDistance ? " checked" : "") <<
+        ">";
 
     html <<
         "</table>"
@@ -271,6 +281,14 @@ void LocalReadGraph::createEdges()
                 const auto it1 = vertexMap.find(orientedReadId1);
                 if(it1 != vertexMap.end()) {
                     const vertex_descriptor v1 = it1->second;
+
+                    // If requested, don't include edges between vertices at maximum distance.
+                    if(suppressEdgesBetweenVerticesAtMaxDistance and
+                        (graph[v0].distance == maxDistance) and
+                        (graph[v1].distance == maxDistance)) {
+                        continue;
+                    }
+
                     add_edge(v0, v1, graph);
                 }
             }
@@ -494,9 +512,10 @@ void LocalReadGraph::writeVertices() const
 
     html << "\n<g id='vertices' style='stroke:none'>";
     const double vertexRadius = 0.05;
-    const string vertexColor = "Green";
     BGL_FORALL_VERTICES(v, graph, LocalReadGraph) {
         const LocalReadGraphVertex& vertex = graph[v];
+        const string vertexColor = (vertex.distance == maxDistance ? "Cyan" : "Green");
+
         html << "\n<circle cx='" << vertex.x << "' cy='" << vertex.y <<
             "' fill='" << vertexColor <<
             "' r='" << vertexRadius << "' >"

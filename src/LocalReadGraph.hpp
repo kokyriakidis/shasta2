@@ -71,6 +71,7 @@ private:
     uint64_t maxDistance = 3;
     uint64_t sizePixels = 600;
     string layoutMethod = "sfdp";
+    bool suppressEdgesBetweenVerticesAtMaxDistance = false;
     void getRequestOptions(const vector<string>& request);
 
     // Write the page header.
