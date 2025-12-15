@@ -78,6 +78,17 @@ public:
             isSameStrand(isSameStrand),
             coverage(coverage)
         {}
+
+        ReadId getOther(ReadId readId) const
+        {
+            if(readId == readId0) {
+                return readId1;
+            } else if(readId == readId1) {
+                return readId0;
+            } else {
+                SHASTA2_ASSERT(0);
+            }
+        }
     };
     MemoryMapped::Vector<EdgePair> edgePairs;
     vector< shared_ptr<MemoryMapped::Vector<EdgePair> > > threadEdgePairs;
@@ -92,6 +103,7 @@ public:
     void threadFunctionPass4(uint64_t threadId);
     void threadFunctionPass5(uint64_t threadId);
     void threadFunctionPass45(uint64_t pass);
+    void writeConnectivityTable() const;
 
     void writeGraphviz() const;
 

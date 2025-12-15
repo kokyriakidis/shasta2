@@ -94,13 +94,15 @@ ReadGraph::ReadGraph(
     connectivityTable.endPass2(true, true);
     SHASTA2_ASSERT(connectivityTable.totalSize() == 2 * edgePairs.size());
 
+    writeConnectivityTable();
 
 
+#if 0
     // Experiments with local strand-aware min-cuts.
     vector<uint64_t> cutEdgePairIndexes;
     // localMinCut(6686, cutEdgePairIndexes);
     localMinCut(6691, cutEdgePairIndexes);
-
+#endif
 }
 
 
@@ -265,19 +267,7 @@ void ReadGraph::writeGraphviz() const
     for(ReadId readId=0; readId<readCount; readId++) {
         for(Strand strand=0; strand<2; strand++) {
             const OrientedReadId orientedReadId(readId, strand);
-            /*
-            const bool isInSingleStrandedGraph =
-                components1.componentId[orientedReadId.getValue()] != invalid<uint64_t>;
-            */
-
             dot << "\"" << orientedReadId << "\"";
-
-            /*
-            if(isInSingleStrandedGraph) {
-                dot << " [color=green]";
-            }
-            */
-
             dot << ";\n";
         }
     }
@@ -715,4 +705,26 @@ void ReadGraph::localMinCut(
     }
 
     dot << "}\n";
+}
+
+
+
+void ReadGraph::writeConnectivityTable() const
+{
+    const ReadId readCount = anchors.reads.readCount();
+
+    ofstream csv("ReadGraph-ConnectivityTable.csv");
+    for(ReadId readId0=0; readId0<readCount; readId0++) {
+        csv << readId0 << ",";
+
+        const span<const uint64_t>& edgePairIndexes = connectivityTable[readId0];
+        for(const uint64_t edgePairIndex: edgePairIndexes) {
+            const EdgePair& edgePair = edgePairs[edgePairIndex];
+            const ReadId readId1 = edgePair.getOther(readId0);
+            csv << readId1 << " " << int(edgePair.isSameStrand) << ",";
+        }
+
+        csv << "\n";
+    }
+
 }
