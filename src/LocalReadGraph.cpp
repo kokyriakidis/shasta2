@@ -305,7 +305,7 @@ void LocalReadGraph::createEdges()
                         continue;
                     }
 
-                    add_edge(v0, v1, graph);
+                    add_edge(v0, v1, LocalReadGraphEdge(edgePairIndex), graph);
                 }
             }
         }
@@ -561,8 +561,14 @@ void LocalReadGraph::writeEdges() const
         html <<
             "\n<line "
             "x1='" << vertex0.x << "' y1='" << vertex0.y <<
-            "' x2='" << vertex1.x << "' y2='" << vertex1.y <<
-            "' />";
+            "' x2='" << vertex1.x << "' y2='" << vertex1.y << "'";
+
+        const uint64_t edgePairIndex = graph[e].edgePairIndex;
+        if(readGraph.edgePairs[edgePairIndex].isCrossStrand) {
+            html << " stroke=\"red\"";
+        }
+
+        html << " />";
     }
 
     html << "\n</g>";

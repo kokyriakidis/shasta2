@@ -8,12 +8,14 @@ using namespace shasta2;
 
 // Standard library.
 #include "fstream.hpp"
+#include <queue>
 #include <random>
 #include "tuple.hpp"
 
 // Explicit instantiation.
 #include "MultithreadedObject.tpp"
 template class MultithreadedObject<ReadGraph>;
+
 
 
 // Initial construction of the ReadGraph from Anchors.
@@ -71,15 +73,6 @@ ReadGraph::ReadGraph(
     // Don't keep the orientedReadIds.
     orientedReadIds.remove();
 
-#if 0
-    // Compute the connected components of the complete, double-stranded ReadGraph.
-    computeComponents2();
-
-    // Compute the connected components of a partial, single-stranded ReadGraph.
-    computeComponents1();
-#endif
-
-
 
     // Fill in the connectivity table.
     connectivityTable.createNew(largeDataName("ReadGraph-ConnectivityTable"), largeDataPageSize);
@@ -96,18 +89,33 @@ ReadGraph::ReadGraph(
     setupLoadBalancing(readCount, 100);
     runThreads(&ReadGraph::threadFunctionPass6, threadCount);
 
-    flagCrossStrandEdgePairs();
-
-    writeConnectivityTable();
-    writeGraphviz();
-
+    findStrandSymmetriQuadrilaterals();
 
 #if 0
-    // Experiments with local strand-aware min-cuts.
-    vector<uint64_t> cutEdgePairIndexes;
-    // localMinCut(6686, cutEdgePairIndexes);
-    localMinCut(6691, cutEdgePairIndexes);
+    // Use self-complementary paths flag cross-strand EdgePairs.
+    for(uint64_t maxDistance=2; maxDistance<=2; maxDistance++) {
+        for(uint64_t iteration=0; iteration<1; iteration++) {
+            if(flagCrossStrandEdgePairs(maxDistance) ==0) {
+                break;
+            }
+        }
+    }
 #endif
+
+#if 0
+    // Compute the connected components of the complete, double-stranded ReadGraph,
+    // excluding EdgePairs flagged as cross-strand
+    computeComponents2();
+
+    // Compute the connected components of a partial, single-stranded ReadGraph.
+    computeComponents1();
+#endif
+
+#if 0
+    writeConnectivityTable();
+    writeGraphviz();
+#endif
+
 }
 
 
@@ -214,7 +222,14 @@ void ReadGraph::threadFunctionPass3(uint64_t threadId)
                 const bool isSameStrand = orientedReadId1.getStrand() == 0;
                 const uint16_t coverage = uint16_t(count[i]);
 
-                EdgePair edgePair(readId0, orientedReadId1.getReadId(), isSameStrand, coverage);
+                // Put the lowest ReadId as the first in the edgePair.
+                ReadId readIdA = readId0;
+                ReadId readIdB = orientedReadId1.getReadId();
+                if(readIdB < readIdA) {
+                    swap(readIdA, readIdA);
+                }
+
+                EdgePair edgePair(readIdA, readIdB, isSameStrand, coverage);
                 thisThreadEdgePairs.push_back(edgePair);
             }
 
@@ -329,7 +344,14 @@ void ReadGraph::writeGraphviz() const
     for(ReadId readId=0; readId<readCount; readId++) {
         for(Strand strand=0; strand<2; strand++) {
             const OrientedReadId orientedReadId(readId, strand);
+            const uint64_t componentId =
+                (components1.componentId.empty() ? invalid<uint64_t> :
+                components1.componentId[orientedReadId.getValue()]);
+
             dot << "\"" << orientedReadId << "\"";
+            if(componentId != invalid<uint64_t>) {
+                dot << " [color=green]";
+            }
             dot << ";\n";
         }
     }
@@ -370,6 +392,9 @@ void ReadGraph::computeComponents2()
 
     DisjointSets disjointSets(orientedReadCount);
     for(const EdgePair& edgePair: edgePairs) {
+        if(edgePair.isCrossStrand) {
+            continue;
+        }
         OrientedReadId orientedReadId0(edgePair.readId0, 0);
         OrientedReadId orientedReadId1(edgePair.readId1, edgePair.isSameStrand ? 0 : 1);
 
@@ -491,6 +516,9 @@ void ReadGraph::computeComponents1()
             vector<uint64_t> edgePairIndexes;
             for(uint64_t edgePairIndex=0; edgePairIndex<edgePairs.size(); edgePairIndex++) {
                 const EdgePair& edgePair = edgePairs[edgePairIndex];
+                if(edgePair.isCrossStrand) {
+                    continue;
+                }
 
                 const OrientedReadId orientedReadId0(edgePair.readId0, 0);
                 const OrientedReadId orientedReadId1(edgePair.readId1, edgePair.isSameStrand ? 0 : 1);
@@ -804,16 +832,11 @@ void ReadGraph::writeConnectivityTable() const
 
 
 
-// Use self-complementary quadrilaterals in the ReadGraph
-// to flag cross-strand EdgePairs.
-void ReadGraph::flagCrossStrandEdgePairs()
+// Use self-complementary paths of length 2 to flag cross-strand EdgePairs.
+void ReadGraph::flagCrossStrandEdgePairs2()
 {
     const ReadId readCount = anchors.reads.readCount();
-
-    // First make sure all the isCrossStrand flags are false.
-    for(EdgePair& edgePair: edgePairs) {
-        edgePair.isCrossStrand = false;
-    }
+    vector<uint64_t> newCrossStrandEdgePairs;
 
     // Loop over ReadIds, looking for self-complementary quadrilaterals.
     for(ReadId readId=0; readId<readCount; readId++) {
@@ -825,14 +848,276 @@ void ReadGraph::flagCrossStrandEdgePairs()
             const uint64_t edgePairIndex0 = edgePairIndexes[i0];
             const uint64_t edgePairIndex1 = edgePairIndexes[i1];
             EdgePair& edgePair0 = edgePairs[edgePairIndex0];
+            if(edgePair0.isCrossStrand) {
+                continue;
+            }
             EdgePair& edgePair1 = edgePairs[edgePairIndex1];
+            if(edgePair1.isCrossStrand) {
+                continue;
+            }
             if(edgePair0.getOther(readId) == edgePair1.getOther(readId)) {
                 SHASTA2_ASSERT(not edgePair0.isSameStrand);
                 SHASTA2_ASSERT(edgePair1.isSameStrand);
-                edgePair0.isCrossStrand = true;
-                edgePair1.isCrossStrand = true;
+                newCrossStrandEdgePairs.push_back(edgePairIndex0);
+                newCrossStrandEdgePairs.push_back(edgePairIndex1);
             }
         }
     }
 
+
+    ofstream csv("EdgePairs2.csv");
+    deduplicate(newCrossStrandEdgePairs);
+    for(uint64_t edgePairIndex: newCrossStrandEdgePairs) {
+        EdgePair& edgePair = edgePairs[edgePairIndex];
+        csv << edgePair.readId0 << "," << edgePair.readId1 << endl;
+    }
+    cout <<
+        "Of " << 2 * edgePairs.size() << " read graph edges, " <<
+        2 * newCrossStrandEdgePairs.size() <<
+        " are in self-complementary paths of length 2." << endl;
+
 }
+
+
+
+// This can be multithreaded.
+void ReadGraph::findStrandSymmetriQuadrilaterals()
+{
+    const ReadId readCount = anchors.reads.readCount();
+    strandSymmetricQuadrilaterals.clear();
+
+    // Loop over ReadIds.
+    for(ReadId readId0=0; readId0<readCount; readId0++) {
+        const span<const uint64_t>& edgePairIndexes = connectivityTable[readId0];
+
+        // Loop over EdgePairs that this ReadId is involved in,
+        // looking for EdgePairs with the same other readId and opposite strands.
+        for(uint64_t i1=1; i1<edgePairIndexes.size(); i1++) {
+            const uint64_t i0 = i1 - 1;
+
+            const uint64_t edgePairIndex0 = edgePairIndexes[i0];
+            const uint64_t edgePairIndex1 = edgePairIndexes[i1];
+
+            EdgePair& edgePair0 = edgePairs[edgePairIndex0];
+            SHASTA2_ASSERT(edgePair0.readId0 < edgePair0.readId1);
+
+            EdgePair& edgePair1 = edgePairs[edgePairIndex1];
+            SHASTA2_ASSERT(edgePair1.readId0 < edgePair1.readId1);
+
+
+            if(edgePair0.getOther(readId0) == edgePair1.getOther(readId0)) {
+                SHASTA2_ASSERT(not edgePair0.isSameStrand);
+                SHASTA2_ASSERT(edgePair1.isSameStrand);
+                const ReadId readId1 = edgePair0.getOther(readId0);
+
+                // These two EdgePairs defined a StrandSymmetricQuadrilateral.
+                // It will be found twice, so only store it if readId0 < readId1.
+                if(readId0 < readId1) {
+                    StrandSymmetricQuadrilateral& strandSymmetricQuadrilateral =
+                        strandSymmetricQuadrilaterals.emplace_back();
+                    strandSymmetricQuadrilateral.readId0 = readId0;
+                    strandSymmetricQuadrilateral.readId1 = readId1;
+                    strandSymmetricQuadrilateral.edgePairIndexSameStrand = edgePairIndex1;
+                    strandSymmetricQuadrilateral.edgePairIndexOppositeStrands = edgePairIndex0;
+                    strandSymmetricQuadrilateral.coverageSameStrand = edgePair1.coverage;
+                    strandSymmetricQuadrilateral.coverageOppositeStrands = edgePair0.coverage;
+                }
+            }
+        }
+    }
+
+    cout << "Found " << strandSymmetricQuadrilaterals.size() <<
+        " strand-symmetric quadrilaterals in the ReadGraph." << endl;
+
+    {
+        ofstream csv("StrandSymmetricQuadrilaterals.csv");
+        csv << "ReadId0,ReadId1,CoverageSameStrand,CoverageOppositeStrands,\n";
+        for(const auto& strandSymmetricQuadrilateral: strandSymmetricQuadrilaterals) {
+            csv << strandSymmetricQuadrilateral.readId0 << ",";
+            csv << strandSymmetricQuadrilateral.readId1 << ",";
+            csv << strandSymmetricQuadrilateral.coverageSameStrand << ",";
+            csv << strandSymmetricQuadrilateral.coverageOppositeStrands << ",";
+            csv << "\n";;
+        }
+    }
+
+
+    // Count the number of quadrilaterals each readId is involved in.
+    vector<uint64_t> histogram(readCount, 0);
+    for(const auto& strandSymmetricQuadrilateral: strandSymmetricQuadrilaterals) {
+        ++histogram[strandSymmetricQuadrilateral.readId0];
+        ++histogram[strandSymmetricQuadrilateral.readId1];
+    }
+
+    {
+        ofstream csv("StrandSymmetricQuadrilaterals-Histogram.csv");
+        csv << "ReadId,Count,\n";
+        for(ReadId readId=0; readId<readCount; readId++) {
+            csv << readId << ",";
+            csv << histogram[readId] << ",";
+            csv << "\n";
+        }
+    }
+}
+
+
+
+// Use self-complementary paths of length m to flag cross-strand EdgePairs.
+uint64_t ReadGraph::flagCrossStrandEdgePairs(uint64_t maxDistance)
+{
+    const ReadId readCount = anchors.reads.readCount();
+
+    // vector<uint64_t> newCrossStrandEdgePairs;
+    uint64_t newCrossStrandEdgePairsCount = 0;
+
+    // Loop over ReadIds.
+    for(ReadId readId=0; readId<readCount; readId++) {
+        const OrientedReadId orientedReadIdA(readId, 0);
+        const OrientedReadId orientedReadIdB(readId, 1);
+
+        // Look for a path of length noo more than m
+        // between orientedReadId0 and orientedReadId1.
+        // This is a quick and dirty version.
+        // A more efficient implementation is possible.
+
+        std::queue<OrientedReadId> q;
+        q.push(orientedReadIdA);
+
+        // Information about the vertices we already encountered.
+        class VertexInfo {
+        public:
+            uint64_t parentEdgePairIndex = invalid<uint64_t>;
+            uint64_t distance = invalid<uint64_t>;
+            VertexInfo() {}
+            VertexInfo(uint64_t parentEdgePairIndex, uint64_t distance) :
+                parentEdgePairIndex(parentEdgePairIndex),
+                distance(distance) {}
+        };
+        std::map<OrientedReadId, VertexInfo> vertexMap;
+        vertexMap.insert(make_pair(orientedReadIdA, VertexInfo(invalid<uint64_t>, 0)));
+
+
+
+        // BFS loop.
+        // cout << "BFS loop beginning at " <<
+        bool found = false;
+        while(not q.empty()) {
+            const OrientedReadId orientedReadId0 = q.front();
+            q.pop();
+            const ReadId readId0 = orientedReadId0.getReadId();
+            const Strand strand0 = orientedReadId0.getStrand();
+            const uint64_t distance0 = vertexMap[orientedReadId0].distance;
+            const uint64_t distance1 = distance0 + 1;
+
+            // Loop over neighbors of orientedReadId0.
+            const span<const uint64_t> edgePairIndexes = connectivityTable[readId0];
+            for(uint64_t edgePairIndex: edgePairIndexes) {
+                const EdgePair& edgePair = edgePairs[edgePairIndex];
+                if(edgePair.isCrossStrand) {
+                    continue;
+                }
+                const ReadId readId1 = edgePair.getOther(readId0);
+                const OrientedReadId orientedReadId1(readId1, edgePair.isSameStrand ? strand0 : 1 - strand0);
+
+                const auto it1 = vertexMap.find(orientedReadId1);
+                if(it1 != vertexMap.end()) {
+                    continue;
+                }
+                vertexMap.insert(make_pair(orientedReadId1, VertexInfo(edgePairIndex, distance1)));
+                if(orientedReadId1 == orientedReadIdB) {
+                    found = true;
+                    break;
+                }
+
+                if(distance1 < maxDistance) {
+                    q.push(orientedReadId1);
+                }
+            }
+        }
+
+        if(found) {
+
+            if(true) {
+                cout << "Found a path of length " << maxDistance << " for " << readId <<endl;
+                cout << "Reverse path is:";
+                OrientedReadId orientedReadId = orientedReadIdB;
+                while(true) {
+                    cout << " " << orientedReadId;
+                    if(orientedReadId == orientedReadIdA) {
+                        break;
+                    }
+                    const auto it = vertexMap.find(orientedReadId);
+                    SHASTA2_ASSERT(it != vertexMap.end());
+                    const uint64_t edgePairIndex = it->second.parentEdgePairIndex;
+                    const EdgePair& edgePair = edgePairs[edgePairIndex];
+                    cout << " " << edgePair.coverage;
+                    const ReadId otherReadId = edgePair.getOther(orientedReadId.getReadId());
+                    const Strand otherStrand = (edgePair.isSameStrand ? orientedReadId.getStrand() : 1 - orientedReadId.getStrand());
+                    orientedReadId = OrientedReadId(otherReadId, otherStrand);
+                }
+                cout << endl;
+            }
+
+
+#if 0
+            // Add to newCrossStrandEdgePairs all the edge pair indexes on this path.
+            OrientedReadId orientedReadId = orientedReadIdB;
+            while(true) {
+                if(orientedReadId == orientedReadIdA) {
+                    break;
+                }
+                const auto it = vertexMap.find(orientedReadId);
+                SHASTA2_ASSERT(it != vertexMap.end());
+                const uint64_t edgePairIndex = it->second.parentEdgePairIndex;
+                newCrossStrandEdgePairs.push_back(edgePairIndex);
+                const EdgePair& edgePair = edgePairs[edgePairIndex];
+                const ReadId otherReadId = edgePair.getOther(orientedReadId.getReadId());
+                const Strand otherStrand = (edgePair.isSameStrand ? orientedReadId.getStrand() : 1 - orientedReadId.getStrand());
+                orientedReadId = OrientedReadId(otherReadId, otherStrand);
+            }
+#endif
+
+#if 0
+
+            // Add to newCrossStrandEdgePairs the EdgePair with lowest coverage on this path.
+            uint64_t lowestCoverageEdgePairIndex = invalid<uint64_t>;
+            uint64_t lowestCoverage = std::numeric_limits<uint64_t>::max();
+            OrientedReadId orientedReadId = orientedReadIdB;
+            while(true) {
+                if(orientedReadId == orientedReadIdA) {
+                    break;
+                }
+                const auto it = vertexMap.find(orientedReadId);
+                SHASTA2_ASSERT(it != vertexMap.end());
+                const uint64_t edgePairIndex = it->second.parentEdgePairIndex;
+                const EdgePair& edgePair = edgePairs[edgePairIndex];
+                if(edgePair.coverage < lowestCoverage) {
+                    lowestCoverage = edgePair.coverage;
+                    lowestCoverageEdgePairIndex = edgePairIndex;
+                }
+                const ReadId otherReadId = edgePair.getOther(orientedReadId.getReadId());
+                const Strand otherStrand = (edgePair.isSameStrand ? orientedReadId.getStrand() : 1 - orientedReadId.getStrand());
+                orientedReadId = OrientedReadId(otherReadId, otherStrand);
+            }
+            // newCrossStrandEdgePairs.push_back(lowestCoverageEdgePairIndex);
+            edgePairs[lowestCoverageEdgePairIndex].isCrossStrand = true;
+            ++newCrossStrandEdgePairsCount;
+#endif
+        }
+    }
+
+#if 0
+    deduplicate(newCrossStrandEdgePairs);
+    for(uint64_t edgePairIndex: newCrossStrandEdgePairs) {
+        EdgePair& edgePair = edgePairs[edgePairIndex];
+        edgePair.isCrossStrand = true;
+    }
+#endif
+    cout <<
+        "Of " << 2 * edgePairs.size() << " read graph edges, " <<
+        2 * newCrossStrandEdgePairsCount <<
+        " where flagged as cross-strand using self-complementary paths of length " << maxDistance << endl;
+
+    return newCrossStrandEdgePairsCount;
+}
+

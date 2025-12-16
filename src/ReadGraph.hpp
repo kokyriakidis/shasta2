@@ -27,6 +27,7 @@ of reverse complemented edges.
 
 // Standard library.
 #include "memory.hpp"
+#include "tuple.hpp"
 
 namespace shasta2 {
     class ReadGraph;
@@ -52,7 +53,7 @@ public:
     const Anchors& anchors;
 
     // EXPOSE WHEN CODE STABILIZES.
-    const uint64_t minCoverage = 6;
+    const uint64_t minCoverage = 1;
     const uint64_t maxKargerIterationCount = 10;
 
     // During creation, we store all the OrientedReadIds,
@@ -60,7 +61,7 @@ public:
     MemoryMapped::VectorOfVectors<OrientedReadId, ReadId> orientedReadIds;
 
 
-
+    // Edge Pairs are stored with readId0 < readId1.
     class EdgePair {
     public:
         ReadId readId0 = invalid<ReadId>;
@@ -107,9 +108,61 @@ public:
     void threadFunctionPass6(uint64_t threadId);
     void writeConnectivityTable() const;
 
-    // Use self-complementary quadrilaterals in the ReadGraph
-    // to flag cross-strand EdgePairs.
-    void flagCrossStrandEdgePairs();
+
+
+    // Find strand-symmetric quadrilaterals in the read graph.
+    // A strand-symmetric quadrilateral is defined by two EdgePairs
+    // with the same readId0  and readId1 (with readId0 != readId1).
+    // One of the two EdgePairs has isSameStrand set to true
+    // and the other one had isSameStrand set to false.
+    // This implicitly defines 4 vertices and 4 edges of the ReadGraph,
+    // The vertices correspond to the OrientedReadIds:
+    // readId0-0 readId0-1 readId1-0 readId1-1.
+    // The edges are:
+    // readId0-0 readId1-0
+    // readId0-1 readId1-1
+    // readId0-0 readId1-1
+    // readId0-1 readId1-0
+    // The "diagonal" edges cannot exist because we don't allow
+    // a ReadId to appear twice in the same Anchor:
+    // readId0-0 readId0-1
+    // readId1-0 readId1-1
+    class StrandSymmetricQuadrilateral {
+    public:
+
+        // The lowest number ReadId.
+        ReadId readId0;
+
+        // The highest numbered ReadId.
+        ReadId readId1;
+
+        // The index and coverage of the EdgePair with these two ReadIds
+        // and isSameStrand set to true.
+        uint64_t edgePairIndexSameStrand;
+        uint64_t coverageSameStrand;
+
+        // The index and coverage of the EdgePair with these two ReadIds
+        // and isSameStrand set to false.
+        uint64_t edgePairIndexOppositeStrands;
+        uint64_t coverageOppositeStrands;
+
+        bool operator<(const StrandSymmetricQuadrilateral& that) const
+        {
+            return tie(readId0, readId1) < tie(that.readId0, that.readId1);
+        }
+    };
+    vector<StrandSymmetricQuadrilateral> strandSymmetricQuadrilaterals;
+    void findStrandSymmetriQuadrilaterals();
+
+
+
+    // Use self-complementary paths of length 2 to flag cross-strand EdgePairs.
+    void flagCrossStrandEdgePairs2();
+
+    // Same, but using self-complementary paths of length m.
+    uint64_t flagCrossStrandEdgePairs(uint64_t m);
+
+
 
     void writeGraphviz() const;
 

@@ -16,12 +16,14 @@ namespace shasta2 {
     class LocalReadGraph;
 
     class LocalReadGraphVertex;
+    class LocalReadGraphEdge;
 
     using LocalReadGraphBaseClass = boost::adjacency_list<
         boost::listS,
         boost::listS,
         boost::undirectedS,
-        LocalReadGraphVertex>;
+        LocalReadGraphVertex,
+        LocalReadGraphEdge>;
 
     class ReadGraph;
 
@@ -44,6 +46,15 @@ public:
         distance(distance)
     {}
 
+};
+
+
+
+class shasta2::LocalReadGraphEdge
+{
+public:
+    uint64_t edgePairIndex;
+    LocalReadGraphEdge(uint64_t edgePairIndex) : edgePairIndex(edgePairIndex) {}
 };
 
 
