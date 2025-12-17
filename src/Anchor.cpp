@@ -2403,10 +2403,16 @@ Anchors::Anchors(
         // They are the same as for sourceAnchor, but some
         // AnchorMarkerInfos may be removed.
         anchorMarkerInfos.appendVector();
+        uint64_t newCoverage = 0;
         for(const AnchorMarkerInfo& sourceAnchorMarkerInfo: sourceAnchor) {
             if(keep[&sourceAnchorMarkerInfo - sourceAnchors.anchorMarkerInfos.begin()]) {
                 anchorMarkerInfos.append(sourceAnchorMarkerInfo);
+                ++newCoverage;
             }
+        }
+        if(newCoverage != sourceAnchor.size()) {
+            cout << anchorIdToString(anchorId) << " old coverage " << sourceAnchor.size() <<
+                ", new coverage " << newCoverage << endl;
         }
     }
 }

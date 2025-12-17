@@ -162,11 +162,11 @@ public:
     // in anchorMarkerInfos, that is, &anchorMarkerInfo-anchors.anchorMarkerInfos.begin().
     // This is done by finding ReadGraph edges that are likely to cross strands,
     // then flagging to be removed the corresponding AnchorMarkerInfos.
-    void anchorCleanup(vector<bool>& keep) const;
+    void anchorCleanup(vector<bool>& keep);
 
 
-    // Use self-complementary paths of length 2 to flag cross-strand EdgePairs.
-    void flagCrossStrandEdgePairs2();
+    // Use self-complementary paths of length 2 to find and flag cross-strand EdgePairs.
+    void flagCrossStrandEdgePairs2(vector<uint64_t>& crossStrandEdgePairIndexes);
 
     // Same, but using self-complementary paths of length m.
     uint64_t flagCrossStrandEdgePairs(uint64_t m);

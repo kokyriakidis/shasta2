@@ -832,11 +832,11 @@ void ReadGraph::writeConnectivityTable() const
 
 
 
-// Use self-complementary paths of length 2 to flag cross-strand EdgePairs.
-void ReadGraph::flagCrossStrandEdgePairs2()
+// Use self-complementary paths of length 2 to find and flag cross-strand EdgePairs.
+void ReadGraph::flagCrossStrandEdgePairs2(vector<uint64_t>& crossStrandEdgePairIndexes)
 {
     const ReadId readCount = anchors.reads.readCount();
-    vector<uint64_t> newCrossStrandEdgePairs;
+    crossStrandEdgePairIndexes.clear();
 
     // Loop over ReadIds, looking for self-complementary quadrilaterals.
     for(ReadId readId=0; readId<readCount; readId++) {
@@ -856,24 +856,34 @@ void ReadGraph::flagCrossStrandEdgePairs2()
                 continue;
             }
             if(edgePair0.getOther(readId) == edgePair1.getOther(readId)) {
+                cout << "Quadrilateral " << edgePair0.readId0 << " " << edgePair0.readId1 << ": " <<
+                    int(edgePair0.isSameStrand) << ":" << edgePair0.coverage << " " <<
+                    int(edgePair1.isSameStrand) << ":" << edgePair1.coverage << endl;
                 SHASTA2_ASSERT(not edgePair0.isSameStrand);
                 SHASTA2_ASSERT(edgePair1.isSameStrand);
-                newCrossStrandEdgePairs.push_back(edgePairIndex0);
-                newCrossStrandEdgePairs.push_back(edgePairIndex1);
+                if(edgePair0.coverage < edgePair1.coverage) {
+                    edgePair0.isCrossStrand = true;
+                    crossStrandEdgePairIndexes.push_back(edgePairIndex0);
+                } else if(edgePair1.coverage < edgePair0.coverage) {
+                    edgePair1.isCrossStrand = true;
+                    crossStrandEdgePairIndexes.push_back(edgePairIndex1);
+                }
+                // If they have the same coverage, don't do anything.
             }
         }
     }
 
 
-    ofstream csv("EdgePairs2.csv");
-    deduplicate(newCrossStrandEdgePairs);
-    for(uint64_t edgePairIndex: newCrossStrandEdgePairs) {
+    ofstream csv("CrossStrandEdgePairs2.csv");
+    deduplicate(crossStrandEdgePairIndexes);
+    for(uint64_t edgePairIndex: crossStrandEdgePairIndexes) {
         EdgePair& edgePair = edgePairs[edgePairIndex];
-        csv << edgePair.readId0 << "," << edgePair.readId1 << endl;
+        csv << edgePair.readId0 << "," << edgePair.readId1 << "," <<
+            int(edgePair.isSameStrand) << "," << edgePair.coverage << endl;
     }
     cout <<
         "Of " << 2 * edgePairs.size() << " read graph edges, " <<
-        2 * newCrossStrandEdgePairs.size() <<
+        2 * crossStrandEdgePairIndexes.size() <<
         " are in self-complementary paths of length 2." << endl;
 
 }
@@ -1130,13 +1140,60 @@ uint64_t ReadGraph::flagCrossStrandEdgePairs(uint64_t maxDistance)
 // in anchorMarkerInfos, that is, &anchorMarkerInfo-anchors.anchorMarkerInfos.begin().
 // This is done by finding ReadGraph edges that are likely to cross strands,
 // then flagging to be removed the corresponding AnchorMarkerInfos.
-void ReadGraph::anchorCleanup(vector<bool>& keep) const
+void ReadGraph::anchorCleanup(vector<bool>& keep)
 {
+    const ReadId readCount = anchors.reads.readCount();
+
+    vector<uint64_t> crossStrandEdgePairIndexes;
+    flagCrossStrandEdgePairs2(crossStrandEdgePairIndexes);
+
     // Initially flag all AnchorMarkerInfos as to be kept.
     keep.clear();
     keep.resize(anchors.anchorMarkerInfos.totalSize(), true);
 
+    // Find the AnchorIds that each OrientedReadId appears in.
+    vector< vector<AnchorId> > anchorIdTable(2 * readCount);
+    for(AnchorId anchorId=0; anchorId<anchors.size(); anchorId++) {
+        const Anchor anchor = anchors[anchorId];
+        for(const AnchorMarkerInfo& anchorMarkerInfo: anchor) {
+            anchorIdTable[anchorMarkerInfo.orientedReadId.getValue()].push_back(anchorId);
+        }
+    }
 
-    // NO CLEANUP TAKES PLACE FOR NOW.
-    cout << "ANCHOR CLEANUP IS NOT IMPLEMENTED." << endl;
+
+    // For each of the cross strand edge pairs, set to false the keep flag
+    // for the corresponding AnchorMarkerInfos.
+    vector<AnchorId> commonAnchorIds;
+    for(const uint64_t crossStrandEdgePairIndex : crossStrandEdgePairIndexes) {
+        const EdgePair& edgePair = edgePairs[crossStrandEdgePairIndex];
+        const ReadId readId0 = edgePair.readId0;
+        const ReadId readId1 = edgePair.readId1;
+        const bool isSameStrand = edgePair.isSameStrand;
+
+        // Do it for both edges corresponding to this EdgePair.
+        for(Strand strand0=0; strand0<2; strand0++) {
+            const Strand strand1 = isSameStrand ? strand0 : 1 - strand0;
+            const OrientedReadId orientedReadId0(readId0, strand0);
+            const OrientedReadId orientedReadId1(readId1, strand1);
+
+            // Find the AnchorIds that contain both orientedReadId0 and orientedReadId1.
+            commonAnchorIds.clear();
+            std::ranges::set_intersection(
+                anchorIdTable[orientedReadId0.getValue()],
+                anchorIdTable[orientedReadId1.getValue()],
+                back_inserter(commonAnchorIds));
+            SHASTA2_ASSERT(commonAnchorIds.size() == edgePair.coverage);
+
+            // Flag to be removed from these Anchors the AnchorMarkerInfos for
+            // orientedReadId0 and orientedReadId1.
+            for(const AnchorId anchorId: commonAnchorIds) {
+                cout << "Removing " << orientedReadId0 << " and " << orientedReadId1 <<
+                    " from " << anchorIdToString(anchorId) << endl;
+                const AnchorMarkerInfo& anchorMarkerInfo0 = anchors.getAnchorMarkerInfo(anchorId, orientedReadId0);
+                const AnchorMarkerInfo& anchorMarkerInfo1 = anchors.getAnchorMarkerInfo(anchorId, orientedReadId1);
+                keep[&anchorMarkerInfo0 - anchors.anchorMarkerInfos.begin()] = false;
+                keep[&anchorMarkerInfo1 - anchors.anchorMarkerInfos.begin()] = false;
+            }
+        }
+    }
 }

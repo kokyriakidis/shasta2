@@ -132,7 +132,7 @@ void Assembler::createAnchors(
     const vector<uint64_t>& maxAnchorRepeatLength,
     uint64_t threadCount)
 {
-    const bool doAnchorCleanup = true;
+    const bool doAnchorCleanup = false;
 
     if(doAnchorCleanup) {
 
