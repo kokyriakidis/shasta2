@@ -155,6 +155,15 @@ public:
     void findStrandSymmetriQuadrilaterals();
 
 
+    // This creates the keep vector that specifies which AnchorMarkerInfos
+    // should be kept for Anchors cleanup.
+    // The keep vector is of size anchors.anchorMarkerInfos.totalSize() and
+    // is indexed by the global position of the AnchorMarkerInfo
+    // in anchorMarkerInfos, that is, &anchorMarkerInfo-anchors.anchorMarkerInfos.begin().
+    // This is done by finding ReadGraph edges that are likely to cross strands,
+    // then flagging to be removed the corresponding AnchorMarkerInfos.
+    void anchorCleanup(vector<bool>& keep) const;
+
 
     // Use self-complementary paths of length 2 to flag cross-strand EdgePairs.
     void flagCrossStrandEdgePairs2();

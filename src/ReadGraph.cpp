@@ -1121,3 +1121,22 @@ uint64_t ReadGraph::flagCrossStrandEdgePairs(uint64_t maxDistance)
     return newCrossStrandEdgePairsCount;
 }
 
+
+
+// This creates the keep vector that specifies which AnchorMarkerInfos
+// should be kept for Anchors cleanup.
+// The keep vector is of size anchors.anchorMarkerInfos.totalSize() and
+// is indexed by the global position of the AnchorMarkerInfo
+// in anchorMarkerInfos, that is, &anchorMarkerInfo-anchors.anchorMarkerInfos.begin().
+// This is done by finding ReadGraph edges that are likely to cross strands,
+// then flagging to be removed the corresponding AnchorMarkerInfos.
+void ReadGraph::anchorCleanup(vector<bool>& keep) const
+{
+    // Initially flag all AnchorMarkerInfos as to be kept.
+    keep.clear();
+    keep.resize(anchors.anchorMarkerInfos.totalSize(), true);
+
+
+    // NO CLEANUP TAKES PLACE FOR NOW.
+    cout << "ANCHOR CLEANUP IS NOT IMPLEMENTED." << endl;
+}

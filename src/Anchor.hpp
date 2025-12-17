@@ -138,6 +138,17 @@ public:
         const Markers& markers,
         const MarkerKmers&);
 
+    // Constructor that makes a copy of of a source Anchors object, but removing
+    // a specified set of AnchorMarkerInfos.
+    // The keep vector specifies which AnchorMarkerInfos should be kept.
+    // It must be of size that.anchorMarkerInfos.totalSize() and
+    // is indexed by the global position of the AnchorMarkerInfo
+    // in that.anchorMarkerInfos, that is, &anchorMarkerInfo-that.anchorMarkerInfos.begin().
+    Anchors(
+        const Anchors&,
+        const string& baseName,
+        const vector<bool>& keep);
+
     // Constructor to accesses existing Anchors.
     Anchors(
         const string& baseName,

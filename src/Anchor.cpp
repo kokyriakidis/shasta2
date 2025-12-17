@@ -2352,6 +2352,67 @@ Anchors::Anchors(
 
 
 
+// Constructor that makes a copy of a source Anchors object, but removing
+// a specified set of AnchorMarkerInfos.
+// The keep vector specifies which AnchorMarkerInfos should be kept.
+// It must be of size that.anchorMarkerInfos.totalSize() and
+// is indexed by the global position of the AnchorMarkerInfo
+// in that.anchorMarkerInfos, that is, &anchorMarkerInfo-that.anchorMarkerInfos.begin().
+Anchors::Anchors(
+    const Anchors& sourceAnchors,
+    const string& baseName,
+    const vector<bool>& keep) :
+    MultithreadedObject<Anchors>(*this),
+    MappedMemoryOwner(sourceAnchors),
+    baseName(baseName),
+    reads(sourceAnchors.reads),
+    k(sourceAnchors.k),
+    kHalf(k/2),
+    markers(sourceAnchors.markers),
+    markerKmers(sourceAnchors.markerKmers)
+{
+    // Initialize MemoryMapped objects.
+    anchorMarkerInfos.createNew(largeDataName(baseName + "-AnchorMarkerInfos"), largeDataPageSize);
+    anchorInfos.createNew(largeDataName(baseName + "-AnchorInfos"), largeDataPageSize);
+    kmerToAnchorTable.createNew(largeDataName(baseName + "-KmerToAnchorTable"), largeDataPageSize);
+
+    // Initialize the kmerToAnchorTable.
+    kmerToAnchorTable.resize(sourceAnchors.markerKmers.size());
+    std::ranges::fill(kmerToAnchorTable, invalid<AnchorId>);
+
+    // Loop over anchors in the sourceAnchors.
+    // Each of them generates an Anchor,
+    // with some AnchorMarkerInfos possibly excluded.
+    for(AnchorId sourceAnchorId=0; sourceAnchorId<sourceAnchors.size(); sourceAnchorId++) {
+        const Anchor sourceAnchor = sourceAnchors[sourceAnchorId];
+
+        // Get the anchorId for the new anchor we are generating.
+        // Since we are nto removing any anchors, this must be the same
+        // as the sourceAnchorId.
+        const AnchorId anchorId = size();
+        SHASTA2_ASSERT(anchorId == sourceAnchorId);
+
+        // Copy the AnchorInfo.
+        const AnchorInfo& sourceAnchorInfo = sourceAnchors.anchorInfos[sourceAnchorId];
+        anchorInfos.push_back(sourceAnchorInfo);
+
+        // Update the kmerToAnchorTable.
+        kmerToAnchorTable[sourceAnchorInfo.kmerIndex] = anchorId;
+
+        // Generate the AnchorMarkerInfos for this new anchor.
+        // They are the same as for sourceAnchor, but some
+        // AnchorMarkerInfos may be removed.
+        anchorMarkerInfos.appendVector();
+        for(const AnchorMarkerInfo& sourceAnchorMarkerInfo: sourceAnchor) {
+            if(keep[&sourceAnchorMarkerInfo - sourceAnchors.anchorMarkerInfos.begin()]) {
+                anchorMarkerInfos.append(sourceAnchorMarkerInfo);
+            }
+        }
+    }
+}
+
+
+
 void Anchors::remove()
 {
     anchorMarkerInfos.remove();

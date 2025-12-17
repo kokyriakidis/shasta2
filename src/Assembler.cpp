@@ -6,6 +6,7 @@
 #include "Journeys.hpp"
 #include "KmerCheckerFactory.hpp"
 #include "Markers.hpp"
+#include "MarkerKmers.hpp"
 #include "MurmurHash2.hpp"
 #include "Options.hpp"
 #include "performanceLog.hpp"
@@ -13,7 +14,6 @@
 #include "Reads.hpp"
 #include "ReadLengthDistribution.hpp"
 #include "ReadSummary.hpp"
-#include "StrandSeparator1.hpp"
 using namespace shasta2;
 
 #include "MultithreadedObject.tpp"
@@ -132,12 +132,13 @@ void Assembler::createAnchors(
     const vector<uint64_t>& maxAnchorRepeatLength,
     uint64_t threadCount)
 {
-    const bool useStrandSeparation = false;
+    const bool doAnchorCleanup = true;
 
-    if(useStrandSeparation) {
-        // Generate the double-stranded Anchors from the MarkerKmers.
-        shared_ptr<Anchors> doubleStrandedAnchors = make_shared<Anchors>(
-            "DoubleStrandedAnchors",
+    if(doAnchorCleanup) {
+
+        // Generate the initial Anchors from the MarkerKmers.
+        shared_ptr<Anchors> initialAnchors = make_shared<Anchors>(
+            "InitialAnchors",
             MappedMemoryOwner(*this),
             reads(),
             assemblerInfo->k,
@@ -147,28 +148,36 @@ void Assembler::createAnchors(
             maxAnchorCoverage,
             maxAnchorRepeatLength,
             threadCount);
+        anchorsPointer = initialAnchors;
 
-        // Generate the single-stranded anchors.
-        const shared_ptr<Anchors> singleStrandedAnchors = make_shared<Anchors>(
-            "Anchors",
-            MappedMemoryOwner(*this),
-            reads(),
-            assemblerInfo->k,
-            markers(),
-            *markerKmers);
-       StrandSeparator1 strandSeparator(*doubleStrandedAnchors, *singleStrandedAnchors);
+        // The Anchor cleanup process will create the final Anchors by removing
+        // some AnchorMarkerInfos from the initial anchors.
+        // The ReadGraph decides which AnchorMarkerInfos should be kept.
+        vector<bool> keep;
+        createReadGraph(threadCount);
+        readGraph().anchorCleanup(keep);
 
-       // Keep the single-stranded anchors.
-       anchorsPointer = singleStrandedAnchors;
+        // Create the new anchors.
+        shared_ptr<Anchors> finalAnchors = make_shared<Anchors>(anchors(), "Anchors", keep);
 
-       // Remove the double-stranded anchors.
-       doubleStrandedAnchors->remove();
-       doubleStrandedAnchors = 0;
+        cout << "Before anchor cleanup, there were " << initialAnchors->size() <<
+            " anchors with a total " << initialAnchors->anchorMarkerInfos.totalSize() <<
+            " AnchorMarkerInfos." << endl;
+        cout << "After anchor cleanup, there are " << finalAnchors->size() <<
+            " anchors with a total " << finalAnchors->anchorMarkerInfos.totalSize() <<
+            " AnchorMarkerInfos." << endl;
+
+        // Keep the final anchors.
+       anchorsPointer = finalAnchors;
+
+       // Remove the initial anchors.
+       initialAnchors->remove();
+       initialAnchors = 0;
     }
 
 
 
-    // Generate double-stranded anchors.
+    // Simple Anchor generation without cleanup.
     else {
        anchorsPointer = make_shared<Anchors>(
             "Anchors",
