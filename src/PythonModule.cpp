@@ -92,6 +92,8 @@ PYBIND11_MODULE(shasta2, shasta2Module)
             &Assembler::accessReadSummaries)
         .def("findPalindromicReads",
             &Assembler::findPalindromicReads)
+        .def("analyzeStrandReversal",
+            &Assembler::analyzeStrandReversal)
 
         // K-mer checker.
         .def("createKmerChecker",

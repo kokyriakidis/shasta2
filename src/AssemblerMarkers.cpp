@@ -162,80 +162,124 @@ void Assembler::computeMarkerErrorRates(
 
 void Assembler::findPalindromicReads() const
 {
-    const uint64_t k = assemblerInfo->k;
     const ReadId readCount = reads().readCount();
 
     ofstream csv("PalindromicMetrics.csv");
-    csv << "ReadId,Intersection,Union,Jaccard,\n";
-
-    // Work vectors used below but defined here to reduce
-    // memory allocation activity.
-    vector<Kmer> kmers0;
-    vector<Kmer> kmers1;
-    vector<uint64_t> count0;
-    vector<uint64_t> count1;
+    csv << "ReadId,PalindromicRate\n";
 
     // Loop over all reads.
     for(ReadId readId=0; readId<readCount; readId++) {
 
-        // Access the sequence of this read (without reverse complementing).
-        const LongBaseSequenceView sequence0 = reads().getRead(readId);
+        const double palindromicRate = analyzeStrandReversal(readId, false);
 
-        // Access the markers of this read (without reverse complementing.
-        const auto markers0 = markers()[OrientedReadId(readId, 0).getValue()];
-
-        // Gather all marker Kmers of this read and its reverse complement.
-        kmers0.clear();
-        kmers1.clear();
-        for(const Marker& marker0: markers0) {
-            const uint32_t position = marker0.position;
-            Kmer kmer0;
-            extractKmer128(sequence0, position, k, kmer0);
-            kmers0.push_back(kmer0);
-            const Kmer kmer1 = kmer0.reverseComplement(k);
-            kmers1.push_back(kmer1);
-        }
-
-        // Deduplicate and count. Effectively we compute multisets (bags) of Kmers.
-        deduplicateAndCount(kmers0, count0);
-        deduplicateAndCount(kmers1, count1);
-
-
-
-        // Compute the Jaccard similarity of the two multisets (bags).
-        // See https://en.wikipedia.org/wiki/Multiset
-        // and https://en.wikipedia.org/wiki/Jaccard_index
-        // (in the second link, look for "multisets" under "Overview".
-
-        // For the union we just need the total size of the two multisets.
-        const uint64_t sum0 = std::accumulate(count0.begin(), count0.end(), 0);
-        const uint64_t sum1 = std::accumulate(count1.begin(), count1.end(), 0);
-        const uint64_t unionSize = sum0 + sum1;
-
-        // For the intersection we do a joint loop over the common Kmers,
-        // which are now sorted.
-        uint64_t intersectionSize = 0;
-        uint64_t i0 = 0;
-        uint64_t i1 = 0;
-        while((i0 < kmers0.size()) and (i1 < kmers1.size())) {
-            const Kmer& kmer0 = kmers0[i0];
-            const Kmer& kmer1 = kmers1[i1];
-            if(kmer0 < kmer1) {
-                ++i0;
-            } else if(kmer1 < kmer0) {
-                ++i1;
-            } else {
-                intersectionSize += min(count0[i0], count1[i1]);
-                ++i0;
-                ++i1;
-            }
-        }
-
-        const double jaccard = double(intersectionSize) / double(unionSize);
         csv << readId << ",";
-        csv << intersectionSize << ",";
-        csv << unionSize << ",";
-        csv << jaccard << ",";
+        csv << palindromicRate << ",";
         csv << "\n";
     }
+}
+
+
+
+double Assembler::analyzeStrandReversal(ReadId readId, bool debug) const
+{
+    // EXPOSE WHEN CODE STABILIZES.
+    const double driftRate = 0.01;
+
+    const uint64_t k = assemblerInfo->k;
+
+    // Access the sequence of this read (without reverse complementing).
+    const LongBaseSequenceView sequence0 = reads().getRead(readId);
+    const uint32_t length = uint32_t(sequence0.baseCount);
+    const uint32_t maxDrift = uint32_t(std::round(driftRate * double(length)));
+
+    if(debug) {
+        cout << "Length " << length << endl;
+        cout << "Max drift " << maxDrift << endl;
+    }
+
+    // Access the markers of this read (without reverse complementing.
+    const auto markers0 = markers()[OrientedReadId(readId, 0).getValue()];
+
+
+    // Gather all marker Kmers of this read and its reverse complement,
+    // and the positions in which each Kmer appears.
+    std::map<Kmer, vector<uint32_t> > kmerTable0;
+    std::map<Kmer, vector<uint32_t> > kmerTable1;
+
+    for(const Marker& marker0: markers0) {
+        const uint32_t position0 = marker0.position;
+        Kmer kmer0;
+        extractKmer128(sequence0, position0, k, kmer0);
+        kmerTable0[kmer0].push_back(position0);
+
+        const uint32_t position1 = length - 1 - position0;
+        const Kmer kmer1 = kmer0.reverseComplement(k);
+        kmerTable1[kmer1].push_back(position1);
+    }
+
+    for(auto& p: kmerTable1) {
+        vector<uint32_t>& positions1 = p.second;
+        std::ranges::reverse(positions1);
+    }
+
+
+    if(debug) {
+        // Loop over common marker k-mers.
+        ofstream csv("AnalyzeStrandReversal.csv");
+        for(const auto& p0: kmerTable0) {
+            const Kmer& kmer = p0.first;
+            auto it1 = kmerTable1.find(kmer);
+            if(it1 != kmerTable1.end()) {
+                const auto& p1 = *it1;
+                const vector<uint32_t>& positions0 = p0.second;
+                const vector<uint32_t>& positions1 = p1.second;
+                for(const uint32_t position0: positions0) {
+                    for(const uint32_t position1: positions1) {
+                        csv <<
+                            position0 << "," <<
+                            position1 << "," <<
+                            int32_t(position1) - int32_t(position0) << "\n";
+                    }
+                }
+            }
+        }
+    }
+
+
+    // To decide if this read is palindromic, loop over all its marker kmers.
+    // Find how many times we find the same k-mer at a nearby position
+    // in the reverse complemented read.
+    uint64_t totalCount = 0;
+    uint64_t successCount = 0;
+    for(const auto& p0: kmerTable0) {
+        const Kmer& kmer = p0.first;
+        const vector<uint32_t>& positions0 = p0.second;
+        totalCount += positions0.size();
+
+        const auto it1 = kmerTable1.find(kmer);
+        if(it1 != kmerTable1.end()) {
+            const vector<uint32_t>& positions1 = it1->second;
+            SHASTA2_ASSERT(not positions1.empty());
+
+            // This can be made more efficient.
+            for(uint64_t position0: positions0) {
+                for(uint64_t position1: positions1) {
+                    if(abs(int32_t(position0) - int32_t(position1)) < maxDrift) {
+                        ++successCount;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    const double successRate = double(successCount) / double(totalCount);
+
+    if(debug) {
+        cout << "Total " << totalCount << ", success " << successCount <<
+            ", success rate " << successRate << endl;
+    }
+
+    return successRate;
+
 }

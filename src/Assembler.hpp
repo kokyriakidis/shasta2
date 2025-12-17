@@ -125,6 +125,7 @@ public:
     void histogramReadLength(const string& fileName);
 
     void findPalindromicReads() const;
+    double analyzeStrandReversal(ReadId, bool debug) const;
 
 
 
