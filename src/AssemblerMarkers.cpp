@@ -52,28 +52,24 @@ void Assembler::createMarkerKmers(double maxMarkerErrorRate, uint64_t threadCoun
     const uint64_t readCount = reads().readCount();
 
     // First, create marker k-mers using all reads.
-    vector<bool> useRead(readCount, true);
     markerKmers = make_shared<MarkerKmers>(
         assemblerInfo->k,
         mappedMemoryOwner,
         reads(),
-        useRead,
+        readSummaries,
         markers(),
         threadCount);
 
     // Compute marker error rates using all reads and store them in the ReadSummaries.
-    // Also set the isUsedForAssembly flag.
     vector<uint64_t> lowFrequencyMarkerCount;
     computeMarkerErrorRates(lowFrequencyMarkerCount);
     for(ReadId readId=0; readId<readCount; readId++) {
         const auto readMarkers = markers()[OrientedReadId(readId, 0).getValue()];
         const uint64_t readMarkerCount = readMarkers.size();
         const double markerErrorRate = double(lowFrequencyMarkerCount[readId]) / double(readMarkerCount);
-        useRead[readId] = (markerErrorRate <= maxMarkerErrorRate);
         ReadSummary& readSummary = readSummaries[readId];
-        readSummary.isUsedForAssembly = useRead[readId];
         readSummary.initialMarkerErrorRate = markerErrorRate;
-
+        readSummary.hasHighErrorRate = (markerErrorRate > maxMarkerErrorRate);
     }
 
 
@@ -81,7 +77,7 @@ void Assembler::createMarkerKmers(double maxMarkerErrorRate, uint64_t threadCoun
     uint64_t keepCount = 0;
     uint64_t baseKeepCount = 0;
     for(ReadId readId=0; readId<readCount; readId++) {
-        if(useRead[readId]) {
+        if(readSummaries[readId].isInUse()) {
             ++keepCount;
             baseKeepCount += reads().getRead(readId).baseCount;
         }
@@ -96,7 +92,7 @@ void Assembler::createMarkerKmers(double maxMarkerErrorRate, uint64_t threadCoun
         assemblerInfo->k,
         mappedMemoryOwner,
         reads(),
-        useRead,
+        readSummaries,
         markers(),
         threadCount);
 
@@ -160,22 +156,35 @@ void Assembler::computeMarkerErrorRates(
 
 
 
-void Assembler::findPalindromicReads() const
+void Assembler::findPalindromicReads()
 {
+    // EXPOSE WHEN CODE STABILIZES.
+    const double palindromicRateThreshold = 0.2;
+
+
     const ReadId readCount = reads().readCount();
 
     ofstream csv("PalindromicMetrics.csv");
     csv << "ReadId,PalindromicRate\n";
 
     // Loop over all reads.
+    uint64_t palindromicReadCount = 0;
     for(ReadId readId=0; readId<readCount; readId++) {
+        ReadSummary& readSummary = readSummaries[readId];
 
-        const double palindromicRate = analyzeStrandReversal(readId, false);
+        readSummary.palindromicRate = analyzeStrandReversal(readId, false);
 
         csv << readId << ",";
-        csv << palindromicRate << ",";
+        csv << readSummary.palindromicRate << ",";
         csv << "\n";
+
+        if(readSummary.palindromicRate > palindromicRateThreshold) {
+            readSummary.isPalindromic = true;
+            ++palindromicReadCount;
+        }
     }
+
+    cout << "Flagged " << palindromicReadCount << " reads as palindromic." << endl;
 }
 
 

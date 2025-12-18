@@ -10,7 +10,15 @@ namespace shasta2 {
 class shasta2::ReadSummary {
 public:
 
-    bool isUsedForAssembly = true;
+    bool isPalindromic = false;
+    bool hasHighErrorRate = false;
+
+    bool isInUse() const
+    {
+        return not(isPalindromic or hasHighErrorRate);
+    }
+
+    double palindromicRate = 0.;
 
     // The marker error rate computed using all reads.
     // Reads that have this value larger than Options::maxMarkerErrorRate

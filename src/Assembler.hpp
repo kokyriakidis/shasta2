@@ -124,7 +124,7 @@ public:
         size_t threadCount);
     void histogramReadLength(const string& fileName);
 
-    void findPalindromicReads() const;
+    void findPalindromicReads();
     double analyzeStrandReversal(ReadId, bool debug) const;
 
 

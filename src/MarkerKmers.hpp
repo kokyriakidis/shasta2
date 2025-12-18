@@ -19,6 +19,7 @@ namespace shasta2 {
     class MarkerKmers;
 
     class Reads;
+    class ReadSummary;
     class Marker;
     class Markers;
 }
@@ -34,7 +35,7 @@ public:
         uint64_t k,
         const MappedMemoryOwner&,
         const Reads&,
-        const vector<bool>& useRead,
+        const MemoryMapped::Vector<ReadSummary>& readSummaries,
         const Markers& markers,
         uint64_t threadCount);
 
@@ -95,7 +96,7 @@ public:
     // Constructor arguments.
     uint64_t k;
     const Reads& reads;
-    const vector<bool>* useReadPointer;
+    const MemoryMapped::Vector<ReadSummary>* readSummariesPointer = 0;
     const Markers& markers;
 
 private:

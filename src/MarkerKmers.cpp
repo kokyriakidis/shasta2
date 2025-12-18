@@ -5,6 +5,7 @@
 #include "Markers.hpp"
 #include "performanceLog.hpp"
 #include "Reads.hpp"
+#include "ReadSummary.hpp"
 using namespace shasta2;
 
 #include <cmath>
@@ -20,14 +21,14 @@ MarkerKmers::MarkerKmers(
     uint64_t k,
     const MappedMemoryOwner& mappedMemoryOwner,
     const Reads& reads,
-    const vector<bool>& useRead,
+    const MemoryMapped::Vector<ReadSummary>& readSummaries,
     const Markers& markers,
     uint64_t threadCount) :
     MappedMemoryOwner(mappedMemoryOwner),
     MultithreadedObject<MarkerKmers>(*this),
     k(k),
     reads(reads),
-    useReadPointer(&useRead),
+    readSummariesPointer(&readSummaries),
     markers(markers)
 {
     performanceLog << timestamp << "Marker k-mer creation begins." << endl;
@@ -111,7 +112,7 @@ void MarkerKmers::gatherMarkersPass2(uint64_t /* threadId */)
 
 void MarkerKmers::gatherMarkersPass12(uint64_t pass)
 {
-    const vector<bool>& useRead = *useReadPointer;
+    const MemoryMapped::Vector<ReadSummary>& readSummaries = *readSummariesPointer;
 
     // Loop over all batches assigned to this thread.
     uint64_t begin, end;
@@ -119,7 +120,7 @@ void MarkerKmers::gatherMarkersPass12(uint64_t pass)
 
         // Loop over all reads assigned to this batch.
         for(ReadId readId=ReadId(begin); readId!=ReadId(end); ++readId) {
-            if(not useRead[readId]) {
+            if(not readSummaries[readId].isInUse()) {
                 continue;
             }
 

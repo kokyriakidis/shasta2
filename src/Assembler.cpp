@@ -83,6 +83,9 @@ void Assembler::assemble(
 
     createKmerChecker(options.k, options.markerDensity);
     createMarkers(options.threadCount);
+
+    findPalindromicReads();
+
     createMarkerKmers(options.maxMarkerErrorRate, options.threadCount);
 
     if(options.externalAnchorsName.empty()) {
@@ -132,7 +135,7 @@ void Assembler::createAnchors(
     const vector<uint64_t>& maxAnchorRepeatLength,
     uint64_t threadCount)
 {
-    const bool doAnchorCleanup = false;
+    const bool doAnchorCleanup = true;
 
     if(doAnchorCleanup) {
 
@@ -406,6 +409,9 @@ void Assembler::writeReadSummaries() const
     csv <<
         "ReadId,"
         "Use for assembly,"
+        "Is palindromic"
+        "Has high error rare,"
+        "Palindromic rate,"
         "Initial marker error rate,"
         "Marker error rate,"
         "Initial anchor gap,"
@@ -418,7 +424,10 @@ void Assembler::writeReadSummaries() const
 
         csv <<
             readId << "," <<
-            (readSummary.isUsedForAssembly ? "Yes" : "No") << "," <<
+            (readSummary.isInUse() ? "Yes" : "No") << "," <<
+            (readSummary.isPalindromic ? "Yes" : "No") <<
+            (readSummary.hasHighErrorRate ? "Yes" : "No") <<
+            readSummary.palindromicRate << "," <<
             readSummary.initialMarkerErrorRate << "," <<
             readSummary.markerErrorRate << "," <<
             readSummary.initialAnchorGap << "," <<
