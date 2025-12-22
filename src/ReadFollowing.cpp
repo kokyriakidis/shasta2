@@ -92,6 +92,8 @@ Vertex::Vertex(
         length = edge.offset();
     }
 
+    coverage = edge.lengthWeightedAverageCoverage();
+
     // Compute initial/final support.
     const uint32_t representativeRegionStepCount =  uint32_t(assemblyGraph.options.representativeRegionStepCount);
     SegmentStepSupport::getInitialFirst(assemblyGraph, segment, representativeRegionStepCount, initialSupport);
@@ -270,8 +272,8 @@ void Graph::writeGraphviz(const string& name) const
     const Graph& graph = *this;
 
     ofstream dot("ReadFollowing-" + name + ".dot");
-    dot << "digraph ReadFollowing1 {\n";
-    dot << std::fixed << std::setprecision(2);
+    dot << "digraph ReadFollowing {\n";
+    dot << std::fixed << std::setprecision(1);
 
     BGL_FORALL_VERTICES(v, graph, Graph) {
         const Vertex& vertex = graph[v];
@@ -286,8 +288,7 @@ void Graph::writeGraphviz(const string& name) const
         dot <<
             "label=\"" << assemblyGraphEdge.id << "\\n" <<
             vertex.length << "\\n" <<
-            vertex.initialSupport.size() << "/" <<
-            vertex.finalSupport.size() <<
+            vertex.coverage << "x" <<
             "\"";
 
         // Color.
@@ -304,6 +305,7 @@ void Graph::writeGraphviz(const string& name) const
 
 
 
+    dot << std::fixed << std::setprecision(2);
     BGL_FORALL_EDGES(e, graph, Graph) {
         const Edge& edge = graph[e];
         const int32_t offset = edge.segmentPairInformation.segmentOffset;

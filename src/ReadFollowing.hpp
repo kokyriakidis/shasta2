@@ -44,6 +44,8 @@ public:
     // The sequence length or estimated offset of this AssemblyGraph edge.
     uint64_t length = invalid<uint64_t>;
 
+    double coverage = 0.;
+
     Vertex(const AssemblyGraph&, Segment);
 
     vector<SegmentStepSupport> initialSupport;
