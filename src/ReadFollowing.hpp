@@ -58,12 +58,15 @@ public:
     Edge(const AssemblyGraph&, Segment, Segment);
     SegmentPairInformation segmentPairInformation;
 
+    using Score = double;
+    Score score;
+
     // For each edge v0->v1:
-    // - isLowestOffset0 is set if this edge has the lowest offset out of all out-edges of v0.
-    // - isLowestOffset1 is set if this edge has the lowest offset out of all in-edges of v1.
-    // These are not maintained. They are set by setLowestOffsetFlags().
-    bool isLowestOffset0 = false;
-    bool isLowestOffset1 = false;
+    // - isBest0 is set if this edge has the best score out of all out-edges of v0.
+    // - isBest1 is set if this edge has the best score out of all in-edges of v1.
+    // These are not maintained. They are set by setBestEdgeFlags().
+    bool isBest0 = false;
+    bool isBest1 = false;
 };
 
 
@@ -80,10 +83,11 @@ private:
     void createVertices();
     void createEdges();
 
-    // Remove edges with negative offset.
-    void removeNegativeOffsetEdges();
+    void computeEdgeScores();
+    void setBestEdgeFlags();
 
-    // Remove weak edges.
+    // Edge cleanup.
+    void removeNegativeOffsetEdges();
     void removeLowCommonCountEdges(uint64_t minCommonCount);
     void removeLowCommonCorrectedJaccardEdges(double minCorrectedJaccard);
 
@@ -91,11 +95,10 @@ private:
     void prune();
     bool pruneIteration();
 
-    // Remove edges that have both isLowestOffset0 and isLowestOffset1 set to false.
-    void removeNonLowestOffsetEdges();
+    // Remove edges that don't have the best score at least one direction.
+    void removeNonBestScoreEdges();
 
-    void setLowestOffsetFlags();
-
+    // Output.
     void write(const string& name) const;
     void writeCsv(const string& name) const;
     void writeVerticesCsv(const string& name) const;
@@ -104,11 +107,13 @@ private:
 
 public:
 
-    // Find a minimum offset path starting at the given vertex and
+    // Path following.
+    // These functions find a best path starting at the given vertex and
     // ending if one of the forbiddenVertices is encountered.
     // Direction is 0 for forward and 1 backward.
     // Note these are paths in the ReadFollowing::Graph
     // but not in the AssemblyGraph.
+
     void findPath(
         vertex_descriptor, uint64_t direction,
         vector<vertex_descriptor>& path,
@@ -123,7 +128,7 @@ public:
         const std::set<vertex_descriptor>& stopVertices) const;
 
     // Find assembly paths.
-    // These are minimum offset paths between vertices corresponding to long segments.
+    // These are best paths between vertices corresponding to long segments.
     void findPaths(vector< vector<Segment> >& assemblyPaths) const;
 
     // Python callable.

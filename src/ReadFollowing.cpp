@@ -14,57 +14,50 @@ using namespace ReadFollowing;
 
 // Standard library.
 #include "fstream.hpp"
+#include <iomanip>
 
 
 
 Graph::Graph(const AssemblyGraph& assemblyGraph) :
     assemblyGraph(assemblyGraph)
 {
-	const bool debug = false;
+	const bool debug = true;
 
     // Initial creation with all possible vertices and edges.
     createVertices();
     createEdges();
+    computeEdgeScores();
     if(debug) {
-    	setLowestOffsetFlags();
     	write("A");
     }
 
     // Remove edges with negative offsets.
     removeNegativeOffsetEdges();
     if(debug) {
-    	setLowestOffsetFlags();
     	write("B");
     }
 
     // Remove edges with low commonCount.
     removeLowCommonCountEdges(assemblyGraph.options.readFollowingMinCommonCount);
     if(debug) {
-    	setLowestOffsetFlags();
     	write("C");
     }
 
     // Remove edges with low correctedJaccard.
     removeLowCommonCorrectedJaccardEdges(assemblyGraph.options.readFollowingMinCorrectedJaccard);
     if(debug) {
-    	setLowestOffsetFlags();
     	write("D");
     }
 
     // Prune short leaves.
     prune();
     if(debug) {
-    	setLowestOffsetFlags();
     	write("E");
     }
 
-    // Make sure the lowest offset flags are valid.
-    setLowestOffsetFlags();
-
-    // Remove edges that have both isLowestOffset0 and isLowestOffset1 set to false.
-    removeNonLowestOffsetEdges();
+    // Remove edges that don't have the best score at least one direction.
+    removeNonBestScoreEdges();
     if(debug) {
-    	setLowestOffsetFlags();
     	write("F");
     }
 }
@@ -219,15 +212,20 @@ void Graph::removeNegativeOffsetEdges()
 
 
 
-// Remove edges that have both isLowestOffset0 and isLowestOffset1 set to false.
-void Graph::removeNonLowestOffsetEdges()
+// Remove edges that are not flagged as "best edge" in at least one direction.
+void Graph::removeNonBestScoreEdges()
 {
     Graph& graph = *this;
 
+    // Make sure the best edge flags are valid.
+    computeEdgeScores();
+    setBestEdgeFlags();
+
+    // Gather the edges to be removed.
     vector<edge_descriptor> edgesToBeRemoved;
     BGL_FORALL_EDGES(e, graph, Graph) {
         const Edge& edge = graph[e];
-        if(not (edge.isLowestOffset0 or edge.isLowestOffset1)) {
+        if(not (edge.isBest0 or edge.isBest1)) {
             edgesToBeRemoved.push_back(e);
         }
     }
@@ -327,25 +325,24 @@ void Graph::writeGraphviz(const string& name) const
             edge.segmentPairInformation.correctedJaccard << "\\n" <<
             offset << "\"";
 
-        // Thickness.
+        // Thickness is proportional to commonCount.
         dot << " penwidth=" << 0.2 * double(edge.segmentPairInformation.commonCount);
 
-        // Color.
-        string color;
-        if(edge.isLowestOffset0) {
-            if (edge.isLowestOffset1) {
-                color = "Green";
-            } else {
-                color = "Cyan";
-            }
+        // Color is determined by correctedJaccard for the edge.
+        // Green = 1
+        // Red = assemblyGraph.options.readFollowingMinCorrectedJaccard.
+        double hue;
+        if(edge.segmentPairInformation.correctedJaccard >= 1.) {
+            hue = 1.;
+        } else if(edge.segmentPairInformation.correctedJaccard <= assemblyGraph.options.readFollowingMinCorrectedJaccard) {
+            hue = 0.;
         } else {
-            if (edge.isLowestOffset1) {
-                color = "Magenta";
-            } else {
-                color = "Black";
-            }
+            hue =
+                (edge.segmentPairInformation.correctedJaccard - assemblyGraph.options.readFollowingMinCorrectedJaccard) /
+                (1. - assemblyGraph.options.readFollowingMinCorrectedJaccard);
         }
-        dot << " color=" << color;
+        hue /= 3.;
+        dot << std::fixed << std::setprecision(3) << " color=\""  << hue << " 1. 1.\"";
 
         // End attributes.
         dot << "]";
@@ -429,7 +426,7 @@ void Graph::writeEdgesCsv(const string& name) const
 
 
 
-// Find a minimum offset path starting at the given vertex and
+// Find a best path starting at the given vertex and
 // ending if one of the terminalVertices is encountered.
 // Direction is 0 for forward and 1 backward.
 void Graph::findPath(
@@ -460,23 +457,22 @@ void Graph::findForwardPath(
 
 
     // At each iteration, add one vertex to the path.
-    // Use the edge with minimum offset.
+    // Use the edge with best score
     while(out_degree(v, assemblyGraph) > 0) {
 
-        // Find the edge with lowest offset.
-        int32_t lowestOffset = std::numeric_limits<int32_t>::max();
-        edge_descriptor eLowestOffset;
+        // Find the edge with best score.
+        double bestScore = 0.;
+        edge_descriptor eBest = edge_descriptor({0, 0, 0});
         BGL_FORALL_OUTEDGES(v, e, graph, Graph) {
-            const int32_t offset = graph[e].segmentPairInformation.segmentOffset;
-            if(offset < lowestOffset) {
-                lowestOffset = offset;
-                eLowestOffset = e;
+            const double score = graph[e].score;
+            if(score > bestScore) {
+                bestScore = score;
+                eBest = e;
             }
         }
-        SHASTA2_ASSERT(lowestOffset != std::numeric_limits<int32_t>::max());
 
         // Add to the path the target of this vertex and continue from here.
-        v = target(eLowestOffset, graph);
+        v = target(eBest, graph);
         path.push_back(v);
 
         if(stopVertices.contains(v)) {
@@ -504,20 +500,19 @@ void Graph::findBackwardPath(
     // Use the edge with minimum offset.
     while(in_degree(v, assemblyGraph) > 0) {
 
-        // Find the edge with lowest offset.
-        int32_t lowestOffset = std::numeric_limits<int32_t>::max();
-        edge_descriptor eLowestOffset;
+        // Find the edge with best score.
+        double bestScore = 0.;
+        edge_descriptor eBest  = edge_descriptor({0, 0, 0});
         BGL_FORALL_INEDGES(v, e, graph, Graph) {
-            const int32_t offset = graph[e].segmentPairInformation.segmentOffset;
-            if(offset < lowestOffset) {
-                lowestOffset = offset;
-                eLowestOffset = e;
+            const double score = graph[e].score;
+            if(score > bestScore) {
+                bestScore = score;
+                eBest = e;
             }
         }
-        SHASTA2_ASSERT(lowestOffset != std::numeric_limits<int32_t>::max());
 
         // Add to the path the source of this vertex and continue from here.
-        v = source(eLowestOffset, graph);
+        v = source(eBest, graph);
         path.push_back(v);
 
         if(stopVertices.contains(v)) {
@@ -585,17 +580,17 @@ bool Graph::pruneIteration()
 
 
 // For each edge v0->v1:
-// - isLowestOffset0 is set if this edge has the lowest offset out of all out-edges of v0.
-// - isLowestOffset1 is set if this edge has the lowest offset out of all in-edges of v1.
-void Graph::setLowestOffsetFlags()
+// - isBest0 is set if this edge has the best score among all out-edges of v0.
+// - isBest1 is set if this edge has the best score among all in-edges of v1.
+void Graph::setBestEdgeFlags()
 {
     Graph& graph = *this;
 
     // First set all the flags to false;
     BGL_FORALL_EDGES(e, graph, Graph) {
         Edge& edge = graph[e];
-        edge.isLowestOffset0 = false;
-        edge.isLowestOffset1 = false;
+        edge.isBest0 = false;
+        edge.isBest1 = false;
     }
 
 
@@ -603,39 +598,41 @@ void Graph::setLowestOffsetFlags()
     // Then loop over all vertices to set the flags.
     BGL_FORALL_VERTICES(v, graph, Graph) {
 
-        // Set the isLowestOffset0 flag for out-edge with the lowest offset.
-        edge_descriptor eLowest;
-        int32_t lowestOffset = std::numeric_limits<int32_t>::max();
-        BGL_FORALL_OUTEDGES(v, e, graph, Graph) {
-            const int32_t offset = graph[e].segmentPairInformation.segmentOffset;
-            if(offset < lowestOffset) {
-                lowestOffset = offset;
-                eLowest = e;
+        // Set the isBest0 flag for the out-edge with the best score.
+        if(out_degree(v, graph) > 0) {
+            edge_descriptor eBest;
+            double bestScore = 0.;
+            BGL_FORALL_OUTEDGES(v, e, graph, Graph) {
+                const double score = graph[e].score;
+                if(score > bestScore) {
+                    bestScore = score;
+                    eBest = e;
+                }
             }
-        }
-        if(lowestOffset != std::numeric_limits<int32_t>::max()) {
-            graph[eLowest].isLowestOffset0 = true;
+            graph[eBest].isBest0 = true;
         }
 
-        // Set the isLowestOffset1 flag for in-edge with the lowest offset.
-        lowestOffset = std::numeric_limits<int32_t>::max();
-        BGL_FORALL_INEDGES(v, e, graph, Graph) {
-            const int32_t offset = graph[e].segmentPairInformation.segmentOffset;
-            if(offset < lowestOffset) {
-                lowestOffset = offset;
-                eLowest = e;
+        // Set the isBest1 flag for the in-edge with the best score.
+        if(in_degree(v, graph) > 0) {
+            edge_descriptor eBest;
+            double bestScore = 0.;
+            BGL_FORALL_INEDGES(v, e, graph, Graph) {
+                const double score = graph[e].score;
+                if(score > bestScore) {
+                    bestScore = score;
+                    eBest = e;
+                }
             }
+            graph[eBest].isBest1 = true;
         }
-        if(lowestOffset != std::numeric_limits<int32_t>::max()) {
-            graph[eLowest].isLowestOffset1 = true;
-        }
+
     }
 }
 
 
 
 // Find assembly paths.
-// These are minimum offset paths between vertices corresponding to long segments.
+// These are paths between vertices corresponding to long segments.
 // Note these are paths in the ReadFollowing::Graph but not in the AssemblyGraph.
 void Graph::findPaths(vector< vector<Segment> >& assemblyPaths) const
 {
@@ -643,7 +640,7 @@ void Graph::findPaths(vector< vector<Segment> >& assemblyPaths) const
     const bool debug = true;
 
 
-    // A graph to store the minimum offset paths we find.
+    // A graph to store the paths we find.
     // Each vertex corresponds to a long segment.
     // An edge u0->u1 contains a path that starts at segment(u0)
     // and ends at segment(u1). We only keep one path u0->u1,
@@ -679,7 +676,7 @@ void Graph::findPaths(vector< vector<Segment> >& assemblyPaths) const
 
 
 
-    // For each PathGraphVertex, compute a minimum offset path in each direction,
+    // For each PathGraphVertex, compute a path in each direction,
     // always stopping when another long segment is encountered.
     // Each path generates a PathGraphEdge, as long as an edge between
     // the same two PathGraph vertices does not already exist.
@@ -827,5 +824,18 @@ void Graph::writePaths() const
             csv << assemblyGraph[segment].id << ",";
         }
         csv << "\n";
+    }
+}
+
+
+
+// This will require some experimentation.
+void Graph::computeEdgeScores()
+{
+    Graph& graph = *this;
+
+    BGL_FORALL_EDGES(e, graph, Graph) {
+        Edge& edge = graph[e];
+        edge.score = double(edge.segmentPairInformation.commonCount) * edge.segmentPairInformation.correctedJaccard;
     }
 }
