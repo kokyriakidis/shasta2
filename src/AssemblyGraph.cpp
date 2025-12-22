@@ -2323,16 +2323,16 @@ double AssemblyGraphEdge::averageCoverage() const
 
 double AssemblyGraphEdge::lengthWeightedAverageCoverage() const
 {
-    uint64_t sumLength = 0;
-    uint64_t sumCoverage = 0;
+    uint64_t sum0 = 0;
+    uint64_t sum1 = 0;
     for(const AssemblyGraphEdgeStep& step: *this) {
         const uint64_t length = wasAssembled ? step.sequence.size() : step.offset;
         const uint64_t coverage = step.anchorPair.orientedReadIds.size();
-        sumLength += length;
-        sumCoverage += coverage;
+        sum0 += length;
+        sum1 += length * coverage;
     }
 
-    return double(sumCoverage) / double(sumLength);
+    return double(sum1) / double(sum0);
 }
 
 
