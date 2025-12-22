@@ -68,12 +68,18 @@ Graph::Graph(const AssemblyGraph& assemblyGraph) :
 // Each vertex corresponds to a Segment of the AssemblyGraph.
 void Graph::createVertices()
 {
+    // EXPOSE WHEN CODE STABILIZES.
+    const double maxCoverage = 18.;
+
     Graph& graph = *this;
 
     // Each Segment generates a Vertex.
     BGL_FORALL_EDGES(segment, assemblyGraph, AssemblyGraph) {
+        const Vertex vertex(assemblyGraph, segment);
+        if(vertex.coverage < maxCoverage) {
         const vertex_descriptor v = add_vertex(Vertex(assemblyGraph, segment), graph);
         vertexMap.insert(make_pair(segment, v));
+        }
     }
 
 }
