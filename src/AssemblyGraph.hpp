@@ -122,6 +122,7 @@ public:
     uint64_t length() const;
 
     double averageCoverage() const;
+    double lengthWeightedAverageCoverage() const;
 
     template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
     {

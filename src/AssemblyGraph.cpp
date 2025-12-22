@@ -310,7 +310,7 @@ void AssemblyGraph::writeGfa(ostream& gfa) const
     vector<shasta2::Base> sequence;
     BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
         const AssemblyGraphEdge& edge = assemblyGraph[e];
-        const double coverage = edge.averageCoverage();
+        const double coverage = edge.lengthWeightedAverageCoverage();
 
         // Record type.
         gfa << "S\t";
@@ -2319,6 +2319,21 @@ double AssemblyGraphEdge::averageCoverage() const
     return double(sum) / double(size());
 }
 
+
+
+double AssemblyGraphEdge::lengthWeightedAverageCoverage() const
+{
+    uint64_t sumLength = 0;
+    uint64_t sumCoverage = 0;
+    for(const AssemblyGraphEdgeStep& step: *this) {
+        const uint64_t length = wasAssembled ? step.sequence.size() : step.offset;
+        const uint64_t coverage = step.anchorPair.orientedReadIds.size();
+        sumLength += length;
+        sumCoverage += coverage;
+    }
+
+    return double(sumCoverage) / double(sumLength);
+}
 
 
 
