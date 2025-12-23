@@ -220,7 +220,17 @@ public:
     void gatherTransitions(ostream& html);
 
     // Failure modes.
-    class NoTransitions : public std::exception {};
-    class Unreachable : public std::exception {};
+    class NoTransitions : public std::exception {
+        const char* what() const noexcept
+        {
+            return "RestrictedAnchorGraph: NoTransitions";
+        }
+    };
+    class Unreachable : public std::exception {
+        const char* what() const noexcept
+        {
+            return "RestrictedAnchorGraph: Unreachable";
+        }
+    };
 
 };
