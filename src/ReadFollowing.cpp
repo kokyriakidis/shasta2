@@ -6,6 +6,7 @@
 #include "Journeys.hpp"
 #include "Markers.hpp"
 #include "Options.hpp"
+#include "orderPairs.hpp"
 using namespace shasta2;
 using namespace ReadFollowing;
 
@@ -590,6 +591,8 @@ bool Graph::pruneIteration()
 // For each edge v0->v1:
 // - isBest0 is set if this edge has the best score among all out-edges of v0.
 // - isBest1 is set if this edge has the best score among all in-edges of v1.
+// However, edges for which canConnect returns false are forbidden
+// from being flagged as best edges.
 void Graph::setBestEdgeFlags()
 {
     Graph& graph = *this;
@@ -601,42 +604,74 @@ void Graph::setBestEdgeFlags()
         edge.isBest1 = false;
     }
 
+    vector< pair<edge_descriptor, double> > edgesWithScores;
+
 
 
     // Then loop over all vertices to set the flags.
     BGL_FORALL_VERTICES(v, graph, Graph) {
 
-        // Set the isBest0 flag for the out-edge with the best score.
-        if(out_degree(v, graph) > 0) {
-            edge_descriptor eBest;
-            double bestScore = 0.;
-            BGL_FORALL_OUTEDGES(v, e, graph, Graph) {
-                const double score = graph[e].score;
-                if(score > bestScore) {
-                    bestScore = score;
-                    eBest = e;
-                }
-            }
-            graph[eBest].isBest0 = true;
+
+
+        // Gather the out-edges with their scores.
+        edgesWithScores.clear();
+        BGL_FORALL_OUTEDGES(v, e, graph, Graph) {
+            edgesWithScores.push_back(make_pair(e, graph[e].score));
         }
 
-        // Set the isBest1 flag for the in-edge with the best score.
-        if(in_degree(v, graph) > 0) {
-            edge_descriptor eBest;
-            double bestScore = 0.;
-            BGL_FORALL_INEDGES(v, e, graph, Graph) {
-                const double score = graph[e].score;
-                if(score > bestScore) {
-                    bestScore = score;
-                    eBest = e;
+        // Set the isBest0 flag for the one with the highest score for which
+        // connect returns true.
+        if(not edgesWithScores.empty()) {
+            sort(edgesWithScores.begin(), edgesWithScores.end(),
+                OrderPairsBySecondOnlyGreater<edge_descriptor, double>());
+            for(const auto& [e, score]: edgesWithScores) {
+                if(canConnect(e)) {
+                    graph[e].isBest0 = true;
+                    break;
                 }
             }
-            graph[eBest].isBest1 = true;
+        }
+
+
+
+        // Gather the in-edges with their scores.
+        edgesWithScores.clear();
+        BGL_FORALL_INEDGES(v, e, graph, Graph) {
+            edgesWithScores.push_back(make_pair(e, graph[e].score));
+        }
+
+        // Set the isBest1 flag for the one with the highest score for which
+        // connect returns true.
+        if(not edgesWithScores.empty()) {
+            sort(edgesWithScores.begin(), edgesWithScores.end(),
+                OrderPairsBySecondOnlyGreater<edge_descriptor, double>());
+            for(const auto& [e, score]: edgesWithScores) {
+                if(canConnect(e)) {
+                    graph[e].isBest1 = true;
+                    break;
+                }
+            }
         }
 
     }
 }
 
+
+
+// This returns true if an edge is usable for assembly.
+// It calls AssemblyGraph::canConnect.
+bool Graph::canConnect(edge_descriptor e) const
+{
+    const Graph& graph = *this;
+
+    const vertex_descriptor v0 = source(e, graph);
+    const vertex_descriptor v1 = target(e, graph);
+
+    const Segment segment0 = graph[v0].segment;
+    const Segment segment1 = graph[v1].segment;
+
+    return assemblyGraph.canConnect(segment0, segment1);
+}
 
 
 // Find assembly paths.

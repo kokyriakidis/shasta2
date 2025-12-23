@@ -20,6 +20,7 @@
 #include "Options.hpp"
 #include "performanceLog.hpp"
 #include "Reads.hpp"
+#include "RestrictedAnchorGraph.hpp"
 #include "rle.hpp"
 #include "SearchGraph.hpp"
 #include "Superbubble.hpp"
@@ -3743,4 +3744,67 @@ uint64_t AssemblyGraph::detangleShortTangles(Detangler& detangler)
     compress();
 
     return successCount;
+}
+
+
+
+// Return true if the two specified edges can be connected for assembly.
+// If necessary, this constructs the RestrictedAnchorGraph between the two edges
+// and checks that all is good.
+bool AssemblyGraph::canConnect(edge_descriptor e0, edge_descriptor e1) const
+{
+    const AssemblyGraph& assemblyGraph = *this;
+
+    // If the last AnchorId of e0 is the same as the first AnchorId of v1,
+    // They can be trivially connected.
+    const AssemblyGraph::vertex_descriptor v0 = target(e0, assemblyGraph);
+    const AssemblyGraph::vertex_descriptor v1 = source(e1, assemblyGraph);
+    if(v0 == v1) {
+        return true;
+    }
+    const AnchorId anchorId0 = assemblyGraph[v0].anchorId;
+    const AnchorId anchorId1 = assemblyGraph[v1].anchorId;
+    if(anchorId0 == anchorId1) {
+        return true;
+    }
+
+
+
+    // In the general case, we need to construct the RestrictedAnchorGraph
+    // between e0 and e1. The RestrictedAnchorGraph requires a TangleMatrix,
+    // so we create a 1x1 tangle matrix with e0 as the entrance and e1 as the exit.
+    ostream html(0);
+    TangleMatrix1 tangleMatrix(assemblyGraph, {e0}, {e1}, html);
+
+
+
+    // Create the RestrictedAnchorGraph. If this fails, return false.
+    try {
+        ostream html(0);
+
+        // Create the RestrictedAnchorGraph.
+        RestrictedAnchorGraph restrictedAnchorGraph(anchors, journeys, tangleMatrix, 0, 0, html);
+        vector<RestrictedAnchorGraph::edge_descriptor> longestPath;
+
+        // Check that we have a path.
+        restrictedAnchorGraph.findOptimalPath(anchorId0, anchorId1, longestPath);
+
+        // Check coverage.
+        uint64_t minCoverage = std::numeric_limits<uint64_t>::max();
+        for(const RestrictedAnchorGraph::edge_descriptor e: longestPath) {
+            const RestrictedAnchorGraphEdge& edge = restrictedAnchorGraph[e];
+            minCoverage = min(minCoverage, edge.anchorPair.size());
+        }
+        if(minCoverage < options.detangleMinCoverage) {
+            return false;
+        }
+
+    } catch (const std::exception& e) {
+        return false;
+    }
+
+
+
+    // If we get here, all is good.
+    return true;
 }

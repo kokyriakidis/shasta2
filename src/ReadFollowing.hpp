@@ -100,6 +100,10 @@ private:
     // Remove edges that don't have the best score at least one direction.
     void removeNonBestScoreEdges();
 
+    // This returns true if an edge is usable for assembly.
+    // It calls AssemblyGraph::canConnect.
+    bool canConnect(edge_descriptor) const;
+
     // Output.
     void write(const string& name) const;
     void writeCsv(const string& name) const;

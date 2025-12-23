@@ -268,6 +268,13 @@ public:
 
 
 
+    // Return true if the two specified edges can be connected for assembly.
+    // If necessary, this construct the RestrictedAnchorGraph between the two edges
+    // and checks that all is good.
+    bool canConnect(edge_descriptor, edge_descriptor) const;
+
+
+
     // Detangling.
     // The detangling functions return the number of successful detangling operations.
 
