@@ -329,10 +329,15 @@ void AssemblyGraph::writeGfa(ostream& gfa) const
             gfa << "\n";
 
         } else {
-            const uint64_t offset = edge.offset();
-            gfa << "*\tLN:i:" << offset;
-            gfa << "\tRC:i:" << uint64_t(std::round(coverage * double(offset)));
-            gfa << "\n";
+            if(edge.empty()) {
+                gfa << "*\tLN:i:0\n";
+
+            } else {
+                const uint64_t offset = edge.offset();
+                gfa << "*\tLN:i:" << offset;
+                gfa << "\tRC:i:" << uint64_t(std::round(coverage * double(offset)));
+                gfa << "\n";
+            }
         }
     }
 
@@ -1063,8 +1068,17 @@ uint64_t AssemblyGraph::compress()
 
 
 
-        // Compact debug output.
+        // Minimal debug output.
         if(compressDebugLevel >= 1) {
+            cout << "Compress " << assemblyGraph[chain.front()].id << "..." <<
+                assemblyGraph[chain.back()].id <<
+                " into " << edgeNew.id << endl;
+        }
+
+
+
+        // Compact debug output.
+        if(compressDebugLevel >= 2) {
             cout << "Compress";
             for(const edge_descriptor e: chain) {
                 cout << " " << assemblyGraph[e].id;
@@ -1075,7 +1089,7 @@ uint64_t AssemblyGraph::compress()
 
 
         // Detailed debug output.
-        if(compressDebugLevel >= 2) {
+        if(compressDebugLevel >= 3) {
             uint64_t stepCount = 0;
             for(const edge_descriptor e: chain) {
                 const AssemblyGraphEdge& edge = assemblyGraph[e];
