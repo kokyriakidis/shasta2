@@ -575,7 +575,11 @@ void Assembler::exploreSegmentSteps(
     }
     const AssemblyGraph::edge_descriptor e = it->second;
     const AssemblyGraphEdge& edge = assemblyGraph[e];
-    const uint64_t coverage = uint64_t(std::round(edge.averageCoverage()));
+
+    const AssemblyGraph::vertex_descriptor v0 = source(e, assemblyGraph);
+    const AssemblyGraph::vertex_descriptor v1 = target(e, assemblyGraph);
+    const AnchorId anchorId0 = assemblyGraph[v0].anchorId;
+    const AnchorId anchorId1 = assemblyGraph[v1].anchorId;
 
 
 
@@ -584,10 +588,14 @@ void Assembler::exploreSegmentSteps(
     // Summary table.
     html <<
         "<table>"
-        "<tr><th class=left>First anchor<td class = centered>" << anchorIdToString(edge.front().anchorPair.anchorIdA) <<
-        "<tr><th class=left>Last anchor<td class = centered>" << anchorIdToString(edge.back().anchorPair.anchorIdB) <<
-        "<tr><th class=left>Number of steps<td class = centered>" << edge.size() <<
-        "<tr><th class=left>Average coverage<td class = centered>" << coverage <<
+        "<tr><th class=left>First anchor<td class = centered>" << anchorIdToString(anchorId0) <<
+        "<tr><th class=left>Last anchor<td class = centered>" << anchorIdToString(anchorId1) <<
+        "<tr><th class=left>Number of steps<td class = centered>" << edge.size();
+    if(not edge.empty()) {
+        html <<
+            "<tr><th class=left>Average coverage<td class = centered>" << uint64_t(std::round(edge.averageCoverage()));
+    }
+    html <<
         "<tr><th class=left>Estimated length<td class = centered>" << edge.offset() <<
         "<tr><th class=left>Assembled<td class = centered>" << (edge.wasAssembled ? "Yes" : "No");
     if(edge.wasAssembled) {
@@ -599,15 +607,15 @@ void Assembler::exploreSegmentSteps(
 
     html <<
         "<br><a href='exploreLocalAnchorGraph?anchorIdsString=" <<
-        HttpServer::urlEncode(anchorIdToString(edge.front().anchorPair.anchorIdA)) <<
+        HttpServer::urlEncode(anchorIdToString(anchorId0)) <<
         "'>See the first anchor in the local anchor graph</a>"
         "<br><a href='exploreLocalAnchorGraph?anchorIdsString=" <<
-        HttpServer::urlEncode(anchorIdToString(edge.back().anchorPair.anchorIdB)) <<
+        HttpServer::urlEncode(anchorIdToString(anchorId1)) <<
         "'>See the last anchor in the local anchor graph</a>"
         "<br><a href='exploreLocalAnchorGraph?anchorIdsString=" <<
         HttpServer::urlEncode(
-            anchorIdToString(edge.front().anchorPair.anchorIdA) + " " +
-            anchorIdToString(edge.back().anchorPair.anchorIdB)) <<
+            anchorIdToString(anchorId0) + " " +
+            anchorIdToString(anchorId1)) <<
         "'>See the first and last anchor in the local anchor graph</a>";
 
 
@@ -668,10 +676,10 @@ void Assembler::exploreSegmentSteps(
 
 
     // Details table showing the requested steps.
-    if(displaySteps != "none") {
+    if((displaySteps != "none") and (not edge.empty())) {
 
         html <<
-            "<p>"
+            "<br>"
             "<table>"
             "<tr><th>Step<th>AnchorIdA<th>AnchorIdB<th>Coverage<th>Estimated<br>Length";
         if(edge.wasAssembled) {
