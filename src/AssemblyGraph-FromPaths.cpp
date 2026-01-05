@@ -144,6 +144,16 @@ void AssemblyGraph::connectAssemblyPaths(const vector< vector<edge_descriptor> >
 
 
 
+		if(debug) {
+		    cout << "Old assembly path " << assemblyGraph[assemblyPath.front()].id << "..." <<
+		        assemblyGraph[assemblyPath.back()].id <<
+		        " generated new assembly chain " <<
+		        assemblyGraph[newAssemblyPath.front()].id << "..." <<
+		        assemblyGraph[newAssemblyPath.back()].id << endl;
+		}
+
+
+
 	    // For each pair of consecutive edges in this path,
 	    // generate a new edge in-between to bridge between them.
 	    // The code is similar to Tangle1::addConnectPair and Tangle1::detangle,
@@ -213,8 +223,21 @@ void AssemblyGraph::connectAssemblyPaths(const vector< vector<edge_descriptor> >
 		boost::remove_edge(e, assemblyGraph);
 	}
 
-	// Compress the lienar chains we created.
+
+	// Write the assembly graph after read following but before compress
+	if(debug) {
+	    write("ReadFollowing-BeforeCompress");
+	}
+
+	// Compress the linear chains we created.
+	uint64_t oldCompressDebugLevel = compressDebugLevel;
+	if(debug) {
+	    compressDebugLevel = 1;
+	}
 	compress();
+    if(debug) {
+        compressDebugLevel = oldCompressDebugLevel;
+    }
 }
 
 
