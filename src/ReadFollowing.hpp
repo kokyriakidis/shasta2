@@ -11,6 +11,7 @@
 
 // Standard library.
 #include <map>
+#include <random>
 #include <set>
 
 
@@ -51,6 +52,14 @@ public:
     vector<SegmentStepSupport> initialSupport;
     vector<SegmentStepSupport> finalSupport;
 
+    // These are needed for efficient creation of random paths.
+    // We cannot use vecS for the adjacency_list because we
+    // need to remove vertices and edges (for pruning).
+    // These are filled by fillConnectivity after
+    // pruning is done and the graph will no longer change.
+    vector<GraphBaseClass::edge_descriptor> outEdges;
+    vector<GraphBaseClass::edge_descriptor> inEdges;
+
 };
 
 
@@ -59,16 +68,6 @@ class shasta2::ReadFollowing::Edge {
 public:
     Edge(const AssemblyGraph&, Segment, Segment);
     SegmentPairInformation segmentPairInformation;
-
-    using Score = double;
-    Score score;
-
-    // For each edge v0->v1:
-    // - isBest0 is set if this edge has the best score out of all out-edges of v0.
-    // - isBest1 is set if this edge has the best score out of all in-edges of v1.
-    // These are not maintained. They are set by setBestEdgeFlags().
-    bool isBest0 = false;
-    bool isBest1 = false;
 };
 
 
@@ -85,24 +84,11 @@ private:
     void createVertices();
     void createEdges();
 
-    void computeEdgeScores();
-    void setBestEdgeFlags();
-
-    // Edge cleanup.
-    void removeNegativeOffsetEdges();
-    void removeLowCommonCountEdges(uint64_t minCommonCount);
-    void removeLowCommonCorrectedJaccardEdges(double minCorrectedJaccard);
-
-    // Prune sort leaves.
+    // Prune short leaves.
     void prune();
     bool pruneIteration();
 
-    // Remove edges that don't have the best score at least one direction.
-    void removeNonBestScoreEdges();
-
-    // This returns true if an edge is usable for assembly.
-    // It calls AssemblyGraph::canConnect.
-    bool canConnect(edge_descriptor) const;
+    void fillConnectivity();
 
     // Output.
     void write(const string& name) const;
@@ -113,31 +99,37 @@ private:
 
 public:
 
-    // Path following.
-    // These functions find a best path starting at the given vertex and
-    // ending if one of the forbiddenVertices is encountered.
+
+
+    // Random paths.
+    // These functions find a random path starting at the given vertex.
     // Direction is 0 for forward and 1 backward.
+    // The path ends when one of the stop vertices is encountered,
+    // but can end sooner.
     // Note these are paths in the ReadFollowing::Graph
     // but not in the AssemblyGraph.
-
-    void findPath(
+    template<std::uniform_random_bit_generator RandomGenerator> void findRandomPath(
         vertex_descriptor, uint64_t direction,
+        RandomGenerator&,
         vector<vertex_descriptor>& path,
-        const std::set<vertex_descriptor>& stopVertices) const;
-    void findForwardPath(
+        const std::set<vertex_descriptor>& stopVertices);
+    template<std::uniform_random_bit_generator RandomGenerator> void findRandomForwardPath(
         vertex_descriptor,
+        RandomGenerator&,
         vector<vertex_descriptor>& path,
-        const std::set<vertex_descriptor>& stopVertices) const;
-    void findBackwardPath(
+        const std::set<vertex_descriptor>& stopVertices);
+    template<std::uniform_random_bit_generator RandomGenerator> void findRandomBackwardPath(
         vertex_descriptor,
+        RandomGenerator&,
         vector<vertex_descriptor>& path,
-        const std::set<vertex_descriptor>& stopVertices) const;
+        const std::set<vertex_descriptor>& stopVertices);
+
+
 
     // Find assembly paths.
-    // These are best paths between vertices corresponding to long segments.
-    void findPaths(vector< vector<Segment> >& assemblyPaths) const;
+    void findPaths(vector< vector<Segment> >& assemblyPaths);
 
     // Python callable.
-    void writePath(Segment, uint64_t direction) const;
-    void writePaths() const;
+    void writeRandomPath(Segment, uint64_t direction);
+    void writePaths();
 };

@@ -2,6 +2,7 @@
 
 // Shasta.
 #include "ReadFollowing.hpp"
+#include "deduplicate.hpp"
 #include "findLinearChains.hpp"
 #include "Journeys.hpp"
 #include "Markers.hpp"
@@ -16,51 +17,33 @@ using namespace ReadFollowing;
 // Standard library.
 #include "fstream.hpp"
 #include <iomanip>
+#include <random>
 
 
 
 Graph::Graph(const AssemblyGraph& assemblyGraph) :
     assemblyGraph(assemblyGraph)
 {
-	const bool debug = true;
+    Graph& graph = *this;
 
     // Initial creation with all possible vertices and edges.
     createVertices();
     createEdges();
-    computeEdgeScores();
-    if(debug) {
-    	write("A");
-    }
+    cout << "The initial read following graph has " << num_vertices(graph) <<
+        " vertices and " << num_edges(graph) << " edges." << endl;
 
-    // Remove edges with negative offsets.
-    removeNegativeOffsetEdges();
-    if(debug) {
-    	write("B");
-    }
-
-    // Remove edges with low commonCount.
-    removeLowCommonCountEdges(assemblyGraph.options.readFollowingMinCommonCount);
-    if(debug) {
-    	write("C");
-    }
-
-    // Remove edges with low correctedJaccard.
-    removeLowCommonCorrectedJaccardEdges(assemblyGraph.options.readFollowingMinCorrectedJaccard);
-    if(debug) {
-    	write("D");
-    }
 
     // Prune short leaves.
     prune();
-    if(debug) {
-    	write("E");
-    }
+   	write("Final");
+    cout << "After pruning, the read following graph has " << num_vertices(graph) <<
+        " vertices and " << num_edges(graph) << " edges." << endl;
 
-    // Remove edges that don't have the best score at least one direction.
-    removeNonBestScoreEdges();
-    if(debug) {
-    	write("F");
-    }
+    // This fills the outEdges and inEdges fields in each vertex.
+    // They are needed for efficient generation of random paths.
+    // This must be called after all changes to the graph have been made.
+    fillConnectivity();
+
 }
 
 
@@ -116,6 +99,8 @@ void Graph::createEdges()
 {
     Graph& graph = *this;
     const uint64_t orientedReadCount = assemblyGraph.journeys.size();
+    const uint64_t minCommonCount = assemblyGraph.options.readFollowingMinCommonCount;
+    const double minCorrectedJaccard = assemblyGraph.options.readFollowingMinCorrectedJaccard;
 
     // For each OrientedReadId, gather the vertices that the OrientedReadId
     // appears in, in the initial/final support.
@@ -136,8 +121,8 @@ void Graph::createEdges()
 
 
     // An edge v0->v1 will be created if the final support of v0
-    // shares at least one OrientedReadId with the initial support of v1.
-    std::set< pair<vertex_descriptor, vertex_descriptor> > vertexPairs;
+    // shares at least minCommonCount OrientedReadId with the initial support of v1.
+    vector< pair<vertex_descriptor, vertex_descriptor> > vertexPairs;
     for(uint64_t i=0; i<orientedReadCount; i++) {
         const vector<vertex_descriptor>& initialVertices = initialSupportVertices[i];
         const vector<vertex_descriptor>& finalVertices = finalSupportVertices[i];
@@ -149,22 +134,51 @@ void Graph::createEdges()
 
                 // This OrientedReadId appears in the final support of v0 and in the
                 // initial support of v1, so we will create an edge v0->v1.
-                vertexPairs.insert({v0, v1});
+                vertexPairs.push_back({v0, v1});
             }
         }
     }
+    vector<uint64_t> count;
+    deduplicateAndCountWithThreshold(vertexPairs, count, minCommonCount);
+    SHASTA2_ASSERT(vertexPairs.size() == count.size());
 
 
-    // Generate an edge for each of these pairs.
-    for(const auto& p: vertexPairs) {
+
+    // Generate an edge for each of these pairs that satisfies our requirements.
+    // This should be parallelized because the call to canConnect is expensive.
+    cout << "Found " << vertexPairs.size() << " candidate edges for the read following graph." << endl;
+    for(uint64_t i=0; i<vertexPairs.size(); i++) {
+        const auto& p = vertexPairs[i];
+
         const vertex_descriptor v0 = p.first;
         const vertex_descriptor v1 = p.second;
 
         const Segment segment0 = graph[v0].segment;
         const Segment segment1 = graph[v1].segment;
 
-        add_edge(v0, v1, Edge(assemblyGraph, segment0, segment1), graph);
+        // Create the candidate edge.
+        const Edge edge(assemblyGraph, segment0, segment1);
+
+        // This must be true given the way we constructed the vertex pairs.
+        SHASTA2_ASSERT(edge.segmentPairInformation.commonCount >= minCommonCount);
+        SHASTA2_ASSERT(edge.segmentPairInformation.commonCount == count[i]);
+
+        if(edge.segmentPairInformation.segmentOffset < 0) {
+            continue;
+        }
+
+        if(edge.segmentPairInformation.correctedJaccard < minCorrectedJaccard) {
+            continue;
+        }
+
+        if(not assemblyGraph.canConnect(segment0, segment1)) {
+            continue;
+        }
+
+        // Add this edge to the Graph.
+        add_edge(v0, v1, edge, graph);
     }
+    cout << "Kept " << num_edges(graph) << " edges in the read following graph." << endl;
 }
 
 
@@ -180,86 +194,6 @@ Edge::Edge(
         html, assemblyGraph, segment0, segment1, representativeRegionStepCount);
 
     SHASTA2_ASSERT(segmentPairInformation.commonCount > 0);
-}
-
-
-
-void Graph::removeLowCommonCountEdges(uint64_t minCommonCount)
-{
-    Graph& graph = *this;
-
-    vector<edge_descriptor> edgesToBeRemoved;
-    BGL_FORALL_EDGES(e, graph, Graph) {
-        if(graph[e].segmentPairInformation.commonCount < minCommonCount) {
-            edgesToBeRemoved.push_back(e);
-        }
-    }
-
-    for(const edge_descriptor e: edgesToBeRemoved) {
-        boost::remove_edge(e, graph);
-    }
-}
-
-
-
-void Graph::removeNegativeOffsetEdges()
-{
-    Graph& graph = *this;
-
-    vector<edge_descriptor> edgesToBeRemoved;
-    BGL_FORALL_EDGES(e, graph, Graph) {
-        if(graph[e].segmentPairInformation.segmentOffset < 0) {
-            edgesToBeRemoved.push_back(e);
-        }
-    }
-
-    for(const edge_descriptor e: edgesToBeRemoved) {
-        boost::remove_edge(e, graph);
-    }
-
-}
-
-
-
-// Remove edges that are not flagged as "best edge" in at least one direction.
-void Graph::removeNonBestScoreEdges()
-{
-    Graph& graph = *this;
-
-    // Make sure the best edge flags are valid.
-    computeEdgeScores();
-    setBestEdgeFlags();
-
-    // Gather the edges to be removed.
-    vector<edge_descriptor> edgesToBeRemoved;
-    BGL_FORALL_EDGES(e, graph, Graph) {
-        const Edge& edge = graph[e];
-        if(not (edge.isBest0 or edge.isBest1)) {
-            edgesToBeRemoved.push_back(e);
-        }
-    }
-
-    for(const edge_descriptor e: edgesToBeRemoved) {
-        boost::remove_edge(e, graph);
-    }
-}
-
-
-
-void Graph::removeLowCommonCorrectedJaccardEdges(double minCorrectedJaccard)
-{
-    Graph& graph = *this;
-
-    vector<edge_descriptor> edgesToBeRemoved;
-    BGL_FORALL_EDGES(e, graph, Graph) {
-        if(graph[e].segmentPairInformation.correctedJaccard < minCorrectedJaccard) {
-            edgesToBeRemoved.push_back(e);
-        }
-    }
-
-    for(const edge_descriptor e: edgesToBeRemoved) {
-        boost::remove_edge(e, graph);
-    }
 }
 
 
@@ -315,7 +249,7 @@ void Graph::writeGraphviz(const string& name) const
     dot << std::fixed << std::setprecision(2);
     BGL_FORALL_EDGES(e, graph, Graph) {
         const Edge& edge = graph[e];
-        const int32_t offset = edge.segmentPairInformation.segmentOffset;
+        // const int32_t offset = edge.segmentPairInformation.segmentOffset;
 
         const vertex_descriptor v0 = source(e, graph);
         const vertex_descriptor v1 = target(e, graph);
@@ -328,11 +262,13 @@ void Graph::writeGraphviz(const string& name) const
         dot << "[";
 
         // Label.
+#if 0
         dot << "label=\"" <<
             edge.segmentPairInformation.commonCount << "/" <<
             std::fixed << std::setprecision(2) <<
             edge.segmentPairInformation.correctedJaccard << "\\n" <<
             offset << "\"";
+#endif
 
         // Thickness is proportional to commonCount.
         dot << " penwidth=" << 0.2 * double(edge.segmentPairInformation.commonCount);
@@ -435,27 +371,26 @@ void Graph::writeEdgesCsv(const string& name) const
 
 
 
-// Find a best path starting at the given vertex and
-// ending if one of the terminalVertices is encountered.
-// Direction is 0 for forward and 1 backward.
-void Graph::findPath(
+template<std::uniform_random_bit_generator RandomGenerator> void Graph::findRandomPath(
     vertex_descriptor v, uint64_t direction,
+    RandomGenerator& randomGenerator,
     vector<vertex_descriptor>& path,
-    const std::set<vertex_descriptor>& stopVertices) const
+    const std::set<vertex_descriptor>& stopVertices)
 {
     if(direction == 0) {
-        findForwardPath(v, path, stopVertices);
+        findRandomForwardPath(v, randomGenerator, path, stopVertices);
     } else {
-        findBackwardPath(v, path, stopVertices);
+        findRandomBackwardPath(v, randomGenerator, path, stopVertices);
     }
 }
 
 
 
-void Graph::findForwardPath(
+template<std::uniform_random_bit_generator RandomGenerator> void Graph::findRandomForwardPath(
     vertex_descriptor v,
+    RandomGenerator& randomGenerator,
     vector<vertex_descriptor>& path,
-    const std::set<vertex_descriptor>& stopVertices) const
+    const std::set<vertex_descriptor>& stopVertices)
 {
     const Graph& graph = *this;
 
@@ -463,25 +398,18 @@ void Graph::findForwardPath(
     path.clear();
     path.push_back(v);
 
-
-
     // At each iteration, add one vertex to the path.
-    // Use the edge with best score
     while(out_degree(v, assemblyGraph) > 0) {
 
-        // Find the edge with best score.
-        double bestScore = 0.;
-        edge_descriptor eBest = edge_descriptor({0, 0, 0});
-        BGL_FORALL_OUTEDGES(v, e, graph, Graph) {
-            const double score = graph[e].score;
-            if(score > bestScore) {
-                bestScore = score;
-                eBest = e;
-            }
-        }
+        // Pick a random out-edge.
+        const vector<edge_descriptor>& outEdges = graph[v].outEdges;
+        const uint64_t n = outEdges.size();
+        std::uniform_int_distribution<uint64_t> distribution(0, n - 1);
+        const uint64_t i = distribution(randomGenerator);
+        const edge_descriptor e = outEdges[i];
 
-        // Add to the path the target of this vertex and continue from here.
-        v = target(eBest, graph);
+        // Add to the path the target of this edge and continue from here.
+        v = target(e, graph);
         path.push_back(v);
 
         if(stopVertices.contains(v)) {
@@ -492,10 +420,11 @@ void Graph::findForwardPath(
 
 
 
-void Graph::findBackwardPath(
+template<std::uniform_random_bit_generator RandomGenerator> void Graph::findRandomBackwardPath(
     vertex_descriptor v,
+    RandomGenerator& randomGenerator,
     vector<vertex_descriptor>& path,
-    const std::set<vertex_descriptor>& stopVertices) const
+    const std::set<vertex_descriptor>& stopVertices)
 {
     const Graph& graph = *this;
 
@@ -503,25 +432,18 @@ void Graph::findBackwardPath(
     path.clear();
     path.push_back(v);
 
-
-
     // At each iteration, add one vertex to the path.
-    // Use the edge with minimum offset.
     while(in_degree(v, assemblyGraph) > 0) {
 
-        // Find the edge with best score.
-        double bestScore = 0.;
-        edge_descriptor eBest  = edge_descriptor({0, 0, 0});
-        BGL_FORALL_INEDGES(v, e, graph, Graph) {
-            const double score = graph[e].score;
-            if(score > bestScore) {
-                bestScore = score;
-                eBest = e;
-            }
-        }
+        // Pick a random in-edge.
+        const vector<edge_descriptor>& inEdges = graph[v].inEdges;
+        const uint64_t n = inEdges.size();
+        std::uniform_int_distribution<uint64_t> distribution(0, n - 1);
+        const uint64_t i = distribution(randomGenerator);
+        const edge_descriptor e = inEdges[i];
 
-        // Add to the path the source of this vertex and continue from here.
-        v = source(eBest, graph);
+        // Add to the path the source of this edge and continue from here.
+        v = source(e, graph);
         path.push_back(v);
 
         if(stopVertices.contains(v)) {
@@ -535,7 +457,7 @@ void Graph::findBackwardPath(
 
 
 
-void Graph::writePath(Segment segment, uint64_t direction) const
+void Graph::writeRandomPath(Segment segment, uint64_t direction)
 {
     const Graph& graph = *this;
 
@@ -545,15 +467,16 @@ void Graph::writePath(Segment segment, uint64_t direction) const
 
     vector<vertex_descriptor> path;
     std::set<vertex_descriptor> stopVertices;
-    findPath(v, direction, path, stopVertices);
+    std::random_device randomGenerator;
+    findRandomPath(v, direction, randomGenerator, path, stopVertices);
 
+    cout << "Found a path of length " << path.size() << ":" << endl;
     for(const vertex_descriptor v: path) {
         const Segment segment = graph[v].segment;
         cout << assemblyGraph[segment].id << ",";
     }
     cout << endl;
 }
-
 
 
 
@@ -583,99 +506,202 @@ bool Graph::pruneIteration()
         boost::remove_vertex(v, graph);
     }
 
+    if(not verticesToBeRemoved.empty()) {
+        cout << "Pruned " << verticesToBeRemoved.size() << " vertices." << endl;
+    }
+
     return not verticesToBeRemoved.empty();
 }
 
 
 
-// For each edge v0->v1:
-// - isBest0 is set if this edge has the best score among all out-edges of v0.
-// - isBest1 is set if this edge has the best score among all in-edges of v1.
-// However, edges for which canConnect returns false are forbidden
-// from being flagged as best edges.
-void Graph::setBestEdgeFlags()
+void Graph::fillConnectivity()
 {
     Graph& graph = *this;
 
-    // First set all the flags to false;
-    BGL_FORALL_EDGES(e, graph, Graph) {
-        Edge& edge = graph[e];
-        edge.isBest0 = false;
-        edge.isBest1 = false;
-    }
-
-    vector< pair<edge_descriptor, double> > edgesWithScores;
-
-
-
-    // Then loop over all vertices to set the flags.
     BGL_FORALL_VERTICES(v, graph, Graph) {
+        Vertex& vertex = graph[v];
 
-
-
-        // Gather the out-edges with their scores.
-        edgesWithScores.clear();
+        vertex.outEdges.clear();
         BGL_FORALL_OUTEDGES(v, e, graph, Graph) {
-            edgesWithScores.push_back(make_pair(e, graph[e].score));
+            vertex.outEdges.push_back(e);
         }
 
-        // Set the isBest0 flag for the one with the highest score for which
-        // connect returns true.
-        if(not edgesWithScores.empty()) {
-            sort(edgesWithScores.begin(), edgesWithScores.end(),
-                OrderPairsBySecondOnlyGreater<edge_descriptor, double>());
-            for(const auto& [e, score]: edgesWithScores) {
-                if(canConnect(e)) {
-                    graph[e].isBest0 = true;
-                    break;
-                }
-            }
-        }
-
-
-
-        // Gather the in-edges with their scores.
-        edgesWithScores.clear();
+        vertex.inEdges.clear();
         BGL_FORALL_INEDGES(v, e, graph, Graph) {
-            edgesWithScores.push_back(make_pair(e, graph[e].score));
+            vertex.inEdges.push_back(e);
         }
-
-        // Set the isBest1 flag for the one with the highest score for which
-        // connect returns true.
-        if(not edgesWithScores.empty()) {
-            sort(edgesWithScores.begin(), edgesWithScores.end(),
-                OrderPairsBySecondOnlyGreater<edge_descriptor, double>());
-            for(const auto& [e, score]: edgesWithScores) {
-                if(canConnect(e)) {
-                    graph[e].isBest1 = true;
-                    break;
-                }
-            }
-        }
-
     }
 }
 
 
 
-// This returns true if an edge is usable for assembly.
-// It calls AssemblyGraph::canConnect.
-bool Graph::canConnect(edge_descriptor e) const
+void Graph::findPaths([[maybe_unused]] vector< vector<Segment> >& assemblyPaths)
 {
+    // EXPOSE WHEN CODE STABILIZES.
+    const uint64_t pathCount = 100;
+
     const Graph& graph = *this;
+    bool debug = false;
 
-    const vertex_descriptor v0 = source(e, graph);
-    const vertex_descriptor v1 = target(e, graph);
+    // Random generator used to generate random paths.
+    std::mt19937 randomGenerator;
 
-    const Segment segment0 = graph[v0].segment;
-    const Segment segment1 = graph[v1].segment;
 
-    return assemblyGraph.canConnect(segment0, segment1);
+
+    // A graph to store the paths we find.
+    // Each vertex corresponds to a long segment.
+    // An edge u0->u1 contains a path that starts at segment(u0)
+    // and ends at segment(u1).
+    class PathGraphVertex {
+    public:
+        Segment segment;
+    };
+
+    class PathGraphEdge {
+    public:
+        // Store information for each direction.
+        class Info {
+        public:
+            uint64_t pathCount = 0;
+            vector<vertex_descriptor> path;
+        };
+        array<Info, 2> infos;
+    };
+
+    using PathGraph = boost::adjacency_list<
+        boost::listS,
+        boost::listS,
+        boost::bidirectionalS,
+        PathGraphVertex,
+        PathGraphEdge>;
+    PathGraph pathGraph;
+    std::map<Segment, PathGraph::vertex_descriptor> pathGraphVertexMap;
+
+    // Each long Segment generates a PathGraphVertex.
+    std::set<vertex_descriptor> longSegments;
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        const Vertex& vertex = graph[v];
+        if(vertex.length >= assemblyGraph.options.readFollowingSegmentLengthThreshold) {
+            longSegments.insert(v);
+            const PathGraph::vertex_descriptor u = boost::add_vertex({vertex.segment}, pathGraph);
+            pathGraphVertexMap.insert({vertex.segment, u});
+        }
+    }
+    cout << "The PathGraph has " << pathGraphVertexMap.size() <<
+        " vertices, each corresponding to a long segment." << endl;
+
+
+
+    // Loop over PathGraph vertices (that is, over long segments).
+    vector<vertex_descriptor> path;
+    BGL_FORALL_VERTICES(u0, pathGraph, PathGraph) {
+        const Segment segment0 = pathGraph[u0].segment;
+        const auto it0 = vertexMap.find(segment0);
+        SHASTA2_ASSERT(it0 != vertexMap.end());
+        const vertex_descriptor v0 = it0->second;
+
+        // Loop over both directions.
+        for(uint64_t direction=0; direction<2; direction++) {
+            // debug = (assemblyGraph[segment0].id == 83738);
+            if(debug) {
+                cout << "Working on segment " << assemblyGraph[segment0].id <<
+                    " direction " << direction << endl;
+            }
+
+
+
+            // Generate pathCount random paths starting at v0 and moving in this direction.
+            class Info {
+            public:
+                uint64_t pathCount;
+                vector<vertex_descriptor> path;
+            };
+            for(uint64_t i=0; i<pathCount; i++) {
+                findRandomPath(v0, direction, randomGenerator, path, longSegments);
+                const vertex_descriptor v1 = (direction == 0) ? path.back() : path.front();
+                const Segment segment1 = graph[v1].segment;
+
+                if(debug) {
+                    cout << "Found a path ending at " << assemblyGraph[segment1].id <<
+                        " of length " << path.size() << endl;
+                }
+
+                // Discard a trivial path.
+                SHASTA2_ASSERT(not path.empty());
+                if(path.size() == 1) {
+                    continue;
+                }
+
+                // If this is not a long segment (that is, it does not correspond
+                // to a PathGraph vertex), discard this path.
+                const auto it1 = pathGraphVertexMap.find(segment1);
+                if(it1 == pathGraphVertexMap.end()) {
+                    continue;
+                }
+                const PathGraph::vertex_descriptor u1 = it1->second;
+
+                // Update the PathGraph with this path.
+
+                // Find the PathGraph edge between u0 and u1, creating it if necessary.
+                PathGraph::vertex_descriptor uu0 = u0;
+                PathGraph::vertex_descriptor uu1 = u1;
+                if(direction == 1) {
+                    std::swap(uu0, uu1);
+                }
+                auto[e, edgeExists] = boost::edge(uu0, uu1, pathGraph);
+                if(not edgeExists) {
+                    tie(e, ignore) = boost::add_edge(uu0, uu1, pathGraph);
+                }
+
+                // Update the PathGraphEdge with this path.
+                PathGraphEdge& pathGraphEdge = pathGraph[e];
+                PathGraphEdge::Info& info = pathGraphEdge.infos[direction];
+                if(info.pathCount == 0) {
+                    info.pathCount = 1;
+                    info.path = path;
+                } else {
+                    ++info.pathCount;
+                    if(path.size() > info.path.size()) {
+                        info.path = path;
+                    }
+                }
+            }
+
+        }
+    }
+
+    cout << "The PathGraph has " << num_vertices(pathGraph) <<
+        " vertices and " << num_edges(pathGraph) << " vertices." << endl;
+
+    if(true) {
+        ofstream dot("PathGraph.dot");
+        dot << "digraph PathGraph {\n";
+
+        BGL_FORALL_VERTICES(v, pathGraph, PathGraph) {
+            const Segment segment = pathGraph[v].segment;
+            dot << assemblyGraph[segment].id << ";\n";
+        }
+
+        BGL_FORALL_EDGES(e, pathGraph, PathGraph) {
+            const PathGraphEdge& pathGraphEdge = pathGraph[e];
+            const PathGraph::vertex_descriptor v0 = source(e, pathGraph);
+            const PathGraph::vertex_descriptor v1 = target(e, pathGraph);
+            const Segment segment0 = pathGraph[v0].segment;
+            const Segment segment1 = pathGraph[v1].segment;
+            dot << assemblyGraph[segment0].id << "->" << assemblyGraph[segment1].id <<
+                " [label=\"" << pathGraphEdge.infos[0].pathCount << "/" <<
+                pathGraphEdge.infos[1].pathCount << "\"];\n";
+        }
+
+        dot << "}\n";
+    }
 }
 
 
+
+#if 0
 // Find assembly paths.
-// These are paths between vertices corresponding to long segments.
 // Note these are paths in the ReadFollowing::Graph but not in the AssemblyGraph.
 void Graph::findPaths(vector< vector<Segment> >& assemblyPaths) const
 {
@@ -848,10 +874,11 @@ void Graph::findPaths(vector< vector<Segment> >& assemblyPaths) const
         }
     }
 }
+#endif
 
 
 
-void Graph::writePaths() const
+void Graph::writePaths()
 {
     vector< vector<Segment> > assemblyPaths;
     findPaths(assemblyPaths);
@@ -870,15 +897,3 @@ void Graph::writePaths() const
     }
 }
 
-
-
-// This will require some experimentation.
-void Graph::computeEdgeScores()
-{
-    Graph& graph = *this;
-
-    BGL_FORALL_EDGES(e, graph, Graph) {
-        Edge& edge = graph[e];
-        edge.score = double(edge.segmentPairInformation.commonCount) * edge.segmentPairInformation.correctedJaccard;
-    }
-}
