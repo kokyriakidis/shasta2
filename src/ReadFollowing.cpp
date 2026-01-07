@@ -8,6 +8,7 @@
 #include "Markers.hpp"
 #include "Options.hpp"
 #include "orderPairs.hpp"
+#include "transitiveReduction.hpp"
 using namespace shasta2;
 using namespace ReadFollowing;
 
@@ -640,10 +641,76 @@ void Graph::findPaths([[maybe_unused]] vector< vector<Segment> >& assemblyPaths)
     }
     pathGraph.removeNonBestEdges();
 
+    // This will throw if the PathGraph has cycles.
+    // We need a more permanent soution.
+    transitiveReductionAny(pathGraph);
+
     pathGraph.writeGraphviz();
     cout << "The PathGraph has " << num_vertices(pathGraph) <<
         " vertices and " << num_edges(pathGraph) << " vertices." << endl;
 
+    // Find linear chains of vertices in the PathGraph.
+    vector< vector<PathGraph::vertex_descriptor> > chains;
+    findLinearVertexChains(pathGraph, chains);
+
+
+
+    // Each linear vertex chain generates a Segment sequence,
+    // that is, a sequence of Segments that
+    // should be assembled into a single Segment.
+    assemblyPaths.clear();
+    for(const vector<PathGraph::vertex_descriptor>& chain: chains) {
+        if(chain.size() < 2) {
+            continue;
+        }
+        const Segment segment0 = pathGraph[chain.front()].segment;
+        const Segment segment1 = pathGraph[chain.back()].segment;
+
+        if(debug) {
+            cout << "Found an assembly path that begins at " <<
+                assemblyGraph[segment0].id << " and ends at " <<
+                assemblyGraph[segment1].id << endl;
+        }
+
+        // Create a new assembly path.
+        assemblyPaths.emplace_back();
+        vector<Segment>& assemblyPath = assemblyPaths.back();
+        for(uint64_t i1=1; i1<chain.size(); i1++) {
+            const uint64_t i0 = i1 - 1;
+            const PathGraph::vertex_descriptor u0 = chain[i0];
+            const PathGraph::vertex_descriptor u1 = chain[i1];
+
+            // Locate the PathGraph edge.
+            PathGraph::edge_descriptor e;
+            bool edgeExists = false;
+            tie(e, edgeExists) = boost::edge(u0, u1, pathGraph);
+            SHASTA2_ASSERT(edgeExists);
+            const PathGraphEdge& pathGraphEdge = pathGraph[e];
+
+            // Get the longest path on this edge.
+            const vector<vertex_descriptor>& path = pathGraphEdge.longestPath();
+
+            // Convert it to a sequence of segments.
+            vector<Segment> pathSegments;
+            for(const vertex_descriptor v: path) {
+                pathSegments.push_back(graph[v].segment);
+            }
+
+            SHASTA2_ASSERT(pathGraph[u0].segment == pathSegments.front());
+            SHASTA2_ASSERT(pathGraph[u1].segment == pathSegments.back());
+
+            // The path for this vertex already contains the segments
+            // corresponding to u0 and u1. So, to avoid duplications,
+            // for each edge except the last we copy the path
+            // without the last segment.
+            // For the last edge we copy the entire path.
+            auto end = pathSegments.end();
+            if(i1 != chain.size() - 1) {
+                --end;
+            }
+            copy(pathSegments.begin(), end, back_inserter(assemblyPath));
+        }
+    }
 }
 
 
@@ -1037,3 +1104,7 @@ void PathGraph::removeNonBestEdges()
     }
 
 }
+
+
+
+

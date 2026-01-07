@@ -180,7 +180,16 @@ public:
     {
         return infos[1].pathCount;
     }
-    };
+
+    const vector<Graph::vertex_descriptor>& longestPath() const
+    {
+        return
+            (infos[0].path.size() >= infos[1].path.size()) ?
+            infos[0].path :
+            infos[1].path;
+
+    }
+};
 
 
 
