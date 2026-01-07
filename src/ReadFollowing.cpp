@@ -638,6 +638,7 @@ void Graph::findPaths([[maybe_unused]] vector< vector<Segment> >& assemblyPaths)
 
         }
     }
+    pathGraph.removeNonBestEdges();
 
     pathGraph.writeGraphviz();
     cout << "The PathGraph has " << num_vertices(pathGraph) <<
@@ -1012,3 +1013,27 @@ PathGraph::edge_descriptor PathGraph::bestOutEdge(vertex_descriptor v) const
     return eBest;
 }
 
+
+
+void PathGraph::removeNonBestEdges()
+{
+    PathGraph& pathGraph = *this;
+
+    vector<edge_descriptor> edgesToBeRemoved;
+    BGL_FORALL_EDGES(e, pathGraph, PathGraph) {
+        const PathGraph::vertex_descriptor v0 = source(e, pathGraph);
+        const PathGraph::vertex_descriptor v1 = target(e, pathGraph);
+
+        const bool isBestOutEdge = (e == bestOutEdge(v0));
+        const bool isBestInEdge  = (e == bestInEdge (v1));
+
+        if(not (isBestOutEdge or isBestInEdge)) {
+            edgesToBeRemoved.push_back(e);
+        }
+    }
+
+    for(const edge_descriptor e: edgesToBeRemoved) {
+        boost::remove_edge(e, pathGraph);
+    }
+
+}
