@@ -178,4 +178,13 @@ public:
 // Class used to store paths between long segments.
 class shasta2::ReadFollowing::PathGraph : public PathGraphBaseClass {
 public:
+    PathGraph(const AssemblyGraph&);
+
+    // Graphviz output.
+    void writeGraphviz() const;
+    void writeGraphviz(const string& fileName) const;
+    void writeGraphviz(ostream&) const;
+
+private:
+    const AssemblyGraph& assemblyGraph;
 };

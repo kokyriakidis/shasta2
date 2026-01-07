@@ -548,7 +548,7 @@ void Graph::findPaths([[maybe_unused]] vector< vector<Segment> >& assemblyPaths)
     std::mt19937 randomGenerator;
 
 
-    PathGraph pathGraph;
+    PathGraph pathGraph(assemblyGraph);
     std::map<Segment, PathGraph::vertex_descriptor> pathGraphVertexMap;
 
     // Each long Segment generates a PathGraphVertex.
@@ -639,31 +639,10 @@ void Graph::findPaths([[maybe_unused]] vector< vector<Segment> >& assemblyPaths)
         }
     }
 
+    pathGraph.writeGraphviz();
     cout << "The PathGraph has " << num_vertices(pathGraph) <<
         " vertices and " << num_edges(pathGraph) << " vertices." << endl;
 
-    if(true) {
-        ofstream dot("PathGraph.dot");
-        dot << "digraph PathGraph {\n";
-
-        BGL_FORALL_VERTICES(v, pathGraph, PathGraph) {
-            const Segment segment = pathGraph[v].segment;
-            dot << assemblyGraph[segment].id << ";\n";
-        }
-
-        BGL_FORALL_EDGES(e, pathGraph, PathGraph) {
-            const PathGraphEdge& pathGraphEdge = pathGraph[e];
-            const PathGraph::vertex_descriptor v0 = source(e, pathGraph);
-            const PathGraph::vertex_descriptor v1 = target(e, pathGraph);
-            const Segment segment0 = pathGraph[v0].segment;
-            const Segment segment1 = pathGraph[v1].segment;
-            dot << assemblyGraph[segment0].id << "->" << assemblyGraph[segment1].id <<
-                " [label=\"" << pathGraphEdge.infos[0].pathCount << "/" <<
-                pathGraphEdge.infos[1].pathCount << "\"];\n";
-        }
-
-        dot << "}\n";
-    }
 }
 
 
@@ -865,3 +844,65 @@ void Graph::writePaths()
     }
 }
 
+
+
+PathGraph::PathGraph(const AssemblyGraph& assemblyGraph) :
+    assemblyGraph(assemblyGraph)
+{}
+
+
+
+void PathGraph::writeGraphviz() const
+{
+    writeGraphviz("PathGraph.dot");
+}
+
+
+
+void PathGraph::writeGraphviz(const string& fileName) const
+{
+    ofstream dot(fileName);
+    writeGraphviz(dot);
+}
+
+
+
+void PathGraph::writeGraphviz(ostream& dot) const
+{
+    const PathGraph& pathGraph = *this;
+
+    dot << "digraph PathGraph {\n";
+
+
+
+    // Vertices.
+    BGL_FORALL_VERTICES(v, pathGraph, PathGraph) {
+        const Segment segment = pathGraph[v].segment;
+        dot << assemblyGraph[segment].id << ";\n";
+    }
+
+
+
+    // Edges.
+    BGL_FORALL_EDGES(e, pathGraph, PathGraph) {
+        const PathGraphEdge& pathGraphEdge = pathGraph[e];
+
+        const PathGraph::vertex_descriptor v0 = source(e, pathGraph);
+        const PathGraph::vertex_descriptor v1 = target(e, pathGraph);
+
+        const Segment segment0 = pathGraph[v0].segment;
+        const Segment segment1 = pathGraph[v1].segment;
+
+        dot <<
+            assemblyGraph[segment0].id << "->" <<
+            assemblyGraph[segment1].id <<
+            " [label=\"" <<
+            pathGraphEdge.infos[0].pathCount << "/" <<
+            pathGraphEdge.infos[1].pathCount << "\"];\n";
+    }
+
+
+
+    dot << "}\n";
+
+}
