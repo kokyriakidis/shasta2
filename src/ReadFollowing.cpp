@@ -548,33 +548,6 @@ void Graph::findPaths([[maybe_unused]] vector< vector<Segment> >& assemblyPaths)
     std::mt19937 randomGenerator;
 
 
-
-    // A graph to store the paths we find.
-    // Each vertex corresponds to a long segment.
-    // An edge u0->u1 contains a path that starts at segment(u0)
-    // and ends at segment(u1).
-    class PathGraphVertex {
-    public:
-        Segment segment;
-    };
-
-    class PathGraphEdge {
-    public:
-        // Store information for each direction.
-        class Info {
-        public:
-            uint64_t pathCount = 0;
-            vector<vertex_descriptor> path;
-        };
-        array<Info, 2> infos;
-    };
-
-    using PathGraph = boost::adjacency_list<
-        boost::listS,
-        boost::listS,
-        boost::bidirectionalS,
-        PathGraphVertex,
-        PathGraphEdge>;
     PathGraph pathGraph;
     std::map<Segment, PathGraph::vertex_descriptor> pathGraphVertexMap;
 
@@ -612,11 +585,6 @@ void Graph::findPaths([[maybe_unused]] vector< vector<Segment> >& assemblyPaths)
 
 
             // Generate pathCount random paths starting at v0 and moving in this direction.
-            class Info {
-            public:
-                uint64_t pathCount;
-                vector<vertex_descriptor> path;
-            };
             for(uint64_t i=0; i<pathCount; i++) {
                 findRandomPath(v0, direction, randomGenerator, path, longSegments);
                 const vertex_descriptor v1 = (direction == 0) ? path.back() : path.front();

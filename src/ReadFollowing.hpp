@@ -19,16 +19,26 @@
 namespace shasta2 {
 
     namespace ReadFollowing {
+
         class Graph;
         class Vertex;
         class Edge;
-
         using GraphBaseClass = boost::adjacency_list<
             boost::listS,
             boost::listS,
             boost::bidirectionalS,
             Vertex,
             Edge>;
+
+        class PathGraph;
+        class PathGraphVertex;
+        class PathGraphEdge;
+        using PathGraphBaseClass = boost::adjacency_list<
+            boost::listS,
+            boost::listS,
+            boost::bidirectionalS,
+            PathGraphVertex,
+            PathGraphEdge>;
 
         // A Segment is an edge of the AssemblyGraph.
         using Segment = AssemblyGraph::edge_descriptor;
@@ -132,4 +142,40 @@ public:
     // Python callable.
     void writeRandomPath(Segment, uint64_t direction);
     void writePaths();
+};
+
+
+
+// Each PathGraph vertex corresponds to a long segment.
+class shasta2::ReadFollowing::PathGraphVertex {
+public:
+    Segment segment;
+};
+
+
+
+class shasta2::ReadFollowing::PathGraphEdge {
+public:
+
+    // Store information for each direction.
+    class Info {
+    public:
+
+        // The number of paths between these two vertices found in each direction.
+        uint64_t pathCount = 0;
+
+        // The longest of the paths.
+        // These are paths in the ReadFollowing::Graph
+        // but not in the AssemblyGraph.
+        vector<Graph::vertex_descriptor> path;
+    };
+
+    array<Info, 2> infos;
+};
+
+
+
+// Class used to store paths between long segments.
+class shasta2::ReadFollowing::PathGraph : public PathGraphBaseClass {
+public:
 };
