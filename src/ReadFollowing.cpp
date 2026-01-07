@@ -870,6 +870,7 @@ void PathGraph::writeGraphviz(const string& fileName) const
 void PathGraph::writeGraphviz(ostream& dot) const
 {
     const PathGraph& pathGraph = *this;
+    dot << std::fixed << std::setprecision(2);
 
     dot << "digraph PathGraph {\n";
 
@@ -878,14 +879,20 @@ void PathGraph::writeGraphviz(ostream& dot) const
     // Vertices.
     BGL_FORALL_VERTICES(v, pathGraph, PathGraph) {
         const Segment segment = pathGraph[v].segment;
-        dot << assemblyGraph[segment].id << ";\n";
+        dot << assemblyGraph[segment].id <<
+            " ["
+            "label=\"" << assemblyGraph[segment].id <<
+            // "\\n" << forwardPathCount(v) << "/" << backwardPathCount(v) <<
+            "\""
+            "]"
+            ";\n";
     }
 
 
 
     // Edges.
     BGL_FORALL_EDGES(e, pathGraph, PathGraph) {
-        const PathGraphEdge& pathGraphEdge = pathGraph[e];
+        // const PathGraphEdge& edge = pathGraph[e];
 
         const PathGraph::vertex_descriptor v0 = source(e, pathGraph);
         const PathGraph::vertex_descriptor v1 = target(e, pathGraph);
@@ -893,12 +900,30 @@ void PathGraph::writeGraphviz(ostream& dot) const
         const Segment segment0 = pathGraph[v0].segment;
         const Segment segment1 = pathGraph[v1].segment;
 
+        const bool isBestOutEdge = (e == bestOutEdge(v0));
+        const bool isBestInEdge  = (e == bestInEdge (v1));
+
+        string color;
+        if(isBestOutEdge and isBestInEdge) {
+            color = "green";
+        } else  if(isBestOutEdge or isBestInEdge) {
+            color = "black";
+        } else {
+            color = "red";
+        }
+
         dot <<
             assemblyGraph[segment0].id << "->" <<
             assemblyGraph[segment1].id <<
-            " [label=\"" <<
-            pathGraphEdge.infos[0].pathCount << "/" <<
-            pathGraphEdge.infos[1].pathCount << "\"];\n";
+            " ["
+            "label=\"" <<
+            // edge.forwardPathCount() << "/" <<
+            // edge.backwardPathCount() << "\\n" <<
+            forwardPathFraction(e) << "/" <<
+            backwardPathFraction(e) <<
+            "\""
+            " color=" << color <<
+            "];\n";
     }
 
 
@@ -906,3 +931,84 @@ void PathGraph::writeGraphviz(ostream& dot) const
     dot << "}\n";
 
 }
+
+
+
+uint64_t PathGraph::forwardPathCount(vertex_descriptor v) const
+{
+    const PathGraph& pathGraph = *this;
+    uint64_t count = 0;
+    BGL_FORALL_OUTEDGES(v, e, pathGraph, PathGraph) {
+        count += pathGraph[e].forwardPathCount();
+    }
+    return count;
+}
+
+
+
+uint64_t PathGraph::backwardPathCount(vertex_descriptor v) const
+{
+    const PathGraph& pathGraph = *this;
+    uint64_t count = 0;
+    BGL_FORALL_INEDGES(v, e, pathGraph, PathGraph) {
+        count += pathGraph[e].backwardPathCount();
+    }
+    return count;
+}
+
+
+
+double PathGraph::forwardPathFraction(edge_descriptor e) const
+{
+    const PathGraph& pathGraph = *this;
+    const vertex_descriptor v = source(e, pathGraph);
+    return double(pathGraph[e].forwardPathCount()) / double(forwardPathCount(v));
+}
+
+
+
+double PathGraph::backwardPathFraction(edge_descriptor e) const
+{
+    const PathGraph& pathGraph = *this;
+    const vertex_descriptor v = target(e, pathGraph);
+    return double(pathGraph[e].backwardPathCount()) / double(backwardPathCount(v));
+}
+
+
+
+PathGraph::edge_descriptor PathGraph::bestInEdge(vertex_descriptor v) const
+{
+    const PathGraph& pathGraph = *this;
+    SHASTA2_ASSERT(in_degree(v, pathGraph) > 0);
+
+    edge_descriptor eBest = {0, 0, 0};
+    uint64_t bestPathCount = 0;
+    BGL_FORALL_INEDGES(v, e, pathGraph, PathGraph) {
+        const uint64_t pathCount = pathGraph[e].backwardPathCount();
+        if(pathCount > bestPathCount) {
+            eBest = e;
+            bestPathCount = pathCount;
+        }
+    }
+    return eBest;
+}
+
+
+
+PathGraph::edge_descriptor PathGraph::bestOutEdge(vertex_descriptor v) const
+{
+    const PathGraph& pathGraph = *this;
+    SHASTA2_ASSERT(out_degree(v, pathGraph) > 0);
+
+    edge_descriptor eBest = {0, 0, 0};
+    uint64_t bestPathCount = 0;
+    BGL_FORALL_OUTEDGES(v, e, pathGraph, PathGraph) {
+        const uint64_t pathCount = pathGraph[e].forwardPathCount();
+        if(pathCount > bestPathCount) {
+            eBest = e;
+            bestPathCount = pathCount;
+        }
+    }
+    return eBest;
+}
+

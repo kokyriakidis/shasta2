@@ -171,7 +171,16 @@ public:
     };
 
     array<Info, 2> infos;
-};
+
+    uint64_t forwardPathCount() const
+    {
+        return infos[0].pathCount;
+    }
+    uint64_t backwardPathCount() const
+    {
+        return infos[1].pathCount;
+    }
+    };
 
 
 
@@ -187,4 +196,13 @@ public:
 
 private:
     const AssemblyGraph& assemblyGraph;
+
+    uint64_t forwardPathCount(vertex_descriptor) const;
+    uint64_t backwardPathCount(vertex_descriptor) const;
+
+    double forwardPathFraction(edge_descriptor) const;
+    double backwardPathFraction(edge_descriptor) const;
+
+    edge_descriptor bestInEdge(vertex_descriptor) const;
+    edge_descriptor bestOutEdge(vertex_descriptor) const;
 };
