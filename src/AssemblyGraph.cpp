@@ -181,9 +181,11 @@ void AssemblyGraph::simplifyAndAssemble()
         changeCount += prune();
         changeCount += compress();
 
+#if 0
         // Simplify Superbubbles.
         changeCount += simplifySuperbubbles(detangler);
         write("B" + to_string(iteration));
+#endif
 
         // Remove or simplify bubbles likely caused by errors.
         changeCount += bubbleCleanup();
@@ -194,9 +196,11 @@ void AssemblyGraph::simplifyAndAssemble()
         changeCount += phaseSuperbubbleChains(true, true);
         write("D" + to_string(iteration));
 
+#if 0
         // Detangling.
         changeCount += detangleHighLevel(detangler);
         write("E" + to_string(iteration));
+#endif
 
         cout << "Total change count at iteration " << iteration << " was " << changeCount << endl;
     }
