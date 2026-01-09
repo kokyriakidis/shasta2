@@ -435,11 +435,6 @@ public:
     void writeSuperbubbleChains(const vector<SuperbubbleChain>&, const string& fileName) const;
     void writeSuperbubbleChainsForBandage(const vector<SuperbubbleChain>&, const string& fileName) const;
 
-    // Simplify Superbubbles.
-    uint64_t simplifySuperbubbles(Detangler&);
-    bool simplifySuperbubbleByDetangling(const Superbubble&, Detangler&);
-    bool simplifySuperbubbleByClustering(const Superbubble&, uint64_t minCoverage, uint64_t maxOffset);
-
 
 
     // Phasing of SuperbubbleChains.

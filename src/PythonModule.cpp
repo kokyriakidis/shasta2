@@ -7,13 +7,11 @@
 #include "Base.hpp"
 #include "CycleAvoider.hpp"
 #include "deduplicate.hpp"
-#include "Detangler.hpp"
 #include "diploidBayesianPhase.hpp"
 #include "ExternalAnchors.hpp"
 #include "extractKmer128.hpp"
 #include "findConvergingVertex.hpp"
 #include "HashedKmerChecker.hpp"
-#include "LikelihoodRatioDetangler.hpp"
 #include "LongBaseSequence.hpp"
 #include "mappedCopy.hpp"
 #include "MultithreadedObject.hpp"
@@ -172,7 +170,6 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def("assembleAll", &AssemblyGraph::assembleAll)
         .def("clearSequence", &AssemblyGraph::clearSequence)
         .def("phaseSuperbubbleChains", &AssemblyGraph::phaseSuperbubbleChains)
-        .def("simplifySuperbubbles", &AssemblyGraph::simplifySuperbubbles)
         .def("colorStrongComponents", &AssemblyGraph::colorStrongComponents)
         .def("removeIsolatedVertices", &AssemblyGraph::removeIsolatedVertices)
         .def("removeLowN50Components", &AssemblyGraph::removeLowN50Components)
@@ -199,16 +196,6 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def_readonly("vertexMap", &AssemblyGraphPostprocessor::vertexMap)
         .def_readonly("edgeMap", &AssemblyGraphPostprocessor::edgeMap)
         .def("getId", &AssemblyGraphPostprocessor::getId)
-        ;
-
-
-
-    // Detangler classes.
-    class_<Detangler>(shasta2Module, "Detangler")
-        .def_readwrite("debug", &Detangler::debug)
-        ;
-    class_<LikelihoodRatioDetangler>(shasta2Module, "LikelihoodRatioDetangler", pybind11::base<Detangler>())
-        .def(init<double, double, double, uint64_t, bool, bool, bool, bool>())
         ;
 
 
