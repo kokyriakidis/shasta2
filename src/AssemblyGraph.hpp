@@ -300,6 +300,12 @@ public:
     // This removes them by collapsing the vertices they join.
     void removeEmptyEdges();
 
+    // Remove isolated vertices.
+    void removeIsolatedVertices();
+
+    // Remove connected components with a low N50.
+    void removeLowN50Components(uint64_t minN50);
+
 
 
 public:
