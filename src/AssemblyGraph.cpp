@@ -159,6 +159,9 @@ AssemblyGraph::AssemblyGraph(
 // Detangle, phase, assemble sequence, output.
 void AssemblyGraph::simplifyAndAssemble()
 {
+    // EXPOSE WHEN CODE STABILIZES.
+    const uint64_t minComponentN50 = 100000;
+
     performanceLog << timestamp << "Assembly graph::simplifyAndAssemble begins." << endl;
 
     LikelihoodRatioDetangler detangler(
@@ -209,6 +212,11 @@ void AssemblyGraph::simplifyAndAssemble()
     // Read following.
     findAndConnectAssemblyPaths();
     write("F");
+
+    // Remove isolated vertices and connected components with small N50.
+    removeIsolatedVertices();
+    removeLowN50Components(minComponentN50);
+    write("G");
 
     // Sequence assembly.
     assembleAll();
