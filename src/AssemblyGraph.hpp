@@ -271,29 +271,6 @@ public:
     // and checks that all is good.
     bool canConnect(edge_descriptor, edge_descriptor) const;
 
-
-
-    // Detangling.
-    // The detangling functions return the number of successful detangling operations.
-
-    // High level detangling function.
-    uint64_t detangleHighLevel(Detangler&);
-
-    // Vertex detangling.
-    uint64_t detangleVerticesIteration(Detangler&);
-    uint64_t detangleVertices(Detangler&);
-
-    // Edge detangling.
-    uint64_t detangleEdgesIteration(Detangler&);
-    uint64_t detangleEdges(Detangler&);
-
-    // Detangling of short tangles.
-    uint64_t detangleShortTangles(Detangler&);
-
-    // Low level detangling function.
-    uint64_t detangleLowLevel(const vector< vector<vertex_descriptor> >& detanglingCandidates, Detangler&);
-
-
     // The detangling process can generate empty edges (edges without steps).
     // This removes them by collapsing the vertices they join.
     void removeEmptyEdges();
