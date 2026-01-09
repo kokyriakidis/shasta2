@@ -45,35 +45,6 @@ void Options::addOptions()
         "Input fasta or fastq files (uncompressed)."
         )->capture_default_str();
 
-    add_option("--output", assemblyDirectory,
-        "Assembly directory for output. Must not exist."
-        )->capture_default_str();
-
-    add_option("--command", command,
-        "Shasta2 command.")
-    ->capture_default_str();
-
-    add_option("--memory-mode", memoryMode,
-        "Memory mode. Specify disk, 4K, or 2M.")
-    ->capture_default_str();
-
-    add_option("--memory-backing", memoryBacking,
-        "Memory backing.Specify anonymous or filesystem."
-        )->capture_default_str();
-
-    add_option("--threads", threadCount,
-        "Number of threads (0 to use hardware_concurrency)."
-        )->capture_default_str();
-
-    add_option("--explore-access", exploreAccess,
-        "Specifies accessibility of Shasta2 http server.\n"
-        "Specify user, local, or unrestricted."
-        )->capture_default_str();
-
-    add_option("--port", port,
-        "Port number for http server."
-        )->capture_default_str();
-
     add_option("--min-read-length", minReadLength,
         "Read length cutoff."
         )->capture_default_str();

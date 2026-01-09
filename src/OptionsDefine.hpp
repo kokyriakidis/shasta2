@@ -1,3 +1,38 @@
+// General options.
+SHASTA2_OPTION_DEFINE(
+    string, command, "--command", "assemble",
+    "Shasta2 command.")
+
+SHASTA2_OPTION_DEFINE(
+    string, assemblyDirectory, "--output", "ShastaRun",
+    "Assembly directory for output.")
+
+SHASTA2_OPTION_DEFINE(
+    string, memoryMode, "--memory-mode", "anonymous",
+    "Memory mode. Specify anonymous or filesystem.")
+
+SHASTA2_OPTION_DEFINE(
+    string, memoryBacking, "--memory-backing", "4K",
+    "Memory backing. Specify disk, 4K, or 2M.")
+
+SHASTA2_OPTION_DEFINE(
+    uint64_t, threadCount, "--threads", 0,
+    "Number of threads (0 to use hardware_concurrency).")
+
+
+
+// Http server options.
+SHASTA2_OPTION_DEFINE(
+    string, exploreAccess, "--explore-access", "user",
+        "Specifies accessibility of Shasta2 http server.\n"
+        "Specify user, local, or unrestricted.")
+
+SHASTA2_OPTION_DEFINE(
+    uint16_t, port, "--port", 17100,
+    "Port number for http server.")
+
+
+
 // Options that control detangling.
 SHASTA2_OPTION_DEFINE(
     double, detangleEpsilon, "--detangle-epsilon", 0.05,

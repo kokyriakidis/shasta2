@@ -26,16 +26,9 @@ public:
     // Write a configuration file.
     void write(ostream&) const;
 
+    // These cannot be defined in OptionsDefine.hpp.
     bool isHelp = false;
-
     vector <string> inputFileNames;
-    string assemblyDirectory = "ShastaRun";
-    string command = "assemble";
-    string memoryMode = "anonymous";
-    string memoryBacking= "4K";
-    uint64_t threadCount = 0;
-    string exploreAccess = "user";
-    uint16_t port = 17100;
 
     uint64_t minReadLength = 0;
 
