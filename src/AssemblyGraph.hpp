@@ -220,8 +220,6 @@ private:
 
 public:
 
-    uint64_t prune();
-
     // Compress linear chains of edges into a single edge.
     uint64_t compress();
     uint64_t compressDebugLevel = 0; // 1=minimal, 2=compact, 3=detailed.

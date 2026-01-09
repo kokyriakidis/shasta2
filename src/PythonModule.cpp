@@ -166,7 +166,6 @@ PYBIND11_MODULE(shasta2, shasta2Module)
     class_<AssemblyGraph> assemblyGraphClass(shasta2Module, "AssemblyGraph");
     assemblyGraphClass
         .def_readwrite("compressDebugLevel", &AssemblyGraph::compressDebugLevel)
-        .def("prune", &AssemblyGraph::prune)
         .def("bubbleCleanupIteration", &AssemblyGraph::bubbleCleanupIteration)
         .def("detangleVertices", &AssemblyGraph::detangleVertices)
         .def("detangleVerticesIteration", &AssemblyGraph::detangleVerticesIteration)

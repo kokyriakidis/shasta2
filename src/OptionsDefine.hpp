@@ -30,17 +30,6 @@ SHASTA2_OPTION_DEFINE(
 
 
 
-// Options that control pruning.
-SHASTA2_OPTION_DEFINE(
-    uint64_t, pruneLength, "--prune-length", 50000,
-    "Maximum length of a hanging segments to be pruned.")
-
-SHASTA2_OPTION_DEFINE(
-    uint64_t, pruneIterationCount, "--prune-iteration-count", 3,
-    "Maximum number of pruning iterations.")
-
-
-
 // Options that control read following.
 SHASTA2_OPTION_DEFINE(
 	uint64_t, readFollowingMinCommonCount, "--read-following-min-common-count", 6,
