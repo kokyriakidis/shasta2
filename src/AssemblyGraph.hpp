@@ -377,31 +377,6 @@ public:
 
 
 
-    // Local search that continues as long as we have exactly one way to move.
-    void forwardLocalSearch(
-        edge_descriptor,
-        uint64_t lowCoverageThreshold,
-        uint64_t highCoverageThreshold,
-        vector<edge_descriptor>&
-    ) const;
-    void backwardLocalSearch(
-        edge_descriptor,
-        uint64_t lowCoverageThreshold,
-        uint64_t highCoverageThreshold,
-        vector<edge_descriptor>&
-    ) const;
-    void testLocalSearch(
-        uint64_t id,
-        uint64_t direction,
-        uint64_t lowCoverageThreshold,
-        uint64_t highCoverageThreshold
-        ) const;
-    void createSearchGraph(
-        uint64_t lowCoverageThreshold,
-        uint64_t highCoverageThreshold);
-
-
-
     // More systematic search functionality that uses an index.
     void findEdgePairs(uint64_t minCoverage);
     std::map<edge_descriptor, vector<edge_descriptor> > edgePairsBySource;

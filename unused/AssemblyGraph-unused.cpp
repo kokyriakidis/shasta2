@@ -659,3 +659,342 @@ bool AssemblyGraph::simplifySuperbubbleByClustering(
     return true;
 }
 
+
+
+
+
+// Local search that continues as long as we have only one way to move.
+void AssemblyGraph::forwardLocalSearch(
+    edge_descriptor eStart,
+    uint64_t lowCoverageThreshold,
+    uint64_t highCoverageThreshold,
+    vector<edge_descriptor>& edges) const
+{
+    const bool debug = false;
+    const AssemblyGraph& assemblyGraph = *this;
+
+    edges.clear();
+    edge_descriptor e0 = eStart;
+
+    vector<edge_descriptor> entrances(1, eStart);
+    vector<edge_descriptor> exits;
+
+    // Main iteration.
+    while(true) {
+        const vertex_descriptor v0 = target(e0, assemblyGraph);
+        exits.clear();
+        BGL_FORALL_OUTEDGES(v0, e1, assemblyGraph, AssemblyGraph) {
+            exits.push_back(e1);
+        }
+
+        TangleMatrix tangleMatrix(assemblyGraph, entrances, exits, 0, options.aDrift, options.bDrift);
+
+        if(debug) {
+            cout << "Starting from " << assemblyGraph[e0].id << " found:" << endl;
+            for(uint64_t iExit=0; iExit<exits.size(); iExit++) {
+                cout << assemblyGraph[exits[iExit]].id << " " <<
+                    tangleMatrix.tangleMatrix[0][iExit].orientedReadIds.size() << endl;
+            }
+        }
+
+        // Counts exits by type.
+        // Significant: coverage >= highCoverageThreshold
+        // Insignificant: coverage <= lowCoverageThreshold
+        // Ambiguous: lowCoverageThreshold< coverage < highCoverageThreshold.
+        uint64_t significantCount = 0;
+        uint64_t insignificantCount = 0;
+        uint64_t ambiguousCount = 0;
+        for(uint64_t iExit=0; iExit<exits.size(); iExit++) {
+            const uint64_t coverage = tangleMatrix.tangleMatrix[0][iExit].orientedReadIds.size();
+            if(coverage <= lowCoverageThreshold) {
+                ++insignificantCount;
+            } else if(coverage >= highCoverageThreshold) {
+                ++significantCount;
+            } else {
+                ++ambiguousCount;
+            }
+        }
+
+        // Only keep going if we have exactly one significant exit and no ambiguous exits.
+        if(significantCount != 1) {
+            return;
+        }
+        if(ambiguousCount > 0) {
+            return;
+        }
+
+        // Find the one and only significant exit.
+        edge_descriptor e1;
+        for(uint64_t iExit=0; iExit<exits.size(); iExit++) {
+            if(tangleMatrix.tangleMatrix[0][iExit].orientedReadIds.size() >= highCoverageThreshold) {
+                e1 = exits[iExit];
+                break;
+            }
+        }
+
+        // Check for loops.
+        if(e1 == eStart) {
+            break;
+        }
+        bool loopDetected = false;
+        for(const edge_descriptor e: edges) {
+            if(e == e1) {
+                loopDetected = true;
+                break;
+            }
+        }
+        if(loopDetected) {
+            break;
+        }
+
+        // Add it to our output edges and continue from here.
+        edges.push_back(e1);
+        e0 = e1;
+    }
+}
+
+
+
+void AssemblyGraph::backwardLocalSearch(
+    edge_descriptor eStart,
+    uint64_t lowCoverageThreshold,
+    uint64_t highCoverageThreshold,
+    vector<edge_descriptor>& edges) const
+{
+    const bool debug = false;
+    const AssemblyGraph& assemblyGraph = *this;
+
+    edges.clear();
+    edge_descriptor e0 = eStart;
+
+    vector<edge_descriptor> entrances;
+    vector<edge_descriptor> exits(1, eStart);
+
+    // Main iteration.
+    while(true) {
+        const vertex_descriptor v0 = source(e0, assemblyGraph);
+        entrances.clear();
+        BGL_FORALL_INEDGES(v0, e1, assemblyGraph, AssemblyGraph) {
+            entrances.push_back(e1);
+        }
+
+        TangleMatrix tangleMatrix(assemblyGraph, entrances, exits, 0, options.aDrift, options.bDrift);
+
+        if(debug) {
+            cout << "Starting from " << assemblyGraph[e0].id << " found:" << endl;
+            for(uint64_t iEntrance=0; iEntrance<entrances.size(); iEntrance++) {
+                cout << assemblyGraph[entrances[iEntrance]].id << " " <<
+                    tangleMatrix.tangleMatrix[iEntrance][0].orientedReadIds.size() << endl;
+            }
+        }
+
+        // Counts exits by type.
+        // Significant: coverage >= highCoverageThreshold
+        // Insignificant: coverage <= lowCoverageThreshold
+        // Ambiguous: lowCoverageThreshold< coverage < highCoverageThreshold.
+        uint64_t significantCount = 0;
+        uint64_t insignificantCount = 0;
+        uint64_t ambiguousCount = 0;
+        for(uint64_t iEntrance=0; iEntrance<entrances.size(); iEntrance++) {
+            const uint64_t coverage = tangleMatrix.tangleMatrix[iEntrance][0].orientedReadIds.size();
+            if(coverage <= lowCoverageThreshold) {
+                ++insignificantCount;
+            } else if(coverage >= highCoverageThreshold) {
+                ++significantCount;
+            } else {
+                ++ambiguousCount;
+            }
+        }
+
+        // Only keep going if we have exactly one significant exit and no ambiguous exits.
+        if(significantCount != 1) {
+            return;
+        }
+        if(ambiguousCount > 0) {
+            return;
+        }
+
+        // Find the one and only good entrance.
+        edge_descriptor e1;
+        for(uint64_t iEntrance=0; iEntrance<entrances.size(); iEntrance++) {
+            if(tangleMatrix.tangleMatrix[iEntrance][0].orientedReadIds.size() >= highCoverageThreshold) {
+                e1 = entrances[iEntrance];
+                break;
+            }
+        }
+
+        // Check for loops.
+        if(e1 == eStart) {
+            break;
+        }
+        bool loopDetected = false;
+        for(const edge_descriptor e: edges) {
+            if(e == e1) {
+                loopDetected = true;
+                break;
+            }
+        }
+        if(loopDetected) {
+            break;
+        }
+
+        // Add it to our output edges and continue from here.
+        edges.push_back(e1);
+        e0 = e1;
+    }
+}
+
+
+
+void AssemblyGraph::testLocalSearch(
+    uint64_t edgeIdStart,
+    uint64_t direction,
+    uint64_t lowCoverageThreshold,
+    uint64_t highCoverageThreshold) const
+{
+    const AssemblyGraph& assemblyGraph = *this;
+
+    edge_descriptor eStart;
+    bool found = false;
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        if(assemblyGraph[e].id == edgeIdStart) {
+            eStart = e;
+            found = true;
+            break;
+        }
+    }
+    if(not found) {
+        cout << "Edge with id " << edgeIdStart << " does not exist." << endl;
+        return;
+    }
+
+    vector<edge_descriptor> edges;
+    if(direction == 0) {
+        forwardLocalSearch(eStart, lowCoverageThreshold, highCoverageThreshold, edges);
+    } else {
+        backwardLocalSearch(eStart, lowCoverageThreshold, highCoverageThreshold, edges);
+    }
+
+    cout << "Found " << edges.size() << " edges:" << endl;
+    for(const edge_descriptor e: edges) {
+        cout << assemblyGraph[e].id << " ";
+    }
+    cout << endl;
+
+
+}
+
+
+
+void AssemblyGraph::createSearchGraph(
+    uint64_t lowCoverageThreshold,
+    uint64_t highCoverageThreshold)
+{
+    using shasta2::SearchGraph;
+    AssemblyGraph& assemblyGraph = *this;
+
+    // Create the SearchGraph.
+    SearchGraph searchGraph(*this, lowCoverageThreshold, highCoverageThreshold);
+
+    // Compute connected components.
+    vector<SearchGraph> components;
+    searchGraph.computeConnectedComponents(components);
+    // cout << "Found " << components.size() << " non-trivial connected components of the SearchGraph." << endl;
+
+
+
+    // Process each connected component separately.
+    ofstream csv("SearchGraph-Chains.csv");
+    ofstream csvBandage("SearchGraph-Bandage.csv");
+    csvBandage << "Segment,Color\n";
+    vector< vector<vertex_descriptor> > chains;
+    for(uint64_t componentId=0; componentId<components.size(); componentId++) {
+        // cout << "Working on component " << componentId << " of " << components.size() << endl;
+        SearchGraph& component = components[componentId];
+        transitiveReductionAny(component);
+        component.removeBranches();
+        // component.writeGraphviz("SearchGraph-" + to_string(componentId) + ".dot");
+
+        findLinearVertexChains(component, chains);
+
+        // For each chain, generate a new AssemblyGraphEdge,
+        // without connecting it to the rest of the AssemblyGraph for now.
+        for(const vector<vertex_descriptor>& chain: chains) {
+            if(chain.size() < 2) {
+                continue;
+            }
+
+            // Get some information about the first and last AssemblyGraph edge in the chain.
+            const SearchGraph::vertex_descriptor sv0 = chain.front();
+            const SearchGraph::vertex_descriptor sv1 = chain.back();
+            const edge_descriptor e0 = component[sv0].e;
+            const edge_descriptor e1 = component[sv1].e;
+
+            const vertex_descriptor v0 = source(e0, assemblyGraph);
+            const vertex_descriptor v1 = target(e1, assemblyGraph);
+
+#if 0
+            // Create new vertices for the new AssemblyGraphEdge, so it
+            // will stay isolated from the rest of the AssemblyGraph for now.
+            const AssemblyGraphEdge& edge0 = assemblyGraph[e0];
+            const AssemblyGraphEdge& edge1 = assemblyGraph[e1];
+            const AnchorId anchorId0 = edge0.firstAnchorId();
+            const AnchorId anchorId1 = edge1.lastAnchorId();
+            const vertex_descriptor v0 = add_vertex(AssemblyGraphVertex(anchorId0, nextVertexId++), assemblyGraph);
+            const vertex_descriptor v1 = add_vertex(AssemblyGraphVertex(anchorId1, nextVertexId++), assemblyGraph);
+#endif
+
+            // Create the new AssemblyGraphEdge.
+            edge_descriptor eNew;
+            tie(eNew, ignore) = add_edge(v0, v1, AssemblyGraphEdge(nextEdgeId++), assemblyGraph);
+            AssemblyGraphEdge& edgeNew = assemblyGraph[eNew];
+            csvBandage << edgeNew.id << ",Red\n";
+
+
+
+            // Concatenate the AssemblyGraphEdges of the chain, adding bridge steps where needed.
+            for(uint64_t i=0; i<chain.size(); i++) {
+                const SearchGraph::vertex_descriptor v = chain[i];
+                const edge_descriptor e = component[v].e;
+                const AssemblyGraphEdge& edge = assemblyGraph[e];
+
+                // If necessary, add an AssemblyGraphEdgeStep to bridge.
+                if(i != 0) {
+                    const SearchGraph::vertex_descriptor vPrevious = chain[i - 1];
+                    const edge_descriptor ePrevious = component[vPrevious].e;
+                    const AssemblyGraphEdge& edgePrevious = assemblyGraph[ePrevious];
+                    const AnchorId anchorIdPrevious = edgePrevious.lastAnchorId();
+                    const AnchorId anchorIdNext = edge.firstAnchorId();
+                    if(anchorIdPrevious != anchorIdNext) {
+                        const AnchorPair bridgeAnchorPair = anchors.bridge(
+                            edgePrevious.back().anchorPair,
+                            edge.front().anchorPair,
+                            options.aDrift, options.bDrift);
+                        const uint64_t offset = bridgeAnchorPair.getAverageOffset(anchors);
+                        edgeNew.push_back(AssemblyGraphEdgeStep(bridgeAnchorPair, offset));
+                    }
+                }
+
+                // Now we can append this edge to the new edge.
+                copy(edge.begin(), edge.end(), back_inserter(edgeNew));
+
+            }
+
+            // Now remove the edges of the chain.
+            for(const SearchGraph::vertex_descriptor sv: chain) {
+                const edge_descriptor e = component[sv].e;
+                boost::remove_edge(e, assemblyGraph);
+            }
+
+
+            // Write this chain to the csv file.
+            csv << edgeNew.id << ",";
+            for(const vertex_descriptor v: chain) {
+                const AssemblyGraph::edge_descriptor e = searchGraph[v].e;
+                csv << assemblyGraph[e].id << ",";
+            }
+            csv << "\n";
+        }
+    }
+}
+

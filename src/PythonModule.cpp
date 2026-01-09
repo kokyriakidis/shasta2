@@ -179,9 +179,6 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def("findOrientedReadEdgeInformation", &AssemblyGraph::findOrientedReadEdgeInformation)
         .def("writeOrientedReadEdgeInformation", &AssemblyGraph::writeOrientedReadEdgeInformation)
         .def("findEdgePairs", &AssemblyGraph::findEdgePairs)
-        .def("testSearch", &AssemblyGraph::testSearch)
-        .def("testLocalSearch", &AssemblyGraph::testLocalSearch)
-        .def("createSearchGraph", &AssemblyGraph::createSearchGraph)
         .def("findAndConnectAssemblyPaths", &AssemblyGraph::findAndConnectAssemblyPaths)
         ;
 
