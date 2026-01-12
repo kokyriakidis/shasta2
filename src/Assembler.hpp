@@ -217,13 +217,6 @@ public:
     // Store anchor gaps information in ReadSummary for each read.
     void storeAnchorGaps();
 
-    AnchorId readFollowing(
-        AnchorId,
-        uint64_t direction,
-        uint64_t minCommonCount,
-        double aDrift,
-        double bDrift
-        ) const;
 
 
     // The ReadGraph is only used for strand separation.

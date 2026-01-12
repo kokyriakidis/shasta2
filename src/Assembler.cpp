@@ -304,35 +304,11 @@ void Assembler::storeAnchorGaps()
 
 
 
-AnchorId Assembler::readFollowing(
-    AnchorId anchorId,
-    uint64_t direction,
-    uint64_t minCommonCount,
-    double aDrift,
-    double bDrift
-    ) const
-{
-    return anchors().readFollowing(journeys(), anchorId, direction, minCommonCount, aDrift, bDrift);
-}
-
-
-
 void Assembler::createAnchorGraph(const Options& options)
 {
-
-    /*
-    anchorGraphPointer = make_shared<AnchorGraph>(
-        anchors(), journeys(),
-        options.minAnchorGraphEdgeCoverage,
-        options.minAnchorGraphContinueReadFollowingCount,
-        options.aDrift,
-        options.bDrift,
-        options.threadCount);
-    */
     anchorGraphPointer = make_shared<AnchorGraph>(
         anchors(), journeys(),
         options.minAnchorGraphEdgeCoverage);
-
 }
 
 

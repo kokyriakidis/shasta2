@@ -137,8 +137,6 @@ PYBIND11_MODULE(shasta2, shasta2Module)
           &Assembler::accessJourneys)
       .def("storeAnchorGaps",
           &Assembler::storeAnchorGaps)
-      .def("readFollowing",
-          &Assembler::readFollowing)
 
       // AnchorGraph.
       .def("createAnchorGraph",
