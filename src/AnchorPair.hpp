@@ -53,6 +53,7 @@ public:
         const AnchorPair&,
         const vector<OrientedReadId>& excludedOrientedReadIds);
 
+#if 0
     // "Join" constructor from two AnchorPairs.
     // This constructs a new AnchorPair as follows:
     // - anchorIdA is the same as anchorPair0.anchorIdA.
@@ -67,6 +68,7 @@ public:
         const Anchors&,
         const AnchorPair& anchorPair0,
         const AnchorPair& anchorPair1);
+#endif
 
     // This finds AnchorPairs as follows:
     // - anchorIdA is as specified.
