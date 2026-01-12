@@ -7,7 +7,6 @@
 
 // Boost libraries.
 #include <boost/graph/adjacency_list.hpp>
-#include <boost/numeric/ublas/matrix.hpp>
 
 // Standard library.
 #include "cstdint.hpp"
@@ -204,38 +203,6 @@ public:
         const vector< pair<uint32_t, uint32_t> >& positionsInJourneys,
         vector<AnchorId>&,
         vector<uint64_t>& localCoverage) const;
-
-
-
-    // Compute the clustering matrix.
-    // This is a matrix with one row for each OrientedReadId
-    // and a column for each internal AnchorId.
-    // clusteringMatrix(i, j) is 1 if orientedReadId[i] visits internalAnchorIds[j]
-    // in its journey portion between anchorIdA and anchorIdB.
-    // Here, internalAnchorIds is as computed by getInternalAnchorIds
-    // and is sorted by AnchorId.
-    // The cluster matrix is stores as a column-major matrix
-    // (Fortran compatible storage layout) so it can be later used
-    // for a Singular Value Decomposition (SVD) for clustering.
-    using Matrix = boost::numeric::ublas::matrix<double, boost::numeric::ublas::column_major>;
-
-    // Given the distance matrix, compute a similarity graph
-    // between OrientedReadIds in which each vertex represents an OrientedReadId and
-    // an edge is generated for OrientedReadId pairs
-    // with distance below the given threshold.
-    // Each vertex stores the id of the cluster it is assigned to.
-    class OrientedReadIdSimilarityGraph :
-        public boost::adjacency_list<boost::vecS, boost::vecS, boost::undirectedS, uint64_t> {
-    public:
-        OrientedReadIdSimilarityGraph(const Matrix& distanceMatrix, double maxDistance);
-        vector< vector<vertex_descriptor> > clusters;
-        void writeHtml(ostream&, const vector<OrientedReadId>&) const;
-    private:
-        void writeGraphviz(const string& fileName, const vector<OrientedReadId>&) const;
-        void writeGraphviz(ostream&, const vector<OrientedReadId>&) const;
-    };
-
-
 
     // Return the url for the exploreAnchorPair1 page for this AnchorPair.
     string url() const;
