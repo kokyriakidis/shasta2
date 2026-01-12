@@ -660,11 +660,11 @@ bool AnchorPair::contains(OrientedReadId orientedReadId) const
 
 
 
-// Return the url for the exploreAnchorPair1 page for this AnchorPair.
+// Return the url for the exploreAnchorPair2 page for this AnchorPair.
 string AnchorPair::url() const
 {
     string s =
-        "exploreAnchorPair1?"
+        "exploreAnchorPair2?"
         "anchorIdAString=" + HttpServer::urlEncode(anchorIdToString(anchorIdA)) +
         "&anchorIdBString=" + HttpServer::urlEncode(anchorIdToString(anchorIdB)) +
         "&orientedReadIdsString=";

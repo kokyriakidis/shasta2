@@ -43,8 +43,6 @@ void Assembler::fillServerFunctionTable()
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreFindMarkerKmers);
 
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreAnchor);
-    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreAnchorPair);
-    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreAnchorPair1);
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreAnchorPair2);
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreJourney);
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreReadFollowing);
@@ -233,7 +231,6 @@ void Assembler::writeNavigation(ostream& html) const
     writeNavigation(html, "Anchors", {
         {"Anchor", "exploreAnchor"},
         {"Anchor pair", "exploreAnchorPair2"},
-        {"Anchor pair (old)", "exploreAnchorPair"},
         {"Journey", "exploreJourney"},
         {"Read following on anchors", "exploreReadFollowing"},
         {"Local anchor graph", "exploreLocalAnchorGraph"},

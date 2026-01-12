@@ -180,7 +180,7 @@ public:
         vector<AnchorId>&,
         vector<uint64_t>& localCoverage) const;
 
-    // Return the url for the exploreAnchorPair1 page for this AnchorPair.
+    // Return the url for the exploreAnchorPair2 page for this AnchorPair.
     string url() const;
 
 
