@@ -377,14 +377,6 @@ public:
 
 
 
-    // More systematic search functionality that uses an index.
-    void findEdgePairs(uint64_t minCoverage);
-    std::map<edge_descriptor, vector<edge_descriptor> > edgePairsBySource;
-    std::map<edge_descriptor, vector<edge_descriptor> > edgePairsByTarget;
-    void testSearch(uint64_t edgeId, uint64_t direction, uint64_t minCoverage) const;
-
-
-
     // Superbubbles and SuperbubbleChains.
     // - A Superbubble is a Tangle in which all entrance edges are into
     //   a single vertex and all exit edges are from a single vertex.

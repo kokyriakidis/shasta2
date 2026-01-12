@@ -178,7 +178,6 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def("computeJourneys", &AssemblyGraph::computeJourneys)
         .def("findOrientedReadEdgeInformation", &AssemblyGraph::findOrientedReadEdgeInformation)
         .def("writeOrientedReadEdgeInformation", &AssemblyGraph::writeOrientedReadEdgeInformation)
-        .def("findEdgePairs", &AssemblyGraph::findEdgePairs)
         .def("findAndConnectAssemblyPaths", &AssemblyGraph::findAndConnectAssemblyPaths)
         ;
 
