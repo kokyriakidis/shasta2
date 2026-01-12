@@ -26,20 +26,10 @@ public:
     // Write a configuration file.
     void write(ostream&) const;
 
-    // These cannot be defined in OptionsDefine.hpp.
     bool isHelp = false;
-    vector <string> inputFileNames;
 
-    uint64_t minReadLength = 0;
-
-    uint64_t k = 60;
-    double markerDensity = 0.05;
-
-    double maxMarkerErrorRate = 0.5;
-
-    string externalAnchorsName;
-    uint64_t minAnchorCoverage = 10;
-    uint64_t maxAnchorCoverage = 60;
+    // The names of the input fasta/fastq files.
+    vector<string> inputFileNames;
 
     // An anchor is not generated if its sequence contains an exact repeat
     // consisting of n copies of a unit of length (period) p, if
@@ -79,7 +69,7 @@ public:
     uint64_t phasingMinDegree = 2;
     uint64_t phasingMinCoverage = 4;
 
-	// Options defined in OptionsDefine.hpp
+	// Options with a simple type are defined in OptionsDefine.hpp
 	#define SHASTA2_OPTION_DEFINE(type, name, optionName, defaultValue, description) \
 		type name = defaultValue;
 	#include "OptionsDefine.hpp"

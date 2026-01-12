@@ -19,6 +19,10 @@ SHASTA2_OPTION_DEFINE(
     uint64_t, threadCount, "--threads", 0,
     "Number of threads (0 to use hardware_concurrency).")
 
+SHASTA2_OPTION_DEFINE(
+    string, externalAnchorsName, "--external-anchors-name", "",
+    "External anchors name. Must be an absolute path without the .toc/.data extensions.")
+
 
 
 // Http server options.
@@ -30,6 +34,39 @@ SHASTA2_OPTION_DEFINE(
 SHASTA2_OPTION_DEFINE(
     uint16_t, port, "--port", 17100,
     "Port number for http server.")
+
+
+
+// Reads.
+SHASTA2_OPTION_DEFINE(
+    uint64_t, minReadLength, "--min-read-length", 0,
+    "Read length cutoff.")
+
+
+
+// Markers.
+SHASTA2_OPTION_DEFINE(
+    uint64_t, k, "--k", 60,
+    "Marker length.")
+
+SHASTA2_OPTION_DEFINE(
+    double, markerDensity, "--marker-density", 0.05,
+    "Marker density.")
+
+SHASTA2_OPTION_DEFINE(
+    double, maxMarkerErrorRate, "--max-marker-error-rate", 0.5,
+    "Maximum marker error rate. Reads with a higher marker error rate are not used.")
+
+
+
+// Anchors.
+SHASTA2_OPTION_DEFINE(
+    uint64_t, minAnchorCoverage, "--min-anchor-coverage", 10,
+    "Minimum anchor coverage.")
+
+SHASTA2_OPTION_DEFINE(
+    uint64_t, maxAnchorCoverage, "--max-anchor-coverage", 60,
+    "Maximum anchor coverage.")
 
 
 

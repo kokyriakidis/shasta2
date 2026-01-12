@@ -45,34 +45,6 @@ void Options::addOptions()
         "Input fasta or fastq files (uncompressed)."
         )->capture_default_str();
 
-    add_option("--min-read-length", minReadLength,
-        "Read length cutoff."
-        )->capture_default_str();
-
-    add_option("--k", k,
-        "Marker length"
-        )->capture_default_str();
-
-    add_option("--marker-density", markerDensity,
-        "Marker density."
-        )->capture_default_str();
-
-    add_option("--max-marker-error-rate", maxMarkerErrorRate,
-        "Maximum marker error rate. Reads with a higher marker error rate are not used."
-        )->capture_default_str();
-
-    add_option("--external-anchors-name", externalAnchorsName,
-        "External anchors name. Must be an absolute path without the .toc/.data extensions."
-        )->capture_default_str();
-
-    add_option("--min-anchor-coverage", minAnchorCoverage,
-        "Minimum anchor coverage."
-        )->capture_default_str();
-
-    add_option("--max-anchor-coverage", maxAnchorCoverage,
-        "Maximum anchor coverage."
-        )->capture_default_str();
-
     add_option("--max-anchor-repeat-length", maxAnchorRepeatLength,
         "Maximum number of copies of repeats of period 1, 2, 3,... allowed in an anchor sequence."
         )->capture_default_str();
