@@ -353,29 +353,6 @@ public:
         vector<OrientedReadEdgeInfo>&) const;
 
 
-    // Simple search starting at a given edge (segment) and moving in the specified direction.
-    void search(
-        edge_descriptor,
-        uint64_t direction) const;
-    class SearchGraphVertex {
-    public:
-        AssemblyGraph::edge_descriptor e;
-        SearchGraphVertex(AssemblyGraph::edge_descriptor e) : e(e) {}
-    };
-    class SearchGraphEdge {
-    public:
-        uint64_t tangleMatrix;
-    };
-    class SearchGraph : public boost::adjacency_list<
-        boost::listS,
-        boost::listS,
-        boost::bidirectionalS,
-        SearchGraphVertex,
-        SearchGraphEdge> {
-        public:
-    };
-
-
 
     // Superbubbles and SuperbubbleChains.
     // - A Superbubble is a Tangle in which all entrance edges are into
