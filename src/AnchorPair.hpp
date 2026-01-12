@@ -48,28 +48,6 @@ public:
         orientedReadIds(that.orientedReadIds)
     {}
 
-    // Copy from another AnchorPair, but excluding some OrientedReadIds.
-    AnchorPair(
-        const AnchorPair&,
-        const vector<OrientedReadId>& excludedOrientedReadIds);
-
-#if 0
-    // "Join" constructor from two AnchorPairs.
-    // This constructs a new AnchorPair as follows:
-    // - anchorIdA is the same as anchorPair0.anchorIdA.
-    // - anchorIdB is the same as anchorPair1.anchorIdB.
-    // - orientedReadIds are the intersection of
-    //   anchorPair0.orientedReadIds and anchorPair1.orientedReadIds,
-    //   with the additional requirement that the new journey offset
-    //   is positive. That is, each OrientedReadId of the new AnchorPair
-    //   visits anchorIdB after visiting the new anchorIdA.
-    // This constructor is used in detangling.
-    AnchorPair(
-        const Anchors&,
-        const AnchorPair& anchorPair0,
-        const AnchorPair& anchorPair1);
-#endif
-
     // This finds AnchorPairs as follows:
     // - anchorIdA is as specified.
     // - Coverage is at least minCoverage.
