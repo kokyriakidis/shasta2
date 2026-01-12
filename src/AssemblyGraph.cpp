@@ -23,7 +23,6 @@
 #include "rle.hpp"
 #include "Superbubble.hpp"
 #include "SuperbubbleChain.hpp"
-#include "Tangle.hpp"
 #include "Tangle1.hpp"
 #include "TangleMatrix.hpp"
 #include "TangleMatrix1.hpp"

@@ -5,7 +5,6 @@
 #include "PhasingGraph.hpp"
 #include "performanceLog.hpp"
 #include "RestrictedAnchorGraph.hpp"
-#include "Tangle.hpp"
 #include "TangleMatrix.hpp"
 #include "Tangle1.hpp"
 #include "TangleMatrix1.hpp"

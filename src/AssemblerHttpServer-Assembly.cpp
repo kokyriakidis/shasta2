@@ -12,7 +12,6 @@
 #include "RestrictedAnchorGraph.hpp"
 #include "SegmentStepSupport.hpp"
 #include "Superbubble.hpp"
-#include "Tangle.hpp"
 #include "TangleMatrix.hpp"
 #include "TangleMatrix1.hpp"
 using namespace shasta2;
