@@ -77,46 +77,14 @@ class shasta2::AnchorGraph :
     public MultithreadedObject<AnchorGraph> {
 public:
 
-    // Generate the complete AnchorGraph, which includes all possible edges
-    // generated from the Journeys.
-    // This is only used in the Python API and in the http server.
-    // It is not used in the standard assembly process.
+    // Construct the AnchorGraph from the Journeys.
+    // Only include edges with at least the specified minCoverage.
     AnchorGraph(const Anchors&, const Journeys&, uint64_t minEdgeCoverage);
-
-    // Constructor that uses read following.
-    AnchorGraph(
-        const Anchors&,
-        const Journeys&,
-        uint64_t minEdgeCoverage,
-        uint64_t minContinueReadFollowingCount,
-        double aDrift,
-        double bDrift,
-        uint64_t threadCount);
 
     // Constructor from binary data.
     AnchorGraph(const MappedMemoryOwner&, const string& name);
 
     uint64_t nextEdgeId = 0;
-
-    void createEdges1(
-        const Anchors&,
-        const Journeys&,
-        uint64_t minEdgeCoverage,
-        double aDrift,
-        double bDrift);
-    void createEdges2(
-        const Anchors&,
-        const Journeys&,
-        uint64_t minEdgeCoverage,
-        double aDrift,
-        double bDrift);
-    void createEdges3(
-        const Anchors&,
-        const Journeys&,
-        uint64_t minEdgeCoverage,
-        uint64_t minContinueReadFollowingCount,
-        double aDrift,
-        double bDrift);
 
     void transitiveReduction(
         uint64_t transitiveReductionMaxEdgeCoverage,
@@ -124,90 +92,6 @@ public:
 private:
     bool transitiveReductionCanRemove(edge_descriptor, uint64_t transitiveReductionMaxDistance) const;
 public:
-
-    // Dijkstra search.
-    // This performs a shortest path search starting at the specified AnchorId
-    // and stops when it finds a consistent AnchorPair that
-    // satisfies the coverage criteria and can therefore be used to create a new edge.
-    // If successful, this returns true and:
-    // - If direction is 0, the last arguments is set to an AnchorPair with AnchorIdA = startAnchorId.
-    // - If direction is 1, the last arguments is set to an AnchorPair with AnchorIdB = startAnchorId.
-    // If not successful, this return false and the last argument is not modified.
-    bool search(
-        uint64_t direction,
-        AnchorId startAnchorId,
-        const Anchors&,
-        const ReadLengthDistribution&,
-        double aDrift,
-        double bDrift,
-        uint64_t minEdgeCoverageNear,
-        uint64_t minEdgeCoverageFar,
-        uint64_t maxDistance,
-        AnchorPair&,
-        uint64_t& offset
-        ) const;
-    bool searchForward(
-        AnchorId startAnchorId,
-        const Anchors&,
-        const ReadLengthDistribution&,
-        double aDrift,
-        double bDrift,
-        uint64_t minEdgeCoverageNear,
-        uint64_t minEdgeCoverageFar,
-        uint64_t maxDistance,
-        AnchorPair&,
-        uint64_t& offset
-        ) const;
-    bool searchBackward(
-        AnchorId startAnchorId,
-        const Anchors&,
-        const ReadLengthDistribution&,
-        double aDrift,
-        double bDrift,
-        uint64_t minEdgeCoverageNear,
-        uint64_t minEdgeCoverageFar,
-        uint64_t maxDistance,
-        AnchorPair&,
-        uint64_t& offset
-        ) const;
-
-
-
-    // Eliminate dead ends where possible, using shortest path searches.
-    void handleDeadEnds(
-        const Anchors&,
-        const ReadLengthDistribution&,
-        double aDrift,
-        double bDrift,
-        uint64_t minEdgeCoverageNear,
-        uint64_t minEdgeCoverageFar,
-        uint64_t maxDistance,
-        uint64_t threadCount);
-
-    class HandleDeadEndsData {
-    public:
-
-        // The arguments of handleDeadEnds, so they are visible to the threads.
-        const Anchors* anchors;
-        const ReadLengthDistribution* readLengthDistribution;
-        double aDrift;
-        double bDrift;
-        uint64_t minEdgeCoverageNear;
-        uint64_t minEdgeCoverageFar;
-        uint64_t maxDistance;
-
-        // The list of the dead end AnchorIds and their direction
-        // (0 = forward dead end, 1 = backward dead end).
-        vector< pair<AnchorId, uint64_t> > deadEnds;
-
-        // The AnchorPairs found by each thread and their offset.
-        vector< vector< pair<AnchorPair, uint64_t> > > threadPairs;
-    };
-    HandleDeadEndsData handleDeadEndsData;
-
-    void handleDeadEndsThreadFunction(uint64_t threadId);
-
-
 
     // Serialization.
     friend class boost::serialization::access;
