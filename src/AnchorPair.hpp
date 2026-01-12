@@ -218,28 +218,6 @@ public:
     // (Fortran compatible storage layout) so it can be later used
     // for a Singular Value Decomposition (SVD) for clustering.
     using Matrix = boost::numeric::ublas::matrix<double, boost::numeric::ublas::column_major>;
-    void computeClusteringMatrix(
-        const Journeys&,
-        const vector< pair<uint32_t, uint32_t> >& positionsInJourneys,  // As computed by getPositionsInJourneys.
-        const vector<AnchorId>& internalAnchorIds,                      // As computed by getInternalAnchorIds.
-        Matrix&
-        ) const;
-
-    // Singular value decomposition of the clustering matrix.
-    void clusteringMatrixSvd(
-        Matrix& clusteringMatrix,
-        vector<double>& singularValues,
-        Matrix& leftSingularVectors,
-        Matrix& rightSingularVectors) const;
-
-    // Use the scaled left singular values to compute a distance matrix
-    // between oriented reads.
-    void computeDistanceMatrix(
-        uint64_t singularValueCount,    // Only use the first singular values
-        const vector<double>& singularValues,
-        const Matrix& leftSingularVectors,
-        Matrix& distanceMatrix
-        ) const;
 
     // Given the distance matrix, compute a similarity graph
     // between OrientedReadIds in which each vertex represents an OrientedReadId and
@@ -256,7 +234,6 @@ public:
         void writeGraphviz(const string& fileName, const vector<OrientedReadId>&) const;
         void writeGraphviz(ostream&, const vector<OrientedReadId>&) const;
     };
-    void writeClustersHtml(ostream&, const OrientedReadIdSimilarityGraph&) const;
 
 
 
@@ -274,26 +251,6 @@ public:
         const Journeys&,
         const vector< pair<uint32_t, uint32_t> >& positionsInJourneys   // As computed by getPositionsInJourneys.
         ) const;
-    void writeClusteringMatrix(
-        ostream& html,
-        // The internalAnchorIds as computed by getInternalAnchorIds.
-        const vector<AnchorId>& internalAnchorIds,
-        // The same AnchorIds, in the order in which the corresponding columns should be written out
-        const vector<AnchorId>& internalAnchorIdsInOutputOrder,
-        const Matrix&) const;
-    void writeClusteringMatrixSvd(
-        ostream& html,
-        // The internalAnchorIds as computed by getInternalAnchorIds.
-        const vector<AnchorId>& internalAnchorIds,
-        // The same AnchorIds, in the order in which the corresponding columns should be written out
-        const vector<AnchorId>& internalAnchorIdsInOutputOrder,
-        uint64_t singularValueCount,    // Number of singular values/vectors to be writtten
-        const vector<double>& singularValues,
-        const Matrix& leftSingularVectors,
-        const Matrix& rightSingularVectors) const;
-    void writeDistanceMatrixHtml(
-        ostream& html,
-        const Matrix& distanceMatrix) const;
 
 
 
