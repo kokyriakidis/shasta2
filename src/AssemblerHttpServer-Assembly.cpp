@@ -12,7 +12,6 @@
 #include "RestrictedAnchorGraph.hpp"
 #include "SegmentStepSupport.hpp"
 #include "Superbubble.hpp"
-#include "TangleMatrix.hpp"
 #include "TangleMatrix1.hpp"
 using namespace shasta2;
 
@@ -1582,12 +1581,6 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
         }
     }
     std::ranges::sort(exits, assemblyGraph.orderById);
-
-
-    // Make sure we have the information we need.
-    if(assemblyGraph.orientedReadEdgeInformation.empty()) {
-        assemblyGraph.findOrientedReadEdgeInformation();
-    }
 
     // Compute the tangle matrix.
     const TangleMatrix1 tangleMatrix(assemblyGraph, entrances, exits, html);

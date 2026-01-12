@@ -102,13 +102,6 @@ public:
     uint64_t id = invalid<uint64_t>;
     bool wasAssembled = false;
 
-    // A call to countOrientedReadStepsBySegment will store here the distinct OrientedReadIds
-    // that visit this edge and that also visit at least one other edge.
-    // They are stored sorted, each with the number of steps in this edge
-    // in which the OrientedReadId appears.
-    // This is used to compute extended tangle matrices.
-    vector< pair<OrientedReadId, uint64_t> > transitioningOrientedReadIds;
-
     AssemblyGraphEdge(uint64_t id = invalid<uint64_t>) : id(id) {}
 
     void check(const Anchors&) const;
@@ -290,48 +283,6 @@ public:
     // is the sequence of assembly graph edges it visits.
     void computeJourneys();
     vector< vector<edge_descriptor> > compressedJourneys;
-
-
-
-    // Find appearances of each OrientedReadId in the AssemblyGraphSteps
-    // of each AssemblyGraphEdge.
-    // This stores information for each OrientedReadId in
-    // orientedReadEdgeInformation (indexed by OrientedReadId::getValue).
-    // This also stores in the each AssemblyGraphEdge::transitioningOrientedReadIds
-    // the OrientedReadIds that visit the edge and at least one other edge.
-    void findOrientedReadEdgeInformation();
-    void clearOrientedReadEdgeInformation();
-    void writeOrientedReadEdgeInformation();
-    class OrientedReadEdgeInformation {
-    public:
-        edge_descriptor e;
-        uint64_t stepCount;
-        OrientedReadEdgeInformation(edge_descriptor e, uint64_t stepCount) :
-            e(e), stepCount(stepCount) {}
-    };
-    class OrientedReadEdgeInformationOrderById {
-    public:
-        OrientedReadEdgeInformationOrderById(const AssemblyGraph& assemblyGraph): assemblyGraph(assemblyGraph) {}
-        const AssemblyGraph& assemblyGraph;
-        bool operator()(const OrientedReadEdgeInformation& x, const OrientedReadEdgeInformation& y) const
-        {
-            return assemblyGraph.orderById(x.e, y.e);
-        }
-    };
-    // Indexed by OrientedReadId::getValue()
-    // For each OrientedReadId, the OrientedReadEdgeInformation are ordered by edge id.
-    vector< vector<OrientedReadEdgeInformation> > orientedReadEdgeInformation;
-
-
-
-    // Use the orientedReadSegments and the transitioningOrientedReadIds
-    // stored in the AssemblyGraphEdges to compute an extended tangle matrix.
-    void computeExtendedTangleMatrix(
-        vector<edge_descriptor>& entrances,
-        vector<edge_descriptor>& exits,
-        vector< vector<double> > & tangleMatrix,
-        ostream& html
-        ) const;
 
 
 
