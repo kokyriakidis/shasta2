@@ -425,7 +425,7 @@ void Assembler::accessAllSoft()
     }
 
     try {
-        accessSimpleAnchorGraph();
+        accessCompleteAnchorGraph();
     } catch(const exception& e) {
     }
 

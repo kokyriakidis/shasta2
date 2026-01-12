@@ -244,13 +244,15 @@ public:
     void saveAnchorGraph();
     void anchorGraphTransitiveReduction(const Options&);
 
-    // The "simple" AnchorGraph.
-    // It has edges between AnchorIds that are immediately adjacent in one or more Journeys,
-    // without coverage limitations and without any splitting.
-    // This is only used for debugging, not for assembly.
-    shared_ptr<AnchorGraph> simpleAnchorGraphPointer;
-    void createSimpleAnchorGraph();
-    void accessSimpleAnchorGraph();
+
+
+    // The complete AnchorGraph, which includes all possible edges
+    // generated from the Journeys.
+    // This is only used in the Python API and in the http server.
+    // It is not used in the standard assembly process.
+    shared_ptr<AnchorGraph> completeAnchorGraphPointer;
+    void createCompleteAnchorGraph();
+    void accessCompleteAnchorGraph();
 
 
 

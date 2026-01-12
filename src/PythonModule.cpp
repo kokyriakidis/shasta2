@@ -149,8 +149,8 @@ PYBIND11_MODULE(shasta2, shasta2Module)
           &Assembler::saveAnchorGraph)
       .def("anchorGraphTransitiveReduction",
           &Assembler::anchorGraphTransitiveReduction)
-      .def("createSimpleAnchorGraph",
-          &Assembler::createSimpleAnchorGraph)
+      .def("createCompleteAnchorGraph",
+          &Assembler::createCompleteAnchorGraph)
 
       // AssemblyGraph.
       .def("createAssemblyGraph",

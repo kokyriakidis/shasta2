@@ -337,10 +337,10 @@ void Assembler::createAnchorGraph(const Options& options)
 
 
 
-void Assembler::createSimpleAnchorGraph()
+void Assembler::createCompleteAnchorGraph()
 {
-    simpleAnchorGraphPointer = make_shared<AnchorGraph>(anchors(), journeys(), 1);
-    simpleAnchorGraphPointer->save("SimpleAnchorGraph");
+    completeAnchorGraphPointer = make_shared<AnchorGraph>(anchors(), journeys(), 1);
+    completeAnchorGraphPointer->save("CompleteAnchorGraph");
 }
 
 
@@ -380,10 +380,11 @@ void Assembler::anchorGraphTransitiveReduction(
 }
 
 
-void Assembler::accessSimpleAnchorGraph()
+
+void Assembler::accessCompleteAnchorGraph()
 {
     const MappedMemoryOwner& mappedMemoryOwner = *this;
-    simpleAnchorGraphPointer = make_shared<AnchorGraph>(mappedMemoryOwner, "SimpleAnchorGraph");
+    completeAnchorGraphPointer = make_shared<AnchorGraph>(mappedMemoryOwner, "CompleteAnchorGraph");
 }
 
 

@@ -77,7 +77,10 @@ class shasta2::AnchorGraph :
     public MultithreadedObject<AnchorGraph> {
 public:
 
-    // Simple generation of edges.
+    // Generate the complete AnchorGraph, which includes all possible edges
+    // generated from the Journeys.
+    // This is only used in the Python API and in the http server.
+    // It is not used in the standard assembly process.
     AnchorGraph(const Anchors&, const Journeys&, uint64_t minEdgeCoverage);
 
     // Constructor that uses read following.

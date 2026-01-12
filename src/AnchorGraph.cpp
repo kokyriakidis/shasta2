@@ -32,7 +32,8 @@ template class MultithreadedObject<AnchorGraph>;
 
 
 
-// Simple generation of edges.
+// Generate the complete AnchorGraph, which includes all possible edges
+// generated from the Journeys. This is only used in the http server.
 AnchorGraph::AnchorGraph(
     const Anchors& anchors,
     const Journeys& journeys,
