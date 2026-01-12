@@ -330,7 +330,6 @@ public:
     void exploreAnchor(const vector<string>&, ostream&);
     void exploreAnchorPair2(const vector<string>&, ostream&);
     void exploreJourney(const vector<string>&, ostream&);
-    void exploreReadFollowing(const vector<string>&, ostream&);
     void exploreLocalReadAnchorGraph(const vector<string>&, ostream&);
     void exploreLocalAnchorGraph(const vector<string>&, ostream&);
     void exploreLocalReadGraph(const vector<string>&, ostream&);
