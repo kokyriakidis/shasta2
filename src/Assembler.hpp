@@ -341,7 +341,6 @@ public:
     void exploreSegmentSteps(const vector<string>&, ostream&);
     void exploreSegmentStepSupport(const vector<string>&, ostream&);
     void exploreSegmentStep(const vector<string>&, ostream&);
-    void exploreBridgeSegmentSteps(const vector<string>&, ostream&);
     void exploreTangleMatrix(const vector<string>&, ostream&);
     void exploreSegmentPair(const vector<string>&, ostream&);
     void exploreLocalAssembly(const vector<string>&, ostream&);
