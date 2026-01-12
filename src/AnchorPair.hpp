@@ -259,41 +259,6 @@ public:
     void writeClustersHtml(ostream&, const OrientedReadIdSimilarityGraph&) const;
 
 
-    // A simple local anchor graph constructed using only the portions
-    // between anchorIdA and anchorIdB of the journeys
-    // of the OrientedReadIds in this AnchorPair.
-    class SimpleLocalAnchorGraphVertex {
-    public:
-        AnchorId anchorId = invalid<AnchorId>;
-        uint64_t localCoverage = invalid<uint64_t>;
-        uint64_t color = 0;     // Only used by approximateTopologicalSort.
-        uint64_t rank = 0;      // Only used by approximateTopologicalSort.
-        SimpleLocalAnchorGraphVertex(AnchorId anchorId, uint64_t localCoverage) :
-            anchorId(anchorId), localCoverage(localCoverage) {}
-        SimpleLocalAnchorGraphVertex() {}
-    };
-    class SimpleLocalAnchorGraphEdge {
-    public:
-        uint64_t localCoverage = 0;
-        bool isDagEdge = false; // Only used by approximateTopologicalSort.
-    };
-    class SimpleLocalAnchorGraph :
-        public boost::adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS,
-        SimpleLocalAnchorGraphVertex, SimpleLocalAnchorGraphEdge> {
-    public:
-        SimpleLocalAnchorGraph(const Anchors&, const Journeys&, const AnchorPair&);
-
-        // The vertex descriptors, sorted in approximate topological order.
-        void approximateTopologicalSort();
-        vector<vertex_descriptor> approximateTopologicalOrder;
-
-        void getInternalAnchorIdsInTopologicalOrder(vector<AnchorId>&) const;
-
-        void writeGraphviz(const string& fileName) const;
-        void writeGraphviz(ostream&) const;
-    };
-
-
 
     // Return the url for the exploreAnchorPair1 page for this AnchorPair.
     string url() const;
@@ -329,7 +294,6 @@ public:
     void writeDistanceMatrixHtml(
         ostream& html,
         const Matrix& distanceMatrix) const;
-    void writeSimpleLocalAnchorGraphHtml(ostream&, const SimpleLocalAnchorGraph&) const;
 
 
 
