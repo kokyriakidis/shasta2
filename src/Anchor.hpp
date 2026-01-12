@@ -182,13 +182,6 @@ public:
     void writeHtml(AnchorId, AnchorId, AnchorPairInfo&, const Journeys&
         , ostream&) const;
 
-    // Create an AnchorPair to "bridge" between two given AnchorPairs.
-    AnchorPair bridge(
-        const AnchorPair&,
-        const AnchorPair&,
-        double aDrift,
-        double bDrift) const;
-
     // Cluster oriented reads in an anchor pair using their journey
     // portions between AnchorIdA and AnchorIdB.
     // Output to html if it is open.
