@@ -3,10 +3,6 @@
 // Shasta.
 #include "invalid.hpp"
 #include "ReadId.hpp"
-#include "shastaTypes.hpp"
-
-// Boost libraries.
-#include <boost/graph/adjacency_list.hpp>
 
 // Standard library.
 #include "cstdint.hpp"

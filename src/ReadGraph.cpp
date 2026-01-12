@@ -8,6 +8,7 @@ using namespace shasta2;
 
 // Standard library.
 #include "fstream.hpp"
+#include <map>
 #include <queue>
 #include <random>
 #include "tuple.hpp"
