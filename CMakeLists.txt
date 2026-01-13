@@ -34,12 +34,14 @@ message(STATUS "CMAKE_SYSTEM_NAME is " ${CMAKE_SYSTEM_NAME})
 # Decide what we want to build.
 option(BUILD_EXECUTABLE "Build the executable." ON)
 option(BUILD_PYTHON_MODULE "Build the Python module." ON)
+option(BUILD_STATIC_LIBRARY "Build the static library." OFF)
 
 
 
 # Write out what we will actually build.
 message(STATUS "BUILD_EXECUTABLE is " ${BUILD_EXECUTABLE})
 message(STATUS "BUILD_PYTHON_MODULE is " ${BUILD_PYTHON_MODULE})
+message(STATUS "BUILD_STATIC_LIBRARY is " ${BUILD_STATIC_LIBRARY})
 
 
 
@@ -57,6 +59,10 @@ endif(BUILD_EXECUTABLE)
 if(BUILD_PYTHON_MODULE)
     add_subdirectory(PythonModule)
 endif(BUILD_PYTHON_MODULE)
+
+if(BUILD_STATIC_LIBRARY)
+    add_subdirectory(StaticLibrary)
+endif(BUILD_STATIC_LIBRARY)
 
 
 

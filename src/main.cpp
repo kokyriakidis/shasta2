@@ -126,7 +126,7 @@ void shasta2::main::setupSegmentFaultHandler()
 }
 
 
-
+#ifndef SHASTA2_STATIC_LIBRARY
 void shasta2::main::main(int argumentCount, char** arguments)
 {
     setupSegmentFaultHandler();
@@ -171,6 +171,7 @@ void shasta2::main::main(int argumentCount, char** arguments)
     SHASTA2_ASSERT(0);
 
 }
+#endif
 
 
 
