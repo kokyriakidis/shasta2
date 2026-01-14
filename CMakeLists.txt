@@ -1,17 +1,4 @@
-# For building, the following are required:
-# - The Boost C++ libraries (Ubuntu package libboost-dev).
-# - Cli11 (Ubuntu package libcli11-dev).
-# - The Abpoa library. Ubuntu package abpoa only provides the executable.
-#   See ~/abpoa/README for build directions.
-#   * The include files must be in ~/abpoa/abPOA/include. 
-#   * The static and dynamic libraries (libabpoa.a and libabpoa.so) must be in /usr/local/lib.
-# For running, the following are required:
-# - Poasta executable must be in the PATH. See ~/poasta/README for build directions.
-# - If using the http server:
-#   * Graphviz (Ubuntu package graphviz).
-#   * ogdf-fmmm (see ~/ogdf-fmmm/ogdf-fmm/README for build directions). 
-#     Must be on path under name customLayout.
-
+# Use scripts/InstallPrerequisites.py to install required build dependencies.
 
 cmake_minimum_required(VERSION 3.16)
 project(shasta2)
