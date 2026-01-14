@@ -302,14 +302,10 @@ public:
 
 
     // Phasing of SuperbubbleChains.
-    uint64_t phaseSuperbubbleChains(
-        bool onlyConsiderInjective,
-        bool onlyConsiderPermutation);
+    uint64_t phaseSuperbubbleChains();
     void phaseSuperbubbleChainsThreadFunction(uint64_t threadId);
     class PhaseSuperbubbleChainsData {
     public:
-        bool onlyConsiderInjective;
-        bool onlyConsiderPermutation;
         shared_ptr< vector<SuperbubbleChain> > superbubbleChains;
         uint64_t totalChangeCount = 0;
     };

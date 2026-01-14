@@ -164,7 +164,7 @@ void AssemblyGraph::simplifyAndAssemble()
         write("B" + to_string(iteration));
 
         // Phase SuperbubbleChains, considering all hypotheses.
-        changeCount += phaseSuperbubbleChains(true, true);
+        changeCount += phaseSuperbubbleChains();
         write("C" + to_string(iteration));
 
         if(changeCount == 0) {
@@ -1472,15 +1472,11 @@ void AssemblyGraph::writeSuperbubbleChainsForBandage(
 
 
 
-uint64_t AssemblyGraph::phaseSuperbubbleChains(
-    bool onlyConsiderInjective,
-    bool onlyConsiderPermutation)
+uint64_t AssemblyGraph::phaseSuperbubbleChains()
 {
     performanceLog << timestamp << "AssemblyGraph::phaseSuperbubbleChains begins." << endl;
 
     PhaseSuperbubbleChainsData& data = phaseSuperbubbleChainsData;
-    data.onlyConsiderInjective = onlyConsiderInjective;
-    data.onlyConsiderPermutation = onlyConsiderPermutation;
     data.superbubbleChains = make_shared< vector<SuperbubbleChain> >();
     vector<SuperbubbleChain>& superbubbleChains = *(data.superbubbleChains);
     data.totalChangeCount = 0;
@@ -1501,18 +1497,6 @@ uint64_t AssemblyGraph::phaseSuperbubbleChains(
     writeSuperbubbleChainsForBandage(superbubbleChains, "SuperbubbleChains-Bandage.csv");
 
     // Phase them.
-#if 0
-    uint64_t changeCount = 0;
-    for(uint64_t superbubbleChainId=0; superbubbleChainId<superbubbleChains.size(); superbubbleChainId++) {
-        SuperbubbleChain& superbubbleChain = superbubbleChains[superbubbleChainId];
-        changeCount += superbubbleChain.phase1(
-            *this,
-            superbubbleChainId,
-            options.detangleMinCoverage,
-            onlyConsiderInjective,
-            onlyConsiderPermutation);
-    }
-#endif
     setupLoadBalancing(superbubbleChains.size(), 1);
     runThreads(&AssemblyGraph::phaseSuperbubbleChainsThreadFunction, options.threadCount);
     data.superbubbleChains = 0;
@@ -1526,11 +1510,11 @@ uint64_t AssemblyGraph::phaseSuperbubbleChains(
 
 
 
-void AssemblyGraph::phaseSuperbubbleChainsThreadFunction(uint64_t /* threadId */)
+void AssemblyGraph::phaseSuperbubbleChainsThreadFunction([[maybe_unused]] uint64_t threadId)
 {
     PhaseSuperbubbleChainsData& data = phaseSuperbubbleChainsData;
-    const bool onlyConsiderInjective = data.onlyConsiderInjective;
-    const bool onlyConsiderPermutation = data.onlyConsiderPermutation;
+    const bool onlyConsiderInjective = true;
+    const bool onlyConsiderPermutation = true;
     vector<SuperbubbleChain>& superbubbleChains = *(data.superbubbleChains);
 
     // Loop over all batches assigned to this thread.
