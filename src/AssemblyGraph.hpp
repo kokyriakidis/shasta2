@@ -274,25 +274,6 @@ public:
 
 
 
-    // Gather information on the oriented reads that appear
-    // in the AssemblyGraphSteps of an edge.
-    class OrientedReadEdgeInfo {
-    public:
-        OrientedReadId orientedReadId;
-        uint64_t stepCount;
-        uint32_t minPositionInJourney;
-        uint32_t maxPositionInJourney;
-        bool operator<(const OrientedReadEdgeInfo& that) const
-        {
-            return orientedReadId < that.orientedReadId;
-        }
-    };
-    void gatherOrientedReadInformationOnEdge(
-        edge_descriptor,
-        vector<OrientedReadEdgeInfo>&) const;
-
-
-
     // Superbubbles and SuperbubbleChains.
     // - A Superbubble is a Tangle in which all entrance edges are into
     //   a single vertex and all exit edges are from a single vertex.
