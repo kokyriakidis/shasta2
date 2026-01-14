@@ -38,7 +38,7 @@ set_target_properties(shasta2Executable PROPERTIES LINK_FLAGS "-static" )
 target_link_libraries(
     shasta2Executable
     atomic boost_system boost_program_options boost_chrono boost_serialization png z
-    lapack blas gfortran quadmath abpoa z m pthread)
+    abpoa z m pthread)
 
   
 # The static executable goes to the bin directory.
