@@ -436,21 +436,6 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
         return;
     }
 
-#if 0
-    // Run the LocalAssembly.
-    ofstream html;  // Not open, so no html output takes place.
-    LocalAssembly localAssembly(
-        anchors, html, false,
-        options.aDrift,
-        options.bDrift,
-        step.anchorPair);
-    if(localAssembly.coverage() == 0) {
-        throw runtime_error("No coverage for local assembly at assembly graph edge " +
-            to_string(edge.id) + " step " + to_string(i));
-    }
-    localAssembly.run(false, options.maxAbpoaLength);
-    localAssembly.getSequence(step.sequence);
-#endif
 
 
     // Let LocalAssembly3 use OrientedReadIds from the previous and next step.
