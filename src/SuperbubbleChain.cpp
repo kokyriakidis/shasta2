@@ -18,9 +18,7 @@ using namespace shasta2;
 uint64_t SuperbubbleChain::phase1(
     AssemblyGraph& assemblyGraph,
     uint64_t superbubbleChainId,
-    uint64_t detangleMinCoverage,
-    bool onlyConsiderInjective,
-    bool onlyConsiderPermutation)
+    uint64_t detangleMinCoverage)
 {
 
     SuperbubbleChain& superbubbleChain = *this;
@@ -103,7 +101,7 @@ uint64_t SuperbubbleChain::phase1(
             const GTest gTest(
                 tangleMatrix.tangleMatrix,
                 assemblyGraph.options.detangleEpsilon,
-                onlyConsiderInjective, onlyConsiderPermutation);
+                true, true);
             if(not gTest.success) {
                 if(debug) {
                     cout << "Likelihood ratio test was not successful." << endl;

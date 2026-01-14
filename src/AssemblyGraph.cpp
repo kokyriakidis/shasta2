@@ -1513,8 +1513,6 @@ uint64_t AssemblyGraph::phaseSuperbubbleChains()
 void AssemblyGraph::phaseSuperbubbleChainsThreadFunction([[maybe_unused]] uint64_t threadId)
 {
     PhaseSuperbubbleChainsData& data = phaseSuperbubbleChainsData;
-    const bool onlyConsiderInjective = true;
-    const bool onlyConsiderPermutation = true;
     vector<SuperbubbleChain>& superbubbleChains = *(data.superbubbleChains);
 
     // Loop over all batches assigned to this thread.
@@ -1527,9 +1525,7 @@ void AssemblyGraph::phaseSuperbubbleChainsThreadFunction([[maybe_unused]] uint64
             const uint64_t changeCount = superbubbleChain.phase1(
                 *this,
                 superbubbleChainId,
-                options.detangleMinCoverage,
-                onlyConsiderInjective,
-                onlyConsiderPermutation);
+                options.detangleMinCoverage);
             __sync_fetch_and_add(&data.totalChangeCount, changeCount);
         }
     }
