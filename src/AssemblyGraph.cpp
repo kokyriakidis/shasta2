@@ -7,38 +7,27 @@
 #include "AnchorGraph.hpp"
 #include "areSimilarSequences.hpp"
 #include "color.hpp"
-#include "copyNumber.hpp"
 #include "deduplicate.hpp"
 #include "DisjointSets.hpp"
 #include "findLinearChains.hpp"
 #include "findConvergingVertex.hpp"
 #include "Journeys.hpp"
 #include "LocalAssembly3.hpp"
-#include "MurmurHash2.hpp"
 #include "Options.hpp"
 #include "performanceLog.hpp"
-#include "Reads.hpp"
 #include "RestrictedAnchorGraph.hpp"
-#include "rle.hpp"
 #include "Superbubble.hpp"
 #include "SuperbubbleChain.hpp"
-#include "Tangle1.hpp"
 #include "TangleMatrix1.hpp"
-#include "transitiveReduction.hpp"
 using namespace shasta2;
 
 // Boost libraries.
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
-#include <boost/container/small_vector.hpp>
 #include <boost/graph/adj_list_serialize.hpp>
 #include <boost/graph/filtered_graph.hpp>
-#include <boost/graph/reverse_graph.hpp>
-#include <boost/graph/strong_components.hpp>
 
-// Standard library.
-#include "fstream.hpp"
-#include "tuple.hpp"
+
 
 // Explicit instantiation.
 #include "MultithreadedObject.tpp"
@@ -2131,44 +2120,6 @@ void AssemblyGraph::removeEmptyEdges()
     for(const vertex_descriptor v: verticesToBeRemoved) {
         boost::remove_vertex(v, assemblyGraph);
     }
-}
-
-
-
-// Count the distinct target vertices among
-// all the out-edges of a given vertex.
-// So this counts the number of parallel edge sets
-// outgoing from the given vertex.
-uint64_t AssemblyGraph::countDistinctTargetVertices(vertex_descriptor v) const
-{
-    const AssemblyGraph& assemblyGraph = *this;
-
-    boost::container::small_vector<vertex_descriptor, 6> targetVertices;
-    BGL_FORALL_OUTEDGES(v, e, assemblyGraph, AssemblyGraph) {
-        targetVertices.push_back(target(e, assemblyGraph));
-    }
-
-    std::ranges::unique(targetVertices);
-    return targetVertices.size();
-}
-
-
-
-// Count the distinct source vertices among
-// all the in-edges of a given vertex.
-// So this counts the number of parallel edge sets
-// incoming into the given vertex.
-uint64_t AssemblyGraph::countDistinctSourceVertices(vertex_descriptor v) const
-{
-    const AssemblyGraph& assemblyGraph = *this;
-
-    boost::container::small_vector<vertex_descriptor, 6> sourceVertices;
-    BGL_FORALL_INEDGES(v, e, assemblyGraph, AssemblyGraph) {
-        sourceVertices.push_back(source(e, assemblyGraph));
-    }
-
-    std::ranges::unique(sourceVertices);
-    return sourceVertices.size();
 }
 
 

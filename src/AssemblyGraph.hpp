@@ -174,18 +174,6 @@ private:
 
     void check() const;
 
-    // Count the distinct target vertices among
-    // all the out-edges of a given vertex.
-    // So this counts the number of parallel edge sets
-    // outgoing from the given vertex.
-    uint64_t countDistinctTargetVertices(vertex_descriptor) const;
-
-    // Count the distinct source vertices among
-    // all the in-edges of a given vertex.
-    // So this counts the number of parallel edge sets
-    // incoming into the given vertex.
-    uint64_t countDistinctSourceVertices(vertex_descriptor) const;
-
     // Bubble cleanup.
     // A bubble is a set of parallel edges in the AssemblyGraph.
     // The edges are sorted by id.
