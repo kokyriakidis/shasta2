@@ -131,20 +131,22 @@ Options::Options(const string& fileName)
 
     addOptions();
 
-    // Construct arguments "--config fileName".
-    int argc = 3;
-    const string name = "shasta2";
-    const string keyword = "--config";
-    char* arg0 = const_cast<char*>(name.c_str());
-    char* arg1 = const_cast<char*>(keyword.c_str());
-    char* arg2 = const_cast<char*>(fileName.c_str());
-    const array<char*, 3> argv = {arg0, arg1, arg2};
+    if(not fileName.empty()) {
+        // Construct arguments "--config fileName".
+        int argc = 3;
+        const string name = "shasta2";
+        const string keyword = "--config";
+        char* arg0 = const_cast<char*>(name.c_str());
+        char* arg1 = const_cast<char*>(keyword.c_str());
+        char* arg2 = const_cast<char*>(fileName.c_str());
+        const array<char*, 3> argv = {arg0, arg1, arg2};
 
-    try {
-        parse(argc, &argv.front());
-    } catch(const CLI::ParseError& e) {
-         exit(e);
-         throw runtime_error("Error parsing options.");
+        try {
+            parse(argc, &argv.front());
+        } catch(const CLI::ParseError& e) {
+             exit(e);
+             throw runtime_error("Error parsing options.");
+        }
     }
 
     // Adjust the numbers of threads, if necessary.

@@ -50,13 +50,15 @@ namespace shasta2 {
         void cleanupBinaryData(const Options&);
         void explore(const Options&);
         void listCommands();
+        void createBashCompletionScript();
 
         const std::set<string> commands = {
             "assemble",
             "saveBinaryData",
             "cleanupBinaryData",
             "explore",
-            "listCommands"};
+            "listCommands",
+            "createBashCompletionScript"};
 
     }
 
@@ -163,6 +165,9 @@ void shasta2::main::main(int argumentCount, char** arguments)
         return;
     } else if(options.command == "listCommands") {
         listCommands();
+        return;
+    } else if(options.command == "createBashCompletionScript") {
+        createBashCompletionScript();
         return;
     }
 
@@ -552,4 +557,39 @@ void shasta2::main::listCommands()
     for(const string& command: commands) {
         cout << command << endl;
     }
+}
+
+
+
+void shasta2::main::createBashCompletionScript()
+{
+    const string fileName = "shasta2Completion.sh";
+    ofstream file(fileName);
+
+    file << "#!/bin/bash\n";
+    file << "complete -o default -W \"\\\n";
+
+    // Options.
+    const Options options;
+    for(const CLI::Option* option: options.get_options()) {
+        for(const string& name: option->get_lnames()) {
+            file << "--" << name << " \\\n";
+        }
+    }
+
+    // Commands.
+    for(const auto& command: commands) {
+        file << command << " \\\n";
+    }
+
+    // Other keywords.
+    file << "filesystem anonymous \\\n";
+    file << "disk 4K 2M \\\n";
+    file << "user local unrestricted \\\n";
+
+    // Finish the "complete" command.
+    file << "\" shasta2\n";
+
+    cout << "Use \"source shasta2Completion.sh.\" for automatic completion "
+        "of shasta2 commands in the bash shell." << endl;
 }
