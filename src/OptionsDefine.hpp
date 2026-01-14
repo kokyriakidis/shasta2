@@ -84,10 +84,6 @@ SHASTA2_OPTION_DEFINE(
     "MinLogPDelta value for likelihood ratio detangling.")
 
 SHASTA2_OPTION_DEFINE(
-    uint64_t, detangleMinCoverage, "--detangle-min-coverage", 3,
-    "Minimum coverage that phasing and detangling are allowed to generate.")
-
-SHASTA2_OPTION_DEFINE(
     uint64_t ,representativeRegionStepCount, "--representative-region-step-count", 10,
     "Number of steps for the representative region of a segment "
     "used in detangling and read following.")

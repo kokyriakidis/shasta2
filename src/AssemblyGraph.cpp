@@ -1524,8 +1524,7 @@ void AssemblyGraph::phaseSuperbubbleChainsThreadFunction([[maybe_unused]] uint64
             SuperbubbleChain& superbubbleChain = superbubbleChains[superbubbleChainId];
             const uint64_t changeCount = superbubbleChain.phase1(
                 *this,
-                superbubbleChainId,
-                options.detangleMinCoverage);
+                superbubbleChainId);
             __sync_fetch_and_add(&data.totalChangeCount, changeCount);
         }
     }
@@ -2053,7 +2052,7 @@ bool AssemblyGraph::canConnect(edge_descriptor e0, edge_descriptor e1) const
             const RestrictedAnchorGraphEdge& edge = restrictedAnchorGraph[e];
             minCoverage = min(minCoverage, edge.anchorPair.size());
         }
-        if(minCoverage < options.detangleMinCoverage) {
+        if(minCoverage == 0) {
             return false;
         }
 

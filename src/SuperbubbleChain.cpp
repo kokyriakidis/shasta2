@@ -17,8 +17,7 @@ using namespace shasta2;
 
 uint64_t SuperbubbleChain::phase1(
     AssemblyGraph& assemblyGraph,
-    uint64_t superbubbleChainId,
-    uint64_t detangleMinCoverage)
+    uint64_t superbubbleChainId)
 {
 
     SuperbubbleChain& superbubbleChain = *this;
@@ -190,7 +189,7 @@ uint64_t SuperbubbleChain::phase1(
                                 const RestrictedAnchorGraphEdge& edge = restrictedAnchorGraph[e];
                                 minCoverage = min(minCoverage, edge.anchorPair.size());
                             }
-                            if(minCoverage < detangleMinCoverage) {
+                            if(minCoverage == 0) {
                                 coverageCheckFailed = true;
                                 if(debug) {
                                     cout << "Connecting " << assemblyGraph[tangleMatrix.entrances[iEntrance]].id <<

@@ -197,7 +197,7 @@ void AssemblyGraph::connectAssemblyPaths(const vector< vector<edge_descriptor> >
 
 				for(const RestrictedAnchorGraph::edge_descriptor re: longestPath) {
 					const auto& rEdge = restrictedAnchorGraph[re];
-					if(rEdge.anchorPair.size() < options.detangleMinCoverage) {
+					if(rEdge.anchorPair.size() == 0) {
 						newEdge.clear();
 						SHASTA2_ASSERT(0);
 					}
