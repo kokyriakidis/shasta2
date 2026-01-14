@@ -21,7 +21,6 @@
 #include "ShortBaseSequence.hpp"
 #include "SimpleMap.hpp"
 #include "splitRange.hpp"
-#include "testSubsetGraph.hpp"
 using namespace shasta2;
 
 // Pybind11
@@ -239,9 +238,6 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         );
     shasta2Module.def("testLongBaseSequence",
         testLongBaseSequence
-        );
-    shasta2Module.def("testSubsetGraph",
-        testSubsetGraph
         );
     shasta2Module.def("testFindConvergingVertex",
         testFindConvergingVertex
