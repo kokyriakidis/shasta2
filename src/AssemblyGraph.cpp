@@ -139,7 +139,7 @@ AssemblyGraph::AssemblyGraph(
 
 
 
-// Detangle, phase, assemble sequence, output.
+// Top level assembly function.
 void AssemblyGraph::simplifyAndAssemble()
 {
     // EXPOSE WHEN CODE STABILIZES.
@@ -150,6 +150,10 @@ void AssemblyGraph::simplifyAndAssemble()
     // Initial output.
     write("A");
 
+
+
+    // The iteration is needed because phasing can simplify some bubbles and create
+    // more opportunities for additional bubble cleanup and phasing.
     for(uint64_t iteration=0; iteration<options.simplifyMaxIterationCount; iteration++) {
 
         uint64_t changeCount = 0;
@@ -157,23 +161,27 @@ void AssemblyGraph::simplifyAndAssemble()
         // Remove or simplify bubbles likely caused by errors.
         changeCount += bubbleCleanup();
         changeCount += compress();
-        write("C" + to_string(iteration));
+        write("B" + to_string(iteration));
 
         // Phase SuperbubbleChains, considering all hypotheses.
         changeCount += phaseSuperbubbleChains(true, true);
-        write("D" + to_string(iteration));
+        write("C" + to_string(iteration));
 
-        cout << "Total change count at iteration " << iteration << " was " << changeCount << endl;
+        if(changeCount == 0) {
+            break;
+        }
     }
+
+
 
     // Read following.
     findAndConnectAssemblyPaths();
-    write("F");
+    write("D");
 
     // Remove isolated vertices and connected components with small N50.
     removeIsolatedVertices();
     removeLowN50Components(minComponentN50);
-    write("G");
+    write("E");
 
     // Sequence assembly.
     assembleAll();
