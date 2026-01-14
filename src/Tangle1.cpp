@@ -108,7 +108,7 @@ bool Tangle1::isTangleVertex(vertex_descriptor v) const
 
 
 
-bool Tangle1::addConnectPair(uint64_t entranceIndex, uint64_t exitIndex, uint64_t detangleMinCoverage) {
+bool Tangle1::addConnectPair(uint64_t entranceIndex, uint64_t exitIndex) {
     SHASTA2_ASSERT(entranceIndex < entrances.size());
     SHASTA2_ASSERT(exitIndex < exits.size());
     connectPairs.emplace_back(entranceIndex, exitIndex);
@@ -143,7 +143,7 @@ bool Tangle1::addConnectPair(uint64_t entranceIndex, uint64_t exitIndex, uint64_
 
             for(const RestrictedAnchorGraph::edge_descriptor re: longestPath) {
                 const auto& rEdge = restrictedAnchorGraph[re];
-                if(rEdge.anchorPair.size() < detangleMinCoverage) {
+                if(rEdge.anchorPair.size() < 0) {
                     newEdge.clear();
                     return false;
                 }

@@ -406,8 +406,8 @@ uint64_t SuperbubbleChain::phase1(
                                 ", anchor pair coverage " <<
                                 tangle.tangleMatrix().tangleMatrix[iEntrance][iExit] << endl;
                         }
-                        // We already checked above that detangleMinCoverage is satisfied.
-                        SHASTA2_ASSERT(tangle.addConnectPair(iEntrance, iExit, detangleMinCoverage));
+                        // We already checked above that these two can be connected.
+                        SHASTA2_ASSERT(tangle.addConnectPair(iEntrance, iExit));
                     }
                 }
             }

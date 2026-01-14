@@ -80,7 +80,7 @@ public:
         AssemblyGraphEdge newEdge;
     };
     vector<ConnectPair> connectPairs;
-    bool addConnectPair(uint64_t entranceIndex, uint64_t exitIndex, uint64_t detangleMinCoverage);
+    bool addConnectPair(uint64_t entranceIndex, uint64_t exitIndex);
     void detangle();
 
 
