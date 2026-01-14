@@ -1,35 +1,17 @@
 // Shasta.
 #include "AnchorPair.hpp"
 #include "Anchor.hpp"
-#include "approximateTopologicalSort.hpp"
-#include "color.hpp"
-#include "deduplicate.hpp"
-#include "graphvizToHtml.hpp"
-#include "hcsClustering.hpp"
-#include "html.hpp"
 #include "HttpServer.hpp"
 #include "Journeys.hpp"
 #include "Markers.hpp"
-#include "orderPairs.hpp"
-#include "orderVectors.hpp"
-#include "runCommandWithTimeout.hpp"
-#include "tmpDirectory.hpp"
 #include "Reads.hpp"
 using namespace shasta2;
 
 // Boost libraries.
-#include <boost/dynamic_bitset.hpp>
-#include <boost/graph/adjacency_list.hpp>
-#include <boost/graph/iteration_macros.hpp>
-#include <boost/graph/topological_sort.hpp>
 #include <boost/iterator/function_output_iterator.hpp>
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_generators.hpp>
-#include <boost/uuid/uuid_io.hpp>
 
 // Standard library.
-#include "fstream.hpp"
-#include "stdexcept.hpp"
+#include <cmath>
 
 
 
@@ -487,116 +469,6 @@ void AnchorPair::getOffsets(
 
 
 
-// Split the AnchorPair into one or more AnchorPairs with consistent offsets.
-// In the resulting AnchorPairs, if the position offsets are sorted in
-// increasing order, any two adjacent offsets D0 and D1
-// will satisfy D1 - D0 <= aDrift + bDrift * (D0 + D1) / 2.
-void AnchorPair::splitByOffsets(
-    const Anchors& anchors,
-    double aDrift,
-    double bDrift,
-    vector<AnchorPair>& newAnchorPairs) const
-{
-    vector< pair<Positions, Positions> > positions;
-    get(anchors, positions);
-    const uint64_t n = orientedReadIds.size();
-    SHASTA2_ASSERT(positions.size() == n);
-
-    // Gather pairs(index, offset) where index is the index
-    // in the OrientedReadIds, vector.
-    vector< pair<uint64_t, uint64_t> > offsets;
-    for(uint64_t i=0; i<n; i++) {
-        const uint32_t positionA = positions[i].first.basePosition;
-        const uint32_t positionB = positions[i].second.basePosition;
-        SHASTA2_ASSERT(positionB >= positionA);  // Allow degenerate AnchorPair with anchorIdA = anchorIdB.
-        const uint64_t offset = positionB - positionA;
-        offsets.push_back(make_pair(i, offset));
-    }
-    sort(offsets.begin(), offsets.end(), OrderPairsBySecondOnly<uint64_t, uint64_t>());
-
-    // Find places where we have to split.
-    vector<uint64_t> splitPoints;
-    splitPoints.push_back(0);
-    for(uint64_t i1=1; i1<n; i1++) {
-        const uint64_t i0 = i1 - 1;
-        const double offset0 = double(offsets[i0].second);
-        const double offset1 = double(offsets[i1].second);
-        if(offset1 - offset0 > aDrift + .5 * bDrift  * (offset1 + offset0)) {
-            splitPoints.push_back(i1);
-        }
-    }
-    splitPoints.push_back(n);
-
-    // Each interval between split points generates a new AnchorPair.
-    newAnchorPairs.clear();
-    newAnchorPairs.resize(splitPoints.size() - 1);
-    for(uint64_t i=0; i<splitPoints.size() -1 ; i++) {
-        const uint64_t j0 = splitPoints[i];
-        const uint64_t j1 = splitPoints[i + 1];
-
-        newAnchorPairs[i].anchorIdA = anchorIdA;
-        newAnchorPairs[i].anchorIdB = anchorIdB;
-        for(uint64_t j=j0; j!=j1; j++) {
-            newAnchorPairs[i].orientedReadIds.push_back(orientedReadIds[offsets[j].first]);
-        }
-        sort(newAnchorPairs[i].orientedReadIds.begin(), newAnchorPairs[i].orientedReadIds.end());
-    }
-
-
-    // Sort them by decreasing coverage.
-    class SortHelper {
-    public:
-        bool operator() (const AnchorPair& x, const AnchorPair& y) const
-        {
-            return x.orientedReadIds.size() > y.orientedReadIds.size();
-        }
-    };
-    sort(newAnchorPairs.begin(), newAnchorPairs.end(), SortHelper());
-
-}
-
-
-
-// This returns true if a call to split with the same arguments would not split this Anchor.
-// The second and third areguments are work vectors added as arguments for performancew,
-bool AnchorPair::isConsistent(
-    const Anchors& anchors,
-    double aDrift,
-    double bDrift,
-    vector< pair<Positions, Positions> >& positions,
-    vector<uint64_t>& offsets) const
-{
-
-    get(anchors, positions);
-    const uint64_t n = orientedReadIds.size();
-    SHASTA2_ASSERT(positions.size() == n);
-
-    // Gather offsets.
-    offsets.clear();
-    offsets.resize(n);
-    for(uint64_t i=0; i<n; i++) {
-        const uint32_t positionA = positions[i].first.basePosition;
-        const uint32_t positionB = positions[i].second.basePosition;
-        SHASTA2_ASSERT(positionB > positionA);
-        const uint64_t offset = positionB - positionA;
-        offsets[i] = offset;
-    }
-    sort(offsets.begin(), offsets.end());
-
-    for(uint64_t i1=1; i1<n; i1++) {
-        const uint64_t i0 = i1 - 1;
-        const double offset0 = double(offsets[i0]);
-        const double offset1 = double(offsets[i1]);
-        if(offset1 - offset0 > aDrift + .5 * bDrift  * (offset1 + offset0)) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-
-
 // Count OrientedReadIds in common with another AnchorPair.
 uint64_t AnchorPair::countCommon(const AnchorPair& y) const
 {
@@ -615,38 +487,6 @@ uint64_t AnchorPair::countCommon(const AnchorPair& y) const
 
     return n;
 
-}
-
-
-
-// Split the AnchorPair using clustering of the oriented read journey portions
-// within this AnchorPair.
-// The new AnchorPairs are sorted by decreasing size.
-void AnchorPair::splitByClustering(
-    const Anchors& anchors,
-    const Journeys& journeys,
-    double clusteringMinJaccard,
-    vector<AnchorPair>& newAnchorPairs
-    ) const
-{
-    ostream html(0);
-    vector< vector<uint64_t> > clusters;
-    anchors.clusterAnchorPairOrientedReads(*this, journeys, clusteringMinJaccard, clusters, html);
-
-    // Create an AnchorPair for each cluster.
-    // The clusters are sorted by decreasing size, and so the new AnchorPairs will
-    // also be sorted by decreasing size.
-    newAnchorPairs.clear();
-    newAnchorPairs.reserve(clusters.size());
-    for(const vector<uint64_t>& cluster: clusters) {
-        newAnchorPairs.emplace_back();
-        AnchorPair& newAnchorPair = newAnchorPairs.back();
-        newAnchorPair.anchorIdA = anchorIdA;
-        newAnchorPair.anchorIdB = anchorIdB;
-        for(const uint64_t i: cluster) {
-            newAnchorPair.orientedReadIds.push_back(orientedReadIds[i]);
-        }
-    }
 }
 
 
@@ -694,10 +534,6 @@ void AnchorPair::writeAllHtml(
 
     // Write the journey portions between anchorIdA and anchorIdB.
     writeJourneysHtml(html, journeys, positionsInJourneys);
-
-    // Get the internal AnchorIds.
-    vector<AnchorId> internalAnchorIds;
-    getInternalAnchorIds(journeys, positionsInJourneys, internalAnchorIds);
 
 }
 
@@ -786,89 +622,5 @@ void AnchorPair::writeJourneysHtml(
     }
 
     html << "</table>";
-
-}
-
-
-
-void AnchorPair::getAllAnchorIds(
-    const Journeys& journeys,
-    const vector< pair<uint32_t, uint32_t> >& positionsInJourneys,
-    vector<AnchorId>& anchorIds) const
-{
-    anchorIds.clear();
-
-    // Loop over OrientedReadIds in this AnchorPair.
-    for(uint64_t i=0; i<size(); i++) {
-        const OrientedReadId orientedReadId = orientedReadIds[i];
-        const Journey journey = journeys[orientedReadId];
-
-        // Get the positions in the journet of anchorIdA and anchorIdB.
-        const auto& p = positionsInJourneys[i];
-        const uint32_t positionInJourneyA = p.first;
-        const uint32_t positionInJourneyB = p.second;
-
-        // Loop over this portion of the journey, including anchorIdA and anchorIdB.
-        for(uint64_t position=positionInJourneyA; position<=positionInJourneyB; position++) {
-            anchorIds.push_back(journey[position]);
-        }
-    }
-
-    deduplicate(anchorIds);
-}
-
-
-
-void AnchorPair::getInternalAnchorIds(
-    const Journeys& journeys,
-    const vector< pair<uint32_t, uint32_t> >& positionsInJourneys,
-    vector<AnchorId>& anchorIds) const
-{
-    anchorIds.clear();
-
-    // Loop over OrientedReadIds in this AnchorPair.
-    for(uint64_t i=0; i<size(); i++) {
-        const OrientedReadId orientedReadId = orientedReadIds[i];
-        const Journey journey = journeys[orientedReadId];
-
-        // Get the positions in the journey of anchorIdA and anchorIdB.
-        const auto& p = positionsInJourneys[i];
-        const uint32_t positionInJourneyA = p.first;
-        const uint32_t positionInJourneyB = p.second;
-
-        // Loop over this portion of the journey, excluding anchorIdA and anchorIdB.
-        for(uint64_t position=positionInJourneyA+1; position<positionInJourneyB; position++) {
-            anchorIds.push_back(journey[position]);
-        }
-    }
-
-    deduplicate(anchorIds);
-}
-
-
-
-void AnchorPair::getAllAnchorIdsAndLocalCoverage(
-    const Journeys& journeys,
-    const vector< pair<uint32_t, uint32_t> >& positionsInJourneys,
-    vector<AnchorId>& anchorIds,
-    vector<uint64_t>& localCoverage) const
-{
-    // Loop over OrientedReadIds in this AnchorPair.
-    anchorIds.clear();
-    for(uint64_t i=0; i<size(); i++) {
-        const OrientedReadId orientedReadId = orientedReadIds[i];
-        const Journey journey = journeys[orientedReadId];
-
-        // Get the positions in the journet of anchorIdA and anchorIdB.
-        const auto& p = positionsInJourneys[i];
-        const uint32_t positionInJourneyA = p.first;
-        const uint32_t positionInJourneyB = p.second;
-        for(uint64_t position=positionInJourneyA; position<=positionInJourneyB; position++) {
-            anchorIds.push_back(journey[position]);
-        }
-    }
-
-    // Deduplicate and count.
-    deduplicateAndCount(anchorIds, localCoverage);
 
 }

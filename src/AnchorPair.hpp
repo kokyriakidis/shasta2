@@ -1,11 +1,11 @@
 #pragma once
 
 // Shasta.
+#include "shastaTypes.hpp"
 #include "invalid.hpp"
 #include "ReadId.hpp"
 
 // Standard library.
-#include "cstdint.hpp"
 #include "utility.hpp"
 #include "vector.hpp"
 
@@ -118,36 +118,6 @@ public:
     // Just return the positions in journeys.
     void getPositionsInJourneys(const Anchors&, vector< pair<uint32_t, uint32_t> >&) const;
 
-    // Split the AnchorPair into one or more AnchorPairs with consistent offsets.
-    // In the resulting AnchorPairs, if the position offsets are sorted in
-    // increasing order, any two adjacent offsets D0 and D1
-    // will satisfy D1 - D0 <= aDrift + bDrift * (D0 + D1) / 2.
-    void splitByOffsets(
-        const Anchors&,
-        double aDrift,
-        double bDrift,
-        vector<AnchorPair>&
-        ) const;
-
-    // Split the AnchorPair using clustering of the oriented read journey portions
-    // within this AnchorPair.
-    // The new AnchorPairs are sorted by decreasing size.
-    void splitByClustering(
-        const Anchors&,
-        const Journeys&,
-        double clusteringMinJaccard,
-        vector<AnchorPair>&
-        ) const;
-
-    // This returns true if a call to split with the same arguments would not split this Anchor.
-    // The last two arguments are work vectors added as arguments for performance.
-    bool isConsistent(
-        const Anchors&,
-        double aDrift,
-        double bDrift,
-        vector< pair<Positions, Positions> >&,
-        vector<uint64_t>&) const;
-
     // Count OrientedReadIds in common with another AnchorPair.
     uint64_t countCommon(const AnchorPair&) const;
 
@@ -156,34 +126,8 @@ public:
 
     bool contains(OrientedReadId) const;
 
-
-
-    // Various functions to get information about the AnchorIds present
-    // in the portions between anchorIdA and anchorIdB of the journeys
-    // of the OrientedReadIds in this AnchorPair.
-    // They all return vectors sorted by AnchorId.
-    // All = ancorIdA and anchorIdB are included.
-    // Internal = ancorIdA and anchorIdB are excluded.
-    // LocalCoverage = counting only the portions between anchorIdA and anchorIdB of the journeys
-    // of the OrientedReadIds in this AnchorPair.
-    void getAllAnchorIds(
-        const Journeys&,
-        const vector< pair<uint32_t, uint32_t> >& positionsInJourneys,
-        vector<AnchorId>&) const;
-    void getInternalAnchorIds(
-        const Journeys&,
-        const vector< pair<uint32_t, uint32_t> >& positionsInJourneys,
-        vector<AnchorId>&) const;
-    void getAllAnchorIdsAndLocalCoverage(
-        const Journeys&,
-        const vector< pair<uint32_t, uint32_t> >& positionsInJourneys,
-        vector<AnchorId>&,
-        vector<uint64_t>& localCoverage) const;
-
     // Return the url for the exploreAnchorPair2 page for this AnchorPair.
     string url() const;
-
-
 
     // Html output.
     void writeAllHtml(ostream&, const Anchors&, const Journeys&) const;
