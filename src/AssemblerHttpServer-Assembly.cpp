@@ -1,11 +1,11 @@
 // Shasta.
 #include "Assembler.hpp"
+#include "Anchor.hpp"
 #include "areSimilarSequences.hpp"
 #include "AssemblyGraphPostprocessor.hpp"
 #include "deduplicate.hpp"
 #include "findConvergingVertex.hpp"
 #include "GTest.hpp"
-#include "LocalAssembly.hpp"
 #include "LocalAssembly3.hpp"
 #include "LocalAssemblyGraph.hpp"
 #include "Markers.hpp"
@@ -1110,9 +1110,6 @@ void Assembler::exploreSegmentStep(
     string showAlignmentString;
     const bool showAlignment = getParameterValue(request, "showAlignment", showAlignmentString);
 
-    string useLocalAssembly3String;
-    const bool useLocalAssembly3 = getParameterValue(request, "useLocalAssembly3", useLocalAssembly3String);
-
     string debugString;
     const bool debug = getParameterValue(request, "debug", debugString);
 
@@ -1150,9 +1147,6 @@ void Assembler::exploreSegmentStep(
 
         "<tr><th>Show the alignment<td class=centered><input type=checkbox name=showAlignment" <<
         (showAlignment ? " checked" : "") << ">"
-
-        "<tr><th>Use LocalAssembly3<td class=centered><input type=checkbox name=useLocalAssembly3" <<
-        (useLocalAssembly3 ? " checked" : "") << ">"
 
         "<tr><th>Show debug information<td class=centered><input type=checkbox name=debug" <<
         (debug ? " checked" : "") << ">";
@@ -1224,65 +1218,45 @@ void Assembler::exploreSegmentStep(
 
 
 
-    if(useLocalAssembly3) {
-
-        // Let LocalAssembly3 use OrientedReadIds from the previous and next step.
-        vector<OrientedReadId> additionalOrientedReadIds;
-        if(stepId > 0) {
-            std::ranges::copy(edge[stepId - 1].anchorPair.orientedReadIds, back_inserter(additionalOrientedReadIds));
-        }
-        if(stepId < edge.size() - 1) {
-            std::ranges::copy(edge[stepId + 1].anchorPair.orientedReadIds, back_inserter(additionalOrientedReadIds));
-        }
-        deduplicate(additionalOrientedReadIds);
-
-        LocalAssembly3 localAssembly(
-            anchors(),
-            html,
-            debug,
-            edge[stepId].anchorPair,
-            additionalOrientedReadIds);
-
-        html <<
-            "<h3>Assembled sequence</h3>"
-            "<p><span style='font-family:monospace'>"
-            ">LocalAssembly " << localAssembly.sequence.size() <<
-            "<br>";
-        std::ranges::copy(localAssembly.sequence, ostream_iterator<Base>(html));
-        html << "</span>";
-
-        html << "<p><table><tr><th>Position<th>Base<th>Coverage";
-        for(uint64_t position=0; position<localAssembly.sequence.size(); position++) {
-            html <<
-                "<tr><td class=centered>" << position <<
-                "<td class=centered>" << localAssembly.sequence[position] <<
-                "<td class=centered>" << localAssembly.coverage[position];
-        }
-        html << "</table>";
-
-        // Also output the sequence to fasta.
-        ofstream fasta("LocalAssembly.fasta");
-        fasta << ">LocalAssembly " << localAssembly.sequence.size() << endl;
-        std::ranges::copy(localAssembly.sequence, ostream_iterator<Base>(fasta));
-
-    } else {
-
-        // Do the local assembly for this step.
-        LocalAssembly localAssembly(
-            anchors(), html, debug,
-            httpServerData.options->aDrift,
-            httpServerData.options->bDrift,
-            edge[stepId].anchorPair);
-        localAssembly.run(showAlignment, httpServerData.options->maxAbpoaLength);
-
-        // Also output the sequence to fasta.
-        vector<Base> sequence;
-        localAssembly.getSequence(sequence);
-
-        ofstream fasta("LocalAssembly.fasta");
-        fasta << ">LocalAssembly " << sequence.size() << endl;
-        copy(sequence.begin(), sequence.end(), ostream_iterator<Base>(fasta));
+    // Let LocalAssembly3 use OrientedReadIds from the previous and next step.
+    vector<OrientedReadId> additionalOrientedReadIds;
+    if(stepId > 0) {
+        std::ranges::copy(edge[stepId - 1].anchorPair.orientedReadIds, back_inserter(additionalOrientedReadIds));
     }
+    if(stepId < edge.size() - 1) {
+        std::ranges::copy(edge[stepId + 1].anchorPair.orientedReadIds, back_inserter(additionalOrientedReadIds));
+    }
+    deduplicate(additionalOrientedReadIds);
+
+    LocalAssembly3 localAssembly(
+        anchors(),
+        html,
+        debug,
+        edge[stepId].anchorPair,
+        additionalOrientedReadIds);
+
+    html <<
+        "<h3>Assembled sequence</h3>"
+        "<p><span style='font-family:monospace'>"
+        ">LocalAssembly " << localAssembly.sequence.size() <<
+        "<br>";
+    std::ranges::copy(localAssembly.sequence, ostream_iterator<Base>(html));
+    html << "</span>";
+
+    html << "<p><table><tr><th>Position<th>Base<th>Coverage";
+    for(uint64_t position=0; position<localAssembly.sequence.size(); position++) {
+        html <<
+            "<tr><td class=centered>" << position <<
+            "<td class=centered>" << localAssembly.sequence[position] <<
+            "<td class=centered>" << localAssembly.coverage[position];
+    }
+    html << "</table>";
+
+    // Also output the sequence to fasta.
+    ofstream fasta("LocalAssembly.fasta");
+    fasta << ">LocalAssembly " << localAssembly.sequence.size() << endl;
+    std::ranges::copy(localAssembly.sequence, ostream_iterator<Base>(fasta));
+
 }
 
 
@@ -1589,138 +1563,6 @@ void Assembler::exploreSegmentPair(const vector<string>& request, ostream& html)
     const uint32_t representativeRegionStepCount =
         uint32_t(assemblyGraph.options.representativeRegionStepCount);
     SegmentStepSupport::analyzeSegmentPair(html, assemblyGraph, e0, e1, representativeRegionStepCount);
-}
-
-
-
-void Assembler::exploreLocalAssembly(
-    const vector<string>& request,
-    ostream& html)
-{
-    html << "<h2>Local assembly</h2>";
-
-    // Get the parameters for the request.
-    string anchorIdAString;
-    const bool anchorIdAStringIsPresent = HttpServer::getParameterValue(request, "anchorIdAString", anchorIdAString);
-    boost::trim(anchorIdAString);
-
-    string anchorIdBString;
-    const bool anchorIdBStringIsPresent = HttpServer::getParameterValue(request, "anchorIdBString", anchorIdBString);
-    boost::trim(anchorIdBString);
-
-    string showAlignmentString;
-    const bool showAlignment = getParameterValue(request, "showAlignment", showAlignmentString);
-
-    string debugString;
-    const bool debug = getParameterValue(request, "debug", debugString);
-
-    uint64_t maxAbpoaLength = httpServerData.options->maxAbpoaLength;
-    getParameterValue(request, "maxAbpoaLength", maxAbpoaLength);
-
-
-    // Write the form.
-    html <<
-        "<form>"
-        "<table>";
-
-    html <<
-        "<tr><th class=left>Anchor A"
-        "<td class=centered><input type=text name=anchorIdAString required";
-    if(anchorIdAStringIsPresent) {
-        html << " value='" << anchorIdAString + "'";
-    }
-    html <<
-        " size=8 title='Enter an anchor id between 0 and " <<
-        anchors().size() / 2 - 1 << " followed by + or -.'><br>";
-
-    html <<
-        "<tr><th class=left>Anchor B"
-        "<td class=centered><input type=text name=anchorIdBString required";
-    if(anchorIdBStringIsPresent) {
-        html << " value='" << anchorIdBString + "'";
-    }
-    html <<
-        " size=8 title='Enter an anchor id between 0 and " <<
-        anchors().size() / 2 - 1 << " followed by + or -.'><br>"
-
-        "<tr><th>Show the alignment<td class=centered><input type=checkbox name=showAlignment" << (showAlignment ? " checked" : "") <<
-        ">"
-
-        "<tr><th>Show debug information<td class=centered><input type=checkbox name=debug" << (debug ? " checked" : "") <<
-        ">"
-
-        "<tr><th>Maximum length for abpoa<br>(switch to poasta above that)"
-        "<td class=centered><input type=text name=maxAbpoaLength size=8 value=" << maxAbpoaLength << ">"
-
-        "</table>"
-        "<br><input type=submit value='Do it'>"
-        "</form>";
-
-
-
-    // Check the AnchorIds
-    if(not (anchorIdAStringIsPresent and anchorIdBStringIsPresent)) {
-        return;
-    }
-    const AnchorId anchorIdA = anchorIdFromString(anchorIdAString);
-    const AnchorId anchorIdB = anchorIdFromString(anchorIdBString);
-
-    if((anchorIdA == invalid<AnchorId>) or (anchorIdA >= anchors().size())) {
-        html << "<p>Invalid anchor id " << anchorIdAString << ". Must be a number between 0 and " <<
-            anchors().size() / 2 - 1 << " followed by + or -.";
-        return;
-    }
-
-    if((anchorIdB == invalid<AnchorId>) or (anchorIdB >= anchors().size())) {
-        html << "<p>Invalid anchor id " << anchorIdBString << " .Must be a number between 0 and " <<
-            anchors().size() / 2 - 1 << " followed by + or -.";
-        return;
-    }
-
-    if(anchorIdA == anchorIdB) {
-        html << "Specify two distinct anchors.";
-        return;
-    }
-
-
-
-    // Write to fasta the oriented read sequences to be used in this local Assembly.
-    {
-        const AnchorPair anchorPair(anchors(), anchorIdA, anchorIdB, false);
-        vector< pair<AnchorPair::Positions, AnchorPair::Positions> > positions;
-        vector< vector<Base> > sequences;
-        anchorPair.get(anchors(), positions, sequences);
-        ofstream fasta("LocalAssemblyInput.fasta");
-        for(uint64_t i=0; i<anchorPair.orientedReadIds.size(); i++) {
-            fasta << ">" << anchorPair.orientedReadIds[i] << " " << i << " " <<
-                positions[i].first.basePosition << "-" <<
-                positions[i].second.basePosition << " " <<
-                positions[i].second.basePosition - positions[i].first.basePosition<< "\n";
-           copy(sequences[i].begin(), sequences[i].end(), ostream_iterator<Base>(fasta));
-           fasta << "\n";
-        }
-
-    }
-
-
-
-    LocalAssembly localAssembly(
-        anchors(),
-        html,
-        debug,
-        httpServerData.options->aDrift,
-        httpServerData.options->bDrift,
-        anchorIdA, anchorIdB);
-    localAssembly.run(showAlignment, httpServerData.options->maxAbpoaLength);
-
-
-
-    vector<Base> sequence;
-    localAssembly.getSequence(sequence);
-
-    ofstream fasta("LocalAssembly.fasta");
-    fasta << ">LocalAssembly " << sequence.size() << endl;
-    copy(sequence.begin(), sequence.end(), ostream_iterator<Base>(fasta));
 }
 
 

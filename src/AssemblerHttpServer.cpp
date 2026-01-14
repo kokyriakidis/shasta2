@@ -46,7 +46,6 @@ void Assembler::fillServerFunctionTable()
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreAnchorPair2);
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreJourney);
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreLocalReadAnchorGraph);
-    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreLocalAssembly);
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreSimilarSequences);
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreLocalAnchorGraph);
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreLocalReadGraph);
@@ -247,7 +246,6 @@ void Assembler::writeNavigation(ostream& html) const
         {"Segment step", "exploreSegmentStep"},
         {"Tangle matrix", "exploreTangleMatrix"},
         {"Segment pair", "exploreSegmentPair"},
-        {"Local assembly", "exploreLocalAssembly"},
         {"Sequence similarity", "exploreSimilarSequences"},
         });
 
