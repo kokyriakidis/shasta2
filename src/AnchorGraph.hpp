@@ -44,9 +44,7 @@ public:
     AnchorPair anchorPair;
     uint64_t offset = invalid<uint64_t>;
     uint64_t id = invalid<uint64_t>;
-    bool isParallelEdge = false;
     bool useForAssembly = false;
-    bool addedAtDeadEnd = false;
 
     AnchorGraphEdge(const AnchorPair& anchorPair, uint64_t offset, uint64_t id) :
         anchorPair(anchorPair),
@@ -63,9 +61,7 @@ public:
         ar & anchorPair;
         ar & offset;
         ar & id;
-        ar & isParallelEdge;
         ar & useForAssembly;
-        ar & addedAtDeadEnd;
     }
 };
 

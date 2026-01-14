@@ -337,11 +337,7 @@ void LocalAnchorGraph::writeGraphviz(
         string color = "Black";
 
         if(options.edgeColoring == "byFlags") {
-			if(edgeG.isParallelEdge) {
-				color = "Orange";
-			} else if(edgeG.addedAtDeadEnd) {
-				color = "Magenta";
-			} else if(not edgeG.useForAssembly) {
+			if(not edgeG.useForAssembly) {
 				color = "GreenYellow";
 			}
         }
@@ -1022,11 +1018,7 @@ void LocalAnchorGraph::writeEdges(
         string color = "Black";
 
         if(options.edgeColoring == "byFlags") {
-			if(edgeG.isParallelEdge) {
-				color = "Orange";
-			} else if(edgeG.addedAtDeadEnd) {
-				color = "Magenta";
-			} else if(not edgeG.useForAssembly) {
+			if(not edgeG.useForAssembly) {
 				color = "GreenYellow";
 			}
         }
