@@ -49,8 +49,6 @@ void Assembler::fillServerFunctionTable()
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreSimilarSequences);
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreLocalAnchorGraph);
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreLocalReadGraph);
-    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreLocalAssemblyGraph);
-    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreSuperbubble);
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreSegments);
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreSegmentSequence);
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreSegmentSteps);
@@ -237,8 +235,6 @@ void Assembler::writeNavigation(ostream& html) const
 
     // Assembly menu.
     writeNavigation(html, "Assembly", {
-        {"Local assembly graph", "exploreLocalAssemblyGraph"},
-        {"Superbubble", "exploreSuperbubble"},
         {"Segments", "exploreSegments"},
         {"Segment sequence", "exploreSegmentSequence"},
         {"Segment steps", "exploreSegmentSteps"},

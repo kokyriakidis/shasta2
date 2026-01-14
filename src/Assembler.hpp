@@ -313,8 +313,6 @@ public:
     void exploreLocalReadAnchorGraph(const vector<string>&, ostream&);
     void exploreLocalAnchorGraph(const vector<string>&, ostream&);
     void exploreLocalReadGraph(const vector<string>&, ostream&);
-    void exploreLocalAssemblyGraph(const vector<string>&, ostream&);
-    void exploreSuperbubble(const vector<string>&, ostream&);
     void exploreSegments(const vector<string>&, ostream&);
     void exploreSegmentSequence(const vector<string>&, ostream&);
     void exploreSegmentSteps(const vector<string>&, ostream&);
