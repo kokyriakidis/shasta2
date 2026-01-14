@@ -30,7 +30,6 @@ namespace shasta2 {
     class Markers;
     class MarkerKmers;
     class ReadGraph;
-    class ReadLengthDistribution;
     class Reads;
     class ReadSummary;
 
@@ -134,18 +133,6 @@ public:
     void createReadSummaries();
     void accessReadSummaries();
     void writeReadSummaries() const;
-
-
-    // Read length distribution.
-    // It provides the computation of coverage correlation,
-    // used during assembly.
-    shared_ptr<ReadLengthDistribution> readLengthDistributionPointer;
-    void createReadLengthDistribution();
-    void accessReadLengthDistribution();
-    ReadLengthDistribution& readLengthDistribution() const
-    {
-        return *readLengthDistributionPointer;
-    }
 
 
 

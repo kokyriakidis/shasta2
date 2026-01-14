@@ -1,7 +1,6 @@
 // Shasta.
 #include "Assembler.hpp"
 #include "performanceLog.hpp"
-#include "ReadLengthDistribution.hpp"
 #include "ReadLoader.hpp"
 #include "timestamp.hpp"
 using namespace shasta2;
@@ -91,16 +90,3 @@ void Assembler::computeReadIdsSortedByName()
     readsPointer->computeReadIdsSortedByName();
 }
 
-
-
-void Assembler::createReadLengthDistribution()
-{
-    readLengthDistributionPointer = make_shared<ReadLengthDistribution>(reads(), MappedMemoryOwner(*this));
-}
-
-
-
-void Assembler::accessReadLengthDistribution()
-{
-    readLengthDistributionPointer = make_shared<ReadLengthDistribution>(MappedMemoryOwner(*this));
-}

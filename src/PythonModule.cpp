@@ -81,10 +81,6 @@ PYBIND11_MODULE(shasta2, shasta2Module)
             &Assembler::histogramReadLength,
             "Create a histogram of read length and write it to a csv file.",
             arg("fileName") = "ReadLengthHistogram.csv")
-        .def("createReadLengthDistribution",
-            &Assembler::createReadLengthDistribution)
-        .def("accessReadLengthDistribution",
-            &Assembler::accessReadLengthDistribution)
         .def("accessReadSummaries",
             &Assembler::accessReadSummaries)
         .def("findPalindromicReads",

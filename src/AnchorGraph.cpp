@@ -6,7 +6,6 @@
 #include "orderPairs.hpp"
 #include "performanceLog.hpp"
 #include "ReadId.hpp"
-#include "ReadLengthDistribution.hpp"
 #include "timestamp.hpp"
 using namespace shasta2;
 

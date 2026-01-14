@@ -12,7 +12,6 @@
 #include "performanceLog.hpp"
 #include "ReadGraph.hpp"
 #include "Reads.hpp"
-#include "ReadLengthDistribution.hpp"
 #include "ReadSummary.hpp"
 using namespace shasta2;
 
@@ -78,7 +77,6 @@ void Assembler::assemble(
         inputFileNames,
         options.minReadLength,
         options.threadCount);
-    createReadLengthDistribution();
     createReadSummaries();
 
     createKmerChecker(options.k, options.markerDensity);
