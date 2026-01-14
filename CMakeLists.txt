@@ -3,40 +3,23 @@
 cmake_minimum_required(VERSION 3.16)
 project(shasta2)
 
-
-# Figure out if we are on Intel (as opposed to ARM).
-set(X86_64 OFF)
-if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64")
-    set(X86_64 ON)
-endif()
-
-
-
 # Summarize the environment.
 message(STATUS "Processor architecture is " ${CMAKE_HOST_SYSTEM_PROCESSOR})
 message(STATUS "CMAKE_SYSTEM_NAME is " ${CMAKE_SYSTEM_NAME})
-
-
 
 # Decide what we want to build.
 option(BUILD_EXECUTABLE "Build the executable." ON)
 option(BUILD_PYTHON_MODULE "Build the Python module." ON)
 option(BUILD_STATIC_LIBRARY "Build the static library." OFF)
 
-
-
 # Write out what we will actually build.
 message(STATUS "BUILD_EXECUTABLE is " ${BUILD_EXECUTABLE})
 message(STATUS "BUILD_PYTHON_MODULE is " ${BUILD_PYTHON_MODULE})
 message(STATUS "BUILD_STATIC_LIBRARY is " ${BUILD_STATIC_LIBRARY})
 
-
-
 # Option to request a debug build.
 option(BUILD_DEBUG "Make a debuggable build." OFF)
 message(STATUS "BUILD_DEBUG is " ${BUILD_DEBUG})
-
-
 
 # Add the subdirectories we need.
 if(BUILD_EXECUTABLE)
