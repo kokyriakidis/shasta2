@@ -13,7 +13,6 @@
 #include "orderPairs.hpp"
 #include "orderVectors.hpp"
 #include "runCommandWithTimeout.hpp"
-#include "shastaLapack.hpp"
 #include "tmpDirectory.hpp"
 #include "Reads.hpp"
 using namespace shasta2;
