@@ -47,12 +47,8 @@ public:
 
     // Options controlling creation of the AnchorGraph.
     uint64_t minAnchorGraphEdgeCoverage = 6;
-    uint64_t minAnchorGraphContinueReadFollowingCount = 10;
     uint64_t transitiveReductionMaxEdgeCoverage = 10;
     uint64_t transitiveReductionMaxDistance = 10;
-
-    double aDrift = 300.;
-    double bDrift = 0.01;
 
     uint64_t simplifyMaxIterationCount = 3;
 

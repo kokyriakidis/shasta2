@@ -53,24 +53,12 @@ void Options::addOptions()
         "Minimum anchor graph edge coverage."
         )->capture_default_str();
 
-    add_option("--min-anchor-graph-continue-read-following-count", minAnchorGraphContinueReadFollowingCount,
-        "Coverage threshold to continue read following during anchor graph edge creation."
-        )->capture_default_str();
-
     add_option("--transitive-reduction-max-edge-coverage", transitiveReductionMaxEdgeCoverage,
         "Maximum coverage of an AnchorGraph edge subject to removal during transitive reduction."
         )->capture_default_str();
 
     add_option("--transitive-reduction-max-distance", transitiveReductionMaxDistance,
         "Maximum distance for transitive reduction of the AnchorGraph."
-        )->capture_default_str();
-
-    add_option("--a-drift", aDrift,
-        "Constant allowed offset for offset consistency."
-        )->capture_default_str();
-
-    add_option("--b-drift", bDrift,
-        "Constant factor for offset consistency."
         )->capture_default_str();
 
     add_option("--simplify-max-iterationCount", simplifyMaxIterationCount,

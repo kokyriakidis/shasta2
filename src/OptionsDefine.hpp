@@ -84,14 +84,6 @@ SHASTA2_OPTION_DEFINE(
     "MinLogPDelta value for likelihood ratio detangling.")
 
 SHASTA2_OPTION_DEFINE(
-    uint64_t, detangleMaxIterationCount, "--detangle-max-iteration-count", 10,
-    "Maximum number of detangling iterations at each iteration of assembly graph simplify.")
-
-SHASTA2_OPTION_DEFINE(
-    uint64_t, detangleMaxCrossEdgeLength, "--detangle-max-cross-edge-length", 10000,
-    "Maximum cross-edge length for detangling.")
-
-SHASTA2_OPTION_DEFINE(
     uint64_t, detangleMinCoverage, "--detangle-min-coverage", 3,
     "Minimum coverage that phasing and detangling are allowed to generate.")
 
@@ -119,8 +111,3 @@ SHASTA2_OPTION_DEFINE(
 	uint64_t, readFollowingSegmentLengthThreshold, "--read-following-segment-length-threshold", 500000,
 	"Segment length threshold for read following.")
 
-
-
-SHASTA2_OPTION_DEFINE(
-	uint64_t, maxAbpoaLength, "--max-abpoa-length", 5000,
-	"Maximum MSA length for abpoa (switch to poasta above that).")
