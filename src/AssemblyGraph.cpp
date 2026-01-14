@@ -12,7 +12,6 @@
 #include "DisjointSets.hpp"
 #include "findLinearChains.hpp"
 #include "findConvergingVertex.hpp"
-#include "inducedSubgraphIsomorphisms.hpp"
 #include "Journeys.hpp"
 #include "LocalAssembly3.hpp"
 #include "MurmurHash2.hpp"
