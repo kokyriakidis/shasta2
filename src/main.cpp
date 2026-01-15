@@ -303,6 +303,7 @@ void shasta2::main::assemble(
         boost::chrono::duration_cast<boost::chrono::nanoseconds>(systemClock1 - systemClock0)).count());
     const double cpuTime = userCpuTime + systemCpuTime;
     writeHtmlLogFinalOutput(elapsedTime, cpuTime);
+    writeHtmlEnd(htmlLog);
 
     cout << timestamp << "Assembly ends." << endl;
     performanceLog << timestamp << "Assembly ends." << endl;
