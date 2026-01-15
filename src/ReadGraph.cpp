@@ -1147,6 +1147,7 @@ uint64_t ReadGraph::flagCrossStrandEdgePairs(uint64_t maxDistance)
 // then flagging to be removed the corresponding AnchorMarkerInfos.
 void ReadGraph::anchorCleanup(vector<bool>& keep)
 {
+    const bool debug = false;
     const ReadId readCount = anchors.reads.readCount();
 
     vector<uint64_t> crossStrandEdgePairIndexes;
@@ -1192,8 +1193,10 @@ void ReadGraph::anchorCleanup(vector<bool>& keep)
             // Flag to be removed from these Anchors the AnchorMarkerInfos for
             // orientedReadId0 and orientedReadId1.
             for(const AnchorId anchorId: commonAnchorIds) {
-                cout << "Removing " << orientedReadId0 << " and " << orientedReadId1 <<
-                    " from " << anchorIdToString(anchorId) << endl;
+                if(debug) {
+                    cout << "Removing " << orientedReadId0 << " and " << orientedReadId1 <<
+                        " from " << anchorIdToString(anchorId) << endl;
+                }
                 const AnchorMarkerInfo& anchorMarkerInfo0 = anchors.getAnchorMarkerInfo(anchorId, orientedReadId0);
                 const AnchorMarkerInfo& anchorMarkerInfo1 = anchors.getAnchorMarkerInfo(anchorId, orientedReadId1);
                 keep[&anchorMarkerInfo0 - anchors.anchorMarkerInfos.begin()] = false;
