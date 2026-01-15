@@ -41,22 +41,15 @@ Options::Options(int argc, char** argv) :
 
 void Options::addOptions()
 {
-    add_option("--input", inputFileNames,
-        "Input fasta or fastq files (uncompressed)."
-        )->capture_default_str();
-
-    add_option("--max-anchor-repeat-length", maxAnchorRepeatLength,
-        "Maximum number of copies of repeats of period 1, 2, 3,... allowed in an anchor sequence."
-        )->capture_default_str();
-
-
-
-
-	// Options defined in OptionsDefine.hpp
 	#define SHASTA2_OPTION_DEFINE(type, name, optionName, defaultValue, description) \
 		add_option(optionName, name, description)->capture_default_str();
+    #define SHASTA2_VECTOR_OPTION_DEFINE(type, name, optionName, defaultValue, description) \
+        add_option(optionName, name, description)->capture_default_str();
+
 	#include "OptionsDefine.hpp"
+
 	#undef SHASTA2_OPTION_DEFINE
+    #undef SHASTA2_VECTOR_OPTION_DEFINE
 }
 
 

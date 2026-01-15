@@ -42,6 +42,10 @@ SHASTA2_OPTION_DEFINE(
     uint64_t, minReadLength, "--min-read-length", 0,
     "Read length cutoff.")
 
+SHASTA2_VECTOR_OPTION_DEFINE(
+    string, inputFileNames, "--input", inputFileNamesDefault,
+    "Input fasta or fastq files (uncompressed).")
+
 
 
 // Markers.
@@ -67,6 +71,22 @@ SHASTA2_OPTION_DEFINE(
 SHASTA2_OPTION_DEFINE(
     uint64_t, maxAnchorCoverage, "--max-anchor-coverage", 60,
     "Maximum anchor coverage.")
+
+// An anchor is not generated if its sequence contains an exact repeat
+// consisting of n copies of a unit of length (period) p, if
+// n > maxAnchorRepeatLength[p-1].
+// So for example:
+// - maxAnchorRepeatLength[0] is the maximum allowed length of
+//   a homopolymer run.
+// - maxAnchorRepeatLength[1] is the maximum allowed number of
+//   copies of a repeat with period 2 (e. g. ATATAT).
+//   Note this is the number of copies, not number of bases.
+//   So if maxAnchorRepeatLength[1] is 3, the anchor is not
+//   generated if it contains a 2-base repeat with more than 3 copies
+//   (a total 6 bases).
+SHASTA2_VECTOR_OPTION_DEFINE(
+    uint64_t, maxAnchorRepeatLength, "--max-anchor-repeat-length", maxAnchorRepeatLengthDefault,
+    "Maximum number of copies of repeats of period 1, 2, 3,... allowed in an anchor sequence.")
 
 
 
