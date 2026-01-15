@@ -25,7 +25,7 @@ SHASTA2_OPTION_DEFINE(
 
 
 
-// Http server options.
+// Http server.
 SHASTA2_OPTION_DEFINE(
     string, exploreAccess, "--explore-access", "user",
         "Specifies accessibility of Shasta2 http server.\n"
@@ -70,7 +70,7 @@ SHASTA2_OPTION_DEFINE(
 
 
 
-// AnchorGraph.
+// Anchor graph.
 SHASTA2_OPTION_DEFINE(
     uint64_t, minAnchorGraphEdgeCoverage, "--min-anchor-graph-edge-coverage", 6,
     "Minimum anchor graph edge coverage.")
@@ -85,7 +85,27 @@ SHASTA2_OPTION_DEFINE(
 
 
 
-// Options that control detangling.
+// Assembly graph.
+SHASTA2_OPTION_DEFINE(
+    uint64_t, simplifyMaxIterationCount, "--simplify-max-iterationCount", 3,
+    "Maximum number of assembly graph simplify iterations.")
+
+SHASTA2_OPTION_DEFINE(
+    uint64_t, bubbleCleanupMaxBubbleLength, "--bubble-cleanup-max-bubble-length", 10000,
+    "Maximum bubble length for bubble cleanup.")
+
+SHASTA2_OPTION_DEFINE(
+    uint64_t, bubbleCleanupMinCommonCount, "--bubble-cleanup-min-common-count", 6,
+    "Minimum number of common oriented reads for bubble cleanup.")
+
+SHASTA2_OPTION_DEFINE(
+    uint64_t, findSuperbubblesMaxDistance, "--find-superbubbles-max-distance", 10,
+    "Maximum distance (number of BFS edges) when finding superbubbles.")
+
+SHASTA2_OPTION_DEFINE(
+    uint64_t, phasingDistance, "--phasing-distance", 12,
+    "Maximum bubble-bubble distance (number of edges) for phasing.")
+
 SHASTA2_OPTION_DEFINE(
     double, detangleEpsilon, "--detangle-epsilon", 0.05,
     "Epsilon value for likelihood ratio detangling.")
@@ -105,7 +125,7 @@ SHASTA2_OPTION_DEFINE(
 
 
 
-// Options that control read following.
+// Read following.
 SHASTA2_OPTION_DEFINE(
 	uint64_t, readFollowingMinCommonCount, "--read-following-min-common-count", 6,
 	"Minimum number of common oriented reads for read following.")

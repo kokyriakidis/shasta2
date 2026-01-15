@@ -46,16 +46,6 @@ public:
     vector<uint64_t> maxAnchorRepeatLength = {6, 4, 4, 4, 4};
 
 
-    uint64_t simplifyMaxIterationCount = 3;
-
-    uint64_t bubbleCleanupMaxBubbleLength = 10000;
-    uint64_t bubbleCleanupMinCommonCount = 6;
-
-    uint64_t findSuperbubblesMaxDistance = 10;
-
-    // Options that control phasing.
-    uint64_t phasingDistance = 12;
-    uint64_t phasingMinCoverage = 4;
 
 	// Options with a simple type are defined in OptionsDefine.hpp
 	#define SHASTA2_OPTION_DEFINE(type, name, optionName, defaultValue, description) \
