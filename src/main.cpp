@@ -3,6 +3,9 @@
 #include "Assembler.hpp"
 #include "Options.hpp"
 #include "filesystem.hpp"
+#include "html.hpp"
+#include "htmlLog.hpp"
+#include "memoryInformation.hpp"
 #include "performanceLog.hpp"
 #include "ReadSummary.hpp"
 #include "Tee.hpp"
@@ -59,6 +62,12 @@ namespace shasta2 {
             "explore",
             "listCommands",
             "createBashCompletionScript"};
+
+        void writeHtmlLogInitialOutput(
+            int argumentCount,
+            char** arguments,
+            uint64_t threadCount);
+        void writeHtmlLogFinalOutput(double elapsedTime, double cpuTime);
 
     }
 
@@ -187,6 +196,10 @@ void shasta2::main::assemble(
 {
     SHASTA2_ASSERT(options.command == "assemble");
 
+    const auto steadyClock0 = std::chrono::steady_clock::now();
+    const auto userClock0 = boost::chrono::process_user_cpu_clock::now();
+    const auto systemClock0 = boost::chrono::process_system_cpu_clock::now();
+
 
     // Various checks for option validity.
 
@@ -247,6 +260,11 @@ void shasta2::main::assemble(
     openPerformanceLog("performance.log");
     performanceLog << timestamp << "Assembly begins." << endl;
 
+    // Open the html log.
+    openHtmlLog("AssemblyLog.html");
+    writeHtmlBegin(htmlLog, "Shasta2 assembly");
+    writeHtmlLogInitialOutput(argumentCount, arguments, options.threadCount);
+
     // Open stdout.log and "tee" (duplicate) stdout to it.
     shastaLog.open("stdout.log");
     tee.duplicate(cout, shastaLog);
@@ -272,6 +290,19 @@ void shasta2::main::assemble(
 
     // Run the assembly.
     assembler.assemble(options, inputFileAbsolutePaths);
+
+    // Write performance information.
+    const auto steadyClock1 = std::chrono::steady_clock::now();
+    const auto userClock1 = boost::chrono::process_user_cpu_clock::now();
+    const auto systemClock1 = boost::chrono::process_system_cpu_clock::now();
+    const double elapsedTime = 1.e-9 * double((
+        std::chrono::duration_cast<std::chrono::nanoseconds>(steadyClock1 - steadyClock0)).count());
+    const double userCpuTime = 1.e-9 * double((
+        boost::chrono::duration_cast<boost::chrono::nanoseconds>(userClock1 - userClock0)).count());
+    const double systemCpuTime = 1.e-9 * double((
+        boost::chrono::duration_cast<boost::chrono::nanoseconds>(systemClock1 - systemClock0)).count());
+    const double cpuTime = userCpuTime + systemCpuTime;
+    writeHtmlLogFinalOutput(elapsedTime, cpuTime);
 
     cout << timestamp << "Assembly ends." << endl;
     performanceLog << timestamp << "Assembly ends." << endl;
@@ -592,4 +623,73 @@ void shasta2::main::createBashCompletionScript()
 
     cout << "Use \"source shasta2Completion.sh.\" for automatic completion "
         "of shasta2 commands in the bash shell." << endl;
+}
+
+
+
+void shasta2::main::writeHtmlLogInitialOutput(
+    int argumentCount,
+    char** arguments,
+    uint64_t threadCount)
+{
+    const uint64_t virtualProcessorCount = std::thread::hardware_concurrency();
+    if(threadCount == 0) {
+        threadCount = virtualProcessorCount;
+    }
+    const uint64_t memoryBytes = getTotalPhysicalMemory();
+    const double memoryGiB = double(memoryBytes) / (1024. * 1024. * 1024);
+
+    htmlLog <<
+        "<h1>Shasta2 assembly</h1>\n"
+        "<table>\n"
+        "<tr><th class=left>Begin time<td>" << timestamp;
+
+    htmlLog << "<tr><th class=left>Command<td>";
+    for(int i=0; i<argumentCount; i++) {
+        htmlLog << arguments[i];
+        if(i != argumentCount - 1) {
+            htmlLog << " ";
+        }
+    }
+    htmlLog << "\n";
+
+    htmlLog <<
+        "<tr><th class=left>Assembly directory<td>" <<
+        std::filesystem::current_path().string() << "\n" <<
+        "<tr><th class=left>Number of threads<td>" << threadCount << "\n" <<
+        "<tr><th class=left>Number of virtual processors<td>" << virtualProcessorCount << "\n" <<
+        "<tr><th class=left>Total usable physical memory<td>" << memoryBytes <<
+        " bytes, " << memoryGiB << " GiB\n";
+
+    htmlLog << "</table>\n" << flush;
+}
+
+
+
+void shasta2::main::writeHtmlLogFinalOutput(double elapsedTime, double cpuTime)
+{
+    const uint64_t memoryBytes = getPeakMemoryUsage();
+    const double memoryGiB = double(memoryBytes) / (1024. * 1024. * 1024);
+
+    const double averageConcurrency =
+        cpuTime / elapsedTime;
+    const double averageCpuUtilization =
+        averageConcurrency / double(std::thread::hardware_concurrency());
+
+    const auto oldPrecision = htmlLog.precision(2);
+    const auto oldFlags = htmlLog.setf(std::ios_base::fixed, std::ios_base::floatfield);
+
+    htmlLog <<
+        "<h2>Performance summary</h2>\n"
+        "<table>\n"
+        "<tr><th class=left>End time<td>" << timestamp <<
+        "<tr><th class=left>Elapsed time<td>" << elapsedTime << " s\n" <<
+        "<tr><th class=left>CPU time<td>" << cpuTime << " s\n" <<
+        "<tr><th class=left>Average concurrency<td>" << averageConcurrency << "\n" <<
+        "<tr><th class=left>Average CPU utilization<td>" << averageCpuUtilization << "\n" <<
+        "<tr><th class=left>Peak virtual memory<td>" << memoryBytes << " bytes, " << memoryGiB << " GiB\n" <<
+        "</table>\n";
+
+    htmlLog.precision(oldPrecision);
+    htmlLog.flags(oldFlags);
 }
