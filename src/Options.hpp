@@ -45,10 +45,6 @@ public:
     //   (a total 6 bases).
     vector<uint64_t> maxAnchorRepeatLength = {6, 4, 4, 4, 4};
 
-    // Options controlling creation of the AnchorGraph.
-    uint64_t minAnchorGraphEdgeCoverage = 6;
-    uint64_t transitiveReductionMaxEdgeCoverage = 10;
-    uint64_t transitiveReductionMaxDistance = 10;
 
     uint64_t simplifyMaxIterationCount = 3;
 

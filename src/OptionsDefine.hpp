@@ -70,6 +70,21 @@ SHASTA2_OPTION_DEFINE(
 
 
 
+// AnchorGraph.
+SHASTA2_OPTION_DEFINE(
+    uint64_t, minAnchorGraphEdgeCoverage, "--min-anchor-graph-edge-coverage", 6,
+    "Minimum anchor graph edge coverage.")
+
+SHASTA2_OPTION_DEFINE(
+    uint64_t, transitiveReductionMaxEdgeCoverage, "--transitive-reduction-max-edge-coverage", 10,
+    "Maximum coverage of an AnchorGraph edge subject to removal during transitive reduction.")
+
+SHASTA2_OPTION_DEFINE(
+    uint64_t, transitiveReductionMaxDistance, "--transitive-reduction-max-distance", 10,
+    "Maximum distance for transitive reduction of the AnchorGraph.")
+
+
+
 // Options that control detangling.
 SHASTA2_OPTION_DEFINE(
     double, detangleEpsilon, "--detangle-epsilon", 0.05,

@@ -49,18 +49,6 @@ void Options::addOptions()
         "Maximum number of copies of repeats of period 1, 2, 3,... allowed in an anchor sequence."
         )->capture_default_str();
 
-    add_option("--min-anchor-graph-edge-coverage", minAnchorGraphEdgeCoverage,
-        "Minimum anchor graph edge coverage."
-        )->capture_default_str();
-
-    add_option("--transitive-reduction-max-edge-coverage", transitiveReductionMaxEdgeCoverage,
-        "Maximum coverage of an AnchorGraph edge subject to removal during transitive reduction."
-        )->capture_default_str();
-
-    add_option("--transitive-reduction-max-distance", transitiveReductionMaxDistance,
-        "Maximum distance for transitive reduction of the AnchorGraph."
-        )->capture_default_str();
-
     add_option("--simplify-max-iterationCount", simplifyMaxIterationCount,
         "Maximum number of assembly graph simplify iterations."
         )->capture_default_str();
