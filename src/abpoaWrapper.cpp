@@ -125,3 +125,25 @@ void shasta2::abpoa(
     abpoa_free(ab);
     abpoa_free_para(abpt);
 }
+
+
+
+void shasta2::testAbpoa()
+{
+    const uint64_t n = 2;
+    const array<string, n> sequenceStrings = {"CTAGTT", "CTGGTT"};
+
+    vector< vector<Base> > sequences;
+    for(const string& sequenceString: sequenceStrings) {
+        vector<Base>& sequence = sequences.emplace_back();
+        for(const char c: sequenceString) {
+            sequence.emplace_back(Base::fromCharacter(c));
+        }
+    }
+
+    vector< pair<Base, uint64_t> > consensus;
+    vector< vector<AlignedBase> > alignment;
+    vector<AlignedBase> alignedConsensus;
+    abpoa(sequences, consensus, alignment, alignedConsensus, true);
+
+}

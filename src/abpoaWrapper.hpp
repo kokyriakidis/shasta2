@@ -33,4 +33,6 @@ namespace shasta2 {
 
     );
 
+    void testAbpoa();
+
 }

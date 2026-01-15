@@ -1,6 +1,7 @@
 #ifdef SHASTA2_PYTHON_API
 
 // Shasta.
+#include "abpoaWrapper.hpp"
 #include "Anchor.hpp"
 #include "Assembler.hpp"
 #include "AssemblyGraphPostprocessor.hpp"
@@ -259,6 +260,9 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         );
     shasta2Module.def("testSimpleMap",
         testSimpleMap
+        );
+    shasta2Module.def("testAbpoa",
+        testAbpoa
         );
 }
 
