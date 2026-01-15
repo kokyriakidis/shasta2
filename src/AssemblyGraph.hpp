@@ -336,6 +336,7 @@ public:
 
     // Output.
     void write(const string& stage);
+    void writeIntermediateStageIfRequested(const string& name);
     void writeFasta(const string& stage) const;
 private:
     void writeGfa(const string& fileName) const;

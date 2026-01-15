@@ -63,9 +63,12 @@ PYBIND11_MODULE(shasta2, shasta2Module)
 			.def_readwrite(#name, &Options::name)
         #define SHASTA2_VECTOR_OPTION_DEFINE(type, name, optionName, defaultValue, description) \
             .def_readwrite(#name, &Options::name)
+        #define SHASTA2_BOOL_OPTION_DEFINE(name, optionName, defaultValue, description) \
+            .def_readwrite(#name, &Options::name)
 		#include "OptionsDefine.hpp"
 		#undef SHASTA2_OPTION_DEFINE
         #undef SHASTA2_VECTOR_OPTION_DEFINE
+        #undef SHASTA2_BOOL_OPTION_DEFINE
         ;
 
 

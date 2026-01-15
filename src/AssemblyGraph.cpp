@@ -148,7 +148,7 @@ void AssemblyGraph::simplifyAndAssemble()
     performanceLog << timestamp << "Assembly graph::simplifyAndAssemble begins." << endl;
 
     // Initial output.
-    write("A");
+    writeIntermediateStageIfRequested("A");
 
 
 
@@ -161,11 +161,11 @@ void AssemblyGraph::simplifyAndAssemble()
         // Remove or simplify bubbles likely caused by errors.
         changeCount += bubbleCleanup();
         changeCount += compress();
-        write("B" + to_string(iteration));
+        writeIntermediateStageIfRequested("B" + to_string(iteration));
 
         // Phase SuperbubbleChains, considering all hypotheses.
         changeCount += phaseSuperbubbleChains();
-        write("C" + to_string(iteration));
+        writeIntermediateStageIfRequested("C" + to_string(iteration));
 
         if(changeCount == 0) {
             break;
@@ -176,12 +176,12 @@ void AssemblyGraph::simplifyAndAssemble()
 
     // Read following.
     findAndConnectAssemblyPaths();
-    write("D");
+    writeIntermediateStageIfRequested("D");
 
     // Remove isolated vertices and connected components with small N50.
     removeIsolatedVertices();
     removeLowN50Components(minComponentN50);
-    write("E");
+    writeIntermediateStageIfRequested("E");
 
     // Sequence assembly.
     assembleAll();
@@ -247,6 +247,15 @@ void AssemblyGraph::write(const string& stage)
     writeGfa("Assembly-" + stage + ".gfa");
     writeGraphviz("Assembly-" + stage + ".dot");
     writeCsv("Assembly-" + stage + ".csv");
+}
+
+
+
+void AssemblyGraph::writeIntermediateStageIfRequested(const string& name)
+{
+    if(options.writeIntermediateAssemblyStages) {
+        write(name);
+    }
 }
 
 

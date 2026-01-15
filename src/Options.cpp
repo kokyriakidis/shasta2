@@ -45,11 +45,14 @@ void Options::addOptions()
 		add_option(optionName, name, description)->capture_default_str();
     #define SHASTA2_VECTOR_OPTION_DEFINE(type, name, optionName, defaultValue, description) \
         add_option(optionName, name, description)->capture_default_str();
+    #define SHASTA2_BOOL_OPTION_DEFINE(name, optionName, defaultValue, description) \
+        add_flag(optionName, name, description)->capture_default_str();
 
 	#include "OptionsDefine.hpp"
 
 	#undef SHASTA2_OPTION_DEFINE
     #undef SHASTA2_VECTOR_OPTION_DEFINE
+    #undef SHASTA2_BOOL_OPTION_DEFINE
 }
 
 

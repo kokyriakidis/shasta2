@@ -37,9 +37,12 @@ public:
 		type name = defaultValue;
     #define SHASTA2_VECTOR_OPTION_DEFINE(type, name, optionName, defaultValue, description) \
         vector<type> name = defaultValue;
+    #define SHASTA2_BOOL_OPTION_DEFINE(name, optionName, defaultValue, description) \
+        bool name = defaultValue;
 	#include "OptionsDefine.hpp"
     #undef SHASTA2_OPTION_DEFINE
     #undef SHASTA2_VECTOR_OPTION_DEFINE
+    #undef SHASTA2_BOOL_OPTION_DEFINE
 
 
 private:
