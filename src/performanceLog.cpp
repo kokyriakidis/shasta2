@@ -2,6 +2,10 @@
 // for performance analysis but mostly uninteresting to users.
 
 #include "performanceLog.hpp"
+#include "memoryInformation.hpp"
+#include "timestamp.hpp"
+
+#include "iostream.hpp"
 
 namespace shasta2 {
     ofstream performanceLog;
@@ -12,4 +16,15 @@ namespace shasta2 {
 void shasta2::openPerformanceLog(const string& fileName)
 {
     performanceLog.open(fileName);
+}
+
+
+
+void shasta2::writePerformanceStatistics(const string& name)
+{
+    performanceLog <<
+        timestamp << "At " << name << ":\n" <<
+        "    Peak virtual memory usage " << getPeakMemoryUsage() << "\n" <<
+        flush;
+
 }

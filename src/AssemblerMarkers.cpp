@@ -47,6 +47,7 @@ void Assembler::checkMarkersAreOpen() const
 
 void Assembler::createMarkerKmers(double maxMarkerErrorRate, uint64_t threadCount)
 {
+    writePerformanceStatistics("Assembler::createMarkerKmers begins");
 
     const MappedMemoryOwner& mappedMemoryOwner = *this;
     const uint64_t readCount = reads().readCount();
@@ -105,7 +106,9 @@ void Assembler::createMarkerKmers(double maxMarkerErrorRate, uint64_t threadCoun
         ReadSummary& readSummary = readSummaries[readId];
         readSummary.markerErrorRate = markerErrorRate;
     }
- }
+
+    writePerformanceStatistics("Assembler::createMarkerKmers ends");
+}
 
 
 

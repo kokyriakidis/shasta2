@@ -9,5 +9,7 @@
 namespace shasta2 {
     extern ofstream performanceLog;
     void openPerformanceLog(const string& fileName);
+
+    void writePerformanceStatistics(const string&);
 }
 

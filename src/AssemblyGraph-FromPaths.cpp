@@ -2,9 +2,11 @@
 #include "Anchor.hpp"
 #include "Assembler.hpp"
 #include "deduplicate.hpp"
+#include "performanceLog.hpp"
 #include "ReadFollowing.hpp"
 #include "RestrictedAnchorGraph.hpp"
 #include "TangleMatrix1.hpp"
+#include "timestamp.hpp"
 using namespace shasta2;
 
 #include <boost/graph/iteration_macros.hpp>
@@ -244,8 +246,12 @@ void AssemblyGraph::connectAssemblyPaths(const vector< vector<edge_descriptor> >
 
 void AssemblyGraph::findAndConnectAssemblyPaths()
 {
-	vector< vector<edge_descriptor> > assemblyPaths;
+    writePerformanceStatistics("AssemblyGraph::findAndConnectAssemblyPaths begins");
+
+    vector< vector<edge_descriptor> > assemblyPaths;
 	findAssemblyPaths(assemblyPaths);
 	connectAssemblyPaths(assemblyPaths);
+
+    writePerformanceStatistics("AssemblyGraph::findAndConnectAssemblyPaths ends");
 }
 

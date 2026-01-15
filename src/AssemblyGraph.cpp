@@ -142,10 +142,10 @@ AssemblyGraph::AssemblyGraph(
 // Top level assembly function.
 void AssemblyGraph::simplifyAndAssemble()
 {
+    writePerformanceStatistics("AssemblyGraph::simplifyAndAssemble begins");
+
     // EXPOSE WHEN CODE STABILIZES.
     const uint64_t minComponentN50 = 100000;
-
-    performanceLog << timestamp << "Assembly graph::simplifyAndAssemble begins." << endl;
 
     // Initial output.
     writeIntermediateStageIfRequested("A");
@@ -188,7 +188,7 @@ void AssemblyGraph::simplifyAndAssemble()
     write("Final");
     writeFasta("Final");
 
-    performanceLog << timestamp << "Assembly graph::simplifyAndAssemble ends." << endl;
+    writePerformanceStatistics("AssemblyGraph::simplifyAndAssemble ends");
 }
 
 
@@ -403,7 +403,7 @@ void AssemblyGraph::writeGraphviz(ostream& dot) const
 // Assemble sequence for all edges.
 void AssemblyGraph::assembleAll()
 {
-    performanceLog << timestamp << "Sequence assembly begins." << endl;
+    writePerformanceStatistics("AssemblyGraph::assembleAll begins");
 
     const AssemblyGraph& assemblyGraph = *this;
 
@@ -414,7 +414,7 @@ void AssemblyGraph::assembleAll()
     assemble();
     edgesToBeAssembled.clear();
 
-    performanceLog << timestamp << "Sequence assembly ends." << endl;
+    writePerformanceStatistics("AssemblyGraph::assembleAll ends");
 }
 
 

@@ -116,7 +116,6 @@ void Assembler::createKmerChecker(
     uint64_t k,
     double markerDensity)
 {
-
     assemblerInfo->k = k;
     assemblerInfo->markerDensity = markerDensity;
     kmerChecker = KmerCheckerFactory::createNew(
@@ -321,12 +320,16 @@ void Assembler::createCompleteAnchorGraph()
 
 void Assembler::createAssemblyGraph(const Options& options)
 {
+    writePerformanceStatistics("Assembler::createAssemblyGraph begins");
+
     AssemblyGraph assemblyGraph(
         anchors(),
         journeys(),
         *anchorGraphPointer,
         options);
     assemblyGraph.simplifyAndAssemble();
+
+    writePerformanceStatistics("Assembler::createAssemblyGraph ends");
 }
 
 

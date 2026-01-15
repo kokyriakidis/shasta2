@@ -18,7 +18,8 @@ void Assembler::addReads(
     uint64_t minReadLength,
     size_t threadCount)
 {
-    performanceLog << timestamp << "Begin loading reads from " << fileNames.size() << " files." << endl;
+    writePerformanceStatistics("Assembler::addReads begins");
+
     const auto t0 = steady_clock::now();
 
     for(const string& fileName: fileNames) {
@@ -35,9 +36,9 @@ void Assembler::addReads(
     histogramReadLength("ReadLengthHistogram.csv");
 
     const auto t1 = steady_clock::now();
-    performanceLog << timestamp << "Done loading reads from " << fileNames.size() << " files." << endl;
     performanceLog << "Read loading took " << seconds(t1-t0) << "s." << endl;
 
+    writePerformanceStatistics("Assembler::addReads ends");
 }
 
 
