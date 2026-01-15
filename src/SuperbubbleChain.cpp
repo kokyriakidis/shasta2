@@ -24,7 +24,6 @@ uint64_t SuperbubbleChain::phase1(
     const bool debug = false;
 
     const uint64_t phasingDistance = assemblyGraph.options.phasingDistance;
-    const uint64_t phasingMinDegree = assemblyGraph.options.phasingMinDegree;
 
     if(debug) {
         cout << "Phasing superbubble chain " << superbubbleChainId << endl;
@@ -249,7 +248,9 @@ uint64_t SuperbubbleChain::phase1(
     }
 
     // Remove low degree vertices.
-    const uint64_t removedVertexCount = phasingGraph.removeLowDegreeVertices(phasingMinDegree);
+    // We are removing vertices with degree less than 1, so effectively
+    // this only removes isolated vertices.
+    const uint64_t removedVertexCount = phasingGraph.removeLowDegreeVertices(1);
     if(debug) {
         cout << removedVertexCount << " low degree vertices were removed." << endl;
     }

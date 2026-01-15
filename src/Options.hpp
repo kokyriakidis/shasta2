@@ -62,7 +62,6 @@ public:
 
     // Options that control phasing.
     uint64_t phasingDistance = 12;
-    uint64_t phasingMinDegree = 2;
     uint64_t phasingMinCoverage = 4;
 
 	// Options with a simple type are defined in OptionsDefine.hpp
