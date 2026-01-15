@@ -63,24 +63,9 @@ void Options::addOptions()
        "Minimum number of common oriented reads for bubble cleanup."
        )->capture_default_str();
 
-    add_option("--clustering-min-jaccard",
-        clusteringMinJaccard,
-       "Minimum Jaccard similarity for oriented read clustering."
-       )->capture_default_str();
-
     add_option("--find-superbubbles-max-distance",
         findSuperbubblesMaxDistance,
        "Maximum distance (number of BFS edges) when finding superbubbles."
-       )->capture_default_str();
-
-    add_option("--simplify-superbubble-min-coverage",
-        simplifySuperbubbleMinCoverage,
-       "Minimum coverage when simplifying superbubbles."
-       )->capture_default_str();
-
-    add_option("--simplify-superbubble-max-offset",
-        simplifySuperbubbleMaxOffset,
-       "Maximum offset when simplifying superbubbles."
        )->capture_default_str();
 
     add_option("--phasing-distance",
