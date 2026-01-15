@@ -143,7 +143,7 @@ bool Tangle1::addConnectPair(uint64_t entranceIndex, uint64_t exitIndex) {
 
             for(const RestrictedAnchorGraph::edge_descriptor re: longestPath) {
                 const auto& rEdge = restrictedAnchorGraph[re];
-                if(rEdge.anchorPair.size() < 0) {
+                if(rEdge.anchorPair.size() == 0) {
                     newEdge.clear();
                     return false;
                 }
