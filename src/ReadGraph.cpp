@@ -836,6 +836,8 @@ void ReadGraph::writeConnectivityTable() const
 // Use self-complementary paths of length 2 to find and flag cross-strand EdgePairs.
 void ReadGraph::flagCrossStrandEdgePairs2(vector<uint64_t>& crossStrandEdgePairIndexes)
 {
+    const bool debug = false;
+
     const ReadId readCount = anchors.reads.readCount();
     crossStrandEdgePairIndexes.clear();
 
@@ -857,9 +859,11 @@ void ReadGraph::flagCrossStrandEdgePairs2(vector<uint64_t>& crossStrandEdgePairI
                 continue;
             }
             if(edgePair0.getOther(readId) == edgePair1.getOther(readId)) {
-                cout << "Quadrilateral " << edgePair0.readId0 << " " << edgePair0.readId1 << ": " <<
-                    int(edgePair0.isSameStrand) << ":" << edgePair0.coverage << " " <<
-                    int(edgePair1.isSameStrand) << ":" << edgePair1.coverage << endl;
+                if(debug) {
+                    cout << "Quadrilateral " << edgePair0.readId0 << " " << edgePair0.readId1 << ": " <<
+                        int(edgePair0.isSameStrand) << ":" << edgePair0.coverage << " " <<
+                        int(edgePair1.isSameStrand) << ":" << edgePair1.coverage << endl;
+                }
                 SHASTA2_ASSERT(not edgePair0.isSameStrand);
                 SHASTA2_ASSERT(edgePair1.isSameStrand);
                 if(edgePair0.coverage < edgePair1.coverage) {

@@ -1289,6 +1289,8 @@ Anchors::Anchors(
     markers(sourceAnchors.markers),
     markerKmers(sourceAnchors.markerKmers)
 {
+    const bool debug = false;
+
     // Initialize MemoryMapped objects.
     anchorMarkerInfos.createNew(largeDataName(baseName + "-AnchorMarkerInfos"), largeDataPageSize);
     anchorInfos.createNew(largeDataName(baseName + "-AnchorInfos"), largeDataPageSize);
@@ -1328,9 +1330,12 @@ Anchors::Anchors(
                 ++newCoverage;
             }
         }
-        if(newCoverage != sourceAnchor.size()) {
-            cout << anchorIdToString(anchorId) << " old coverage " << sourceAnchor.size() <<
-                ", new coverage " << newCoverage << endl;
+
+        if(debug) {
+            if(newCoverage != sourceAnchor.size()) {
+                cout << anchorIdToString(anchorId) << " old coverage " << sourceAnchor.size() <<
+                    ", new coverage " << newCoverage << endl;
+            }
         }
     }
 }

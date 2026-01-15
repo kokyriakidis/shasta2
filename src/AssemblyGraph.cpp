@@ -2091,6 +2091,7 @@ void AssemblyGraph::removeIsolatedVertices()
 void AssemblyGraph::removeLowN50Components([[maybe_unused]] uint64_t minN50)
 {
     AssemblyGraph& assemblyGraph = *this;
+    const bool debug = false;
 
     // Map the vertices to integers.
     uint64_t vertexIndex = 0;
@@ -2114,7 +2115,9 @@ void AssemblyGraph::removeLowN50Components([[maybe_unused]] uint64_t minN50)
     }
     vector< vector<uint64_t> > components;
     disjointSets.gatherComponents(1, components);
-    cout << "Found " << components.size() << " connected components of the AssemblyGraph." << endl;
+    if(debug) {
+        cout << "Found " << components.size() << " connected components of the AssemblyGraph." << endl;
+    }
 
 
 
@@ -2146,17 +2149,19 @@ void AssemblyGraph::removeLowN50Components([[maybe_unused]] uint64_t minN50)
             }
         }
 
-        const bool keep = (n50 >= minN50);
 
         // Decide if we keep this component.
-        if(keep) {
-            cout << "Keeping";
-        } else {
-            cout << "Discarding";
+        const bool keep = (n50 >= minN50);
+        if(debug) {
+            if(keep) {
+                cout << "Keeping";
+            } else {
+                cout << "Discarding";
+            }
+            cout << " a connected component with " << lengths.size() <<
+                " segments, total length " << totalLength <<
+                ", N50 " << n50 << endl;
         }
-        cout << " a connected component with " << lengths.size() <<
-            " segments, total length " << totalLength <<
-            ", N50 " << n50 << endl;
 
         // If not keeping this component, remove its vertices and edges.
         if(not keep) {
