@@ -18,7 +18,8 @@ packages = [
 command = "sudo apt-get install " + " ".join(packages)
 os.system(command)
 
-# Build abpoa.
+# Build abpoa and poasta
 import BuildAbpoa
+import BuildPoasta
 
 
