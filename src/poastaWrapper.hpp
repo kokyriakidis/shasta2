@@ -28,4 +28,10 @@ namespace shasta2 {
         vector<AlignedBase>& alignedConsensus
     );
 
+    // This tests a direct call to poasta.
+    void testPoasta1();
+
+    // This tests a call to poasta using the wrapper.
+    void testPoasta2();
+
 }

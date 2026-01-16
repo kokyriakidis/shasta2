@@ -25,11 +25,13 @@ add_definitions(-DSHASTA2_PYTHON_API)
 # Sources files.
 file(GLOB SOURCES ../src/*.cpp)
 
-# Include directory.
+# Include directories for abpoa and poasta..
 include_directories(../src ~/.shasta2Build/abpoa/abPOA/include)
+include_directories(~/.shasta2Build/poasta-c/poasta-c)
 
-# Additional link directory.
+# Link directories for abpoa and poasta.
 link_directories(~/.shasta2Build/abpoa/abPOA/lib)
+link_directories(~/.shasta2Build/poasta-c/poasta-c/target/release)
 
 # Define our library.
 add_library(shasta2PythonModule SHARED ${SOURCES})
@@ -54,11 +56,13 @@ SET(CMAKE_LINKER_FLAGS  "${CMAKE_LINKER_FLAGS} ${SHASTA2_PYTHON_LIBRARIES}")
 # Libraries to link with.
 target_link_libraries(
     shasta2PythonModule 
-    atomic png boost_program_options boost_serialization boost_chrono pthread abpoa z m ${SHASTA2_PYTHON_LIBRARIES})
+    atomic png boost_program_options boost_serialization boost_chrono pthread 
+    abpoa poasta_c z m ${SHASTA2_PYTHON_LIBRARIES})
 
-# Install the shared library and the abpoa library it needs into the bin directory.
+# Install the shared library and the abpoa and poasta-c libraries it needs into the bin directory.
 install(TARGETS shasta2PythonModule DESTINATION shasta2-install/bin)
 install(FILES ~/.shasta2Build/abpoa/abPOA/lib/libabpoa.so DESTINATION shasta2-install/bin)
+install(FILES ~/.shasta2Build/poasta-c/poasta-c/target/release/libpoasta_c.so DESTINATION shasta2-install/bin)
 
 
 

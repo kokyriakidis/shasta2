@@ -17,6 +17,7 @@
 #include "MultithreadedObject.hpp"
 #include "Options.hpp"
 #include "performanceLog.hpp"
+#include "poastaWrapper.hpp"
 #include "ReadFollowing.hpp"
 #include "ReadSummary.hpp"
 #include "ShortBaseSequence.hpp"
@@ -263,6 +264,12 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         );
     shasta2Module.def("testAbpoa",
         testAbpoa
+        );
+    shasta2Module.def("testPoasta1",
+        testPoasta1
+        );
+    shasta2Module.def("testPoasta2",
+        testPoasta2
         );
 }
 
