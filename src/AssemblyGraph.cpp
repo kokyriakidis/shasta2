@@ -460,6 +460,7 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
     ostream html(0);
     LocalAssembly3 localAssembly(
         anchors,
+        options.abpoaMaxLength,
         html,
         false,
         edge[i].anchorPair,

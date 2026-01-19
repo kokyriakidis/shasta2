@@ -1003,6 +1003,7 @@ void Assembler::exploreSegmentStep(
 
     LocalAssembly3 localAssembly(
         anchors(),
+        httpServerData.options->abpoaMaxLength,
         html,
         debug,
         edge[stepId].anchorPair,

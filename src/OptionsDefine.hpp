@@ -168,3 +168,9 @@ SHASTA2_OPTION_DEFINE(
 	uint64_t, readFollowingSegmentLengthThreshold, "--read-following-segment-length-threshold", 500000,
 	"Segment length threshold for read following.")
 
+
+
+// Assembly.
+SHASTA2_OPTION_DEFINE(
+    uint64_t, abpoaMaxLength, "--abpoa-max-length", 1000,
+    "Maximum MSA alignment for abpoa. Switch to poasta above that.")

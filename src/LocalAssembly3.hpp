@@ -98,6 +98,7 @@ public:
     // The additionalOrientedReadIds must be sorted.
     LocalAssembly3(
         const Anchors&,
+        uint64_t abpoaMaxLength,
         ostream& html,
         bool debug,
         const AnchorPair& anchorPair,
@@ -242,12 +243,14 @@ public:
     // Assemble sequence. Use the dominatorTreePath as the assembly path.
     void assemble(
         const Anchors&,
+        uint64_t abpoaMaxLength,
         ostream& html,
         bool debug);
     void assemble(
         const Anchors&,
         vertex_descriptor,
         vertex_descriptor,
+        uint64_t abpoaMaxLength,
         ostream& html,
         bool debug);
 

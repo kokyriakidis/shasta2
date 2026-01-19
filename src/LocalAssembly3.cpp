@@ -8,6 +8,7 @@
 #include "Markers.hpp"
 #include "MarkerKmerPair.hpp"
 #include "orderPairs.hpp"
+#include "poastaWrapper.hpp"
 #include "Reads.hpp"
 #include "tmpDirectory.hpp"
 using namespace shasta2;
@@ -32,6 +33,7 @@ using namespace shasta2;
 // - Appear in at least one of anchorIdA and anchorIdB.
 LocalAssembly3::LocalAssembly3(
     const Anchors& anchors,
+    uint64_t abpoaMaxLength,
     ostream& html,
     bool debug,
     const AnchorPair& anchorPair,
@@ -79,7 +81,7 @@ LocalAssembly3::LocalAssembly3(
         }
     }
 
-    assemble(anchors, html, debug);
+    assemble(anchors, abpoaMaxLength, html, debug);
 }
 
 
@@ -862,6 +864,7 @@ void LocalAssembly3::computeDominatorTree()
 // Assemble sequence. Use the dominatorTreePath as the assembly path.
 void LocalAssembly3::assemble(
     const Anchors& anchors,
+    uint64_t abpoaMaxLength,
     ostream& html,
     bool debug)
 {
@@ -873,7 +876,7 @@ void LocalAssembly3::assemble(
 
         const vertex_descriptor v0 = dominatorTreePath[i0];
         const vertex_descriptor v1 = dominatorTreePath[i1];
-        assemble(anchors, v0, v1, html, debug);
+        assemble(anchors, v0, v1, abpoaMaxLength, html, debug);
     }
 }
 
@@ -883,6 +886,7 @@ void LocalAssembly3::assemble(
     const Anchors& anchors,
     vertex_descriptor v0,
     vertex_descriptor v1,
+    uint64_t abpoaMaxLength,
     ostream& html,
     bool debug)
 {
@@ -1131,13 +1135,23 @@ void LocalAssembly3::assemble(
     }
 
 
+    // Find the length of the longest sequence.
+    uint64_t maxLength = 0;
+    for(const vector<Base>& sequence: sequences) {
+        maxLength = max(maxLength, sequence.size());
+    }
+
     // Compute the alignment.
     // For now always use abpoa.
     vector< pair<Base, uint64_t> > consensus;
     vector< vector<AlignedBase> > alignment;
     vector<AlignedBase> alignedConsensus;
-    const bool computeAlignment = html and debug;
-    abpoa(sequences, consensus, alignment, alignedConsensus, computeAlignment);
+    if(maxLength <= abpoaMaxLength) {
+        const bool computeAlignment = html and debug;
+        abpoa(sequences, consensus, alignment, alignedConsensus, computeAlignment);
+    } else {
+        poasta(sequences, consensus, alignment, alignedConsensus);
+    }
 
 
 
