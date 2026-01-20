@@ -27,6 +27,9 @@ using namespace shasta2;
 #include <boost/graph/adj_list_serialize.hpp>
 #include <boost/graph/filtered_graph.hpp>
 
+// Standard library.
+#include "chrono.hpp"
+
 
 
 // Explicit instantiation.
@@ -515,20 +518,30 @@ void AssemblyGraph::assembleThreadFunction(uint64_t /* threadId */)
         // Loop over all assembly steps assigned to this batch.
         for(uint64_t j=begin; j!=end; j++) {
 
-            /*
             if((j % 1000) == 0) {
                 std::lock_guard<std::mutex> lock(mutex);
-                performanceLog << timestamp << j << "/" << stepsToBeAssembled.size() << endl;
+                performanceLog << timestamp << "Starting sequence assembly step " << j << " of " <<
+                    stepsToBeAssembled.size() << endl;
             }
-            */
 
             const auto& p = stepsToBeAssembled[j];
             const edge_descriptor e = p.first;
             const uint64_t i = p.second;
             AssemblyGraphEdge& edge = assemblyGraph[e];
             SHASTA2_ASSERT(i < edge.size());
+
+            const auto t0 = steady_clock::now();
             assembleStep(e, i);
-        }
+            const auto t1 = steady_clock::now();
+            const double t01 = seconds(t1-t0);
+            if(t01 > 10.) {
+                std::lock_guard<std::mutex> lock(mutex);
+                performanceLog << "Slow assembly step: segment " <<
+                    assemblyGraph[e].id << " step " << i <<
+                    " " << t01 << " s." << endl;
+
+            }
+         }
     }
 }
 
