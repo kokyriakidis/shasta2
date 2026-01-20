@@ -767,7 +767,7 @@ void LocalAssembly3::writeGraphviz(ostream& dot, const Markers& markers) const
             edgePositionOffset(e, markers) << "\"";
 
         // Thickness.
-        dot << " penwidth=" << std::setprecision(2) << 0.5 * double(edge.coverage());
+        dot << " penwidth=" << std::fixed << std::setprecision(2) << 0.5 * double(edge.coverage());
 
         // End edge attributes.
         dot << "]";
@@ -789,10 +789,14 @@ void LocalAssembly3::writeHtml(ostream& html, const Markers& markers) const
 
 
     // Display it in html in svg format.
-    const double timeout = 30.;
+    const double timeout = 120.;
     const string options = "-Nshape=rectangle -Gbgcolor=gray95";
     html << "<p>";
-    graphvizToHtml(dotFileName, "dot", timeout, options, html);
+    try {
+        graphvizToHtml(dotFileName, "dot", timeout, options, html);
+    } catch(const std::exception& exception) {
+        html << "<br>Error during graph layout: " << exception.what();
+    }
 
 }
 
@@ -1122,7 +1126,7 @@ void LocalAssembly3::assemble(
             sequence.push_back(base);
             coverage.push_back(clippedCoverage);
         }
-        if(html and debug) {
+        if(html) {
             html << "<br>Only one sequence was present and was used as the consensus.";
         }
         return;
@@ -1149,7 +1153,7 @@ void LocalAssembly3::assemble(
             sequence.push_back(base);
             coverage.push_back(clippedCoverage);
         }
-        if(html and debug) {
+        if(html) {
             html << "<br>The most frequent sequence has coverage more "
                 "than half total coverage and was used as the consensus.";
         }
