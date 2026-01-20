@@ -265,6 +265,9 @@ PYBIND11_MODULE(shasta2, shasta2Module)
     shasta2Module.def("testAbpoa",
         testAbpoa
         );
+    shasta2Module.def("testAbpoaWithWeights",
+        testAbpoaWithWeights
+        );
     shasta2Module.def("testPoasta1",
         testPoasta1
         );
@@ -274,5 +277,4 @@ PYBIND11_MODULE(shasta2, shasta2Module)
 }
 
 #endif
-
 

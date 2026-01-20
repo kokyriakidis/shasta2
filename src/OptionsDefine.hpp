@@ -173,4 +173,5 @@ SHASTA2_OPTION_DEFINE(
 // Assembly.
 SHASTA2_OPTION_DEFINE(
     uint64_t, abpoaMaxLength, "--abpoa-max-length", 1000,
-    "Maximum MSA alignment for abpoa. Switch to poasta above that.")
+    "Maximum MSA alignment for abpoa. Switch to poasta above that. "
+    "This is currently ignored and poasta is used in all cases.")

@@ -886,7 +886,7 @@ void LocalAssembly3::assemble(
     const Anchors& anchors,
     vertex_descriptor v0,
     vertex_descriptor v1,
-    uint64_t abpoaMaxLength,
+    [[maybe_unused]] uint64_t abpoaMaxLength,
     ostream& html,
     bool debug)
 {
@@ -1098,33 +1098,33 @@ void LocalAssembly3::assemble(
 
 
 
-    // Gather the sequences encountered.
-    vector< vector<Base> > sequences;;
+    // Gather the distinct sequences encountered
+    // and count the number of times each of them appears.
+    std::map<vector<Base>, uint64_t> sequenceMap;
     for(const AssemblyInfo& assemblyInfo: assemblyInfos) {
-        sequences.push_back(assemblyInfo.sequence);
+        const auto it = sequenceMap.find(assemblyInfo.sequence);
+        if(it == sequenceMap.end()) {
+            sequenceMap.insert(make_pair(assemblyInfo.sequence, 1));
+        } else {
+            ++(it->second);
+        }
     }
+    vector< pair<vector<Base>, uint64_t> > sequencesWithCoverage;
+
+    // Copy them into a vector and sort them by decreasing coverage.
+    std::ranges::copy(sequenceMap, back_inserter(sequencesWithCoverage));
+    std::ranges::sort(sequencesWithCoverage, OrderPairsBySecondOnlyGreater<vector<Base>, uint64_t>());
 
 
     // Display the distinct sequences encountered.
     if(html and debug) {
-        vector< vector<Base> > distinctSequences = sequences;
-        vector<uint64_t> coverage;
-        deduplicateAndCount(distinctSequences, coverage);
-        SHASTA2_ASSERT(coverage.size() == distinctSequences.size());
-        vector< pair< vector<Base>, uint64_t > > distinctSequencesWithCoverage;
-        for(uint64_t i=0; i<distinctSequences.size(); i++) {
-            distinctSequencesWithCoverage.emplace_back(distinctSequences[i], coverage[i]);
-        }
-        std::ranges::sort(distinctSequencesWithCoverage, OrderPairsBySecondOnlyGreater<vector<Base>, uint64_t>());
 
 
         html <<
             "<h5>Distinct sequences</h5>"
             "<p><table><tr>"
             "<th>Coverage<th>Sequence<br>length<th class=left>Sequence";
-        for(const auto& p: distinctSequencesWithCoverage) {
-            const vector<Base>& sequence = p.first;
-            const uint64_t coverage = p.second;
+        for(const auto& [sequence, coverage]: sequencesWithCoverage) {
             html <<
                 "<tr><td class=centered>" << coverage <<
                 "<td class=centered>" << sequence.size() <<
@@ -1137,20 +1137,18 @@ void LocalAssembly3::assemble(
 
     // Find the length of the longest sequence.
     uint64_t maxLength = 0;
-    for(const vector<Base>& sequence: sequences) {
+    for(const auto& [sequence, coverage]: sequencesWithCoverage) {
         maxLength = max(maxLength, sequence.size());
     }
 
     // Compute the alignment.
-    // For now always use abpoa.
     vector< pair<Base, uint64_t> > consensus;
     vector< vector<AlignedBase> > alignment;
     vector<AlignedBase> alignedConsensus;
-    if(maxLength <= abpoaMaxLength) {
-        const bool computeAlignment = html and debug;
-        abpoa(sequences, consensus, alignment, alignedConsensus, computeAlignment);
+    if(false /* maxLength <= abpoaMaxLength */) { // ************************** ALWAYS USE POASTA
+        abpoa(sequencesWithCoverage, consensus, alignment, alignedConsensus);
     } else {
-        poasta(sequences, consensus, alignment, alignedConsensus);
+        poasta(sequencesWithCoverage, consensus, alignment, alignedConsensus);
     }
 
 
@@ -1158,7 +1156,7 @@ void LocalAssembly3::assemble(
     // Display the results of the MSA.
     if(html and debug) {
         writeConsensus(html, consensus, assemblyInfos.size());
-        writeAlignment(html, sequences, consensus, alignment, alignedConsensus, assemblyInfos);
+        writeAlignment(html, sequencesWithCoverage, consensus, alignment, alignedConsensus, assemblyInfos);
         html << "<p>This edge assembled sequence positions " << sequence.size() <<
             "-" << sequence.size() + consensus.size();
     }
@@ -1261,7 +1259,7 @@ void LocalAssembly3::writeConsensus(
 
 void LocalAssembly3::writeAlignment(
     ostream& html,
-    const vector< vector<Base> >& sequences,
+    const vector< pair<vector<Base>, uint64_t> >& sequencesWithCoverage,
     const vector< pair<Base, uint64_t> >& consensus,
     const vector< vector<AlignedBase> >& alignment,
     const vector<AlignedBase>& alignedConsensus,
@@ -1278,7 +1276,7 @@ void LocalAssembly3::writeAlignment(
         const vector<AlignedBase>& alignmentRow = alignment[i];
 
         html << "<tr><th>" << assemblyInfos[i].orientedReadId <<
-            "<td class=centered>" << sequences[i].size() <<
+            "<td class=centered>" << sequencesWithCoverage[i].first.size() <<
             "<td style='font-family:monospace;white-space: nowrap'>";
 
         for(uint64_t j=0; j<alignmentRow.size(); j++) {

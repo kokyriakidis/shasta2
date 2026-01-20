@@ -292,7 +292,7 @@ public:
         uint64_t maxCoverage) const;
     void writeAlignment(
         ostream& html,
-        const vector< vector<Base> >& inputSequences,
+        const vector< pair<vector<Base>, uint64_t> >& sequenceWithCoverage,
         const vector< pair<Base, uint64_t> >& consensus,
         const vector< vector<AlignedBase> >& alignment,
         const vector<AlignedBase>& alignedConsensus,
