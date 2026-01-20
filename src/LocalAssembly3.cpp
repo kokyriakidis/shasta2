@@ -1109,11 +1109,52 @@ void LocalAssembly3::assemble(
             ++(it->second);
         }
     }
+
+
+    // If only one distinct sequence is present, use that as the consensus.
+    if(sequenceMap.size() == 1) {
+        const auto it = sequenceMap.begin();
+        const vector<Base>& consensus = it->first;
+        const uint64_t coverage64 = it->second;
+        const uint8_t clippedCoverage = ((coverage64 < 256) ? uint8_t(coverage64) : uint8_t(255));
+        // Append to previously assembled sequence.
+        for(const Base base: consensus) {
+            sequence.push_back(base);
+            coverage.push_back(clippedCoverage);
+        }
+        if(html and debug) {
+            html << "<br>Only one sequence was present and was used as the consensus.";
+        }
+        return;
+    }
+
+
     vector< pair<vector<Base>, uint64_t> > sequencesWithCoverage;
 
     // Copy them into a vector and sort them by decreasing coverage.
     std::ranges::copy(sequenceMap, back_inserter(sequencesWithCoverage));
     std::ranges::sort(sequencesWithCoverage, OrderPairsBySecondOnlyGreater<vector<Base>, uint64_t>());
+
+
+
+    // If the most frequent sequence has coverage equal to more than
+    // half of total coverage, use it as the consensus.
+    if(sequencesWithCoverage.front().second > assemblyInfos.size() / 2) {
+        const auto it = sequencesWithCoverage.begin();
+        const vector<Base>& consensus = it->first;
+        const uint64_t coverage64 = it->second;
+        const uint8_t clippedCoverage = ((coverage64 < 256) ? uint8_t(coverage64) : uint8_t(255));
+        // Append to previously assembled sequence.
+        for(const Base base: consensus) {
+            sequence.push_back(base);
+            coverage.push_back(clippedCoverage);
+        }
+        if(html and debug) {
+            html << "<br>The most frequent sequence has coverage more "
+                "than half total coverage and was used as the consensus.";
+        }
+        return;
+    }
 
 
     // Display the distinct sequences encountered.
