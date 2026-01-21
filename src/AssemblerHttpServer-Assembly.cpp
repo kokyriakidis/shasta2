@@ -7,6 +7,7 @@
 #include "findConvergingVertex.hpp"
 #include "GTest.hpp"
 #include "LocalAssembly3.hpp"
+#include "LocalAssembly4.hpp"
 #include "Markers.hpp"
 #include "RestrictedAnchorGraph.hpp"
 #include "SegmentStepSupport.hpp"
@@ -880,6 +881,9 @@ void Assembler::exploreSegmentStep(
     const bool stepIdStringIsPresent = HttpServer::getParameterValue(request, "stepId", stepIdString);
     boost::trim(stepIdString);
 
+    string useLocalAssembly4String;
+    const bool useLocalAssembly4 = getParameterValue(request, "useLocalAssembly4", useLocalAssembly4String);
+
     string showAlignmentString;
     const bool showAlignment = getParameterValue(request, "showAlignment", showAlignmentString);
 
@@ -917,6 +921,9 @@ void Assembler::exploreSegmentStep(
     }
     html <<
         ">"
+
+        "<tr><th>Use LocalAssembly4<td class=centered><input type=checkbox name=useLocalAssembly4" <<
+        (useLocalAssembly4 ? " checked" : "") << ">"
 
         "<tr><th>Show the alignment<td class=centered><input type=checkbox name=showAlignment" <<
         (showAlignment ? " checked" : "") << ">"
@@ -991,7 +998,7 @@ void Assembler::exploreSegmentStep(
 
 
 
-    // Let LocalAssembly3 use OrientedReadIds from the previous and next step.
+    // Gather OrientedReadIds from the previous and next step.
     vector<OrientedReadId> additionalOrientedReadIds;
     if(stepId > 0) {
         std::ranges::copy(edge[stepId - 1].anchorPair.orientedReadIds, back_inserter(additionalOrientedReadIds));
@@ -1000,6 +1007,21 @@ void Assembler::exploreSegmentStep(
         std::ranges::copy(edge[stepId + 1].anchorPair.orientedReadIds, back_inserter(additionalOrientedReadIds));
     }
     deduplicate(additionalOrientedReadIds);
+
+
+
+    if(useLocalAssembly4) {
+        LocalAssembly4 localAssembly(
+            anchors(),
+            httpServerData.options->abpoaMaxLength,
+            html,
+            debug,
+            edge[stepId].anchorPair,
+            additionalOrientedReadIds);
+        return;
+    }
+
+
 
     LocalAssembly3 localAssembly(
         anchors(),
