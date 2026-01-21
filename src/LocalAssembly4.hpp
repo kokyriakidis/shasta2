@@ -3,6 +3,7 @@
 // Shasta.
 #include "Base.hpp"
 #include "invalid.hpp"
+#include "MarkerKmers.hpp"
 #include "ReadId.hpp"
 #include "shastaTypes.hpp"
 
@@ -26,13 +27,10 @@ namespace shasta2 {
 class shasta2::LocalAssembly4 {
 public:
 
-    // This assembles between anchorIdA and anchorIdB
-    // of the given AnchorPair. It uses all the OrientedReadIds
-    // stored in the AnchorPair, which all appear in both
-    // anchorIdA and anchorIdB. In addition, it uses OrientedReadIds
-    // stored in additionalOrientedReadIds that:
-    // - Are not also in the AnchorPair.
-    // - Appear in at least one of anchorIdA and anchorIdB.
+    // This assembles between anchorIdA and anchorIdB of the given AnchorPair.
+    // This can use all of the OrientedReadIds in the AnchorPair
+    // and/or in the additionalOrientedReadIds that also appear in the
+    // Kmers corresponding to the left and right Anchors.
     // The additionalOrientedReadIds must be sorted.
     // The additionalOrientedReadIds are allowed to contain OrientedReadIds
     // that are also in the AnchorPair.
@@ -56,6 +54,12 @@ private:
     // The two anchors of the AnchorPair used for this assembly.
     AnchorId leftAnchorId;
     AnchorId rightAnchorId;
+
+    // MarkerInfos for the Marker Kmers corresponding to the left
+    // and right anchors of the AnchorPair being assembled.
+    vector<MarkerInfo> leftMarkerInfos;
+    vector<MarkerInfo> rightMarkerInfos;
+    void fillMarkerInfos();
 
     // The union of the OrientedReadIds in the AnchorPair and
     // the additionalOrientedReadIds.

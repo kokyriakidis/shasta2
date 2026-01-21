@@ -1,6 +1,7 @@
 // Shasta.
 #include "LocalAssembly4.hpp"
 #include "Anchor.hpp"
+#include "LocalAssembly3.hpp"
 #include "Markers.hpp"
 #include "poastaWrapper.hpp"
 #include "ReadId.hpp"
@@ -15,9 +16,9 @@ using namespace shasta2;
 
 LocalAssembly4::LocalAssembly4(
     const Anchors& anchors,
-    [[maybe_unused]] uint64_t abpoaMaxLength,
+    uint64_t abpoaMaxLength,
     ostream& html,
-    bool /* debug */,
+    bool debug,
     const AnchorPair& anchorPair,
     const vector<OrientedReadId>& additionalOrientedReadIds) :
     anchors(anchors),
@@ -25,6 +26,9 @@ LocalAssembly4::LocalAssembly4(
     leftAnchorId(anchorPair.anchorIdA),
     rightAnchorId(anchorPair.anchorIdB)
 {
+    // EXPOSE WHEN CODE STABILIZES.
+    const uint64_t minCoverage = 3;
+
     SHASTA2_ASSERT(std::ranges::is_sorted(additionalOrientedReadIds));
     if(html) {
         writeInput(anchorPair, additionalOrientedReadIds);
@@ -34,6 +38,8 @@ LocalAssembly4::LocalAssembly4(
     if(html) {
         writeAllOrientedReadIds();
     }
+
+    fillMarkerInfos();
 
     gatherCommonOrientedReads();
     if(html) {
@@ -59,39 +65,92 @@ void LocalAssembly4::gatherAllOrientedReads(
 
 
 
-// Gather information on oriented reads in the usableOrientedReadIds
-// that appear in both the left and right AnchorIds.
+void LocalAssembly4::fillMarkerInfos()
+{
+    // Get the Kmers.
+    const Kmer leftKmer = anchors.anchorKmer(leftAnchorId);
+    const Kmer rightKmer = anchors.anchorKmer(rightAnchorId);
+
+    // Get the MarkerInfos.
+    anchors.markerKmers.get(leftKmer, leftMarkerInfos);
+    anchors.markerKmers.get(rightKmer, rightMarkerInfos);
+}
+
+
+
+// The CommonOrientedReads are the ones that will be used
+// in the assembly. They are the intersection of
+// allOrientedReadIds with the OrientedReadIds that
+// appear in both the left and right MarkerInfos.
 void LocalAssembly4::gatherCommonOrientedReads()
 {
 
     const uint32_t kHalf = uint32_t(anchors.k / 2);
 
+    // Find OrientedReadIds that appear in both the left and right markerInfos.
+    // An OrientedReadId can appear only once in a marker Kmer corresponding to an Anchor.
+    class MarkerInfoPair {
+    public:
+        OrientedReadId orientedReadId;
+        uint32_t leftOrdinal;
+        uint32_t rightOrdinal;
+    };
+    vector<MarkerInfoPair> markerInfoPairs;
+    auto itLeft = leftMarkerInfos.begin();
+    const auto itLeftEnd = leftMarkerInfos.end();
+    auto itRight = rightMarkerInfos.begin();
+    const auto itRightEnd = rightMarkerInfos.end();
+    while((itLeft != itLeftEnd) and (itRight != itRightEnd)) {
+        if(itLeft->orientedReadId < itRight->orientedReadId) {
+            ++itLeft;
+        } else if(itRight->orientedReadId < itLeft->orientedReadId) {
+            ++itRight;
+        } else {
+            const OrientedReadId orientedReadId = itLeft->orientedReadId;
+            SHASTA2_ASSERT(orientedReadId == itRight->orientedReadId);
+            if(itLeft->ordinal < itRight->ordinal) {
+                MarkerInfoPair& markerInfoPair = markerInfoPairs.emplace_back();
+                markerInfoPair.orientedReadId = orientedReadId;
+                markerInfoPair.leftOrdinal = itLeft->ordinal;
+                markerInfoPair.rightOrdinal = itRight->ordinal;
+            }
+            ++itLeft;
+            ++itRight;
+        }
+    }
+
+
+
     // The common OrientedReadIds must appear in both the
-    // left and right anchors (the latter visited after the former).
-    // These are the OrientedReadIds in the "complete" AnchorPair.
-    const AnchorPair completeAnchorPair(anchors, leftAnchorId, rightAnchorId, false);
+    // markerInfoPairs and allOrientedReadIds.
+    auto itPairs = markerInfoPairs.begin();
+    const auto itPairsEnd = markerInfoPairs.end();
+    auto itAll = allOrientedReadIds.begin();
+    const auto itAllEnd = allOrientedReadIds.end();
+    while((itPairs != itPairsEnd) and (itAll != itAllEnd)) {
+        if(itPairs->orientedReadId < *itAll) {
+            ++itPairs;
+        } else if(*itAll < itPairs->orientedReadId) {
+            ++itAll;
+        } else {
+            const OrientedReadId orientedReadId = itPairs->orientedReadId;
+            SHASTA2_ASSERT(orientedReadId == *itAll);
 
-    // The common OrientedReadIds are the intersection of the
-    // allOrientedReadIds and the OrientedReadIds in the completeAnchorPair.
-    vector<OrientedReadId> commonOrientedReadIds;
-    std::ranges::set_intersection(allOrientedReadIds, completeAnchorPair.orientedReadIds,
-        back_inserter(commonOrientedReadIds));
+            const auto orientedReadMarkers = anchors.markers[orientedReadId.getValue()];
 
+            CommonOrientedReadInfo& commonOrientedReadInfo = commonOrientedReadInfos.emplace_back();
+            commonOrientedReadInfo.orientedReadId = orientedReadId;
 
+            commonOrientedReadInfo.leftOrdinal = itPairs->leftOrdinal;
+            commonOrientedReadInfo.rightOrdinal = itPairs->rightOrdinal;
 
-    // Now we can fill in the commonOrientedReadInfos.
-    for(const OrientedReadId orientedReadId: commonOrientedReadIds) {
-        const auto orientedReadMarkers = anchors.markers[orientedReadId.getValue()];
+            commonOrientedReadInfo.leftPosition = orientedReadMarkers[commonOrientedReadInfo.leftOrdinal].position + kHalf;
+            commonOrientedReadInfo.rightPosition = orientedReadMarkers[commonOrientedReadInfo.rightOrdinal].position + kHalf;
 
-        CommonOrientedReadInfo& commonOrientedReadInfo = commonOrientedReadInfos.emplace_back();
-        commonOrientedReadInfo.orientedReadId = orientedReadId;
-
-        commonOrientedReadInfo.leftOrdinal = anchors.getOrdinal(leftAnchorId, orientedReadId);
-        commonOrientedReadInfo.rightOrdinal = anchors.getOrdinal(rightAnchorId, orientedReadId);
-
-        commonOrientedReadInfo.leftPosition = orientedReadMarkers[commonOrientedReadInfo.leftOrdinal].position + kHalf;
-        commonOrientedReadInfo.rightPosition = orientedReadMarkers[commonOrientedReadInfo.rightOrdinal].position + kHalf;
-     }
+            ++itPairs;
+            ++itAll;
+        }
+    }
 }
 
 
@@ -276,8 +335,8 @@ void LocalAssembly4::writeCommonOrientedReads() const
     html <<
         "<h3>Common oriented reads</h3>"
         "These are OrientedReadIds from the above list that are present in both the "
-        "left and right anchors, and that visit the right anchor "
-        "after (not necessarily immediately after) they visit the left anchor."
+        "left and right anchors, and that visit the right marker k-mer "
+        "after (not necessarily immediately after) they visit the left marker k-mer."
         "<table>"
         "<tr>"
         "<th>OrientedReadId"
