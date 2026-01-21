@@ -13,6 +13,7 @@
 #include "findConvergingVertex.hpp"
 #include "Journeys.hpp"
 #include "LocalAssembly3.hpp"
+#include "LocalAssembly4.hpp"
 #include "Options.hpp"
 #include "performanceLog.hpp"
 #include "RestrictedAnchorGraph.hpp"
@@ -461,7 +462,7 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
     deduplicate(additionalOrientedReadIds);
 
     ostream html(0);
-    LocalAssembly3 localAssembly(
+    LocalAssembly4 localAssembly(
         anchors,
         options.abpoaMaxLength,
         html,
