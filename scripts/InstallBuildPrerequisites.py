@@ -14,7 +14,8 @@ packages = [
     "python3-dev",
     "python3-pybind11",
     "pybind11-dev",
-    ]    
+    ]  
+os.system("sudo apt-get update")
 command = "sudo apt-get install " + " ".join(packages)
 os.system(command)
 
