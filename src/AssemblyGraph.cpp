@@ -531,16 +531,23 @@ void AssemblyGraph::assembleThreadFunction(uint64_t /* threadId */)
             AssemblyGraphEdge& edge = assemblyGraph[e];
             SHASTA2_ASSERT(i < edge.size());
 
-            const auto t0 = steady_clock::now();
-            assembleStep(e, i);
-            const auto t1 = steady_clock::now();
-            const double t01 = seconds(t1-t0);
-            if(t01 > 10.) {
-                std::lock_guard<std::mutex> lock(mutex);
-                performanceLog << "Slow assembly step: segment " <<
-                    assemblyGraph[e].id << " step " << i <<
-                    " " << t01 << " s." << endl;
+            try {
+                const auto t0 = steady_clock::now();
+                assembleStep(e, i);
+                const auto t1 = steady_clock::now();
+                const double t01 = seconds(t1-t0);
+                if(t01 > 10.) {
+                    std::lock_guard<std::mutex> lock(mutex);
+                    performanceLog << "Slow assembly step: segment " <<
+                        assemblyGraph[e].id << " step " << i <<
+                        " " << t01 << " s." << endl;
 
+                }
+            } catch(std::exception&) {
+                std::lock_guard<std::mutex> lock(mutex);
+                cout << "Error occurred during local assembly step: segment " <<
+                    assemblyGraph[e].id << " step " << i << endl;
+                throw;
             }
          }
     }
