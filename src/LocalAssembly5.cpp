@@ -4,6 +4,7 @@
 #include "AnchorPair.hpp"
 #include "approximateTopologicalSort.hpp"
 #include "deduplicate.hpp"
+#include "dominatorTree.hpp"
 #include "graphvizToHtml.hpp"
 #include "Kmer.hpp"
 #include "MarkerKmers.hpp"
@@ -63,6 +64,8 @@ LocalAssembly5::LocalAssembly5(
     }
 
     createGraph();
+    computeDominatorTree();
+    computeAssemblyPath();
     if(html) {
         writeGraph();
     }
@@ -611,14 +614,17 @@ void LocalAssembly5::writeGraphviz(ostream& dot)
         dot << "[";
 
         // Label.
-        dot << "label=\"" << vertex.infos.size() << "\"";
+        dot << "label=\"V" << v << "\\n" << vertex.infos.size() << "\"";
 
         // Color.
         if(v== vLeft) {
             dot << " style=filled fillcolor=LightGreen";
         }
-        if(v== vRight) {
+        else if(v== vRight) {
             dot << " style=filled fillcolor=LightPink";
+        }
+        else if(vertex.isOnDominatorTreePath) {
+            dot << " style=filled fillcolor=LightBlue";
         }
 
         // End vertex attributes.
@@ -675,4 +681,64 @@ void LocalAssembly5::writeGraph()
         html << "<br>Error during graph layout: " << exception.what();
     }
 
+}
+
+
+
+// Compute a dominator tree starting at vLeft
+// and the dominator tree path from vLeft to vRight.
+void LocalAssembly5::computeDominatorTree()
+{
+    using Graph = LocalAssembly5;
+    Graph& graph = *this;
+
+    // Compute the dominator tree.
+    // This sets the dominator field of the vertices
+    // reachable by leftAnchorVertex.
+    lengauer_tarjan_dominator_tree_general(graph, vLeft);
+
+    // To compute the dominator tree path from vLeft
+    // to vRight we walk back the dominator tree
+    // starting at vRight.
+    dominatorTreePath.push_back(vRight);
+    while(true) {
+        const vertex_descriptor v = dominatorTreePath.back();
+        const vertex_descriptor dominator = graph[v].dominator;
+        if(dominator == null_vertex()) {
+            break;
+        } else {
+            dominatorTreePath.push_back(dominator);
+        }
+    }
+    std::ranges::reverse(dominatorTreePath);
+
+    for(const vertex_descriptor v: dominatorTreePath) {
+        graph[v].isOnDominatorTreePath = true;
+    }
+    SHASTA2_ASSERT(dominatorTreePath.front() == vLeft);
+    SHASTA2_ASSERT(dominatorTreePath.back() == vRight);
+}
+
+
+
+
+// The assembly path is computed by joining together
+// partial assembly paths between adjacent edges
+// of the dominator tree path.
+void LocalAssembly5::computeAssemblyPath()
+{
+    for(uint64_t i1=1; i1<dominatorTreePath.size(); i1++) {
+        const uint64_t i0 = i1 - 1;
+        const vertex_descriptor v0 = dominatorTreePath[i0];
+        const vertex_descriptor v1 = dominatorTreePath[i1];
+        computeAssemblyPath(v0, v1);
+    }
+}
+
+
+void LocalAssembly5::computeAssemblyPath(
+    vertex_descriptor v0,
+    vertex_descriptor v1)
+{
+    cout << "Working on assembly path portion between V" << v0 << " and V" << v1 << endl;
 }

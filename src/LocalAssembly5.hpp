@@ -52,6 +52,9 @@ public:
     };
     vector<Info> infos;
 
+    LocalAssembly5BaseClass::vertex_descriptor dominator;
+    bool isOnDominatorTreePath = false;
+
     // These are used for approximate topological ordering.
     // which is only used by writeGraphviz.
     uint64_t color = invalid<uint64_t>;
@@ -231,6 +234,13 @@ private:
     vertex_descriptor vLeft;
     vertex_descriptor vRight;
     void createGraph();
+
+    void computeDominatorTree();
+    vector<vertex_descriptor> dominatorTreePath;
+
+    void computeAssemblyPath();
+    void computeAssemblyPath(vertex_descriptor, vertex_descriptor);
+    vector<vertex_descriptor> assemblyPath;
 
     // Html output.
     void writeInput(
