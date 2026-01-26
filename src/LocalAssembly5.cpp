@@ -492,17 +492,19 @@ void LocalAssembly5::createGraph()
 
     // Generate vertices.
     // Each Kmer generates a vertex.
-    // The vertex_descriptor is the index in the kmers vector.
+    vector<vertex_descriptor> vertexTable;
     vLeft = null_vertex();
     vRight = null_vertex();
-    for(const Kmer& kmer: kmers) {
+    for(uint64_t vertexId=0; vertexId<kmers.size(); vertexId++) {
+        const Kmer& kmer = kmers[vertexId];
+        const vertex_descriptor v = add_vertex(LocalAssembly5Vertex(vertexId), graph);
+        vertexTable.push_back(v);
         if(kmer == leftKmer) {
-            vLeft = num_vertices(graph);
+            vLeft = v;
         }
         if(kmer == rightKmer) {
-            vRight = num_vertices(graph);
+            vRight = v;
         }
-        add_vertex(graph);
     }
     SHASTA2_ASSERT(vLeft != null_vertex());
     SHASTA2_ASSERT(vRight != null_vertex());
@@ -517,7 +519,7 @@ void LocalAssembly5::createGraph()
             const auto it = std::lower_bound(kmers.begin(), kmers.end(), kmer);
             SHASTA2_ASSERT(it != kmers.end());
             SHASTA2_ASSERT(*it == kmer);
-            const vertex_descriptor v = it - kmers.begin();
+            const vertex_descriptor v = vertexTable[it - kmers.begin()];
             LocalAssembly5Vertex& vertex = graph[v];
             auto& info = vertex.infos.emplace_back();
             info.orientedReadIndex = orientedReadIndex;
@@ -541,8 +543,8 @@ void LocalAssembly5::createGraph()
             const auto it1 = std::lower_bound(kmers.begin(), kmers.end(), kmer1);
             SHASTA2_ASSERT(it1 != kmers.end());
             SHASTA2_ASSERT(*it1 == kmer1);
-            const vertex_descriptor v0 = it0 - kmers.begin();
-            const vertex_descriptor v1 = it1 - kmers.begin();
+            const vertex_descriptor v0 = vertexTable[it0 - kmers.begin()];
+            const vertex_descriptor v1 = vertexTable[it1 - kmers.begin()];
             edge_descriptor e;
             bool edgeExists;
             tie(e, edgeExists) = boost::edge(v0, v1, graph);
@@ -608,13 +610,13 @@ void LocalAssembly5::writeGraphviz(ostream& dot)
 
     for(const auto& [v, ignore]: verticesOrderedByRank) {
         const LocalAssembly5Vertex& vertex = graph[v];
-        dot << v;
+        dot << vertex.id;
 
         // Begin vertex attributes.
         dot << "[";
 
         // Label.
-        dot << "label=\"V" << v << "\\n" << vertex.infos.size() << "\"";
+        dot << "label=\"V" << vertex.id << "\\n" << vertex.infos.size() << "\"";
 
         // Color.
         if(v== vLeft) {
@@ -640,7 +642,7 @@ void LocalAssembly5::writeGraphviz(ostream& dot)
         const LocalAssembly5Edge& edge = graph[e];
         const vertex_descriptor v0 = source(e, graph);
         const vertex_descriptor v1 = target(e, graph);
-        dot << v0 << "->" << v1;
+        dot << graph[v0].id << "->" << graph[v1].id;
 
         // Begin edge attributes.
         dot << "[";
@@ -740,5 +742,7 @@ void LocalAssembly5::computeAssemblyPath(
     vertex_descriptor v0,
     vertex_descriptor v1)
 {
-    cout << "Working on assembly path portion between V" << v0 << " and V" << v1 << endl;
+    LocalAssembly5& graph = *this;
+    cout << "Working on assembly path portion between V" <<
+        graph[v0].id << " and V" << graph[v1].id << endl;
 }

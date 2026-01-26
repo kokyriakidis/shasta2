@@ -24,7 +24,7 @@ namespace shasta2 {
 
     using LocalAssembly5BaseClass = boost::adjacency_list<
         boost::listS,
-        boost::vecS,
+        boost::listS,
         boost::bidirectionalS,
         LocalAssembly5Vertex,
         LocalAssembly5Edge>;
@@ -40,6 +40,7 @@ namespace shasta2 {
 
 class shasta2::LocalAssembly5Vertex {
 public:
+    uint64_t id;
 
     class Info {
     public:
@@ -52,13 +53,16 @@ public:
     };
     vector<Info> infos;
 
-    LocalAssembly5BaseClass::vertex_descriptor dominator;
+    LocalAssembly5BaseClass::vertex_descriptor dominator = LocalAssembly5BaseClass::null_vertex();
     bool isOnDominatorTreePath = false;
 
     // These are used for approximate topological ordering.
     // which is only used by writeGraphviz.
     uint64_t color = invalid<uint64_t>;
     uint64_t rank = invalid<uint64_t>;
+
+    LocalAssembly5Vertex(uint64_t id = invalid<uint64_t>) :
+        id(id) {}
 };
 
 
