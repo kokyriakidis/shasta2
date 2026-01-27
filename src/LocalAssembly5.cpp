@@ -5,8 +5,10 @@
 #include "approximateTopologicalSort.hpp"
 #include "deduplicate.hpp"
 #include "dominatorTree.hpp"
+#include "findReachableVertices.hpp"
 #include "graphvizToHtml.hpp"
 #include "Kmer.hpp"
+#include "longestPath.hpp"
 #include "MarkerKmers.hpp"
 #include "Markers.hpp"
 #include "orderPairs.hpp"
@@ -16,6 +18,7 @@
 using namespace shasta2;
 
 // Boost libraries.
+#include <boost/graph/filtered_graph.hpp>
 #include <boost/graph/iteration_macros.hpp>
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
@@ -25,6 +28,7 @@ using namespace shasta2;
 #include "algorithm.hpp"
 #include <cmath>
 #include "fstream.hpp"
+#include <queue>
 
 
 
@@ -64,15 +68,22 @@ LocalAssembly5::LocalAssembly5(
     }
 
     createGraph();
+    removeInaccessibleVertices();
     computeDominatorTree();
-    computeAssemblyPath();
     if(html) {
+        html << "<h3>LocalAssembly5 graph after computation of the dominator tree</h3>";
         writeGraph();
     }
 
+    removeLowCoverageEdges();
+    removeIsolatedVertices();
+    if(html) {
+        html << "<h3>LocalAssembly5 graph after removal of low coverage edges</h3>";
+        writeGraph();
+    }
 
+    // computeAssemblyPath();
 
-    SHASTA2_ASSERT(0);
 }
 
 
@@ -687,6 +698,36 @@ void LocalAssembly5::writeGraph()
 
 
 
+// Remove vertices that are not forward accessible from vLeft
+// and backward accessible from vRight.
+void LocalAssembly5::removeInaccessibleVertices()
+{
+    using Graph = LocalAssembly5;
+    Graph& graph = *this;
+
+    std::set<vertex_descriptor> leftAccessibleVertices;
+    findReachableVertices(graph, vLeft, 0, leftAccessibleVertices);
+
+    std::set<vertex_descriptor> rightAccessibleVertices;
+    findReachableVertices(graph, vRight, 1, rightAccessibleVertices);
+
+    vector<vertex_descriptor> verticesToBeRemoved;
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        const bool keep =  leftAccessibleVertices.contains(v) and rightAccessibleVertices.contains(v);
+        if(not keep) {
+            verticesToBeRemoved.push_back(v);
+        }
+    }
+
+    for(const vertex_descriptor v: verticesToBeRemoved) {
+        boost::clear_vertex(v, graph);
+        boost::remove_vertex(v, graph);
+    }
+
+}
+
+
+
 // Compute a dominator tree starting at vLeft
 // and the dominator tree path from vLeft to vRight.
 void LocalAssembly5::computeDominatorTree()
@@ -723,26 +764,184 @@ void LocalAssembly5::computeDominatorTree()
 
 
 
-
-// The assembly path is computed by joining together
-// partial assembly paths between adjacent edges
-// of the dominator tree path.
+// Find the longest path.
 void LocalAssembly5::computeAssemblyPath()
 {
+    vector<edge_descriptor> longestPath;
+    shasta2::longestPath(*this, longestPath);
+}
+
+
+
+// The assembly path is computed by joining together
+// partial assembly paths between adjacent vertices
+// of the dominator tree path.
+void LocalAssembly5::removeLowCoverageEdges()
+{
+    using Graph = LocalAssembly5;
+    Graph& graph = *this;
+
+    // We use color for BFSs.
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        graph[v].color = 0;
+    }
+
+    // Remove low coverage edges, using a different threshold
+    // for each leg of the dominator tree path.
     for(uint64_t i1=1; i1<dominatorTreePath.size(); i1++) {
         const uint64_t i0 = i1 - 1;
         const vertex_descriptor v0 = dominatorTreePath[i0];
         const vertex_descriptor v1 = dominatorTreePath[i1];
-        computeAssemblyPath(v0, v1);
+        removeLowCoverageEdges(v0, v1);
     }
 }
 
 
-void LocalAssembly5::computeAssemblyPath(
-    vertex_descriptor v0,
-    vertex_descriptor v1)
+
+// Given two vertices which are adjacent in the dominator tree path, vA and vB,
+// remove low coverage edges in-between without destroying reachability
+// of vB from vA.
+void LocalAssembly5::removeLowCoverageEdges(
+    vertex_descriptor vA,
+    vertex_descriptor vB)
 {
-    LocalAssembly5& graph = *this;
-    cout << "Working on assembly path portion between V" <<
-        graph[v0].id << " and V" << graph[v1].id << endl;
+    using Graph = LocalAssembly5;
+    Graph& graph = *this;
+    const bool debug = false;
+
+    if(debug) {
+        cout << "Working on assembly path portion between V" <<
+            graph[vA].id << " and V" << graph[vB].id << endl;
+    }
+
+    // Find all the vertices "between" vA and vB.
+    // Use a BFS that starts at vA and stops at vB.
+    // This sets the color of these vertices to 1.
+    vector<vertex_descriptor> inBetweenVertices;
+    std::queue<vertex_descriptor> q;
+    q.push(vA);
+    graph[vA].color = 1;
+    graph[vB].color = 1;
+    while(not q.empty()) {
+        const vertex_descriptor v0 = q.front();
+        q.pop();
+        BGL_FORALL_OUTEDGES(v0, e, graph, Graph) {
+            const vertex_descriptor v1 = target(e, graph);
+            if(v1 != vB) {
+                if(graph[v1].color == 0) {
+                    inBetweenVertices.push_back(v1);
+                    graph[v1].color = 1;
+                    q.push(v1);
+                }
+            }
+        }
+
+    }
+
+    if(debug) {
+        cout << "This portion of the graph contains " << inBetweenVertices.size() << " vertices:" << endl;
+        for(const vertex_descriptor v: inBetweenVertices) {
+            cout << "V" << graph[v].id << " ";
+        }
+        cout << endl;
+    }
+
+
+
+    // A vertex predicate that select only vertices with color>0.
+    class VertexPredicate {
+    public:
+        bool operator()(const vertex_descriptor& v) const
+        {
+            return (*graph)[v].color > 0;
+        }
+        VertexPredicate(const Graph& graph) : graph(&graph) {}
+        VertexPredicate() : graph(0) {}
+        const Graph* graph;
+    };
+    const VertexPredicate vertexPredicate(graph);
+
+
+
+    // An edge predicate that select only edges with coverage >= minCoverage.
+    uint64_t minCoverage = 0;
+    class EdgePredicate {
+    public:
+        bool operator()(const edge_descriptor& e) const
+        {
+            return (*graph)[e].infos.size() >= *minCoveragePointer;
+        }
+        EdgePredicate(const Graph& graph, uint64_t* minCoveragePointer) :
+            graph(&graph),
+            minCoveragePointer(minCoveragePointer) {}
+        EdgePredicate() : graph(0) {}
+        const Graph* graph;
+        uint64_t* minCoveragePointer;
+    };
+    EdgePredicate edgePredicate(graph, &minCoverage);
+
+    // A filtered graph that includes all vertices with color>0 and
+    // all the edges with coverage >= minCoverage.
+    using FilteredGraph = boost::filtered_graph<Graph, EdgePredicate, VertexPredicate>;
+    FilteredGraph filteredGraph(graph, edgePredicate, vertexPredicate);
+
+
+
+    // Find the highest edge coverage threshold that ensures reachability.
+    for(minCoverage=1; ; ++minCoverage) {
+        if(not isReachable(filteredGraph, vA, vB, 0)) {
+            --minCoverage;
+            break;
+        }
+    }
+    if(debug) {
+        cout << "Edge coverage threshold for reachability is " << minCoverage << endl;
+    }
+
+    // Remove edges with lower coverage.
+    vector<edge_descriptor> edgesToBeRemoved;
+    BGL_FORALL_OUTEDGES(vA, e, graph, Graph) {
+        if(graph[e].infos.size() < minCoverage) {
+            edgesToBeRemoved.push_back(e);
+        }
+    }
+    for(const vertex_descriptor v: inBetweenVertices) {
+        BGL_FORALL_OUTEDGES(v, e, graph, Graph) {
+            if(graph[e].infos.size() < minCoverage) {
+                edgesToBeRemoved.push_back(e);
+            }
+        }
+    }
+    for(const edge_descriptor e: edgesToBeRemoved) {
+        boost::remove_edge(e, graph);
+    }
+
+
+    // Reset the colors.
+    graph[vA].color = 0;
+    graph[vB].color = 0;
+    for(const vertex_descriptor v: inBetweenVertices) {
+        graph[v].color = 0;
+    }
+
 }
+
+
+
+void LocalAssembly5::removeIsolatedVertices()
+{
+    using Graph = LocalAssembly5;
+    Graph& graph = *this;
+
+    vector<vertex_descriptor> verticesToBeRemoved;
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        if((in_degree(v, graph) == 0) and (out_degree(v, graph)==0)) {
+            verticesToBeRemoved.push_back(v);
+        }
+    }
+
+    for(const vertex_descriptor v: verticesToBeRemoved) {
+        boost::remove_vertex(v, graph);
+    }
+}
+

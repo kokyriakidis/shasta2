@@ -57,7 +57,7 @@ public:
     bool isOnDominatorTreePath = false;
 
     // These are used for approximate topological ordering.
-    // which is only used by writeGraphviz.
+    // The color is also used by computeAssemblyPath.
     uint64_t color = invalid<uint64_t>;
     uint64_t rank = invalid<uint64_t>;
 
@@ -239,12 +239,26 @@ private:
     vertex_descriptor vRight;
     void createGraph();
 
+    // Remove vertices that are not forward accessible from vLeft
+    // and backward accessible from vRight.
+    void removeInaccessibleVertices();
+
+    // Compute a dominator tree starting at vLeft and the
+    // dominator tree path between vLeft and vRight.
     void computeDominatorTree();
     vector<vertex_descriptor> dominatorTreePath;
 
+    // Given two vertices which are adjacent in the dominator tree path, vA and vB,
+    // remove low coverage edges in-between without destroying reachability
+    // of vB from vA.
+    void removeLowCoverageEdges(vertex_descriptor vA, vertex_descriptor vB);
+    void removeLowCoverageEdges();
+
+    // Compute the assembly path.
     void computeAssemblyPath();
-    void computeAssemblyPath(vertex_descriptor, vertex_descriptor);
     vector<vertex_descriptor> assemblyPath;
+
+    void removeIsolatedVertices();
 
     // Html output.
     void writeInput(
