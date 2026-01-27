@@ -227,11 +227,7 @@ private:
             void computeNonUniqueKmers();
         };
         LocalRegion localRegion;
-
-
-
-
-        void gatherKmers(uint32_t kHalf,uint32_t length, const span<const Marker>& orientedReadMarkers);
+        void fillLocalRegion(const Anchors&, uint32_t length);
 
 
         // The ordinals of the Marker Kmers to be used for assembly.
@@ -248,12 +244,8 @@ private:
     uint32_t offset;
     void estimateOffset();
 
-    // This fills the following fields in all the OrientedReads:
-    // firstOrdinalForAssembly, lastOrdinalForAssembly,
-    // firstPositionForAssembly, lastPositionForAssembly,
-    // allKmers, nonUniqueKmers.
-    void gatherKmers();
-    void gatherKmers(OrientedReadInfo&);
+    // This fills the LocalRegion of all OrientedReadInfos.
+    void fillLocalRegions();
 
     // This fills in the ordinalsForAssembly in all the OrientedReads.
     void fillOrdinalsForAssembly();

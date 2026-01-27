@@ -50,18 +50,18 @@ LocalAssembly5::LocalAssembly5(
     }
 
     gatherAllOrientedReads(anchorPair, additionalOrientedReadIds);
-    if(html) {
+    if(false) {
         writeAllOrientedReadIds();
     }
 
     fillMarkerInfos();
-    if(html) {
+    if(false) {
         writeMarkerInfos();
     }
 
     gatherOrientedReads();
     estimateOffset();
-    gatherKmers();
+    fillLocalRegions();
     fillOrdinalsForAssembly();
     if(html) {
         writeOrientedReads();
@@ -206,46 +206,25 @@ void LocalAssembly5::estimateOffset()
 }
 
 
-void LocalAssembly5::gatherKmers()
+
+void LocalAssembly5::fillLocalRegions()
 {
-    const uint32_t kHalf = uint32_t(anchors.k / 2);
     const uint32_t length = uint32_t(std::round((1. + drift) * double(offset)));
 
     for(OrientedReadInfo& orientedReadInfo: orientedReadInfos) {
-        const OrientedReadId orientedReadId = orientedReadInfo.orientedReadId;
-        orientedReadInfo.gatherKmers(
-            kHalf,
-            length,
-            anchors.markers[orientedReadId.getValue()]);
-
-        // Fill in the LocalRegion Kmers.
-        for(uint32_t ordinal=orientedReadInfo.localRegion.firstOrdinal;
-            ordinal<=orientedReadInfo.localRegion.lastOrdinal; ordinal++) {
-            orientedReadInfo.localRegion.kmers.push_back(
-                anchors.markers.getKmer(orientedReadId, ordinal));
-        }
-
-        // Fill in nonUniqueKmers.
-        orientedReadInfo.localRegion.computeNonUniqueKmers();
+        orientedReadInfo.fillLocalRegion(anchors, length);
     }
 }
 
 
 
-void LocalAssembly5::OrientedReadInfo::LocalRegion::computeNonUniqueKmers()
+void LocalAssembly5::OrientedReadInfo::fillLocalRegion(
+    const Anchors& anchors,
+    uint32_t length)
 {
-    nonUniqueKmers = kmers;
-    vector<uint64_t> count;
-    deduplicateAndCountWithThreshold(nonUniqueKmers, count, 2UL);
-}
+    const auto orientedReadMarkers = anchors.markers[orientedReadId.getValue()];
+    const uint32_t kHalf = uint32_t(anchors.k / 2);
 
-
-
-void LocalAssembly5::OrientedReadInfo::gatherKmers(
-    uint32_t kHalf,
-    uint32_t length,
-    const span<const Marker>& orientedReadMarkers)
-{
     if(isOnBothMarkers()) {
         localRegion.firstOrdinal = leftOrdinal;
         localRegion.lastOrdinal = rightOrdinal;
@@ -299,6 +278,25 @@ void LocalAssembly5::OrientedReadInfo::gatherKmers(
 
     localRegion.firstPosition = orientedReadMarkers[localRegion.firstOrdinal].position + kHalf;
     localRegion.lastPosition = orientedReadMarkers[localRegion.lastOrdinal].position + kHalf;
+
+
+    // Fill in the LocalRegion Kmers.
+    for(uint32_t ordinal = localRegion.firstOrdinal;
+        ordinal <= localRegion.lastOrdinal; ordinal++) {
+        localRegion.kmers.push_back(anchors.markers.getKmer(orientedReadId, ordinal));
+    }
+
+    // Fill in nonUniqueKmers.
+    localRegion.computeNonUniqueKmers();
+}
+
+
+
+void LocalAssembly5::OrientedReadInfo::LocalRegion::computeNonUniqueKmers()
+{
+    nonUniqueKmers = kmers;
+    vector<uint64_t> count;
+    deduplicateAndCountWithThreshold(nonUniqueKmers, count, 2UL);
 }
 
 
