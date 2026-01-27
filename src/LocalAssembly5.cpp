@@ -100,6 +100,10 @@ LocalAssembly5::LocalAssembly5(
         writeGraph();
     }
 
+    // To locate steps that don't have a linear graph.
+    vector<edge_descriptor> assemblyPath;
+    longestPath(*this, assemblyPath);
+
 }
 
 
@@ -243,21 +247,17 @@ void LocalAssembly5::OrientedReadInfo::fillLocalRegion(
     }
 
     else if(isOnLeftMarker) {
-        localRegion.firstOrdinal = leftOrdinal;
 
-        if(localRegion.firstOrdinal ==  uint32_t(orientedReadMarkers.size() - 1)) {
-            localRegion.lastOrdinal = uint32_t(orientedReadMarkers.size() - 1);
-        } else {
-            // Move right by at least length bases.
-            for(localRegion.lastOrdinal = localRegion.firstOrdinal + 1;
-                localRegion.lastOrdinal<orientedReadMarkers.size();
-                localRegion.lastOrdinal++) {
-                if(orientedReadMarkers[localRegion.lastOrdinal].position - leftPosition >= length) {
-                    break;
-                }
+        localRegion.firstOrdinal = leftOrdinal;
+        localRegion.lastOrdinal = leftOrdinal;
+
+        for(uint32_t lastOrdinal=localRegion.firstOrdinal; lastOrdinal<orientedReadMarkers.size(); ++lastOrdinal) {
+            if(orientedReadMarkers[lastOrdinal].position + kHalf - leftPosition < length) {
+                localRegion.lastOrdinal = lastOrdinal;
+            } else {
+                break;
             }
         }
-
     }
 
     else if(isOnRightMarker) {
@@ -270,7 +270,7 @@ void LocalAssembly5::OrientedReadInfo::fillLocalRegion(
             // Move left by at least length bases.
             for(localRegion.firstOrdinal = localRegion.lastOrdinal - 1;
                 /* Check later */ ; localRegion.firstOrdinal--) {
-                if(rightPosition - orientedReadMarkers[localRegion.firstOrdinal].position >= length) {
+                if(rightPosition - orientedReadMarkers[localRegion.firstOrdinal].position + kHalf >= length) {
                     break;
                 }
                 if(localRegion.firstOrdinal == 0) {
@@ -480,6 +480,7 @@ void LocalAssembly5::gatherKmers()
 {
     // Gather all Kmers that are not unique
     // in the LocalRegion of one or more reads.
+    // These wil be excluded from the assembly.
     vector<Kmer> allNonUniqueKmers;
     for(const OrientedReadInfo& orientedReadInfo: orientedReadInfos) {
         std::ranges::copy(orientedReadInfo.localRegion.nonUniqueKmers, back_inserter(allNonUniqueKmers));
@@ -492,21 +493,59 @@ void LocalAssembly5::gatherKmers()
     }
 
 
-    // Gather the Kmers that are unique
-    // in the LocalRegions of all oriented reads.
-    // Fill in the ordinalsForAssembly in the OrientedReadInfos.
+    // Gather the Kmers that are unique in the LocalRegions of all oriented reads
+    // and count how many times each of them appears.
+    kmers.clear();
     for(OrientedReadInfo& orientedReadInfo: orientedReadInfos) {
         for(uint32_t ordinal = orientedReadInfo.localRegion.firstOrdinal;
             ordinal <= orientedReadInfo.localRegion.lastOrdinal; ordinal++) {
 
             const Kmer& kmer = orientedReadInfo.localRegion.getKmer(ordinal);
             if(not binary_search(allNonUniqueKmers.begin(), allNonUniqueKmers.end(), kmer)) {
-                orientedReadInfo.ordinalsForAssembly.push_back(ordinal);
                 kmers.push_back(kmer);
             }
         }
     }
-    deduplicate(kmers);
+    vector<uint64_t> count;
+    deduplicateAndCountWithThreshold(kmers, count, minVertexCoverage);
+
+
+    // Make sure the left and right Kmers are included.
+    const bool addLeftKmer = not binary_search(kmers.begin(), kmers.end(), leftKmer);
+    const bool addRightKmer = not binary_search(kmers.begin(), kmers.end(), rightKmer);
+    if(addLeftKmer) {
+        kmers.push_back(leftKmer);
+    }
+    if(addRightKmer) {
+        kmers.push_back(rightKmer);
+    }
+    if(addLeftKmer or addRightKmer) {
+        sort(kmers.begin(), kmers.end());
+    }
+    SHASTA2_ASSERT(binary_search(kmers.begin(), kmers.end(), leftKmer));
+    SHASTA2_ASSERT(binary_search(kmers.begin(), kmers.end(), rightKmer));
+
+#if 0
+    cout << "AAA " << kmers.size() << endl;
+    for(uint64_t kmerId=0; kmerId<kmers.size(); kmerId++) {
+        cout << kmerId << " ";
+        kmers[kmerId].write(cout, anchors.k);
+        cout << endl;
+    }
+#endif
+
+
+    // Fill in the ordinalsForAssembly in the OrientedReadInfos.
+    for(OrientedReadInfo& orientedReadInfo: orientedReadInfos) {
+        for(uint32_t ordinal = orientedReadInfo.localRegion.firstOrdinal;
+            ordinal <= orientedReadInfo.localRegion.lastOrdinal; ordinal++) {
+
+            const Kmer& kmer = orientedReadInfo.localRegion.getKmer(ordinal);
+            if(binary_search(kmers.begin(), kmers.end(), kmer)) {
+                orientedReadInfo.ordinalsForAssembly.push_back(ordinal);
+            }
+        }
+    }
 }
 
 
@@ -515,6 +554,9 @@ void LocalAssembly5::gatherKmers()
 void LocalAssembly5::createGraph()
 {
     LocalAssembly5& graph = *this;
+
+    SHASTA2_ASSERT(binary_search(kmers.begin(), kmers.end(), leftKmer));
+    SHASTA2_ASSERT(binary_search(kmers.begin(), kmers.end(), rightKmer));
 
     // Clear first, just in case.
     graph.clear();
@@ -546,7 +588,8 @@ void LocalAssembly5::createGraph()
         for(uint32_t ordinal: orientedReadInfo.ordinalsForAssembly) {
             const Kmer& kmer = orientedReadInfo.localRegion.getKmer(ordinal);
             const auto it = std::lower_bound(kmers.begin(), kmers.end(), kmer);
-            SHASTA2_ASSERT(it != kmers.end());
+
+           SHASTA2_ASSERT(it != kmers.end());
             SHASTA2_ASSERT(*it == kmer);
             const vertex_descriptor v = vertexTable[it - kmers.begin()];
             LocalAssembly5Vertex& vertex = graph[v];

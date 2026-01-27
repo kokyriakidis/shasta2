@@ -126,6 +126,7 @@ private:
 
     // EXPOSE WHEN CODE STABILIZES.
     const double drift = 0.1;
+    const uint64_t minVertexCoverage = 3;
 
     const Anchors& anchors;
     ostream& html;
