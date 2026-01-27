@@ -211,7 +211,6 @@ void LocalAssembly5::gatherKmers()
     const uint32_t kHalf = uint32_t(anchors.k / 2);
     const uint32_t length = uint32_t(std::round((1. + drift) * double(offset)));
 
-    vector<uint64_t> count;
     for(OrientedReadInfo& orientedReadInfo: orientedReadInfos) {
         const OrientedReadId orientedReadId = orientedReadInfo.orientedReadId;
         orientedReadInfo.gatherKmers(
@@ -227,9 +226,17 @@ void LocalAssembly5::gatherKmers()
         }
 
         // Fill in nonUniqueKmers.
-        orientedReadInfo.nonUniqueKmers = orientedReadInfo.localRegion.kmers;
-        deduplicateAndCountWithThreshold(orientedReadInfo.nonUniqueKmers, count, 2UL);
+        orientedReadInfo.localRegion.computeNonUniqueKmers();
     }
+}
+
+
+
+void LocalAssembly5::OrientedReadInfo::LocalRegion::computeNonUniqueKmers()
+{
+    nonUniqueKmers = kmers;
+    vector<uint64_t> count;
+    deduplicateAndCountWithThreshold(nonUniqueKmers, count, 2UL);
 }
 
 
@@ -375,16 +382,21 @@ void LocalAssembly5::writeOrientedReads() const
         "<table><tr>"
         "<th>OrientedReadId"
         "<th>Marker<br>Count"
-        "<th>Left<br>ordinal<th>Right<br>ordinal<th>Ordinal<br>offset"
-        "<th>First<br>ordinal<br>for assembly<th>Last<br>ordinal<br>for assembly"
-        "<th>Ordinal<br>offset<br>for assembly"
+        "<th>Left<br>marker<br>ordinal"
+        "<th>Right<br>marker<br>ordinal"
+        "<th>Left<br>to right<br>ordinal<br>offset"
+        "<th>Local<br>region<br>first<br>ordinal"
+        "<th>Local<br>region<br>last<br>ordinal"
+        "<th>Local<br>region<br>ordinal<br>offset"
+        "<th>Local<br>region<br>number<br>of markers"
         "<th>Number<br>of markers<br>for assembly"
-        "<th>Number<br>of non-unique<br>markers<br>for assembly"
-        "<th>Initial<br>number<br>of markers<br>for assembly"
-        "<th>Length"
-        "<th>Left<br>position<th>Right<br>position<th>Position<br>offset"
-        "<th>First<br>position<br>for assembly<th>Last<br>position<br>for assembly"
-        "<th>Position<br>offset<br>for assembly";
+        "<th>Read<br>length"
+        "<th>Left<br>marker<br>position"
+        "<th>Right<br>marker<br>position"
+        "<th>Left<br>to right<br>position<br>offset"
+        "<th>Local<br>region<br>first<br>position"
+        "<th>Local<br>region<br>last<br>position"
+        "<th>Local<br>region<br>position<br>offset<br>(length)";
 
     for(const OrientedReadInfo& orientedReadInfo: orientedReadInfos) {
         const uint64_t markerCount = anchors.markers[orientedReadInfo.orientedReadId.getValue()].size();
@@ -421,8 +433,6 @@ void LocalAssembly5::writeOrientedReads() const
         html << "<td class=centered>";
         html << orientedReadInfo.localRegion.kmers.size();
         html << "<td class=centered>";
-        html << orientedReadInfo.nonUniqueKmers.size();
-        html << "<td class=centered>";
         html << orientedReadInfo.ordinalsForAssembly.size();
 
         html << "<td class=centered>" << baseCount;
@@ -458,17 +468,16 @@ void LocalAssembly5::writeOrientedReads() const
 
 void LocalAssembly5::fillOrdinalsForAssembly()
 {
-    // Gather all Kmers that are non unique in one or more reads.
+    // Gather all Kmers that are not unique in one or more reads.
     vector<Kmer> allNonUniqueKmers;
     for(const OrientedReadInfo& orientedReadInfo: orientedReadInfos) {
-        std::ranges::copy(orientedReadInfo.nonUniqueKmers, back_inserter(allNonUniqueKmers));
+        std::ranges::copy(orientedReadInfo.localRegion.nonUniqueKmers, back_inserter(allNonUniqueKmers));
     }
     deduplicate(allNonUniqueKmers);
 
     if(html) {
         html << "<br>Found " << allNonUniqueKmers.size() <<
-            " marker k-mers that appear more than once in the assembly region of one or more oriented reads. "
-            "These marker k-mers will not be used in graph generation.";
+            " marker k-mers that appear more than once in the local rethis local assembly graph generation.";
     }
 
 

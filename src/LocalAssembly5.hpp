@@ -221,13 +221,15 @@ private:
                 SHASTA2_ASSERT(ordinal <= lastOrdinal);
                 return kmers[ordinal - firstOrdinal];
             }
+
+            // The Kmers that appear more than once in this LocalRegion, sorted by Kmer.
+            vector<Kmer> nonUniqueKmers;
+            void computeNonUniqueKmers();
         };
         LocalRegion localRegion;
 
 
 
-        // The Kmers that appear more than once in allKmers, sorted by Kmer.
-        vector<Kmer> nonUniqueKmers;
 
         void gatherKmers(uint32_t kHalf,uint32_t length, const span<const Marker>& orientedReadMarkers);
 
