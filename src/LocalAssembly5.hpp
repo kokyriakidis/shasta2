@@ -263,9 +263,9 @@ private:
     vertex_descriptor vRight;
     void createGraph();
 
-
-
-
+    // Compute position offset for an edge by averaging the
+    // position offsets of the participating orientedReads.
+    uint32_t edgeOffset(edge_descriptor) const;
 
     // Remove vertices that are not forward accessible from vLeft
     // and backward accessible from vRight.

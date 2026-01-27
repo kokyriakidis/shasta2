@@ -676,19 +676,24 @@ void LocalAssembly5::writeGraphviz(ostream& dot)
         const LocalAssembly5Edge& edge = graph[e];
         const vertex_descriptor v0 = source(e, graph);
         const vertex_descriptor v1 = target(e, graph);
+        const uint64_t coverage = edge.infos.size();
+        const uint32_t offset = edgeOffset(e);
+
         dot << graph[v0].kmerId << "->" << graph[v1].kmerId;
 
         // Begin edge attributes.
         dot << "[";
 
         // Label.
-        dot << "label=\"" << edge.infos.size() << "\"";
+        dot << "label=\"" << coverage <<
+            "\\n" << offset << "\"";
 
         // Tooltip.
-        dot << " tooltip=\"" << edge.infos.size() << "\"";
+        dot << " tooltip=\"" << coverage <<
+            "\\n" << offset << "\"";
 
         // Thickness.
-        dot << " penwidth=" << std::fixed << std::setprecision(2) << 0.3 * double(edge.infos.size());
+        dot << " penwidth=" << std::fixed << std::setprecision(2) << 0.3 * double(coverage);
 
         // End edge attributes.
         dot << "]";
@@ -987,4 +992,27 @@ void LocalAssembly5::writeKmers() const
     }
 
     html << "</table>";
+}
+
+
+
+// Compute position offset for an edge by averaging the
+// position offsets of the participating orientedReads.
+uint32_t LocalAssembly5::edgeOffset(edge_descriptor e) const
+{
+    using Graph = LocalAssembly5;
+    const Graph& graph = *this;
+
+    uint64_t offsetSum = 0;
+    for(const LocalAssembly5Edge::Info& info: graph[e].infos) {
+        const OrientedReadInfo& orientedReadInfo = orientedReadInfos[info.orientedReadIndex];
+        const OrientedReadId orientedReadId = orientedReadInfo.orientedReadId;
+        const uint32_t ordinal0 = info.ordinal0;
+        const uint32_t ordinal1 = info.ordinal1;
+        const auto orientedReadMarkers = anchors.markers[orientedReadId.getValue()];
+
+        offsetSum += (orientedReadMarkers[ordinal1].position - orientedReadMarkers[ordinal0].position);
+    }
+
+    return uint32_t(std::round(double(offsetSum) / double(graph[e].infos.size())));
 }
