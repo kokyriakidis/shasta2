@@ -44,49 +44,61 @@ LocalAssembly5::LocalAssembly5(
     leftAnchorId(anchorPair.anchorIdA),
     rightAnchorId(anchorPair.anchorIdB)
 {
+    // Sanity check.
     SHASTA2_ASSERT(std::ranges::is_sorted(additionalOrientedReadIds));
+
+    // Summarize the input for this local assembly.
     if(html) {
         writeInput(anchorPair, additionalOrientedReadIds);
     }
 
+    // Gather the oriented reads that could possibly participate in this local assembly.
     gatherAllOrientedReads(anchorPair, additionalOrientedReadIds);
     if(false) {
         writeAllOrientedReadIds();
     }
 
+    // Gather the MarkerInfos on the left and right marker
+    // for this local assembly.
     fillMarkerInfos();
     if(false) {
         writeMarkerInfos();
     }
 
+    // Gather the oriented reads that will actually be used in this local assembly.
     gatherOrientedReads();
+
+    // Estimate the base offset for this local assembly using the oriented reads
+    // that appear on both the left and right markers.
     estimateOffset();
+
+    // Fill in the LocalRegions of all oriented reads.
+    // These are the oriented read regions that will be used in this local assembly.
     fillLocalRegions();
-    fillOrdinalsForAssembly();
+
+    // Gather the Kmers that will be used in this local assembly.
+    gatherKmers();
     if(html) {
+        writeKmers();
         writeOrientedReads();
     }
 
+    // Create the initial graph.
     createGraph();
-    if(html) {
-        writeKmers();
-    }
-
     removeInaccessibleVertices();
     computeDominatorTree();
     if(html) {
-        html << "<h3>LocalAssembly5 graph after computation of the dominator tree</h3>";
+        html << "<h3>Initial LocalAssembly5 graph</h3>";
         writeGraph();
     }
 
+    // Graph cleanup.
     removeLowCoverageEdges();
-    removeIsolatedVertices();
+    removeInaccessibleVertices();
     if(html) {
-        html << "<h3>LocalAssembly5 graph after removal of low coverage edges</h3>";
+        html << "<h3>LocalAssembly5 graph after cleanup</h3>";
         writeGraph();
     }
-
-    // computeAssemblyPath();
 
 }
 
@@ -464,9 +476,10 @@ void LocalAssembly5::writeOrientedReads() const
 
 
 
-void LocalAssembly5::fillOrdinalsForAssembly()
+void LocalAssembly5::gatherKmers()
 {
-    // Gather all Kmers that are not unique in one or more reads.
+    // Gather all Kmers that are not unique
+    // in the LocalRegion of one or more reads.
     vector<Kmer> allNonUniqueKmers;
     for(const OrientedReadInfo& orientedReadInfo: orientedReadInfos) {
         std::ranges::copy(orientedReadInfo.localRegion.nonUniqueKmers, back_inserter(allNonUniqueKmers));
@@ -479,8 +492,9 @@ void LocalAssembly5::fillOrdinalsForAssembly()
     }
 
 
-
-    // Fill in the ordinalsForAssembly.
+    // Gather the Kmers that are unique
+    // in the LocalRegions of all oriented reads.
+    // Fill in the ordinalsForAssembly in the OrientedReadInfos.
     for(OrientedReadInfo& orientedReadInfo: orientedReadInfos) {
         for(uint32_t ordinal = orientedReadInfo.localRegion.firstOrdinal;
             ordinal <= orientedReadInfo.localRegion.lastOrdinal; ordinal++) {
@@ -488,9 +502,11 @@ void LocalAssembly5::fillOrdinalsForAssembly()
             const Kmer& kmer = orientedReadInfo.localRegion.getKmer(ordinal);
             if(not binary_search(allNonUniqueKmers.begin(), allNonUniqueKmers.end(), kmer)) {
                 orientedReadInfo.ordinalsForAssembly.push_back(ordinal);
+                kmers.push_back(kmer);
             }
         }
     }
+    deduplicate(kmers);
 }
 
 
@@ -500,28 +516,17 @@ void LocalAssembly5::createGraph()
 {
     LocalAssembly5& graph = *this;
 
-    // Clear first, jus in case.
+    // Clear first, just in case.
     graph.clear();
-
-    // Gather all the Kmers.
-    kmers.clear();
-    for(const OrientedReadInfo& orientedReadInfo: orientedReadInfos) {
-        for(uint32_t ordinal: orientedReadInfo.ordinalsForAssembly) {
-            kmers.push_back(orientedReadInfo.localRegion.getKmer(ordinal));
-        }
-    }
-    deduplicate(kmers);
-
-
 
     // Generate vertices.
     // Each Kmer generates a vertex.
     vector<vertex_descriptor> vertexTable;
     vLeft = null_vertex();
     vRight = null_vertex();
-    for(uint64_t vertexId=0; vertexId<kmers.size(); vertexId++) {
-        const Kmer& kmer = kmers[vertexId];
-        const vertex_descriptor v = add_vertex(LocalAssembly5Vertex(vertexId), graph);
+    for(uint64_t kmerId=0; kmerId<kmers.size(); kmerId++) {
+        const Kmer& kmer = kmers[kmerId];
+        const vertex_descriptor v = add_vertex(LocalAssembly5Vertex(kmerId), graph);
         vertexTable.push_back(v);
         if(kmer == leftKmer) {
             vLeft = v;
@@ -634,17 +639,17 @@ void LocalAssembly5::writeGraphviz(ostream& dot)
 
     for(const auto& [v, ignore]: verticesOrderedByRank) {
         const LocalAssembly5Vertex& vertex = graph[v];
-        dot << vertex.id;
+        dot << vertex.kmerId;
 
         // Begin vertex attributes.
         dot << "[";
 
         // Label.
-        dot << "label=\"V" << vertex.id << "\\n" << vertex.infos.size() << "\"";
+        dot << "label=\"V" << vertex.kmerId << "\\n" << vertex.infos.size() << "\"";
 
         // Tooltip.
         dot << " tooltip=\"";
-        kmers[vertex.id].write(dot, anchors.k);
+        kmers[vertex.kmerId].write(dot, anchors.k);
         dot << "\"";
 
         // Color.
@@ -671,7 +676,7 @@ void LocalAssembly5::writeGraphviz(ostream& dot)
         const LocalAssembly5Edge& edge = graph[e];
         const vertex_descriptor v0 = source(e, graph);
         const vertex_descriptor v1 = target(e, graph);
-        dot << graph[v0].id << "->" << graph[v1].id;
+        dot << graph[v0].kmerId << "->" << graph[v1].kmerId;
 
         // Begin edge attributes.
         dot << "[";
@@ -679,8 +684,11 @@ void LocalAssembly5::writeGraphviz(ostream& dot)
         // Label.
         dot << "label=\"" << edge.infos.size() << "\"";
 
+        // Tooltip.
+        dot << " tooltip=\"" << edge.infos.size() << "\"";
+
         // Thickness.
-        dot << " penwidth=" << std::fixed << std::setprecision(2) << 0.5 * double(edge.infos.size());
+        dot << " penwidth=" << std::fixed << std::setprecision(2) << 0.3 * double(edge.infos.size());
 
         // End edge attributes.
         dot << "]";
@@ -829,7 +837,7 @@ void LocalAssembly5::removeLowCoverageEdges(
 
     if(debug) {
         cout << "Working on assembly path portion between V" <<
-            graph[vA].id << " and V" << graph[vB].id << endl;
+            graph[vA].kmerId << " and V" << graph[vB].kmerId << endl;
     }
 
     // Find all the vertices "between" vA and vB.
@@ -859,7 +867,7 @@ void LocalAssembly5::removeLowCoverageEdges(
     if(debug) {
         cout << "This portion of the graph contains " << inBetweenVertices.size() << " vertices:" << endl;
         for(const vertex_descriptor v: inBetweenVertices) {
-            cout << "V" << graph[v].id << " ";
+            cout << "V" << graph[v].kmerId << " ";
         }
         cout << endl;
     }

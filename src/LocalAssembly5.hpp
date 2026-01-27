@@ -40,7 +40,10 @@ namespace shasta2 {
 
 class shasta2::LocalAssembly5Vertex {
 public:
-    uint64_t id;
+
+    // The id of the Kmer that corresponds to this vertex.
+    // This is the index of this Kmer in the LocalAssembly5::kmers vector.
+    uint64_t kmerId;
 
     class Info {
     public:
@@ -61,8 +64,8 @@ public:
     uint64_t color = invalid<uint64_t>;
     uint64_t rank = invalid<uint64_t>;
 
-    LocalAssembly5Vertex(uint64_t id = invalid<uint64_t>) :
-        id(id) {}
+    LocalAssembly5Vertex(uint64_t kmerId = invalid<uint64_t>) :
+        kmerId(kmerId) {}
 };
 
 
@@ -247,9 +250,12 @@ private:
     // This fills the LocalRegion of all OrientedReadInfos.
     void fillLocalRegions();
 
-    // This fills in the ordinalsForAssembly in all the OrientedReads.
-    void fillOrdinalsForAssembly();
+    // The Kmers that will be used in this assembly.
+    vector<Kmer> kmers;
 
+    // Gather the Kmers that will be used in this assembly
+    // and fill in the OrientedReadInfos;
+    void gatherKmers();
 
 
     // Create the graph using the current ordinalsForAssembly.
@@ -257,9 +263,6 @@ private:
     vertex_descriptor vRight;
     void createGraph();
 
-    // The Kmers of each graph vertex.
-    // Indexed by the LocalAssemly5Vertex::id.
-    vector<Kmer> kmers;
 
 
 
