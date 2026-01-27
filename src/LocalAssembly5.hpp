@@ -191,23 +191,40 @@ private:
         }
 
 
-        // The first and last ordinal of the portion to be used for assembly,
-        // and the corresponding Kmers (in the same order).
-        uint32_t firstOrdinalForAssembly = invalid<uint32_t>;
-        uint32_t lastOrdinalForAssembly = invalid<uint32_t>;
-        uint32_t firstPositionForAssembly = invalid<uint32_t>;
-        uint32_t lastPositionForAssembly = invalid<uint32_t>;
 
-        // The Kmers for all ordinals in [firstOrdinalForAssembly, lastOrdinalForAssembly],
-        // in that order.
-        vector<Kmer> allKmers;
+        // The region of this oriented read that can be used in this local assembly.
+        // The positions are positions of the marker midpoints.
+        class LocalRegion {
+        public:
+            uint32_t firstOrdinal = invalid<uint32_t>;
+            uint32_t lastOrdinal = invalid<uint32_t>;
+            uint32_t firstPosition = invalid<uint32_t>;
+            uint32_t lastPosition = invalid<uint32_t>;
 
-        const Kmer& getKmer(uint32_t ordinal) const
-        {
-            SHASTA2_ASSERT(ordinal >= firstOrdinalForAssembly);
-            SHASTA2_ASSERT(ordinal <= lastOrdinalForAssembly);
-            return allKmers[ordinal - firstOrdinalForAssembly];
-        }
+            uint32_t ordinalOffset() const
+            {
+                return lastOrdinal - firstOrdinal;
+            }
+
+            uint32_t positionOffset() const
+            {
+                return lastPosition - firstPosition;
+            }
+
+            // The Kmers for all ordinals in [firstOrdinalForAssembly, lastOrdinalForAssembly],
+            // in that order.
+            vector<Kmer> kmers;
+
+            const Kmer& getKmer(uint32_t ordinal) const
+            {
+                SHASTA2_ASSERT(ordinal >= firstOrdinal);
+                SHASTA2_ASSERT(ordinal <= lastOrdinal);
+                return kmers[ordinal - firstOrdinal];
+            }
+        };
+        LocalRegion localRegion;
+
+
 
         // The Kmers that appear more than once in allKmers, sorted by Kmer.
         vector<Kmer> nonUniqueKmers;

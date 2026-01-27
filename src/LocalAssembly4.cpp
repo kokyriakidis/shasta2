@@ -51,7 +51,7 @@ LocalAssembly4::LocalAssembly4(
     // If coverage is too low, use LocalAssembly5 instead,
     // which can use OrientedReadIds that appear only on the left
     // or only on the right.
-    if(commonOrientedReadInfos.size() < minCoverage) {
+    if(true /* commonOrientedReadInfos.size() < minCoverage */) {
         if(html) {
             html << "<br><br>Switching to LocalAssembly5 due to low coverage<hr>";
         }
@@ -64,9 +64,9 @@ LocalAssembly4::LocalAssembly4(
             additionalOrientedReadIds);
 
         // For now ignore the output of LocalAssembly5 and continue with LocalAssembly4.
-        // sequence = localAssembly5.sequence;
-        // coverage = localAssembly5.coverage;
-        // return;
+        sequence = localAssembly5.sequence;
+        coverage = localAssembly5.coverage;
+        return;
     }
 
 

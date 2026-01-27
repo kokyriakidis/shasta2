@@ -219,14 +219,15 @@ void LocalAssembly5::gatherKmers()
             length,
             anchors.markers[orientedReadId.getValue()]);
 
-        // Fill in allKmers.
-        for(uint32_t ordinal=orientedReadInfo.firstOrdinalForAssembly;
-            ordinal<=orientedReadInfo.lastOrdinalForAssembly; ordinal++) {
-            orientedReadInfo.allKmers.push_back(anchors.markers.getKmer(orientedReadId, ordinal));
+        // Fill in the LocalRegion Kmers.
+        for(uint32_t ordinal=orientedReadInfo.localRegion.firstOrdinal;
+            ordinal<=orientedReadInfo.localRegion.lastOrdinal; ordinal++) {
+            orientedReadInfo.localRegion.kmers.push_back(
+                anchors.markers.getKmer(orientedReadId, ordinal));
         }
 
         // Fill in nonUniqueKmers.
-        orientedReadInfo.nonUniqueKmers = orientedReadInfo.allKmers;
+        orientedReadInfo.nonUniqueKmers = orientedReadInfo.localRegion.kmers;
         deduplicateAndCountWithThreshold(orientedReadInfo.nonUniqueKmers, count, 2UL);
     }
 }
@@ -239,21 +240,21 @@ void LocalAssembly5::OrientedReadInfo::gatherKmers(
     const span<const Marker>& orientedReadMarkers)
 {
     if(isOnBothMarkers()) {
-        firstOrdinalForAssembly = leftOrdinal;
-        lastOrdinalForAssembly = rightOrdinal;
+        localRegion.firstOrdinal = leftOrdinal;
+        localRegion.lastOrdinal = rightOrdinal;
     }
 
     else if(isOnLeftMarker) {
-        firstOrdinalForAssembly = leftOrdinal;
+        localRegion.firstOrdinal = leftOrdinal;
 
-        if(firstOrdinalForAssembly ==  uint32_t(orientedReadMarkers.size() - 1)) {
-            lastOrdinalForAssembly = uint32_t(orientedReadMarkers.size() - 1);
+        if(localRegion.firstOrdinal ==  uint32_t(orientedReadMarkers.size() - 1)) {
+            localRegion.lastOrdinal = uint32_t(orientedReadMarkers.size() - 1);
         } else {
             // Move right by at least length bases.
-            for(lastOrdinalForAssembly=firstOrdinalForAssembly+1;
-                lastOrdinalForAssembly<orientedReadMarkers.size()-1;
-                lastOrdinalForAssembly++) {
-                if(orientedReadMarkers[lastOrdinalForAssembly].position - leftPosition >= length) {
+            for(localRegion.lastOrdinal = localRegion.firstOrdinal + 1;
+                localRegion.lastOrdinal<orientedReadMarkers.size();
+                localRegion.lastOrdinal++) {
+                if(orientedReadMarkers[localRegion.lastOrdinal].position - leftPosition >= length) {
                     break;
                 }
             }
@@ -262,19 +263,19 @@ void LocalAssembly5::OrientedReadInfo::gatherKmers(
     }
 
     else if(isOnRightMarker) {
-        lastOrdinalForAssembly = rightOrdinal;
+        localRegion.lastOrdinal = rightOrdinal;
 
-        if(lastOrdinalForAssembly == 0) {
-            firstOrdinalForAssembly = 0;
+        if(localRegion.lastOrdinal == 0) {
+            localRegion.firstOrdinal = 0;
         } else {
 
             // Move left by at least length bases.
-            for(firstOrdinalForAssembly=lastOrdinalForAssembly-1;
-                /* Check later */ ; firstOrdinalForAssembly--) {
-                if(rightPosition - orientedReadMarkers[firstOrdinalForAssembly].position >= length) {
+            for(localRegion.firstOrdinal = localRegion.lastOrdinal - 1;
+                /* Check later */ ; localRegion.firstOrdinal--) {
+                if(rightPosition - orientedReadMarkers[localRegion.firstOrdinal].position >= length) {
                     break;
                 }
-                if(firstOrdinalForAssembly == 0) {
+                if(localRegion.firstOrdinal == 0) {
                     break;
                 }
             }
@@ -285,12 +286,12 @@ void LocalAssembly5::OrientedReadInfo::gatherKmers(
     else {
         SHASTA2_ASSERT(0);
     }
-    SHASTA2_ASSERT(firstOrdinalForAssembly < orientedReadMarkers.size());
-    SHASTA2_ASSERT(lastOrdinalForAssembly < orientedReadMarkers.size());
+    SHASTA2_ASSERT(localRegion.firstOrdinal < orientedReadMarkers.size());
+    SHASTA2_ASSERT(localRegion.lastOrdinal < orientedReadMarkers.size());
 
 
-    firstPositionForAssembly = orientedReadMarkers[firstOrdinalForAssembly].position + kHalf;
-    lastPositionForAssembly = orientedReadMarkers[lastOrdinalForAssembly].position + kHalf;
+    localRegion.firstPosition = orientedReadMarkers[localRegion.firstOrdinal].position + kHalf;
+    localRegion.lastPosition = orientedReadMarkers[localRegion.lastOrdinal].position + kHalf;
 }
 
 
@@ -412,13 +413,13 @@ void LocalAssembly5::writeOrientedReads() const
         }
 
         html << "<td class=centered>";
-        html << orientedReadInfo.firstOrdinalForAssembly;
+        html << orientedReadInfo.localRegion.firstOrdinal;
         html << "<td class=centered>";
-        html << orientedReadInfo.lastOrdinalForAssembly;
+        html << orientedReadInfo.localRegion.lastOrdinal;
         html << "<td class=centered>";
-        html << orientedReadInfo.lastOrdinalForAssembly - orientedReadInfo.firstOrdinalForAssembly;
+        html << orientedReadInfo.localRegion.ordinalOffset();
         html << "<td class=centered>";
-        html << orientedReadInfo.allKmers.size();
+        html << orientedReadInfo.localRegion.kmers.size();
         html << "<td class=centered>";
         html << orientedReadInfo.nonUniqueKmers.size();
         html << "<td class=centered>";
@@ -442,11 +443,11 @@ void LocalAssembly5::writeOrientedReads() const
         }
 
         html << "<td class=centered>";
-        html << orientedReadInfo.firstPositionForAssembly;
+        html << orientedReadInfo.localRegion.firstPosition;
         html << "<td class=centered>";
-        html << orientedReadInfo.lastPositionForAssembly;
+        html << orientedReadInfo.localRegion.lastPosition;
         html << "<td class=centered>";
-        html << orientedReadInfo.lastPositionForAssembly - orientedReadInfo.firstPositionForAssembly;
+        html << orientedReadInfo.localRegion.positionOffset();
     }
 
     html << "</table>" << orientedReadInfos.size() << " oriented reads.";
@@ -474,9 +475,10 @@ void LocalAssembly5::fillOrdinalsForAssembly()
 
     // Fill in the ordinalsForAssembly.
     for(OrientedReadInfo& orientedReadInfo: orientedReadInfos) {
-        for(uint32_t ordinal=orientedReadInfo.firstOrdinalForAssembly;
-            ordinal<=orientedReadInfo.lastOrdinalForAssembly; ordinal++) {
-            const Kmer& kmer = orientedReadInfo.allKmers[ordinal - orientedReadInfo.firstOrdinalForAssembly];
+        for(uint32_t ordinal = orientedReadInfo.localRegion.firstOrdinal;
+            ordinal <= orientedReadInfo.localRegion.lastOrdinal; ordinal++) {
+
+            const Kmer& kmer = orientedReadInfo.localRegion.getKmer(ordinal);
             if(not binary_search(allNonUniqueKmers.begin(), allNonUniqueKmers.end(), kmer)) {
                 orientedReadInfo.ordinalsForAssembly.push_back(ordinal);
             }
@@ -498,7 +500,7 @@ void LocalAssembly5::createGraph()
     kmers.clear();
     for(const OrientedReadInfo& orientedReadInfo: orientedReadInfos) {
         for(uint32_t ordinal: orientedReadInfo.ordinalsForAssembly) {
-            kmers.push_back(orientedReadInfo.getKmer(ordinal));
+            kmers.push_back(orientedReadInfo.localRegion.getKmer(ordinal));
         }
     }
     deduplicate(kmers);
@@ -530,7 +532,7 @@ void LocalAssembly5::createGraph()
     for(uint64_t orientedReadIndex=0; orientedReadIndex<orientedReadInfos.size(); orientedReadIndex++) {
         const OrientedReadInfo& orientedReadInfo = orientedReadInfos[orientedReadIndex];
         for(uint32_t ordinal: orientedReadInfo.ordinalsForAssembly) {
-            const Kmer& kmer = orientedReadInfo.getKmer(ordinal);
+            const Kmer& kmer = orientedReadInfo.localRegion.getKmer(ordinal);
             const auto it = std::lower_bound(kmers.begin(), kmers.end(), kmer);
             SHASTA2_ASSERT(it != kmers.end());
             SHASTA2_ASSERT(*it == kmer);
@@ -550,8 +552,8 @@ void LocalAssembly5::createGraph()
             const uint64_t i0 = i1 - 1;
             const uint32_t ordinal0 = orientedReadInfo.ordinalsForAssembly[i0];
             const uint32_t ordinal1 = orientedReadInfo.ordinalsForAssembly[i1];
-            const Kmer& kmer0 = orientedReadInfo.getKmer(ordinal0);
-            const Kmer& kmer1 = orientedReadInfo.getKmer(ordinal1);
+            const Kmer& kmer0 = orientedReadInfo.localRegion.getKmer(ordinal0);
+            const Kmer& kmer1 = orientedReadInfo.localRegion.getKmer(ordinal1);
             const auto it0 = std::lower_bound(kmers.begin(), kmers.end(), kmer0);
             SHASTA2_ASSERT(it0 != kmers.end());
             SHASTA2_ASSERT(*it0 == kmer0);
