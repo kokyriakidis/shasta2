@@ -68,6 +68,10 @@ LocalAssembly5::LocalAssembly5(
     }
 
     createGraph();
+    if(html) {
+        writeKmers();
+    }
+
     removeInaccessibleVertices();
     computeDominatorTree();
     if(html) {
@@ -468,7 +472,7 @@ void LocalAssembly5::fillOrdinalsForAssembly()
 
 
 
-    // Fill in the initial ordinalsForAssembly.
+    // Fill in the ordinalsForAssembly.
     for(OrientedReadInfo& orientedReadInfo: orientedReadInfos) {
         for(uint32_t ordinal=orientedReadInfo.firstOrdinalForAssembly;
             ordinal<=orientedReadInfo.lastOrdinalForAssembly; ordinal++) {
@@ -487,11 +491,11 @@ void LocalAssembly5::createGraph()
 {
     LocalAssembly5& graph = *this;
 
-    // Clear first, to permit iteration.
+    // Clear first, jus in case.
     graph.clear();
 
     // Gather all the Kmers.
-    vector<Kmer> kmers;
+    kmers.clear();
     for(const OrientedReadInfo& orientedReadInfo: orientedReadInfos) {
         for(uint32_t ordinal: orientedReadInfo.ordinalsForAssembly) {
             kmers.push_back(orientedReadInfo.getKmer(ordinal));
@@ -628,6 +632,11 @@ void LocalAssembly5::writeGraphviz(ostream& dot)
 
         // Label.
         dot << "label=\"V" << vertex.id << "\\n" << vertex.infos.size() << "\"";
+
+        // Tooltip.
+        dot << " tooltip=\"";
+        kmers[vertex.id].write(dot, anchors.k);
+        dot << "\"";
 
         // Color.
         if(v== vLeft) {
@@ -945,3 +954,20 @@ void LocalAssembly5::removeIsolatedVertices()
     }
 }
 
+
+
+void LocalAssembly5::writeKmers() const
+{
+    html <<
+        "<h3>Kmers</h3>"
+        "<table><tr><th>Vertex<th>Kmer";
+
+    for(uint64_t vertexId=0; vertexId<kmers.size(); vertexId++) {
+        html <<
+            "<tr><td class=centered>" << vertexId <<
+            "<td style='font-family:monospace'>";
+        kmers[vertexId].write(html, anchors.k);
+    }
+
+    html << "</table>";
+}

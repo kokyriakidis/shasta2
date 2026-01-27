@@ -229,15 +229,29 @@ private:
     uint32_t offset;
     void estimateOffset();
 
+    // This fills the following fields in all the OrientedReads:
+    // firstOrdinalForAssembly, lastOrdinalForAssembly,
+    // firstPositionForAssembly, lastPositionForAssembly,
+    // allKmers, nonUniqueKmers.
     void gatherKmers();
     void gatherKmers(OrientedReadInfo&);
 
+    // This fills in the ordinalsForAssembly in all the OrientedReads.
     void fillOrdinalsForAssembly();
+
+
 
     // Create the graph using the current ordinalsForAssembly.
     vertex_descriptor vLeft;
     vertex_descriptor vRight;
     void createGraph();
+
+    // The Kmers of each graph vertex.
+    // Indexed by the LocalAssemly5Vertex::id.
+    vector<Kmer> kmers;
+
+
+
 
     // Remove vertices that are not forward accessible from vLeft
     // and backward accessible from vRight.
@@ -271,4 +285,5 @@ private:
     void writeGraphviz(const string& fileName);
     void writeGraphviz(ostream&);
     void writeGraph();
+    void writeKmers() const;
 };
