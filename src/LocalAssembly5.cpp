@@ -3,6 +3,7 @@
 #include "Anchor.hpp"
 #include "AnchorPair.hpp"
 #include "approximateTopologicalSort.hpp"
+#include "CondensedGraph.hpp"
 #include "deduplicate.hpp"
 #include "dominatorTree.hpp"
 #include "findReachableVertices.hpp"
@@ -94,15 +95,15 @@ LocalAssembly5::LocalAssembly5(
 
     // Graph cleanup.
     removeLowCoverageEdges();
+    SHASTA2_ASSERT(isReachable(*this, vLeft, vRight, 0));
     removeInaccessibleVertices();
     if(html) {
-        html << "<h3>LocalAssembly5 graph after cleanup</h3>";
+         html << "<h3>LocalAssembly5 graph after cleanup</h3>";
         writeGraph();
     }
 
-    // To locate steps that don't have a linear graph.
-    vector<edge_descriptor> assemblyPath;
-    longestPath(*this, assemblyPath);
+    // Compute the assembly path and assemble sequence.
+    computeAssemblyPath();
 
 }
 
@@ -838,15 +839,6 @@ void LocalAssembly5::computeDominatorTree()
 
 
 
-// Find the longest path.
-void LocalAssembly5::computeAssemblyPath()
-{
-    vector<edge_descriptor> longestPath;
-    shasta2::longestPath(*this, longestPath);
-}
-
-
-
 // The assembly path is computed by joining together
 // partial assembly paths between adjacent vertices
 // of the dominator tree path.
@@ -987,6 +979,11 @@ void LocalAssembly5::removeLowCoverageEdges(
         }
     }
     for(const edge_descriptor e: edgesToBeRemoved) {
+        if(debug) {
+            const vertex_descriptor v0 = source(e, graph);
+            const vertex_descriptor v1 = target(e, graph);
+            cout << "Removing edge " << graph[v0].kmerId << "->" << graph[v1].kmerId << endl;
+        }
         boost::remove_edge(e, graph);
     }
 
@@ -1058,4 +1055,81 @@ uint32_t LocalAssembly5::edgeOffset(edge_descriptor e) const
     }
 
     return uint32_t(std::round(double(offsetSum) / double(graph[e].infos.size())));
+}
+
+
+
+void LocalAssembly5::computeAssemblyPath()
+{
+    using Graph = LocalAssembly5;
+    Graph& graph = *this;
+
+    // A condensed version of the LocalAssembly5 graph, used
+    // to compute the assembly path. Each strongly connected component
+    // of the LocalAssembly5 graph is collapsed into a single vertex.
+    // The CondensedGraph is guaranteed to be acyclic. See:
+    // https://en.wikipedia.org/wiki/Strongly_connected_component#Definitions
+    // https://cp-algorithms.com/graph/strongly-connected-components.html
+    class CondensedGraphVertex {
+    public:
+        vector<vertex_descriptor> vertices;
+    };
+    using CondensedGraph = boost::adjacency_list<
+        boost::listS,
+        boost::listS,
+        boost::bidirectionalS,
+        CondensedGraphVertex>;
+    std::map<Graph::vertex_descriptor, CondensedGraph::vertex_descriptor> vertexMap;
+    const CondensedGraph condensedGraph =
+        createCondensedGraph<Graph, CondensedGraph>(graph, vertexMap);
+
+    // Compute the longest path in the CondensedGraph.
+    // This will always work because the CondensedGraph is guaranteed to be acyclic.
+    vector<CondensedGraph::edge_descriptor> longestPathCondensed;
+    longestPath(condensedGraph, longestPathCondensed);
+
+    // Sanity checks.
+    {
+        // The longest path must begin at vLeft or at a strongly connected component
+        // that contains vLeft.
+        const CondensedGraph::edge_descriptor ce = longestPathCondensed.front();
+        const vertex_descriptor cv = source(ce, condensedGraph);
+        const vector<vertex_descriptor> vertices = condensedGraph[cv].vertices;
+        SHASTA2_ASSERT(std::ranges::find(vertices, vLeft) != vertices.end());
+    }
+    {
+        // The longest path must end at vRight or at a strongly connected component
+        // that contains vRight.
+        const CondensedGraph::edge_descriptor ce = longestPathCondensed.back();
+        const vertex_descriptor cv = target(ce, condensedGraph);
+        const vector<vertex_descriptor> vertices = condensedGraph[cv].vertices;
+        SHASTA2_ASSERT(std::ranges::find(vertices, vRight) != vertices.end());
+    }
+
+
+    // Construct the vertices of the longest path in the LocalAssembly5 graph.
+    // This begins at vLeft, ends at vRight, and its internal vertices
+    // are the internal vertices of the longestPathCondensed that correspond
+    // to a single vertex of the LocalAssembly5 graph
+    // (not a non-trivial strongly connected component).
+    vector<vertex_descriptor> assemblyPathVertices;
+    assemblyPathVertices.push_back(vLeft);
+    for(uint64_t i=1; i<longestPathCondensed.size(); i++) {
+        const CondensedGraph::edge_descriptor e = longestPathCondensed[i];
+        const CondensedGraph::vertex_descriptor v = source(e, condensedGraph);
+        const vector<vertex_descriptor>& vertices = condensedGraph[v].vertices;
+        if(vertices.size() == 1) {
+            const vertex_descriptor v = vertices.front();
+            assemblyPathVertices.push_back(v);
+        }
+    }
+    assemblyPathVertices.push_back(vRight);
+
+    if(html) {
+        html << "<br>Assembly path vertices:";
+        for(const vertex_descriptor v: assemblyPathVertices) {
+            html << " " << graph[v].kmerId;
+        }
+    }
+
 }
