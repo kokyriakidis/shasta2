@@ -4,6 +4,7 @@ using namespace shasta2;
 
 #include <filesystem>
 #include "fstream.hpp"
+#include "iostream.hpp"
 #include "stdexcept.hpp"
 #include "string.hpp"
 
@@ -68,7 +69,7 @@ void shasta2::graphvizToHtml(
     ifstream svgFile(svgFileName);
     html << svgFile.rdbuf();
     svgFile.close();
-    html << "</div>";
+    html << "</div>" << flush;
 
     // Remove the .svg file.
     std::filesystem::remove(svgFileName);
