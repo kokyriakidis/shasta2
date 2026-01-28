@@ -27,7 +27,7 @@ LocalAssembly4::LocalAssembly4(
     rightAnchorId(anchorPair.anchorIdB)
 {
     // EXPOSE WHEN CODE STABILIZES.
-    // const uint64_t minCoverage = 3;
+    const uint64_t minCoverage = 3;
 
     SHASTA2_ASSERT(std::ranges::is_sorted(additionalOrientedReadIds));
     if(html) {
@@ -51,7 +51,7 @@ LocalAssembly4::LocalAssembly4(
     // If coverage is too low, use LocalAssembly5 instead,
     // which can use OrientedReadIds that appear only on the left
     // or only on the right.
-    if(false /* commonOrientedReadInfos.size() < minCoverage */) {
+    if(commonOrientedReadInfos.size() < minCoverage) {
         if(html) {
             html << "<br><br>Switching to LocalAssembly5 due to low coverage<hr>";
         }

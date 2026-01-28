@@ -805,36 +805,81 @@ void LocalAssembly5::removeInaccessibleVertices()
 
 // Compute a dominator tree starting at vLeft
 // and the dominator tree path from vLeft to vRight.
+// To deal with possible cycles, we have to compute
+// the dominator tree on the condensed graph.
 void LocalAssembly5::computeDominatorTree()
 {
     using Graph = LocalAssembly5;
     Graph& graph = *this;
 
+    const bool debug = false;
+
+    // Create the CondensedGraph.
+    std::map<Graph::vertex_descriptor, CondensedGraph::vertex_descriptor> vertexMap;
+    CondensedGraph condensedGraph =
+        createCondensedGraph<Graph, CondensedGraph>(graph, vertexMap);
+
     // Compute the dominator tree.
     // This sets the dominator field of the vertices
     // reachable by leftAnchorVertex.
-    lengauer_tarjan_dominator_tree_general(graph, vLeft);
+    lengauer_tarjan_dominator_tree_general(condensedGraph, vertexMap[vLeft]);
 
-    // To compute the dominator tree path from vLeft
-    // to vRight we walk back the dominator tree
-    // starting at vRight.
-    dominatorTreePath.push_back(vRight);
-    while(true) {
-        const vertex_descriptor v = dominatorTreePath.back();
-        const vertex_descriptor dominator = graph[v].dominator;
-        if(dominator == null_vertex()) {
-            break;
-        } else {
-            dominatorTreePath.push_back(dominator);
+    // Compute the dominator tree path on the CondensedGraph.
+    vector<CondensedGraph::vertex_descriptor> condensedDominatorPath;
+    CondensedGraph::vertex_descriptor cv = vertexMap[vRight];
+    while(cv != CondensedGraph::null_vertex()) {
+        condensedDominatorPath.push_back(cv);
+        cv = condensedGraph[cv].dominator;
+    }
+    std::ranges::reverse(condensedDominatorPath);
+
+    if(debug) {
+        cout << "Dominator tree path on the condensed graph:";
+        for(const CondensedGraph::vertex_descriptor cv: condensedDominatorPath) {
+            const vector<vertex_descriptor>& vertices = condensedGraph[cv].vertices;
+            if(vertices.size() == 1) {
+                const vertex_descriptor v = vertices.front();
+                cout << " V" << graph[v].kmerId;
+            } else {
+                cout << " (" << vertices.size() << " vertices)";
+            }
+        }
+        cout << endl;
+    }
+
+
+    // Sanity checks.
+    {
+        // The first vertex of the condensedDominatorPath must contain vLeft.
+        const CondensedGraph::vertex_descriptor cv = condensedDominatorPath.front();
+        const vector<vertex_descriptor>& vertices = condensedGraph[cv].vertices;
+        SHASTA2_ASSERT(std::ranges::find(vertices, vLeft) != vertices.end());
+    }
+    {
+        // The last vertex of the condensedDominatorPath must contain vRight.
+        const CondensedGraph::vertex_descriptor cv = condensedDominatorPath.back();
+        const vector<vertex_descriptor>& vertices = condensedGraph[cv].vertices;
+        SHASTA2_ASSERT(std::ranges::find(vertices, vRight) != vertices.end());
+    }
+
+
+
+    // Create the dominator tree path in the LocalAssembly5 graph.
+    dominatorTreePath.clear();
+    dominatorTreePath.push_back(vLeft);
+    graph[vLeft].isOnDominatorTreePath = true;
+    for(uint64_t i=1; i<condensedDominatorPath.size()-1; i++) {
+        const CondensedGraph::vertex_descriptor cv = condensedDominatorPath[i];
+        const vector<vertex_descriptor>& vertices = condensedGraph[cv].vertices;
+        if(vertices.size() == 1) {
+            const vertex_descriptor v = vertices.front();
+            dominatorTreePath.push_back(v);
+            graph[v].isOnDominatorTreePath = true;
         }
     }
-    std::ranges::reverse(dominatorTreePath);
+    dominatorTreePath.push_back(vRight);
+    graph[vRight].isOnDominatorTreePath = true;
 
-    for(const vertex_descriptor v: dominatorTreePath) {
-        graph[v].isOnDominatorTreePath = true;
-    }
-    SHASTA2_ASSERT(dominatorTreePath.front() == vLeft);
-    SHASTA2_ASSERT(dominatorTreePath.back() == vRight);
 }
 
 
@@ -1064,21 +1109,6 @@ void LocalAssembly5::computeAssemblyPath()
     using Graph = LocalAssembly5;
     Graph& graph = *this;
 
-    // A condensed version of the LocalAssembly5 graph, used
-    // to compute the assembly path. Each strongly connected component
-    // of the LocalAssembly5 graph is collapsed into a single vertex.
-    // The CondensedGraph is guaranteed to be acyclic. See:
-    // https://en.wikipedia.org/wiki/Strongly_connected_component#Definitions
-    // https://cp-algorithms.com/graph/strongly-connected-components.html
-    class CondensedGraphVertex {
-    public:
-        vector<vertex_descriptor> vertices;
-    };
-    using CondensedGraph = boost::adjacency_list<
-        boost::listS,
-        boost::listS,
-        boost::bidirectionalS,
-        CondensedGraphVertex>;
     std::map<Graph::vertex_descriptor, CondensedGraph::vertex_descriptor> vertexMap;
     const CondensedGraph condensedGraph =
         createCondensedGraph<Graph, CondensedGraph>(graph, vertexMap);

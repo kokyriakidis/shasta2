@@ -56,7 +56,6 @@ public:
     };
     vector<Info> infos;
 
-    LocalAssembly5BaseClass::vertex_descriptor dominator = LocalAssembly5BaseClass::null_vertex();
     bool isOnDominatorTreePath = false;
 
     // These are used for approximate topological ordering.
@@ -301,4 +300,26 @@ private:
     void writeGraphviz(ostream&);
     void writeGraph();
     void writeKmers() const;
+
+
+    // A condensed version of the LocalAssembly5 graph, used
+    // to compute the assembly path. Each strongly connected component
+    // of the LocalAssembly5 graph is collapsed into a single vertex.
+    // The CondensedGraph is guaranteed to be acyclic. See:
+    // https://en.wikipedia.org/wiki/Strongly_connected_component#Definitions
+    // https://cp-algorithms.com/graph/strongly-connected-components.html
+    class CondensedGraphVertex;
+    using CondensedGraphBaseClass = boost::adjacency_list<
+        boost::listS,
+        boost::listS,
+        boost::bidirectionalS,
+        CondensedGraphVertex>;
+    class CondensedGraphVertex {
+    public:
+        vector<vertex_descriptor> vertices;
+        CondensedGraphBaseClass::vertex_descriptor dominator = null_vertex();
+    };
+    class CondensedGraph : public CondensedGraphBaseClass {
+    };
+
 };
