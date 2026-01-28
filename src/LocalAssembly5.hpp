@@ -88,6 +88,12 @@ public:
     // This is used for approximate topological ordering.
     // which is only used by writeGraphviz.
     bool isDagEdge = false;
+
+    bool isOnAssemblyPath = false;
+
+    // Default constructor.
+    LocalAssembly5Edge() {}
+
 };
 
 
@@ -284,7 +290,7 @@ private:
 
     // Compute the assembly path.
     void computeAssemblyPath();
-    vector<vertex_descriptor> assemblyPath;
+    vector<edge_descriptor> assemblyPath;
 
     void removeIsolatedVertices();
 

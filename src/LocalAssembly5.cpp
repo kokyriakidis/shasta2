@@ -97,13 +97,14 @@ LocalAssembly5::LocalAssembly5(
     removeLowCoverageEdges();
     SHASTA2_ASSERT(isReachable(*this, vLeft, vRight, 0));
     removeInaccessibleVertices();
-    if(html) {
-         html << "<h3>LocalAssembly5 graph after cleanup</h3>";
-        writeGraph();
-    }
 
-    // Compute the assembly path and assemble sequence.
+    // Compute the assembly path.
     computeAssemblyPath();
+
+    if(html) {
+         html << "<h3>Final LocalAssembly5 graph</h3>";
+         writeGraph();
+    }
 
 }
 
@@ -739,6 +740,11 @@ void LocalAssembly5::writeGraphviz(ostream& dot)
         // Thickness.
         dot << " penwidth=" << std::fixed << std::setprecision(2) << 0.3 * double(coverage);
 
+        // Color.
+        if(edge.isOnAssemblyPath) {
+            dot << " color=Green";
+        }
+
         // End edge attributes.
         dot << "]";
 
@@ -1155,10 +1161,92 @@ void LocalAssembly5::computeAssemblyPath()
     }
     assemblyPathVertices.push_back(vRight);
 
-    if(html) {
+    if(false) {
         html << "<br>Assembly path vertices:";
         for(const vertex_descriptor v: assemblyPathVertices) {
             html << " " << graph[v].kmerId;
+        }
+    }
+
+
+    // Now we create the assembly path.
+    // In most cases there is an edge between successive vertices of the assembly path.
+    assemblyPath.clear();
+    for(uint64_t i1=1; i1<assemblyPathVertices.size(); i1++) {
+        const uint64_t i0 = i1 - 1;
+
+        const vertex_descriptor v0 = assemblyPathVertices[i0];
+        const vertex_descriptor v1 = assemblyPathVertices[i1];
+
+        auto[e, edgeExists] = boost::edge(v0, v1, graph);
+        if(edgeExists) {
+            assemblyPath.push_back(e);
+            graph[e].isOnAssemblyPath = true;
+        } else {
+
+            // Use a shortest path between v0 and v1.
+            /*
+            cout << "Looking for a shortest path between V" <<
+                graph[v0].kmerId << " and V" << graph[v1].kmerId <<
+                "." << endl;
+            */
+            std::queue<vertex_descriptor> q;
+            q.push(v0);
+            std::map<vertex_descriptor, vertex_descriptor> predecessorMap;
+            bool found = false;
+            while(not q.empty()) {
+                const vertex_descriptor vA = q.front();
+                // cout << "Dequeued " << graph[vA].kmerId << endl;
+                q.pop();
+                BGL_FORALL_OUTEDGES(vA, e, graph, Graph) {
+                    const vertex_descriptor vB = target(e, graph);
+                    // cout << "Found " << graph[vB].kmerId << endl;
+                    if(not predecessorMap.contains(vB)) {
+                        // cout << "Queued " << graph[vB].kmerId << endl;
+                        predecessorMap.insert({vB, vA});
+                        q.push(vB);
+                        if(vB == v1) {
+                            found = true;
+                        }
+                    }
+                }
+                if(found) {
+                    break;
+                }
+
+            }
+            SHASTA2_ASSERT(found);
+
+            // Walk back the predecessorMap to find the shortest path.
+            vector<edge_descriptor> path;
+            vertex_descriptor v = v1;
+            while(v != v0) {
+                const vertex_descriptor vPrevious = predecessorMap[v];
+                auto[e, edgeExists] = edge(vPrevious, v, graph);
+                SHASTA2_ASSERT(edgeExists);
+                path.push_back(e);
+                v = vPrevious;
+            }
+            std::ranges::reverse(path);
+
+            /*
+            cout << "Found this shortest path between V" <<
+                graph[v0].kmerId << " and V" << graph[v1].kmerId <<
+                ":" << endl;
+            for(const edge_descriptor e: path) {
+                const vertex_descriptor vA = source(e, graph);
+                const vertex_descriptor vB = target(e, graph);
+                cout << "V" << graph[vA].kmerId << "->V" << graph[vB].kmerId << endl;
+
+            }
+            */
+
+            // Add this shortest path to the assembly path.
+            for(const edge_descriptor e: path) {
+                assemblyPath.push_back(e);
+                graph[e].isOnAssemblyPath = true;
+            }
+
         }
     }
 
