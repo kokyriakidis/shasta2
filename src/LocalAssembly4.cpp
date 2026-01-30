@@ -64,9 +64,9 @@ LocalAssembly4::LocalAssembly4(
             additionalOrientedReadIds);
 
         // For now ignore the output of LocalAssembly5 and continue with LocalAssembly4.
-        // sequence = localAssembly5.sequence;
-        // coverage = localAssembly5.coverage;
-        // return;
+        sequence = localAssembly5.sequence;
+        coverage = localAssembly5.coverage;
+        return;
     }
 
 

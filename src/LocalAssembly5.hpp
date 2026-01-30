@@ -294,6 +294,11 @@ private:
 
     void removeIsolatedVertices();
 
+    // Assemble sequence.
+    void assemble();
+    void assemble(edge_descriptor);
+
+
     // Html output.
     void writeInput(
         const AnchorPair& anchorPair,
@@ -306,6 +311,7 @@ private:
     void writeGraphviz(ostream&);
     void writeGraph();
     void writeKmers() const;
+    void writeAssembledSequence() const;
 
 
     // A condensed version of the LocalAssembly5 graph, used

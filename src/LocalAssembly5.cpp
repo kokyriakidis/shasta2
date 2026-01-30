@@ -1,5 +1,6 @@
 // Shasta.
 #include "LocalAssembly5.hpp"
+// #include "abpoaWrapper.hpp"
 #include "Anchor.hpp"
 #include "AnchorPair.hpp"
 #include "approximateTopologicalSort.hpp"
@@ -13,6 +14,7 @@
 #include "MarkerKmers.hpp"
 #include "Markers.hpp"
 #include "orderPairs.hpp"
+#include "poastaWrapper.hpp"
 #include "Reads.hpp"
 #include "tmpDirectory.hpp"
 #include "transitiveReduction.hpp"
@@ -104,6 +106,12 @@ LocalAssembly5::LocalAssembly5(
     if(html) {
          html << "<h3>Final LocalAssembly5 graph</h3>";
          writeGraph();
+    }
+
+    // Assemble sequence.
+    assemble();
+    if(html) {
+        writeAssembledSequence();
     }
 
 }
@@ -1249,5 +1257,364 @@ void LocalAssembly5::computeAssemblyPath()
 
         }
     }
+
+}
+
+
+
+// Assemble all sequence.
+void LocalAssembly5::assemble()
+{
+    for(const edge_descriptor e: assemblyPath) {
+        assemble(e);
+    }
+}
+
+
+
+// Assemble the sequence contributed by a single edge
+// of the assembly path.
+void LocalAssembly5::assemble(edge_descriptor e)
+{
+    const uint32_t kHalf = uint32_t(anchors.k / 2);
+
+    using Graph = LocalAssembly5;
+    Graph& graph = *this;
+    const LocalAssembly5Edge& edge = graph[e];
+
+    const uint64_t sequenceBegin = sequence.size();
+
+    if(html) {
+        const vertex_descriptor v0 = source(e, graph);
+        const vertex_descriptor v1 = target(e, graph);
+        html << "<h3>Assembly details for edge V" << graph[v0].kmerId <<
+            "&#x27a1;V" << graph[v1].kmerId <<
+            ", coverage " << edge.infos.size() << "</h3>\n"
+            "<table><tr>"
+            "<th>Oriented<br>read id"
+            "<th>Left<br>ordinal"
+            "<th>Right<br>ordinal"
+            "<th>Ordinal<br>offset"
+            "<th>Left<br>position"
+            "<th>Right<br>position"
+            "<th>Sequence<br>length"
+            "<th class=left>Sequence"
+            "\n";
+
+        for(const LocalAssembly5Edge::Info& edgeInfo: edge.infos) {
+            const OrientedReadInfo& orientedReadInfo = orientedReadInfos[edgeInfo.orientedReadIndex];
+            const OrientedReadId orientedReadId = orientedReadInfo.orientedReadId;
+
+            const uint32_t ordinal0 = edgeInfo.ordinal0;
+            const uint32_t ordinal1 = edgeInfo.ordinal1;
+            SHASTA2_ASSERT(ordinal1 > ordinal0);
+            const uint32_t ordinalOffset = ordinal1 - ordinal0;
+
+            const auto orientedReadMarkers = anchors.markers[orientedReadId.getValue()];
+            const uint32_t position0 = orientedReadMarkers[ordinal0].position + kHalf;
+            const uint32_t position1 = orientedReadMarkers[ordinal1].position + kHalf;
+            SHASTA2_ASSERT(position1 > position0);
+            const uint32_t positionOffset = position1 - position0;
+
+            html <<
+                "<tr>"
+                "<td class=centered>" << orientedReadId <<
+                "<td class=centered>" << ordinal0 <<
+                "<td class=centered>" << ordinal1 <<
+                "<td class=centered>" << ordinalOffset <<
+                "<td class=centered>" << position0 <<
+                "<td class=centered>" << position1 <<
+                "<td class=centered>" << positionOffset <<
+                "<td class=left style='font-family:monospace;white-space:nowrap'>";
+            for(uint32_t position=position0; position!=position1; position++) {
+                html << anchors.reads.getOrientedReadBase(orientedReadId, position);
+            }
+
+            html << "\n";
+        }
+        html << "</table>\n";
+    }
+
+
+
+    // Gather distinct sequences and their coverage.
+    class DistinctSequence {
+    public:
+        shared_ptr< vector<Base> > sequencePointer;
+        const vector<Base>& sequence() const
+        {
+            return *sequencePointer;
+        }
+        uint64_t coverage;
+
+        // Order by decreasing coverage.
+        bool operator<(const DistinctSequence& that) {
+            return coverage > that.coverage;
+        }
+    };
+    vector<DistinctSequence> distinctSequences;
+    vector<Base> orientedReadSequence;
+
+    for(const LocalAssembly5Edge::Info& edgeInfo: edge.infos) {
+        const OrientedReadInfo& orientedReadInfo = orientedReadInfos[edgeInfo.orientedReadIndex];
+        const OrientedReadId orientedReadId = orientedReadInfo.orientedReadId;
+
+        const uint32_t ordinal0 = edgeInfo.ordinal0;
+        const uint32_t ordinal1 = edgeInfo.ordinal1;
+        SHASTA2_ASSERT(ordinal1 > ordinal0);
+
+        const auto orientedReadMarkers = anchors.markers[orientedReadId.getValue()];
+        const uint32_t position0 = orientedReadMarkers[ordinal0].position + kHalf;
+        const uint32_t position1 = orientedReadMarkers[ordinal1].position + kHalf;
+        SHASTA2_ASSERT(position1 > position0);
+
+        orientedReadSequence.clear();
+        for(uint32_t position=position0; position!=position1; position++) {
+            const Base base = anchors.reads.getOrientedReadBase(orientedReadId, position);
+            orientedReadSequence.push_back(base);
+        }
+
+        // See if this sequence is already in our DistinctSequences.
+        bool done = false;
+        for(DistinctSequence& distinctSequence: distinctSequences) {
+            if(distinctSequence.sequence() == orientedReadSequence) {
+                ++distinctSequence.coverage;
+                done = true;
+                break;
+            }
+        }
+
+        // If we did not have it, create it with coverage 1.
+        if(not done) {
+            DistinctSequence& distinctSequence = distinctSequences.emplace_back();
+            distinctSequence.sequencePointer = make_shared< vector<Base> >(orientedReadSequence);
+            distinctSequence.coverage = 1;
+        }
+    }
+    sort(distinctSequences.begin(), distinctSequences.end());
+
+
+
+    // Write the DistinctSequences.
+    if(html) {
+        html <<
+            "<h4>Distinct sequences</h4>"
+            "<table><tr>"
+            "<th>Coverage<th>Length<th>Sequence";
+        for(const DistinctSequence& distinctSequence: distinctSequences) {
+            const vector<Base>& sequence = distinctSequence.sequence();
+            html <<
+                "<tr>"
+                "<td class=centered>" << distinctSequence.coverage <<
+                "<td class=centered>" << sequence.size() <<
+                "<td class=left style='font-family:monospace;white-space:nowrap''>";
+            std::ranges::copy(sequence, ostream_iterator<Base>(html));
+        }
+        html << "</table>";
+    }
+
+
+
+    // If there is a dominant sequence, use it as the consensus.
+    const uint64_t maximumCoverage = distinctSequences.front().coverage;
+    const uint64_t totalCoverage = edge.infos.size();
+    if(maximumCoverage > totalCoverage/2) {
+        const vector<Base>& dominantSequence = distinctSequences.front().sequence();
+        std::ranges::copy(dominantSequence, back_inserter(sequence));
+        for(uint64_t i=0; i<dominantSequence.size(); i++) {
+            coverage.push_back(maximumCoverage);
+        }
+        if(html) {
+            html << "<br>The dominant sequence with coverage " << maximumCoverage <<
+                " was used as the consensus.";
+            if(maximumCoverage < totalCoverage) {
+                html << "<br>Stored base coverages are lower bounds.";
+            }
+        }
+        const uint64_t sequenceEnd = sequence.size();
+        html << "<br>This edge assembled positions [" << sequenceBegin <<
+            "," << sequenceEnd <<
+            ") of the sequence of this local assembly.";
+        return;
+    }
+
+
+
+    // If getting here, we have to run the multiple sequence alignment of the distinct sequences.
+    vector< pair<vector<Base>, uint64_t> > sequencesWithCoverage;
+    for(const DistinctSequence& distinctSequence: distinctSequences) {
+         sequencesWithCoverage.emplace_back(distinctSequence.sequence(), distinctSequence.coverage);
+    }
+    vector< pair<Base, uint64_t> > consensus;
+    vector< vector<AlignedBase> > alignment;
+    vector<AlignedBase> alignedConsensus;
+    poasta(sequencesWithCoverage, consensus, alignment, alignedConsensus);
+
+    // Store assembled sequence
+    for(const auto& [base, baseCoverage]: consensus) {
+        sequence.push_back(base);
+        coverage.push_back(baseCoverage);
+    }
+
+
+
+    // Write the multiple sequence alignment of the distinct sequences.
+    if(html) {
+        html <<
+            "<h4>Multiple sequence alignment of the distinct sequences</h4>"
+            "<table><tr>"
+            "<th>Coverage<th>Length<th>Aligned sequence";
+        for(uint64_t i=0; i<distinctSequences.size(); i++) {
+            const DistinctSequence& distinctSequence = distinctSequences[i];
+            const vector<Base>& sequence = distinctSequence.sequence();
+            const vector<AlignedBase>& alignmentRow = alignment[i];
+            html <<
+                "<tr>"
+                "<td class=centered>" << distinctSequence.coverage <<
+                "<td class=centered>" << sequence.size() <<
+                "<td class=left style='font-family:monospace;white-space:nowrap'>";
+            for(uint64_t i=0; i<alignmentRow.size(); i++) {
+                const AlignedBase base = alignmentRow[i];
+                const bool isMismatch = (base != alignedConsensus[i]);
+                if(isMismatch) {
+                    html << "<span style='background-color:Pink'>";
+                }
+                html << base;
+                if(isMismatch) {
+                    html << "</span>";
+                }
+            }
+        }
+
+        // Add a row with aligned consensus.
+        html << "<tr><th>Consensus<td class=centered>" << consensus.size() <<
+            "<td class=left style='font-family:monospace;white-space:nowrap'>";
+        uint64_t consensusPosition = 0;
+        for(uint64_t i=0; i<alignedConsensus.size(); i++) {
+            const AlignedBase base = alignedConsensus[i];
+            if(base.isGap()) {
+                html << alignedConsensus[i];
+            } else {
+                const uint64_t coverage = consensus[consensusPosition].second;
+                html << "<span title='Position " << consensusPosition <<
+                    ", coverage " << coverage << "'";
+                if(coverage != edge.infos.size()) {
+                    html << " style='background-color:pink'";
+                }
+                html << ">";
+                html << alignedConsensus[i];
+                html << "</span>";
+                ++consensusPosition;
+            }
+        }
+        html << "</table>";
+
+
+
+        // Write consensus and its coverage.
+        html <<
+            "<h4>Consensus (" << consensus.size() << " bases)</h4>"
+            "<table>";
+
+        // Consensus.
+        html <<
+            "<tr><th class=left>Consensus<td class=left style='font-family:monospace;white-space:nowrap'>";
+        for(uint64_t position=0; position<consensus.size(); position++) {
+            html << "<span title='Position " << position <<
+                ", coverage " << consensus[position].second << "'";
+            if(consensus[position].second != edge.infos.size()) {
+                html << " style='background-color:Pink'";
+            }
+            html << ">";
+            html << consensus[position].first;
+            html << "</span>";
+        }
+
+        // Consensus coverage.
+        std::map<uint64_t, char> coverageLegend;
+        html <<
+            "<tr><th class=left>Coverage<td class=left style='font-family:monospace;white-space:nowrap'>";
+        for(uint64_t position=0; position<consensus.size(); position++) {
+            const uint64_t coverage = consensus[position].second;
+            char c = '*';
+            if(coverage < 10) {
+                c = char(coverage) + '0';
+            } else if(coverage < 36) {
+                c = (char(coverage) - char(10)) + 'A';
+            }
+            coverageLegend[coverage] = c;
+            html << "<span title='Position " << position <<
+                ", coverage " << consensus[position].second << "'";
+            if(consensus[position].second != edge.infos.size()) {
+                html << " style='background-color:Pink'";
+            }
+            html << "'>";
+            html << c;
+            html << "</span>";
+        }
+        html << "</table>\n";
+
+        // Coverage legend.
+        html << "<br><table><tr><th>Coverage<th>Symbol";
+        for(const auto&[coverage, character]: coverageLegend) {
+            html << "<tr><td class=centered>" << coverage <<
+                "<td class=centered>" << character;
+        }
+        html << "</table>";
+
+
+    }
+
+    const uint64_t sequenceEnd = sequence.size();
+    html << "<br>This edge assembled positions [" << sequenceBegin <<
+        "," << sequenceEnd <<
+        ") of the sequence of this local assembly.";
+}
+
+
+
+
+
+
+void LocalAssembly5::writeAssembledSequence() const
+{
+    html <<
+        "<h4>Assembled sequence</h4>";
+
+    html <<
+        "<table>"
+        "<tr><th class=left>Consensus sequence length<td class=left>" << sequence.size() <<
+        "<tr><th class=left>Consensus sequence"
+        "<td style='font-family:monospace;white-space:nowrap''>";
+
+    for(uint64_t position=0; position<sequence.size(); position++) {
+        const Base b = sequence[position];
+        html << "<span title='" << position << "'>" << b << "</span>";
+    }
+
+    html <<
+        "<tr><th class=left >Coverage"
+        "<td style='font-family:monospace;white-space:nowrap''>";
+
+    std::map<uint64_t, char> coverageLegend;
+
+    for(uint64_t position=0; position<sequence.size(); position++) {
+        const uint64_t coverageThisPosition = coverage[position];
+        const char c = (coverageThisPosition < 10) ? char(coverageThisPosition + '0') : char(coverageThisPosition - 10 + 'A');
+        coverageLegend.insert({coverageThisPosition, c});
+
+        html << c;
+
+    }
+
+    html << "</table><br><br>";
+
+    // Write the coverage legend.
+    html << "<p><table><tr><th>Coverage<th>Symbol";
+    for(const auto& p: coverageLegend) {
+        html << "<tr><td class=centered>" << p.first << "<td class=centered>" << p.second;
+    }
+    html << "</table>";
+
 
 }
