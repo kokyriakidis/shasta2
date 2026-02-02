@@ -69,6 +69,11 @@ public:
 
 
 
+// For edge v0->v1 we store:
+// - vector<Info> infos: using all the reads that visit v1
+//   immediately after visiting v0.
+// - vector<Info> extendedInfos: using all the reads that visit v1
+//   after visiting v0, but not immediately after.
 class shasta2::LocalAssembly5Edge {
 public:
     class Info {
@@ -84,6 +89,7 @@ public:
         uint32_t ordinal1;
     };
     vector<Info> infos;
+    vector<Info> extendedInfos;
 
     // This is used for approximate topological ordering.
     // which is only used by writeGraphviz.

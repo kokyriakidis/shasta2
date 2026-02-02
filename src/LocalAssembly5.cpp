@@ -1,6 +1,6 @@
 // Shasta.
 #include "LocalAssembly5.hpp"
-// #include "abpoaWrapper.hpp"
+#include "abpoaWrapper.hpp"
 #include "Anchor.hpp"
 #include "AnchorPair.hpp"
 #include "approximateTopologicalSort.hpp"
@@ -563,7 +563,8 @@ void LocalAssembly5::gatherKmers()
 // Create the graph using the current ordinalsForAssembly.
 void LocalAssembly5::createGraph()
 {
-    LocalAssembly5& graph = *this;
+    using Graph = LocalAssembly5;
+    Graph& graph = *this;
 
     SHASTA2_ASSERT(binary_search(kmers.begin(), kmers.end(), leftKmer));
     SHASTA2_ASSERT(binary_search(kmers.begin(), kmers.end(), rightKmer));
@@ -639,6 +640,45 @@ void LocalAssembly5::createGraph()
             info.orientedReadIndex = orientedReadIndex;
             info.ordinal0 = ordinal0;
             info.ordinal1 = ordinal1;
+        }
+    }
+
+
+
+    // Fill in the extendedInfos of the edges.
+    BGL_FORALL_EDGES(e, graph, Graph) {
+        LocalAssembly5Edge& edge = graph[e];
+
+        const vertex_descriptor v0 = source(e, graph);
+        const vertex_descriptor v1 = target(e, graph);
+
+        const LocalAssembly5Vertex& vertex0 = graph[v0];
+        const LocalAssembly5Vertex& vertex1 = graph[v1];
+
+        const vector<LocalAssembly5Vertex::Info>& infos0 = vertex0.infos;
+        const vector<LocalAssembly5Vertex::Info>& infos1 = vertex1.infos;
+
+        // Joint loop over the infos of the two vertices.
+        auto it0 = infos0.begin();
+        auto it1 = infos1.begin();
+        const auto end0 = infos0.end();
+        const auto end1 = infos1.end();
+        while((it0 != end0) and (it1 != end1)) {
+            if(it0->orientedReadIndex < it1->orientedReadIndex) {
+                ++it0;
+            }
+            else if(it1->orientedReadIndex < it0->orientedReadIndex) {
+                ++it1;
+            } else {
+                if(it0->ordinal < it1->ordinal) {
+                    LocalAssembly5Edge::Info& info = edge.extendedInfos.emplace_back();
+                    info.orientedReadIndex = it0->orientedReadIndex;
+                    info.ordinal0 = it0->ordinal;
+                    info.ordinal1 = it1->ordinal;
+                }
+                ++it0;
+                ++it1;
+            }
         }
     }
 
@@ -730,6 +770,7 @@ void LocalAssembly5::writeGraphviz(ostream& dot)
         const vertex_descriptor v0 = source(e, graph);
         const vertex_descriptor v1 = target(e, graph);
         const uint64_t coverage = edge.infos.size();
+        const uint64_t extendedCoverage = edge.extendedInfos.size();
         const uint32_t offset = edgeOffset(e);
 
         dot << graph[v0].kmerId << "->" << graph[v1].kmerId;
@@ -738,15 +779,15 @@ void LocalAssembly5::writeGraphviz(ostream& dot)
         dot << "[";
 
         // Label.
-        dot << "label=\"" << coverage <<
+        dot << "label=\"" << coverage << "/" << extendedCoverage <<
             "\\n" << offset << "\"";
 
         // Tooltip.
-        dot << " tooltip=\"" << coverage <<
+        dot << " tooltip=\"" << coverage << "/" << extendedCoverage <<
             "\\n" << offset << "\"";
 
         // Thickness.
-        dot << " penwidth=" << std::fixed << std::setprecision(2) << 0.3 * double(coverage);
+        dot << " penwidth=" << std::fixed << std::setprecision(2) << 0.3 * double(extendedCoverage);
 
         // Color.
         if(edge.isOnAssemblyPath) {
@@ -994,7 +1035,7 @@ void LocalAssembly5::removeLowCoverageEdges(
     public:
         bool operator()(const edge_descriptor& e) const
         {
-            return (*graph)[e].infos.size() >= *minCoveragePointer;
+            return (*graph)[e].extendedInfos.size() >= *minCoveragePointer;
         }
         EdgePredicate(const Graph& graph, uint64_t* minCoveragePointer) :
             graph(&graph),
@@ -1026,13 +1067,13 @@ void LocalAssembly5::removeLowCoverageEdges(
     // Remove edges with lower coverage.
     vector<edge_descriptor> edgesToBeRemoved;
     BGL_FORALL_OUTEDGES(vA, e, graph, Graph) {
-        if(graph[e].infos.size() < minCoverage) {
+        if(graph[e].extendedInfos.size() < minCoverage) {
             edgesToBeRemoved.push_back(e);
         }
     }
     for(const vertex_descriptor v: inBetweenVertices) {
         BGL_FORALL_OUTEDGES(v, e, graph, Graph) {
-            if(graph[e].infos.size() < minCoverage) {
+            if(graph[e].extendedInfos.size() < minCoverage) {
                 edgesToBeRemoved.push_back(e);
             }
         }
@@ -1289,7 +1330,7 @@ void LocalAssembly5::assemble(edge_descriptor e)
         const vertex_descriptor v1 = target(e, graph);
         html << "<h3>Assembly details for edge V" << graph[v0].kmerId <<
             "&#x27a1;V" << graph[v1].kmerId <<
-            ", coverage " << edge.infos.size() << "</h3>\n"
+            ", coverage " << edge.extendedInfos.size() << "</h3>\n"
             "<table><tr>"
             "<th>Oriented<br>read id"
             "<th>Left<br>ordinal"
@@ -1301,7 +1342,7 @@ void LocalAssembly5::assemble(edge_descriptor e)
             "<th class=left>Sequence"
             "\n";
 
-        for(const LocalAssembly5Edge::Info& edgeInfo: edge.infos) {
+        for(const LocalAssembly5Edge::Info& edgeInfo: edge.extendedInfos) {
             const OrientedReadInfo& orientedReadInfo = orientedReadInfos[edgeInfo.orientedReadIndex];
             const OrientedReadId orientedReadId = orientedReadInfo.orientedReadId;
 
@@ -1355,7 +1396,7 @@ void LocalAssembly5::assemble(edge_descriptor e)
     vector<DistinctSequence> distinctSequences;
     vector<Base> orientedReadSequence;
 
-    for(const LocalAssembly5Edge::Info& edgeInfo: edge.infos) {
+    for(const LocalAssembly5Edge::Info& edgeInfo: edge.extendedInfos) {
         const OrientedReadInfo& orientedReadInfo = orientedReadInfos[edgeInfo.orientedReadIndex];
         const OrientedReadId orientedReadId = orientedReadInfo.orientedReadId;
 
@@ -1417,7 +1458,7 @@ void LocalAssembly5::assemble(edge_descriptor e)
 
     // If there is a dominant sequence, use it as the consensus.
     const uint64_t maximumCoverage = distinctSequences.front().coverage;
-    const uint64_t totalCoverage = edge.infos.size();
+    const uint64_t totalCoverage = edge.extendedInfos.size();
     if(maximumCoverage > totalCoverage/2) {
         const vector<Base>& dominantSequence = distinctSequences.front().sequence();
         std::ranges::copy(dominantSequence, back_inserter(sequence));
@@ -1448,7 +1489,7 @@ void LocalAssembly5::assemble(edge_descriptor e)
     vector< pair<Base, uint64_t> > consensus;
     vector< vector<AlignedBase> > alignment;
     vector<AlignedBase> alignedConsensus;
-    poasta(sequencesWithCoverage, consensus, alignment, alignedConsensus);
+    abpoa(sequencesWithCoverage, consensus, alignment, alignedConsensus);
 
     // Store assembled sequence
     for(const auto& [base, baseCoverage]: consensus) {
@@ -1498,7 +1539,7 @@ void LocalAssembly5::assemble(edge_descriptor e)
                 const uint64_t coverage = consensus[consensusPosition].second;
                 html << "<span title='Position " << consensusPosition <<
                     ", coverage " << coverage << "'";
-                if(coverage != edge.infos.size()) {
+                if(coverage != edge.extendedInfos.size()) {
                     html << " style='background-color:pink'";
                 }
                 html << ">";
@@ -1522,7 +1563,7 @@ void LocalAssembly5::assemble(edge_descriptor e)
         for(uint64_t position=0; position<consensus.size(); position++) {
             html << "<span title='Position " << position <<
                 ", coverage " << consensus[position].second << "'";
-            if(consensus[position].second != edge.infos.size()) {
+            if(consensus[position].second != edge.extendedInfos.size()) {
                 html << " style='background-color:Pink'";
             }
             html << ">";
@@ -1545,7 +1586,7 @@ void LocalAssembly5::assemble(edge_descriptor e)
             coverageLegend[coverage] = c;
             html << "<span title='Position " << position <<
                 ", coverage " << consensus[position].second << "'";
-            if(consensus[position].second != edge.infos.size()) {
+            if(consensus[position].second != edge.extendedInfos.size()) {
                 html << " style='background-color:Pink'";
             }
             html << "'>";
