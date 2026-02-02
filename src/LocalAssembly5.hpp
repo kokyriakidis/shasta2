@@ -140,6 +140,7 @@ private:
     const uint64_t minVertexCoverage = 3;
 
     const Anchors& anchors;
+    uint64_t abpoaMaxLength;
     ostream& html;
 
     // The two anchors of the AnchorPair used for this assembly.

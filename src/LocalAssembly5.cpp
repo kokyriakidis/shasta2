@@ -37,12 +37,13 @@ using namespace shasta2;
 
 LocalAssembly5::LocalAssembly5(
     const Anchors& anchors,
-    [[maybe_unused]] uint64_t abpoaMaxLength,
+    uint64_t abpoaMaxLength,
     ostream& html,
     [[maybe_unused]] bool debug,
     const AnchorPair& anchorPair,
     const vector<OrientedReadId>& additionalOrientedReadIds) :
     anchors(anchors),
+    abpoaMaxLength(abpoaMaxLength),
     html(html),
     leftAnchorId(anchorPair.anchorIdA),
     rightAnchorId(anchorPair.anchorIdB)
@@ -1483,13 +1484,19 @@ void LocalAssembly5::assemble(edge_descriptor e)
 
     // If getting here, we have to run the multiple sequence alignment of the distinct sequences.
     vector< pair<vector<Base>, uint64_t> > sequencesWithCoverage;
+    uint64_t maxLength = 0;
     for(const DistinctSequence& distinctSequence: distinctSequences) {
          sequencesWithCoverage.emplace_back(distinctSequence.sequence(), distinctSequence.coverage);
+         maxLength = max(maxLength, distinctSequence.sequence().size());
     }
     vector< pair<Base, uint64_t> > consensus;
     vector< vector<AlignedBase> > alignment;
     vector<AlignedBase> alignedConsensus;
-    abpoa(sequencesWithCoverage, consensus, alignment, alignedConsensus);
+    if(maxLength < abpoaMaxLength) {
+        abpoa(sequencesWithCoverage, consensus, alignment, alignedConsensus);
+    } else {
+        poasta(sequencesWithCoverage, consensus, alignment, alignedConsensus);
+    }
 
     // Store assembled sequence
     for(const auto& [base, baseCoverage]: consensus) {
