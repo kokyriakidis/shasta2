@@ -211,5 +211,5 @@ void shasta2::testLongBaseSequence()
 
 uint64_t LongBaseSequences::totalBaseCount() const
 {
-    return std::accumulate(baseCount.begin(), baseCount.end(), 0);
+    return std::accumulate(baseCount.begin(), baseCount.end(), 0UL);
 }
