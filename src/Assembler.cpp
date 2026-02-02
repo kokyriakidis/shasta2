@@ -383,11 +383,12 @@ void Assembler::accessReadSummaries()
 
 void Assembler::writeReadSummaries() const
 {
-    ofstream csv("ReadSummaries.csv");
+    ofstream csv("ReadSummary.csv");
     csv <<
         "ReadId,"
+        "Length,"
         "Use for assembly,"
-        "Is palindromic"
+        "Is palindromic,"
         "Has high error rare,"
         "Palindromic rate,"
         "Initial marker error rate,"
@@ -402,9 +403,10 @@ void Assembler::writeReadSummaries() const
 
         csv <<
             readId << "," <<
+            reads().getReadSequenceLength(readId) << "," <<
             (readSummary.isInUse() ? "Yes" : "No") << "," <<
-            (readSummary.isPalindromic ? "Yes" : "No") <<
-            (readSummary.hasHighErrorRate ? "Yes" : "No") <<
+            (readSummary.isPalindromic ? "Yes" : "No") << "," <<
+            (readSummary.hasHighErrorRate ? "Yes" : "No") << "," <<
             readSummary.palindromicRate << "," <<
             readSummary.initialMarkerErrorRate << "," <<
             readSummary.markerErrorRate << "," <<
