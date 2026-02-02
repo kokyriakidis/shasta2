@@ -296,7 +296,39 @@ void LocalAssembly4::assemble()
                 "<td class=centered>" << distinctSequence.coverage <<
                 "<td class=centered>" << sequence.size() <<
                 "<td class=left style='font-family:monospace;white-space:nowrap''>";
-            std::ranges::copy(alignmentRow, ostream_iterator<AlignedBase>(html));
+            for(uint64_t position=0; position<alignmentRow.size(); position++) {
+                const AlignedBase base = alignmentRow[position];
+                const bool isMismatch = (base != alignedConsensus[position]);
+                if(isMismatch) {
+                    html << "<span style='background-color:Pink'>";
+                }
+                html << base;
+                if(isMismatch) {
+                    html << "</span>";
+                }
+            }
+        }
+
+        // Add a row with aligned consensus.
+        html << "<tr><th>Consensus<td class=centered>" << consensus.size() <<
+            "<td class=left style='font-family:monospace;white-space:nowrap'>";
+        uint64_t consensusPosition = 0;
+        for(uint64_t position=0; position<alignedConsensus.size(); position++) {
+            const AlignedBase base = alignedConsensus[position];
+            if(base.isGap()) {
+                html << alignedConsensus[position];
+            } else {
+                const uint64_t coverage = consensus[consensusPosition].second;
+                html << "<span title='Position " << consensusPosition <<
+                    ", coverage " << coverage << "'";
+                if(coverage != totalCoverage) {
+                    html << " style='background-color:pink'";
+                }
+                html << ">";
+                html << alignedConsensus[position];
+                html << "</span>";
+                ++consensusPosition;
+            }
         }
         html << "</table>";
     }
@@ -397,7 +429,16 @@ void LocalAssembly4::writeAssembledSequence() const
         "<p><span style='font-family:monospace;white-space:nowrap''>"
         ">LocalAssembly " << sequence.size() <<
         "<br>";
-    std::ranges::copy(sequence, ostream_iterator<Base>(html));
+    for(uint64_t position=0; position<sequence.size(); position++) {
+        html << "<span title='Position " << position <<
+            ", coverage " << coverage[position] << "'";
+        if(coverage[position] != commonOrientedReadInfos.size()) {
+            html << " style='background-color:Pink'";
+        }
+        html << ">";
+        html << sequence[position];
+        html << "</span>";
+    }
     html << "</span><br><br>";
 
     html <<
@@ -407,36 +448,45 @@ void LocalAssembly4::writeAssembledSequence() const
         "<td style='font-family:monospace;white-space:nowrap''>";
 
     for(uint64_t position=0; position<sequence.size(); position++) {
-        const Base b = sequence[position];
-        html << "<span title='" << position << "'>" << b << "</span>";
+        html << "<span title='Position " << position <<
+            ", coverage " << coverage[position] << "'";
+        if(coverage[position] != commonOrientedReadInfos.size()) {
+            html << " style='background-color:Pink'";
+        }
+        html << ">";
+        html << sequence[position];
+        html << "</span>";
     }
 
     html <<
         "<tr><th class=left >Coverage"
         "<td style='font-family:monospace;white-space:nowrap''>";
 
-    std::map<char, uint64_t> coverageLegend;
+    std::map<uint64_t, char> coverageLegend;
 
     for(uint64_t position=0; position<sequence.size(); position++) {
-        const uint64_t coverageThisPosition = coverage[position];
-        const char c = (coverageThisPosition < 10) ? char(coverageThisPosition + '0') : char(coverageThisPosition - 10 + 'A');
-        coverageLegend.insert(make_pair(c, coverageThisPosition));
-
-        if(coverageThisPosition < commonOrientedReadInfos.size()) {
-            html << "<span style='background-color:Pink'>";
+        const uint64_t cov= coverage[position];
+        char coverageCharacter = '*';
+        if(cov < 10) {
+            coverageCharacter = char(cov) + '0';
+        } else if(cov < 36) {
+            coverageCharacter = (char(cov) - char(10)) + 'A';
         }
-
-        html << c;
-
-        if(coverageThisPosition < commonOrientedReadInfos.size()) {
-            html << "</span>";
+        coverageLegend[cov] = coverageCharacter;
+        html << "<span title='Position " << position <<
+            ", coverage " << cov << "'";
+        if(cov != commonOrientedReadInfos.size()) {
+            html << " style='background-color:Pink'";
         }
+        html << "'>";
+        html << coverageCharacter;
+        html << "</span>";
     }
 
     html << "</table><br><br>";
 
     // Write the coverage legend.
-    html << "<p><table><tr><th>Symbol<th>Coverage";
+    html << "<p><table><tr><th>Coverage<th>Symbol";
     for(const auto& p: coverageLegend) {
         html << "<tr><td class=centered>" << p.first << "<td class=centered>" << p.second;
     }
