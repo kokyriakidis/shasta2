@@ -4,6 +4,7 @@
 #include "Base.hpp"
 #include "BitCounter.hpp"
 #include "bitReversal.hpp"
+#include "deduplicate.hpp"
 
 // Standard library.
 #include "algorithm.hpp"
@@ -273,6 +274,66 @@ public:
         default: SHASTA2_ASSERT(0);
         }
     }
+
+
+
+    // Count the number of distinct N-mers in the first k bases.
+    template<uint64_t N> uint64_t count(uint64_t k) const
+    {
+        // Handle trivial cases.
+        if(N > k) {
+            return 0;
+        }
+        if(N == k) {
+            return 1;
+        }
+
+        // Gather the bases.
+        array<Base, capacity> sequence;
+        for(uint64_t i=0; i<k; i++) {
+            sequence[i] = (*this)[i];
+        }
+
+        // Gather N-mers starting at each position.
+        vector<array<Base, N> > nMers;
+        nMers.reserve(k + 1 - N);
+        for(uint64_t i=0; i <= k-N; i++) {
+            array<Base, N>& nMer = nMers.emplace_back();
+            for(uint64_t j=0; j<N; j++) {
+                nMer[j] = sequence[i+j];
+            }
+        }
+
+#if 0
+        for(const auto& nMer: nMers) {
+            for(uint64_t j=0; j<N; j++) {
+                cout << nMer[j];
+            }
+            cout << endl;
+        }
+#endif
+
+        // Return the number of distinct N-mers.
+        deduplicate(nMers);
+        return nMers.size();
+    }
+
+
+
+    // Non-templated version.
+    uint64_t count(uint64_t N, uint64_t k) const
+    {
+        switch(N) {
+        case 1: return count<1>(k);
+        case 2: return count<2>(k);
+        case 3: return count<3>(k);
+        case 4: return count<4>(k);
+        case 5: return count<5>(k);
+        case 6: return count<6>(k);
+        default: SHASTA2_ASSERT(0);
+        }
+    }
+
 
 
     // The data are left public to facilitate low level custom code.

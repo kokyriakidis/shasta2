@@ -16,6 +16,9 @@ void shasta2::testShortBaseSequence()
         string kmerString;
         cout << "Enter a k-mer." << endl;
         cin >> kmerString;
+        if(not cin) {
+            break;
+        }
         const uint64_t k = kmerString.size();
         if(k > 128) {
             cout << "Can be at most 128 bases long." << endl;
@@ -54,5 +57,15 @@ void shasta2::testShortBaseSequence()
         cout << "countExactRepeatCopies<6> returned " <<
             kmer.countExactRepeatCopies<6>(k) << endl;
 #endif
+
+
+        // Test count.
+        for(uint64_t N=1; N<=6; N++) {
+            const uint64_t m = kmer.count(N, k);
+            cout << "N = " << N << ": " << m << " N-mers." << endl;
+        }
     }
 }
+
+
+
