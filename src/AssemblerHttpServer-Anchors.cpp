@@ -108,8 +108,12 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
     html <<
         "<table>"
         "<tr><th class=left>Coverage<td class=centered>" << coverage <<
-        "<tr><th class=left>K-mer sequence<td class=centered style='font-family:monospace'>";
+        "<tr><th class=left>K-mer sequence<td class=centered style='font-family:monospace'>"
+        "<a href='exploreMarkerKmer?kmer=";
     copy(kmerSequence.begin(), kmerSequence.end(), ostream_iterator<Base>(html));
+    html << "'>";
+    copy(kmerSequence.begin(), kmerSequence.end(), ostream_iterator<Base>(html));
+    html << "</a>";
 
     html <<
         "<tr><th class=left>Parent anchors"
