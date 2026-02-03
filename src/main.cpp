@@ -684,11 +684,15 @@ void shasta2::main::writeHtmlLogFinalOutput(double elapsedTime, double cpuTime)
         "<h2>Performance summary</h2>\n"
         "<table>\n"
         "<tr><th class=left>End time<td>" << timestamp <<
-        "<tr><th class=left>Elapsed time<td>" << elapsedTime << " s\n" <<
-        "<tr><th class=left>CPU time<td>" << cpuTime << " s\n" <<
+        "<tr><th class=left>Elapsed time<td>" << elapsedTime << " s, " <<
+        elapsedTime / 60. << " m, " << elapsedTime / 3600. << " h\n"
+        "<tr><th class=left>CPU time<td>" << cpuTime << " s, " <<
+        cpuTime / 60. << " m, " << cpuTime / 3600. << " h\n"
         "<tr><th class=left>Average concurrency<td>" << averageConcurrency << "\n" <<
         "<tr><th class=left>Average CPU utilization<td>" << averageCpuUtilization << "\n" <<
-        "<tr><th class=left>Peak virtual memory<td>" << memoryBytes << " bytes, " << memoryGiB << " GiB\n" <<
+        "<tr><th class=left>Peak virtual memory<td>" << memoryBytes << " bytes, " <<
+        double(memoryBytes) / 1.e9 << " GB, " <<
+        memoryGiB << " GiB\n" <<
         "</table>\n";
 
     htmlLog.precision(oldPrecision);
