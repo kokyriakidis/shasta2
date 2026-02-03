@@ -257,12 +257,33 @@ void Assembler::exploreMarkerKmer(const vector<string>& request, ostream& html)
 
 
 
+    // Sequence complexity metrics.
+    html <<
+        "<h3>Sequence complexity metrics</h3>"
+        "<table><tr>"
+        "<th>Sub-k-mer<br>length"
+        "<th>Longest<br>repeat<br>copies"
+        "<th>Longest<br>repeat<br>bases"
+        "<th>Number<br>of<br>distinct<br>sub-kmers";
+    for(uint64_t m=1; m<=6; m++) {
+        const uint64_t n = kmer.countExactRepeatCopies(m, k);
+        html <<
+            "<tr>"
+            "<td class=centered>" << m <<
+            "<td class=centered>" << n <<
+            "<td class=centered>" << n*m <<
+            "<td class=centered>" << kmer.count(m, k);
+    }
+    html << "</table>";
+
+
+
     // Details table.
     vector<MarkerInfo> markerInfos;
     markerKmers->get(kmer, markerInfos);
 
     html <<
-        "<br>"
+        "<h3>Occurrences of this k-mer</h3>"
         "<table>"
         "<tr><th>Oriented<br>read<th>Ordinal<th>Position<th>Repeated<br>ReadId";
     for(uint64_t i=0; i<markerInfos.size(); i++) {

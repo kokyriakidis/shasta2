@@ -244,6 +244,17 @@ public:
             }
         }
 
+#if 0
+        for(uint64_t i=0; i <= k-N; i++) {
+            const auto& nMer = nMers[i];
+            cout << "At position " << i << " nMer is ";
+            for(uint64_t j=0; j<N; j++) {
+                cout << nMer[j];
+            }
+            cout << endl;
+        }
+#endif
+
         // Starting at each position, count the number of consecutive copies.
         uint64_t maxOffset = 0;
         for(uint64_t i=0; i <= k-N; i++) {
@@ -255,6 +266,7 @@ public:
             }
             const uint64_t offset = j - i;
             maxOffset = max(maxOffset, offset);
+            // cout << "At position " << i << " offset " << offset << endl;
         }
 
         return maxOffset / N ;

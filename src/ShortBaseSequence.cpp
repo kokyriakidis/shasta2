@@ -38,7 +38,7 @@ void shasta2::testShortBaseSequence()
         }
         cout << endl;
 
-#if 0
+#if 1
         // Test maxHomopolymerLength.
         cout << "maxHomopolymerLength returned " <<
             kmer.maxHomopolymerLength(k) << endl;
