@@ -91,6 +91,7 @@ void Assembler::assemble(
             options.minAnchorCoverage,
             options.maxAnchorCoverage,
             options.maxAnchorRepeatLength,
+            options.minAnchorDistinctSubkmerCount,
             options.threadCount);
     } else {
         readExternalAnchors(options.externalAnchorsName);
@@ -130,6 +131,7 @@ void Assembler::createAnchors(
     uint64_t minAnchorCoverage,
     uint64_t maxAnchorCoverage,
     const vector<uint64_t>& maxAnchorRepeatLength,
+    const vector<uint64_t>& minAnchorDistinctSubkmerCount,
     uint64_t threadCount)
 {
     const bool doAnchorCleanup = true;
@@ -147,6 +149,7 @@ void Assembler::createAnchors(
             minAnchorCoverage,
             maxAnchorCoverage,
             maxAnchorRepeatLength,
+            minAnchorDistinctSubkmerCount,
             threadCount);
         anchorsPointer = initialAnchors;
 
@@ -189,6 +192,7 @@ void Assembler::createAnchors(
             minAnchorCoverage,
             maxAnchorCoverage,
             maxAnchorRepeatLength,
+            minAnchorDistinctSubkmerCount,
             threadCount);
     }
 

@@ -121,6 +121,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
            arg("minAnchorCoverage"),
            arg("maxAnchorCoverage"),
            arg("maxHomopolymerLength"),
+           arg("minAnchorDistinctSubkmerCount"),
            arg("threadCount") = 0)
        .def("readExternalAnchors", &Assembler::readExternalAnchors)
        .def("accessAnchors",

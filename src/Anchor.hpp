@@ -117,6 +117,7 @@ public:
         uint64_t minAnchorCoverage,
         uint64_t maxAnchorCoverage,
         const vector<uint64_t>& maxAnchorRepeatLength,
+        const vector<uint64_t>& minAnchorDistinctSubkmerCount,
         uint64_t threadCount);
 
     // Constructor to read Anchors from ExternalAnchors.
@@ -266,6 +267,7 @@ private:
         uint64_t minAnchorCoverage;
         uint64_t maxAnchorCoverage;
         vector<uint64_t> maxAnchorRepeatLength;
+        vector<uint64_t> minAnchorDistinctSubkmerCount;
 
         // During multithreaded pass 1 we loop over all marker k-mers
         // and for each one we find out if it can be used to generate

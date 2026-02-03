@@ -181,6 +181,7 @@ public:
         uint64_t minAnchorCoverage,
         uint64_t maxAnchorCoverage,
         const vector<uint64_t>& maxAnchorRepeatLength,
+        const vector<uint64_t>& minAnchorDistinctSubkmerCount,
         uint64_t threadCount);
 
     // Read Anchors from ExternalAnchors.

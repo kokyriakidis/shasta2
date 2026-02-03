@@ -76,7 +76,7 @@ SHASTA2_VECTOR_OPTION_DEFINE(
 uint64_t, maxAnchorRepeatLength, "--max-anchor-repeat-length", maxAnchorRepeatLengthDefault,
 R"zzz(
 Maximum number of copies of repeats of period 1, 2, 3,... allowed in an anchor sequence.
-An anchor is not generated if its sequence contains an exact repeat
+An anchor is not generated if its sequence would contain an exact repeat
 consisting of n copies of a unit of length (period) p, if
 n > maxAnchorRepeatLength[p-1].
 So for example:
@@ -88,6 +88,17 @@ So for example:
   So if maxAnchorRepeatLength[1] is 3, the anchor is not
   generated if it contains a 2-base repeat with more than 3 copies
   (a total 6 bases).
+)zzz")
+
+SHASTA2_VECTOR_OPTION_DEFINE(
+uint64_t, minAnchorDistinctSubkmerCount, "--min-anchor-distinct-subkmer-count", minAnchorDistinctSubkmerCountDefault,
+R"zzz(
+Minimum number of distinct sub-k-mers of length 1, 2, 3,... required in an anchor sequence.
+An anchor is not generated if its sequence would contain less than the specified 
+number of distinct sub-k-mers, which indicates low sequence complexity.
+For example, --min-anchor-distinct-subkmer-count 4, 12, 24 means
+that the k-mer sequence must contain all 4 bases,at least 12 of the 16
+possible sub-2-mers, and at least 24 of the 64 possible sub-3-mers.
 )zzz")
 
 

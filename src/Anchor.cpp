@@ -823,6 +823,7 @@ Anchors::Anchors(
     uint64_t minAnchorCoverage,
     uint64_t maxAnchorCoverage,
     const vector<uint64_t>& maxAnchorRepeatLength,
+    const vector<uint64_t>& minAnchorDistinctSubkmerCount,
     uint64_t threadCount) :
     MultithreadedObject<Anchors>(*this),
     MappedMemoryOwner(mappedMemoryOwner),
@@ -846,6 +847,7 @@ Anchors::Anchors(
     data.minAnchorCoverage = minAnchorCoverage;
     data.maxAnchorCoverage = maxAnchorCoverage;
     data.maxAnchorRepeatLength = maxAnchorRepeatLength;
+    data.minAnchorDistinctSubkmerCount = minAnchorDistinctSubkmerCount;
 
     // During multithreaded pass 1 we loop over all marker k-mers
     // and for each one we find out if it can be used to generate
@@ -915,6 +917,7 @@ void Anchors::constructThreadFunctionPass1(uint64_t /* threadId */)
     const uint64_t minAnchorCoverage = data.minAnchorCoverage;
     const uint64_t maxAnchorCoverage = data.maxAnchorCoverage;
     const vector<uint64_t> maxAnchorRepeatLength = data.maxAnchorRepeatLength;
+    const vector<uint64_t> minAnchorDistinctSubkmerCount = data.minAnchorDistinctSubkmerCount;
 
     // Loop over batches of marker Kmers assigned to this thread.
     uint64_t begin, end;
@@ -988,6 +991,24 @@ void Anchors::constructThreadFunctionPass1(uint64_t /* threadId */)
             if(skipDueToRepeats) {
                 continue;
             }
+
+#if 1
+            // Check for low complexity by counting distinct sub-k-mers.
+            bool skipDueToLowComplexitySequence = false;
+            for(uint64_t i=0; i<minAnchorDistinctSubkmerCount.size(); i++) {
+                const uint64_t subKmerLength = i + 1;
+                const uint64_t minAllowedCount = minAnchorDistinctSubkmerCount[i];
+                if(kmer.count(subKmerLength, k) < minAllowedCount) {
+                    skipDueToLowComplexitySequence = true;
+                    // kmer.write(cout, k);
+                    // cout << " skipped due to low complexity sequence at length " << subKmerLength << endl;
+                    break;
+                }
+            }
+            if(skipDueToLowComplexitySequence) {
+                continue;
+            }
+#endif
 
             // If getting here, we will generate a pair of Anchors corresponding to this Kmer.
             data.coverage[kmerIndex] = usableMarkerInfosCount;

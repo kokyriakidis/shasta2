@@ -31,6 +31,7 @@ public:
     // Default values of vector options.
     const vector<string> inputFileNamesDefault;
     const vector<uint64_t> maxAnchorRepeatLengthDefault = {6, 4, 4, 4, 4};
+    const vector<uint64_t> minAnchorDistinctSubkmerCountDefault = {4, 12, 24};
 
 	// Options with a simple type are defined in OptionsDefine.hpp
 	#define SHASTA2_OPTION_DEFINE(type, name, optionName, defaultValue, description) \
