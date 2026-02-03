@@ -27,7 +27,7 @@ LocalAssembly4::LocalAssembly4(
     rightAnchorId(anchorPair.anchorIdB)
 {
     // EXPOSE WHEN CODE STABILIZES.
-    const uint64_t minCoverage = 3;
+    // const uint64_t minCoverage = 3;
 
     SHASTA2_ASSERT(std::ranges::is_sorted(additionalOrientedReadIds));
     if(html) {
