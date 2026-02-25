@@ -18,7 +18,8 @@ using namespace shasta2;
 void AssemblyGraph::findAssemblyPaths(vector< vector<edge_descriptor> >& assemblyPaths) const
 {
 	ReadFollowing1::Graph readFollowingGraph(*this);
-	readFollowingGraph.findPaths(assemblyPaths);
+    readFollowingGraph.findPaths(assemblyPaths);
+    readFollowingGraph.writePaths(assemblyPaths);
 }
 
 
