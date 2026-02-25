@@ -894,10 +894,15 @@ shared_ptr<PathGraph> Graph::createPathGraph()
 
 
     // Each long Segment generates a PathGraphVertex.
-    for(const vertex_descriptor v: longVertices) {
+    // For better reproducibility, generate the vertices in this order,
+    // instead of looping over the longVertices, so they are ordered by segment id.
+    BGL_FORALL_VERTICES(v, graph, Graph) {
         const Vertex& vertex = graph[v];
-        const PathGraph::vertex_descriptor u = boost::add_vertex({vertex.segment}, pathGraph);
-        pathGraphVertexMap.insert({vertex.segment, u});
+        if(vertex.length >= assemblyGraph.options.readFollowingSegmentLengthThreshold) {
+            SHASTA2_ASSERT(longVertices.contains(v));
+            const PathGraph::vertex_descriptor u = boost::add_vertex({vertex.segment}, pathGraph);
+            pathGraphVertexMap.insert({vertex.segment, u});
+        }
     }
     cout << "The PathGraph has " << pathGraphVertexMap.size() <<
         " vertices, each corresponding to a long segment." << endl;
