@@ -66,12 +66,12 @@ public:
     vector<SegmentStepSupport> finalSupport;
 
     // Vectors used for the generation of random paths.
-    // Each outgoing/incoming edge of this vertex appears
-    // a number of tinmes equal to its commonCount.
+    // Each child/parent vertex of this vertex appears
+    // a number of times equal to its commonCount.
     // This way, the random paths are biased by commonCount.
     // These are filled in by fillConnectivity.
-    vector<GraphBaseClass::edge_descriptor> outEdges;
-    vector<GraphBaseClass::edge_descriptor> inEdges;
+    vector<GraphBaseClass::vertex_descriptor> children;
+    vector<GraphBaseClass::vertex_descriptor> parents;
 
 };
 

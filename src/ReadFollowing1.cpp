@@ -503,6 +503,8 @@ template<std::uniform_random_bit_generator RandomGenerator> void Graph::findRand
     const std::set<vertex_descriptor>& stopVertices)
 {
     const Graph& graph = *this;
+    // static ofstream debugOut("findRandomForwardPath.txt");
+    // debugOut << "Starting a forward random path at " << segmentId(v) << "\n";
 
     // Start with a path consisting of just this vertex.
     path.clear();
@@ -511,16 +513,17 @@ template<std::uniform_random_bit_generator RandomGenerator> void Graph::findRand
     // At each iteration, add one vertex to the path.
     while(out_degree(v, assemblyGraph) > 0) {
 
-        // Pick a random out-edge.
-        const vector<edge_descriptor>& outEdges = graph[v].outEdges;
-        const uint64_t n = outEdges.size();
+        // Pick a random child.
+        const vector<vertex_descriptor>& children = graph[v].children;
+        const uint64_t n = children.size();
         std::uniform_int_distribution<uint64_t> distribution(0, n - 1);
         const uint64_t i = distribution(randomGenerator);
-        const edge_descriptor e = outEdges[i];
+        v = children[i];
 
-        // Add to the path the target of this edge and continue from here.
-        v = target(e, graph);
+        // Add this vertex to the path and continue from here.
         path.push_back(v);
+
+        // debugOut << n << " " << i << " " << segmentId(v) << "\n";
 
         if(stopVertices.contains(v)) {
             break;
@@ -545,15 +548,14 @@ template<std::uniform_random_bit_generator RandomGenerator> void Graph::findRand
     // At each iteration, add one vertex to the path.
     while(in_degree(v, assemblyGraph) > 0) {
 
-        // Pick a random in-edge.
-        const vector<edge_descriptor>& inEdges = graph[v].inEdges;
-        const uint64_t n = inEdges.size();
+        // Pick a random parent.
+        const vector<vertex_descriptor>& children = graph[v].parents;
+        const uint64_t n = children.size();
         std::uniform_int_distribution<uint64_t> distribution(0, n - 1);
         const uint64_t i = distribution(randomGenerator);
-        const edge_descriptor e = inEdges[i];
+        v = children[i];
 
-        // Add to the path the source of this edge and continue from here.
-        v = source(e, graph);
+        // Add this vertex to the path and continue from here.
         path.push_back(v);
 
         if(stopVertices.contains(v)) {
@@ -686,24 +688,73 @@ void Graph::fillConnectivity()
 {
     Graph& graph = *this;
 
-    BGL_FORALL_VERTICES(v, graph, Graph) {
-        Vertex& vertex = graph[v];
+    // For better reproducibility, store children/parent vertices sorted by segment id.
+    class VertexInfo {
+    public:
+        vertex_descriptor v;
+        uint64_t commonCount;
+        uint64_t segmentId;
+        bool operator<(const VertexInfo& that) const
+        {
+            return segmentId < that.segmentId;
+        }
+    };
+    vector<VertexInfo> vertexInfos;
 
-        vertex.outEdges.clear();
-        BGL_FORALL_OUTEDGES(v, e, graph, Graph) {
+    // Loop over all vertices in the Graph.
+    BGL_FORALL_VERTICES(v0, graph, Graph) {
+        Vertex& vertex0 = graph[v0];
+
+        // Gather the children.
+        vertexInfos.clear();
+        BGL_FORALL_OUTEDGES(v0, e, graph, Graph) {
+            const vertex_descriptor v1 = target(e, graph);
             const uint64_t commonCount = graph[e].segmentPairInformation.commonCount;
+            VertexInfo& vertexInfo = vertexInfos.emplace_back();
+            vertexInfo.v = v1;
+            vertexInfo.commonCount = commonCount;
+            vertexInfo.segmentId = segmentId(v1);
+        }
+
+        // Sort them by segment id.
+        sort(vertexInfos.begin(), vertexInfos.end());
+
+        // Store them in the vertex.
+        // Each child is stored commonCount times.
+        vertex0.children.clear();
+        for(const VertexInfo& vertexInfo: vertexInfos) {
+            const uint64_t commonCount = vertexInfo.commonCount;
             for(uint64_t i=0; i<commonCount; i++) {
-                vertex.outEdges.push_back(e);
+                vertex0.children.push_back(vertexInfo.v);
             }
         }
 
-        vertex.inEdges.clear();
-        BGL_FORALL_INEDGES(v, e, graph, Graph) {
+
+
+        // Gather the parents.
+        vertexInfos.clear();
+        BGL_FORALL_INEDGES(v0, e, graph, Graph) {
+            const vertex_descriptor v1 = source(e, graph);
             const uint64_t commonCount = graph[e].segmentPairInformation.commonCount;
+            VertexInfo& vertexInfo = vertexInfos.emplace_back();
+            vertexInfo.v = v1;
+            vertexInfo.commonCount = commonCount;
+            vertexInfo.segmentId = segmentId(v1);
+        }
+
+        // Sort them by segment id.
+        sort(vertexInfos.begin(), vertexInfos.end());
+
+        // Store them in the vertex.
+        // Each child is stored commonCount times.
+        vertex0.parents.clear();
+        for(const VertexInfo& vertexInfo: vertexInfos) {
+            const uint64_t commonCount = vertexInfo.commonCount;
             for(uint64_t i=0; i<commonCount; i++) {
-                vertex.inEdges.push_back(e);
+                vertex0.parents.push_back(vertexInfo.v);
             }
         }
+
     }
 }
 
@@ -827,6 +878,12 @@ void Graph::findPaths(vector< vector<Segment> >& assemblyPaths)
 shared_ptr<PathGraph> Graph::createPathGraph()
 {
     const Graph& graph = *this;
+    const bool debug = false;
+    ofstream csv;
+    if(debug) {
+        csv.open("createPathGraph.csv");
+        csv << "u0,direction,PathId,PathLength,\n";
+    }
 
     // Random generator used to generate random paths.
     std::mt19937 randomGenerator;
@@ -863,6 +920,17 @@ shared_ptr<PathGraph> Graph::createPathGraph()
                 findRandomPath(v0, direction, randomGenerator, path, longVertices);
                 const vertex_descriptor v1 = (direction == 0) ? path.back() : path.front();
                 const Segment segment1 = graph[v1].segment;
+
+                if(debug) {
+                    csv << segmentId(u0) << ",";
+                    csv << direction << ",";
+                    csv << i << ",";
+                    csv << path.size() << ",";
+                    for(const vertex_descriptor u: path) {
+                        csv << segmentId(u) << ",";
+                    }
+                    csv << "\n";
+                }
 
                 // Discard a trivial path.
                 SHASTA2_ASSERT(not path.empty());
