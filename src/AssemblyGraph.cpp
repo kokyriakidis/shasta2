@@ -171,18 +171,24 @@ void AssemblyGraph::simplifyAndAssemble()
         changeCount += phaseSuperbubbleChains();
         writeIntermediateStageIfRequested("C" + to_string(iteration));
 
-        // Read following.
+        // Read following. This leaves the AssemblyGraph in an uncompressed state.
         changeCount += findAndConnectAssemblyPaths();
         writeIntermediateStageIfRequested("D" + to_string(iteration));
 
-        // Read following left the graph in an uncompressed state.
-        compress();
+        // Prune.
+        prune();
         writeIntermediateStageIfRequested("E" + to_string(iteration));
+
+        // Compress.
+        compressDebugLevel = 2;
+        compress();
+        compressDebugLevel = 0;
+        writeIntermediateStageIfRequested("F" + to_string(iteration));
 
         // Remove isolated vertices and connected components with small N50.
         removeIsolatedVertices();
         removeLowN50Components(minComponentN50);
-        writeIntermediateStageIfRequested("F" + to_string(iteration));
+        writeIntermediateStageIfRequested("G" + to_string(iteration));
 
         if(changeCount == 0) {
             break;
@@ -2211,4 +2217,70 @@ void AssemblyGraph::removeLowN50Components([[maybe_unused]] uint64_t minN50)
 
     }
 
+}
+
+
+
+void AssemblyGraph::prune()
+{
+    while(pruneIteration());
+}
+
+
+
+// Prune can be used on an uncompressed AssemblyGraph.
+// So we find linear chains that are leafs, and prune
+// the ones that are too short.
+uint64_t AssemblyGraph::pruneIteration()
+{
+    AssemblyGraph& assemblyGraph = *this;
+
+    // Find linear chains.
+    using Chain = std::list<edge_descriptor>;
+    vector<Chain> chains;
+    findLinearChains(assemblyGraph, 1, chains);
+
+
+
+    // Find the ones to be removed.
+    vector<uint64_t> chainsToBeRemoved;
+    for(uint64_t chainId=0; chainId<chains.size(); chainId++) {
+        const Chain& chain = chains[chainId];
+        SHASTA2_ASSERT(not chain.empty());
+
+        // Find the first and last vertex.
+        const vertex_descriptor v0 = source(chain.front(), assemblyGraph);
+        const vertex_descriptor v1 = target(chain.back(), assemblyGraph);
+
+        // If not a leaf, skip it.
+        const bool isLeaf =
+            (in_degree(v0, assemblyGraph) == 0) or
+            (out_degree(v1, assemblyGraph) == 0);
+        if(not isLeaf) {
+            continue;
+        }
+
+        // If not short, skip it.
+        uint64_t length = 0;
+        for(const edge_descriptor e: chain) {
+            length += assemblyGraph[e].length();
+        }
+        if(length > options.pruneLength) {
+            continue;
+        }
+
+        // This chain is a short leaf, so we will remove it.
+        chainsToBeRemoved.push_back(chainId);
+    }
+
+
+    // Remove them.
+    for(const uint64_t chainId: chainsToBeRemoved) {
+        const Chain& chain = chains[chainId];
+        for(const edge_descriptor e: chain) {
+            boost::remove_edge(e, assemblyGraph);
+        }
+    }
+
+    return chainsToBeRemoved.size();
 }

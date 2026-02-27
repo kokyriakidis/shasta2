@@ -323,6 +323,10 @@ public:
     // the strongly connected components.
     void colorStrongComponents() const;
 
+    // Pruning.
+    void prune();
+    uint64_t pruneIteration();
+
 
 
     // Read following.

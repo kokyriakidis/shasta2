@@ -160,6 +160,9 @@ SHASTA2_OPTION_DEFINE(
     "Number of steps for the representative region of a segment "
     "used in detangling and read following.")
 
+SHASTA2_OPTION_DEFINE(
+    uint64_t, pruneLength, "--prune-length", 50000,
+    "Maximum leaf length for pruning.")
 
 
 // Read following.
