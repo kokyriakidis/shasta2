@@ -24,7 +24,7 @@ void AssemblyGraph::findAssemblyPaths(vector< vector<edge_descriptor> >& assembl
 
 
 
-// Note assemlbyPaths are not necessarily paths in the AssemblyGraph.
+// Note assemblyPaths are not necessarily paths in the AssemblyGraph.
 // There may be jumps, which are bridged using local assemblies.
 // The assembly paths must satisfy the following rules:
 // - They must consist of at least 2 edge_descriptors.
@@ -225,22 +225,6 @@ void AssemblyGraph::connectAssemblyPaths(const vector< vector<edge_descriptor> >
 	for(const edge_descriptor e: edgesToBeRemoved) {
 		boost::remove_edge(e, assemblyGraph);
 	}
-
-
-	// Write the assembly graph after read following but before compress
-	if(debug) {
-	    write("ReadFollowing-BeforeCompress");
-	}
-
-	// Compress the linear chains we created.
-	uint64_t oldCompressDebugLevel = compressDebugLevel;
-	if(debug) {
-	    compressDebugLevel = 1;
-	}
-	compress();
-    if(debug) {
-        compressDebugLevel = oldCompressDebugLevel;
-    }
 }
 
 

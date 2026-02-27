@@ -175,10 +175,14 @@ void AssemblyGraph::simplifyAndAssemble()
         changeCount += findAndConnectAssemblyPaths();
         writeIntermediateStageIfRequested("D" + to_string(iteration));
 
+        // Read following left the graph in an uncompressed state.
+        compress();
+        writeIntermediateStageIfRequested("E" + to_string(iteration));
+
         // Remove isolated vertices and connected components with small N50.
         removeIsolatedVertices();
         removeLowN50Components(minComponentN50);
-        writeIntermediateStageIfRequested("E" + to_string(iteration));
+        writeIntermediateStageIfRequested("F" + to_string(iteration));
 
         if(changeCount == 0) {
             break;
