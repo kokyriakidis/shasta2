@@ -1314,7 +1314,7 @@ vector< shared_ptr<PathGraph> > PathGraph::findConnectedComponents()
 // on a PathGraph with a single connected component.
 void PathGraph::findAssemblyPath(vector<Segment>& assemblyPath)
 {
-    const bool debug = false;
+    const bool debug = true;
     ofstream csv("RandomPaths.csv", std::ios::app);
 
     assemblyPath.clear();
@@ -1435,6 +1435,16 @@ void PathGraph::findAssemblyPath(vector<Segment>& assemblyPath)
         // Use the path with the best metrics.
         const PathMetrics& bestPathMetrics = pathMetrics.front();
         const Path& path = pathGraphEdge.paths[bestPathMetrics.direction][bestPathMetrics.pathId];
+
+        if(debug) {
+            cout << "Using the following random path to fill in the assembly path between " <<
+                segmentId(u0) << " and " <<
+                segmentId(u1) << ":" << endl;
+            for(const Graph::vertex_descriptor v: path) {
+                cout << graph.segmentId(v) << " ";
+            }
+            cout << endl;
+        }
 
         // Add all segments except the last to the assembly path.
         for(uint64_t i=0; i<path.size()-1; i++) {
