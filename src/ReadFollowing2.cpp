@@ -784,7 +784,209 @@ void Graph::findRandomPaths()
             }
         }
     }
+}
 
 
+
+void Graph::findAndWriteAssemblyPaths()
+{
+    vector< vector<Segment> > assemblyPaths;
+    findAssemblyPaths(assemblyPaths);
+    writeAssemblyPaths(assemblyPaths);
+}
+
+
+
+void Graph::findAssemblyPaths(vector< vector<Segment> >& assemblyPaths)
+{
+    Graph& graph = *this;
+
+    // Create pathCount paths in each starting direction and for each starting vertex.
+    // Informatin on the randon paths found is stored in Vertex::randomPathInfos.
+    findRandomPaths();
+
+    // Create the PathGraph. It has a vertex for each long segment.
+    PathGraph pathGraph(graph);
+
+    assemblyPaths.clear();
+
+    // Missing code.
+    SHASTA2_ASSERT(0);
+}
+
+
+
+void Graph::writeAssemblyPaths(const vector< vector<Segment> >& assemblyPaths) const
+{
+    ofstream csv("AssemblyPaths.csv");
+    cout << "Found " << assemblyPaths.size() << " assembly paths. See AssemblyPaths.csv for details." << endl;
+    for(const vector<Segment>& assemblyPath: assemblyPaths) {
+        cout << "Assembly path with " << assemblyPath.size() <<
+        " segments beginning at " << assemblyGraph[assemblyPath.front()].id <<
+        " and ending at " << assemblyGraph[assemblyPath.back()].id << endl;
+
+        for(const Segment& segment: assemblyPath) {
+            csv << assemblyGraph[segment].id << ",";
+        }
+        csv << "\n";
+    }
+
+}
+
+
+
+PathGraph::PathGraph(const Graph& graph) :
+    graph(graph)
+{
+    PathGraph& pathGraph = *this;
+
+    createVertices();
+    createEdges();
+    writeGraphviz("Initial");
+    cout << "The initial PathGraph has " << num_vertices(pathGraph) <<
+        " vertices and " << num_edges(pathGraph) << " edges." << endl;
+
+    // Missing code.
+    SHASTA2_ASSERT(0);
+}
+
+
+
+void PathGraph::createVertices()
+{
+    PathGraph& pathGraph = *this;
+
+    // Each long Segment generates a PathGraphVertex.
+    // For better reproducibility, generate the vertices in this order,
+    // instead of looping over the longVertices, so they are ordered by segment id.
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        const Vertex& vertex = graph[v];
+        if(vertex.isLongVertex) {
+            const PathGraph::vertex_descriptor u = boost::add_vertex({vertex.segment}, pathGraph);
+            vertexMap.insert({vertex.segment, u});
+        }
+    }
+}
+
+
+
+void PathGraph::createEdges()
+{
+    PathGraph& pathGraph = *this;
+
+    // Loop over all PathGraph vertices.
+    BGL_FORALL_VERTICES(u0, pathGraph, PathGraph) {
+
+        // Locate the segment and the corresponding Vertex.
+        const Segment segment0 = pathGraph[u0].segment;
+        const auto it0 = graph.vertexMap.find(segment0);
+        SHASTA2_ASSERT(it0 != graph.vertexMap.end());
+        const vertex_descriptor v0 = it0->second;
+        const Vertex& vertex0 = graph[v0];
+
+        // Loop over the RandomPathInfos of this vertex in both directions.
+        for(uint64_t direction=0; direction<2; direction++) {
+            for(const Vertex::RandomPathInfo& randomPathInfo: vertex0.randomPathInfos[direction]) {
+                const Graph::vertex_descriptor v1 = randomPathInfo.v;
+                const uint64_t count = randomPathInfo.count;
+
+                if(count < Graph::pathCountThreshold) {
+                    continue;
+                }
+
+                // Locate the corresponding PathGraphVertex.
+                const Segment segment1 = graph[v1].segment;
+                const auto it1 = vertexMap.find(segment1);
+                SHASTA2_ASSERT(it1 != vertexMap.end());
+                const vertex_descriptor u1 = it1->second;
+
+                if(u1 == u0) {
+                    continue;
+                }
+
+                // Locate the PathGraph edge u0->u1 (if direction==0)
+                // or u1->u0 (if direction==1), creating it if necessary.
+                edge_descriptor e;
+                bool edgeExists = false;
+                if(direction == 0) {
+                    tie(e, edgeExists) = boost::edge(u0, u1, pathGraph);
+                    if(not edgeExists) {
+                        tie(e, edgeExists) = boost::add_edge(u0, u1, pathGraph);
+                    }
+                } else {
+                    tie(e, edgeExists) = boost::edge(u1, u0, pathGraph);
+                    if(not edgeExists) {
+                        tie(e, edgeExists) = boost::add_edge(u1, u0, pathGraph);
+                    }
+                }
+                SHASTA2_ASSERT(edgeExists);
+                PathGraphEdge& edge = pathGraph[e];
+
+                // Store the number of random paths found.
+                edge.randomPathCount[direction] = count;
+            }
+        }
+    }
+
+
+}
+
+
+
+void PathGraph::writeGraphviz(const string& name) const
+{
+    ofstream dot("PathGraph-" + name + ".dot");
+    writeGraphviz(dot);
+}
+
+
+
+void PathGraph::writeGraphviz(ostream& dot) const
+{
+    const PathGraph& pathGraph = *this;
+
+    dot << "digraph PathGraph {\n";
+
+
+
+    // Vertices.
+    BGL_FORALL_VERTICES(v, pathGraph, PathGraph) {
+        const Segment segment = pathGraph[v].segment;
+        const AssemblyGraphEdge& assemblyGraphEdge = graph.assemblyGraph[segment];
+        dot << assemblyGraphEdge.id <<
+            " ["
+            "label=\"" << assemblyGraphEdge.id <<
+            "\\n" << assemblyGraphEdge.length() <<
+            "\""
+            "]"
+            ";\n";
+    }
+
+
+
+    // Edges.
+    BGL_FORALL_EDGES(e, pathGraph, PathGraph) {
+        const PathGraphEdge& edge = pathGraph[e];
+
+        const PathGraph::vertex_descriptor v0 = source(e, pathGraph);
+        const PathGraph::vertex_descriptor v1 = target(e, pathGraph);
+
+        const Segment segment0 = pathGraph[v0].segment;
+        const Segment segment1 = pathGraph[v1].segment;
+
+
+        dot <<
+            graph.assemblyGraph[segment0].id << "->" <<
+            graph.assemblyGraph[segment1].id <<
+            " [label=\"" <<
+            edge.randomPathCount[0] << "/" <<
+            edge.randomPathCount[1] <<
+            "\""
+            "];\n";
+    }
+
+
+
+    dot << "}\n";
 
 }

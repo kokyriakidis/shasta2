@@ -33,6 +33,16 @@ namespace shasta2 {
 
         using Path = vector<GraphBaseClass::vertex_descriptor>;
 
+        class PathGraph;
+        class PathGraphVertex;
+        class PathGraphEdge;
+        using PathGraphBaseClass = boost::adjacency_list<
+            boost::listS,
+            boost::listS,
+            boost::bidirectionalS,
+            PathGraphVertex,
+            PathGraphEdge>;
+
         // A Segment is an edge of the AssemblyGraph.
         using Segment = AssemblyGraph::edge_descriptor;
     }
@@ -104,7 +114,7 @@ public:
 
     // EXPOSE WHEN CODE STABILIZES.
     static const uint64_t pathCount = 100;
-    static constexpr double minPathCountFraction = 0.4;
+    static const uint64_t pathCountThreshold = 30;
 
     const AssemblyGraph& assemblyGraph;
 
@@ -178,8 +188,55 @@ public:
     // Store in each vertex the terminal vertices of the random paths.
     void findRandomPaths();
 
+    // Assembly paths.
+    shared_ptr<PathGraph> createPathGraph();
+    void findAssemblyPaths(vector< vector<Segment> >& assemblyPaths);
+    void writeAssemblyPaths(const vector< vector<Segment> >& assemblyPaths) const;
+
     // Python callable.
     void writeRandomPath(Segment, uint64_t direction);
     void writePathStatistics(Segment, uint64_t direction);
+    void findAndWriteAssemblyPaths();
 };
 
+
+
+// Each PathGraph vertex corresponds to a long segment.
+class shasta2::ReadFollowing2::PathGraphVertex {
+public:
+    Segment segment;
+};
+
+
+
+class shasta2::ReadFollowing2::PathGraphEdge {
+public:
+
+    // If segment0 and segment1 are the source and target segments
+    // for this PathGraph edge:
+    // - randomPathCount[0] contains the number of forward paths starting from segment0
+    //   that ended at segment1.
+    // - randomPathCount[1] contains the number of backward paths starting from segment1
+    //   that ended at segment0.
+    array<uint64_t, 2> randomPathCount = {0, 0};
+};
+
+
+
+// Class used to store paths between long segments.
+class shasta2::ReadFollowing2::PathGraph : public PathGraphBaseClass {
+public:
+    PathGraph(const Graph&);
+
+private:
+    const Graph& graph;
+    void createVertices();
+    void createEdges();
+
+    // Map segments to vertices.
+    std::map<Segment, vertex_descriptor> vertexMap;
+
+    // Graphviz output.
+    void writeGraphviz(const string& name) const;
+    void writeGraphviz(ostream&) const;
+};

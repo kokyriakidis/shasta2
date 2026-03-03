@@ -201,6 +201,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def("writeRandomPath", &ReadFollowing2::Graph::writeRandomPath)
         .def("writePathStatistics", &ReadFollowing2::Graph::writePathStatistics)
         .def("findRandomPaths", &ReadFollowing2::Graph::findRandomPaths)
+        .def("findAndWriteAssemblyPaths", &ReadFollowing2::Graph::findAndWriteAssemblyPaths)
         ;
 
     // Class ExternalAnchors.
