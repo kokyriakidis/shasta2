@@ -2,6 +2,7 @@
 
 // Shasta.
 #include "ReadFollowing2.hpp"
+#include "color.hpp"
 #include "DisjointSets.hpp"
 #include "longestPath.hpp"
 #include "Journeys.hpp"
@@ -1239,9 +1240,9 @@ void PathGraph::findAssemblyPath(vector<Segment>& assemblyPath)
                 csv << segmentId(v) << ",";
                 csv << graph[v].length << ",";
                 if(v == v0) {
-                    csv << "Green,";
-                } else if(v == v1) {
                     csv << "Red,";
+                } else if(v == v1) {
+                    csv << "Green,";
                 } else {
                     csv << "Blue,";
                 }
@@ -1249,8 +1250,63 @@ void PathGraph::findAssemblyPath(vector<Segment>& assemblyPath)
             }
         }
 
+        // Create a Subgraph of the Graph that uses only these segments.
+        const Subgraph subgraph(graph, subgraphVertices);
+        if(debug) {
+            cout << "The subgraph for this portion of the assembly path has " <<
+                num_vertices(subgraph) << " vertices and " <<
+                num_edges(subgraph) << " edges." << endl;
+            subgraph.writeGraphviz(
+                "ReadFollowing-Subgraph-" +
+                to_string(segmentId(u0)) + "-" +
+                to_string(segmentId(u1)) + ".dot");
+        }
 
+        // Find the longest path in the subgraph.
+        // This will assert if the subgraph has cycles.
+        // I will handle that case when it first presents itself.
+        vector<Subgraph::edge_descriptor> longestSubgraphPathEdges;
+        longestPath(subgraph, longestSubgraphPathEdges);
+        SHASTA2_ASSERT(not longestSubgraphPathEdges.empty());
+
+        // Gather the vertices of the longest path.
+        vector<Subgraph::vertex_descriptor> longestSubgraphPathVertices;
+        const Subgraph::edge_descriptor firstEdge = longestSubgraphPathEdges.front();
+        longestSubgraphPathVertices.push_back(source(firstEdge, subgraph));
+        for(const Subgraph::edge_descriptor e: longestSubgraphPathEdges) {
+            longestSubgraphPathVertices.push_back(target(e, subgraph));
+        }
+        SHASTA2_ASSERT(subgraph[longestSubgraphPathVertices.front()].segment == segment0);
+        SHASTA2_ASSERT(subgraph[longestSubgraphPathVertices.back()].segment == segment1);
+
+        if(debug) {
+            cout << "The longest path in the subgraph has " <<
+                longestSubgraphPathVertices.size() << " vertices." << endl;
+
+            // Also write a csv file that can be loaded in Bandage to visualize the longest path.
+            ofstream csv(
+                "ReadFollowing-Subgraph-LongestPath-" +
+                to_string(segmentId(u0)) + "-" +
+                to_string(segmentId(u1)) + ".csv");
+            csv << "Id,Position,Length,Color,\n";
+            for(uint64_t i=0; i<longestSubgraphPathVertices.size(); i++) {
+                const Subgraph::vertex_descriptor w = longestSubgraphPathVertices[i];
+                const Segment segment = subgraph[w].segment;
+                const double H = double(i) / (3. * double(longestSubgraphPathVertices.size() - 1));
+                const double S = 1.;
+                const double L = 0.6;
+                const string color = hslToRgbString(H, S, L);
+                csv << graph.assemblyGraph[segment].id << ",";
+                csv << i << ",";
+                csv << graph.assemblyGraph[segment].length() << ",";
+                csv << color << ",";
+                csv << "\n";
+            }
+        }
     }
+
+
+
 }
 
 
@@ -1259,5 +1315,72 @@ uint64_t PathGraph::segmentId(vertex_descriptor v) const
 {
     const PathGraph& pathGraph = *this;
     const Segment segment = pathGraph[v].segment;
+    return graph.assemblyGraph[segment].id;
+}
+
+
+
+Subgraph::Subgraph(
+    const Graph& graph,
+    const std::set<Graph::vertex_descriptor, Graph::OrderById>& vertices) :
+    graph(graph)
+{
+    Subgraph& subgraph = *this;
+
+    // Create the vertices;
+    std::map<Graph::vertex_descriptor, Subgraph::vertex_descriptor> vertexMap;
+    for(const Graph::vertex_descriptor v: vertices) {
+        vertex_descriptor w = boost::add_vertex(subgraph);
+        SubgraphVertex& subgraphVertex = subgraph[w];
+        subgraphVertex.segment = graph[v].segment;
+        vertexMap.insert({v, w});
+    }
+
+    // Create the edges.
+    for(const Graph::vertex_descriptor v0: vertices) {
+        const Subgraph::vertex_descriptor w0 = vertexMap[v0];
+        BGL_FORALL_OUTEDGES(v0, e, graph, Graph) {
+            const Graph::vertex_descriptor v1 = target(e, graph);
+            const auto it1 = vertexMap.find(v1);
+            if(it1 != vertexMap.end()) {
+                const Subgraph::vertex_descriptor w1 = it1->second;
+                add_edge(w0, w1, subgraph);
+            }
+        }
+    }
+
+}
+
+
+
+void Subgraph::writeGraphviz(const string& name) const
+{
+    const Subgraph& subgraph = *this;
+
+    ofstream dot(name);
+    dot << "digraph ReadFollowingSubgraph {\n";
+
+    BGL_FORALL_VERTICES(w, subgraph, Subgraph) {
+        dot << segmentId(w) << ";\n";
+    }
+
+    BGL_FORALL_EDGES(e, subgraph, Subgraph) {
+        const vertex_descriptor w0 = source(e, subgraph);
+        const vertex_descriptor w1 = target(e, subgraph);
+        dot <<
+            segmentId(w0) << "->" <<
+            segmentId(w1) << ";\n";
+    }
+
+    dot << "}\n";
+}
+
+
+
+uint64_t Subgraph::segmentId(vertex_descriptor w) const
+{
+    const Subgraph& subgraph = *this;
+    const SubgraphVertex& vertex = subgraph[w];
+    const Segment segment = vertex.segment;
     return graph.assemblyGraph[segment].id;
 }

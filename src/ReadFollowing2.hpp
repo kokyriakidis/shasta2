@@ -31,6 +31,14 @@ namespace shasta2 {
             Vertex,
             Edge>;
 
+        class Subgraph;
+        class SubgraphVertex;
+        using SubgraphBaseClass = boost::adjacency_list<
+            boost::listS,
+            boost::listS,
+            boost::bidirectionalS,
+            SubgraphVertex>;
+
         using Path = vector<GraphBaseClass::vertex_descriptor>;
 
         class PathGraph;
@@ -224,6 +232,28 @@ public:
 
     };
     const OrderById orderById;
+};
+
+
+
+class shasta2::ReadFollowing2::SubgraphVertex {
+public:
+    Segment segment;
+};
+
+
+
+
+// A subgraph of the Graph.
+// It only stores a subset of the information stored in the Graph.
+class shasta2::ReadFollowing2::Subgraph : public SubgraphBaseClass {
+public:
+    Subgraph(
+        const Graph&,
+        const std::set<Graph::vertex_descriptor, Graph::OrderById>& vertices);
+    const Graph& graph;
+    uint64_t segmentId(vertex_descriptor) const;
+    void writeGraphviz(const string& name) const;
 };
 
 
