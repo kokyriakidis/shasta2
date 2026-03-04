@@ -86,8 +86,16 @@ public:
         GraphBaseClass::vertex_descriptor v;
         uint64_t count;
         uint64_t segmentId;
+
+        // Order by decreasing count, using segmentId to break ties.
         bool operator<(const RandomPathInfo& that) const
         {
+            if(count > that.count) {
+                return true;
+            }
+            if(count < that.count) {
+                return false;
+            }
             return segmentId < that.segmentId;
         }
     };
@@ -114,7 +122,8 @@ public:
 
     // EXPOSE WHEN CODE STABILIZES.
     static const uint64_t pathCount = 100;
-    static const uint64_t pathCountThreshold = 30;
+    static const uint64_t pathCountThreshold1 = 30;
+    static const uint64_t pathCountThreshold2 = 60;
 
     const AssemblyGraph& assemblyGraph;
 
@@ -188,6 +197,12 @@ public:
     // Store in each vertex the terminal vertices of the random paths.
     void findRandomPaths();
 
+    // Find short vertices that, based on the stored random paths,
+    // are reliably preceded/followed by a single vertex.
+    // These will be used to fill in assembly paths.
+    std::map< pair<vertex_descriptor, vertex_descriptor>, vector<vertex_descriptor> > randomPathsMap;
+    void createRandomPathsMap();
+
     // Assembly paths.
     shared_ptr<PathGraph> createPathGraph();
     void findAssemblyPaths(vector< vector<Segment> >& assemblyPaths);
@@ -197,6 +212,18 @@ public:
     void writeRandomPath(Segment, uint64_t direction);
     void writePathStatistics(Segment, uint64_t direction);
     void findAndWriteAssemblyPaths();
+
+    class OrderById {
+    public:
+        bool operator() (const vertex_descriptor v0, const vertex_descriptor v1) const
+        {
+            return graph.segmentId(v0) < graph.segmentId(v1);
+        }
+        OrderById(const Graph& graph) : graph(graph) {}
+        const Graph& graph;
+
+    };
+    const OrderById orderById;
 };
 
 

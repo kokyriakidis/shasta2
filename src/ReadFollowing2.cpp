@@ -23,7 +23,8 @@ template class MultithreadedObject<Graph>;
 
 Graph::Graph(const AssemblyGraph& assemblyGraph) :
     MultithreadedObject<Graph>(*this),
-    assemblyGraph(assemblyGraph)
+    assemblyGraph(assemblyGraph),
+    orderById(*this)
 {
     Graph& graph = *this;
 
@@ -799,13 +800,71 @@ void Graph::findAndWriteAssemblyPaths()
 
 
 
+void Graph::createRandomPathsMap()
+{
+    Graph& graph = *this;
+    const bool debug = true;
+
+    // Find short vertices that are reliably preceded/followed by a single vertex.
+    // These will be used to fill in assembly paths.
+    randomPathsMap.clear();
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        const Vertex& vertex = graph[v];
+
+        if(vertex.isLongVertex) {
+            continue;
+        }
+
+        if(vertex.randomPathInfos[0].empty()) {
+            continue;
+        }
+
+        if(vertex.randomPathInfos[1].empty()) {
+            continue;
+        }
+
+        const Vertex::RandomPathInfo& nextInfo = vertex.randomPathInfos[0].front();
+        const Vertex::RandomPathInfo& previousInfo = vertex.randomPathInfos[1].front();
+
+        if(nextInfo.count < pathCountThreshold2) {
+            continue;
+        }
+        if(previousInfo.count < pathCountThreshold2) {
+            continue;
+        }
+
+        randomPathsMap[{previousInfo.v, nextInfo.v}].push_back(v);
+    }
+    if(debug) {
+        ofstream csv("RandomPathsMap.csv");
+        for(const auto& [p, shortVertices]: randomPathsMap) {
+            const vertex_descriptor v0 = p.first;
+            const vertex_descriptor v1 = p.second;
+            csv << segmentId(v0) << ",";
+            csv << segmentId(v1) << ",";
+            for(const vertex_descriptor v: shortVertices) {
+                csv << segmentId(v) << ",";
+            }
+            csv << endl;
+        }
+    }
+
+}
+
+
+
 void Graph::findAssemblyPaths(vector< vector<Segment> >& assemblyPaths)
 {
     Graph& graph = *this;
 
     // Create pathCount paths in each starting direction and for each starting vertex.
-    // Informatin on the randon paths found is stored in Vertex::randomPathInfos.
+    // Information on the random paths found is stored in Vertex::randomPathInfos.
     findRandomPaths();
+
+    // Find short vertices that, based on the stored random paths,
+    // are reliably preceded/followed by a single vertex.
+    // These will be used to fill in assembly paths.
+    createRandomPathsMap();
 
     // Create the PathGraph. It has a vertex for each long segment.
     PathGraph pathGraph(graph);
@@ -903,7 +962,7 @@ void PathGraph::createEdges()
                 const Graph::vertex_descriptor v1 = randomPathInfo.v;
                 const uint64_t count = randomPathInfo.count;
 
-                if(count < Graph::pathCountThreshold) {
+                if(count < Graph::pathCountThreshold1) {
                     continue;
                 }
 
@@ -1126,6 +1185,71 @@ void PathGraph::findAssemblyPath(vector<Segment>& assemblyPath)
             cout << " " << segmentId(u);
         }
         cout << endl;
+    }
+
+
+
+    // Construct the path by looping over the edges of the longest path.
+    for(const edge_descriptor e: longestPathEdges) {
+
+        // Find the PathGraph vertices of this edge.
+        const vertex_descriptor u0 = source(e, component);
+        const vertex_descriptor u1 = target(e, component);
+
+        // Fidn the corresponding Segments.
+        const Segment segment0 = component[u0].segment;
+        const Segment segment1 = component[u1].segment;
+
+        // Find the corresponding Graph vertices.
+        const auto it0 = graph.vertexMap.find(segment0);
+        SHASTA2_ASSERT(it0 != graph.vertexMap.end());
+        const Graph::vertex_descriptor v0 = it0->second;
+        const auto it1 = graph.vertexMap.find(segment1);
+        SHASTA2_ASSERT(it1 != graph.vertexMap.end());
+        const Graph::vertex_descriptor v1 = it1->second;
+
+        // Gather the vertices of the Graph subgraph that can be used to assemble this portion.
+        std::set<Graph::vertex_descriptor, Graph::OrderById> subgraphVertices(graph.orderById);
+        subgraphVertices.insert(v0);
+        subgraphVertices.insert(v1);
+        const auto it = graph.randomPathsMap.find({v0, v1});
+        if(it != graph.randomPathsMap.end()) {
+            const vector<Graph::vertex_descriptor>& shortVertices = it->second;
+            for(const Graph::vertex_descriptor v: shortVertices) {
+                subgraphVertices.insert(v);
+            }
+        }
+
+        if(debug) {
+            cout << "Working on the assembly path portion between " <<
+                segmentId(u0) << " and " << segmentId(u1) << endl;
+            cout << "The following segments are usable to assemble this portion:" << endl;
+            for(const Graph::vertex_descriptor v: subgraphVertices) {
+                cout << " " << graph.segmentId(v);
+            }
+            cout << endl;
+
+            // Also write a csv file that can be loaded in Bandage to visualize these segments.
+            ofstream csv(
+                "ReadFollowing-Subgraph-" +
+                to_string(segmentId(u0)) + "-" +
+                to_string(segmentId(u1)) + ".csv");
+            csv << "Id,Length,Color,\n";
+            for(const Graph::vertex_descriptor v: subgraphVertices) {
+                csv << segmentId(v) << ",";
+                csv << graph[v].length << ",";
+                if(v == v0) {
+                    csv << "Green,";
+                } else if(v == v1) {
+                    csv << "Red,";
+                } else {
+                    csv << "Blue,";
+                }
+                csv << "\n";
+            }
+        }
+
+
     }
 }
 
