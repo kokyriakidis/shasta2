@@ -167,6 +167,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def_readwrite("compressDebugLevel", &AssemblyGraph::compressDebugLevel)
         .def("bubbleCleanupIteration", &AssemblyGraph::bubbleCleanupIteration)
         .def("compress", &AssemblyGraph::compress)
+        .def("prune", &AssemblyGraph::prune)
         .def("removeEmptyEdges", &AssemblyGraph::removeEmptyEdges)
         .def("assembleAll", &AssemblyGraph::assembleAll)
         .def("clearSequence", &AssemblyGraph::clearSequence)
@@ -178,6 +179,8 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def("writeFasta", &AssemblyGraph::writeFasta)
         .def("computeJourneys", &AssemblyGraph::computeJourneys)
         .def("findAndConnectAssemblyPaths", &AssemblyGraph::findAndConnectAssemblyPaths)
+        .def("removeIsolatedVertices", &AssemblyGraph::removeIsolatedVertices)
+        .def("removeLowN50Components", &AssemblyGraph::removeLowN50Components)
         ;
 
     // Expose AssemblyGraph vertex_descriptor and edge_descriptor.

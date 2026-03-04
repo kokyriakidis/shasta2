@@ -148,9 +148,6 @@ void AssemblyGraph::simplifyAndAssemble()
 {
     writePerformanceStatistics("AssemblyGraph::simplifyAndAssemble begins");
 
-    // EXPOSE WHEN CODE STABILIZES.
-    const uint64_t minComponentN50 = 100000;
-
     // Initial output.
     writeIntermediateStageIfRequested("A");
 
@@ -187,7 +184,7 @@ void AssemblyGraph::simplifyAndAssemble()
 
         // Remove isolated vertices and connected components with small N50.
         removeIsolatedVertices();
-        removeLowN50Components(minComponentN50);
+        removeLowN50Components();
         writeIntermediateStageIfRequested("G" + to_string(iteration));
 
         if(changeCount == 0) {
@@ -2130,8 +2127,11 @@ void AssemblyGraph::removeIsolatedVertices()
 
 
 // Remove connected components with a low N50.
-void AssemblyGraph::removeLowN50Components([[maybe_unused]] uint64_t minN50)
+void AssemblyGraph::removeLowN50Components()
 {
+    // EXPOSE WHEN CODE STABILIZES.
+    const uint64_t minComponentN50 = 100000;
+
     AssemblyGraph& assemblyGraph = *this;
     const bool debug = false;
 
@@ -2193,7 +2193,7 @@ void AssemblyGraph::removeLowN50Components([[maybe_unused]] uint64_t minN50)
 
 
         // Decide if we keep this component.
-        const bool keep = (n50 >= minN50);
+        const bool keep = (n50 >= minComponentN50);
         if(debug) {
             if(keep) {
                 cout << "Keeping";

@@ -1303,9 +1303,20 @@ void PathGraph::findAssemblyPath(vector<Segment>& assemblyPath)
                 csv << "\n";
             }
         }
+
+        // Add to the assembly path the segments of the longest path, except the last one
+        // to avoid duplications.
+        for(uint64_t i=0; i<longestSubgraphPathVertices.size()-1; i++) {
+            const Subgraph::vertex_descriptor w = longestSubgraphPathVertices[i];
+            const Segment segment = subgraph[w].segment;
+            assemblyPath.push_back(segment);
+        }
     }
 
-
+    // Add the final Segment to the assembly path.
+    const PathGraph::edge_descriptor e = longestPathEdges.back();
+    const PathGraph::vertex_descriptor u = target(e, component);
+    assemblyPath.push_back(component[u].segment);
 
 }
 

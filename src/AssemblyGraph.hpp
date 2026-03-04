@@ -260,7 +260,7 @@ public:
     void removeIsolatedVertices();
 
     // Remove connected components with a low N50.
-    void removeLowN50Components(uint64_t minN50);
+    void removeLowN50Components();
 
 
 

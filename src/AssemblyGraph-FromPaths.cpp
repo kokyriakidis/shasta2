@@ -3,7 +3,7 @@
 #include "Assembler.hpp"
 #include "deduplicate.hpp"
 #include "performanceLog.hpp"
-#include "ReadFollowing1.hpp"
+#include "ReadFollowing2.hpp"
 #include "RestrictedAnchorGraph.hpp"
 #include "TangleMatrix1.hpp"
 #include "timestamp.hpp"
@@ -17,9 +17,9 @@ using namespace shasta2;
 // There may be jumps, which are bridged using local assemblies.
 void AssemblyGraph::findAssemblyPaths(vector< vector<edge_descriptor> >& assemblyPaths) const
 {
-	ReadFollowing1::Graph readFollowingGraph(*this);
-    readFollowingGraph.findPaths(assemblyPaths);
-    readFollowingGraph.writePaths(assemblyPaths);
+	ReadFollowing2::Graph readFollowingGraph(*this);
+    readFollowingGraph.findAssemblyPaths(assemblyPaths);
+    readFollowingGraph.writeAssemblyPaths(assemblyPaths);
 }
 
 
@@ -74,8 +74,16 @@ void AssemblyGraph::connectAssemblyPaths(const vector< vector<edge_descriptor> >
 	for(const vector<edge_descriptor>& assemblyPath: assemblyPaths) {
 		for(uint64_t i=1; i<assemblyPath.size()-1; i++) {
 			const edge_descriptor e = assemblyPath[i];
-			SHASTA2_ASSERT(not pathInitialSegments.contains(e));
-			SHASTA2_ASSERT(not pathFinalSegments.contains(e));
+			if(pathInitialSegments.contains(e)) {
+			    cout << "Segment " << assemblyGraph[e].id <<
+			        " is both at the beginning of an assembly path and inside an assembly path." << endl;
+			    throw runtime_error("Invalid assembly paths.");
+			}
+            if(pathFinalSegments.contains(e)) {
+                cout << "Segment " << assemblyGraph[e].id <<
+                    " is both at the end of an assembly path and inside an assembly path." << endl;
+                throw runtime_error("Invalid assembly paths.");
+            }
 			const auto it = pathInternalSegments.find(e);
 			if(it == pathInternalSegments.end()) {
 				pathInternalSegments.insert({e, 1});
