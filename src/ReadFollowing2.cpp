@@ -2,6 +2,8 @@
 
 // Shasta.
 #include "ReadFollowing2.hpp"
+#include "DisjointSets.hpp"
+#include "longestPath.hpp"
 #include "Journeys.hpp"
 #include "Options.hpp"
 #include "performanceLog.hpp"
@@ -807,11 +809,24 @@ void Graph::findAssemblyPaths(vector< vector<Segment> >& assemblyPaths)
 
     // Create the PathGraph. It has a vertex for each long segment.
     PathGraph pathGraph(graph);
+    pathGraph.create();
+    writeGraphviz("Final");
+    cout << "The PathGraph has " << num_vertices(pathGraph) <<
+        " vertices and " << num_edges(pathGraph) << " edges." << endl;
 
+    // Find the non-trivial connected components of the PathGraph.
+    const vector< shared_ptr<PathGraph> > componentPointers = pathGraph.findConnectedComponents();
+    cout << "The PathGraph has " << componentPointers.size() << " non-trivial connected components." << endl;
+
+    // Process one connected component at a time.
     assemblyPaths.clear();
-
-    // Missing code.
-    SHASTA2_ASSERT(0);
+    for(const shared_ptr<PathGraph>& componentPointer: componentPointers) {
+        vector<Segment> assemblyPath;
+        componentPointer->findAssemblyPath(assemblyPath);
+        if(assemblyPath.size() > 1) {
+            assemblyPaths.push_back(assemblyPath);
+        }
+    }
 }
 
 
@@ -838,16 +853,14 @@ void Graph::writeAssemblyPaths(const vector< vector<Segment> >& assemblyPaths) c
 PathGraph::PathGraph(const Graph& graph) :
     graph(graph)
 {
-    PathGraph& pathGraph = *this;
+}
 
+
+
+void PathGraph::create()
+{
     createVertices();
     createEdges();
-    writeGraphviz("Initial");
-    cout << "The initial PathGraph has " << num_vertices(pathGraph) <<
-        " vertices and " << num_edges(pathGraph) << " edges." << endl;
-
-    // Missing code.
-    SHASTA2_ASSERT(0);
 }
 
 
@@ -989,4 +1002,138 @@ void PathGraph::writeGraphviz(ostream& dot) const
 
     dot << "}\n";
 
+}
+
+
+
+vector< shared_ptr<PathGraph> > PathGraph::findConnectedComponents()
+{
+    PathGraph& pathGraph = *this;
+
+    // Map vertices to integers.
+    vector<vertex_descriptor> vertexTable;
+    std::map<vertex_descriptor, uint64_t> vertexIndexMap;
+    uint64_t vertexIndex = 0;
+    BGL_FORALL_VERTICES(v, pathGraph, PathGraph) {
+        vertexTable.push_back(v);
+        vertexIndexMap.insert({v, vertexIndex++});
+    }
+    const uint64_t n = vertexIndex;
+
+    // Use DisjointSets to compute connected components.
+    DisjointSets disjointSets(n);
+    BGL_FORALL_EDGES(e, pathGraph, PathGraph) {
+        const vertex_descriptor v0 = source(e, pathGraph);
+        const vertex_descriptor v1 = target(e, pathGraph);
+        const uint64_t i0 = vertexIndexMap[v0];
+        const uint64_t i1 = vertexIndexMap[v1];
+        disjointSets.unionSet(i0, i1);
+    }
+
+    // Get the vertex indexes for the non-trivial connected components.
+    vector< vector<uint64_t> > componentsVertexIndexes;
+    disjointSets.gatherComponents(2, componentsVertexIndexes);
+    cout << "Found " << componentsVertexIndexes.size() <<
+        " non-trivial connected components of the PathGraph." << endl;
+
+
+
+    // Now create the PathGraphs for each of the non-trivial components.
+    vector< shared_ptr<PathGraph> > components;
+    for(const vector<uint64_t>& componentVertexIndexes: componentsVertexIndexes) {
+
+        // Create the PathGraph for this component.
+        const shared_ptr<PathGraph> componentPointer = make_shared<PathGraph>(graph);
+        PathGraph& component = *componentPointer;
+        components.push_back(componentPointer);
+
+        // Add the vertices, copying them form the PathGraph.
+        std::map<vertex_descriptor, vertex_descriptor> componentVertexMap;
+        for(const uint64_t i: componentVertexIndexes) {
+            const vertex_descriptor v = vertexTable[i];
+            const vertex_descriptor u = add_vertex(pathGraph[v], component);
+            componentVertexMap.insert({v, u});
+        }
+
+        // Add the edges.
+        // Use v for vertices of the PathGraph and u for vertices of the component.
+        for(const uint64_t i0: componentVertexIndexes) {
+            const vertex_descriptor v0 = vertexTable[i0];
+            const vertex_descriptor u0 = componentVertexMap[v0];
+            BGL_FORALL_OUTEDGES(v0, e, pathGraph, PathGraph) {
+                const vertex_descriptor v1 = target(e, pathGraph);
+                const vertex_descriptor u1 = componentVertexMap[v1];
+                add_edge(u0, u1, pathGraph[e], component);
+            }
+        }
+    }
+
+
+
+    return components;
+}
+
+
+
+// This computes an assembly path, assuming it is working
+// on a PathGraph with a single connected component.
+void PathGraph::findAssemblyPath(vector<Segment>& assemblyPath)
+{
+    const bool debug = true;
+    assemblyPath.clear();
+    PathGraph& component = *this;
+
+    if(debug) {
+        cout << "Working on a PathGraph component with " << num_vertices(component) <<
+            " vertices and " << num_edges(component) << " edges." << endl;
+        cout << "The vertices correspond to segments";
+        BGL_FORALL_VERTICES(u, component, PathGraph) {
+            cout << " " << segmentId(u);
+        }
+        cout << endl;
+    }
+
+    // Find the edges of longest path.
+    // This can throw if this component has cycles.
+    vector<edge_descriptor> longestPathEdges;
+    try {
+        longestPath(component, longestPathEdges);
+    } catch(std::exception&) {
+        // We can do better.
+        if(debug) {
+            cout << "No assembly path created for this component because of cycles." << endl;
+        }
+        return;
+    }
+    if(debug) {
+        cout << "The longest path in the PathGraph has " << longestPathEdges.size() << " edges." << endl;
+    }
+    SHASTA2_ASSERT(not longestPathEdges.empty());
+
+    // Find the vertices of the longest path.
+    vector<vertex_descriptor> longestPathVertices;
+    const edge_descriptor firstPathEdge = longestPathEdges.front();
+    const vertex_descriptor firstPathVertex = source(firstPathEdge, component);
+    longestPathVertices.push_back(firstPathVertex);
+    for(const edge_descriptor e: longestPathEdges) {
+        const vertex_descriptor v = target(e, component);
+        longestPathVertices.push_back(v);
+    }
+    SHASTA2_ASSERT(longestPathVertices.size() > 1);
+    if(debug) {
+        cout << "The longest path has " << longestPathVertices.size() << " vertices: " << endl;
+        for(const vertex_descriptor u: longestPathVertices) {
+            cout << " " << segmentId(u);
+        }
+        cout << endl;
+    }
+}
+
+
+
+uint64_t PathGraph::segmentId(vertex_descriptor v) const
+{
+    const PathGraph& pathGraph = *this;
+    const Segment segment = pathGraph[v].segment;
+    return graph.assemblyGraph[segment].id;
 }

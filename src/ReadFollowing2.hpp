@@ -226,8 +226,22 @@ public:
 // Class used to store paths between long segments.
 class shasta2::ReadFollowing2::PathGraph : public PathGraphBaseClass {
 public:
+
+    // This creates an empty PathGraph.
     PathGraph(const Graph&);
 
+    // This uses the Graph to create vertices aned edges.
+    void create();
+
+    // This returns all the non-trivial connected components
+    // of the PathGraph (that is, the ones with at least two vertices).
+    vector< shared_ptr<PathGraph> > findConnectedComponents();
+
+    // This computes an assembly path, assuming it is working
+    // on a PathGraph with a single connected component.
+    void findAssemblyPath(vector<Segment>&);
+
+    uint64_t segmentId(vertex_descriptor) const;
 private:
     const Graph& graph;
     void createVertices();
