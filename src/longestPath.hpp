@@ -12,6 +12,7 @@
 #include <boost/graph/topological_sort.hpp>
 
 // Standard library.
+#include "algorithm.hpp"
 #include <map>
 #include "vector.hpp"
 
