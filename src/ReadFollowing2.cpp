@@ -2,6 +2,7 @@
 
 // Shasta.
 #include "ReadFollowing2.hpp"
+#include "approximateTopologicalSort.hpp"
 #include "color.hpp"
 #include "DisjointSets.hpp"
 #include "longestPath.hpp"
@@ -1251,7 +1252,7 @@ void PathGraph::findAssemblyPath(vector<Segment>& assemblyPath)
         }
 
         // Create a Subgraph of the Graph that uses only these segments.
-        const Subgraph subgraph(graph, subgraphVertices);
+        Subgraph subgraph(graph, subgraphVertices);
         if(debug) {
             cout << "The subgraph for this portion of the assembly path has " <<
                 num_vertices(subgraph) << " vertices and " <<
@@ -1262,12 +1263,22 @@ void PathGraph::findAssemblyPath(vector<Segment>& assemblyPath)
                 to_string(segmentId(u1)) + ".dot");
         }
 
+
+
         // Find the longest path in the subgraph.
-        // This will assert if the subgraph has cycles.
-        // I will handle that case when it first presents itself.
         vector<Subgraph::edge_descriptor> longestSubgraphPathEdges;
-        longestPath(subgraph, longestSubgraphPathEdges);
+        try {
+            longestPath(subgraph, longestSubgraphPathEdges);
+        } catch(boost::not_a_dag&) {
+            subgraph.makeAcyclic();
+            longestPath(subgraph, longestSubgraphPathEdges);
+            if(debug) {
+                cout << "The subgraph contained cycles, and they were removed." << endl;
+            }
+        }
         SHASTA2_ASSERT(not longestSubgraphPathEdges.empty());
+
+
 
         // Gather the vertices of the longest path.
         vector<Subgraph::vertex_descriptor> longestSubgraphPathVertices;
@@ -1355,7 +1366,8 @@ Subgraph::Subgraph(
             const auto it1 = vertexMap.find(v1);
             if(it1 != vertexMap.end()) {
                 const Subgraph::vertex_descriptor w1 = it1->second;
-                add_edge(w0, w1, subgraph);
+                auto[we, ignore] = add_edge(w0, w1, subgraph);
+                subgraph[we].correctedJaccard = graph[e].segmentPairInformation.correctedJaccard;
             }
         }
     }
@@ -1394,4 +1406,48 @@ uint64_t Subgraph::segmentId(vertex_descriptor w) const
     const SubgraphVertex& vertex = subgraph[w];
     const Segment segment = vertex.segment;
     return graph.assemblyGraph[segment].id;
+}
+
+
+
+void Subgraph::makeAcyclic()
+{
+    Subgraph& subgraph = *this;
+
+    // Gather the edges with their correctedJaccard.
+    class EdgeInfo {
+    public:
+        edge_descriptor e;
+        double correctedJaccard;
+        bool operator<(const EdgeInfo& that) const {
+            return correctedJaccard > that.correctedJaccard;
+        }
+    };
+    vector<EdgeInfo> edgeInfos;
+    BGL_FORALL_EDGES(e, subgraph, Subgraph) {
+        const double correctedJaccard = subgraph[e].correctedJaccard;
+        edgeInfos.push_back(EdgeInfo({e, correctedJaccard}));
+    }
+
+    // Sort them by decreasing corrected jaccard.
+    sort(edgeInfos.begin(), edgeInfos.end());
+
+    // Do approximateTopologicalOrdewr with edges in this order.
+    vector<edge_descriptor> sortedEdges;
+    for(const EdgeInfo& edgeInfo: edgeInfos) {
+        sortedEdges.push_back(edgeInfo.e);
+    }
+    approximateTopologicalSort(subgraph, sortedEdges);
+
+    // Remove the non-DAG edges.
+    vector<edge_descriptor> edgesToBeRemoved;
+    BGL_FORALL_EDGES(e, subgraph, Subgraph) {
+        if(not subgraph[e].isDagEdge) {
+            edgesToBeRemoved.push_back(e);
+        }
+    }
+    for(const edge_descriptor e: edgesToBeRemoved) {
+        boost::remove_edge(e, subgraph);
+    }
+
 }

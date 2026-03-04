@@ -33,11 +33,13 @@ namespace shasta2 {
 
         class Subgraph;
         class SubgraphVertex;
+        class SubgraphEdge;
         using SubgraphBaseClass = boost::adjacency_list<
             boost::listS,
             boost::listS,
             boost::bidirectionalS,
-            SubgraphVertex>;
+            SubgraphVertex,
+            SubgraphEdge>;
 
         using Path = vector<GraphBaseClass::vertex_descriptor>;
 
@@ -239,8 +241,19 @@ public:
 class shasta2::ReadFollowing2::SubgraphVertex {
 public:
     Segment segment;
+
+    // Used by approximateTopologicalSort.
+    uint64_t rank = 0;
+    uint64_t color = 0;
 };
 
+
+
+class shasta2::ReadFollowing2::SubgraphEdge {
+public:
+    bool correctedJaccard;
+    bool isDagEdge = false;
+};
 
 
 
@@ -253,6 +266,7 @@ public:
         const std::set<Graph::vertex_descriptor, Graph::OrderById>& vertices);
     const Graph& graph;
     uint64_t segmentId(vertex_descriptor) const;
+    void makeAcyclic();
     void writeGraphviz(const string& name) const;
 };
 
