@@ -871,8 +871,15 @@ void Graph::findAssemblyPaths(vector< vector<Segment> >& assemblyPaths)
     // Create the PathGraph. It has a vertex for each long segment.
     PathGraph pathGraph(graph);
     pathGraph.create();
+    writeGraphviz("Initial");
+    cout << "The initial PathGraph has " << num_vertices(pathGraph) <<
+        " vertices and " << num_edges(pathGraph) << " edges." << endl;
+
+    // Compute assembly paths on PathGraph edges.
+    // Remove the edges for which this fails.
+    pathGraph.findAssemblyPathsOnEdges();
     writeGraphviz("Final");
-    cout << "The PathGraph has " << num_vertices(pathGraph) <<
+    cout << "The final PathGraph has " << num_vertices(pathGraph) <<
         " vertices and " << num_edges(pathGraph) << " edges." << endl;
 
     // Find the non-trivial connected components of the PathGraph.
@@ -1003,6 +1010,49 @@ void PathGraph::createEdges()
     }
 
 
+}
+
+
+
+// Find assembly paths on all edges, then remove the
+// edges for which an assembly path could not be found.
+void PathGraph::findAssemblyPathsOnEdges()
+{
+    PathGraph& pathGraph = *this;
+
+    // Vector to contain the edges where we did not find an assembly path.
+    // These edges will be removed.
+    vector<edge_descriptor> failedEdges;
+
+    // Loop over all edges of the PathGraph.
+    BGL_FORALL_EDGES(e, pathGraph, PathGraph) {
+        PathGraphEdge& edge = pathGraph[e];
+
+        // Locate the corresponding vertices.
+        const vertex_descriptor u0 = source(e, pathGraph);
+        const vertex_descriptor u1 = target(e, pathGraph);
+
+        // Find the corresponding Graph vertices.
+        const Segment segment0 = pathGraph[u0].segment;
+        const Segment segment1 = pathGraph[u1].segment;
+        const auto it0 = graph.vertexMap.find(segment0);
+        SHASTA2_ASSERT(it0 != graph.vertexMap.end());
+        const Graph::vertex_descriptor v0 = it0->second;
+        const auto it1 = graph.vertexMap.find(segment1);
+        SHASTA2_ASSERT(it1 != graph.vertexMap.end());
+        const Graph::vertex_descriptor v1 = it1->second;
+
+        // Find the assembly path between these two grap vertices.
+        const bool success = graph.findAssemblyPath(v0, v1, edge.assemblyPath);
+        if(not success) {
+            failedEdges.push_back(e);
+        }
+    }
+
+    // Remove the failed edges.
+    for(const edge_descriptor e: failedEdges) {
+        boost::remove_edge(e, pathGraph);
+    }
 }
 
 
@@ -1193,30 +1243,14 @@ void PathGraph::findAssemblyPath(vector<Segment>& assemblyPath)
 
     // Construct the path by looping over the edges of the longest path.
     for(const edge_descriptor e: longestPathEdges) {
-
-        // Find the PathGraph vertices of this edge.
         const vertex_descriptor u0 = source(e, component);
-        const vertex_descriptor u1 = target(e, component);
-
-        // Find the corresponding Segments.
         const Segment segment0 = component[u0].segment;
-        const Segment segment1 = component[u1].segment;
 
-        // Find the corresponding Graph vertices.
-        const auto it0 = graph.vertexMap.find(segment0);
-        SHASTA2_ASSERT(it0 != graph.vertexMap.end());
-        const Graph::vertex_descriptor v0 = it0->second;
-        const auto it1 = graph.vertexMap.find(segment1);
-        SHASTA2_ASSERT(it1 != graph.vertexMap.end());
-        const Graph::vertex_descriptor v1 = it1->second;
-
-        // Find the assembly path portion between these two vertices.
-        vector<Segment> internalPortionOfAssemblyPath;
-        graph.findAssemblyPath(v0, v1, internalPortionOfAssemblyPath);
+        // Access the assembly path portion between these two vertices.
+        vector<Segment>& internalPortionOfAssemblyPath = component[e].assemblyPath;
 
         // Update the assembly path.
-        // Don't include the last segment
-        // to avoid duplications.
+        // Don't include the last segment to avoid duplications.
         assemblyPath.push_back(segment0);
         std::ranges::copy(internalPortionOfAssemblyPath, back_inserter(assemblyPath));
     }

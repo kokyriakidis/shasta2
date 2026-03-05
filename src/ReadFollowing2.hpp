@@ -303,6 +303,10 @@ public:
     // - randomPathCount[1] contains the number of backward paths starting from segment1
     //   that ended at segment0.
     array<uint64_t, 2> randomPathCount = {0, 0};
+
+    // A possible assembly path between the long segments corresponding
+    // to the vertices of this PathGraphEdge.
+    vector<Segment> assemblyPath;
 };
 
 
@@ -317,6 +321,8 @@ public:
     // This uses the Graph to create vertices aned edges.
     void create();
 
+    void findAssemblyPathsOnEdges();
+
     // This returns all the non-trivial connected components
     // of the PathGraph (that is, the ones with at least two vertices).
     vector< shared_ptr<PathGraph> > findConnectedComponents();
@@ -330,6 +336,9 @@ private:
     const Graph& graph;
     void createVertices();
     void createEdges();
+
+    // Find assembly paths on all edges, then remove the
+    // edges for which an assembly path could not be found.
 
     // Map segments to vertices.
     std::map<Segment, vertex_descriptor> vertexMap;
