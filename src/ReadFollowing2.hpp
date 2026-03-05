@@ -213,10 +213,23 @@ public:
     std::map< pair<vertex_descriptor, vertex_descriptor>, vector<vertex_descriptor> > randomPathsMap;
     void createRandomPathsMap();
 
+
+
     // Assembly paths.
     shared_ptr<PathGraph> createPathGraph();
     void findAssemblyPaths(vector< vector<Segment> >& assemblyPaths);
     void writeAssemblyPaths(const vector< vector<Segment> >& assemblyPaths) const;
+
+    // Find an assembly path between two long vertices.
+    // This uses the randomPathsMap to locate usable short vertices.
+    // The Path does not include the segments corresponding to v0 and v1.
+    // This can fail, in which case it returns false and an empty assembly path.
+    bool findAssemblyPath(
+        vertex_descriptor v0,
+        vertex_descriptor v1,
+        vector<Segment>&) const;
+
+
 
     // Python callable.
     void writeRandomPath(Segment, uint64_t direction);
@@ -251,7 +264,7 @@ public:
 
 class shasta2::ReadFollowing2::SubgraphEdge {
 public:
-    bool correctedJaccard;
+    double correctedJaccard = 0.;
     bool isDagEdge = false;
 };
 

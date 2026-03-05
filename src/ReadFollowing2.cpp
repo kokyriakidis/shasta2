@@ -1198,7 +1198,7 @@ void PathGraph::findAssemblyPath(vector<Segment>& assemblyPath)
         const vertex_descriptor u0 = source(e, component);
         const vertex_descriptor u1 = target(e, component);
 
-        // Fidn the corresponding Segments.
+        // Find the corresponding Segments.
         const Segment segment0 = component[u0].segment;
         const Segment segment1 = component[u1].segment;
 
@@ -1210,118 +1210,15 @@ void PathGraph::findAssemblyPath(vector<Segment>& assemblyPath)
         SHASTA2_ASSERT(it1 != graph.vertexMap.end());
         const Graph::vertex_descriptor v1 = it1->second;
 
-        // Gather the vertices of the Graph subgraph that can be used to assemble this portion.
-        std::set<Graph::vertex_descriptor, Graph::OrderById> subgraphVertices(graph.orderById);
-        subgraphVertices.insert(v0);
-        subgraphVertices.insert(v1);
-        const auto it = graph.randomPathsMap.find({v0, v1});
-        if(it != graph.randomPathsMap.end()) {
-            const vector<Graph::vertex_descriptor>& shortVertices = it->second;
-            for(const Graph::vertex_descriptor v: shortVertices) {
-                subgraphVertices.insert(v);
-            }
-        }
+        // Find the assembly path portion between these two vertices.
+        vector<Segment> internalPortionOfAssemblyPath;
+        graph.findAssemblyPath(v0, v1, internalPortionOfAssemblyPath);
 
-        if(debug) {
-            cout << "Working on the assembly path portion between " <<
-                segmentId(u0) << " and " << segmentId(u1) << endl;
-            cout << "The following segments are usable to assemble this portion:" << endl;
-            for(const Graph::vertex_descriptor v: subgraphVertices) {
-                cout << " " << graph.segmentId(v);
-            }
-            cout << endl;
-
-            // Also write a csv file that can be loaded in Bandage to visualize these segments.
-            ofstream csv(
-                "ReadFollowing-Subgraph-" +
-                to_string(segmentId(u0)) + "-" +
-                to_string(segmentId(u1)) + ".csv");
-            csv << "Id,Length,Color,\n";
-            for(const Graph::vertex_descriptor v: subgraphVertices) {
-                csv << segmentId(v) << ",";
-                csv << graph[v].length << ",";
-                if(v == v0) {
-                    csv << "Red,";
-                } else if(v == v1) {
-                    csv << "Green,";
-                } else {
-                    csv << "Blue,";
-                }
-                csv << "\n";
-            }
-        }
-
-        // Create a Subgraph of the Graph that uses only these segments.
-        Subgraph subgraph(graph, subgraphVertices);
-        if(debug) {
-            cout << "The subgraph for this portion of the assembly path has " <<
-                num_vertices(subgraph) << " vertices and " <<
-                num_edges(subgraph) << " edges." << endl;
-            subgraph.writeGraphviz(
-                "ReadFollowing-Subgraph-" +
-                to_string(segmentId(u0)) + "-" +
-                to_string(segmentId(u1)) + ".dot");
-        }
-
-
-
-        // Find the longest path in the subgraph.
-        vector<Subgraph::edge_descriptor> longestSubgraphPathEdges;
-        try {
-            longestPath(subgraph, longestSubgraphPathEdges);
-        } catch(boost::not_a_dag&) {
-            subgraph.makeAcyclic();
-            longestPath(subgraph, longestSubgraphPathEdges);
-            if(debug) {
-                cout << "The subgraph contained cycles, and they were removed." << endl;
-            }
-        }
-        SHASTA2_ASSERT(not longestSubgraphPathEdges.empty());
-
-
-
-        // Gather the vertices of the longest path.
-        vector<Subgraph::vertex_descriptor> longestSubgraphPathVertices;
-        const Subgraph::edge_descriptor firstEdge = longestSubgraphPathEdges.front();
-        longestSubgraphPathVertices.push_back(source(firstEdge, subgraph));
-        for(const Subgraph::edge_descriptor e: longestSubgraphPathEdges) {
-            longestSubgraphPathVertices.push_back(target(e, subgraph));
-        }
-        SHASTA2_ASSERT(subgraph[longestSubgraphPathVertices.front()].segment == segment0);
-        SHASTA2_ASSERT(subgraph[longestSubgraphPathVertices.back()].segment == segment1);
-
-        if(debug) {
-            cout << "The longest path in the subgraph has " <<
-                longestSubgraphPathVertices.size() << " vertices." << endl;
-
-            // Also write a csv file that can be loaded in Bandage to visualize the longest path.
-            ofstream csv(
-                "ReadFollowing-Subgraph-LongestPath-" +
-                to_string(segmentId(u0)) + "-" +
-                to_string(segmentId(u1)) + ".csv");
-            csv << "Id,Position,Length,Color,\n";
-            for(uint64_t i=0; i<longestSubgraphPathVertices.size(); i++) {
-                const Subgraph::vertex_descriptor w = longestSubgraphPathVertices[i];
-                const Segment segment = subgraph[w].segment;
-                const double H = double(i) / (3. * double(longestSubgraphPathVertices.size() - 1));
-                const double S = 1.;
-                const double L = 0.6;
-                const string color = hslToRgbString(H, S, L);
-                csv << graph.assemblyGraph[segment].id << ",";
-                csv << i << ",";
-                csv << graph.assemblyGraph[segment].length() << ",";
-                csv << color << ",";
-                csv << "\n";
-            }
-        }
-
-        // Add to the assembly path the segments of the longest path, except the last one
+        // Update the assembly path.
+        // Don't include the last segment
         // to avoid duplications.
-        for(uint64_t i=0; i<longestSubgraphPathVertices.size()-1; i++) {
-            const Subgraph::vertex_descriptor w = longestSubgraphPathVertices[i];
-            const Segment segment = subgraph[w].segment;
-            assemblyPath.push_back(segment);
-        }
+        assemblyPath.push_back(segment0);
+        std::ranges::copy(internalPortionOfAssemblyPath, back_inserter(assemblyPath));
     }
 
     // Add the final Segment to the assembly path.
@@ -1329,6 +1226,154 @@ void PathGraph::findAssemblyPath(vector<Segment>& assemblyPath)
     const PathGraph::vertex_descriptor u = target(e, component);
     assemblyPath.push_back(component[u].segment);
 
+}
+
+
+
+// Find an assembly path between two long vertices.
+// This uses the randomPathsMap to locate usable short vertices.
+// The Path does not include the segments corresponding to v0 and v1.
+// This can fail, in which case it returns false and an empty assembly path.
+bool Graph::findAssemblyPath(
+    vertex_descriptor v0,
+    vertex_descriptor v1,
+    vector<Segment>& assemblyPath) const
+{
+    const bool debug = true;
+    const Graph& graph = *this;
+    assemblyPath.clear();
+
+    const Vertex& vertex0 = graph[v0];
+    const Vertex& vertex1 = graph[v1];
+    SHASTA2_ASSERT(vertex0.isLongVertex);
+    SHASTA2_ASSERT(vertex1.isLongVertex);
+
+    // Gather the vertices of the Graph subgraph that can be used to assemble this portion.
+    std::set<Graph::vertex_descriptor, Graph::OrderById> subgraphVertices(graph.orderById);
+    subgraphVertices.insert(v0);
+    subgraphVertices.insert(v1);
+    const auto it = randomPathsMap.find({v0, v1});
+    if(it != randomPathsMap.end()) {
+        const vector<vertex_descriptor>& shortVertices = it->second;
+        for(const vertex_descriptor v: shortVertices) {
+            subgraphVertices.insert(v);
+        }
+    }
+
+    if(debug) {
+        cout << "Findint a possible assembly path portion between " <<
+            segmentId(v0) << " and " << segmentId(v1) << endl;
+        cout << "The following segments are usable to assemble this portion:" << endl;
+        for(const Graph::vertex_descriptor v: subgraphVertices) {
+            cout << " " << graph.segmentId(v);
+        }
+        cout << endl;
+
+        // Also write a csv file that can be loaded in Bandage to visualize these segments.
+        ofstream csv(
+            "ReadFollowing-Subgraph-" +
+            to_string(segmentId(v0)) + "-" +
+            to_string(segmentId(v1)) + ".csv");
+        csv << "Id,Length,Color,\n";
+        for(const Graph::vertex_descriptor v: subgraphVertices) {
+            csv << segmentId(v) << ",";
+            csv << graph[v].length << ",";
+            if(v == v0) {
+                csv << "Red,";
+            } else if(v == v1) {
+                csv << "Green,";
+            } else {
+                csv << "Blue,";
+            }
+            csv << "\n";
+        }
+    }
+
+    // Create a Subgraph of the Graph that uses only these segments.
+    Subgraph subgraph(graph, subgraphVertices);
+    if(debug) {
+        cout << "The subgraph for this portion of the assembly path has " <<
+            num_vertices(subgraph) << " vertices and " <<
+            num_edges(subgraph) << " edges." << endl;
+        subgraph.writeGraphviz(
+            "ReadFollowing-Subgraph-" +
+            to_string(segmentId(v0)) + "-" +
+            to_string(segmentId(v1)) + ".dot");
+    }
+
+    // Find the longest path in the subgraph.
+    // Remove cycles if necessary.
+    vector<Subgraph::edge_descriptor> longestSubgraphPathEdges;
+    try {
+        longestPath(subgraph, longestSubgraphPathEdges);
+    } catch(boost::not_a_dag&) {
+        subgraph.makeAcyclic();
+        longestPath(subgraph, longestSubgraphPathEdges);
+        if(debug) {
+            cout << "The subgraph contained cycles, and they were removed." << endl;
+        }
+    }
+    if(longestSubgraphPathEdges.empty()) {
+        if(debug) {
+            cout << "Graph::findAssemblyPath failed: the longest path is empty." << endl;
+        }
+        return false;
+    }
+
+
+    // Gather the vertices of the longest path.
+    vector<Subgraph::vertex_descriptor> longestSubgraphPathVertices;
+    const Subgraph::edge_descriptor firstEdge = longestSubgraphPathEdges.front();
+    longestSubgraphPathVertices.push_back(source(firstEdge, subgraph));
+    for(const Subgraph::edge_descriptor e: longestSubgraphPathEdges) {
+        longestSubgraphPathVertices.push_back(target(e, subgraph));
+    }
+    if(subgraph[longestSubgraphPathVertices.front()].segment != vertex0.segment) {
+        if(debug) {
+            cout << "Graph::findAssemblyPath failed: the longest path does not begin at v0." << endl;
+        }
+        return false;
+    }
+    if(subgraph[longestSubgraphPathVertices.back()].segment != vertex1.segment) {
+        if(debug) {
+            cout << "Graph::findAssemblyPath failed: the longest path does not end at v1." << endl;
+        }
+        return false;
+    }
+
+    if(debug) {
+        cout << "The longest path in the subgraph has " <<
+            longestSubgraphPathVertices.size() << " vertices." << endl;
+
+        // Also write a csv file that can be loaded in Bandage to visualize the longest path.
+        ofstream csv(
+            "ReadFollowing-Subgraph-LongestPath-" +
+            to_string(segmentId(v0)) + "-" +
+            to_string(segmentId(v1)) + ".csv");
+        csv << "Id,Position,Length,Color,\n";
+        for(uint64_t i=0; i<longestSubgraphPathVertices.size(); i++) {
+            const Subgraph::vertex_descriptor w = longestSubgraphPathVertices[i];
+            const Segment segment = subgraph[w].segment;
+            const double H = double(i) / (3. * double(longestSubgraphPathVertices.size() - 1));
+            const double S = 1.;
+            const double L = 0.6;
+            const string color = hslToRgbString(H, S, L);
+            csv << graph.assemblyGraph[segment].id << ",";
+            csv << i << ",";
+            csv << graph.assemblyGraph[segment].length() << ",";
+            csv << color << ",";
+            csv << "\n";
+        }
+    }
+
+    // Construct the assembly path, without including segment0 and segment1.
+    for(uint64_t i=1; i<longestSubgraphPathVertices.size()-1; i++) {
+        const Subgraph::vertex_descriptor w = longestSubgraphPathVertices[i];
+        const Segment segment = subgraph[w].segment;
+        assemblyPath.push_back(segment);
+    }
+
+    return true;
 }
 
 
