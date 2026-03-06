@@ -166,6 +166,8 @@ PYBIND11_MODULE(shasta2, shasta2Module)
     assemblyGraphClass
         .def_readwrite("compressDebugLevel", &AssemblyGraph::compressDebugLevel)
         .def("bubbleCleanupIteration", &AssemblyGraph::bubbleCleanupIteration)
+        .def("cleanupLinearChains", &AssemblyGraph::cleanupLinearChains)
+        .def("cleanupLinearChain", &AssemblyGraph::cleanupLinearChain)
         .def("compress", &AssemblyGraph::compress)
         .def("prune", &AssemblyGraph::prune)
         .def("removeEmptyEdges", &AssemblyGraph::removeEmptyEdges)

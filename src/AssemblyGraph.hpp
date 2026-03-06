@@ -205,6 +205,13 @@ public:
     uint64_t compress();
     uint64_t compressDebugLevel = 0; // 1=minimal, 2=compact, 3=detailed.
 
+    // This cleans up linear chains by removing edges that have low
+    // corrected Jaccard similarity with nearby edges and
+    // replacing with new edges, constructed by connecting
+    // the remaining edges.
+    void cleanupLinearChains();
+    void cleanupLinearChain(const vector<edge_descriptor>&);
+
 
 
     // Class to order vertices or edges by id.

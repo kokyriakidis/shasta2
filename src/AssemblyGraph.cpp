@@ -11,12 +11,15 @@
 #include "DisjointSets.hpp"
 #include "findLinearChains.hpp"
 #include "findConvergingVertex.hpp"
+#include "findReachableVertices.hpp"
 #include "Journeys.hpp"
 #include "LocalAssembly3.hpp"
 #include "LocalAssembly4.hpp"
+#include "longestPath.hpp"
 #include "Options.hpp"
 #include "performanceLog.hpp"
 #include "RestrictedAnchorGraph.hpp"
+#include "SegmentStepSupport.hpp"
 #include "Superbubble.hpp"
 #include "SuperbubbleChain.hpp"
 #include "TangleMatrix1.hpp"
@@ -176,16 +179,20 @@ void AssemblyGraph::simplifyAndAssemble()
         prune();
         writeIntermediateStageIfRequested("E" + to_string(iteration));
 
+        // Clean up linear chains.
+        cleanupLinearChains();
+        writeIntermediateStageIfRequested("F" + to_string(iteration));
+
         // Compress.
         compressDebugLevel = 2;
         compress();
         compressDebugLevel = 0;
-        writeIntermediateStageIfRequested("F" + to_string(iteration));
+        writeIntermediateStageIfRequested("G" + to_string(iteration));
 
         // Remove isolated vertices and connected components with small N50.
         removeIsolatedVertices();
         removeLowN50Components();
-        writeIntermediateStageIfRequested("G" + to_string(iteration));
+        writeIntermediateStageIfRequested("H" + to_string(iteration));
 
         if(changeCount == 0) {
             break;
@@ -2283,4 +2290,322 @@ uint64_t AssemblyGraph::pruneIteration()
     }
 
     return chainsToBeRemoved.size();
+}
+
+
+
+// This cleans up linear chains by removing edges that have low
+// corrected Jaccard similarity with nearby edges and
+// replacing with new edges, constructed by connecting
+// the remaining edges.
+void AssemblyGraph::cleanupLinearChains()
+{
+    // Find linear chains of 3 or more edges.
+    vector< vector<edge_descriptor> > chains;
+    findLinearChains(*this, 3, chains);
+
+    // Process each one of them separately.
+    for(const auto& chain: chains) {
+        cleanupLinearChain(chain);
+    }
+}
+
+
+
+void AssemblyGraph::cleanupLinearChain(const vector<edge_descriptor>& chain)
+{
+    // EXPOSE WHEN CODE STABILIZES.
+    const uint64_t minCommonCount = 3;
+    const double correctedJaccardThresholdStart = 0.8;
+    const double correctedJaccardThresholdDelta = 0.05;
+
+    const bool debug = false;
+    AssemblyGraph& assemblyGraph = *this;
+    ostream html(0);
+    const uint32_t representativeRegionStepCount =  uint32_t(options.representativeRegionStepCount);
+
+    if(debug) {
+        cout << "AssemblyGraph::cleanupLinearChain begins for chain:" << endl;
+        for(const edge_descriptor e: chain) {
+            cout << assemblyGraph[e].id << " ";
+        }
+        cout << endl;
+    }
+
+    // If the chain does not have at least 3 edges, do nothing.
+    if(chain.size() < 3) {
+        return;
+    }
+
+    // Sanity check: all vertices internal to the chain must have
+    // in_degree 1 and out_degree 1.
+    for(uint64_t i=1; i<chain.size(); i++) {
+        const edge_descriptor e = chain[i];
+        const vertex_descriptor v = source(e, assemblyGraph);
+        SHASTA2_ASSERT(in_degree(v, assemblyGraph) == 1);
+        SHASTA2_ASSERT(out_degree(v, assemblyGraph) == 1);
+    }
+
+
+
+    // Class to store information about a pair of edges in the chain.
+    class EdgePairInfo {
+    public:
+        uint64_t i0;
+        uint64_t i1;
+        uint64_t commonCount;
+        double correctedJaccard;
+    };
+
+
+
+    // Check all pairs of edges in the chain.
+    vector<EdgePairInfo> edgePairInfos;
+    for(uint64_t i0=0; i0<chain.size()-1; i0++) {
+        const edge_descriptor e0 = chain[i0];
+        for(uint64_t i1=i0+1; i1<chain.size(); i1++) {
+            const edge_descriptor e1 = chain[i1];
+            if(canConnect(e0, e1)) {
+                const SegmentPairInformation segmentPairInformation =  SegmentStepSupport::analyzeSegmentPair(
+                    html, assemblyGraph, e0, e1, representativeRegionStepCount);
+
+                if(segmentPairInformation.commonCount < minCommonCount) {
+                    continue;
+                }
+
+                if(false) {
+                    cout << assemblyGraph[e0].id << " " << assemblyGraph[e1].id << " " <<
+                        segmentPairInformation.commonCount << " " << segmentPairInformation.correctedJaccard << endl;
+                }
+
+                EdgePairInfo& edgePairInfo = edgePairInfos.emplace_back();
+                edgePairInfo.i0 = i0;
+                edgePairInfo.i1 = i1;
+                edgePairInfo.commonCount = segmentPairInformation.commonCount;
+                edgePairInfo.correctedJaccard = segmentPairInformation.correctedJaccard;
+            }
+        }
+    }
+
+
+
+    class Vertex{
+    public:
+        edge_descriptor e;
+        // The length of the longest path ending here.
+        uint64_t pathLength = invalid<uint64_t>;
+        bool isOnLongestPath = false;
+    };
+    class Edge {
+    public:
+        uint64_t commonCount = 0;
+        double correctedJaccard = 0.;
+    };
+    using Graph = boost::adjacency_list<
+        boost::listS,
+        boost::vecS,
+        boost::bidirectionalS,
+        Vertex,
+        Edge>;
+    Graph graph(chain.size());
+
+
+
+    // Main loop over decreasing values of correctedJaccardThreshold.
+    double correctedJaccardThreshold = correctedJaccardThresholdStart;
+    while(true) {
+
+        // Add edges not already present.
+        for(const EdgePairInfo& edgePairInfo: edgePairInfos) {
+            if(edgePairInfo.correctedJaccard < correctedJaccardThreshold) {
+                continue;
+            }
+
+            auto[ignore, edgeExists] = boost::edge(edgePairInfo.i0, edgePairInfo.i1, graph);
+            if(edgeExists) {
+                continue;
+            }
+
+            auto[e, edgeWasAdded] = boost::add_edge(edgePairInfo.i0, edgePairInfo.i1, graph);
+            Edge& edge = graph[e];
+            edge.commonCount = edgePairInfo.commonCount;
+            edge.correctedJaccard = edgePairInfo.correctedJaccard;
+        }
+
+        // Check reachability.
+        if(isReachable(graph, 0, chain.size()-1, 0)) {
+            break;
+        }
+
+        // If no reachability at any threshold, do nothing.
+        if(correctedJaccardThreshold < 0.) {
+            if(debug) {
+                cout << "No reachability, giving up on this chain." << endl;
+            }
+            return;
+        }
+
+        correctedJaccardThreshold -= correctedJaccardThresholdDelta;
+    }
+    if(debug) {
+        cout << "Reachability achieved at corrected Jaccard threshold " << correctedJaccardThreshold << endl;
+    }
+
+
+
+    // We want to find the longest path between vFirst and vLast.
+    // To do that we first compute the length of the longest path
+    // starting at vFirst and ending at each vertex.
+    graph[0].pathLength = 0;
+    for(Graph::vertex_descriptor v0=1; v0<chain.size(); v0++) {
+        uint64_t maximumLength = 0;
+        bool hasReachableParents = false;
+        BGL_FORALL_INEDGES_T(v0, e, graph, Graph) {
+            const Graph::vertex_descriptor v1 = source(e, graph);
+            const uint64_t pathLength1 = graph[v1].pathLength;
+            if(pathLength1 != invalid<uint64_t>) {
+                maximumLength = max(maximumLength, pathLength1);
+                hasReachableParents = true;
+            }
+        }
+        if(hasReachableParents) {
+            graph[v0].pathLength = maximumLength + 1;
+        }
+    }
+    SHASTA2_ASSERT(graph[chain.size() - 1].pathLength != invalid<uint64_t>);
+
+
+    // Now to compute the longest path between vFirst and vLast we start
+    // at vLast and move backward, choosing at each step the parent with the
+    // greatest pathLength.
+    vector<Graph::vertex_descriptor> longestPath;
+    longestPath.push_back(chain.size() - 1);
+    while(true) {
+        const Graph::vertex_descriptor v0 = longestPath.back();
+        uint64_t maximumLength = 0;
+        Graph::vertex_descriptor v1Best = Graph::null_vertex();
+        BGL_FORALL_INEDGES(v0, e, graph, Graph) {
+            const Graph::vertex_descriptor v1 = source(e, graph);
+            const uint64_t pathLength1 = graph[v1].pathLength;
+            if(pathLength1 != invalid<uint64_t>) {
+                maximumLength = max(maximumLength, pathLength1);
+                v1Best = v1;
+            }
+        }
+        SHASTA2_ASSERT(v1Best != Graph::null_vertex());
+        longestPath.push_back(v1Best);
+        if(v1Best == 0) {
+            break;
+        }
+    }
+    std::ranges::reverse(longestPath);
+    SHASTA2_ASSERT(longestPath.front() == 0);
+    SHASTA2_ASSERT(longestPath.back() == chain.size() - 1);
+    for(const Graph::vertex_descriptor v: longestPath) {
+        graph[v].isOnLongestPath = true;
+    }
+
+
+
+    if(debug) {
+        ofstream dot("CleanupLinearChain.dot");
+        dot << std::fixed << std::setprecision(2);
+        dot << "digraph cleanupLinearChain {\n";
+        BGL_FORALL_VERTICES(v, graph, Graph) {
+
+            dot << v << " [label=\"" << v << "\\n" <<
+                assemblyGraph[chain[v]].id;
+            if(graph[v].pathLength != invalid<uint64_t>) {
+                dot << "\\n" <<
+                graph[v].pathLength;
+            }
+            dot << "\"";
+            if(graph[v].isOnLongestPath) {
+                dot << " style=filled fillcolor=pink";
+            }
+            dot << "];\n";
+        }
+        BGL_FORALL_EDGES(e, graph, Graph) {
+            const Edge& edge = graph[e];
+            const Graph::vertex_descriptor v0 = source(e, graph);
+            const Graph::vertex_descriptor v1 = target(e, graph);
+            dot << v0 << "->" << v1 <<
+                "[label=\"" << edge.commonCount << "/" << edge.correctedJaccard << "\"];\n";
+        }
+        dot << "}\n";
+    }
+
+
+
+    // At places where the longest path skips AssemblyGraph edges,
+    // we have to remove the AssemblyGraph edges that are skipped
+    // and replace them with a new edge to connect the skip.
+    for(uint64_t i1=1; i1<longestPath.size(); i1++) {
+        const uint64_t i0 = i1 - 1;
+        const Graph::vertex_descriptor v0 = longestPath[i0];
+        const Graph::vertex_descriptor v1 = longestPath[i1];
+        if(v1 != v0+1) {
+            const edge_descriptor e0 = chain[v0];
+            const edge_descriptor e1 = chain[v1];
+            if(debug) {
+                cout << "Skipping between " <<
+                    assemblyGraph[e0].id << " and " <<
+                    assemblyGraph[e1].id << ":";
+                for(Graph::vertex_descriptor u=v0+1; u<v1; u++) {
+                    cout << " " << assemblyGraph[chain[u]].id;
+                }
+                cout << endl;
+            }
+
+            // Create a new edge to connect e0 to e1.
+            const vertex_descriptor v0 = target(e0, assemblyGraph);
+            const vertex_descriptor v1 = source(e1, assemblyGraph);
+
+            const AnchorId anchorId0 = assemblyGraph[v0].anchorId;
+            const AnchorId anchorId1 = assemblyGraph[v1].anchorId;
+
+            // Create the new edge.
+            // If the two anchors are the same, leave it empty without any steps.
+            // Otherwise use the same process in Tangle1::addConnectPair.
+            edge_descriptor eNew;
+            tie(eNew, ignore) = add_edge(v0, v1, AssemblyGraphEdge(nextEdgeId++), assemblyGraph);
+            AssemblyGraphEdge& newEdge = assemblyGraph[eNew];
+            if(anchorId0 != anchorId1) {
+
+                // Create the RestrictedAnchorGraph, then:
+                // - Remove vertices not accessible from anchorId0 and anchorId1.
+                // - Remove cycles.
+                // - Find the longest path.
+                // - Add one step for each edge of the longest path of the RestrictedAnchorGraph.
+
+                ostream html(0);
+                const TangleMatrix1 tangleMatrix(
+                    assemblyGraph,
+                    vector<edge_descriptor>(1, e0),
+                    vector<edge_descriptor>(1, e1),
+                    html);
+
+                RestrictedAnchorGraph restrictedAnchorGraph(anchors, journeys, tangleMatrix, 0, 0, html);
+                vector<RestrictedAnchorGraph::edge_descriptor> longestPath;
+                // restrictedAnchorGraph.findLongestPath(longestPath);
+                restrictedAnchorGraph.findOptimalPath(anchorId0, anchorId1, longestPath);
+
+                for(const RestrictedAnchorGraph::edge_descriptor re: longestPath) {
+                    const auto& rEdge = restrictedAnchorGraph[re];
+                    if(rEdge.anchorPair.size() == 0) {
+                        newEdge.clear();
+                        SHASTA2_ASSERT(0);
+                    }
+                    newEdge.push_back(AssemblyGraphEdgeStep(rEdge.anchorPair, rEdge.offset));
+                }
+            }
+        }
+        // Now remove the edges we skipped.
+        for(Graph::vertex_descriptor u=v0+1; u<v1; u++) {
+            const edge_descriptor e = chain[u];
+            boost::remove_edge(e, assemblyGraph);
+        }
+    }
+
+
 }
