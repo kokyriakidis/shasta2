@@ -343,6 +343,7 @@ private:
     // Map segments to vertices.
     std::map<Segment, vertex_descriptor> vertexMap;
 
+public:
     // Graphviz output.
     void writeGraphviz(const string& name) const;
     void writeGraphviz(ostream&) const;

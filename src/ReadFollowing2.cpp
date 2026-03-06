@@ -871,14 +871,14 @@ void Graph::findAssemblyPaths(vector< vector<Segment> >& assemblyPaths)
     // Create the PathGraph. It has a vertex for each long segment.
     PathGraph pathGraph(graph);
     pathGraph.create();
-    writeGraphviz("Initial");
+    pathGraph.writeGraphviz("Initial");
     cout << "The initial PathGraph has " << num_vertices(pathGraph) <<
         " vertices and " << num_edges(pathGraph) << " edges." << endl;
 
     // Compute assembly paths on PathGraph edges.
     // Remove the edges for which this fails.
     pathGraph.findAssemblyPathsOnEdges();
-    writeGraphviz("Final");
+    pathGraph.writeGraphviz("Final");
     cout << "The final PathGraph has " << num_vertices(pathGraph) <<
         " vertices and " << num_edges(pathGraph) << " edges." << endl;
 
