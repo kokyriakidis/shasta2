@@ -171,14 +171,24 @@ void AssemblyGraph::simplifyAndAssemble()
         changeCount += phaseSuperbubbleChains();
         writeIntermediateStageIfRequested("C" + to_string(iteration));
 
-        // Read following. This leaves the AssemblyGraph in an uncompressed state.
-        changeCount += findAndConnectAssemblyPaths();
+        // Read following.
+        // Each assembly path generates a new linear chain of edges,
+        // which is left in an uncompressed state.
+        vector< std::list<edge_descriptor> > linearChains;
+        changeCount += findAndConnectAssemblyPaths(linearChains);
         writeIntermediateStageIfRequested("D" + to_string(iteration));
+
+        // Compress the linear chains found by read following.
+        for(const auto& linearChain: linearChains) {
+            compressLinearChain(linearChain);
+        }
+        writeIntermediateStageIfRequested("E" + to_string(iteration));
 
         // Prune.
         prune();
-        writeIntermediateStageIfRequested("E" + to_string(iteration));
+        writeIntermediateStageIfRequested("F" + to_string(iteration));
 
+#if 0
         // Clean up linear chains.
         cleanupLinearChains();
         writeIntermediateStageIfRequested("F" + to_string(iteration));
@@ -188,6 +198,7 @@ void AssemblyGraph::simplifyAndAssemble()
         compress();
         compressDebugLevel = 0;
         writeIntermediateStageIfRequested("G" + to_string(iteration));
+#endif
 
         // Remove isolated vertices and connected components with small N50.
         removeIsolatedVertices();

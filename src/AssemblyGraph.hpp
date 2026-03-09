@@ -341,9 +341,14 @@ public:
     // Read following.
     // Note assemlbyPaths are not necessarily paths in the AssemblyGraph.
     // There may be jumps, which are bridged using local assemblies.
+    // Each assembly path generates a new linear chain of edges,
+    // which is left in an uncompressed state.
     void findAssemblyPaths(vector< vector<edge_descriptor> >& assemblyPaths) const;
-    void connectAssemblyPaths(const vector< vector<edge_descriptor> >&  assemblyPaths);
-    uint64_t findAndConnectAssemblyPaths();
+    void connectAssemblyPaths(
+        const vector< vector<edge_descriptor> >&  assemblyPaths,
+        vector< std::list<edge_descriptor> >& linearChains);
+    uint64_t findAndConnectAssemblyPaths(vector< std::list<edge_descriptor> >& linearChains);
+    void findAndConnectAndCompressAssemblyPaths();
 
 
 

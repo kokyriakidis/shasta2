@@ -181,6 +181,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def("writeFasta", &AssemblyGraph::writeFasta)
         .def("computeJourneys", &AssemblyGraph::computeJourneys)
         .def("findAndConnectAssemblyPaths", &AssemblyGraph::findAndConnectAssemblyPaths)
+        .def("findAndConnectAndCompressAssemblyPaths", &AssemblyGraph::findAndConnectAndCompressAssemblyPaths)
         .def("removeIsolatedVertices", &AssemblyGraph::removeIsolatedVertices)
         .def("removeLowN50Components", &AssemblyGraph::removeLowN50Components)
         ;
