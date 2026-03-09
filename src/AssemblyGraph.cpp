@@ -1047,6 +1047,26 @@ bool AssemblyGraph::analyzeBubble(
 uint64_t AssemblyGraph::compress()
 {
     AssemblyGraph& assemblyGraph = *this;
+
+    // Find linear chains of 2 or more edges.
+    vector< std::list<edge_descriptor> > chains;
+    findLinearChains(assemblyGraph, 2, chains);
+
+    for(const auto& chain: chains) {
+        compressLinearChain(chain);
+    }
+
+    return chains.size();
+}
+
+
+
+#if 0
+// OLD VERSION
+// Compress linear chains of edges into a single edge.
+uint64_t AssemblyGraph::compress()
+{
+    AssemblyGraph& assemblyGraph = *this;
     uint64_t compressCount = 0;
 
     // Find linear chains of 2 or more edges.
@@ -1128,6 +1148,84 @@ uint64_t AssemblyGraph::compress()
     }
 
     return compressCount;
+}
+#endif
+
+
+
+void AssemblyGraph::compressLinearChain(const std::list<edge_descriptor>& chain)
+{
+    AssemblyGraph& assemblyGraph = *this;
+    SHASTA2_ASSERT(chain.size() > 1);
+
+    // Get the first and last edge of this chain.
+    const edge_descriptor e0 = chain.front();
+    const edge_descriptor e1 = chain.back();
+
+    // Get the first and last vertex of this chain.
+    const vertex_descriptor v0 = source(e0, assemblyGraph);
+    const vertex_descriptor v1 = target(e1, assemblyGraph);
+
+    // Add the new edge.
+    edge_descriptor eNew;
+    tie(eNew, ignore) = add_edge(v0, v1, AssemblyGraphEdge(nextEdgeId++), assemblyGraph);
+    AssemblyGraphEdge& edgeNew = assemblyGraph[eNew];
+
+    // Concatenate the steps of all the edges in the chain.
+    for(const edge_descriptor e: chain) {
+        const AssemblyGraphEdge& edge = assemblyGraph[e];
+        copy(edge.begin(), edge.end(), back_inserter(edgeNew));
+    }
+
+
+
+    // Minimal debug output.
+    if(compressDebugLevel >= 1) {
+        cout << "Compress " << assemblyGraph[chain.front()].id << "..." <<
+            assemblyGraph[chain.back()].id <<
+            " into " << edgeNew.id << endl;
+    }
+
+
+
+    // Compact debug output.
+    if(compressDebugLevel >= 2) {
+        cout << "Compress";
+        for(const edge_descriptor e: chain) {
+            cout << " " << assemblyGraph[e].id;
+        }
+        cout << " into " << edgeNew.id << endl;
+    }
+
+
+
+    // Detailed debug output.
+    if(compressDebugLevel >= 3) {
+        uint64_t stepCount = 0;
+        for(const edge_descriptor e: chain) {
+            const AssemblyGraphEdge& edge = assemblyGraph[e];
+            const uint64_t stepBegin = stepCount;
+            const uint64_t stepEnd = stepBegin + edge.size();
+            cout << edge.id << " " << edge.size() << " steps become " <<
+                edgeNew.id << " steps " << stepBegin << "-" << stepEnd << endl;
+            stepCount = stepEnd;
+        }
+    }
+
+
+
+    // Now we can remove the edges of the chain and its internal vertices.
+    bool isFirst = true;
+    for(const edge_descriptor e: chain) {
+        if(isFirst) {
+            isFirst = false;
+        } else {
+            const vertex_descriptor v = source(e, assemblyGraph);
+            boost::clear_vertex(v, assemblyGraph);
+            boost::remove_vertex(v, assemblyGraph);
+        }
+    }
+
 }
 
 

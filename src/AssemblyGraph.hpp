@@ -17,6 +17,7 @@
 #include <boost/serialization/vector.hpp>
 
 // Standard library.
+#include <list>
 #include "memory.hpp"
 #include "tuple.hpp"
 
@@ -203,6 +204,7 @@ public:
 
     // Compress linear chains of edges into a single edge.
     uint64_t compress();
+    void compressLinearChain(const std::list<edge_descriptor>&);
     uint64_t compressDebugLevel = 0; // 1=minimal, 2=compact, 3=detailed.
 
     // This cleans up linear chains by removing edges that have low
