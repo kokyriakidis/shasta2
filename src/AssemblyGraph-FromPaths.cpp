@@ -13,10 +13,10 @@ using namespace shasta2;
 
 
 
-void AssemblyGraph::findAndConnectAndCompressAssemblyPaths()
+void AssemblyGraph::findAndConnectAndCompressAssemblyPaths(uint64_t iteration)
 {
     vector< std::list<edge_descriptor> > linearChains;
-    findAndConnectAssemblyPaths(linearChains);
+    findAndConnectAssemblyPaths(iteration, linearChains);
 
     for(const auto& linearChain: linearChains) {
         compressLinearChain(linearChain);
@@ -27,9 +27,11 @@ void AssemblyGraph::findAndConnectAndCompressAssemblyPaths()
 
 // Note assemblyPaths are not necessarily paths in the AssemblyGraph.
 // There may be jumps, which are bridged using local assemblies.
-void AssemblyGraph::findAssemblyPaths(vector< vector<edge_descriptor> >& assemblyPaths) const
+void AssemblyGraph::findAssemblyPaths(
+    uint64_t iteration,
+    vector< vector<edge_descriptor> >& assemblyPaths) const
 {
-	ReadFollowing2::Graph readFollowingGraph(*this);
+	ReadFollowing2::Graph readFollowingGraph(iteration, *this);
     readFollowingGraph.findAssemblyPaths(assemblyPaths);
     readFollowingGraph.writeAssemblyPaths(assemblyPaths);
 }
@@ -273,12 +275,14 @@ void AssemblyGraph::connectAssemblyPaths(
 
 
 
-uint64_t AssemblyGraph::findAndConnectAssemblyPaths(vector<std::list<edge_descriptor> >& linearChains)
+uint64_t AssemblyGraph::findAndConnectAssemblyPaths(
+    uint64_t iteration,
+    vector<std::list<edge_descriptor> >& linearChains)
 {
     writePerformanceStatistics("AssemblyGraph::findAndConnectAssemblyPaths begins");
 
     vector< vector<edge_descriptor> > assemblyPaths;
-	findAssemblyPaths(assemblyPaths);
+	findAssemblyPaths(iteration, assemblyPaths);
 	connectAssemblyPaths(assemblyPaths, linearChains);
 
     writePerformanceStatistics("AssemblyGraph::findAndConnectAssemblyPaths ends");

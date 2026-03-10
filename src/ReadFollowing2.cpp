@@ -23,9 +23,11 @@ template class MultithreadedObject<Graph>;
 
 
 
-Graph::Graph(const AssemblyGraph& assemblyGraph) :
+Graph::Graph(
+    uint64_t iteration, const AssemblyGraph& assemblyGraph) :
     MultithreadedObject<Graph>(*this),
     assemblyGraph(assemblyGraph),
+    iteration(iteration),
     orderById(*this)
 {
     Graph& graph = *this;
@@ -258,7 +260,7 @@ void Graph::createEdgeCandidates()
 
     Graph& graph = *this;
     const uint64_t orientedReadCount = assemblyGraph.journeys.size();
-    const uint64_t minCommonCount = assemblyGraph.options.readFollowingMinCommonCount[0];
+    const uint64_t minCommonCount = assemblyGraph.options.readFollowingMinCommonCount[iteration];
 
     // For each OrientedReadId, gather the vertices that the OrientedReadId
     // appears in, in the initial/final support.
@@ -324,8 +326,8 @@ void Graph::createEdgesMultithreaded()
 void Graph::createEdgesThreadFunction([[maybe_unused]] uint64_t threadId)
 {
     Graph& graph = *this;
-    const uint64_t minCommonCount = assemblyGraph.options.readFollowingMinCommonCount[0];
-    const double minCorrectedJaccard = assemblyGraph.options.readFollowingMinCorrectedJaccard[0];
+    const uint64_t minCommonCount = assemblyGraph.options.readFollowingMinCommonCount[iteration];
+    const double minCorrectedJaccard = assemblyGraph.options.readFollowingMinCorrectedJaccard[iteration];
 
     // Prepare a vector of edges to be added.
     // We will add them all at the end so we only have to acquire the mutex once.
@@ -424,7 +426,7 @@ void Graph::writeGraphviz(const string& name) const
 {
     const Graph& graph = *this;
 
-    ofstream dot("ReadFollowing-" + name + ".dot");
+    ofstream dot("ReadFollowing-Iteration" + to_string(iteration) + "-" + name + ".dot");
     dot << "digraph ReadFollowing {\n";
     dot << std::fixed << std::setprecision(1);
 
@@ -494,12 +496,12 @@ void Graph::writeGraphviz(const string& name) const
         double hue;
         if(edge.segmentPairInformation.correctedJaccard >= 1.) {
             hue = 1.;
-        } else if(edge.segmentPairInformation.correctedJaccard <= assemblyGraph.options.readFollowingMinCorrectedJaccard[0]) {
+        } else if(edge.segmentPairInformation.correctedJaccard <= assemblyGraph.options.readFollowingMinCorrectedJaccard[iteration]) {
             hue = 0.;
         } else {
             hue =
-                (edge.segmentPairInformation.correctedJaccard - assemblyGraph.options.readFollowingMinCorrectedJaccard[0]) /
-                (1. - assemblyGraph.options.readFollowingMinCorrectedJaccard[0]);
+                (edge.segmentPairInformation.correctedJaccard - assemblyGraph.options.readFollowingMinCorrectedJaccard[iteration]) /
+                (1. - assemblyGraph.options.readFollowingMinCorrectedJaccard[iteration]);
         }
         hue /= 3.;
         dot << std::fixed << std::setprecision(3) << " color=\""  << hue << " 1. 1.\"";
@@ -529,7 +531,7 @@ void Graph::writeVerticesCsv(const string& name) const
 {
     const Graph& graph = *this;
 
-    ofstream csv("ReadFollowing-Vertices-" + name + ".csv");
+    ofstream csv("ReadFollowing-Vertices-Iteration" + to_string(iteration) + "-" + name + ".csv");
     csv << "Segment,Length,InitialSupport,FinalSupport,\n";
 
     BGL_FORALL_VERTICES(v, graph, Graph) {
@@ -551,7 +553,7 @@ void Graph::writeEdgesCsv(const string& name) const
 {
     const Graph& graph = *this;
 
-    ofstream csv("ReadFollowing-Edges-" + name + ".csv");
+    ofstream csv("ReadFollowing-Edges-Iteration" + to_string(iteration) + "-" + name + ".csv");
     csv << "Segment0,Segment1,Length0,Length1,FinalSupport0,InitialSupport1,"
         "Common,Missing0,Missing1,MissingTotal,CorrectedJaccard,Offset,\n";
     csv << std::fixed << std::setprecision(2);
@@ -660,8 +662,6 @@ template<std::uniform_random_bit_generator RandomGenerator> void Graph::findRand
     vector<vertex_descriptor>& path)
 {
     const Graph& graph = *this;
-    // static ofstream debugOut("findRandomForwardPath.txt");
-    // debugOut << "Starting a forward random path at " << segmentId(v) << "\n";
 
     // Start with a path consisting of just this vertex.
     path.clear();
@@ -772,7 +772,7 @@ void Graph::findRandomPaths()
 
 
 
-    ofstream csv("RandomPaths.csv");
+    ofstream csv("RandomPaths-Iteration" + to_string(iteration) + ".csv");
     csv << "v0,Length0,direction,v1,Length1,count,\n";
     BGL_FORALL_VERTICES(v0, graph, Graph) {
         Vertex& vertex0 = graph[v0];
@@ -805,7 +805,7 @@ void Graph::findAndWriteAssemblyPaths()
 void Graph::createRandomPathsMap()
 {
     Graph& graph = *this;
-    const bool debug = true;
+    const bool debug = false;
 
     // Find short vertices that are reliably preceded/followed by a single vertex.
     // These will be used to fill in assembly paths.
@@ -838,7 +838,7 @@ void Graph::createRandomPathsMap()
         randomPathsMap[{previousInfo.v, nextInfo.v}].push_back(v);
     }
     if(debug) {
-        ofstream csv("RandomPathsMap.csv");
+        ofstream csv("RandomPathsMap-Iteration" + to_string(iteration) + ".csv");
         for(const auto& [p, shortVertices]: randomPathsMap) {
             const vertex_descriptor v0 = p.first;
             const vertex_descriptor v1 = p.second;
@@ -901,7 +901,7 @@ void Graph::findAssemblyPaths(vector< vector<Segment> >& assemblyPaths)
 
 void Graph::writeAssemblyPaths(const vector< vector<Segment> >& assemblyPaths) const
 {
-    ofstream csv("AssemblyPaths.csv");
+    ofstream csv("AssemblyPaths-Iteration" + to_string(iteration) + ".csv");
     cout << "Found " << assemblyPaths.size() << " assembly paths. See AssemblyPaths.csv for details." << endl;
     for(const vector<Segment>& assemblyPath: assemblyPaths) {
         cout << "Assembly path with " << assemblyPath.size() <<
@@ -1059,7 +1059,7 @@ void PathGraph::findAssemblyPathsOnEdges()
 
 void PathGraph::writeGraphviz(const string& name) const
 {
-    ofstream dot("PathGraph-" + name + ".dot");
+    ofstream dot("PathGraph-Iteration" + to_string(graph.iteration) + "-" + name + ".dot");
     writeGraphviz(dot);
 }
 
@@ -1190,7 +1190,7 @@ vector< shared_ptr<PathGraph> > PathGraph::findConnectedComponents()
 // on a PathGraph with a single connected component.
 void PathGraph::findAssemblyPath(vector<Segment>& assemblyPath)
 {
-    const bool debug = true;
+    const bool debug = false;
     assemblyPath.clear();
     PathGraph& component = *this;
 
@@ -1273,7 +1273,7 @@ bool Graph::findAssemblyPath(
     vertex_descriptor v1,
     vector<Segment>& assemblyPath) const
 {
-    const bool debug = true;
+    const bool debug = false;
     const Graph& graph = *this;
     assemblyPath.clear();
 
@@ -1305,7 +1305,7 @@ bool Graph::findAssemblyPath(
 
         // Also write a csv file that can be loaded in Bandage to visualize these segments.
         ofstream csv(
-            "ReadFollowing-Subgraph-" +
+            "ReadFollowing-Subgraph-Iteration" + to_string(iteration) + "-" +
             to_string(segmentId(v0)) + "-" +
             to_string(segmentId(v1)) + ".csv");
         csv << "Id,Length,Color,\n";
@@ -1381,7 +1381,7 @@ bool Graph::findAssemblyPath(
 
         // Also write a csv file that can be loaded in Bandage to visualize the longest path.
         ofstream csv(
-            "ReadFollowing-Subgraph-LongestPath-" +
+            "ReadFollowing-Subgraph-LongestPath-Iteration" + to_string(iteration) + "-" +
             to_string(segmentId(v0)) + "-" +
             to_string(segmentId(v1)) + ".csv");
         csv << "Id,Position,Length,Color,\n";

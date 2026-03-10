@@ -128,9 +128,10 @@ class shasta2::ReadFollowing2::Graph :
     public GraphBaseClass,
     public MultithreadedObject<Graph> {
 public:
-    Graph(const AssemblyGraph&);
+    Graph(uint64_t iteration, const AssemblyGraph&);
 
     const AssemblyGraph& assemblyGraph;
+    uint64_t iteration;
 
     // Vertex creation.
     std::map<Segment, vertex_descriptor> vertexMap;

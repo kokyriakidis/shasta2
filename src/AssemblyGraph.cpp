@@ -163,27 +163,43 @@ void AssemblyGraph::simplifyAndAssemble()
     phaseSuperbubbleChains();
     writeIntermediateStageIfRequested("C");
 
-    // Read following.
-    // Each assembly path generates a new linear chain of edges,
-    // which is left in an uncompressed state.
-    vector< std::list<edge_descriptor> > linearChains;
-    findAndConnectAssemblyPaths(linearChains);
-    writeIntermediateStageIfRequested("D");
 
-    // Compress only the linear chains found by read following.
-    for(const auto& linearChain: linearChains) {
-        compressLinearChain(linearChain);
+
+    // Read following iteration loop.
+
+    // Get the number of read following iterations.
+    const uint64_t iterationCount = options.readFollowingMinCommonCount.size();
+    // Sanity check on the number of iterations. This was already checked by Options::validate.
+    SHASTA2_ASSERT(iterationCount == options.readFollowingMinCorrectedJaccard.size());
+
+    // Iterate.
+    for(uint64_t iteration=0; iteration<iterationCount; iteration++) {
+
+        // Read following.
+        // Each assembly path generates a new linear chain of edges,
+        // which is left in an uncompressed state.
+        vector< std::list<edge_descriptor> > linearChains;
+        findAndConnectAssemblyPaths(iteration, linearChains);
+        writeIntermediateStageIfRequested("D" + to_string(iteration));
+
+        // Compress only the linear chains found by read following.
+        for(const auto& linearChain: linearChains) {
+            compressLinearChain(linearChain);
+        }
+        writeIntermediateStageIfRequested("E" + to_string(iteration));
+
+        // Prune.
+        prune();
+        writeIntermediateStageIfRequested("F" + to_string(iteration));
+
+        // Remove isolated vertices and connected components with small N50.
+        removeIsolatedVertices();
+        removeLowN50Components();
+        writeIntermediateStageIfRequested("G" + to_string(iteration));
     }
-    writeIntermediateStageIfRequested("E");
 
-    // Prune.
-    prune();
-    writeIntermediateStageIfRequested("F");
-
-    // Remove isolated vertices and connected components with small N50.
-    removeIsolatedVertices();
-    removeLowN50Components();
-    writeIntermediateStageIfRequested("G");
+    compress();
+    writeIntermediateStageIfRequested("H");
 
 
 
