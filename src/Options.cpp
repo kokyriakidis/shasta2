@@ -30,11 +30,7 @@ Options::Options(int argc, char** argv) :
          }
     }
 
-    // Adjust the numbers of threads, if necessary.
-    if(threadCount == 0) {
-        threadCount = std::thread::hardware_concurrency();
-    }
-
+    validate();
 }
 
 
@@ -85,10 +81,7 @@ Options::Options(const string& fileName)
         }
     }
 
-    // Adjust the numbers of threads, if necessary.
-    if(threadCount == 0) {
-        threadCount = std::thread::hardware_concurrency();
-    }
+    validate();
 }
 
 
@@ -96,4 +89,19 @@ Options::Options(const string& fileName)
 void Options::write(ostream& s) const
 {
     s << config_to_str(true,true);
+}
+
+
+
+void Options::validate()
+{
+    // Adjust the numbers of threads, if necessary.
+    if(threadCount == 0) {
+        threadCount = std::thread::hardware_concurrency();
+    }
+
+    if(readFollowingMinCommonCount.size() != readFollowingMinCorrectedJaccard.size()) {
+        throw runtime_error("--read-following-min-common-count and --read-following-min-corrected-jaccard "
+            "must contain the same number of elements");
+    }
 }
