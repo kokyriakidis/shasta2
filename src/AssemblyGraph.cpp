@@ -154,29 +154,14 @@ void AssemblyGraph::simplifyAndAssemble()
     // Initial output.
     writeIntermediateStageIfRequested("A");
 
+    // Remove or simplify bubbles likely caused by errors.
+    bubbleCleanup();
+    compress();
+    writeIntermediateStageIfRequested("B");
 
-
-    // The iteration is needed because phasing can simplify some bubbles and create
-    // more opportunities for additional bubble cleanup and phasing.
-    for(uint64_t iteration=0; iteration<options.simplifyMaxIterationCount; iteration++) {
-
-        uint64_t changeCount = 0;
-
-        // Remove or simplify bubbles likely caused by errors.
-        changeCount += bubbleCleanup();
-        changeCount += compress();
-        writeIntermediateStageIfRequested("B" + to_string(iteration));
-
-        // Phase SuperbubbleChains, considering all hypotheses.
-        changeCount += phaseSuperbubbleChains();
-        writeIntermediateStageIfRequested("C" + to_string(iteration));
-
-        if(changeCount == 0) {
-            break;
-        }
-    }
-
-
+    // Phase SuperbubbleChains, considering all hypotheses.
+    phaseSuperbubbleChains();
+    writeIntermediateStageIfRequested("C");
 
     // Read following.
     // Each assembly path generates a new linear chain of edges,

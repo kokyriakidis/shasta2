@@ -119,10 +119,6 @@ SHASTA2_OPTION_DEFINE(
 
 
 // Assembly graph.
-SHASTA2_OPTION_DEFINE(
-    uint64_t, simplifyMaxIterationCount, "--simplify-max-iterationCount", 3,
-    "Maximum number of assembly graph simplify iterations.")
-
 SHASTA2_BOOL_OPTION_DEFINE(
     writeIntermediateAssemblyStages, "--write-intermediate-assembly-stages", false,
     "Write intermediate assembly stages.")
