@@ -188,18 +188,6 @@ void AssemblyGraph::simplifyAndAssemble()
         prune();
         writeIntermediateStageIfRequested("F" + to_string(iteration));
 
-#if 0
-        // Clean up linear chains.
-        cleanupLinearChains();
-        writeIntermediateStageIfRequested("F" + to_string(iteration));
-
-        // Compress.
-        compressDebugLevel = 2;
-        compress();
-        compressDebugLevel = 0;
-        writeIntermediateStageIfRequested("G" + to_string(iteration));
-#endif
-
         // Remove isolated vertices and connected components with small N50.
         removeIsolatedVertices();
         removeLowN50Components();
