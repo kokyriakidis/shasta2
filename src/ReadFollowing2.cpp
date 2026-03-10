@@ -620,7 +620,7 @@ void Graph::writePathStatistics(Segment segment, uint64_t direction)
     vector<vertex_descriptor> terminalVertices;
     Path path;
     std::random_device randomGenerator;
-    for(uint64_t i=0; i<pathCount; i++) {
+    for(uint64_t i=0; i<assemblyGraph.options.readFollowingPathCount; i++) {
         findRandomPath(v0, direction, randomGenerator, path);
         const vertex_descriptor v1 = (direction == 0) ? path.back() : path.front();
         terminalVertices.push_back(v1);
@@ -751,7 +751,7 @@ void Graph::findRandomPaths()
             terminalVertices.clear();
 
             // Generate pathCount random paths starting at v0, in this direction.
-            for(uint64_t i=0; i<pathCount; i++) {
+            for(uint64_t i=0; i<assemblyGraph.options.readFollowingPathCount; i++) {
                 findRandomPath(v0, direction, randomGenerator, path);
                 const vertex_descriptor v1 = (direction == 0) ? path.back() : path.front();
                 terminalVertices.push_back(v1);
@@ -828,10 +828,10 @@ void Graph::createRandomPathsMap()
         const Vertex::RandomPathInfo& nextInfo = vertex.randomPathInfos[0].front();
         const Vertex::RandomPathInfo& previousInfo = vertex.randomPathInfos[1].front();
 
-        if(nextInfo.count < pathCountThreshold2) {
+        if(nextInfo.count < assemblyGraph.options.readFollowingPathCountThreshold2) {
             continue;
         }
-        if(previousInfo.count < pathCountThreshold2) {
+        if(previousInfo.count < assemblyGraph.options.readFollowingPathCountThreshold2) {
             continue;
         }
 
@@ -971,7 +971,7 @@ void PathGraph::createEdges()
                 const Graph::vertex_descriptor v1 = randomPathInfo.v;
                 const uint64_t count = randomPathInfo.count;
 
-                if(count < Graph::pathCountThreshold1) {
+                if(count < graph.assemblyGraph.options.readFollowingPathCountThreshold1) {
                     continue;
                 }
 

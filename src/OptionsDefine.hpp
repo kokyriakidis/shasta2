@@ -182,6 +182,18 @@ SHASTA2_OPTION_DEFINE(
 	uint64_t, readFollowingSegmentLengthThreshold, "--read-following-segment-length-threshold", 500000,
 	"Segment length threshold for read following.")
 
+SHASTA2_OPTION_DEFINE(
+    uint64_t, readFollowingPathCount, "--read-following-path-count", 100,
+    "Number of random paths per vertex for read following.")
+
+SHASTA2_OPTION_DEFINE(
+    uint64_t, readFollowingPathCountThreshold1, "--read-following-path-count-threshold1", 30,
+    "First path count threshold for read following.")
+
+SHASTA2_OPTION_DEFINE(
+    uint64_t, readFollowingPathCountThreshold2, "--read-following-path-count-threshold2", 60,
+    "Second path count threshold for read following.")
+
 
 
 // Assembly.

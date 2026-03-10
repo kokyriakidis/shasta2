@@ -130,11 +130,6 @@ class shasta2::ReadFollowing2::Graph :
 public:
     Graph(const AssemblyGraph&);
 
-    // EXPOSE WHEN CODE STABILIZES.
-    static const uint64_t pathCount = 100;
-    static const uint64_t pathCountThreshold1 = 30;
-    static const uint64_t pathCountThreshold2 = 60;
-
     const AssemblyGraph& assemblyGraph;
 
     // Vertex creation.
