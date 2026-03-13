@@ -805,7 +805,7 @@ void Graph::findAndWriteAssemblyPaths()
 void Graph::createRandomPathsMap()
 {
     Graph& graph = *this;
-    const bool debug = false;
+    const bool debug = true;
 
     // Find short vertices that are reliably preceded/followed by a single vertex.
     // These will be used to fill in assembly paths.
@@ -1190,7 +1190,7 @@ vector< shared_ptr<PathGraph> > PathGraph::findConnectedComponents()
 // on a PathGraph with a single connected component.
 void PathGraph::findAssemblyPath(vector<Segment>& assemblyPath)
 {
-    const bool debug = false;
+    const bool debug = true;
     assemblyPath.clear();
     PathGraph& component = *this;
 
@@ -1273,7 +1273,7 @@ bool Graph::findAssemblyPath(
     vertex_descriptor v1,
     vector<Segment>& assemblyPath) const
 {
-    const bool debug = false;
+    const bool debug = true;
     const Graph& graph = *this;
     assemblyPath.clear();
 

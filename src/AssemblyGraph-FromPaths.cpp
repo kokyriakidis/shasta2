@@ -54,7 +54,7 @@ void AssemblyGraph::connectAssemblyPaths(
 {
 	AssemblyGraph& assemblyGraph = *this;
 
-	const bool debug = false;
+	const bool debug = true;
 	if(debug) {
 		cout << "Connecting " << assemblyPaths.size() << " assembly paths:" << endl;
 		for(const vector<edge_descriptor>& assemblyPath: assemblyPaths) {
