@@ -20,6 +20,8 @@ public:
     int32_t segmentOffset = invalid<uint32_t>;
     double jaccard = 0.;
     double correctedJaccard = 0.;
+
+    uint64_t missing() const { return missing0 + missing1;}
 };
 
 
