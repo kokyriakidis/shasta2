@@ -17,6 +17,7 @@ using namespace ReadFollowing3;
 
 // Standard library.
 #include "fstream.hpp"
+#include "memory.hpp"
 #include <queue>
 
 
@@ -27,11 +28,15 @@ template class MultithreadedObject<Graph>;
 
 
 
-Graph::Graph(const AssemblyGraph& assemblyGraph) :
+Graph::Graph(const AssemblyGraph& assemblyGraph, bool createEmpty) :
     MultithreadedObject<Graph>(*this),
     assemblyGraph(assemblyGraph),
     orderById(*this)
 {
+    if(createEmpty) {
+        return;
+    }
+
     createVertices();
     createEdgeCandidates();
     createEdgesMultithreaded();
@@ -40,10 +45,13 @@ Graph::Graph(const AssemblyGraph& assemblyGraph) :
     prune();
     write("Pruned");
 
+    createVertexIndexMap();
+
     // Fill the Markov tables in the vertices.
     // These are needed to compute random paths.
     fillMarkovTables();
 
+    createReversedGraph();
 }
 
 
@@ -1516,13 +1524,6 @@ void Graph::findShortestPathForward(
     using namespace boost;
     Graph& graph = *this;
 
-    // Create the vertexIndexMap.
-    std::map<vertex_descriptor, uint64_t> vertexIndexMap;
-    uint64_t vertexIndex = 0;
-    BGL_FORALL_VERTICES(v, graph, Graph) {
-        vertexIndexMap.insert(make_pair(v, vertexIndex++));
-    }
-
     // An exception class used to stop the shortest path computation
     // when a long vertex is encountered.
     class LongVertexReached {
@@ -1585,11 +1586,33 @@ void Graph::findShortestPathForward(
 
 
 void Graph::findShortestPathBackward(
-    vertex_descriptor,
-    vector<vertex_descriptor>&
+    vertex_descriptor v0,
+    vector<vertex_descriptor>& path
     )
 {
-    SHASTA2_ASSERT(0);
+    Graph& graph = *this;
+    Graph& reversedGraph = *reversedGraphPointer;
+
+    // Find the corresponding vertex in the reversed graph.
+    const Segment segment0 = graph[v0].segment;
+    const auto it0 = reversedGraph.vertexMap.find(segment0);
+    SHASTA2_ASSERT(it0 != reversedGraph.vertexMap.end());
+    const vertex_descriptor rv0 = it0->second;
+
+    // Find the forward path in the reverse graph.
+    path.clear();
+    reversedGraph.findShortestPathForward(rv0, path);
+
+    // Convert the path in the reversed graph to a path in the Graph.
+    for(vertex_descriptor& v: path) {
+        const Segment segment = reversedGraph[v].segment;
+        const auto it = vertexMap.find(segment);
+        SHASTA2_ASSERT(it != vertexMap.end());
+        v = it->second;
+    }
+
+    // Now we have to reverse it.
+    std::ranges::reverse(path);
 }
 
 
@@ -1640,5 +1663,64 @@ void Graph::findAndWriteShortestPath(Segment segment, uint64_t direction)
         csv << edge.segmentPairInformation.segmentOffset << ",";
         csv << 10. * log10(edge.pUnnormalized) << ",";
         csv << endl;
+    }
+}
+
+
+
+void Graph::createReversedGraph()
+{
+    Graph& graph = *this;
+
+    // Create the reversed graph, initially empty.
+    reversedGraphPointer = std::make_shared<Graph>(assemblyGraph, true);
+    Graph& reversedGraph = *reversedGraphPointer;
+
+
+
+    // Copy the vertices.
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        const Vertex& vertex = graph[v];
+        vertex_descriptor vr = boost::add_vertex(vertex, reversedGraph);
+        reversedGraph.vertexMap.insert(make_pair(vertex.segment, vr));
+    }
+
+    // Copy the edges, reversing them.
+    BGL_FORALL_EDGES(e, graph, Graph) {
+        Edge& edge = graph[e];
+
+        // Get the vertices of this edge.
+        const vertex_descriptor v0 = source(e, graph);
+        const vertex_descriptor v1 = target(e, graph);
+
+        // Get the corresponding segments.
+        const Segment segment0 = graph[v0].segment;
+        const Segment segment1 = graph[v1].segment;
+
+        // Get the corresponding reversed graph vertices.
+        const auto it0 = reversedGraph.vertexMap.find(segment0);
+        const auto it1 = reversedGraph.vertexMap.find(segment1);
+        SHASTA2_ASSERT(it0 != reversedGraph.vertexMap.end());
+        SHASTA2_ASSERT(it1 != reversedGraph.vertexMap.end());
+        const vertex_descriptor rv0 = it0->second;
+        const vertex_descriptor rv1 = it1->second;
+
+        // Add the edge, reversing the vertices.
+        boost::add_edge(rv1, rv0, edge, reversedGraph);
+    }
+
+    reversedGraph.createVertexIndexMap();
+}
+
+
+
+void Graph::createVertexIndexMap()
+{
+    Graph& graph = *this;
+
+    vertexIndexMap.clear();
+    uint64_t vertexIndex = 0;
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        vertexIndexMap.insert(make_pair(v, vertexIndex++));
     }
 }

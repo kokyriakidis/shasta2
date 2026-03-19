@@ -158,7 +158,7 @@ class shasta2::ReadFollowing3::Graph :
     public GraphBaseClass,
     public MultithreadedObject<Graph> {
 public:
-    Graph(const AssemblyGraph&);
+    Graph(const AssemblyGraph&, bool createEmpty = false);
 
     const AssemblyGraph& assemblyGraph;
 
@@ -276,7 +276,17 @@ public:
         );
     void findAndWriteShortestPath(Segment, uint64_t direction); // Python callable
 
+    // The vertex index map is needed to compute shortest paths.
+    // It must be created when no more changes will be made to the graph.
+    std::map<vertex_descriptor, uint64_t> vertexIndexMap;
+    void createVertexIndexMap();
 
+
+    // For findShortestPathBackward we also need a reversed version of the Graph.
+    // I tried using boost::reverse_graph but it was problematic to use with
+    // dijkstra_shortest_paths.
+    shared_ptr<Graph> reversedGraphPointer;
+    void createReversedGraph();
 };
 
 
