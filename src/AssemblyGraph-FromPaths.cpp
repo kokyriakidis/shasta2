@@ -3,7 +3,7 @@
 #include "Assembler.hpp"
 #include "deduplicate.hpp"
 #include "performanceLog.hpp"
-#include "ReadFollowing2.hpp"
+#include "ReadFollowing3.hpp"
 #include "RestrictedAnchorGraph.hpp"
 #include "TangleMatrix1.hpp"
 #include "timestamp.hpp"
@@ -13,10 +13,10 @@ using namespace shasta2;
 
 
 
-void AssemblyGraph::findAndConnectAndCompressAssemblyPaths(uint64_t iteration)
+void AssemblyGraph::findAndConnectAndCompressAssemblyPaths()
 {
     vector< std::list<edge_descriptor> > linearChains;
-    findAndConnectAssemblyPaths(iteration, linearChains);
+    findAndConnectAssemblyPaths(linearChains);
 
     for(const auto& linearChain: linearChains) {
         compressLinearChain(linearChain);
@@ -28,10 +28,9 @@ void AssemblyGraph::findAndConnectAndCompressAssemblyPaths(uint64_t iteration)
 // Note assemblyPaths are not necessarily paths in the AssemblyGraph.
 // There may be jumps, which are bridged using local assemblies.
 void AssemblyGraph::findAssemblyPaths(
-    uint64_t iteration,
     vector< vector<edge_descriptor> >& assemblyPaths) const
 {
-	ReadFollowing2::Graph readFollowingGraph(iteration, *this);
+	ReadFollowing3::Graph readFollowingGraph(*this);
     readFollowingGraph.findAssemblyPaths(assemblyPaths);
     readFollowingGraph.writeAssemblyPaths(assemblyPaths);
 }
@@ -173,7 +172,7 @@ void AssemblyGraph::connectAssemblyPaths(
 
 
 		if(debug) {
-		    cout << "Old assembly path " << assemblyGraph[assemblyPath.front()].id << "..." <<
+		    cout << "Assembly path " << assemblyGraph[assemblyPath.front()].id << "..." <<
 		        assemblyGraph[assemblyPath.back()].id <<
 		        " generated new assembly chain " <<
 		        assemblyGraph[newAssemblyPath.front()].id << "..." <<
@@ -203,6 +202,11 @@ void AssemblyGraph::connectAssemblyPaths(
 			edge_descriptor eNew;
 			tie(eNew, ignore) = add_edge(v0, v1, AssemblyGraphEdge(nextEdgeId++), assemblyGraph);
 			AssemblyGraphEdge& newEdge = assemblyGraph[eNew];
+			if(debug) {
+			    cout << "Generated new edge " << assemblyGraph[eNew].id <<
+			        " to fill the assembly path between " <<
+			        assemblyGraph[e0].id << " and " << assemblyGraph[e1].id << endl;
+			}
 			if(anchorId0 != anchorId1) {
 
 				// Create the RestrictedAnchorGraph, then:
@@ -276,13 +280,12 @@ void AssemblyGraph::connectAssemblyPaths(
 
 
 uint64_t AssemblyGraph::findAndConnectAssemblyPaths(
-    uint64_t iteration,
     vector<std::list<edge_descriptor> >& linearChains)
 {
     writePerformanceStatistics("AssemblyGraph::findAndConnectAssemblyPaths begins");
 
     vector< vector<edge_descriptor> > assemblyPaths;
-	findAssemblyPaths(iteration, assemblyPaths);
+	findAssemblyPaths(assemblyPaths);
 	connectAssemblyPaths(assemblyPaths, linearChains);
 
     writePerformanceStatistics("AssemblyGraph::findAndConnectAssemblyPaths ends");

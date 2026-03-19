@@ -2,7 +2,11 @@
 
 // Shasta.
 #include "ReadFollowing3.hpp"
+#include "approximateTopologicalSort.hpp"
+#include "color.hpp"
+#include "DisjointSets.hpp"
 #include "Journeys.hpp"
+#include "longestPath.hpp"
 #include "Options.hpp"
 #include "orderPairs.hpp"
 using namespace shasta2;
@@ -22,7 +26,8 @@ template class MultithreadedObject<Graph>;
 
 Graph::Graph(const AssemblyGraph& assemblyGraph) :
     MultithreadedObject<Graph>(*this),
-    assemblyGraph(assemblyGraph)
+    assemblyGraph(assemblyGraph),
+    orderById(*this)
 {
     createVertices();
     createEdgeCandidates();
@@ -84,7 +89,7 @@ void Graph::createEdgeCandidates()
 {
     Graph& graph = *this;
     const uint64_t orientedReadCount = assemblyGraph.journeys.size();
-    const uint64_t minCommonCount = assemblyGraph.options.readFollowingMinCommonCount[0];
+    const uint64_t minCommonCount = assemblyGraph.options.readFollowingMinCommonCount;
 
     // For each OrientedReadId, gather the vertices that the OrientedReadId
     // appears in, in the initial/final support.
@@ -149,8 +154,8 @@ void Graph::createEdgesMultithreaded()
 void Graph::createEdgesThreadFunction([[maybe_unused]] uint64_t threadId)
 {
     Graph& graph = *this;
-    const uint64_t minCommonCount = assemblyGraph.options.readFollowingMinCommonCount[0];
-    const double minCorrectedJaccard = assemblyGraph.options.readFollowingMinCorrectedJaccard[0];
+    const uint64_t minCommonCount = assemblyGraph.options.readFollowingMinCommonCount;
+    const double minCorrectedJaccard = assemblyGraph.options.readFollowingMinCorrectedJaccard;
 
     // Prepare a vector of edges to be added.
     // We will add them all at the end so we only have to acquire the mutex once.
@@ -320,14 +325,15 @@ void Graph::writeGraphviz(const string& name) const
         // Tooltip.
         dot << " tooltip=\"" <<
             edge.segmentPairInformation.commonCount << "/" <<
+            edge.segmentPairInformation.missing() << "/" <<
             std::fixed << std::setprecision(2) <<
-            edge.segmentPairInformation.correctedJaccard << "\"";
+            10. * log10(edge.pUnnormalized) << "\"";
 
         // Thickness is determined to pUnnormalized.
         const double pUnnormalizedDecibels = 10. * log10(edge.pUnnormalized);
-        double pUnnormalizedDecibelsClipped = min(1., pUnnormalizedDecibels);
-        pUnnormalizedDecibelsClipped = max(100., pUnnormalizedDecibelsClipped);
-        const double thickness = 0.2 * pUnnormalizedDecibelsClipped;
+        double pUnnormalizedDecibelsClipped = max(1., pUnnormalizedDecibels);
+        pUnnormalizedDecibelsClipped = min(100., pUnnormalizedDecibelsClipped);
+        const double thickness = 0.05 * pUnnormalizedDecibelsClipped;
         dot << " penwidth=" << thickness;
 
 #if 0
@@ -568,6 +574,9 @@ template<std::uniform_random_bit_generator RandomGenerator> void Graph::findRand
     // At each iteration, add one vertex to the path.
     while(true) {
         v = graph[v].next(direction, distribution(randomGenerator));
+        if(v == null_vertex()) {
+            break;
+        }
         path.push_back(v);
 
         if(graph[v].isLong) {
@@ -632,4 +641,845 @@ void Graph::writePathStatistics(Segment segment, uint64_t direction)
         const vertex_descriptor v1 = terminalVertices[i];
         cout << segmentId(v1) << " " << count[i] << endl;
     }
+}
+
+
+
+void Graph::findAssemblyPaths([[maybe_unused]] vector< vector<Segment> >& assemblyPaths)
+{
+    Graph& graph = *this;
+
+    // Create pathCount paths in each starting direction and for each starting vertex.
+    // Information on the random paths found is stored in Vertex::randomPathInfos.
+    findRandomPaths();
+
+    // Find short vertices that, based on the stored random paths,
+    // are reliably preceded/followed by a single vertex.
+    // These will be used to fill in assembly paths.
+    createRandomPathsMap();
+
+    // Create the PathGraph. It has a vertex for each long segment.
+    PathGraph pathGraph(graph);
+    pathGraph.create();
+    pathGraph.writeGraphviz("0");
+    cout << "The initial PathGraph has " << num_vertices(pathGraph) <<
+        " vertices and " << num_edges(pathGraph) << " edges." << endl;
+
+    // Remove weak edges of the PathGraph.
+    pathGraph.removeWeakEdges();
+    pathGraph.writeGraphviz("1");
+    cout << "After removing weak edges, the PathGraph has " << num_vertices(pathGraph) <<
+        " vertices and " << num_edges(pathGraph) << " edges." << endl;
+
+    // Compute assembly paths on PathGraph edges.
+    // Remove the edges for which this fails.
+    pathGraph.findAssemblyPathsOnEdges();
+    pathGraph.writeGraphviz("2");
+    cout << "The final PathGraph has " << num_vertices(pathGraph) <<
+        " vertices and " << num_edges(pathGraph) << " edges." << endl;
+
+    // Find the non-trivial connected components of the PathGraph.
+    const vector< shared_ptr<PathGraph> > componentPointers = pathGraph.findConnectedComponents();
+    cout << "The PathGraph has " << componentPointers.size() << " non-trivial connected components." << endl;
+
+    // Process one connected component at a time.
+    assemblyPaths.clear();
+    for(const shared_ptr<PathGraph>& componentPointer: componentPointers) {
+        vector<Segment> assemblyPath;
+        componentPointer->findAssemblyPath(assemblyPath);
+        if(assemblyPath.size() > 1) {
+            assemblyPaths.push_back(assemblyPath);
+        }
+    }
+}
+
+
+
+// This computes an assembly path, assuming it is working
+// on a PathGraph with a single connected component.
+void PathGraph::findAssemblyPath(vector<Segment>& assemblyPath)
+{
+    const bool debug = true;
+    assemblyPath.clear();
+    PathGraph& component = *this;
+
+    if(debug) {
+        cout << "Working on a PathGraph component with " << num_vertices(component) <<
+            " vertices and " << num_edges(component) << " edges." << endl;
+        cout << "The vertices correspond to segments";
+        BGL_FORALL_VERTICES(u, component, PathGraph) {
+            cout << " " << segmentId(u);
+        }
+        cout << endl;
+    }
+
+    // Find the edges of longest path.
+    // This can throw if this component has cycles.
+    vector<edge_descriptor> longestPathEdges;
+    try {
+        longestPath(component, longestPathEdges);
+    } catch(std::exception&) {
+        // We can do better.
+        if(debug) {
+            cout << "No assembly path created for this component because of cycles." << endl;
+        }
+        return;
+    }
+    if(debug) {
+        cout << "The longest path in this component has " << longestPathEdges.size() << " edges." << endl;
+    }
+    SHASTA2_ASSERT(not longestPathEdges.empty());
+
+    // Find the vertices of the longest path.
+    vector<vertex_descriptor> longestPathVertices;
+    const edge_descriptor firstPathEdge = longestPathEdges.front();
+    const vertex_descriptor firstPathVertex = source(firstPathEdge, component);
+    longestPathVertices.push_back(firstPathVertex);
+    for(const edge_descriptor e: longestPathEdges) {
+        const vertex_descriptor v = target(e, component);
+        longestPathVertices.push_back(v);
+    }
+    SHASTA2_ASSERT(longestPathVertices.size() > 1);
+    if(debug) {
+        cout << "The longest path in this component has " <<
+            longestPathVertices.size() << " long segments: " << endl;
+        for(const vertex_descriptor u: longestPathVertices) {
+            cout << " " << segmentId(u);
+        }
+        cout << endl;
+    }
+
+
+
+    // Construct the path by looping over the edges of the longest path.
+    for(const edge_descriptor e: longestPathEdges) {
+        const vertex_descriptor u0 = source(e, component);
+        const Segment segment0 = component[u0].segment;
+
+        // Access the assembly path portion between these two vertices.
+        vector<Segment>& internalPortionOfAssemblyPath = component[e].assemblyPath;
+
+        // Update the assembly path.
+        // Don't include the last segment to avoid duplications.
+        assemblyPath.push_back(segment0);
+        std::ranges::copy(internalPortionOfAssemblyPath, back_inserter(assemblyPath));
+    }
+
+    // Add the final Segment to the assembly path.
+    const PathGraph::edge_descriptor e = longestPathEdges.back();
+    const PathGraph::vertex_descriptor u = target(e, component);
+    assemblyPath.push_back(component[u].segment);
+
+}
+
+
+// Find assembly paths on all edges, then remove the
+// edges for which an assembly path could not be found.
+void PathGraph::findAssemblyPathsOnEdges()
+{
+    PathGraph& pathGraph = *this;
+
+    // Vector to contain the edges where we did not find an assembly path.
+    // These edges will be removed.
+    vector<edge_descriptor> failedEdges;
+
+    // Loop over all edges of the PathGraph.
+    BGL_FORALL_EDGES(e, pathGraph, PathGraph) {
+        PathGraphEdge& edge = pathGraph[e];
+
+        // Locate the corresponding vertices.
+        const vertex_descriptor u0 = source(e, pathGraph);
+        const vertex_descriptor u1 = target(e, pathGraph);
+
+        // Find the corresponding Graph vertices.
+        const Segment segment0 = pathGraph[u0].segment;
+        const Segment segment1 = pathGraph[u1].segment;
+        const auto it0 = graph.vertexMap.find(segment0);
+        SHASTA2_ASSERT(it0 != graph.vertexMap.end());
+        const Graph::vertex_descriptor v0 = it0->second;
+        const auto it1 = graph.vertexMap.find(segment1);
+        SHASTA2_ASSERT(it1 != graph.vertexMap.end());
+        const Graph::vertex_descriptor v1 = it1->second;
+
+        // Find the assembly path between these two graph vertices.
+        const bool success = graph.findAssemblyPath(v0, v1, edge.assemblyPath);
+        if(not success) {
+            failedEdges.push_back(e);
+        }
+    }
+
+    // Remove the failed edges.
+    for(const edge_descriptor e: failedEdges) {
+        boost::remove_edge(e, pathGraph);
+    }
+}
+
+
+
+void Graph::writeAssemblyPaths(const vector< vector<Segment> >& assemblyPaths) const
+{
+    ofstream csv("AssemblyPaths.csv");
+    cout << "Found " << assemblyPaths.size() << " assembly paths. See AssemblyPaths.csv for details." << endl;
+    for(const vector<Segment>& assemblyPath: assemblyPaths) {
+        cout << "Assembly path with " << assemblyPath.size() <<
+        " segments beginning at " << assemblyGraph[assemblyPath.front()].id <<
+        " and ending at " << assemblyGraph[assemblyPath.back()].id << endl;
+
+        for(const Segment& segment: assemblyPath) {
+            csv << assemblyGraph[segment].id << ",";
+        }
+        csv << "\n";
+    }
+}
+
+
+
+// Create pathCount paths in each starting direction and for each starting vertex.
+// Store in each vertex the terminal vertices of the random paths.
+void Graph::findRandomPaths()
+{
+    Graph& graph = *this;
+    std::mt19937 randomGenerator;
+
+    Path path;
+    vector<uint64_t> count;
+    vector<vertex_descriptor> terminalVertices;
+
+    // Loop over all vertices.
+    BGL_FORALL_VERTICES(v0, graph, Graph) {
+        Vertex& vertex0 = graph[v0];
+
+        // Loop over the two directions for this vertex.
+        for(uint64_t direction=0; direction<2; direction++) {
+            terminalVertices.clear();
+
+            // Generate pathCount random paths starting at v0, in this direction.
+            for(uint64_t i=0; i<assemblyGraph.options.readFollowingPathCount; i++) {
+                findRandomPath(v0, direction, randomGenerator, path);
+                const vertex_descriptor v1 = (direction == 0) ? path.back() : path.front();
+                terminalVertices.push_back(v1);
+            }
+
+            // Count how many times each terminal vertex occurred.
+            deduplicateAndCount(terminalVertices, count);
+            vertex0.randomPathInfos[direction].clear();
+            for(uint64_t j=0; j<terminalVertices.size(); j++) {
+                auto& randomPathInfo = vertex0.randomPathInfos[direction].emplace_back();
+                randomPathInfo.v = terminalVertices[j];
+                randomPathInfo.count = count[j];
+                randomPathInfo.segmentId = segmentId(randomPathInfo.v);
+            }
+            sort(vertex0.randomPathInfos[direction].begin(), vertex0.randomPathInfos[direction].end());
+        }
+    }
+
+
+
+    ofstream csv("RandomPaths.csv");
+    csv << "v0,Length0,direction,v1,Length1,count,\n";
+    BGL_FORALL_VERTICES(v0, graph, Graph) {
+        Vertex& vertex0 = graph[v0];
+
+        for(uint64_t direction=0; direction<2; direction++) {
+            for(const auto& randomPathInfo: vertex0.randomPathInfos[direction]) {
+                csv << segmentId(v0) << ",";
+                csv << vertex0.length << ",";
+                csv << direction << ",";
+                csv << randomPathInfo.segmentId << ",";
+                csv << graph[randomPathInfo.v].length << ",";
+                csv << randomPathInfo.count << ",";
+                csv << "\n";
+            }
+        }
+    }
+}
+
+
+
+void Graph::createRandomPathsMap()
+{
+    Graph& graph = *this;
+    const bool debug = false;
+
+    // Find short vertices that are reliably preceded/followed by a single vertex.
+    // These will be used to fill in assembly paths.
+    randomPathsMap.clear();
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        const Vertex& vertex = graph[v];
+
+        if(vertex.isLong) {
+            continue;
+        }
+
+        if(vertex.randomPathInfos[0].empty()) {
+            continue;
+        }
+
+        if(vertex.randomPathInfos[1].empty()) {
+            continue;
+        }
+
+        const Vertex::RandomPathInfo& nextInfo = vertex.randomPathInfos[0].front();
+        const Vertex::RandomPathInfo& previousInfo = vertex.randomPathInfos[1].front();
+
+        if(nextInfo.count < assemblyGraph.options.readFollowingPathCountThreshold2) {
+            continue;
+        }
+        if(previousInfo.count < assemblyGraph.options.readFollowingPathCountThreshold2) {
+            continue;
+        }
+
+        randomPathsMap[{previousInfo.v, nextInfo.v}].push_back(v);
+    }
+    if(debug) {
+        ofstream csv("RandomPathsMap.csv");
+        for(const auto& [p, shortVertices]: randomPathsMap) {
+            const vertex_descriptor v0 = p.first;
+            const vertex_descriptor v1 = p.second;
+            csv << segmentId(v0) << ",";
+            csv << segmentId(v1) << ",";
+            for(const vertex_descriptor v: shortVertices) {
+                csv << segmentId(v) << ",";
+            }
+            csv << endl;
+        }
+    }
+
+}
+
+
+
+PathGraph::PathGraph(const Graph& graph) :
+    graph(graph)
+{
+}
+
+
+
+void PathGraph::create()
+{
+    createVertices();
+    createEdges();
+}
+
+
+
+void PathGraph::createVertices()
+{
+    PathGraph& pathGraph = *this;
+
+    // Each long Segment generates a PathGraphVertex.
+    // For better reproducibility, generate the vertices in this order,
+    // instead of looping over the longVertices, so they are ordered by segment id.
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        const Vertex& vertex = graph[v];
+        if(vertex.isLong) {
+            const PathGraph::vertex_descriptor u = boost::add_vertex({vertex.segment}, pathGraph);
+            vertexMap.insert({vertex.segment, u});
+        }
+    }
+}
+
+
+
+void PathGraph::createEdges()
+{
+    PathGraph& pathGraph = *this;
+
+    // Loop over all PathGraph vertices.
+    BGL_FORALL_VERTICES(u0, pathGraph, PathGraph) {
+
+        // Locate the segment and the corresponding Vertex.
+        const Segment segment0 = pathGraph[u0].segment;
+        const auto it0 = graph.vertexMap.find(segment0);
+        SHASTA2_ASSERT(it0 != graph.vertexMap.end());
+        const vertex_descriptor v0 = it0->second;
+        const Vertex& vertex0 = graph[v0];
+
+        // Loop over the RandomPathInfos of this vertex in both directions.
+        for(uint64_t direction=0; direction<2; direction++) {
+            for(const Vertex::RandomPathInfo& randomPathInfo: vertex0.randomPathInfos[direction]) {
+                const Graph::vertex_descriptor v1 = randomPathInfo.v;
+                const uint64_t count = randomPathInfo.count;
+
+                if(count < graph.assemblyGraph.options.readFollowingPathCountThreshold1) {
+                    continue;
+                }
+
+                // Locate the corresponding PathGraphVertex.
+                const Segment segment1 = graph[v1].segment;
+                const auto it1 = vertexMap.find(segment1);
+                SHASTA2_ASSERT(it1 != vertexMap.end());
+                const vertex_descriptor u1 = it1->second;
+
+                if(u1 == u0) {
+                    continue;
+                }
+
+                // Locate the PathGraph edge u0->u1 (if direction==0)
+                // or u1->u0 (if direction==1), creating it if necessary.
+                edge_descriptor e;
+                bool edgeExists = false;
+                if(direction == 0) {
+                    tie(e, edgeExists) = boost::edge(u0, u1, pathGraph);
+                    if(not edgeExists) {
+                        tie(e, edgeExists) = boost::add_edge(u0, u1, pathGraph);
+                    }
+                } else {
+                    tie(e, edgeExists) = boost::edge(u1, u0, pathGraph);
+                    if(not edgeExists) {
+                        tie(e, edgeExists) = boost::add_edge(u1, u0, pathGraph);
+                    }
+                }
+                SHASTA2_ASSERT(edgeExists);
+                PathGraphEdge& edge = pathGraph[e];
+
+                // Store the number of random paths found.
+                edge.randomPathCount[direction] = count;
+            }
+        }
+    }
+
+
+}
+
+
+
+void PathGraph::writeGraphviz(const string& name) const
+{
+    ofstream dot("PathGraph-" + name + ".dot");
+    writeGraphviz(dot);
+}
+
+
+
+void PathGraph::writeGraphviz(ostream& dot) const
+{
+    const PathGraph& pathGraph = *this;
+
+    dot << "digraph PathGraph {\n";
+
+
+
+    // Vertices.
+    BGL_FORALL_VERTICES(v, pathGraph, PathGraph) {
+        const Segment segment = pathGraph[v].segment;
+        const AssemblyGraphEdge& assemblyGraphEdge = graph.assemblyGraph[segment];
+        dot << assemblyGraphEdge.id <<
+            " ["
+            "label=\"" << assemblyGraphEdge.id <<
+            "\\n" << assemblyGraphEdge.length() <<
+            "\""
+            "]"
+            ";\n";
+    }
+
+
+
+    // Edges.
+    BGL_FORALL_EDGES(e, pathGraph, PathGraph) {
+        const PathGraphEdge& edge = pathGraph[e];
+
+        const PathGraph::vertex_descriptor v0 = source(e, pathGraph);
+        const PathGraph::vertex_descriptor v1 = target(e, pathGraph);
+
+        const Segment segment0 = pathGraph[v0].segment;
+        const Segment segment1 = pathGraph[v1].segment;
+
+
+        dot <<
+            graph.assemblyGraph[segment0].id << "->" <<
+            graph.assemblyGraph[segment1].id;
+
+        // Begin attributes.
+        dot << " [";
+
+        // Label.
+        dot <<
+            "label=\"" <<
+            edge.randomPathCount[0] << "/" <<
+            edge.randomPathCount[1] <<
+            "\"";
+
+        // Color;
+        if(
+            (edge.randomPathCount[0] < graph.assemblyGraph.options.readFollowingPathCountThreshold1)
+            or
+            (edge.randomPathCount[1] < graph.assemblyGraph.options.readFollowingPathCountThreshold1)) {
+            dot << " color=red";
+        }
+
+        // End attributes.
+        dot << "]";
+
+        // End this edge.
+        dot << ";\n";
+    }
+
+
+
+    dot << "}\n";
+
+}
+
+
+
+// Find an assembly path between two long vertices.
+// This uses the randomPathsMap to locate usable short vertices.
+// The Path does not include the segments corresponding to v0 and v1.
+// This can fail, in which case it returns false and an empty assembly path.
+bool Graph::findAssemblyPath(
+    vertex_descriptor v0,
+    vertex_descriptor v1,
+    vector<Segment>& assemblyPath) const
+{
+    const bool debug = true;
+    const Graph& graph = *this;
+    assemblyPath.clear();
+
+    const Vertex& vertex0 = graph[v0];
+    const Vertex& vertex1 = graph[v1];
+    SHASTA2_ASSERT(vertex0.isLong);
+    SHASTA2_ASSERT(vertex1.isLong);
+
+    // Gather the vertices of the Graph subgraph that can be used to assemble this portion.
+    std::set<Graph::vertex_descriptor, Graph::OrderById> subgraphVertices(graph.orderById);
+    subgraphVertices.insert(v0);
+    subgraphVertices.insert(v1);
+    const auto it = randomPathsMap.find({v0, v1});
+    if(it != randomPathsMap.end()) {
+        const vector<vertex_descriptor>& shortVertices = it->second;
+        for(const vertex_descriptor v: shortVertices) {
+            subgraphVertices.insert(v);
+        }
+    }
+
+    if(debug) {
+        cout << "Finding a possible assembly path portion between " <<
+            segmentId(v0) << " and " << segmentId(v1) << endl;
+        cout << "The following segments are usable to assemble this portion:" << endl;
+        for(const Graph::vertex_descriptor v: subgraphVertices) {
+            cout << " " << graph.segmentId(v);
+        }
+        cout << endl;
+
+        // Also write a csv file that can be loaded in Bandage to visualize these segments.
+        ofstream csv(
+            "ReadFollowing-Subgraph-" +
+            to_string(segmentId(v0)) + "-" +
+            to_string(segmentId(v1)) + ".csv");
+        csv << "Id,Length,Color,\n";
+        for(const Graph::vertex_descriptor v: subgraphVertices) {
+            csv << segmentId(v) << ",";
+            csv << graph[v].length << ",";
+            if(v == v0) {
+                csv << "Red,";
+            } else if(v == v1) {
+                csv << "Green,";
+            } else {
+                csv << "Blue,";
+            }
+            csv << "\n";
+        }
+    }
+
+    // Create a Subgraph of the Graph that uses only these segments.
+    Subgraph subgraph(graph, subgraphVertices);
+    if(debug) {
+        cout << "The subgraph for this portion of the assembly path has " <<
+            num_vertices(subgraph) << " vertices and " <<
+            num_edges(subgraph) << " edges." << endl;
+        subgraph.writeGraphviz(
+            "ReadFollowing-Subgraph-" +
+            to_string(segmentId(v0)) + "-" +
+            to_string(segmentId(v1)) + ".dot");
+    }
+
+    // Find the longest path in the subgraph.
+    // Remove cycles if necessary.
+    vector<Subgraph::edge_descriptor> longestSubgraphPathEdges;
+    try {
+        longestPath(subgraph, longestSubgraphPathEdges);
+    } catch(boost::not_a_dag&) {
+        subgraph.makeAcyclic();
+        longestPath(subgraph, longestSubgraphPathEdges);
+        if(debug) {
+            cout << "The subgraph contained cycles, and they were removed." << endl;
+        }
+    }
+    if(longestSubgraphPathEdges.empty()) {
+        if(debug) {
+            cout << "Graph::findAssemblyPath failed: the longest path is empty." << endl;
+        }
+        return false;
+    }
+
+
+    // Gather the vertices of the longest path.
+    vector<Subgraph::vertex_descriptor> longestSubgraphPathVertices;
+    const Subgraph::edge_descriptor firstEdge = longestSubgraphPathEdges.front();
+    longestSubgraphPathVertices.push_back(source(firstEdge, subgraph));
+    for(const Subgraph::edge_descriptor e: longestSubgraphPathEdges) {
+        longestSubgraphPathVertices.push_back(target(e, subgraph));
+    }
+    if(subgraph[longestSubgraphPathVertices.front()].segment != vertex0.segment) {
+        if(debug) {
+            cout << "Graph::findAssemblyPath failed: the longest path does not begin at v0." << endl;
+        }
+        return false;
+    }
+    if(subgraph[longestSubgraphPathVertices.back()].segment != vertex1.segment) {
+        if(debug) {
+            cout << "Graph::findAssemblyPath failed: the longest path does not end at v1." << endl;
+        }
+        return false;
+    }
+
+    if(debug) {
+        cout << "The longest path in the subgraph has " <<
+            longestSubgraphPathVertices.size() << " vertices." << endl;
+
+        // Also write a csv file that can be loaded in Bandage to visualize the longest path.
+        ofstream csv(
+            "ReadFollowing-Subgraph-LongestPath-" +
+            to_string(segmentId(v0)) + "-" +
+            to_string(segmentId(v1)) + ".csv");
+        csv << "Id,Position,Length,Color,\n";
+        for(uint64_t i=0; i<longestSubgraphPathVertices.size(); i++) {
+            const Subgraph::vertex_descriptor w = longestSubgraphPathVertices[i];
+            const Segment segment = subgraph[w].segment;
+            const double H = double(i) / (3. * double(longestSubgraphPathVertices.size() - 1));
+            const double S = 1.;
+            const double L = 0.6;
+            const string color = hslToRgbString(H, S, L);
+            csv << graph.assemblyGraph[segment].id << ",";
+            csv << i << ",";
+            csv << graph.assemblyGraph[segment].length() << ",";
+            csv << color << ",";
+            csv << "\n";
+        }
+    }
+
+    // Construct the assembly path, without including segment0 and segment1.
+    for(uint64_t i=1; i<longestSubgraphPathVertices.size()-1; i++) {
+        const Subgraph::vertex_descriptor w = longestSubgraphPathVertices[i];
+        const Segment segment = subgraph[w].segment;
+        assemblyPath.push_back(segment);
+    }
+
+    return true;
+}
+
+
+
+
+Subgraph::Subgraph(
+    const Graph& graph,
+    const std::set<Graph::vertex_descriptor, Graph::OrderById>& vertices) :
+    graph(graph)
+{
+    Subgraph& subgraph = *this;
+
+    // Create the vertices;
+    std::map<Graph::vertex_descriptor, Subgraph::vertex_descriptor> vertexMap;
+    for(const Graph::vertex_descriptor v: vertices) {
+        vertex_descriptor w = boost::add_vertex(subgraph);
+        SubgraphVertex& subgraphVertex = subgraph[w];
+        subgraphVertex.segment = graph[v].segment;
+        vertexMap.insert({v, w});
+    }
+
+    // Create the edges.
+    for(const Graph::vertex_descriptor v0: vertices) {
+        const Subgraph::vertex_descriptor w0 = vertexMap[v0];
+        BGL_FORALL_OUTEDGES(v0, e, graph, Graph) {
+            const Graph::vertex_descriptor v1 = target(e, graph);
+            const auto it1 = vertexMap.find(v1);
+            if(it1 != vertexMap.end()) {
+                const Subgraph::vertex_descriptor w1 = it1->second;
+                auto[we, ignore] = add_edge(w0, w1, subgraph);
+                subgraph[we].correctedJaccard = graph[e].segmentPairInformation.correctedJaccard;
+            }
+        }
+    }
+
+}
+
+
+
+void Subgraph::writeGraphviz(const string& name) const
+{
+    const Subgraph& subgraph = *this;
+
+    ofstream dot(name);
+    dot << "digraph ReadFollowingSubgraph {\n";
+
+    BGL_FORALL_VERTICES(w, subgraph, Subgraph) {
+        dot << segmentId(w) << ";\n";
+    }
+
+    BGL_FORALL_EDGES(e, subgraph, Subgraph) {
+        const vertex_descriptor w0 = source(e, subgraph);
+        const vertex_descriptor w1 = target(e, subgraph);
+        dot <<
+            segmentId(w0) << "->" <<
+            segmentId(w1) << ";\n";
+    }
+
+    dot << "}\n";
+}
+
+
+
+uint64_t Subgraph::segmentId(vertex_descriptor w) const
+{
+    const Subgraph& subgraph = *this;
+    const SubgraphVertex& vertex = subgraph[w];
+    const Segment segment = vertex.segment;
+    return graph.assemblyGraph[segment].id;
+}
+
+
+
+void Subgraph::makeAcyclic()
+{
+    Subgraph& subgraph = *this;
+
+    // Gather the edges with their correctedJaccard.
+    class EdgeInfo {
+    public:
+        edge_descriptor e;
+        double correctedJaccard;
+        bool operator<(const EdgeInfo& that) const {
+            return correctedJaccard > that.correctedJaccard;
+        }
+    };
+    vector<EdgeInfo> edgeInfos;
+    BGL_FORALL_EDGES(e, subgraph, Subgraph) {
+        const double correctedJaccard = subgraph[e].correctedJaccard;
+        edgeInfos.push_back(EdgeInfo({e, correctedJaccard}));
+    }
+
+    // Sort them by decreasing corrected jaccard.
+    sort(edgeInfos.begin(), edgeInfos.end());
+
+    // Do approximateTopologicalOrdewr with edges in this order.
+    vector<edge_descriptor> sortedEdges;
+    for(const EdgeInfo& edgeInfo: edgeInfos) {
+        sortedEdges.push_back(edgeInfo.e);
+    }
+    approximateTopologicalSort(subgraph, sortedEdges);
+
+    // Remove the non-DAG edges.
+    vector<edge_descriptor> edgesToBeRemoved;
+    BGL_FORALL_EDGES(e, subgraph, Subgraph) {
+        if(not subgraph[e].isDagEdge) {
+            edgesToBeRemoved.push_back(e);
+        }
+    }
+    for(const edge_descriptor e: edgesToBeRemoved) {
+        boost::remove_edge(e, subgraph);
+    }
+
+}
+
+
+
+void PathGraph::removeWeakEdges()
+{
+    PathGraph& pathGraph = *this;
+
+    vector<edge_descriptor> edgesToBeRemoved;
+    BGL_FORALL_EDGES(e, pathGraph, PathGraph) {
+        const PathGraphEdge& edge = pathGraph[e];
+        if(
+            (edge.randomPathCount[0] < graph.assemblyGraph.options.readFollowingPathCountThreshold1)
+            or
+            (edge.randomPathCount[1] < graph.assemblyGraph.options.readFollowingPathCountThreshold1)) {
+            edgesToBeRemoved.push_back(e);
+        }
+    }
+
+    for(const edge_descriptor e: edgesToBeRemoved) {
+        boost::remove_edge(e, pathGraph);
+    }
+
+}
+
+
+
+vector< shared_ptr<PathGraph> > PathGraph::findConnectedComponents()
+{
+    PathGraph& pathGraph = *this;
+
+    // Map vertices to integers.
+    vector<vertex_descriptor> vertexTable;
+    std::map<vertex_descriptor, uint64_t> vertexIndexMap;
+    uint64_t vertexIndex = 0;
+    BGL_FORALL_VERTICES(v, pathGraph, PathGraph) {
+        vertexTable.push_back(v);
+        vertexIndexMap.insert({v, vertexIndex++});
+    }
+    const uint64_t n = vertexIndex;
+
+    // Use DisjointSets to compute connected components.
+    DisjointSets disjointSets(n);
+    BGL_FORALL_EDGES(e, pathGraph, PathGraph) {
+        const vertex_descriptor v0 = source(e, pathGraph);
+        const vertex_descriptor v1 = target(e, pathGraph);
+        const uint64_t i0 = vertexIndexMap[v0];
+        const uint64_t i1 = vertexIndexMap[v1];
+        disjointSets.unionSet(i0, i1);
+    }
+
+    // Get the vertex indexes for the non-trivial connected components.
+    vector< vector<uint64_t> > componentsVertexIndexes;
+    disjointSets.gatherComponents(2, componentsVertexIndexes);
+    cout << "Found " << componentsVertexIndexes.size() <<
+        " non-trivial connected components of the PathGraph." << endl;
+
+
+
+    // Now create the PathGraphs for each of the non-trivial components.
+    vector< shared_ptr<PathGraph> > components;
+    for(const vector<uint64_t>& componentVertexIndexes: componentsVertexIndexes) {
+
+        // Create the PathGraph for this component.
+        const shared_ptr<PathGraph> componentPointer = make_shared<PathGraph>(graph);
+        PathGraph& component = *componentPointer;
+        components.push_back(componentPointer);
+
+        // Add the vertices, copying them form the PathGraph.
+        std::map<vertex_descriptor, vertex_descriptor> componentVertexMap;
+        for(const uint64_t i: componentVertexIndexes) {
+            const vertex_descriptor v = vertexTable[i];
+            const vertex_descriptor u = add_vertex(pathGraph[v], component);
+            componentVertexMap.insert({v, u});
+        }
+
+        // Add the edges.
+        // Use v for vertices of the PathGraph and u for vertices of the component.
+        for(const uint64_t i0: componentVertexIndexes) {
+            const vertex_descriptor v0 = vertexTable[i0];
+            const vertex_descriptor u0 = componentVertexMap[v0];
+            BGL_FORALL_OUTEDGES(v0, e, pathGraph, PathGraph) {
+                const vertex_descriptor v1 = target(e, pathGraph);
+                const vertex_descriptor u1 = componentVertexMap[v1];
+                add_edge(u0, u1, pathGraph[e], component);
+            }
+        }
+    }
+
+
+
+    return components;
+}
+
+
+
+uint64_t PathGraph::segmentId(vertex_descriptor v) const
+{
+    const PathGraph& pathGraph = *this;
+    const Segment segment = pathGraph[v].segment;
+    return graph.assemblyGraph[segment].id;
 }

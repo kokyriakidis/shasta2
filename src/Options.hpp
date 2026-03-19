@@ -32,8 +32,6 @@ public:
     const vector<string> inputFileNamesDefault;
     const vector<uint64_t> maxAnchorRepeatLengthDefault = {6, 4, 4, 4, 4};
     const vector<uint64_t> minAnchorDistinctSubkmerCountDefault = {4, 12, 24};
-    const vector<uint64_t> readFollowingMinCommonCountDefault = {4, 3, 2};
-    const vector<double> readFollowingMinCorrectedJaccardDefault = {0.8, 0.7, 0.6};
 
 	// Options with a simple type are defined in OptionsDefine.hpp
 	#define SHASTA2_OPTION_DEFINE(type, name, optionName, defaultValue, description) \

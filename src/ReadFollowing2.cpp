@@ -260,7 +260,7 @@ void Graph::createEdgeCandidates()
 
     Graph& graph = *this;
     const uint64_t orientedReadCount = assemblyGraph.journeys.size();
-    const uint64_t minCommonCount = assemblyGraph.options.readFollowingMinCommonCount[iteration];
+    const uint64_t minCommonCount = assemblyGraph.options.readFollowingMinCommonCount;
 
     // For each OrientedReadId, gather the vertices that the OrientedReadId
     // appears in, in the initial/final support.
@@ -326,8 +326,8 @@ void Graph::createEdgesMultithreaded()
 void Graph::createEdgesThreadFunction([[maybe_unused]] uint64_t threadId)
 {
     Graph& graph = *this;
-    const uint64_t minCommonCount = assemblyGraph.options.readFollowingMinCommonCount[iteration];
-    const double minCorrectedJaccard = assemblyGraph.options.readFollowingMinCorrectedJaccard[iteration];
+    const uint64_t minCommonCount = assemblyGraph.options.readFollowingMinCommonCount;
+    const double minCorrectedJaccard = assemblyGraph.options.readFollowingMinCorrectedJaccard;
 
     // Prepare a vector of edges to be added.
     // We will add them all at the end so we only have to acquire the mutex once.
@@ -496,12 +496,12 @@ void Graph::writeGraphviz(const string& name) const
         double hue;
         if(edge.segmentPairInformation.correctedJaccard >= 1.) {
             hue = 1.;
-        } else if(edge.segmentPairInformation.correctedJaccard <= assemblyGraph.options.readFollowingMinCorrectedJaccard[iteration]) {
+        } else if(edge.segmentPairInformation.correctedJaccard <= assemblyGraph.options.readFollowingMinCorrectedJaccard) {
             hue = 0.;
         } else {
             hue =
-                (edge.segmentPairInformation.correctedJaccard - assemblyGraph.options.readFollowingMinCorrectedJaccard[iteration]) /
-                (1. - assemblyGraph.options.readFollowingMinCorrectedJaccard[iteration]);
+                (edge.segmentPairInformation.correctedJaccard - assemblyGraph.options.readFollowingMinCorrectedJaccard) /
+                (1. - assemblyGraph.options.readFollowingMinCorrectedJaccard);
         }
         hue /= 3.;
         dot << std::fixed << std::setprecision(3) << " color=\""  << hue << " 1. 1.\"";

@@ -99,9 +99,4 @@ void Options::validate()
     if(threadCount == 0) {
         threadCount = std::thread::hardware_concurrency();
     }
-
-    if(readFollowingMinCommonCount.size() != readFollowingMinCorrectedJaccard.size()) {
-        throw runtime_error("--read-following-min-common-count and --read-following-min-corrected-jaccard "
-            "must contain the same number of elements");
-    }
 }

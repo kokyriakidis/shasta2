@@ -162,13 +162,13 @@ SHASTA2_OPTION_DEFINE(
 
 
 // Read following.
-SHASTA2_VECTOR_OPTION_DEFINE(
-uint64_t, readFollowingMinCommonCount, "--read-following-min-common-count", readFollowingMinCommonCountDefault,
-"Minimum number of common oriented reads for each read following iteration.")
+SHASTA2_OPTION_DEFINE(
+uint64_t, readFollowingMinCommonCount, "--read-following-min-common-count", 2,
+"Minimum number of common oriented reads for read following.")
 
-SHASTA2_VECTOR_OPTION_DEFINE(
-	double, readFollowingMinCorrectedJaccard, "--read-following-min-corrected-jaccard", readFollowingMinCorrectedJaccardDefault,
-	"Minimum corrected Jaccard for for each read following iteration.")
+SHASTA2_OPTION_DEFINE(
+	double, readFollowingMinCorrectedJaccard, "--read-following-min-corrected-jaccard", 0.,
+	"Minimum corrected Jaccard for read following.")
 
 SHASTA2_OPTION_DEFINE(
 	uint32_t, readFollowingPruneLength, "--read-following-prune-length", 100000,
