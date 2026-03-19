@@ -206,6 +206,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def(pybind11::init<const AssemblyGraph&>())
         .def("writeRandomPath", &ReadFollowing3::Graph::writeRandomPath)
         .def("writePathStatistics", &ReadFollowing3::Graph::writePathStatistics)
+        .def("findAndWriteShortestPath", &ReadFollowing3::Graph::findAndWriteShortestPath)
         ;
 
     // Class ExternalAnchors.

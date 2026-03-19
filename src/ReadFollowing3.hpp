@@ -147,6 +147,9 @@ public:
 
     // Unnormalized probability of this edge, for random paths.
     double pUnnormalized = 0.;
+
+    // The weight is the inverse of pUnnormalized.
+    double weight;
 };
 
 
@@ -252,6 +255,28 @@ public:
 
     };
     const OrderById orderById;
+
+
+
+    // This finds a shortest path starting at v0 and ending at a long vertex,
+    // with path length defined by Edge::weight = 1/Edge::pUnnormalized.
+    // So the shortest path prefers edges with high pUnnormalized.
+    void findShortestPath(
+        vertex_descriptor v0,   // The start vertex.
+        uint64_t direction,     // 0 = forward, 1 = backward
+        vector<vertex_descriptor>& path
+        );
+    void findShortestPathForward(
+        vertex_descriptor v0,   // The start vertex.
+        vector<vertex_descriptor>& path
+        );
+    void findShortestPathBackward(
+        vertex_descriptor v0,   // The start vertex.
+        vector<vertex_descriptor>& path
+        );
+    void findAndWriteShortestPath(Segment, uint64_t direction); // Python callable
+
+
 };
 
 

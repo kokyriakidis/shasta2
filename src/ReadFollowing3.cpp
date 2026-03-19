@@ -12,6 +12,9 @@
 using namespace shasta2;
 using namespace ReadFollowing3;
 
+// Boost libraries.
+#include "boost/graph/dijkstra_shortest_paths.hpp"
+
 // Standard library.
 #include "fstream.hpp"
 #include <queue>
@@ -235,6 +238,8 @@ Edge::Edge(
     const double b = 10.; // dB
     pUnnormalized = std::pow(10., 0.1 *
         (a * double(segmentPairInformation.commonCount) - b * double(segmentPairInformation.missing())));
+
+    weight = 1. / pUnnormalized;
 }
 
 
@@ -1445,7 +1450,7 @@ vector< shared_ptr<PathGraph> > PathGraph::findConnectedComponents()
     for(const vector<uint64_t>& componentVertexIndexes: componentsVertexIndexes) {
 
         // Create the PathGraph for this component.
-        const shared_ptr<PathGraph> componentPointer = make_shared<PathGraph>(graph);
+        const shared_ptr<PathGraph> componentPointer = std::make_shared<PathGraph>(graph);
         PathGraph& component = *componentPointer;
         components.push_back(componentPointer);
 
@@ -1482,4 +1487,158 @@ uint64_t PathGraph::segmentId(vertex_descriptor v) const
     const PathGraph& pathGraph = *this;
     const Segment segment = pathGraph[v].segment;
     return graph.assemblyGraph[segment].id;
+}
+
+
+
+// This finds a shortest path starting at v0 and ending at a long vertex,
+// with path length defined by Edge::weight = 1/Edge::pUnnormalized.
+// So the shortest path prefers edge with high pUnnormalized.
+void Graph::findShortestPath(
+    vertex_descriptor v0,   // The start vertex.
+    uint64_t direction,
+    vector<vertex_descriptor>& path)
+{
+    if(direction == 0) {
+        findShortestPathForward(v0, path);
+    } else {
+        findShortestPathBackward(v0, path);
+    }
+}
+
+
+
+void Graph::findShortestPathForward(
+    vertex_descriptor v0,
+    vector<vertex_descriptor>& path
+    )
+{
+    using namespace boost;
+    Graph& graph = *this;
+
+    // Create the vertexIndexMap.
+    std::map<vertex_descriptor, uint64_t> vertexIndexMap;
+    uint64_t vertexIndex = 0;
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        vertexIndexMap.insert(make_pair(v, vertexIndex++));
+    }
+
+    // An exception class used to stop the shortest path computation
+    // when a long vertex is encountered.
+    class LongVertexReached {
+    public:
+        vertex_descriptor v;
+        LongVertexReached(vertex_descriptor v) : v(v) {}
+    };
+
+    // The DijkstraVisitor class throws LongVertexReached when a long vertex is encountered.
+    class DijkstraVisitor : public boost::dijkstra_visitor<> {
+    public:
+        vertex_descriptor v0;
+        DijkstraVisitor(vertex_descriptor v0) : v0(v0) {}
+        void examine_vertex(vertex_descriptor v, const Graph& graph)
+        {
+            if((v != v0) and (graph[v].isLong)) {
+                throw LongVertexReached(v);
+            }
+        }
+    };
+    DijkstraVisitor dijkstraVisitor(v0);
+
+    // The predecessorMap is filled in by the call to dag_shortest_paths
+    // and can be used to recostruct the path from v0 to
+    // the first long edge encountered.
+    std::map<vertex_descriptor, vertex_descriptor> predecessorMap;
+
+
+
+    // Compute the shortest path using Edge::weight.
+    vertex_descriptor v1 = null_vertex();
+    try {
+        dijkstra_shortest_paths(graph, v0,
+           weight_map(boost::get(&Edge::weight, graph)).
+           vertex_index_map(make_assoc_property_map(vertexIndexMap)).
+           predecessor_map(make_assoc_property_map(predecessorMap)).
+           visitor(dijkstraVisitor)
+           );
+    } catch(LongVertexReached& longVertexReached) {
+        v1 = longVertexReached.v;
+    } catch(std::exception& e) {
+        SHASTA2_ASSERT(0);
+    }
+
+
+
+    // Use the predecessor map to construct the path.
+    path.clear();
+    vertex_descriptor v = v1;
+    while(true) {
+        path.push_back(v);
+        if(v == v0) {
+            break;
+        }
+        v = predecessorMap[v];
+    }
+    std::ranges::reverse(path);
+}
+
+
+
+void Graph::findShortestPathBackward(
+    vertex_descriptor,
+    vector<vertex_descriptor>&
+    )
+{
+    SHASTA2_ASSERT(0);
+}
+
+
+
+void Graph::findAndWriteShortestPath(Segment segment, uint64_t direction)
+{
+    Graph& graph = *this;
+
+    const auto it = vertexMap.find(segment);
+    SHASTA2_ASSERT(it != vertexMap.end());
+    const vertex_descriptor v = it->second;
+
+    vector<vertex_descriptor> path;
+    findShortestPath(v, direction, path);
+
+    cout << "Found a path of length " << path.size() << ":" << endl;
+    for(const vertex_descriptor v: path) {
+        const Segment segment = graph[v].segment;
+        cout << assemblyGraph[segment].id << ",";
+    }
+    cout << endl;
+    cout << "See PathDetails.csv for details." << endl;
+
+
+
+    // Write information for each edge on the path.
+    ofstream csv("PathDetails.csv");
+    csv << "Segment0,Segment1,Length0,Length1,Common,Missing,Corrected Jaccard,Offset,logP (dB),\n";
+    for(uint64_t i1=1; i1<path.size(); i1++) {
+        const uint64_t i0 = i1 - 1;
+
+        const vertex_descriptor v0 = path[i0];
+        const vertex_descriptor v1 = path[i1];
+
+        edge_descriptor e;
+        bool edgeExists = false;
+        tie(e, edgeExists) = boost::edge(v0, v1, graph);
+        SHASTA2_ASSERT(edgeExists);
+        Edge& edge = graph[e];
+
+        csv << segmentId(v0) << ",";
+        csv << segmentId(v1) << ",";
+        csv << graph[v0].length << ",";
+        csv << graph[v1].length << ",";
+        csv << edge.segmentPairInformation.commonCount << ",";
+        csv << edge.segmentPairInformation.missing() << ",";
+        csv << edge.segmentPairInformation.correctedJaccard << ",";
+        csv << edge.segmentPairInformation.segmentOffset << ",";
+        csv << 10. * log10(edge.pUnnormalized) << ",";
+        csv << endl;
+    }
 }
