@@ -658,6 +658,43 @@ void Graph::writePathStatistics(Segment segment, uint64_t direction)
 
 
 
+// Version that uses shortest paths.
+void Graph::findAssemblyPaths([[maybe_unused]] vector< vector<Segment> >& assemblyPaths)
+{
+    Graph& graph = *this;
+
+    // Create the PathGraph. It has a vertex for each long segment.
+    PathGraph pathGraph(graph);
+    pathGraph.create();
+    pathGraph.writeGraphviz("0");
+    cout << "The initial PathGraph has " << num_vertices(pathGraph) <<
+        " vertices and " << num_edges(pathGraph) << " edges." << endl;
+
+    // Remove weak edges of the PathGraph.
+    pathGraph.removeWeakEdges();
+    pathGraph.writeGraphviz("1");
+    cout << "After removing weak edges, the PathGraph has " << num_vertices(pathGraph) <<
+        " vertices and " << num_edges(pathGraph) << " edges." << endl;
+
+    // Find the non-trivial connected components of the PathGraph.
+    const vector< shared_ptr<PathGraph> > componentPointers = pathGraph.findConnectedComponents();
+    cout << "The PathGraph has " << componentPointers.size() << " non-trivial connected components." << endl;
+
+    // Process one connected component at a time.
+    assemblyPaths.clear();
+    for(const shared_ptr<PathGraph>& componentPointer: componentPointers) {
+        vector<Segment> assemblyPath;
+        componentPointer->findAssemblyPath(assemblyPath);
+        if(assemblyPath.size() > 1) {
+            assemblyPaths.push_back(assemblyPath);
+        }
+    }
+}
+
+
+
+#if 0
+// Version that uses random paths.
 void Graph::findAssemblyPaths([[maybe_unused]] vector< vector<Segment> >& assemblyPaths)
 {
     Graph& graph = *this;
@@ -705,11 +742,88 @@ void Graph::findAssemblyPaths([[maybe_unused]] vector< vector<Segment> >& assemb
         }
     }
 }
-
+#endif
 
 
 // This computes an assembly path, assuming it is working
 // on a PathGraph with a single connected component.
+// Version that uses shortest paths.
+void PathGraph::findAssemblyPath(vector<Segment>& assemblyPath)
+{
+    const bool debug = true;
+    assemblyPath.clear();
+    PathGraph& component = *this;
+
+    if(debug) {
+        cout << "Working on a PathGraph component with " << num_vertices(component) <<
+            " vertices and " << num_edges(component) << " edges." << endl;
+        cout << "The vertices correspond to segments";
+        BGL_FORALL_VERTICES(u, component, PathGraph) {
+            cout << " " << segmentId(u);
+        }
+        cout << endl;
+    }
+
+    // Find the edges of longest path.
+    // This can throw if this component has cycles.
+    vector<edge_descriptor> longestPathEdges;
+    try {
+        longestPath(component, longestPathEdges);
+    } catch(std::exception&) {
+        // We can do better.
+        if(debug) {
+            cout << "No assembly path created for this component because of cycles." << endl;
+        }
+        return;
+    }
+    if(debug) {
+        cout << "The longest path in this component has " << longestPathEdges.size() << " edges." << endl;
+    }
+    SHASTA2_ASSERT(not longestPathEdges.empty());
+
+    // Find the vertices of the longest path.
+    vector<vertex_descriptor> longestPathVertices;
+    const edge_descriptor firstPathEdge = longestPathEdges.front();
+    const vertex_descriptor firstPathVertex = source(firstPathEdge, component);
+    longestPathVertices.push_back(firstPathVertex);
+    for(const edge_descriptor e: longestPathEdges) {
+        const vertex_descriptor v = target(e, component);
+        longestPathVertices.push_back(v);
+    }
+    SHASTA2_ASSERT(longestPathVertices.size() > 1);
+    if(debug) {
+        cout << "The longest path in this component has " <<
+            longestPathVertices.size() << " long segments: " << endl;
+        for(const vertex_descriptor u: longestPathVertices) {
+            cout << " " << segmentId(u);
+        }
+        cout << endl;
+    }
+
+
+
+    // Construct the assembly path by looping over the edges of the longest path.
+    for(const edge_descriptor e: longestPathEdges) {
+
+        // Access the assembly path portion between these two vertices.
+        const vector<Segment>& portionOfAssemblyPath = component[e].assemblyPathToUse();
+
+        // Update the assembly path.
+        // Don't include the last segment to avoid duplications.
+        copy(portionOfAssemblyPath.begin(), portionOfAssemblyPath.end()-1, back_inserter(assemblyPath));
+    }
+
+    // Add the final Segment to the assembly path.
+    const PathGraph::edge_descriptor e = longestPathEdges.back();
+    const PathGraph::vertex_descriptor u = target(e, component);
+    assemblyPath.push_back(component[u].segment);
+}
+
+
+#if 0
+// This computes an assembly path, assuming it is working
+// on a PathGraph with a single connected component.
+// Version that uses random paths.
 void PathGraph::findAssemblyPath(vector<Segment>& assemblyPath)
 {
     const bool debug = true;
@@ -784,6 +898,8 @@ void PathGraph::findAssemblyPath(vector<Segment>& assemblyPath)
     assemblyPath.push_back(component[u].segment);
 
 }
+#endif
+
 
 
 // Find assembly paths on all edges, then remove the
@@ -995,6 +1111,64 @@ void PathGraph::createVertices()
 
 
 
+// Version that uses shortest paths.
+void PathGraph::createEdges()
+{
+    PathGraph& pathGraph = *this;
+    vector<Graph::vertex_descriptor> path;
+
+    // Loop over all PathGraph vertices.
+    BGL_FORALL_VERTICES(u0, pathGraph, PathGraph) {
+
+        // Locate the segment and the corresponding Vertex.
+        const Segment segment0 = pathGraph[u0].segment;
+        const auto it0 = graph.vertexMap.find(segment0);
+        SHASTA2_ASSERT(it0 != graph.vertexMap.end());
+        const vertex_descriptor v0 = it0->second;
+        const Vertex& vertex0 = graph[v0];
+        SHASTA2_ASSERT(vertex0.isLong);
+
+
+
+        // Find shortest paths in both directions, starting at v0
+        // and ending at another long vertex.
+        for(uint64_t direction=0; direction<2; direction++) {
+            graph.findShortestPath(v0, direction, path);
+            if(path.size() < 2) {
+                continue;
+            }
+
+            const vertex_descriptor vv0 = path.front();
+            const vertex_descriptor vv1 = path.back();
+            const auto it0 = vertexMap.find(graph[vv0].segment);
+            const auto it1 = vertexMap.find(graph[vv1].segment);
+            SHASTA2_ASSERT(it0 != vertexMap.end());
+            SHASTA2_ASSERT(it1 != vertexMap.end());
+            const vertex_descriptor uu0 = it0->second;
+            const vertex_descriptor uu1 = it1->second;
+
+            edge_descriptor e;
+            bool edgeExists;
+            tie(e, edgeExists) = boost::edge(uu0, uu1, pathGraph);
+            if(not edgeExists) {
+                tie(e, edgeExists) = boost::add_edge(uu0, uu1, pathGraph);
+            }
+            SHASTA2_ASSERT(edgeExists);
+
+            // Store this path in the PathGraphEdge, as a vector of Segments.
+            PathGraphEdge& pathGraphEdge = pathGraph[e];
+            for(const Graph::vertex_descriptor v: path) {
+                pathGraphEdge.assemblyPaths[direction].push_back(graph[v].segment);
+            }
+        }
+    }
+}
+
+
+
+
+#if 0
+// Version that uses random paths.
 void PathGraph::createEdges()
 {
     PathGraph& pathGraph = *this;
@@ -1055,7 +1229,7 @@ void PathGraph::createEdges()
 
 
 }
-
+#endif
 
 
 void PathGraph::writeGraphviz(const string& name) const
@@ -1107,6 +1281,7 @@ void PathGraph::writeGraphviz(ostream& dot) const
         // Begin attributes.
         dot << " [";
 
+#if 0
         // Label.
         dot <<
             "label=\"" <<
@@ -1121,6 +1296,10 @@ void PathGraph::writeGraphviz(ostream& dot) const
             (edge.randomPathCount[1] < graph.assemblyGraph.options.readFollowingPathCountThreshold1)) {
             dot << " color=red";
         }
+#endif
+
+        string color = edge.isBidirectional() ? "black" : "red";
+        dot << "color=" << color;
 
         // End attributes.
         dot << "]";
@@ -1398,6 +1577,29 @@ void Subgraph::makeAcyclic()
 
 
 
+// Version that uses shortest paths.
+void PathGraph::removeWeakEdges()
+{
+    PathGraph& pathGraph = *this;
+
+    vector<edge_descriptor> edgesToBeRemoved;
+    BGL_FORALL_EDGES(e, pathGraph, PathGraph) {
+        const PathGraphEdge& edge = pathGraph[e];
+        if(not edge.isBidirectional()) {
+            edgesToBeRemoved.push_back(e);
+        }
+    }
+
+    for(const edge_descriptor e: edgesToBeRemoved) {
+        boost::remove_edge(e, pathGraph);
+    }
+
+}
+
+
+
+#if 0
+// Version that uses random paths.
 void PathGraph::removeWeakEdges()
 {
     PathGraph& pathGraph = *this;
@@ -1418,6 +1620,7 @@ void PathGraph::removeWeakEdges()
     }
 
 }
+#endif
 
 
 
@@ -1505,7 +1708,7 @@ uint64_t PathGraph::segmentId(vertex_descriptor v) const
 void Graph::findShortestPath(
     vertex_descriptor v0,   // The start vertex.
     uint64_t direction,
-    vector<vertex_descriptor>& path)
+    vector<vertex_descriptor>& path) const
 {
     if(direction == 0) {
         findShortestPathForward(v0, path);
@@ -1519,10 +1722,16 @@ void Graph::findShortestPath(
 void Graph::findShortestPathForward(
     vertex_descriptor v0,
     vector<vertex_descriptor>& path
-    )
+    ) const
 {
     using namespace boost;
-    Graph& graph = *this;
+    const Graph& graph = *this;
+
+    if(out_degree(v0, graph) == 0) {
+        path.clear();
+        path.push_back(v0);
+        return;
+    }
 
     // An exception class used to stop the shortest path computation
     // when a long vertex is encountered.
@@ -1588,10 +1797,16 @@ void Graph::findShortestPathForward(
 void Graph::findShortestPathBackward(
     vertex_descriptor v0,
     vector<vertex_descriptor>& path
-    )
+    ) const
 {
-    Graph& graph = *this;
-    Graph& reversedGraph = *reversedGraphPointer;
+    const Graph& graph = *this;
+    const Graph& reversedGraph = *reversedGraphPointer;
+
+    if(in_degree(v0, graph) == 0) {
+        path.clear();
+        path.push_back(v0);
+        return;
+    }
 
     // Find the corresponding vertex in the reversed graph.
     const Segment segment0 = graph[v0].segment;
@@ -1617,9 +1832,9 @@ void Graph::findShortestPathBackward(
 
 
 
-void Graph::findAndWriteShortestPath(Segment segment, uint64_t direction)
+void Graph::findAndWriteShortestPath(Segment segment, uint64_t direction) const
 {
-    Graph& graph = *this;
+    const Graph& graph = *this;
 
     const auto it = vertexMap.find(segment);
     SHASTA2_ASSERT(it != vertexMap.end());
@@ -1640,23 +1855,28 @@ void Graph::findAndWriteShortestPath(Segment segment, uint64_t direction)
 
     // Write information for each edge on the path.
     ofstream csv("PathDetails.csv");
-    csv << "Segment0,Segment1,Length0,Length1,Common,Missing,Corrected Jaccard,Offset,logP (dB),\n";
+    csv << "Segment0,Segment1,Length0,Length1,FinalSupport0,InitialSupport1,Common,Missing,Corrected Jaccard,Offset,logP (dB),\n";
     for(uint64_t i1=1; i1<path.size(); i1++) {
         const uint64_t i0 = i1 - 1;
 
         const vertex_descriptor v0 = path[i0];
         const vertex_descriptor v1 = path[i1];
 
+        const Vertex& vertex0 = graph[v0];
+        const Vertex& vertex1 = graph[v1];
+
         edge_descriptor e;
         bool edgeExists = false;
         tie(e, edgeExists) = boost::edge(v0, v1, graph);
         SHASTA2_ASSERT(edgeExists);
-        Edge& edge = graph[e];
+        const Edge& edge = graph[e];
 
         csv << segmentId(v0) << ",";
         csv << segmentId(v1) << ",";
         csv << graph[v0].length << ",";
         csv << graph[v1].length << ",";
+        csv << vertex0.finalSupport.size() << ",";
+        csv << vertex1.initialSupport.size() << ",";
         csv << edge.segmentPairInformation.commonCount << ",";
         csv << edge.segmentPairInformation.missing() << ",";
         csv << edge.segmentPairInformation.correctedJaccard << ",";

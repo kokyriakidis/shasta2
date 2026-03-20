@@ -265,16 +265,16 @@ public:
         vertex_descriptor v0,   // The start vertex.
         uint64_t direction,     // 0 = forward, 1 = backward
         vector<vertex_descriptor>& path
-        );
+        ) const;
     void findShortestPathForward(
         vertex_descriptor v0,   // The start vertex.
         vector<vertex_descriptor>& path
-        );
+        ) const;
     void findShortestPathBackward(
         vertex_descriptor v0,   // The start vertex.
         vector<vertex_descriptor>& path
-        );
-    void findAndWriteShortestPath(Segment, uint64_t direction); // Python callable
+        ) const;
+    void findAndWriteShortestPath(Segment, uint64_t direction) const; // Python callable
 
     // The vertex index map is needed to compute shortest paths.
     // It must be created when no more changes will be made to the graph.
@@ -347,6 +347,25 @@ public:
     // A possible assembly path between the long segments corresponding
     // to the vertices of this PathGraphEdge.
     vector<Segment> assemblyPath;
+
+    // The shortest paths found in each direction.
+    // At least one of them is non-empty.
+    array< vector<Segment>, 2> assemblyPaths;
+    bool isBidirectional() const
+    {
+        return (not assemblyPaths[0].empty()) and (not assemblyPaths[1].empty());
+    }
+
+    const vector<Segment>& assemblyPathToUse() const
+    {
+        if(not assemblyPaths[0].empty()) {
+            return assemblyPaths[0];
+        }
+        if(not assemblyPaths[1].empty()) {
+            return assemblyPaths[1];
+        }
+        SHASTA2_ASSERT(0);
+    }
 };
 
 
