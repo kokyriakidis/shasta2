@@ -9,7 +9,6 @@
 #include "graphvizToHtml.hpp"
 #include "Journeys.hpp"
 #include "LocalAnchorGraph.hpp"
-#include "LocalReadGraph.hpp"
 #include "LocalReadAnchorGraph.hpp"
 #include "Markers.hpp"
 #include "orderPairs.hpp"
