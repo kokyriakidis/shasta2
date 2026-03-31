@@ -170,7 +170,7 @@ void Graph::createEdgesMultithreaded()
 void Graph::createEdgesThreadFunction([[maybe_unused]] uint64_t threadId)
 {
     // EXPOSE WHEN CODE STABILIZES.
-    const double pUnnormalizedThreshold = 0.; // No limit on pUnnormalize.
+    const double pUnnormalizedThreshold = 1.; // Corresponding to 0 dB.
 
     Graph& graph = *this;
     const uint64_t minCommonCount = assemblyGraph.options.readFollowingMinCommonCount;
