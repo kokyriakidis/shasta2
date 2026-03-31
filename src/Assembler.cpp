@@ -10,7 +10,6 @@
 #include "MurmurHash2.hpp"
 #include "Options.hpp"
 #include "performanceLog.hpp"
-#include "ReadGraph.hpp"
 #include "Reads.hpp"
 #include "ReadSummary.hpp"
 using namespace shasta2;
@@ -134,69 +133,18 @@ void Assembler::createAnchors(
     const vector<uint64_t>& minAnchorDistinctSubkmerCount,
     uint64_t threadCount)
 {
-    const bool doAnchorCleanup = false;
-
-    if(doAnchorCleanup) {
-
-        // Generate the initial Anchors from the MarkerKmers.
-        shared_ptr<Anchors> initialAnchors = make_shared<Anchors>(
-            "InitialAnchors",
-            MappedMemoryOwner(*this),
-            reads(),
-            assemblerInfo->k,
-            markers(),
-            *markerKmers,
-            minAnchorCoverage,
-            maxAnchorCoverage,
-            maxAnchorRepeatLength,
-            minAnchorDistinctSubkmerCount,
-            threadCount);
-        anchorsPointer = initialAnchors;
-
-        // The Anchor cleanup process will create the final Anchors by removing
-        // some AnchorMarkerInfos from the initial anchors.
-        // The ReadGraph decides which AnchorMarkerInfos should be kept.
-        vector<bool> keep;
-        createReadGraph(threadCount);
-        readGraph().anchorCleanup(keep);
-
-        // Create the new anchors.
-        shared_ptr<Anchors> finalAnchors = make_shared<Anchors>(anchors(), "Anchors", keep);
-
-        cout << "Before anchor cleanup, there were " << initialAnchors->size() <<
-            " anchors with a total " << initialAnchors->anchorMarkerInfos.totalSize() <<
-            " AnchorMarkerInfos." << endl;
-        cout << "After anchor cleanup, there are " << finalAnchors->size() <<
-            " anchors with a total " << finalAnchors->anchorMarkerInfos.totalSize() <<
-            " AnchorMarkerInfos." << endl;
-
-        // Keep the final anchors.
-       anchorsPointer = finalAnchors;
-
-       // Remove the initial anchors.
-       initialAnchors->remove();
-       initialAnchors = 0;
-    }
-
-
-
-    // Simple Anchor generation without cleanup.
-    else {
-       anchorsPointer = make_shared<Anchors>(
-            "Anchors",
-            MappedMemoryOwner(*this),
-            reads(),
-            assemblerInfo->k,
-            markers(),
-            *markerKmers,
-            minAnchorCoverage,
-            maxAnchorCoverage,
-            maxAnchorRepeatLength,
-            minAnchorDistinctSubkmerCount,
-            threadCount);
-    }
-
-    cout << "There are " << anchors().size() << " anchors." << endl;
+    anchorsPointer = make_shared<Anchors>(
+        "Anchors",
+        MappedMemoryOwner(*this),
+        reads(),
+        assemblerInfo->k,
+        markers(),
+        *markerKmers,
+        minAnchorCoverage,
+        maxAnchorCoverage,
+        maxAnchorRepeatLength,
+        minAnchorDistinctSubkmerCount,
+        threadCount);
 }
 
 
@@ -419,18 +367,4 @@ void Assembler::writeReadSummaries() const
             readSummary.finalAnchorGap << "," <<
             "\n";
     }
-}
-
-
-
-void Assembler::createReadGraph(uint64_t threadCount)
-{
-    readGraphPointer = make_shared<ReadGraph>(anchors(), threadCount);
-}
-
-
-
-void Assembler::accessReadGraph()
-{
-    readGraphPointer = make_shared<ReadGraph>(anchors());
 }

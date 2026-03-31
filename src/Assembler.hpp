@@ -207,17 +207,6 @@ public:
 
 
 
-    // The ReadGraph is only used for strand separation.
-    // See ReadGraph.hpp for more information.
-    shared_ptr<ReadGraph> readGraphPointer;
-    ReadGraph& readGraph() const
-    {
-        return *readGraphPointer;
-    }
-    void createReadGraph(uint64_t threadCount);
-    void accessReadGraph();
-
-
     // AnchorGraph.
     shared_ptr<AnchorGraph> anchorGraphPointer;
     void createAnchorGraph(const Options&);
@@ -313,7 +302,6 @@ public:
     void exploreJourney(const vector<string>&, ostream&);
     void exploreLocalReadAnchorGraph(const vector<string>&, ostream&);
     void exploreLocalAnchorGraph(const vector<string>&, ostream&);
-    void exploreLocalReadGraph(const vector<string>&, ostream&);
     void exploreSegments(const vector<string>&, ostream&);
     void exploreSegmentSequence(const vector<string>&, ostream&);
     void exploreSegmentSteps(const vector<string>&, ostream&);

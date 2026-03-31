@@ -48,7 +48,6 @@ void Assembler::fillServerFunctionTable()
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreLocalReadAnchorGraph);
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreSimilarSequences);
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreLocalAnchorGraph);
-    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreLocalReadGraph);
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreSegments);
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreSegmentSequence);
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreSegmentSteps);
@@ -229,7 +228,6 @@ void Assembler::writeNavigation(ostream& html) const
         {"Anchor pair", "exploreAnchorPair2"},
         {"Journey", "exploreJourney"},
         {"Local anchor graph", "exploreLocalAnchorGraph"},
-        {"Local read graph", "exploreLocalReadGraph"},
         {"Local read-anchor graph", "exploreLocalReadAnchorGraph"},
         });
 
@@ -389,14 +387,6 @@ void Assembler::accessAllSoft()
     } catch(const exception& e) {
         cout << "The anchors are not accessible." << endl;
         allDataAreAvailable = false;
-    }
-
-    if(anchorsPointer) {
-        try {
-            accessReadGraph();
-        } catch(const exception& e) {
-            cout << "The ReadGraph is not available." << endl;
-        }
     }
 
     try {

@@ -706,14 +706,3 @@ void Assembler::exploreLocalReadAnchorGraph(
     LocalReadAnchorGraph graph(anchors(), journeys(), request, html);
 }
 
-
-
-void Assembler::exploreLocalReadGraph(
-    const vector<string>& request,
-    ostream& html)
-{
-    if(not readGraphPointer) {
-        throw runtime_error("The ReadGraph is not available.");
-    }
-    LocalReadGraph graph(readGraph(), request, html);
-}

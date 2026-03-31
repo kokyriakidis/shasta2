@@ -128,10 +128,6 @@ PYBIND11_MODULE(shasta2, shasta2Module)
            &Assembler::accessAnchors,
            arg("writeAccess") = false)
 
-       // ReadGraph.
-      .def("createReadGraph",
-          &Assembler::createReadGraph)
-
        // Journeys.
       .def("createJourneys",
           &Assembler::createJourneys,
