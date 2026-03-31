@@ -60,11 +60,16 @@ Graph::Graph(const AssemblyGraph& assemblyGraph, bool createEmpty) :
 // Each vertex corresponds to a Segment of the AssemblyGraph.
 void Graph::createVertices()
 {
+    // EXPOSE WHEN CODE STABILIZES.
+    const double coverageThreshold = std::numeric_limits<double>::max();    // No limit on coverage
+
     Graph& graph = *this;
 
     BGL_FORALL_EDGES(segment, assemblyGraph, AssemblyGraph) {
-        const vertex_descriptor v = add_vertex(Vertex(assemblyGraph, segment), graph);
-        vertexMap.insert(make_pair(segment, v));
+        if(assemblyGraph[segment].lengthWeightedAverageCoverage() <= coverageThreshold) {
+            const vertex_descriptor v = add_vertex(Vertex(assemblyGraph, segment), graph);
+            vertexMap.insert(make_pair(segment, v));
+        }
     }
 }
 
@@ -164,6 +169,9 @@ void Graph::createEdgesMultithreaded()
 
 void Graph::createEdgesThreadFunction([[maybe_unused]] uint64_t threadId)
 {
+    // EXPOSE WHEN CODE STABILIZES.
+    const double pUnnormalizedThreshold = 0.; // No limit on pUnnormalize.
+
     Graph& graph = *this;
     const uint64_t minCommonCount = assemblyGraph.options.readFollowingMinCommonCount;
     const double minCorrectedJaccard = assemblyGraph.options.readFollowingMinCorrectedJaccard;
@@ -202,6 +210,10 @@ void Graph::createEdgesThreadFunction([[maybe_unused]] uint64_t threadId)
             SHASTA2_ASSERT(edge.segmentPairInformation.commonCount >= minCommonCount);
 
             // If it does not satisfy our requirements, get rid of it.
+            if(edge.pUnnormalized < pUnnormalizedThreshold) {
+                edgesToBeAdded.pop_back();
+                continue;
+            }
             if(edge.segmentPairInformation.segmentOffset < 0) {
                 edgesToBeAdded.pop_back();
                 continue;
