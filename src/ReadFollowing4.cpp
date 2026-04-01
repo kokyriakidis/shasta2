@@ -156,15 +156,8 @@ Vertex::Vertex(
     // Get the Segment corresponding to this Vertex.
     const AssemblyGraphEdge& edge = assemblyGraph[segment];
 
-    // Get the length.
-    if(edge.wasAssembled) {
-        length = edge.sequenceLength();
-    } else {
-        length = edge.offset();
-    }
-
     // Store the isLong flag
-    isLong = (length >= assemblyGraph.options.readFollowingSegmentLengthThreshold);
+    isLong = (edge.length() >= assemblyGraph.options.readFollowingSegmentLengthThreshold);
 }
 
 
@@ -565,3 +558,183 @@ void Graph::createVertexIndexMap()
     }
 }
 
+
+
+
+void ReadFollower::findAndWriteAssemblyPaths() const
+{
+    vector< vector<Segment> > assemblyPaths;
+    findAssemblyPaths(assemblyPaths);
+    writeAssemblyPaths(assemblyPaths);
+}
+
+
+
+void ReadFollower::writeAssemblyPaths(const vector< vector<Segment> >&) const
+{
+
+}
+
+
+
+void ReadFollower::findAssemblyPaths(vector< vector<Segment> >&) const
+{
+    // Create the PathGraph, initially empty.
+    PathGraph pathGraph;
+
+    // Add a vertex for each long segment.
+    BGL_FORALL_EDGES(segment, assemblyGraph, AssemblyGraph) {
+        if(assemblyGraph[segment].length() >= assemblyGraph.options.readFollowingSegmentLengthThreshold) {
+            const PathGraph::vertex_descriptor v = add_vertex(PathGraphVertex(segment), pathGraph);
+            pathGraph.vertexMap.insert(make_pair(segment, v));
+        }
+    }
+
+    // Add edges.
+    vector<Segment> path;
+    BGL_FORALL_VERTICES(v0, pathGraph, PathGraph) {
+        const Segment segment0 = pathGraph[v0].segment;
+
+        // Loop for shortest paths in both directions.
+        for(uint64_t direction=0; direction<2; direction++) {
+            findShortestPath(segment0, direction, path);
+
+            // Discard a trivial path.
+            if(path.size() < 2) {
+                continue;
+            }
+
+            const Segment s0 = path.front();
+            const Segment s1 = path.back();
+            if(direction == 0) {
+                SHASTA2_ASSERT(s0 == segment0);
+            } else {
+                SHASTA2_ASSERT(s1 == segment0);
+            }
+
+            const PathGraph::vertex_descriptor u0 = pathGraph.vertexMap.at(s0);
+            const PathGraph::vertex_descriptor u1 = pathGraph.vertexMap.at(s1);
+
+
+            // Look for a PathGraph edge between the u0 and u1.
+            PathGraph::edge_descriptor e;
+            bool edgeExists;
+            tie(e, edgeExists) = boost::edge(u0, u1, pathGraph);
+            if(not edgeExists) {
+                tie(e, edgeExists) = boost::add_edge(u0, u1, pathGraph);
+            }
+            SHASTA2_ASSERT(edgeExists);
+
+            // Store the path.
+            pathGraph[e].assemblyPaths[direction] = path;
+        }
+    }
+    pathGraph.writeGraphviz(assemblyGraph, "Initial");
+
+    cout << "The initial PathGraph has " <<
+        num_vertices(pathGraph) << " vertices and " <<
+        num_edges(pathGraph) << " edges." << endl;
+
+    // Remove non-bidirectional edges.
+    pathGraph.removeWeakEdges();
+    pathGraph.writeGraphviz(assemblyGraph, "Final");
+    cout << "The final PathGraph has " <<
+        num_vertices(pathGraph) << " vertices and " <<
+        num_edges(pathGraph) << " edges." << endl;
+}
+
+
+void PathGraph::writeGraphviz(const AssemblyGraph& assemblyGraph, const string& name) const
+{
+    const PathGraph& pathGraph = *this;
+
+    ofstream dot("PathGraph-" + name + ".dot");
+    dot << "digraph PathGraph {\n";
+
+
+
+    // Vertices.
+    BGL_FORALL_VERTICES(v, pathGraph, PathGraph) {
+        const Segment segment = pathGraph[v].segment;
+        const AssemblyGraphEdge& assemblyGraphEdge = assemblyGraph[segment];
+        dot << assemblyGraphEdge.id <<
+            " ["
+            "label=\"" << assemblyGraphEdge.id <<
+            "\\n" << assemblyGraphEdge.length() <<
+            "\""
+            "]"
+            ";\n";
+    }
+
+
+
+    // Edges.
+    BGL_FORALL_EDGES(e, pathGraph, PathGraph) {
+        const PathGraphEdge& edge = pathGraph[e];
+
+        const PathGraph::vertex_descriptor v0 = source(e, pathGraph);
+        const PathGraph::vertex_descriptor v1 = target(e, pathGraph);
+
+        const Segment segment0 = pathGraph[v0].segment;
+        const Segment segment1 = pathGraph[v1].segment;
+
+
+        dot <<
+            assemblyGraph[segment0].id << "->" <<
+            assemblyGraph[segment1].id;
+
+        // Begin attributes.
+        dot << " [";
+
+#if 0
+        // Label.
+        dot <<
+            "label=\"" <<
+            edge.randomPathCount[0] << "/" <<
+            edge.randomPathCount[1] <<
+            "\"";
+
+        // Color;
+        if(
+            (edge.randomPathCount[0] < graph.assemblyGraph.options.readFollowingPathCountThreshold1)
+            or
+            (edge.randomPathCount[1] < graph.assemblyGraph.options.readFollowingPathCountThreshold1)) {
+            dot << " color=red";
+        }
+#endif
+
+        const string color = edge.isBidirectional() ? "black" : "red";
+        dot << "color=" << color;
+
+        // End attributes.
+        dot << "]";
+
+        // End this edge.
+        dot << ";\n";
+    }
+
+
+
+    dot << "}\n";
+
+}
+
+
+
+void PathGraph::removeWeakEdges()
+{
+    PathGraph& pathGraph = *this;
+
+    vector<edge_descriptor> edgesToBeRemoved;
+    BGL_FORALL_EDGES(e, pathGraph, PathGraph) {
+        const PathGraphEdge& edge = pathGraph[e];
+        if(not edge.isBidirectional()) {
+            edgesToBeRemoved.push_back(e);
+        }
+    }
+
+    for(const edge_descriptor e: edgesToBeRemoved) {
+        boost::remove_edge(e, pathGraph);
+    }
+
+}

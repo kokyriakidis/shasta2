@@ -22,6 +22,9 @@ namespace shasta2 {
 
     namespace ReadFollowing4 {
 
+        class ReadFollower;
+
+        // The ReadFollower stores two Graphs, one per direction.
         class Graph;
         class Vertex;
         class Edge;
@@ -32,8 +35,17 @@ namespace shasta2 {
             Vertex,
             Edge>;
 
-        class ReadFollower;
-
+        // The PathGraph has one vertex for each long segment.
+        // It is used to create assembly paths.
+        class PathGraph;
+        class PathGraphVertex;
+        class PathGraphEdge;
+        using PathGraphBaseClass = boost::adjacency_list<
+            boost::listS,
+            boost::listS,
+            boost::bidirectionalS,
+            PathGraphVertex,
+            PathGraphEdge>;
 
         // A Segment is an edge of the AssemblyGraph.
         using Segment = AssemblyGraph::edge_descriptor;
@@ -126,8 +138,10 @@ public:
         ) const;
     void findAndWriteShortestPath(Segment, uint64_t direction) const; // Python callable
 
-private:
-    const AssemblyGraph& assemblyGraph;
+
+    void findAssemblyPaths(vector< vector<Segment> >& assemblyPaths) const;
+    void writeAssemblyPaths(const vector< vector<Segment> >& assemblyPaths) const;
+    void findAndWriteAssemblyPaths() const;
 
     // Initial and final support for each Segment.
     std::map<Segment, vector<SegmentStepSupport> > initialSupportMap;
@@ -149,5 +163,44 @@ private:
     void createEdges();
     void createEdgesThreadFunction(uint64_t threadId);
 
+    const AssemblyGraph& assemblyGraph;
 };
 
+
+
+
+// Each PathGraph vertex corresponds to a long segment.
+class shasta2::ReadFollowing4::PathGraphVertex {
+public:
+    Segment segment;
+
+    PathGraphVertex(Segment segment) : segment(segment) {}
+};
+
+
+
+class shasta2::ReadFollowing4::PathGraphEdge {
+public:
+
+    // The shortest paths found in each direction.
+    // At least one of them is non-empty.
+    array< vector<Segment>, 2> assemblyPaths;
+    bool isBidirectional() const
+    {
+        return (not assemblyPaths[0].empty()) and (not assemblyPaths[1].empty());
+    }
+};
+
+
+
+// Class used to store paths between long segments.
+class shasta2::ReadFollowing4::PathGraph : public PathGraphBaseClass {
+public:
+
+    // Map segments to vertices.
+    std::map<Segment, vertex_descriptor> vertexMap;
+
+    void removeWeakEdges();
+
+    void writeGraphviz(const AssemblyGraph&, const string& name) const;
+};
