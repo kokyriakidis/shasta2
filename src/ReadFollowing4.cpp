@@ -29,30 +29,30 @@ ReadFollower::ReadFollower(const AssemblyGraph& assemblyGraph) :
 
     for(uint64_t direction=0; direction<2; direction++) {
         cout << "The initial read following graph for direction " << direction <<
-            " has " << num_vertices(graphs[direction]) <<
-            " vertices and " << num_edges(graphs[direction]) << " edges." << endl;
+            " has " << num_vertices(searchGraphs[direction]) <<
+            " vertices and " << num_edges(searchGraphs[direction]) << " edges." << endl;
     }
 
     // Prune.
     for(uint64_t direction=0; direction<2; direction++) {
-        graphs[direction].prune();
+        searchGraphs[direction].prune();
     }
-    graphs[0].writeGraphviz(assemblyGraph, "Pruned");
+    searchGraphs[0].writeGraphviz(assemblyGraph, "Pruned");
 
     for(uint64_t direction=0; direction<2; direction++) {
         cout << "After pruning, the read following graph for direction " << direction <<
-            " has " << num_vertices(graphs[direction]) <<
-            " vertices and " << num_edges(graphs[direction]) << " edges." << endl;
+            " has " << num_vertices(searchGraphs[direction]) <<
+            " vertices and " << num_edges(searchGraphs[direction]) << " edges." << endl;
     }
 
-    cout << "The read following long graph has " << num_vertices(longGraph) <<
-        " vertices and " << num_edges(longGraph) << " edges." << endl;
-    longGraph.writeGraphviz(assemblyGraph, "Long");
+    cout << "The read following graph has " << num_vertices(graph) <<
+        " vertices and " << num_edges(graph) << " edges." << endl;
+    graph.writeGraphviz(assemblyGraph, "Long");
 
     // Before we can compute shortest paths we have to create the vertex index map
     // for each of the two graphs.
     for(uint64_t direction=0; direction<2; direction++) {
-        graphs[direction].createVertexIndexMap();
+        searchGraphs[direction].createVertexIndexMap();
     }
 }
 
@@ -142,12 +142,12 @@ void ReadFollower::createVertices()
 
         // Add vertices to the SearchGraphs.
         for(uint64_t direction=0; direction<2; direction++) {
-            graphs[direction].createVertex(segment, length, isLong);
+            searchGraphs[direction].createVertex(segment, length, isLong);
         }
 
         // If isLong, also add a vertex to the Graph.
         if(isLong) {
-            longGraph.createVertex(segment, length);
+            graph.createVertex(segment, length);
         }
     }
 }
@@ -316,7 +316,7 @@ void ReadFollower::createEdgesThreadFunction([[maybe_unused]] uint64_t threadId)
             segmentPair.segmentPairInformation.missing1);
 
         // Add it to the forward graph.
-        SearchGraph& forwardGraph = graphs[0];
+        SearchGraph& forwardGraph = searchGraphs[0];
         add_edge(
             forwardGraph.vertexMap.at(segmentPair.segment0),
             forwardGraph.vertexMap.at(segmentPair.segment1),
@@ -324,7 +324,7 @@ void ReadFollower::createEdgesThreadFunction([[maybe_unused]] uint64_t threadId)
             forwardGraph);
 
         // Add it to the backward graph, reversing the direction.
-        SearchGraph& backwardGraph = graphs[1];
+        SearchGraph& backwardGraph = searchGraphs[1];
         add_edge(
             backwardGraph.vertexMap.at(segmentPair.segment1),
             backwardGraph.vertexMap.at(segmentPair.segment0),
@@ -342,10 +342,10 @@ void ReadFollower::createEdgesThreadFunction([[maybe_unused]] uint64_t threadId)
             segmentPair.segmentPairInformation.missing1);
 
         add_edge(
-            longGraph.vertexMap.at(segmentPair.segment0),
-            longGraph.vertexMap.at(segmentPair.segment1),
+            graph.vertexMap.at(segmentPair.segment0),
+            graph.vertexMap.at(segmentPair.segment1),
             edge,
-            longGraph);
+            graph);
     }
 }
 
@@ -630,7 +630,7 @@ void ReadFollower::findShortestPathForward(
     vector<Segment>& path
     ) const
 {
-    graphs[0].findShortestPath(segment0, path);
+    searchGraphs[0].findShortestPath(segment0, path);
 }
 
 
@@ -640,7 +640,7 @@ void ReadFollower::findShortestPathBackward(
     vector<Segment>& path
     ) const
 {
-    graphs[1].findShortestPath(segment0, path);
+    searchGraphs[1].findShortestPath(segment0, path);
     std::ranges::reverse(path);
 }
 
@@ -801,7 +801,7 @@ GraphEdge::GraphEdge(
 
 bool ReadFollower::isLong(Segment segment) const
 {
-    return longGraph.vertexMap.contains(segment);
+    return graph.vertexMap.contains(segment);
 }
 
 

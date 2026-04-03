@@ -122,9 +122,6 @@ public:
 
 
 
-
-
-
 class shasta2::ReadFollowing4::GraphVertex {
 public:
     // A Segment is an edge of the AssemblyGraph.
@@ -192,8 +189,8 @@ class shasta2::ReadFollowing4::ReadFollower :
 public:
     ReadFollower(const AssemblyGraph&);
 
-    // This finds a shortest path starting at segment0 and ending at a long Segment,
-    // with path length defined by Edge::weight.
+    // Use the SearchGraphs to find a shortest path starting at segment0
+    // and ending at a long Segment, with path length defined by SearchGraphEdge::weight.
     void findShortestPath(
         Segment segment0,
         uint64_t direction,     // 0 = forward, 1 = backward
@@ -230,14 +227,11 @@ public:
     // The graphs are identical except for edge directions.
     // This is necessary because I was not able to get boost::dijkstra_shortest_paths
     // to work in the reversed direction.
-    array<SearchGraph, 2> graphs;
+    array<SearchGraph, 2> searchGraphs;
 
-    // I also store a Graph which contains only vertices corresponding to long Segments.
-    // This is not necessarily a subgraph of the above Graphs because it
-    // allows "one-dorectional" edges in which missingCount0 is much less than missingCount1
-    // or vice versa.
-    Graph longGraph;
-
+    // Also store a Graph, which contains only vertices corresponding to long Segments.
+    // Informatio on intervening short segments is stored in the edges.
+    Graph graph;
 
     void createVertices();
     void createEdges();
