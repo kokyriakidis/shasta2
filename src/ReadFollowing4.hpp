@@ -35,18 +35,6 @@ namespace shasta2 {
             Vertex,
             Edge>;
 
-        // The PathGraph has one vertex for each long segment.
-        // It is used to create assembly paths.
-        class PathGraph;
-        class PathGraphVertex;
-        class PathGraphEdge;
-        using PathGraphBaseClass = boost::adjacency_list<
-            boost::listS,
-            boost::listS,
-            boost::bidirectionalS,
-            PathGraphVertex,
-            PathGraphEdge>;
-
         // A Segment is an edge of the AssemblyGraph.
         using Segment = AssemblyGraph::edge_descriptor;
 
@@ -77,15 +65,34 @@ public:
 
 
 
-// The Edge is assigned a probability based on missing/common
-// counts for the SegmentPairInformation for the two vertices.
-// The probability then is used as a weight for shortest paths.
 class shasta2::ReadFollowing4::Edge {
 public:
     uint64_t commonCount;
-    uint64_t missingCount;
-    double logP; // In decibels (dB)
+    uint64_t missingCount0;
+    uint64_t missingCount1;
+
+    Edge(
+        uint64_t commonCount,
+        uint64_t missingCount0,
+        uint64_t missingCount1);
+
+    // These are computed by the constructor from the three above.
+    // logs are in dB.
+    double logP;
+    double logPForward;
+    double logPBackward;
     double weight;
+
+    double maxLogP() const;
+
+
+    enum class Type {
+        Bidirectional,
+        Forward,
+        Backward,
+        Ambiguous
+    };
+    Type type() const;
 };
 
 
@@ -108,7 +115,10 @@ public:
     std::map<vertex_descriptor, uint64_t> vertexIndexMap;
     void createVertexIndexMap();
 
-    void writeGraphviz(const AssemblyGraph&, const string& name) const;
+    void writeGraphviz(
+        const AssemblyGraph&,
+        const string& name,
+        bool longGraph) const;
 
     void findShortestPath(Segment, vector<Segment>&) const;
 };
@@ -155,52 +165,25 @@ public:
     vector< pair<Segment, Segment> > segmentPairs;
     void findSegmentPairs();
 
-    // One graph for each read following direction
-    // (0=forward, 1=backward).
+    // One graph for each read following direction (0=forward, 1=backward).
+    // The graphs are identical except for edge directions.
+    // This is necessary because I was not able to get boost::dijkstra_shortest_paths
+    // to work in the reversed direction.
     array<Graph, 2> graphs;
+
+    // I also store a Graph which contains only vertices corresponding to long Segments.
+    // This is not necessarily a subgraph of the above Graphs because it
+    // allows "one-dorectional" edges in which missingCount0 is much less than missingCount1
+    // or vice versa.
+    Graph longGraph;
+
 
     void createVertices();
     void createEdges();
     void createEdgesThreadFunction(uint64_t threadId);
 
     const AssemblyGraph& assemblyGraph;
-};
 
-
-
-
-// Each PathGraph vertex corresponds to a long segment.
-class shasta2::ReadFollowing4::PathGraphVertex {
-public:
-    Segment segment;
-
-    PathGraphVertex(Segment segment) : segment(segment) {}
-};
-
-
-
-class shasta2::ReadFollowing4::PathGraphEdge {
-public:
-
-    // The shortest paths found in each direction.
-    // At least one of them is non-empty.
-    array< vector<Segment>, 2> assemblyPaths;
-    bool isBidirectional() const
-    {
-        return (not assemblyPaths[0].empty()) and (not assemblyPaths[1].empty());
-    }
-};
-
-
-
-// Class used to store paths between long segments.
-class shasta2::ReadFollowing4::PathGraph : public PathGraphBaseClass {
-public:
-
-    // Map segments to vertices.
-    std::map<Segment, vertex_descriptor> vertexMap;
-
-    void removeWeakEdges();
-
-    void writeGraphviz(const AssemblyGraph&, const string& name) const;
+private:
+    bool isLong(Segment) const;
 };

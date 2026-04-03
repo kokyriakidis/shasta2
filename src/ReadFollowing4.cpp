@@ -36,14 +36,18 @@ ReadFollower::ReadFollower(const AssemblyGraph& assemblyGraph) :
     // Prune.
     for(uint64_t direction=0; direction<2; direction++) {
         graphs[direction].prune();
-        graphs[direction].writeGraphviz(assemblyGraph, "Pruned-" + to_string(direction));
     }
+    graphs[0].writeGraphviz(assemblyGraph, "Pruned", false);
 
     for(uint64_t direction=0; direction<2; direction++) {
         cout << "After pruning, the read following graph for direction " << direction <<
             " has " << num_vertices(graphs[direction]) <<
             " vertices and " << num_edges(graphs[direction]) << " edges." << endl;
     }
+
+    cout << "The read following long graph has " << num_vertices(longGraph) <<
+        " vertices and " << num_edges(longGraph) << " edges." << endl;
+    longGraph.writeGraphviz(assemblyGraph, "Long", true);
 
     // Before we can compute shortest paths we have to create the vertex index map
     // for each of the two graphs.
@@ -133,6 +137,9 @@ void ReadFollower::createVertices()
         for(uint64_t direction=0; direction<2; direction++) {
             graphs[direction].createVertex(assemblyGraph, segment);
         }
+        if(assemblyGraph[segment].length() >= assemblyGraph.options.readFollowingSegmentLengthThreshold){
+            longGraph.createVertex(assemblyGraph, segment);
+        }
     }
 }
 
@@ -157,7 +164,8 @@ Vertex::Vertex(
     const AssemblyGraphEdge& edge = assemblyGraph[segment];
 
     // Store the isLong flag
-    isLong = (edge.length() >= assemblyGraph.options.readFollowingSegmentLengthThreshold);
+    length = edge.length();
+    isLong = (length >= assemblyGraph.options.readFollowingSegmentLengthThreshold);
 }
 
 
@@ -181,17 +189,31 @@ void ReadFollower::createEdgesThreadFunction([[maybe_unused]] uint64_t threadId)
     const uint64_t minCommonCount = assemblyGraph.options.readFollowingMinCommonCount;
     const uint32_t representativeRegionStepCount =  uint32_t(assemblyGraph.options.representativeRegionStepCount);
 
+    // No html output from analyzeSegmentPair.
     ostream html(0);
+
+
 
     // Prepare vectors of edges to be added to the two graphs.
     // We will add them all at the end so we only have to acquire the mutex once.
     class EdgeToBeAdded {
     public:
-        Graph::vertex_descriptor v0;
-        Graph::vertex_descriptor v1;
+        Segment segment0;
+        Segment segment1;
         Edge edge;
+        EdgeToBeAdded(
+            Segment segment0,
+            Segment segment1,
+            const Edge& edge) :
+            segment0(segment0),
+            segment1(segment1),
+            edge(edge)
+        {}
     };
-    array<vector<EdgeToBeAdded>, 2> edgesToBeAdded;
+    vector<EdgeToBeAdded> edgesToBeAdded;   // To the forward and backward graphs, graphs[0] and graphs[1].
+    vector<EdgeToBeAdded> edgesToBeAddedLong;   // To longGraph.
+
+
 
     // Loop over batches of segment pairs assigned to this thread.
     uint64_t begin, end;
@@ -204,60 +226,86 @@ void ReadFollower::createEdgesThreadFunction([[maybe_unused]] uint64_t threadId)
             const SegmentPairInformation segmentPairInformation = SegmentStepSupport::analyzeSegmentPair(
                 html, assemblyGraph, segment0, segment1, representativeRegionStepCount);
 
-            // If it does not satisfy our requirements, skip it.
-            if(segmentPairInformation.commonCount < minCommonCount) {
+            // If the offset is negative, discard it.
+            if(segmentPairInformation.segmentOffset < 0) {
                 continue;
             }
-            if(segmentPairInformation.segmentOffset < 0) {
+
+            // Check for long segments.
+            const bool isLong0 = isLong(segment0);
+            const bool isLong1 = isLong(segment1);
+
+            // Tentatively create the Edge without adding it to any graph.
+            const Edge edge(
+                segmentPairInformation.commonCount,
+                segmentPairInformation.missing0,
+                segmentPairInformation.missing1);
+
+            // If it does not satisfy our requirements, discard it.
+            if(edge.commonCount < minCommonCount) {
+                continue;
+            }
+            if(
+                (edge.logP < logPThreshold) and
+                (edge.logPForward < logPThreshold) and
+                (edge.logPBackward < logPThreshold)) {
                 continue;
             }
             if(not assemblyGraph.canConnect(segment0, segment1)) {
                 continue;
             }
 
-            // See if we can generate an edge for the forward Graph.
-            {
-                const double logP = a * double(segmentPairInformation.commonCount) - b * double(segmentPairInformation.missing0);
-                if(logP >= logPThreshold) {
-                    Graph& graph = graphs[0];
-                    EdgeToBeAdded& edgeToBeAdded = edgesToBeAdded[0].emplace_back();
-                    edgeToBeAdded.v0 = graph.vertexMap.at(segment0);
-                    edgeToBeAdded.v1 = graph.vertexMap.at(segment1);
-                    Edge& edge = edgeToBeAdded.edge;
-                    edge.commonCount = segmentPairInformation.commonCount;
-                    edge.missingCount = segmentPairInformation.missing0;
-                    edge.logP = logP;
-                    edge.weight = std::pow(10., -0.1 * logP);
-                }
+            // See if we can add it to the forward/backward graphs.
+            if(edge.logP > logPThreshold) {
+                edgesToBeAdded.emplace_back(
+                    segment0,
+                    segment1,
+                    edge);
             }
 
-            // See if we can generate an edge for the backward Graph.
-            {
-                const double logP = a * double(segmentPairInformation.commonCount) - b * double(segmentPairInformation.missing1);
-                if(logP >= logPThreshold) {
-                    Graph& graph = graphs[1];
-                    EdgeToBeAdded& edgeToBeAdded = edgesToBeAdded[1].emplace_back();
-                    // The edge is in the opposie direction.
-                    edgeToBeAdded.v0 = graph.vertexMap.at(segment1);
-                    edgeToBeAdded.v1 = graph.vertexMap.at(segment0);
-                    Edge& edge = edgeToBeAdded.edge;
-                    edge.commonCount = segmentPairInformation.commonCount;
-                    edge.missingCount = segmentPairInformation.missing0;
-                    edge.logP = logP;
-                    edge.weight = std::pow(10., -0.1 * logP);
+            // See if we can add it to the long graph.
+            if(isLong0 and isLong1) {
+                if((edge.logPForward > logPThreshold) or (edge.logPBackward > logPThreshold)) {
+                    edgesToBeAddedLong.emplace_back(
+                        segment0,
+                        segment1,
+                        edge);
                 }
             }
 
         }
     }
 
+
+
     // Now grab the mutex and add the edges we found.
     std::lock_guard<std::mutex> lock(mutex);
-    for(uint64_t direction=0; direction<2; direction++) {
-        Graph& graph = graphs[direction];
-        for(const EdgeToBeAdded& edgeToBeAdded: edgesToBeAdded[direction]) {
-            add_edge(edgeToBeAdded.v0, edgeToBeAdded.v1, edgeToBeAdded.edge, graph);
-        }
+    for(const EdgeToBeAdded& edgeToBeAdded: edgesToBeAdded) {
+
+        // Add it to the forward graph.
+        Graph& forwardGraph = graphs[0];
+        add_edge(
+            forwardGraph.vertexMap.at(edgeToBeAdded.segment0),
+            forwardGraph.vertexMap.at(edgeToBeAdded.segment1),
+            edgeToBeAdded.edge,
+            forwardGraph);
+
+        // Add it to the backward graph, reversing the direction.
+        Graph& backwardGraph = graphs[1];
+        add_edge(
+            backwardGraph.vertexMap.at(edgeToBeAdded.segment1),
+            backwardGraph.vertexMap.at(edgeToBeAdded.segment0),
+            edgeToBeAdded.edge,
+            backwardGraph);
+    }
+
+    for(const EdgeToBeAdded& edgeToBeAdded: edgesToBeAddedLong) {
+        // Add it to the long graph.
+        add_edge(
+            longGraph.vertexMap.at(edgeToBeAdded.segment0),
+            longGraph.vertexMap.at(edgeToBeAdded.segment1),
+            edgeToBeAdded.edge,
+            longGraph);
     }
 }
 
@@ -341,7 +389,10 @@ void Graph::prune()
 
 
 
-void Graph::writeGraphviz(const AssemblyGraph& assemblyGraph, const string& name) const
+void Graph::writeGraphviz(
+    const AssemblyGraph& assemblyGraph,
+    const string& name,
+    bool longGraph) const
 {
     const Graph& graph = *this;
 
@@ -363,13 +414,16 @@ void Graph::writeGraphviz(const AssemblyGraph& assemblyGraph, const string& name
             vertex.length << "\\n" <<
             "\"";
 
+
         // Color.
-        string color;
-        if(vertex.isLong) {
-            color = "cyan";
-        }
-        if(not color.empty()) {
-            dot << " style=filled fillcolor=" << color;
+        if(not longGraph) {
+            string color;
+            if(vertex.isLong) {
+                color = "cyan";
+            }
+            if(not color.empty()) {
+                dot << " style=filled fillcolor=" << color;
+            }
         }
 
         // End attributes.
@@ -395,18 +449,62 @@ void Graph::writeGraphviz(const AssemblyGraph& assemblyGraph, const string& name
         dot << "[";
 
 
+
         // Tooltip.
         dot << " tooltip=\"" <<
             edge.commonCount << "/" <<
-            edge.missingCount << "/" <<
+            edge.missingCount0 << "/" <<
+            edge.missingCount1 << "/" <<
             std::fixed << std::setprecision(1) <<
-            edge.logP << "\"";
+            edge.logP;
+        if(longGraph) {
+            dot <<
+                "/" <<
+                edge.logPForward << "/" <<
+                edge.logPBackward;
+        }
+        dot << "\"";
 
-        // Thickness is determined to logP.
-        double logPClipped = max(1., edge.logP);
-        logPClipped = min(100., logPClipped);
-        const double thickness = 0.05 * logPClipped;
-        dot << std::fixed << std::setprecision(2) << " penwidth=" << thickness;
+
+
+        if(longGraph) {
+            // Thickness is determined to maxLogP.
+            double logPClipped = max(1., edge.maxLogP());
+            logPClipped = min(100., logPClipped);
+            const double thickness = 0.05 * logPClipped;
+            dot << std::fixed << std::setprecision(2) << " penwidth=" << thickness;
+
+            // Color depends on the edge type.
+            string color;
+            switch(edge.type()) {
+            case Edge::Type::Bidirectional:
+                color = "Black";
+                break;
+            case Edge::Type::Forward:
+                color = "Blue";
+                break;
+            case Edge::Type::Backward:
+                color = "Green";
+                break;
+            case Edge::Type::Ambiguous:
+                color = "Green";
+                break;
+            default:
+                SHASTA2_ASSERT(0);
+            }
+            dot << " color=" << color;
+
+        } else {
+
+            // Thickness is determined to logP.
+            // Color is always black.
+            double logPClipped = max(1., edge.logP);
+            logPClipped = min(100., logPClipped);
+            const double thickness = 0.05 * logPClipped;
+            dot << std::fixed << std::setprecision(2) << " penwidth=" << thickness;
+        }
+
+
 
         // End attributes.
         dot << "]";
@@ -579,162 +677,64 @@ void ReadFollower::writeAssemblyPaths(const vector< vector<Segment> >&) const
 
 void ReadFollower::findAssemblyPaths(vector< vector<Segment> >&) const
 {
-    // Create the PathGraph, initially empty.
-    PathGraph pathGraph;
-
-    // Add a vertex for each long segment.
-    BGL_FORALL_EDGES(segment, assemblyGraph, AssemblyGraph) {
-        if(assemblyGraph[segment].length() >= assemblyGraph.options.readFollowingSegmentLengthThreshold) {
-            const PathGraph::vertex_descriptor v = add_vertex(PathGraphVertex(segment), pathGraph);
-            pathGraph.vertexMap.insert(make_pair(segment, v));
-        }
-    }
-
-    // Add edges.
-    vector<Segment> path;
-    BGL_FORALL_VERTICES(v0, pathGraph, PathGraph) {
-        const Segment segment0 = pathGraph[v0].segment;
-
-        // Loop for shortest paths in both directions.
-        for(uint64_t direction=0; direction<2; direction++) {
-            findShortestPath(segment0, direction, path);
-
-            // Discard a trivial path.
-            if(path.size() < 2) {
-                continue;
-            }
-
-            const Segment s0 = path.front();
-            const Segment s1 = path.back();
-            if(direction == 0) {
-                SHASTA2_ASSERT(s0 == segment0);
-            } else {
-                SHASTA2_ASSERT(s1 == segment0);
-            }
-
-            const PathGraph::vertex_descriptor u0 = pathGraph.vertexMap.at(s0);
-            const PathGraph::vertex_descriptor u1 = pathGraph.vertexMap.at(s1);
-
-
-            // Look for a PathGraph edge between the u0 and u1.
-            PathGraph::edge_descriptor e;
-            bool edgeExists;
-            tie(e, edgeExists) = boost::edge(u0, u1, pathGraph);
-            if(not edgeExists) {
-                tie(e, edgeExists) = boost::add_edge(u0, u1, pathGraph);
-            }
-            SHASTA2_ASSERT(edgeExists);
-
-            // Store the path.
-            pathGraph[e].assemblyPaths[direction] = path;
-        }
-    }
-    pathGraph.writeGraphviz(assemblyGraph, "Initial");
-
-    cout << "The initial PathGraph has " <<
-        num_vertices(pathGraph) << " vertices and " <<
-        num_edges(pathGraph) << " edges." << endl;
-
-    // Remove non-bidirectional edges.
-    pathGraph.removeWeakEdges();
-    pathGraph.writeGraphviz(assemblyGraph, "Final");
-    cout << "The final PathGraph has " <<
-        num_vertices(pathGraph) << " vertices and " <<
-        num_edges(pathGraph) << " edges." << endl;
-}
-
-
-void PathGraph::writeGraphviz(const AssemblyGraph& assemblyGraph, const string& name) const
-{
-    const PathGraph& pathGraph = *this;
-
-    ofstream dot("PathGraph-" + name + ".dot");
-    dot << "digraph PathGraph {\n";
-
-
-
-    // Vertices.
-    BGL_FORALL_VERTICES(v, pathGraph, PathGraph) {
-        const Segment segment = pathGraph[v].segment;
-        const AssemblyGraphEdge& assemblyGraphEdge = assemblyGraph[segment];
-        dot << assemblyGraphEdge.id <<
-            " ["
-            "label=\"" << assemblyGraphEdge.id <<
-            "\\n" << assemblyGraphEdge.length() <<
-            "\""
-            "]"
-            ";\n";
-    }
-
-
-
-    // Edges.
-    BGL_FORALL_EDGES(e, pathGraph, PathGraph) {
-        const PathGraphEdge& edge = pathGraph[e];
-
-        const PathGraph::vertex_descriptor v0 = source(e, pathGraph);
-        const PathGraph::vertex_descriptor v1 = target(e, pathGraph);
-
-        const Segment segment0 = pathGraph[v0].segment;
-        const Segment segment1 = pathGraph[v1].segment;
-
-
-        dot <<
-            assemblyGraph[segment0].id << "->" <<
-            assemblyGraph[segment1].id;
-
-        // Begin attributes.
-        dot << " [";
-
-#if 0
-        // Label.
-        dot <<
-            "label=\"" <<
-            edge.randomPathCount[0] << "/" <<
-            edge.randomPathCount[1] <<
-            "\"";
-
-        // Color;
-        if(
-            (edge.randomPathCount[0] < graph.assemblyGraph.options.readFollowingPathCountThreshold1)
-            or
-            (edge.randomPathCount[1] < graph.assemblyGraph.options.readFollowingPathCountThreshold1)) {
-            dot << " color=red";
-        }
-#endif
-
-        const string color = edge.isBidirectional() ? "black" : "red";
-        dot << "color=" << color;
-
-        // End attributes.
-        dot << "]";
-
-        // End this edge.
-        dot << ";\n";
-    }
-
-
-
-    dot << "}\n";
-
 }
 
 
 
-void PathGraph::removeWeakEdges()
+Edge::Edge(
+    uint64_t commonCount,
+    uint64_t missingCount0,
+    uint64_t missingCount1) :
+    commonCount(commonCount),
+    missingCount0(missingCount0),
+    missingCount1(missingCount1)
 {
-    PathGraph& pathGraph = *this;
+    logP         = a * double(commonCount) - b * double(missingCount0 + missingCount1);
+    logPForward  = a * double(commonCount) - b * double(missingCount0);
+    logPBackward = a * double(commonCount) - b * double(missingCount1);
 
-    vector<edge_descriptor> edgesToBeRemoved;
-    BGL_FORALL_EDGES(e, pathGraph, PathGraph) {
-        const PathGraphEdge& edge = pathGraph[e];
-        if(not edge.isBidirectional()) {
-            edgesToBeRemoved.push_back(e);
+    weight = pow(10., 0.1 * logP);
+}
+
+
+
+bool ReadFollower::isLong(Segment segment) const
+{
+    const Graph& forwardGraph = graphs[0];
+    const Graph::vertex_descriptor v = forwardGraph.vertexMap.at(segment);
+    return forwardGraph[v].isLong;
+}
+
+
+
+double Edge::maxLogP() const
+{
+    return max(logP, max(logPForward, logPBackward));
+}
+
+
+
+Edge::Type Edge::type() const
+{
+    if(logP >= logPThreshold) {
+        return Type::Bidirectional;
+    }
+
+    if(logPForward >= logPThreshold) {
+        if(logPBackward < logPThreshold) {
+            return Type::Forward;
+        } else {
+            return Type::Ambiguous;
         }
     }
 
-    for(const edge_descriptor e: edgesToBeRemoved) {
-        boost::remove_edge(e, pathGraph);
+    if(logPBackward >= logPThreshold) {
+        if(logPForward < logPThreshold) {
+            return Type::Backward;
+        } else {
+            return Type::Ambiguous;
+        }
     }
 
+    return Type::Ambiguous;
 }
