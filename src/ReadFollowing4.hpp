@@ -53,8 +53,7 @@ public:
     // This is set for long vertices (length >= readFollowingSegmentLengthThreshold).
     bool isLong = false;
 
-    SearchGraphVertex(const AssemblyGraph&, Segment);
-    SearchGraphVertex() {}
+    SearchGraphVertex(Segment, uint64_t length, bool isLong);
 };
 
 
@@ -98,7 +97,7 @@ public:
     std::map<Segment, vertex_descriptor> vertexMap;
 
     // Create a vertex and update the vertexMap.
-    void createVertex(const AssemblyGraph&, Segment);
+    void createVertex(Segment, uint64_t length, bool isLong);
 
     // Prune removes all vertices that are not accessible from long
     // vertices in both directions.

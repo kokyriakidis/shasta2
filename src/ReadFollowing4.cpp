@@ -129,43 +129,49 @@ void ReadFollower::findSegmentPairs()
 
 
 
-// Each edge of the AssemblyGraph (Segment) generates a vertex in
-// each of our two Graphs.
 void ReadFollower::createVertices()
 {
+    const uint64_t lengthThreshold = assemblyGraph.options.readFollowingSegmentLengthThreshold;
+
+    // Loop over all AssemblyGraph Segments.
     BGL_FORALL_EDGES(segment, assemblyGraph, AssemblyGraph) {
+
+        // Get the length and check if it qualifies as long.
+        const uint64_t length = assemblyGraph[segment].length();
+        const bool isLong = (length >= lengthThreshold);
+
+        // Add vertices to the SearchGraphs.
         for(uint64_t direction=0; direction<2; direction++) {
-            graphs[direction].createVertex(assemblyGraph, segment);
+            graphs[direction].createVertex(segment, length, isLong);
         }
-        if(assemblyGraph[segment].length() >= assemblyGraph.options.readFollowingSegmentLengthThreshold){
-            longGraph.createVertex(assemblyGraph, segment);
+
+        // If isLong, also add a vertex to the Graph.
+        if(isLong) {
+            longGraph.createVertex(segment, length, true);
         }
     }
 }
 
 
 
-void SearchGraph::createVertex(const AssemblyGraph& assemblyGraph, Segment segment)
+void SearchGraph::createVertex(Segment segment, uint64_t length, bool isLong)
 {
     SHASTA2_ASSERT(not vertexMap.contains(segment));
     SearchGraph& graph = *this;
-    const vertex_descriptor v = add_vertex(SearchGraphVertex(assemblyGraph, segment), graph);
+    const vertex_descriptor v = add_vertex(SearchGraphVertex(segment, length, isLong), graph);
     vertexMap.insert(make_pair(segment, v));
 }
 
 
 
 SearchGraphVertex::SearchGraphVertex(
-    const AssemblyGraph& assemblyGraph,
-    Segment segment) :
-    segment(segment)
+    Segment segment,
+    uint64_t length,
+    bool isLong) :
+    segment(segment),
+    length(length),
+    isLong(isLong)
 {
-    // Get the Segment corresponding to this Vertex.
-    const AssemblyGraphEdge& edge = assemblyGraph[segment];
-
-    // Store the isLong flag
-    length = edge.length();
-    isLong = (length >= assemblyGraph.options.readFollowingSegmentLengthThreshold);
 }
 
 
