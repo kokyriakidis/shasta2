@@ -47,13 +47,21 @@ ReadFollower::ReadFollower(const AssemblyGraph& assemblyGraph) :
 
     cout << "The read following graph has " << num_vertices(graph) <<
         " vertices and " << num_edges(graph) << " edges." << endl;
-    graph.writeGraphviz(assemblyGraph, "Long");
+    graph.writeGraphviz(assemblyGraph, "A");
 
     // Before we can compute shortest paths we have to create the vertex index map
     // for each of the two graphs.
     for(uint64_t direction=0; direction<2; direction++) {
         searchGraphs[direction].createVertexIndexMap();
     }
+
+    // Use the SearchGraphs to find shortest paths between long segments
+    // and store them in the Graph.
+    findShortestPaths();
+
+    cout << "After finding shortest paths, the read following graph has " << num_vertices(graph) <<
+        " vertices and " << num_edges(graph) << " edges." << endl;
+    graph.writeGraphviz(assemblyGraph, "B");
 }
 
 
@@ -435,8 +443,8 @@ void SearchGraph::writeGraphviz(
 {
     const SearchGraph& graph = *this;
 
-    ofstream dot("ReadFollowing-" + name + ".dot");
-    dot << "digraph ReadFollowing {\n";
+    ofstream dot("ReadFollowing-SearchGraph-" + name + ".dot");
+    dot << "digraph ReadFollowingSearchGraph {\n";
 
     BGL_FORALL_VERTICES(v, graph, SearchGraph) {
         const SearchGraphVertex& vertex = graph[v];
@@ -519,8 +527,8 @@ void Graph::writeGraphviz(
 {
     const Graph& graph = *this;
 
-    ofstream dot("ReadFollowing-" + name + ".dot");
-    dot << "digraph ReadFollowing {\n";
+    ofstream dot("ReadFollowing-Graph-" + name + ".dot");
+    dot << "digraph ReadFollowingGraph {\n";
 
     BGL_FORALL_VERTICES(v, graph, Graph) {
         const GraphVertex& vertex = graph[v];
@@ -560,40 +568,65 @@ void Graph::writeGraphviz(
         dot << "[";
 
         // Tooltip.
-        dot << " tooltip=\"" <<
-            edge.commonCount << "/" <<
-            edge.missingCount0 << "/" <<
-            edge.missingCount1 << "/" <<
-            std::fixed << std::setprecision(1) <<
-            edge.logP << "/" <<
-            edge.logPForward << "/" <<
-            edge.logPBackward << "\"";
+        if(edge.hasDirectConnection()) {
+            dot << " tooltip=\"" <<
+                edge.directConnectInformation.commonCount << "/" <<
+                edge.directConnectInformation.missingCount0 << "/" <<
+                edge.directConnectInformation.missingCount1 << "/" <<
+                std::fixed << std::setprecision(1) <<
+                edge.directConnectInformation.logP << "/" <<
+                edge.directConnectInformation.logPForward << "/" <<
+                edge.directConnectInformation.logPBackward << "\"";
+        }
 
         // Thickness is determined to maxLogP.
-        double logPClipped = max(1., edge.maxLogP());
-        logPClipped = min(100., logPClipped);
-        const double thickness = 0.05 * logPClipped;
-        dot << std::fixed << std::setprecision(2) << " penwidth=" << thickness;
+        if(edge.hasDirectConnection()) {
+            double logPClipped = max(1., edge.directConnectInformation.maxLogP());
+            logPClipped = min(100., logPClipped);
+            const double thickness = 0.05 * logPClipped;
+            dot << std::fixed << std::setprecision(2) << " penwidth=" << thickness;
+        }
 
         // Color depends on the edge type.
         string color;
-        switch(edge.type()) {
-        case GraphEdge::Type::Bidirectional:
+        switch(edge.directConnectionType()) {
+        case GraphEdge::DirectConnectionType::None:
+            color = "Red";
+            break;
+        case GraphEdge::DirectConnectionType::Bidirectional:
             color = "Black";
             break;
-        case GraphEdge::Type::Forward:
+        case GraphEdge::DirectConnectionType::Forward:
             color = "Blue";
             break;
-        case GraphEdge::Type::Backward:
+        case GraphEdge::DirectConnectionType::Backward:
             color = "Green";
             break;
-        case GraphEdge::Type::Ambiguous:
-            color = "Green";
+        case GraphEdge::DirectConnectionType::Ambiguous:
+            color = "Orange";
             break;
         default:
             SHASTA2_ASSERT(0);
         }
         dot << " color=" << color;
+
+        if(not edge.hasDirectConnection()) {
+            dot << " style=dashed";
+        }
+
+        // The arrowtail is filled if the forward path exists.
+        // The arrowhead is filled if the backward path exists.
+        dot << " dir=both";
+        if(edge.assemblyPaths[0].empty()) {
+            dot << " arrowtail=oinv";
+        } else {
+            dot << " arrowtail=inv";
+        }
+        if(edge.assemblyPaths[1].empty()) {
+            dot << " arrowhead=onormal";
+        } else {
+            dot << " arrowhead=normal";
+        }
 
         // End attributes.
         dot << "]";
@@ -783,8 +816,16 @@ SearchGraphEdge::SearchGraphEdge(
 }
 
 
-
 GraphEdge::GraphEdge(
+    uint64_t commonCount,
+    uint64_t missingCount0,
+    uint64_t missingCount1) :
+    directConnectInformation(commonCount, missingCount0, missingCount1)
+{}
+
+
+
+GraphEdge::DirectConnectInformation::DirectConnectInformation(
     uint64_t commonCount,
     uint64_t missingCount0,
     uint64_t missingCount1) :
@@ -806,34 +847,87 @@ bool ReadFollower::isLong(Segment segment) const
 
 
 
-double GraphEdge::maxLogP() const
+double GraphEdge::DirectConnectInformation::maxLogP() const
 {
     return max(logP, max(logPForward, logPBackward));
 }
 
 
 
-GraphEdge::Type GraphEdge::type() const
+GraphEdge::DirectConnectionType GraphEdge::directConnectionType() const
 {
-    if(logP >= logPThreshold) {
-        return Type::Bidirectional;
+    if(not hasDirectConnection()) {
+        return DirectConnectionType::None;
     }
 
-    if(logPForward >= logPThreshold) {
-        if(logPBackward < logPThreshold) {
-            return Type::Forward;
+    if(directConnectInformation.logP >= logPThreshold) {
+        return DirectConnectionType::Bidirectional;
+    }
+
+    if(directConnectInformation.logPForward >= logPThreshold) {
+        if(directConnectInformation.logPBackward < logPThreshold) {
+            return DirectConnectionType::Forward;
         } else {
-            return Type::Ambiguous;
+            return DirectConnectionType::Ambiguous;
         }
     }
 
-    if(logPBackward >= logPThreshold) {
-        if(logPForward < logPThreshold) {
-            return Type::Backward;
+    if(directConnectInformation.logPBackward >= logPThreshold) {
+        if(directConnectInformation.logPForward < logPThreshold) {
+            return DirectConnectionType::Backward;
         } else {
-            return Type::Ambiguous;
+            return DirectConnectionType::Ambiguous;
         }
     }
 
-    return Type::Ambiguous;
+    return DirectConnectionType::Ambiguous;
 }
+
+
+
+// Use the SearchGraphs to find shortest paths between long segments
+// and store them in the Graph.
+void ReadFollower::findShortestPaths()
+{
+    // Add edges.
+    vector<Segment> path;
+    BGL_FORALL_VERTICES(v0, graph, Graph) {
+        const Segment segment0 = graph[v0].segment;
+
+        // Loop for shortest paths in both directions.
+        for(uint64_t direction=0; direction<2; direction++) {
+            findShortestPath(segment0, direction, path);
+
+            // Discard a trivial path.
+            if(path.size() < 2) {
+                continue;
+            }
+
+            const Segment s0 = path.front();
+            const Segment s1 = path.back();
+            if(direction == 0) {
+                SHASTA2_ASSERT(s0 == segment0);
+            } else {
+                SHASTA2_ASSERT(s1 == segment0);
+            }
+
+            const Graph::vertex_descriptor u0 = graph.vertexMap.at(s0);
+            const Graph::vertex_descriptor u1 = graph.vertexMap.at(s1);
+
+
+            // Look for a Graph edge between the u0 and u1.
+            Graph::edge_descriptor e;
+            bool edgeExists;
+            tie(e, edgeExists) = boost::edge(u0, u1, graph);
+            if(not edgeExists) {
+                tie(e, edgeExists) = boost::add_edge(u0, u1, graph);
+            }
+            SHASTA2_ASSERT(edgeExists);
+
+            // Store the path.
+            graph[e].assemblyPaths[direction] = path;
+        }
+    }
+
+}
+

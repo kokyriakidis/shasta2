@@ -135,33 +135,67 @@ public:
 
 
 
+
+// A Graph edge between two Segments segments0 and segment1
+// can be created for one or both of two reasons:
+// - The SegmentPairInformation between the two segment
+//   satisfies our criteria for minCommonCount
+//   or one or more of the logP values.
+// - We found a shortest path between segment0 and segment1
+//   in one or both of the SearchGraph.
 class shasta2::ReadFollowing4::GraphEdge {
 public:
-    uint64_t commonCount;
-    uint64_t missingCount0;
-    uint64_t missingCount1;
 
-    GraphEdge(
-        uint64_t commonCount,
-        uint64_t missingCount0,
-        uint64_t missingCount1);
+    // Direct connection between the source and target Segments
+    // of this edge, without any intervening short Segments.
+    class DirectConnectInformation {
+    public:
+        uint64_t commonCount = 0;
+        uint64_t missingCount0 = 0;
+        uint64_t missingCount1 = 0;
 
-    // These are computed by the constructor from the three above.
-    // logs are in dB.
-    double logP;
-    double logPForward;
-    double logPBackward;
+        // These are computed by the constructor from the three above.
+        // logs are in dB.
+        double logP = std::numeric_limits<double>::min();
+        double logPForward = std::numeric_limits<double>::min();
+        double logPBackward = std::numeric_limits<double>::min();
+        double maxLogP() const;
 
-    double maxLogP() const;
+        DirectConnectInformation(
+            uint64_t commonCount,
+            uint64_t missingCount0,
+            uint64_t missingCount1);
+        DirectConnectInformation() {}
+    };
+    DirectConnectInformation directConnectInformation;
 
+    bool hasDirectConnection() const
+    {
+        return directConnectInformation.commonCount > 0;
+    }
 
-    enum class Type {
+    enum class DirectConnectionType {
+        None,
         Bidirectional,
         Forward,
         Backward,
         Ambiguous
     };
-    Type type() const;
+    DirectConnectionType directConnectionType() const;
+
+    // Constructor that initializes the DirectConnectInformation.
+    GraphEdge(
+        uint64_t commonCount,
+        uint64_t missingCount0,
+        uint64_t missingCount1);
+
+    GraphEdge() {}
+
+    // The assembly paths between segment0 and segment1 found
+    // for each direction.
+    array<vector<Segment>, 2> assemblyPaths;
+
+
 };
 
 
@@ -230,8 +264,13 @@ public:
     array<SearchGraph, 2> searchGraphs;
 
     // Also store a Graph, which contains only vertices corresponding to long Segments.
-    // Informatio on intervening short segments is stored in the edges.
+    // Information on intervening short segments is stored in the edges.
     Graph graph;
+
+    // Use the SearchGraphs to find shortest paths between long segments
+    // and store them in the Graph.
+    void findShortestPaths();
+
 
     void createVertices();
     void createEdges();
