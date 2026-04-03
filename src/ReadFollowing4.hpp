@@ -213,6 +213,10 @@ public:
         const AssemblyGraph&,
         const string& name) const;
 
+    // This removes edges without a direct connection
+    // and that don't have paths in both directions.
+    void removeWeakEdges();
+
 };
 
 

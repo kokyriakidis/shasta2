@@ -62,6 +62,9 @@ ReadFollower::ReadFollower(const AssemblyGraph& assemblyGraph) :
     cout << "After finding shortest paths, the read following graph has " << num_vertices(graph) <<
         " vertices and " << num_edges(graph) << " edges." << endl;
     graph.writeGraphviz(assemblyGraph, "B");
+
+    graph.removeWeakEdges();
+    graph.writeGraphviz(assemblyGraph, "C");
 }
 
 
@@ -931,3 +934,31 @@ void ReadFollower::findShortestPaths()
 
 }
 
+
+
+// This removes edges without a direct connection
+// and that don't have paths in both directions.
+void Graph::removeWeakEdges()
+{
+    Graph& graph = *this;
+
+    vector<edge_descriptor> edgesToBeRemoved;
+    BGL_FORALL_EDGES(e, graph, Graph) {
+        const GraphEdge& edge = graph[e];
+
+        // If it has a direct connection, keep it.
+        if(edge.hasDirectConnection()) {
+            continue;
+        }
+
+        // Otherwise, only keep it if both assembly paths are present.
+        if(edge.assemblyPaths[0].empty() or edge.assemblyPaths[1].empty()) {
+            edgesToBeRemoved.push_back(e);
+        }
+    }
+
+
+    for(const edge_descriptor e: edgesToBeRemoved) {
+        boost::remove_edge(e, graph);
+    }
+}
