@@ -37,7 +37,7 @@ ReadFollower::ReadFollower(const AssemblyGraph& assemblyGraph) :
     for(uint64_t direction=0; direction<2; direction++) {
         graphs[direction].prune();
     }
-    graphs[0].writeGraphviz(assemblyGraph, "Pruned", false);
+    graphs[0].writeGraphviz(assemblyGraph, "Pruned");
 
     for(uint64_t direction=0; direction<2; direction++) {
         cout << "After pruning, the read following graph for direction " << direction <<
@@ -47,7 +47,7 @@ ReadFollower::ReadFollower(const AssemblyGraph& assemblyGraph) :
 
     cout << "The read following long graph has " << num_vertices(longGraph) <<
         " vertices and " << num_edges(longGraph) << " edges." << endl;
-    longGraph.writeGraphviz(assemblyGraph, "Long", true);
+    longGraph.writeGraphviz(assemblyGraph, "Long");
 
     // Before we can compute shortest paths we have to create the vertex index map
     // for each of the two graphs.
@@ -147,7 +147,7 @@ void ReadFollower::createVertices()
 
         // If isLong, also add a vertex to the Graph.
         if(isLong) {
-            longGraph.createVertex(segment, length, true);
+            longGraph.createVertex(segment, length);
         }
     }
 }
@@ -176,11 +176,11 @@ SearchGraphVertex::SearchGraphVertex(
 
 
 
-void Graph::createVertex(Segment segment, uint64_t length, bool isLong)
+void Graph::createVertex(Segment segment, uint64_t length)
 {
     SHASTA2_ASSERT(not vertexMap.contains(segment));
     Graph& graph = *this;
-    const vertex_descriptor v = add_vertex(GraphVertex(segment, length, isLong), graph);
+    const vertex_descriptor v = add_vertex(GraphVertex(segment, length), graph);
     vertexMap.insert(make_pair(segment, v));
 }
 
@@ -188,11 +188,9 @@ void Graph::createVertex(Segment segment, uint64_t length, bool isLong)
 
 GraphVertex::GraphVertex(
     Segment segment,
-    uint64_t length,
-    bool isLong) :
+    uint64_t length) :
     segment(segment),
-    length(length),
-    isLong(isLong)
+    length(length)
 {
 }
 
@@ -433,8 +431,7 @@ void SearchGraph::prune()
 
 void SearchGraph::writeGraphviz(
     const AssemblyGraph& assemblyGraph,
-    const string& name,
-    bool longGraph) const
+    const string& name) const
 {
     const SearchGraph& graph = *this;
 
@@ -458,14 +455,12 @@ void SearchGraph::writeGraphviz(
 
 
         // Color.
-        if(not longGraph) {
-            string color;
-            if(vertex.isLong) {
-                color = "cyan";
-            }
-            if(not color.empty()) {
-                dot << " style=filled fillcolor=" << color;
-            }
+        string color;
+        if(vertex.isLong) {
+            color = "cyan";
+        }
+        if(not color.empty()) {
+            dot << " style=filled fillcolor=" << color;
         }
 
         // End attributes.
@@ -490,63 +485,20 @@ void SearchGraph::writeGraphviz(
         // Begin attributes.
         dot << "[";
 
-
-
         // Tooltip.
         dot << " tooltip=\"" <<
             edge.commonCount << "/" <<
             edge.missingCount0 << "/" <<
             edge.missingCount1 << "/" <<
             std::fixed << std::setprecision(1) <<
-            edge.logP;
-        if(longGraph) {
-            dot <<
-                "/" <<
-                edge.logPForward << "/" <<
-                edge.logPBackward;
-        }
-        dot << "\"";
+            edge.logP << "\"";
 
-
-
-        if(longGraph) {
-            // Thickness is determined to maxLogP.
-            double logPClipped = max(1., edge.maxLogP());
-            logPClipped = min(100., logPClipped);
-            const double thickness = 0.05 * logPClipped;
-            dot << std::fixed << std::setprecision(2) << " penwidth=" << thickness;
-
-            // Color depends on the edge type.
-            string color;
-            switch(edge.type()) {
-            case SearchGraphEdge::Type::Bidirectional:
-                color = "Black";
-                break;
-            case SearchGraphEdge::Type::Forward:
-                color = "Blue";
-                break;
-            case SearchGraphEdge::Type::Backward:
-                color = "Green";
-                break;
-            case SearchGraphEdge::Type::Ambiguous:
-                color = "Green";
-                break;
-            default:
-                SHASTA2_ASSERT(0);
-            }
-            dot << " color=" << color;
-
-        } else {
-
-            // Thickness is determined to logP.
-            // Color is always black.
-            double logPClipped = max(1., edge.logP);
-            logPClipped = min(100., logPClipped);
-            const double thickness = 0.05 * logPClipped;
-            dot << std::fixed << std::setprecision(2) << " penwidth=" << thickness;
-        }
-
-
+        // Thickness is determined to logP.
+        // Color is always black.
+        double logPClipped = max(1., edge.logP);
+        logPClipped = min(100., logPClipped);
+        const double thickness = 0.05 * logPClipped;
+        dot << std::fixed << std::setprecision(2) << " penwidth=" << thickness;
 
         // End attributes.
         dot << "]";
@@ -563,8 +515,7 @@ void SearchGraph::writeGraphviz(
 
 void Graph::writeGraphviz(
     const AssemblyGraph& assemblyGraph,
-    const string& name,
-    bool longGraph) const
+    const string& name) const
 {
     const Graph& graph = *this;
 
@@ -585,18 +536,6 @@ void Graph::writeGraphviz(
             "label=\"" << assemblyGraphEdge.id << "\\n" <<
             vertex.length << "\\n" <<
             "\"";
-
-
-        // Color.
-        if(not longGraph) {
-            string color;
-            if(vertex.isLong) {
-                color = "cyan";
-            }
-            if(not color.empty()) {
-                dot << " style=filled fillcolor=" << color;
-            }
-        }
 
         // End attributes.
         dot << "]";
@@ -620,63 +559,41 @@ void Graph::writeGraphviz(
         // Begin attributes.
         dot << "[";
 
-
-
         // Tooltip.
         dot << " tooltip=\"" <<
             edge.commonCount << "/" <<
             edge.missingCount0 << "/" <<
             edge.missingCount1 << "/" <<
             std::fixed << std::setprecision(1) <<
-            edge.logP;
-        if(longGraph) {
-            dot <<
-                "/" <<
-                edge.logPForward << "/" <<
-                edge.logPBackward;
+            edge.logP << "/" <<
+            edge.logPForward << "/" <<
+            edge.logPBackward << "\"";
+
+        // Thickness is determined to maxLogP.
+        double logPClipped = max(1., edge.maxLogP());
+        logPClipped = min(100., logPClipped);
+        const double thickness = 0.05 * logPClipped;
+        dot << std::fixed << std::setprecision(2) << " penwidth=" << thickness;
+
+        // Color depends on the edge type.
+        string color;
+        switch(edge.type()) {
+        case GraphEdge::Type::Bidirectional:
+            color = "Black";
+            break;
+        case GraphEdge::Type::Forward:
+            color = "Blue";
+            break;
+        case GraphEdge::Type::Backward:
+            color = "Green";
+            break;
+        case GraphEdge::Type::Ambiguous:
+            color = "Green";
+            break;
+        default:
+            SHASTA2_ASSERT(0);
         }
-        dot << "\"";
-
-
-
-        if(longGraph) {
-            // Thickness is determined to maxLogP.
-            double logPClipped = max(1., edge.maxLogP());
-            logPClipped = min(100., logPClipped);
-            const double thickness = 0.05 * logPClipped;
-            dot << std::fixed << std::setprecision(2) << " penwidth=" << thickness;
-
-            // Color depends on the edge type.
-            string color;
-            switch(edge.type()) {
-            case GraphEdge::Type::Bidirectional:
-                color = "Black";
-                break;
-            case GraphEdge::Type::Forward:
-                color = "Blue";
-                break;
-            case GraphEdge::Type::Backward:
-                color = "Green";
-                break;
-            case GraphEdge::Type::Ambiguous:
-                color = "Green";
-                break;
-            default:
-                SHASTA2_ASSERT(0);
-            }
-            dot << " color=" << color;
-
-        } else {
-
-            // Thickness is determined to logP.
-            // Color is always black.
-            double logPClipped = max(1., edge.logP);
-            logPClipped = min(100., logPClipped);
-            const double thickness = 0.05 * logPClipped;
-            dot << std::fixed << std::setprecision(2) << " penwidth=" << thickness;
-        }
-
-
+        dot << " color=" << color;
 
         // End attributes.
         dot << "]";
@@ -862,9 +779,6 @@ SearchGraphEdge::SearchGraphEdge(
     missingCount1(missingCount1)
 {
     logP         = a * double(commonCount) - b * double(missingCount0 + missingCount1);
-    logPForward  = a * double(commonCount) - b * double(missingCount0);
-    logPBackward = a * double(commonCount) - b * double(missingCount1);
-
     weight = pow(10., 0.1 * logP);
 }
 
@@ -881,8 +795,6 @@ GraphEdge::GraphEdge(
     logP         = a * double(commonCount) - b * double(missingCount0 + missingCount1);
     logPForward  = a * double(commonCount) - b * double(missingCount0);
     logPBackward = a * double(commonCount) - b * double(missingCount1);
-
-    weight = pow(10., 0.1 * logP);
 }
 
 
@@ -894,45 +806,10 @@ bool ReadFollower::isLong(Segment segment) const
 
 
 
-double SearchGraphEdge::maxLogP() const
-{
-    return max(logP, max(logPForward, logPBackward));
-}
-
-
-
 double GraphEdge::maxLogP() const
 {
     return max(logP, max(logPForward, logPBackward));
 }
-
-
-
-SearchGraphEdge::Type SearchGraphEdge::type() const
-{
-    if(logP >= logPThreshold) {
-        return Type::Bidirectional;
-    }
-
-    if(logPForward >= logPThreshold) {
-        if(logPBackward < logPThreshold) {
-            return Type::Forward;
-        } else {
-            return Type::Ambiguous;
-        }
-    }
-
-    if(logPBackward >= logPThreshold) {
-        if(logPForward < logPThreshold) {
-            return Type::Backward;
-        } else {
-            return Type::Ambiguous;
-        }
-    }
-
-    return Type::Ambiguous;
-}
-
 
 
 

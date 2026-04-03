@@ -4,6 +4,13 @@
 
 Read following in the AssemblyGraph.
 
+The SearchGraphs (one per direction) have one vertex for each
+Segment, regardless of length. They are used to find assembly paths
+that start and end at long Segments and can use zero or more
+short Segments in-between.
+
+The Graph has one vertex for each long segment.
+
 *****************************************************************/
 
 // Shasta.
@@ -82,20 +89,7 @@ public:
     // These are computed by the constructor from the three above.
     // logs are in dB.
     double logP;
-    double logPForward;
-    double logPBackward;
     double weight;
-
-    double maxLogP() const;
-
-
-    enum class Type {
-        Bidirectional,
-        Forward,
-        Backward,
-        Ambiguous
-    };
-    Type type() const;
 };
 
 
@@ -118,12 +112,12 @@ public:
     std::map<vertex_descriptor, uint64_t> vertexIndexMap;
     void createVertexIndexMap();
 
+    void findShortestPath(Segment, vector<Segment>&) const;
+
     void writeGraphviz(
         const AssemblyGraph&,
-        const string& name,
-        bool longGraph) const;
+        const string& name) const;
 
-    void findShortestPath(Segment, vector<Segment>&) const;
 };
 
 
@@ -139,10 +133,7 @@ public:
     // The sequence length or estimated offset of this AssemblyGraph edge.
     uint64_t length = invalid<uint64_t>;
 
-    // This is set for long vertices (length >= readFollowingSegmentLengthThreshold).
-    bool isLong = false;
-
-    GraphVertex(Segment, uint64_t length, bool isLong);
+    GraphVertex(Segment, uint64_t length);
 };
 
 
@@ -163,7 +154,6 @@ public:
     double logP;
     double logPForward;
     double logPBackward;
-    double weight;
 
     double maxLogP() const;
 
@@ -186,23 +176,12 @@ public:
     std::map<Segment, vertex_descriptor> vertexMap;
 
     // Create a vertex and update the vertexMap.
-    void createVertex(Segment, uint64_t length, bool isLong);
-
-    // Prune removes all vertices that are not accessible from long
-    // vertices in both directions.
-    void prune();
-
-    // The vertex index map is needed to compute shortest paths.
-    // It must be created when no more changes will be made to the graph.
-    std::map<vertex_descriptor, uint64_t> vertexIndexMap;
-    void createVertexIndexMap();
+    void createVertex(Segment, uint64_t length);
 
     void writeGraphviz(
         const AssemblyGraph&,
-        const string& name,
-        bool longGraph) const;
+        const string& name) const;
 
-    void findShortestPath(Segment, vector<Segment>&) const;
 };
 
 
