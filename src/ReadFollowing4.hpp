@@ -4,11 +4,6 @@
 
 Read following in the AssemblyGraph.
 
-This creates two directed graphs, one for each read following
-direction (0=forward, 1=backward), in which each vertex
-represents an edge of the AssemblyGraph, here called a
-Segment using GFA terminology.
-
 *****************************************************************/
 
 // Shasta.
@@ -24,16 +19,15 @@ namespace shasta2 {
 
         class ReadFollower;
 
-        // The ReadFollower stores two Graphs, one per direction.
-        class Graph;
-        class Vertex;
-        class Edge;
-        using GraphBaseClass = boost::adjacency_list<
+        class SearchGraph;
+        class SearchGraphVertex;
+        class SearchGraphEdge;
+        using SearchGraphBaseClass = boost::adjacency_list<
             boost::listS,
             boost::listS,
             boost::bidirectionalS,
-            Vertex,
-            Edge>;
+            SearchGraphVertex,
+            SearchGraphEdge>;
 
         // A Segment is an edge of the AssemblyGraph.
         using Segment = AssemblyGraph::edge_descriptor;
@@ -48,7 +42,7 @@ namespace shasta2 {
 
 
 
-class shasta2::ReadFollowing4::Vertex {
+class shasta2::ReadFollowing4::SearchGraphVertex {
 public:
     // A Segment is an edge of the AssemblyGraph.
     Segment segment;
@@ -59,19 +53,19 @@ public:
     // This is set for long vertices (length >= readFollowingSegmentLengthThreshold).
     bool isLong = false;
 
-    Vertex(const AssemblyGraph&, Segment);
-    Vertex() {}
+    SearchGraphVertex(const AssemblyGraph&, Segment);
+    SearchGraphVertex() {}
 };
 
 
 
-class shasta2::ReadFollowing4::Edge {
+class shasta2::ReadFollowing4::SearchGraphEdge {
 public:
     uint64_t commonCount;
     uint64_t missingCount0;
     uint64_t missingCount1;
 
-    Edge(
+    SearchGraphEdge(
         uint64_t commonCount,
         uint64_t missingCount0,
         uint64_t missingCount1);
@@ -97,7 +91,7 @@ public:
 
 
 
-class shasta2::ReadFollowing4::Graph : public GraphBaseClass {
+class shasta2::ReadFollowing4::SearchGraph : public SearchGraphBaseClass {
 public:
 
     // A map that gives the vertex_descriptor corresponding to each Segment.
@@ -169,13 +163,13 @@ public:
     // The graphs are identical except for edge directions.
     // This is necessary because I was not able to get boost::dijkstra_shortest_paths
     // to work in the reversed direction.
-    array<Graph, 2> graphs;
+    array<SearchGraph, 2> graphs;
 
     // I also store a Graph which contains only vertices corresponding to long Segments.
     // This is not necessarily a subgraph of the above Graphs because it
     // allows "one-dorectional" edges in which missingCount0 is much less than missingCount1
     // or vice versa.
-    Graph longGraph;
+    SearchGraph longGraph;
 
 
     void createVertices();

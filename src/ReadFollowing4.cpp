@@ -145,17 +145,17 @@ void ReadFollower::createVertices()
 
 
 
-void Graph::createVertex(const AssemblyGraph& assemblyGraph, Segment segment)
+void SearchGraph::createVertex(const AssemblyGraph& assemblyGraph, Segment segment)
 {
     SHASTA2_ASSERT(not vertexMap.contains(segment));
-    Graph& graph = *this;
-    const vertex_descriptor v = add_vertex(Vertex(assemblyGraph, segment), graph);
+    SearchGraph& graph = *this;
+    const vertex_descriptor v = add_vertex(SearchGraphVertex(assemblyGraph, segment), graph);
     vertexMap.insert(make_pair(segment, v));
 }
 
 
 
-Vertex::Vertex(
+SearchGraphVertex::SearchGraphVertex(
     const AssemblyGraph& assemblyGraph,
     Segment segment) :
     segment(segment)
@@ -200,11 +200,11 @@ void ReadFollower::createEdgesThreadFunction([[maybe_unused]] uint64_t threadId)
     public:
         Segment segment0;
         Segment segment1;
-        Edge edge;
+        SearchGraphEdge edge;
         EdgeToBeAdded(
             Segment segment0,
             Segment segment1,
-            const Edge& edge) :
+            const SearchGraphEdge& edge) :
             segment0(segment0),
             segment1(segment1),
             edge(edge)
@@ -235,8 +235,8 @@ void ReadFollower::createEdgesThreadFunction([[maybe_unused]] uint64_t threadId)
             const bool isLong0 = isLong(segment0);
             const bool isLong1 = isLong(segment1);
 
-            // Tentatively create the Edge without adding it to any graph.
-            const Edge edge(
+            // Tentatively create the SearchGraphEdge without adding it to any graph.
+            const SearchGraphEdge edge(
                 segmentPairInformation.commonCount,
                 segmentPairInformation.missing0,
                 segmentPairInformation.missing1);
@@ -283,7 +283,7 @@ void ReadFollower::createEdgesThreadFunction([[maybe_unused]] uint64_t threadId)
     for(const EdgeToBeAdded& edgeToBeAdded: edgesToBeAdded) {
 
         // Add it to the forward graph.
-        Graph& forwardGraph = graphs[0];
+        SearchGraph& forwardGraph = graphs[0];
         add_edge(
             forwardGraph.vertexMap.at(edgeToBeAdded.segment0),
             forwardGraph.vertexMap.at(edgeToBeAdded.segment1),
@@ -291,7 +291,7 @@ void ReadFollower::createEdgesThreadFunction([[maybe_unused]] uint64_t threadId)
             forwardGraph);
 
         // Add it to the backward graph, reversing the direction.
-        Graph& backwardGraph = graphs[1];
+        SearchGraph& backwardGraph = graphs[1];
         add_edge(
             backwardGraph.vertexMap.at(edgeToBeAdded.segment1),
             backwardGraph.vertexMap.at(edgeToBeAdded.segment0),
@@ -313,9 +313,9 @@ void ReadFollower::createEdgesThreadFunction([[maybe_unused]] uint64_t threadId)
 
 // Prune removes all vertices that are not accessible from long
 // vertices in both directions.
-void Graph::prune()
+void SearchGraph::prune()
 {
-    Graph& graph = *this;
+    SearchGraph& graph = *this;
 
     // Loop over both directions.
     array<std::set<vertex_descriptor>, 2> reachedVertices;
@@ -324,7 +324,7 @@ void Graph::prune()
 
         // Initialize the BFS.
         std::queue<vertex_descriptor> q;
-        BGL_FORALL_VERTICES(v, graph, Graph) {
+        BGL_FORALL_VERTICES(v, graph, SearchGraph) {
             if(graph[v].isLong) {
                 q.push(v);
                 reachedVertices[direction].insert(v);
@@ -340,13 +340,13 @@ void Graph::prune()
             neighbors.clear();
             if(direction == 0) {
                 // Forward.
-                BGL_FORALL_OUTEDGES(v0, e, graph, Graph) {
+                BGL_FORALL_OUTEDGES(v0, e, graph, SearchGraph) {
                     const vertex_descriptor v1 = target(e, graph);
                     neighbors.push_back(v1);
                 }
             } else {
                 // Backward.
-                BGL_FORALL_INEDGES(v0, e, graph, Graph) {
+                BGL_FORALL_INEDGES(v0, e, graph, SearchGraph) {
                     const vertex_descriptor v1 = source(e, graph);
                     neighbors.push_back(v1);
                 }
@@ -365,7 +365,7 @@ void Graph::prune()
 
     // Remove vertices that are not reachable in both directions.
     vector<vertex_descriptor> verticesToBeRemoved;
-    BGL_FORALL_VERTICES(v, graph, Graph) {
+    BGL_FORALL_VERTICES(v, graph, SearchGraph) {
         if(not (reachedVertices[0].contains(v) and reachedVertices[1].contains(v))) {
             verticesToBeRemoved.push_back(v);
         }
@@ -377,7 +377,7 @@ void Graph::prune()
     }
 
     // Sanity check: all leafs must be long vertices.
-    BGL_FORALL_VERTICES(v, graph, Graph) {
+    BGL_FORALL_VERTICES(v, graph, SearchGraph) {
         const bool isLeaf = (in_degree(v, graph) == 0) or (out_degree(v, graph) == 0);
         if(isLeaf) {
             SHASTA2_ASSERT(graph[v].isLong);
@@ -389,18 +389,18 @@ void Graph::prune()
 
 
 
-void Graph::writeGraphviz(
+void SearchGraph::writeGraphviz(
     const AssemblyGraph& assemblyGraph,
     const string& name,
     bool longGraph) const
 {
-    const Graph& graph = *this;
+    const SearchGraph& graph = *this;
 
     ofstream dot("ReadFollowing-" + name + ".dot");
     dot << "digraph ReadFollowing {\n";
 
-    BGL_FORALL_VERTICES(v, graph, Graph) {
-        const Vertex& vertex = graph[v];
+    BGL_FORALL_VERTICES(v, graph, SearchGraph) {
+        const SearchGraphVertex& vertex = graph[v];
         const Segment segment = vertex.segment;
         const AssemblyGraphEdge& assemblyGraphEdge = assemblyGraph[segment];
         dot << assemblyGraphEdge.id;
@@ -435,8 +435,8 @@ void Graph::writeGraphviz(
 
 
 
-    BGL_FORALL_EDGES(e, graph, Graph) {
-        const Edge& edge = graph[e];
+    BGL_FORALL_EDGES(e, graph, SearchGraph) {
+        const SearchGraphEdge& edge = graph[e];
 
         const vertex_descriptor v0 = source(e, graph);
         const vertex_descriptor v1 = target(e, graph);
@@ -477,16 +477,16 @@ void Graph::writeGraphviz(
             // Color depends on the edge type.
             string color;
             switch(edge.type()) {
-            case Edge::Type::Bidirectional:
+            case SearchGraphEdge::Type::Bidirectional:
                 color = "Black";
                 break;
-            case Edge::Type::Forward:
+            case SearchGraphEdge::Type::Forward:
                 color = "Blue";
                 break;
-            case Edge::Type::Backward:
+            case SearchGraphEdge::Type::Backward:
                 color = "Green";
                 break;
-            case Edge::Type::Ambiguous:
+            case SearchGraphEdge::Type::Ambiguous:
                 color = "Green";
                 break;
             default:
@@ -573,10 +573,10 @@ void ReadFollower::findAndWriteShortestPath(Segment segment0, uint64_t direction
 
 
 
-void Graph::findShortestPath(Segment segment0, vector<Segment>& path) const
+void SearchGraph::findShortestPath(Segment segment0, vector<Segment>& path) const
 {
     using namespace boost;
-    const Graph& graph = *this;
+    const SearchGraph& graph = *this;
 
     // Find the vertex corresponding to this segment.
     const vertex_descriptor v0 = vertexMap.at(segment0);
@@ -601,7 +601,7 @@ void Graph::findShortestPath(Segment segment0, vector<Segment>& path) const
     public:
         vertex_descriptor v0;
         DijkstraVisitor(vertex_descriptor v0) : v0(v0) {}
-        void examine_vertex(vertex_descriptor v, const Graph& graph)
+        void examine_vertex(vertex_descriptor v, const SearchGraph& graph)
         {
             if((v != v0) and (graph[v].isLong)) {
                 throw LongVertexReached(v);
@@ -619,7 +619,7 @@ void Graph::findShortestPath(Segment segment0, vector<Segment>& path) const
     vertex_descriptor v1 = null_vertex();
     try {
         dijkstra_shortest_paths(graph, v0,
-           weight_map(boost::get(&Edge::weight, graph)).
+           weight_map(boost::get(&SearchGraphEdge::weight, graph)).
            vertex_index_map(make_assoc_property_map(vertexIndexMap)).
            predecessor_map(make_assoc_property_map(predecessorMap)).
            visitor(dijkstraVisitor)
@@ -645,13 +645,13 @@ void Graph::findShortestPath(Segment segment0, vector<Segment>& path) const
 
 
 
-void Graph::createVertexIndexMap()
+void SearchGraph::createVertexIndexMap()
 {
-    Graph& graph = *this;
+    SearchGraph& graph = *this;
 
     vertexIndexMap.clear();
     uint64_t vertexIndex = 0;
-    BGL_FORALL_VERTICES(v, graph, Graph) {
+    BGL_FORALL_VERTICES(v, graph, SearchGraph) {
         vertexIndexMap.insert(make_pair(v, vertexIndex++));
     }
 }
@@ -681,7 +681,7 @@ void ReadFollower::findAssemblyPaths(vector< vector<Segment> >&) const
 
 
 
-Edge::Edge(
+SearchGraphEdge::SearchGraphEdge(
     uint64_t commonCount,
     uint64_t missingCount0,
     uint64_t missingCount1) :
@@ -700,21 +700,21 @@ Edge::Edge(
 
 bool ReadFollower::isLong(Segment segment) const
 {
-    const Graph& forwardGraph = graphs[0];
-    const Graph::vertex_descriptor v = forwardGraph.vertexMap.at(segment);
+    const SearchGraph& forwardGraph = graphs[0];
+    const SearchGraph::vertex_descriptor v = forwardGraph.vertexMap.at(segment);
     return forwardGraph[v].isLong;
 }
 
 
 
-double Edge::maxLogP() const
+double SearchGraphEdge::maxLogP() const
 {
     return max(logP, max(logPForward, logPBackward));
 }
 
 
 
-Edge::Type Edge::type() const
+SearchGraphEdge::Type SearchGraphEdge::type() const
 {
     if(logP >= logPThreshold) {
         return Type::Bidirectional;
