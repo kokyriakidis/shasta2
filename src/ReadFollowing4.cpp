@@ -176,6 +176,28 @@ SearchGraphVertex::SearchGraphVertex(
 
 
 
+void Graph::createVertex(Segment segment, uint64_t length, bool isLong)
+{
+    SHASTA2_ASSERT(not vertexMap.contains(segment));
+    Graph& graph = *this;
+    const vertex_descriptor v = add_vertex(GraphVertex(segment, length, isLong), graph);
+    vertexMap.insert(make_pair(segment, v));
+}
+
+
+
+GraphVertex::GraphVertex(
+    Segment segment,
+    uint64_t length,
+    bool isLong) :
+    segment(segment),
+    length(length),
+    isLong(isLong)
+{
+}
+
+
+
 void ReadFollower::createEdges()
 {
     uint64_t threadCount = assemblyGraph.options.threadCount;
@@ -316,7 +338,7 @@ void ReadFollower::createEdgesThreadFunction([[maybe_unused]] uint64_t threadId)
 
     for(const SegmentPair& segmentPair: edgesToBeAddedLong) {
 
-        const SearchGraphEdge edge(
+        const GraphEdge edge(
             segmentPair.segmentPairInformation.commonCount,
             segmentPair.segmentPairInformation.missing0,
             segmentPair.segmentPairInformation.missing1);
@@ -539,6 +561,136 @@ void SearchGraph::writeGraphviz(
 
 
 
+void Graph::writeGraphviz(
+    const AssemblyGraph& assemblyGraph,
+    const string& name,
+    bool longGraph) const
+{
+    const Graph& graph = *this;
+
+    ofstream dot("ReadFollowing-" + name + ".dot");
+    dot << "digraph ReadFollowing {\n";
+
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        const GraphVertex& vertex = graph[v];
+        const Segment segment = vertex.segment;
+        const AssemblyGraphEdge& assemblyGraphEdge = assemblyGraph[segment];
+        dot << assemblyGraphEdge.id;
+
+        // Begin attributes.
+        dot << " [";
+
+        // Label.
+        dot <<
+            "label=\"" << assemblyGraphEdge.id << "\\n" <<
+            vertex.length << "\\n" <<
+            "\"";
+
+
+        // Color.
+        if(not longGraph) {
+            string color;
+            if(vertex.isLong) {
+                color = "cyan";
+            }
+            if(not color.empty()) {
+                dot << " style=filled fillcolor=" << color;
+            }
+        }
+
+        // End attributes.
+        dot << "]";
+
+        // End the line for this vertex.
+        dot << ";\n";
+    }
+
+
+
+    BGL_FORALL_EDGES(e, graph, Graph) {
+        const GraphEdge& edge = graph[e];
+
+        const vertex_descriptor v0 = source(e, graph);
+        const vertex_descriptor v1 = target(e, graph);
+        const Segment segment0 = graph[v0].segment;
+        const Segment segment1 = graph[v1].segment;
+
+        dot << assemblyGraph[segment0].id << "->" << assemblyGraph[segment1].id;
+
+        // Begin attributes.
+        dot << "[";
+
+
+
+        // Tooltip.
+        dot << " tooltip=\"" <<
+            edge.commonCount << "/" <<
+            edge.missingCount0 << "/" <<
+            edge.missingCount1 << "/" <<
+            std::fixed << std::setprecision(1) <<
+            edge.logP;
+        if(longGraph) {
+            dot <<
+                "/" <<
+                edge.logPForward << "/" <<
+                edge.logPBackward;
+        }
+        dot << "\"";
+
+
+
+        if(longGraph) {
+            // Thickness is determined to maxLogP.
+            double logPClipped = max(1., edge.maxLogP());
+            logPClipped = min(100., logPClipped);
+            const double thickness = 0.05 * logPClipped;
+            dot << std::fixed << std::setprecision(2) << " penwidth=" << thickness;
+
+            // Color depends on the edge type.
+            string color;
+            switch(edge.type()) {
+            case GraphEdge::Type::Bidirectional:
+                color = "Black";
+                break;
+            case GraphEdge::Type::Forward:
+                color = "Blue";
+                break;
+            case GraphEdge::Type::Backward:
+                color = "Green";
+                break;
+            case GraphEdge::Type::Ambiguous:
+                color = "Green";
+                break;
+            default:
+                SHASTA2_ASSERT(0);
+            }
+            dot << " color=" << color;
+
+        } else {
+
+            // Thickness is determined to logP.
+            // Color is always black.
+            double logPClipped = max(1., edge.logP);
+            logPClipped = min(100., logPClipped);
+            const double thickness = 0.05 * logPClipped;
+            dot << std::fixed << std::setprecision(2) << " penwidth=" << thickness;
+        }
+
+
+
+        // End attributes.
+        dot << "]";
+
+        // End the line for this edge.
+        dot << ";\n";
+
+    }
+
+    dot << "}\n";
+}
+
+
+
 // This finds a shortest path starting at segment0 and ending at a long Segment,
 // with path length defined by Edge::weight.
 void ReadFollower::findShortestPath(
@@ -718,6 +870,23 @@ SearchGraphEdge::SearchGraphEdge(
 
 
 
+GraphEdge::GraphEdge(
+    uint64_t commonCount,
+    uint64_t missingCount0,
+    uint64_t missingCount1) :
+    commonCount(commonCount),
+    missingCount0(missingCount0),
+    missingCount1(missingCount1)
+{
+    logP         = a * double(commonCount) - b * double(missingCount0 + missingCount1);
+    logPForward  = a * double(commonCount) - b * double(missingCount0);
+    logPBackward = a * double(commonCount) - b * double(missingCount1);
+
+    weight = pow(10., 0.1 * logP);
+}
+
+
+
 bool ReadFollower::isLong(Segment segment) const
 {
     return longGraph.vertexMap.contains(segment);
@@ -732,7 +901,42 @@ double SearchGraphEdge::maxLogP() const
 
 
 
+double GraphEdge::maxLogP() const
+{
+    return max(logP, max(logPForward, logPBackward));
+}
+
+
+
 SearchGraphEdge::Type SearchGraphEdge::type() const
+{
+    if(logP >= logPThreshold) {
+        return Type::Bidirectional;
+    }
+
+    if(logPForward >= logPThreshold) {
+        if(logPBackward < logPThreshold) {
+            return Type::Forward;
+        } else {
+            return Type::Ambiguous;
+        }
+    }
+
+    if(logPBackward >= logPThreshold) {
+        if(logPForward < logPThreshold) {
+            return Type::Backward;
+        } else {
+            return Type::Ambiguous;
+        }
+    }
+
+    return Type::Ambiguous;
+}
+
+
+
+
+GraphEdge::Type GraphEdge::type() const
 {
     if(logP >= logPThreshold) {
         return Type::Bidirectional;
