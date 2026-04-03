@@ -200,24 +200,33 @@ void ReadFollower::createEdgesThreadFunction([[maybe_unused]] uint64_t threadId)
 
 
 
-    // Prepare vectors of edges to be added to the two graphs.
-    // We will add them all at the end so we only have to acquire the mutex once.
-    class EdgeToBeAdded {
+    class SegmentPair {
     public:
         Segment segment0;
         Segment segment1;
-        SearchGraphEdge edge;
-        EdgeToBeAdded(
+        SegmentPairInformation segmentPairInformation;
+        double logP;
+        double logPForward;
+        double logPBackward;
+        SegmentPair(
             Segment segment0,
             Segment segment1,
-            const SearchGraphEdge& edge) :
-            segment0(segment0),
-            segment1(segment1),
-            edge(edge)
-        {}
+            const SegmentPairInformation& segmentPairInformation) :
+                segment0(segment0),
+                segment1(segment1),
+                segmentPairInformation(segmentPairInformation)
+        {
+            logP         = a * double(segmentPairInformation.commonCount) - b * double(segmentPairInformation.missing());
+            logPForward  = a * double(segmentPairInformation.commonCount) - b * double(segmentPairInformation.missing0);
+            logPBackward = a * double(segmentPairInformation.commonCount) - b * double(segmentPairInformation.missing1);
+        }
     };
-    vector<EdgeToBeAdded> edgesToBeAdded;   // To the forward and backward graphs, graphs[0] and graphs[1].
-    vector<EdgeToBeAdded> edgesToBeAddedLong;   // To longGraph.
+
+    // SegmentPairs that will generate edes in the SearchGraphs.
+    vector<SegmentPair> edgesToBeAdded;
+
+    // SegmentPairs that will generate edges in the Graph.
+    vector<SegmentPair> edgesToBeAddedLong;
 
 
 
@@ -241,41 +250,34 @@ void ReadFollower::createEdgesThreadFunction([[maybe_unused]] uint64_t threadId)
             const bool isLong0 = isLong(segment0);
             const bool isLong1 = isLong(segment1);
 
-            // Tentatively create the SearchGraphEdge without adding it to any graph.
-            const SearchGraphEdge edge(
-                segmentPairInformation.commonCount,
-                segmentPairInformation.missing0,
-                segmentPairInformation.missing1);
+            // Tentatively create the SegmentPair without storing it.
+            const SegmentPair segmentPair(segment0, segment1, segmentPairInformation);
 
             // If it does not satisfy our requirements, discard it.
-            if(edge.commonCount < minCommonCount) {
+            if(segmentPair.segmentPairInformation.commonCount < minCommonCount) {
                 continue;
             }
             if(
-                (edge.logP < logPThreshold) and
-                (edge.logPForward < logPThreshold) and
-                (edge.logPBackward < logPThreshold)) {
+                (segmentPair.logP < logPThreshold) and
+                (segmentPair.logPForward < logPThreshold) and
+                (segmentPair.logPBackward < logPThreshold)) {
                 continue;
             }
             if(not assemblyGraph.canConnect(segment0, segment1)) {
                 continue;
             }
 
-            // See if we can add it to the forward/backward graphs.
-            if(edge.logP > logPThreshold) {
-                edgesToBeAdded.emplace_back(
-                    segment0,
-                    segment1,
-                    edge);
+            // See if we can add it to the SearchGraphs
+            if(segmentPair.logP > logPThreshold) {
+                edgesToBeAdded.emplace_back(segmentPair);
             }
 
             // See if we can add it to the long graph.
             if(isLong0 and isLong1) {
-                if((edge.logPForward > logPThreshold) or (edge.logPBackward > logPThreshold)) {
-                    edgesToBeAddedLong.emplace_back(
-                        segment0,
-                        segment1,
-                        edge);
+                if( (segmentPair.logP         > logPThreshold) or
+                    (segmentPair.logPForward  > logPThreshold) or
+                    (segmentPair.logPBackward > logPThreshold)) {
+                    edgesToBeAddedLong.emplace_back(segmentPair);
                 }
             }
 
@@ -286,31 +288,43 @@ void ReadFollower::createEdgesThreadFunction([[maybe_unused]] uint64_t threadId)
 
     // Now grab the mutex and add the edges we found.
     std::lock_guard<std::mutex> lock(mutex);
-    for(const EdgeToBeAdded& edgeToBeAdded: edgesToBeAdded) {
+    for(const SegmentPair& segmentPair: edgesToBeAdded) {
+
+        const SearchGraphEdge edge(
+            segmentPair.segmentPairInformation.commonCount,
+            segmentPair.segmentPairInformation.missing0,
+            segmentPair.segmentPairInformation.missing1);
 
         // Add it to the forward graph.
         SearchGraph& forwardGraph = graphs[0];
         add_edge(
-            forwardGraph.vertexMap.at(edgeToBeAdded.segment0),
-            forwardGraph.vertexMap.at(edgeToBeAdded.segment1),
-            edgeToBeAdded.edge,
+            forwardGraph.vertexMap.at(segmentPair.segment0),
+            forwardGraph.vertexMap.at(segmentPair.segment1),
+            edge,
             forwardGraph);
 
         // Add it to the backward graph, reversing the direction.
         SearchGraph& backwardGraph = graphs[1];
         add_edge(
-            backwardGraph.vertexMap.at(edgeToBeAdded.segment1),
-            backwardGraph.vertexMap.at(edgeToBeAdded.segment0),
-            edgeToBeAdded.edge,
+            backwardGraph.vertexMap.at(segmentPair.segment1),
+            backwardGraph.vertexMap.at(segmentPair.segment0),
+            edge,
             backwardGraph);
     }
 
-    for(const EdgeToBeAdded& edgeToBeAdded: edgesToBeAddedLong) {
-        // Add it to the long graph.
+
+
+    for(const SegmentPair& segmentPair: edgesToBeAddedLong) {
+
+        const SearchGraphEdge edge(
+            segmentPair.segmentPairInformation.commonCount,
+            segmentPair.segmentPairInformation.missing0,
+            segmentPair.segmentPairInformation.missing1);
+
         add_edge(
-            longGraph.vertexMap.at(edgeToBeAdded.segment0),
-            longGraph.vertexMap.at(edgeToBeAdded.segment1),
-            edgeToBeAdded.edge,
+            longGraph.vertexMap.at(segmentPair.segment0),
+            longGraph.vertexMap.at(segmentPair.segment1),
+            edge,
             longGraph);
     }
 }
@@ -706,9 +720,7 @@ SearchGraphEdge::SearchGraphEdge(
 
 bool ReadFollower::isLong(Segment segment) const
 {
-    const SearchGraph& forwardGraph = graphs[0];
-    const SearchGraph::vertex_descriptor v = forwardGraph.vertexMap.at(segment);
-    return forwardGraph[v].isLong;
+    return longGraph.vertexMap.contains(segment);
 }
 
 
