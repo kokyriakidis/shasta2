@@ -531,7 +531,9 @@ void Graph::writeGraphviz(
     const Graph& graph = *this;
 
     ofstream dot("ReadFollowing-Graph-" + name + ".dot");
-    dot << "digraph ReadFollowingGraph {\n";
+    dot <<
+        "digraph ReadFollowingGraph {\n"
+        "tooltip=\" \";\n";
 
     BGL_FORALL_VERTICES(v, graph, Graph) {
         const GraphVertex& vertex = graph[v];
@@ -557,6 +559,27 @@ void Graph::writeGraphviz(
 
 
 
+    // Each edge is displayed as one or two display edges:
+    // - If edge.hasDirectConnection(), an edge representing the
+    //   DirectConnectInformation is drawn. This edge uses a solid line.
+    //   The edge color depends on edge.directConnectionType():
+    //   * If Bidirectional, the edge is black.
+    //   * If forward, the edge is blue.
+    //   * If backward, the edge is green.
+    //   * If ambiguous, the edge is red.
+    //   The arrows can be empty or filled:
+    //   * The source arrow is filled if directConnectInformation.logPForward  >= logPThreshold.
+    //   * The target arrow is filled if directConnectInformation.logPBackward >= logPThreshold.
+    // - If one or both of the edge assemblyPaths are non-empty, an edge representing
+    //   these assembly paths is drawn. This edge uses a dashed line.
+    //   The edge color depends on the two assembly paths:
+    //   * If both assembly paths are non-trivial, the edge is black.
+    //   * If only the forward  assembly path is non-trivial, the edge is blue.
+    //   * If only the backward assembly path is non-trivial, the edge is green.
+    //   The arrows can be empty or filled:
+    //   * The source arrow is filled if the forward  assembly path is non-trivial.
+    //   * The target arrow is filled if the backward assembly path is non-trivial.
+
     BGL_FORALL_EDGES(e, graph, Graph) {
         const GraphEdge& edge = graph[e];
 
@@ -565,13 +588,16 @@ void Graph::writeGraphviz(
         const Segment segment0 = graph[v0].segment;
         const Segment segment1 = graph[v1].segment;
 
-        dot << assemblyGraph[segment0].id << "->" << assemblyGraph[segment1].id;
 
-        // Begin attributes.
-        dot << "[";
-
-        // Tooltip.
+        // Draw the edge representing the DirectConnectInformation.
         if(edge.hasDirectConnection()) {
+
+            dot << assemblyGraph[segment0].id << "->" << assemblyGraph[segment1].id;
+
+            // Begin attributes.
+            dot << "[";
+
+            // Tooltip.
             dot << " tooltip=\"" <<
                 edge.directConnectInformation.commonCount << "/" <<
                 edge.directConnectInformation.missingCount0 << "/" <<
@@ -580,62 +606,105 @@ void Graph::writeGraphviz(
                 edge.directConnectInformation.logP << "/" <<
                 edge.directConnectInformation.logPForward << "/" <<
                 edge.directConnectInformation.logPBackward << "\"";
-        }
 
-        // Thickness is determined to maxLogP.
-        if(edge.hasDirectConnection()) {
+            // Thickness is determined to maxLogP.
             double logPClipped = max(1., edge.directConnectInformation.maxLogP());
             logPClipped = min(100., logPClipped);
             const double thickness = 0.05 * logPClipped;
             dot << std::fixed << std::setprecision(2) << " penwidth=" << thickness;
+
+            // Color depends on the edge type.
+            string color;
+            switch(edge.directConnectionType()) {
+            case GraphEdge::DirectConnectionType::None:
+                color = "Red";
+                break;
+            case GraphEdge::DirectConnectionType::Bidirectional:
+                color = "Black";
+                break;
+            case GraphEdge::DirectConnectionType::Forward:
+                color = "Blue";
+                break;
+            case GraphEdge::DirectConnectionType::Backward:
+                color = "Green";
+                break;
+            case GraphEdge::DirectConnectionType::Ambiguous:
+                color = "Orange";
+                break;
+            default:
+                SHASTA2_ASSERT(0);
+            }
+            dot << " color=" << color;
+
+            // The source arrow is filled if directConnectInformation.logPForward  >= logPThreshold.
+            // The target arrow is filled if directConnectInformation.logPBackward >= logPThreshold.
+            dot << " dir=both";
+            if(edge.directConnectInformation.logPForward  >= logPThreshold) {
+                dot << " arrowtail=inv";
+            } else {
+                dot << " arrowtail=oinv";
+            }
+            if(edge.directConnectInformation.logPBackward  >= logPThreshold) {
+                dot << " arrowhead=normal";
+            } else {
+                dot << " arrowhead=onormal";
+            }
+
+            // End attributes.
+            dot << "]";
+
+            // End the line for this edge.
+            dot << ";\n";
         }
 
-        // Color depends on the edge type.
-        string color;
-        switch(edge.directConnectionType()) {
-        case GraphEdge::DirectConnectionType::None:
-            color = "Red";
-            break;
-        case GraphEdge::DirectConnectionType::Bidirectional:
-            color = "Black";
-            break;
-        case GraphEdge::DirectConnectionType::Forward:
-            color = "Blue";
-            break;
-        case GraphEdge::DirectConnectionType::Backward:
-            color = "Green";
-            break;
-        case GraphEdge::DirectConnectionType::Ambiguous:
-            color = "Orange";
-            break;
-        default:
-            SHASTA2_ASSERT(0);
-        }
-        dot << " color=" << color;
 
-        if(not edge.hasDirectConnection()) {
-            dot << " style=dashed";
-        }
 
-        // The arrowtail is filled if the forward path exists.
-        // The arrowhead is filled if the backward path exists.
-        dot << " dir=both";
-        if(edge.assemblyPaths[0].empty()) {
-            dot << " arrowtail=oinv";
-        } else {
-            dot << " arrowtail=inv";
-        }
-        if(edge.assemblyPaths[1].empty()) {
-            dot << " arrowhead=onormal";
-        } else {
-            dot << " arrowhead=normal";
-        }
+        // Draw the edge representing the assembly paths.
+        if((edge.assemblyPaths[0].size() > 2) or (edge.assemblyPaths[1].size()  > 2)) {
 
-        // End attributes.
-        dot << "]";
+            dot << assemblyGraph[segment0].id << "->" << assemblyGraph[segment1].id;
 
-        // End the line for this edge.
-        dot << ";\n";
+            // Begin attributes.
+            dot << "[";
+
+            dot << "style=dashed";
+
+            // Tooltip.
+            dot << " tooltip=\"" <<
+                edge.assemblyPaths[0].size() << "/" <<
+                edge.assemblyPaths[1].size() << "\"";
+
+            // The arrowtail is filled if the forward path exists.
+            // The arrowhead is filled if the backward path exists.
+            dot << " dir=both";
+            if(edge.assemblyPaths[0].size() <= 2) {
+                dot << " arrowtail=oinv";
+            } else {
+                dot << " arrowtail=inv";
+            }
+            if(edge.assemblyPaths[1].size() <= 2) {
+                dot << " arrowhead=onormal";
+            } else {
+                dot << " arrowhead=normal";
+            }
+
+            // Color.
+            string color = "Black";
+            if(edge.assemblyPaths[0].size() <= 2) {
+                color = "Green";
+            }
+            if(edge.assemblyPaths[1].size() <= 2) {
+                color = "Blue";
+            }
+            dot << " color=" << color;
+
+
+            // End attributes.
+            dot << "]";
+
+            // End the line for this edge.
+            dot << ";\n";
+        }
 
     }
 
