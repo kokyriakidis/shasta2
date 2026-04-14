@@ -2,6 +2,8 @@
 #include "ReadFollowing4.hpp"
 #include "Journeys.hpp"
 #include "Options.hpp"
+#include "RestrictedAnchorGraph.hpp"
+#include "TangleMatrix1.hpp"
 using namespace shasta2;
 using namespace ReadFollowing4;
 
@@ -1133,4 +1135,192 @@ vector<Segment> Graph::getAssemblyPath(edge_descriptor e) const
 
     // In all other cases, return an assembly path consisting of just the source and target segments.
     return {segment0, segment1};
+}
+
+
+
+// Use the ReadFollower::Graph to update the AssemblyGraph.
+void ReadFollower::updateAssemblyGraph(AssemblyGraph& assemblyGraph) const
+{
+    const bool debug = true;
+
+    // Create a disconnected version of each long Segment.
+    std::map<Segment, Segment> longSegmentMap; // (oldSegment, newSegment) (They have the same id).
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        const Segment oldSegment = graph[v].segment;
+        const Segment newSegment = createDisconnectedSegmentCopy(assemblyGraph, oldSegment);
+        longSegmentMap.insert({oldSegment, newSegment});
+    }
+
+
+
+    // A short Segment usually appears in only one assembly path.
+    // In that case, when making a disconnected copy of that Segment
+    // we keep the same id.
+    // However, occasionally a short Segment will appear in more than one
+    // assembly path. In that case, the first copy keeps the same id,
+    // but subsequent copies are given new ids.
+    // This set keeps track of the short segments we already used.
+    std::set<Segment> usedShortSegments;
+
+
+
+    // Each edge of the ReadFollower::Graph generates a linear chain between
+    // the source and target segments.
+    BGL_FORALL_EDGES(e, graph, Graph) {
+
+        // Get the old Segments.
+        const Graph::vertex_descriptor oldV0 = source(e, graph);
+        const Graph::vertex_descriptor oldV1 = target(e, graph);
+        const Segment oldSegment0 = graph[oldV0].segment;
+        const Segment oldSegment1 = graph[oldV1].segment;
+
+        // Get the corresponding new Segments.
+        const Segment newSegment0 = longSegmentMap.at(oldSegment0);
+        const Segment newSegment1 = longSegmentMap.at(oldSegment1);
+
+        // Get the assembly path for this GraphEdge.
+        const vector<Segment> oldAssemblyPath = graph.getAssemblyPath(e);
+
+        if(debug) {
+            cout << "Assembly path to connect " <<
+                assemblyGraph[oldSegment0].id << " with " <<
+                assemblyGraph[oldSegment1].id << ":" << endl;
+            for(const Segment segment: oldAssemblyPath) {
+                cout << assemblyGraph[segment].id << " ";
+            }
+            cout << endl;
+        }
+
+        // Sanity checks: the assembly path begins/ends at segment0/segment1.
+        SHASTA2_ASSERT(oldAssemblyPath.size() >= 2);
+        SHASTA2_ASSERT(oldAssemblyPath.front() == oldSegment0);
+        SHASTA2_ASSERT(oldAssemblyPath.back() == oldSegment1);
+
+        // Sanity check: the segments internal to the assembly path
+        // are not long segment.
+        for(uint64_t i=1; i<oldAssemblyPath.size()-1; i++) {
+            const Segment oldSegment = oldAssemblyPath[i];
+            SHASTA2_ASSERT(not longSegmentMap.contains(oldSegment));
+        }
+
+        // Generate the new Segments of this assembly path.
+        vector<Segment> newAssemblyPath;
+        newAssemblyPath.push_back(newSegment0);
+        for(uint64_t i=1; i<oldAssemblyPath.size()-1; i++) {
+            const Segment oldSegment = oldAssemblyPath[i];
+            const Segment newSegment = createDisconnectedSegmentCopy(assemblyGraph, oldSegment);
+            newAssemblyPath.push_back(newSegment);
+            if(usedShortSegments.contains(oldSegment)) {
+                assemblyGraph[newSegment].id = assemblyGraph.nextEdgeId++;
+                cout << "Additional copy of " << assemblyGraph[oldSegment].id <<
+                    " takes new id " << assemblyGraph[newSegment].id << endl;
+            } else {
+                usedShortSegments.insert(oldSegment);
+            }
+        }
+        newAssemblyPath.push_back(newSegment1);
+
+
+
+        // Now we have to connect adjacent segments.
+        for(uint64_t i1=1; i1<newAssemblyPath.size(); i1++) {
+            const uint64_t i0 = i1 - 1;
+            const Segment newSegment0 = newAssemblyPath[i0];
+            const Segment newSegment1 = newAssemblyPath[i1];
+
+            const AssemblyGraph::vertex_descriptor newV0 = target(newSegment0, assemblyGraph);
+            const AssemblyGraph::vertex_descriptor newV1 = source(newSegment1, assemblyGraph);
+
+            const AnchorId anchorId0 = assemblyGraph[newV0].anchorId;
+            const AnchorId anchorId1 = assemblyGraph[newV1].anchorId;
+
+            // Create the new edge.
+            // If the two anchors are the same, leave it empty without any steps.
+            // Otherwise use the same process in Tangle1::addConnectPair.
+            Segment newSegment;
+            tie(newSegment, ignore) = add_edge(newV0, newV1, AssemblyGraphEdge(assemblyGraph.nextEdgeId++), assemblyGraph);
+            AssemblyGraphEdge& newEdge = assemblyGraph[newSegment];
+            if(anchorId0 != anchorId1) {
+
+                // Create the RestrictedAnchorGraph, then:
+                // - Remove vertices not accessible from anchorId0 and anchorId1.
+                // - Remove cycles.
+                // - Find the longest path.
+                // - Add one step for each edge of the longest path of the RestrictedAnchorGraph.
+
+                ostream html(0);
+                const TangleMatrix1 tangleMatrix(
+                    assemblyGraph,
+                    vector<Segment>(1, newSegment0),
+                    vector<Segment>(1, newSegment1),
+                    html);
+
+                try {
+                    RestrictedAnchorGraph restrictedAnchorGraph(assemblyGraph.anchors, assemblyGraph.journeys, tangleMatrix, 0, 0, html);
+                    vector<RestrictedAnchorGraph::edge_descriptor> longestPath;
+                    // restrictedAnchorGraph.findLongestPath(longestPath);
+                    restrictedAnchorGraph.findOptimalPath(anchorId0, anchorId1, longestPath);
+
+                    for(const RestrictedAnchorGraph::edge_descriptor re: longestPath) {
+                        const auto& rEdge = restrictedAnchorGraph[re];
+                        if(rEdge.anchorPair.size() == 0) {
+                            newEdge.clear();
+                            SHASTA2_ASSERT(0);
+                        }
+                        newEdge.push_back(AssemblyGraphEdgeStep(rEdge.anchorPair, rEdge.offset));
+                    }
+                } catch(RestrictedAnchorGraph::NoTransitions&) {
+                    cout << "Could not connect " << assemblyGraph[newSegment0].id <<
+                        " with " << assemblyGraph[newSegment1].id << endl;
+                    SHASTA2_ASSERT(0);
+                }
+            }
+        }
+
+    }
+
+
+
+    // Remove the old copy of each long Segment.
+    for(const auto& [oldSegment, newSegment]: longSegmentMap) {
+        boost::remove_edge(oldSegment, assemblyGraph);
+    }
+
+    // Remove the old copy of short Segments we used.
+    for(const Segment oldSegment: usedShortSegments) {
+        boost::remove_edge(oldSegment, assemblyGraph);
+    }
+}
+
+
+
+// Make a disconnected copy of a Segment. The copy keeps the same id,
+// so the original Segment will have to be removed for the AssemblyGraph
+// to remain valid.
+Segment ReadFollower::createDisconnectedSegmentCopy(
+    AssemblyGraph& assemblyGraph,
+    Segment oldSegment) const
+{
+
+    // Get the assembly graph edge and vertices of the oldSegment.
+    const AssemblyGraphEdge& oldEdge = assemblyGraph[oldSegment];
+    const AssemblyGraph::vertex_descriptor oldV0 = source(oldSegment, assemblyGraph);
+    const AssemblyGraph::vertex_descriptor oldV1 = target(oldSegment, assemblyGraph);
+    const AssemblyGraphVertex& oldVertex0 = assemblyGraph[oldV0];
+    const AssemblyGraphVertex& oldVertex1 = assemblyGraph[oldV1];
+
+    // Create the new vertices.
+    AssemblyGraphVertex newVertex0 = oldVertex0;
+    AssemblyGraphVertex newVertex1 = oldVertex1;
+    newVertex0.id = assemblyGraph.nextVertexId++;
+    newVertex1.id = assemblyGraph.nextVertexId++;
+    const AssemblyGraph::vertex_descriptor newV0 = add_vertex(newVertex0, assemblyGraph);
+    const AssemblyGraph::vertex_descriptor newV1 = add_vertex(newVertex1, assemblyGraph);
+
+    // Create the edge for the new Segment, keeping the same id.
+    Segment newSegment;
+    tie(newSegment, ignore)= add_edge(newV0, newV1, oldEdge, assemblyGraph);
+
+    return newSegment;
 }

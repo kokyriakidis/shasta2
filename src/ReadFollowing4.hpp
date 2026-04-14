@@ -284,6 +284,16 @@ public:
 
     const AssemblyGraph& assemblyGraph;
 
+    // Use the Graph to update the AssemblyGraph.
+    void updateAssemblyGraph(AssemblyGraph& writableAssemblyGraph) const;
+
 private:
     bool isLong(Segment) const;
+
+    // Make a disconnected copy of a Segment. The copy keeps the same id,
+    // so the original Segment will have to be removed for the AssemblyGraph
+    // to remain valid.
+    Segment createDisconnectedSegmentCopy(
+        AssemblyGraph& writableAssemblyGraph,
+        Segment oldSegment) const;
 };
