@@ -118,11 +118,16 @@ public:
     double averageCoverage() const;
     double lengthWeightedAverageCoverage() const;
 
+    // The annotation is only used for testing/debugging.
+    // It can be set via AssemblyGraph::setAnnotation, which is exposed to Python.
+    string annotation;
+
     template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
     {
         ar & boost::serialization::base_object< vector<AssemblyGraphEdgeStep> >(*this);
         ar & id;
         ar & wasAssembled;
+        ar & annotation;
     }
 
     void swapSteps(AssemblyGraphEdge& that)
@@ -164,6 +169,8 @@ public:
 
     // Detangle, phase, assemble sequence, output.
     void simplifyAndAssemble();
+
+    void setAnnotation(edge_descriptor, const string&);
 
     const Anchors& anchors;
     const Journeys& journeys;

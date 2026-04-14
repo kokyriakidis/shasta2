@@ -2699,3 +2699,11 @@ void AssemblyGraph::cleanupLinearChain(const vector<edge_descriptor>& chain)
 
 
 }
+
+
+
+void AssemblyGraph::setAnnotation(edge_descriptor e, const string& annotation)
+{
+    AssemblyGraph& assemblyGraph = *this;
+    assemblyGraph[e].annotation = annotation;
+}
