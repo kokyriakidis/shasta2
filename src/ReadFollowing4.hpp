@@ -53,6 +53,7 @@ namespace shasta2 {
         const double logPThreshold = 0.;    // dB
         const double a = 3.;                // dB
         const double b = 10.;               // dB
+        const uint64_t transitiveReductionMaxDistance = 4;
     }
 
 }
@@ -216,6 +217,11 @@ public:
     // This removes edges without a direct connection
     // and that don't have paths in both directions.
     void removeWeakEdges();
+
+    // Transitive reduction.
+    void transitiveReduction();
+    bool transitiveReductionCanRemove(edge_descriptor) const;
+
 
 };
 

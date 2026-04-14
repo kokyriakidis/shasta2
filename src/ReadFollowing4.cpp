@@ -65,6 +65,9 @@ ReadFollower::ReadFollower(const AssemblyGraph& assemblyGraph) :
 
     graph.removeWeakEdges();
     graph.writeGraphviz(assemblyGraph, "C");
+
+    graph.transitiveReduction();
+    graph.writeGraphviz(assemblyGraph, "D");
 }
 
 
@@ -1030,4 +1033,84 @@ void Graph::removeWeakEdges()
     for(const edge_descriptor e: edgesToBeRemoved) {
         boost::remove_edge(e, graph);
     }
+}
+
+
+
+void Graph::transitiveReduction()
+{
+    Graph& graph = *this;
+
+    // Gather all edges. They will be processed in this order.
+    // It may be better to use a better ordering.
+    vector<edge_descriptor> allEdges;
+    BGL_FORALL_EDGES(e, graph, Graph) {
+        allEdges.push_back(e);
+    }
+
+    // Transitive reduction.
+    for(const edge_descriptor e: allEdges) {
+        if(transitiveReductionCanRemove(e)) {
+            boost::remove_edge(e, graph);
+        }
+    }
+
+}
+
+
+
+bool Graph::transitiveReductionCanRemove(edge_descriptor e) const
+{
+    const Graph& graph = *this;
+    const vertex_descriptor v0 = source(e, graph);
+    const vertex_descriptor v1 = target(e, graph);
+
+    // Do a forward BFS starting at v0.
+    // If we encounter v1, return true.
+    std::queue<vertex_descriptor> q;
+    q.push(v0);
+
+    // A map to store vertices already encountered and their distance from v0.
+    std::map<vertex_descriptor, uint64_t> m;
+    m.insert(make_pair(v0, 0));
+
+
+
+    // Main BFS loop.
+    while(not q.empty()) {
+
+        // Dequeue a vertex.
+        const vertex_descriptor vA = q.front();
+        q.pop();
+        const auto itA = m.find(vA);
+        SHASTA2_ASSERT(itA != m.end());
+        const uint64_t distanceA = itA->second;
+        const uint64_t distanceB = distanceA + 1;
+
+        // Loop over its out-edges, without using edge e.
+        BGL_FORALL_OUTEDGES(vA, eAB, graph, Graph) {
+            if(eAB == e) {
+                continue;
+            }
+
+            // If we reached v1, return true;
+            const vertex_descriptor vB = target(eAB, graph);
+            if(vB == v1) {
+                return true;
+            }
+
+            // If we already encountered vB, don't do anything.
+            if(m.contains(vB)) {
+                continue;
+            }
+
+            if(distanceB < transitiveReductionMaxDistance) {
+                q.push(vB);
+                m.insert(make_pair(vB, distanceB));
+            }
+        }
+    }
+
+    // If getting here we did not encounter v1 in the BFS loop.
+    return false;
 }
