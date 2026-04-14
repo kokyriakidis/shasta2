@@ -251,11 +251,6 @@ public:
         ) const;
     void findAndWriteShortestPath(Segment, uint64_t direction) const; // Python callable
 
-
-    void findAssemblyPaths(vector< vector<Segment> >& assemblyPaths) const;
-    void writeAssemblyPaths(const vector< vector<Segment> >& assemblyPaths) const;
-    void findAndWriteAssemblyPaths() const;
-
     // Initial and final support for each Segment.
     std::map<Segment, vector<SegmentStepSupport> > initialSupportMap;
     std::map<Segment, vector<SegmentStepSupport> > finalSupportMap;

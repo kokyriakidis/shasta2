@@ -202,8 +202,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
     class_<ReadFollowing4::ReadFollower>(shasta2Module, "ReadFollower")
         .def(pybind11::init<const AssemblyGraph&>())
         .def("findAndWriteShortestPath", &ReadFollowing4::ReadFollower::findAndWriteShortestPath)
-        .def("findAndWriteAssemblyPaths", &ReadFollowing4::ReadFollower::findAndWriteAssemblyPaths)
-        ;
+         ;
 
     // Class ExternalAnchors.
     class_<ExternalAnchors>(shasta2Module, "ExternalAnchors")

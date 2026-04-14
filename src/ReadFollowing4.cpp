@@ -856,29 +856,6 @@ void SearchGraph::createVertexIndexMap()
 
 
 
-
-void ReadFollower::findAndWriteAssemblyPaths() const
-{
-    vector< vector<Segment> > assemblyPaths;
-    findAssemblyPaths(assemblyPaths);
-    writeAssemblyPaths(assemblyPaths);
-}
-
-
-
-void ReadFollower::writeAssemblyPaths(const vector< vector<Segment> >&) const
-{
-
-}
-
-
-
-void ReadFollower::findAssemblyPaths(vector< vector<Segment> >&) const
-{
-}
-
-
-
 SearchGraphEdge::SearchGraphEdge(
     uint64_t commonCount,
     uint64_t missingCount0,
@@ -1127,7 +1104,7 @@ vector<Segment> Graph::getAssemblyPath(edge_descriptor e) const
     const vertex_descriptor v0 = source(e, graph);
     const vertex_descriptor v1 = target(e, graph);
     const Segment segment0 = graph[v0].segment;
-    const Segment segment1 = graph[v0].segment;
+    const Segment segment1 = graph[v1].segment;
 
     // If both assemblyPaths are non-trivial, return the longer one.
     const uint64_t length0 = edge.assemblyPaths[0].size();
