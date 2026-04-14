@@ -548,10 +548,11 @@ void Graph::writeGraphviz(
         dot << " [";
 
         // Label.
-        dot <<
-            "label=\"" << assemblyGraphEdge.id << "\\n" <<
-            vertex.length << "\\n" <<
-            "\"";
+        dot << "label=\"" << assemblyGraphEdge.id << "\\n" << vertex.length;
+        if(not assemblyGraphEdge.annotation.empty()) {
+            dot << "\\n" << assemblyGraphEdge.annotation;
+        }
+        dot << "\"";
 
         // End attributes.
         dot << "]";
@@ -1113,4 +1114,46 @@ bool Graph::transitiveReductionCanRemove(edge_descriptor e) const
 
     // If getting here we did not encounter v1 in the BFS loop.
     return false;
+}
+
+
+
+// Get the assembly path to be used for this edge.
+// This includes the source and target Segment.
+vector<Segment> Graph::getAssemblyPath(edge_descriptor e) const
+{
+    const Graph& graph = *this;
+    const GraphEdge& edge = graph[e];
+    const vertex_descriptor v0 = source(e, graph);
+    const vertex_descriptor v1 = target(e, graph);
+    const Segment segment0 = graph[v0].segment;
+    const Segment segment1 = graph[v0].segment;
+
+    // If both assemblyPaths are non-trivial, return the longer one.
+    const uint64_t length0 = edge.assemblyPaths[0].size();
+    const uint64_t length1 = edge.assemblyPaths[1].size();
+    if((length0 > 2) and (length1 > 2)) {
+        if(length0 > length1) {
+            return edge.assemblyPaths[0];
+        } else {
+            return edge.assemblyPaths[1];
+        }
+    }
+
+    // If the DirectConnectInformation exists and is bidirectional,
+    // return an assembly path consisting of just the source and target segments.
+    if(edge.hasDirectConnection() and edge.directConnectionType() == GraphEdge::DirectConnectionType::Bidirectional) {
+        return {segment0, segment1};
+    }
+
+    // If one of the assembly paths is non-trivial, return it.
+    if(length0 > 2) {
+        return edge.assemblyPaths[0];
+    }
+    if(length1 > 2) {
+        return edge.assemblyPaths[1];
+    }
+
+    // In all other cases, return an assembly path consisting of just the source and target segments.
+    return {segment0, segment1};
 }

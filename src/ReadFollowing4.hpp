@@ -196,7 +196,6 @@ public:
     // for each direction.
     array<vector<Segment>, 2> assemblyPaths;
 
-
 };
 
 
@@ -221,6 +220,8 @@ public:
     // Transitive reduction.
     void transitiveReduction();
     bool transitiveReductionCanRemove(edge_descriptor) const;
+
+    vector<Segment> getAssemblyPath(edge_descriptor) const;
 
 
 };
