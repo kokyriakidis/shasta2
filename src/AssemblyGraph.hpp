@@ -358,6 +358,7 @@ public:
     uint64_t findAndConnectAssemblyPaths(
         vector< std::list<edge_descriptor> >& linearChains);
     void findAndConnectAndCompressAssemblyPaths();
+    void readFollowing();
 
 
 

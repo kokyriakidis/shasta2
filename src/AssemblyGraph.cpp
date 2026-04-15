@@ -18,6 +18,7 @@
 #include "longestPath.hpp"
 #include "Options.hpp"
 #include "performanceLog.hpp"
+#include "ReadFollowing4.hpp"
 #include "RestrictedAnchorGraph.hpp"
 #include "SegmentStepSupport.hpp"
 #include "Superbubble.hpp"
@@ -163,21 +164,10 @@ void AssemblyGraph::simplifyAndAssemble()
     phaseSuperbubbleChains();
     writeIntermediateStageIfRequested("C");
 
-
-
     // Read following.
-    // Each assembly path generates a new linear chain of edges,
-    // which is left in an uncompressed state.
-    vector< std::list<edge_descriptor> > linearChains;
-    findAndConnectAssemblyPaths(linearChains);
+    readFollowing();
     writeIntermediateStageIfRequested("D");
-
-    // Compress only the linear chains found by read following.
-    compressDebugLevel = 1;
-    for(const auto& linearChain: linearChains) {
-        compressLinearChain(linearChain);
-    }
-    compressDebugLevel = 0;
+    compress();
     writeIntermediateStageIfRequested("E");
 
     // Prune.
@@ -2706,4 +2696,12 @@ void AssemblyGraph::setAnnotation(edge_descriptor e, const string& annotation)
 {
     AssemblyGraph& assemblyGraph = *this;
     assemblyGraph[e].annotation = annotation;
+}
+
+
+
+void AssemblyGraph::readFollowing()
+{
+    ReadFollowing4::ReadFollower readFollower(*this);
+    readFollower.updateAssemblyGraph(*this);
 }
