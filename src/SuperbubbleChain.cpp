@@ -225,7 +225,12 @@ uint64_t SuperbubbleChain::phase1(
 
 
             // If getting here, add the PhasingGraph edge.
-            phasingGraph.addEdge(position0, position1, bestHypothesis);
+            double deltaG = std::numeric_limits<double>::max();
+            if(gTest.hypotheses.size() > 1) {
+                const double secondBestG = gTest.hypotheses[1].G;
+                deltaG = secondBestG - bestG;
+            }
+            phasingGraph.addEdge(position0, position1, bestHypothesis, bestG, deltaG);
 
             if(debug) {
                 cout << "Added edge " << position0 << " " << position1 << endl;

@@ -12,6 +12,7 @@ using namespace shasta2;
 // Standard library.
 #include "algorithm.hpp"
 #include "fstream.hpp"
+#include <iomanip>
 
 
 
@@ -35,7 +36,9 @@ void PhasingGraph::addVertex(uint64_t position)
 void PhasingGraph::addEdge(
     uint64_t position0,
     uint64_t position1,
-    const GTest::Hypothesis& bestHypothesis)
+    const GTest::Hypothesis& bestHypothesis,
+    double bestG,
+    double deltaG)
 {
     SHASTA2_ASSERT(position0 < vertexTable.size());
     const vertex_descriptor v0 = vertexTable[position0];
@@ -45,7 +48,7 @@ void PhasingGraph::addEdge(
     const vertex_descriptor v1 = vertexTable[position1];
     SHASTA2_ASSERT(v1 != null_vertex());
 
-    boost::add_edge(v0, v1, PhasingGraphEdge(bestHypothesis), *this);
+    boost::add_edge(v0, v1, PhasingGraphEdge(bestHypothesis, bestG, deltaG), *this);
 }
 
 
@@ -67,16 +70,21 @@ void PhasingGraph::writeGraphviz(const string& fileName) const
             " style=filled fillcolor=\"" << color << "\"];\n";
     }
 
+    dot << std::fixed << std::setprecision(1);
     BGL_FORALL_EDGES(e, phasingGraph, PhasingGraph) {
+        const PhasingGraphEdge& edge = phasingGraph[e];
         const vertex_descriptor v0 = source(e, phasingGraph);
         const vertex_descriptor v1 = target(e, phasingGraph);
 
         dot << phasingGraph[v0].position << "->";
         dot << phasingGraph[v1].position;
+
+        dot << "[tooltip=\"" << edge.bestG << "/" << edge.deltaG << "\"";
+
         if(phasingGraph[e].isShortestPathEdge) {
-            dot << " [color=DarkOrange]";
+            dot << "  color=DarkOrange";
         }
-        dot << ";\n";
+        dot << "];\n";
     }
 
     dot << "}\n";

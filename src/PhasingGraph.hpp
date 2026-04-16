@@ -63,9 +63,14 @@ class shasta2::PhasingGraphEdge {
 public:
     bool isShortestPathEdge = false;
     GTest::Hypothesis bestHypothesis;
+    double bestG;
+    double deltaG;
 
-    PhasingGraphEdge(const GTest::Hypothesis& bestHypothesis) :
-        bestHypothesis(bestHypothesis) {}
+    PhasingGraphEdge(const GTest::Hypothesis& bestHypothesis, double bestG, double deltaG) :
+        bestHypothesis(bestHypothesis),
+        bestG(bestG),
+        deltaG(deltaG)
+    {}
 };
 
 
@@ -77,7 +82,9 @@ public:
     void addEdge(
         uint64_t position0,
         uint64_t position1,
-        const GTest::Hypothesis& bestHypothesis);
+        const GTest::Hypothesis& bestHypothesis,
+        double bestG,
+        double deltaG);
 
     // Remove low degree vertices and return the number of such vertices that were removed.
     uint64_t removeLowDegreeVertices(uint64_t minDegree);
