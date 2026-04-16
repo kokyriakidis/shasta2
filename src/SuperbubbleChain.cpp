@@ -99,7 +99,7 @@ uint64_t SuperbubbleChain::phase1(
             const GTest gTest(
                 tangleMatrix.tangleMatrix,
                 assemblyGraph.options.detangleEpsilon,
-                true, true);
+                false, false);
             if(not gTest.success) {
                 if(debug) {
                     cout << "Likelihood ratio test was not successful." << endl;
