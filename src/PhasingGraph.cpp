@@ -81,6 +81,8 @@ void PhasingGraph::writeGraphviz(const string& fileName) const
 
         dot << "[tooltip=\"" << edge.bestG << "/" << edge.deltaG << "\"";
 
+        dot << " penwidth=" << 0.1 + 0.01 * edge.deltaG;
+
         if(phasingGraph[e].isShortestPathEdge) {
             dot << "  color=DarkOrange";
         }
