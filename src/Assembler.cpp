@@ -270,6 +270,17 @@ void Assembler::createCompleteAnchorGraph()
 
 
 
+void Assembler::createAnchorSimilarityGraph(const Options& options)
+{
+    anchorSimilarityGraphPointer = make_shared<AnchorGraph>(
+        anchors(), journeys(),
+        options.minAnchorGraphEdgeCoverage,
+        AnchorGraph::UseSimilarity());
+    anchorSimilarityGraphPointer->save("AnchorSimilarityGraph");
+}
+
+
+
 void Assembler::createAssemblyGraph(const Options& options)
 {
     writePerformanceStatistics("Assembler::createAssemblyGraph begins");
@@ -314,6 +325,14 @@ void Assembler::accessCompleteAnchorGraph()
 {
     const MappedMemoryOwner& mappedMemoryOwner = *this;
     completeAnchorGraphPointer = make_shared<AnchorGraph>(mappedMemoryOwner, "CompleteAnchorGraph");
+}
+
+
+
+void Assembler::accessAnchorSimilarityGraph()
+{
+    const MappedMemoryOwner& mappedMemoryOwner = *this;
+    anchorSimilarityGraphPointer = make_shared<AnchorGraph>(mappedMemoryOwner, "AnchorSimilarityGraph");
 }
 
 

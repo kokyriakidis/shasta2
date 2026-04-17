@@ -224,6 +224,14 @@ public:
     void createCompleteAnchorGraph();
     void accessCompleteAnchorGraph();
 
+    // The anchorSimilarityGraph is another AnchorGraph,
+    // in which an edge between two anchors is created if the
+    // oriented read compositions of the two anchors are
+    // sufficiently similar.
+    shared_ptr<AnchorGraph> anchorSimilarityGraphPointer;
+    void createAnchorSimilarityGraph(const Options&);
+    void accessAnchorSimilarityGraph();
+
 
 
     // AssemblyGraph.

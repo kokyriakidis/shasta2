@@ -288,3 +288,21 @@ bool AnchorGraph::transitiveReductionCanRemove(
     return false;
 }
 
+
+
+// Constructor to create an anchor similarity graph,
+// in which an edge between two anchors is created if the
+// oriented read compositions of the two anchors are
+// sufficiently similar.
+AnchorGraph::AnchorGraph(
+    const Anchors& anchors,
+    const Journeys&,
+    [[maybe_unused]] uint64_t minEdgeCoverage,
+    const UseSimilarity&) :
+    MappedMemoryOwner(anchors),
+    MultithreadedObject<AnchorGraph>(*this)
+{
+    SHASTA2_ASSERT(0);
+}
+
+

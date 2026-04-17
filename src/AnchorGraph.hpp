@@ -77,6 +77,13 @@ public:
     // Only include edges with at least the specified minCoverage.
     AnchorGraph(const Anchors&, const Journeys&, uint64_t minEdgeCoverage);
 
+    // Constructor to create an anchor similarity graph,
+    // in which an edge between two anchors is created if the
+    // oriented read compositions of the two anchors are
+    // sufficiently similar.
+    class UseSimilarity{};
+    AnchorGraph(const Anchors&, const Journeys&, uint64_t minEdgeCoverage, const UseSimilarity&);
+
     // Constructor from binary data.
     AnchorGraph(const MappedMemoryOwner&, const string& name);
 
