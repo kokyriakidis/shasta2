@@ -207,6 +207,10 @@ template<class Graph> typename Graph::vertex_descriptor shasta2::findConvergingV
         BGL_FORALL_INEDGES_T(lv1, e, localGraph, LocalGraph){
             const LocalVertexDescriptor lv0 = source(e, localGraph);
             localVertex1.flow += localGraph[lv0].flow / out_degree(lv0, localGraph);
+            // Give up if necessary, to avoid Rational overflow.
+            if(localVertex1.flow.denominator() > 1000000000) {
+                return Graph::null_vertex();
+            }
         }
     }
 
@@ -317,6 +321,10 @@ template<class Graph> typename Graph::vertex_descriptor shasta2::findConvergingV
         BGL_FORALL_INEDGES_T(vC1, e, condensedGraph, CondensedGraph){
             const VC vC0 = source(e, condensedGraph);
             condensedGraphVertex1.flow += condensedGraph[vC0].flow / out_degree(vC0, condensedGraph);
+            // Give up if necessary, to avoid Rational overflow.
+            if(condensedGraphVertex1.flow.denominator() > 1000000000) {
+                return Graph::null_vertex();
+            }
         }
     }
 
