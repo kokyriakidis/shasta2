@@ -2,6 +2,8 @@
 #include "AnchorGraph.hpp"
 #include "Anchor.hpp"
 #include "AnchorPair.hpp"
+#include "deduplicate.hpp"
+#include "Journeys.hpp"
 #include "Markers.hpp"
 #include "orderPairs.hpp"
 #include "performanceLog.hpp"
@@ -296,13 +298,101 @@ bool AnchorGraph::transitiveReductionCanRemove(
 // sufficiently similar.
 AnchorGraph::AnchorGraph(
     const Anchors& anchors,
-    const Journeys&,
-    [[maybe_unused]] uint64_t minEdgeCoverage,
+    const Journeys& journeys,
+    uint64_t minEdgeCoverage,
     const UseSimilarity&) :
     MappedMemoryOwner(anchors),
     MultithreadedObject<AnchorGraph>(*this)
 {
-    SHASTA2_ASSERT(0);
+    // EXPOSE WHEN CODE STABILIZES.
+    const double a = 3.;
+    const double b = 10.;
+    const double minLogP = 0.;
+    const uint64_t m = 10;
+
+    AnchorGraph& anchorGraph = *this;
+
+    // Create the vertices, one for each AnchorId.
+    // In the AnchorGraph, vertex_descriptors are AnchorIds.
+    const uint64_t anchorCount = anchors.size();
+    for(AnchorId anchorId=0; anchorId<anchorCount; anchorId++) {
+        add_vertex(anchorGraph);
+    }
+
+
+    class EdgeCandidate {
+    public:
+        AnchorPair anchorPair;
+        AnchorPairInfo anchorPairInfo;
+        uint64_t offset;
+        double logP = invalid<double>;
+        EdgeCandidate(const Anchors& anchors, AnchorId anchorIdA, AnchorId anchorIdB) :
+            anchorPair(anchors, anchorIdA, anchorIdB, false)
+        {
+            offset = anchorPair.getAverageOffset(anchors);
+            anchors.analyzeAnchorPair(anchorIdA, anchorIdB, anchorPairInfo);
+        }
+        bool operator<(const EdgeCandidate& that) const
+        {
+            return logP > that.logP;
+        }
+    };
+
+    // Loop over possible source vertices to create edges.
+    vector<AnchorId> anchorIds;
+    vector<uint64_t> count;
+    AnchorPairInfo anchorPairInfo;
+    vector<EdgeCandidate> edgeCandidates;
+    for(AnchorId anchorIdA=0; anchorIdA<anchorCount; anchorIdA++) {
+        const Anchor anchorA = anchors[anchorIdA];
+
+        // Loop over OrientedReadIds in this anchor.
+        // For each OrientedReadId, gather the AnchorIds
+        // in the journey portion beginning here.
+        anchorIds.clear();
+        for(const AnchorMarkerInfo& anchorMarkerInfo: anchorA) {
+            const OrientedReadId orientedReadId = anchorMarkerInfo.orientedReadId;
+            const Journey journey = journeys[orientedReadId];
+            const uint32_t positionInJourneyA = anchorMarkerInfo.positionInJourney;
+
+            // Gather the AnchorIds seen by this OrientedRead after anchorIdA.
+            for(uint32_t positionInJourney=positionInJourneyA+1; positionInJourney<journey.size(); positionInJourney++) {
+                anchorIds.push_back(journey[positionInJourney]);
+            }
+        }
+        deduplicateAndCountWithThreshold(anchorIds, count, minEdgeCoverage);
+
+        // For each of these AnchorIds that meets out requirements, create an EdgeCandidate.
+        edgeCandidates.clear();
+        for(const AnchorId anchorIdB: anchorIds) {
+            EdgeCandidate& edgeCandidate = edgeCandidates.emplace_back(anchors, anchorIdA, anchorIdB);
+            const AnchorPairInfo& info = edgeCandidate.anchorPairInfo;
+            if(info.common < minEdgeCoverage) {
+                edgeCandidates.pop_back();
+                continue;
+            }
+            const uint64_t missing = info.onlyA + info.onlyB - info.onlyAShort - info.onlyBShort;
+            edgeCandidate.logP = a * double(info.common) - b * double(missing);
+            if(edgeCandidate.logP < minLogP)  {
+                edgeCandidates.pop_back();
+                continue;
+            }
+        }
+
+        // Sort the edge candidates by decreasing logP.
+        // Keep the m ones with the greatest logP.
+        sort(edgeCandidates.begin(), edgeCandidates.end());
+        for(uint64_t i=0; i<min(m, edgeCandidates.size()); i++) {
+            const EdgeCandidate& edgeCandidate = edgeCandidates[i];
+            edge_descriptor e;
+            tie(e, ignore) = add_edge(edgeCandidate.anchorPair.anchorIdA, edgeCandidate.anchorPair.anchorIdB,
+                AnchorGraphEdge(edgeCandidate.anchorPair, edgeCandidate.offset, nextEdgeId++), anchorGraph);
+            anchorGraph[e].useForAssembly = true;
+        }
+    }
+
+    cout << "The anchor similarity graph has " << num_vertices(*this) <<
+        " vertices and " << num_edges(*this) << " edges." << endl;
 }
 
 
