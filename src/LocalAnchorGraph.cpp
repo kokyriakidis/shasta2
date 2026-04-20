@@ -909,8 +909,15 @@ void LocalAnchorGraph::writeVertices(
                     // By corrected Jaccard similarity.
                     hue = info.correctedJaccard();
                 }
-                color = "hsl(" + to_string(uint32_t(std::round(hue * 120.))) +
-                    ",100%,50%)";
+
+                if(info.common == 0) {
+                    color = "Black";
+                } else if(info.common == 1) {
+                    color = "Grey";
+                } else {
+                    color = "hsl(" + to_string(uint32_t(std::round(hue * 120.))) +
+                        ",100%,50%)";
+                }
 
             }
         } else if(options.vertexColoring == "byAssemblyAnnotations") {
