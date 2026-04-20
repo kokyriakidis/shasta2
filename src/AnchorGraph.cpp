@@ -305,10 +305,10 @@ AnchorGraph::AnchorGraph(
     MultithreadedObject<AnchorGraph>(*this)
 {
     // EXPOSE WHEN CODE STABILIZES.
-    const double a = 3.;
-    const double b = 10.;
+    const double a = 1.;
+    const double b = 1.;
     const double minLogP = 0.;
-    const uint64_t m = 10;
+    const uint64_t m = 100;
 
     AnchorGraph& anchorGraph = *this;
 
@@ -346,6 +346,8 @@ AnchorGraph::AnchorGraph(
     for(AnchorId anchorIdA=0; anchorIdA<anchorCount; anchorIdA++) {
         const Anchor anchorA = anchors[anchorIdA];
 
+        const bool debug = anchorIdToString(anchorIdA) == "436-";
+
         // Loop over OrientedReadIds in this anchor.
         // For each OrientedReadId, gather the AnchorIds
         // in the journey portion beginning here.
@@ -367,16 +369,28 @@ AnchorGraph::AnchorGraph(
         for(const AnchorId anchorIdB: anchorIds) {
             EdgeCandidate& edgeCandidate = edgeCandidates.emplace_back(anchors, anchorIdA, anchorIdB);
             const AnchorPairInfo& info = edgeCandidate.anchorPairInfo;
+            if(debug) {
+                cout << anchorIdToString(anchorIdA) << " " << anchorIdToString(anchorIdB) << " " << info.common << endl;
+            }
             if(info.common < minEdgeCoverage) {
+                if(debug) {
+                    cout << "Skipped due to low commonCount." << endl;
+                }
                 edgeCandidates.pop_back();
                 continue;
             }
             const uint64_t missing = info.onlyA + info.onlyB - info.onlyAShort - info.onlyBShort;
             edgeCandidate.logP = a * double(info.common) - b * double(missing);
+            if(debug) {
+                cout << "Common " << info.common << ", missing " << missing << ", logP " << edgeCandidate.logP << endl;
+            }
             if(edgeCandidate.logP < minLogP)  {
                 edgeCandidates.pop_back();
                 continue;
             }
+        }
+        if(debug) {
+            cout << edgeCandidates.size() << " edge candidates for " << anchorIdToString(anchorIdA) << endl;
         }
 
         // Sort the edge candidates by decreasing logP.
