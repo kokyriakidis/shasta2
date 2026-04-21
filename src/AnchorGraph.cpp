@@ -456,7 +456,8 @@ AnchorGraph::Subgraph::Subgraph(
     const Anchors& anchors,
     const AnchorGraph& anchorGraph,
     AnchorId anchorIdStart,
-    uint64_t direction)
+    uint64_t direction) :
+    direction(direction)
 {
     const bool debug = false;
     if(debug) {
@@ -470,8 +471,8 @@ AnchorGraph::Subgraph::Subgraph(
     q.push(anchorIdStart);
     std::set<AnchorId> visited;
     visited.insert(anchorIdStart);
-    vertexMap.insert(make_pair(anchorIdStart, add_vertex(
-        SubgraphVertex(anchorIdStart, anchors[anchorIdStart].size()), subgraph)));
+    vStart = add_vertex(SubgraphVertex(anchorIdStart, anchors[anchorIdStart].size()), subgraph);
+    vertexMap.insert(make_pair(anchorIdStart, vStart));
 
     // Main BFS loop.
     while(not q.empty()) {
@@ -593,6 +594,7 @@ void AnchorGraph::Subgraph::writeGraphviz(const string& fileName, const Anchors&
 void AnchorGraph::Subgraph::writeGraphviz(ostream& dot, const Anchors& anchors) const
 {
     const Subgraph& subgraph = *this;
+    const uint64_t startAnchorIdCoverage = anchors[subgraph[vStart].anchorId].size();
 
     // For better display, write the edges in rank order.
     vector< pair<vertex_descriptor, uint64_t> > sortedVertices;
@@ -601,6 +603,9 @@ void AnchorGraph::Subgraph::writeGraphviz(ostream& dot, const Anchors& anchors) 
         sortedVertices.push_back(make_pair(v, vertex.rank));
     }
     sort(sortedVertices.begin(), sortedVertices.end(), OrderPairsBySecondOnly<vertex_descriptor, uint64_t>());
+
+
+
 
     dot << "digraph S {\n";
     for(const auto& [v, ignore]: sortedVertices) {
@@ -613,9 +618,28 @@ void AnchorGraph::Subgraph::writeGraphviz(ostream& dot, const Anchors& anchors) 
             "\\nCommon " << vertex.commonCount <<
             "\\nRank " << vertex.rank <<
             "\"";
+
+        string color;
+        if(v == vStart) {
+            color = "LightBlue";
+        } else {
+            if(vertex.commonCount == 1) {
+                color = "Grey";
+            } else if(vertex.commonCount == 2) {
+                color = "LightGrey";
+            } else {
+                const double hue = double(vertex.commonCount) / double(startAnchorIdCoverage);
+                color = "\"" + to_string(hue / 3.) + " 1 1\"";
+            }
+        }
+        dot << " style=filled fillcolor=" << color;
+
         dot << "]";
         dot << ";\n";
     }
+
+
+
     BGL_FORALL_EDGES(e, subgraph, Subgraph) {
         const SubgraphEdge& edge = subgraph[e];
         const vertex_descriptor v0 = source(e, subgraph);

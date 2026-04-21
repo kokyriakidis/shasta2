@@ -131,6 +131,8 @@ public:
             const AnchorGraph& anchorGraph,
             AnchorId,
             uint64_t direction);
+        vertex_descriptor vStart;
+        uint64_t direction;
         std::map<AnchorId, vertex_descriptor> vertexMap;
         void approximateTopologicalSort();
         void writeGraphviz(const string& fileName, const Anchors&) const;
