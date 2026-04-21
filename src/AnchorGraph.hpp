@@ -134,7 +134,12 @@ public:
         vertex_descriptor vStart;
         uint64_t direction;
         std::map<AnchorId, vertex_descriptor> vertexMap;
+
         void approximateTopologicalSort();
+
+        // Recursively prune leafs with commonCount less than minLeafCommonCount.
+        void prune(uint64_t);
+
         void writeGraphviz(const string& fileName, const Anchors&) const;
         void writeGraphviz(ostream&, const Anchors&) const;
         void writeHtml(ostream&, const Anchors&) const;

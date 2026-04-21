@@ -599,6 +599,9 @@ void AnchorGraph::Subgraph::writeGraphviz(ostream& dot, const Anchors& anchors) 
     // For better display, write the edges in rank order.
     vector< pair<vertex_descriptor, uint64_t> > sortedVertices;
     BGL_FORALL_VERTICES(v, subgraph, Subgraph) {
+        if((v != vStart) and (out_degree(v, subgraph) == 0) and (in_degree(v, subgraph) == 0)) {
+            continue;
+        }
         const SubgraphVertex& vertex = subgraph[v];
         sortedVertices.push_back(make_pair(v, vertex.rank));
     }
@@ -666,6 +669,9 @@ void AnchorGraph::Subgraph::writeGraphviz(ostream& dot, const Anchors& anchors) 
 
 void AnchorGraph::Subgraph::writeHtml(ostream& html, const Anchors& anchors) const
 {
+    html << "The subgraph has " << num_vertices(*this) << " vertices and " <<
+        num_edges(*this) << " edges.<br>";
+
     // Write it in graphviz format.
     const string uuid = to_string(boost::uuids::random_generator()());
     const string dotFileName = tmpDirectory() + uuid + ".dot";
@@ -684,3 +690,86 @@ void AnchorGraph::Subgraph::writeHtml(ostream& html, const Anchors& anchors) con
 
 }
 
+
+
+// Recursively prune leafs with commonCount less than minLeafCommonCount.
+void AnchorGraph::Subgraph::prune(uint64_t minLeafCommonCount)
+{
+    const bool debug = false;
+    Subgraph& subgraph = *this;
+
+    // Gather the low coverage leafs that currently exist.
+    std::set<vertex_descriptor> leaves;
+    BGL_FORALL_VERTICES(v, subgraph, Subgraph) {
+        if(subgraph[v].commonCount < minLeafCommonCount) {
+            const bool isLeaf =
+                ((direction == 0) and (out_degree(v, subgraph) == 0))
+                or
+                ((direction == 1) and (in_degree(v, subgraph) == 0));
+            if(isLeaf) {
+                leaves.insert(v);
+            }
+        }
+    }
+
+    if(debug) {
+        cout << "Initial leaves:";
+        for(const vertex_descriptor v: leaves) {
+            cout << " " << anchorIdToString(subgraph[v].anchorId);
+        }
+    }
+    cout << endl;
+
+
+
+    // Remove leaves, updating the set of currently existing leaves.
+    while(not leaves.empty()) {
+        const auto it = leaves.begin();
+        const vertex_descriptor v0 = *it;
+        leaves.erase(it);
+
+        if(debug) {
+            cout << "Working on leaf " << anchorIdToString(subgraph[v0].anchorId) << endl;
+        }
+
+        // Update the set before removing it.
+        if(direction == 0) {
+            BGL_FORALL_INEDGES(v0, e, subgraph, Subgraph) {
+                const vertex_descriptor v1 = source(e, subgraph);
+                if(subgraph[v1].commonCount < minLeafCommonCount) {
+                    const uint64_t currentOutDegree = out_degree(v1, subgraph);
+                    const uint64_t outDegreeAfterRemoval = currentOutDegree - 1;
+                    if(outDegreeAfterRemoval == 0) {
+                        leaves.insert(v1);
+                        if(debug) {
+                            cout << "Adding " << anchorIdToString(subgraph[v1].anchorId) << " to set of leaves." << endl;
+                        }
+                    }
+                }
+            }
+        } else {
+            BGL_FORALL_OUTEDGES(v0, e, subgraph, Subgraph) {
+                const vertex_descriptor v1 = target(e, subgraph);
+                if(subgraph[v1].commonCount < minLeafCommonCount) {
+                    const uint64_t currentInDegree = in_degree(v1, subgraph);
+                    const uint64_t inDegreeAfterRemoval = currentInDegree - 1;
+                    if(inDegreeAfterRemoval == 0) {
+                        leaves.insert(v1);
+                        if(debug) {
+                            cout << "Adding " << anchorIdToString(subgraph[v1].anchorId) << " to set of leaves." << endl;
+                        }
+                    }
+                }
+            }
+
+        }
+
+        // Now we can remove this low coverage leaf.
+        // We can't remove the vertex because that would invalidate all vertex descriptors
+        // (because we use vecS for the Subgraph).
+        if(debug) {
+            cout << "Removing " << anchorIdToString(subgraph[v0].anchorId) << endl;
+        }
+        boost::clear_vertex(v0, subgraph);
+    }
+}

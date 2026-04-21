@@ -710,11 +710,14 @@ void Assembler::exploreAnchorGraphSubgraph(
     string directionString = "forward";
     HttpServer::getParameterValue(request, "direction", directionString);
 
+    uint64_t minLeafCommonCount = 3;
+    HttpServer::getParameterValue(request, "minLeafCommonCount", minLeafCommonCount);
+
 
     // Start the form.
     html << "<form><table>";
 
-    // Startign AnchorId.
+    // Starting AnchorId.
     html <<
         "<tr>"
         "<th class=left>Starting anchor id"
@@ -725,7 +728,7 @@ void Assembler::exploreAnchorGraphSubgraph(
     }
     html << ">";
 
-    // Direction,
+    // Direction.
     html <<
         "<tr>"
         "<th>Direction"
@@ -737,6 +740,13 @@ void Assembler::exploreAnchorGraphSubgraph(
         "<input type=radio required name=direction value='backward'" <<
         (directionString == "backward" ? " checked=on" : "") <<
         ">Backward";
+
+    // minLeafCommonCount.
+    html <<
+        "<tr>"
+        "<th>Min leaf common count<br>(for pruning)"
+        "<td class=centered>"
+        "<input type=text name=minLeafCommonCount style='text-align:center' value=" << minLeafCommonCount << ">";
 
     // End the form.
     html <<
@@ -779,10 +789,13 @@ void Assembler::exploreAnchorGraphSubgraph(
 
     // Create the Subgraph.
     AnchorGraph::Subgraph subgraph(anchors(), *completeAnchorGraphPointer, anchorId, direction);
-    html << "<br>The subgraph has " << num_vertices(subgraph) <<
-        " vertices and " << num_edges(subgraph) << " edges." << endl;
 
     // Display it.
+    html << "<h3>Subgraph before pruning</h3>";
+    subgraph.writeHtml(html, anchors());
+
+    subgraph.prune(minLeafCommonCount);
+    html << "<h3>Subgraph after pruning</h3>";
     subgraph.writeHtml(html, anchors());
 }
 
