@@ -496,7 +496,11 @@ AnchorGraph::Subgraph::Subgraph(
             if(debug) {
                 cout << "Found " << anchorIdToString(anchorId1) << endl;
             }
-            const uint64_t commonCount = anchors.countCommon(anchorIdStart, anchorId1);
+            const uint64_t commonCount =
+                (direction == 0) ?
+                anchors.countCommon(anchorIdStart, anchorId1) :
+                anchors.countCommon(anchorId1, anchorIdStart);
+
             if(commonCount == 0) {
                 if(debug) {
                     cout << "No common oriented reads, discarded." << endl;
@@ -537,38 +541,6 @@ AnchorGraph::Subgraph::Subgraph(
 
     }
 
-    if(debug) {
-        cout << "The AnchorGraph::Subgraph for " << anchorIdToString(anchorIdStart) <<
-            " direction " << direction <<
-            " has " << num_vertices(subgraph) <<
-            " vertices and " << num_edges(subgraph) << " edges." << endl;
-
-        ofstream dot("Subgraph.dot");
-        dot << "digraph S {\n";
-        BGL_FORALL_VERTICES(v, subgraph, Subgraph) {
-            const AnchorId anchorId = subgraph[v].anchorId;
-            dot << "\"" << anchorIdToString(anchorId) << "\"";
-            dot << "[";
-            dot << "label=\"" << anchorIdToString(subgraph[v].anchorId) <<
-                "\\n" << anchors[anchorId].size() <<
-                "\"";
-            dot << "]";
-            dot << ";\n";
-        }
-        BGL_FORALL_EDGES(e, subgraph, Subgraph) {
-            const vertex_descriptor v0 = source(e, subgraph);
-            const vertex_descriptor v1 = target(e, subgraph);
-            dot <<
-                "\"" << anchorIdToString(subgraph[v0].anchorId) << "\""
-                "->"
-                "\"" << anchorIdToString(subgraph[v1].anchorId) << "\""
-                "["
-                "label=\"" << subgraph[e].commonCount << "\""
-                "]"
-                ";\n";
-        }
-        dot << "}\n";
-    }
 }
 
 
