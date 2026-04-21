@@ -102,13 +102,20 @@ public:
     // in common with anchorIdStart.
     class SubgraphVertex {
     public:
-        AnchorId anchorId;
-        SubgraphVertex(AnchorId anchorId = invalid<AnchorId>) : anchorId(anchorId) {}
+        AnchorId anchorId = invalid<AnchorId>;
+        uint64_t commonCount = invalid<uint64_t>;
+        SubgraphVertex(
+            AnchorId anchorId,
+            uint64_t commonCount) :
+            anchorId(anchorId),
+            commonCount(commonCount)
+        {}
+        SubgraphVertex() {}
     };
     class SubgraphEdge {
     public:
-        uint64_t commonCount;
-        SubgraphEdge(uint64_t commonCount) : commonCount(commonCount) {}
+        uint64_t coverage;
+        SubgraphEdge(uint64_t coverage) : coverage(coverage) {}
     };
 
     using SubgraphBaseClass = boost::adjacency_list<boost::listS, boost::vecS, boost::bidirectionalS,

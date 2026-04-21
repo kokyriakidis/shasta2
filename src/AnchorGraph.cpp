@@ -468,7 +468,8 @@ AnchorGraph::Subgraph::Subgraph(
     q.push(anchorIdStart);
     std::set<AnchorId> visited;
     visited.insert(anchorIdStart);
-    vertexMap.insert(make_pair(anchorIdStart, add_vertex(SubgraphVertex(anchorIdStart), subgraph)));
+    vertexMap.insert(make_pair(anchorIdStart, add_vertex(
+        SubgraphVertex(anchorIdStart, anchors[anchorIdStart].size()), subgraph)));
 
     // Main BFS loop.
     while(not q.empty()) {
@@ -514,21 +515,31 @@ AnchorGraph::Subgraph::Subgraph(
 
             auto it1 = vertexMap.find(anchorId1);
             if(it1 == vertexMap.end()) {
-                tie(it1, ignore) = vertexMap.insert(make_pair(anchorId1, add_vertex(SubgraphVertex(anchorId1), subgraph)));
+                tie(it1, ignore) = vertexMap.insert(make_pair(anchorId1,
+                    add_vertex(SubgraphVertex(anchorId1, commonCount), subgraph)));
             }
             const vertex_descriptor v1 = it1->second;
 
-            if(direction == 0) {
-                add_edge(v0, v1, SubgraphEdge(commonCount), subgraph);
-                if(debug) {
-                    cout << "Added edge " << anchorIdToString(anchorId0) << " " << anchorIdToString(anchorId1) << endl;
-                }
-            } else {
-                add_edge(v1, v0, SubgraphEdge(commonCount), subgraph);
-                if(debug) {
-                    cout << "Added edge " << anchorIdToString(anchorId1) << " " << anchorIdToString(anchorId0) << endl;
-                }
+
+            // Get vertex descriptors consistent with the direction.
+            vertex_descriptor u0 = v0;
+            vertex_descriptor u1 = v1;
+            if(direction == 1) {
+                std::swap(u0, u1);
             }
+
+            // Get the corresponding AnchorGraph edge.
+            AnchorGraph::edge_descriptor e;
+            bool edgeExists = false;
+            tie(e, edgeExists) = edge(subgraph[u0].anchorId, subgraph[u1].anchorId, anchorGraph);
+            SHASTA2_ASSERT(edgeExists);
+            const AnchorGraphEdge anchorGraphEdge = anchorGraph[e];
+
+            add_edge(u0, u1, SubgraphEdge(anchorGraphEdge.anchorPair.size()), subgraph);
+            if(debug) {
+                cout << "Added edge " << anchorIdToString(anchorId0) << " " << anchorIdToString(anchorId1) << endl;
+            }
+
             if(not visited.contains(anchorId1)) {
                 q.push(anchorId1);
                 visited.insert(anchorId1);
@@ -559,16 +570,19 @@ void AnchorGraph::Subgraph::writeGraphviz(ostream& dot, const Anchors& anchors) 
 
     dot << "digraph S {\n";
     BGL_FORALL_VERTICES(v, subgraph, Subgraph) {
-        const AnchorId anchorId = subgraph[v].anchorId;
+        const SubgraphVertex& vertex = subgraph[v];
+        const AnchorId anchorId = vertex.anchorId;
         dot << "\"" << anchorIdToString(anchorId) << "\"";
         dot << "[";
         dot << "label=\"" << anchorIdToString(subgraph[v].anchorId) <<
-            "\\n" << anchors[anchorId].size() <<
+            "\\nCoverage " << anchors[anchorId].size() <<
+            "\\nCommon " << vertex.commonCount <<
             "\"";
         dot << "]";
         dot << ";\n";
     }
     BGL_FORALL_EDGES(e, subgraph, Subgraph) {
+        const SubgraphEdge& edge = subgraph[e];
         const vertex_descriptor v0 = source(e, subgraph);
         const vertex_descriptor v1 = target(e, subgraph);
         dot <<
@@ -576,7 +590,8 @@ void AnchorGraph::Subgraph::writeGraphviz(ostream& dot, const Anchors& anchors) 
             "->"
             "\"" << anchorIdToString(subgraph[v1].anchorId) << "\""
             "["
-            "label=\"" << subgraph[e].commonCount << "\""
+            "label=\"" << subgraph[e].coverage << "\""
+            " penwidth=" << std::fixed << std::setprecision(2) << 0.3 * double(edge.coverage) <<
             "]"
             ";\n";
     }
