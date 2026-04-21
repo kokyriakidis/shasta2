@@ -193,6 +193,11 @@ void LocalAnchorGraph::writeGraphviz(
         const string anchorIdString = anchorIdToString(anchorId);
         const uint64_t coverage = anchors[anchorId].coverage();
 
+        AnchorPairInfo info;
+        if(options.vertexColoring == "byReadComposition") {
+            anchors.analyzeAnchorPair(referenceAnchorId, anchorId, info);
+        }
+
         // Get annotation information, if needed.
         bool hasVertexAnnotation = false;
         vector<AssemblyGraph::edge_descriptor> annotationEdges;
@@ -231,9 +236,17 @@ void LocalAnchorGraph::writeGraphviz(
 
         // Label.
         if(options.vertexLabels) {
-            s << " label=\"" << anchorIdString << "\\n" << coverage;
+            s << " label=\"" << anchorIdString << "\\nCoverage " << coverage;
             if(not annotationText.empty()) {
                 s << annotationText;
+            }
+            if((options.vertexColoring == "byReadComposition") and (info.common > 0)) {
+                s <<
+                    "\\nCommon " << info.common <<
+                    "\\nJ " <<
+                    std::fixed << std::setprecision(2) << info.jaccard() <<
+                    "\\nJ' " << info.correctedJaccard() <<
+                    "\\nOffset " << info.offsetInBases;
             }
             s << "\"";
         }
@@ -249,8 +262,6 @@ void LocalAnchorGraph::writeGraphviz(
 
             // Color by similarity of read composition with the reference Anchor.
             if(options.vertexColoring == "byReadComposition") {
-                AnchorPairInfo info;
-                anchors.analyzeAnchorPair(referenceAnchorId, anchorId, info);
 
                 double hue = 1.;    // 0=red, 1=green.
                 if(options.similarityMeasure == "commonCount") {
@@ -265,7 +276,13 @@ void LocalAnchorGraph::writeGraphviz(
                     hue = info.correctedJaccard();
                  }
 
-                const string colorString = "\"" + to_string(hue / 3.) + " 1 1\"";
+                string colorString = "\"" + to_string(hue / 3.) + " 1 1\"";
+                if(info.common == 0) {
+                    colorString = "Grey";
+                }
+                if(info.common == 1) {
+                    colorString = "LightGrey";
+                }
                 if(options.vertexLabels) {
                     s << " style=filled fillcolor=" << colorString;
                 } else {
