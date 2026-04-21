@@ -81,9 +81,53 @@ public:
     // in which an edge between two anchors is created if the
     // oriented read compositions of the two anchors are
     // sufficiently similar.
-    class UseSimilarity{};
+    class UseSimilarity {};
     AnchorGraph(const Anchors&, const Journeys&, uint64_t minEdgeCoverage, const UseSimilarity&);
 
+
+
+    // This uses read following in the complete AnchorGraph
+    // to create the AnchorGraph to be used for assembly.
+    // This is meant to be used with strict anchor generation,
+    // where most anchors correspond to a single copy.
+    AnchorGraph(
+        const Anchors&,
+        const AnchorGraph& completeAnchorGraph);
+private:
+
+    // Types and functions used by the above constructor.
+
+    // A Subgraph of the AnchorGraph, created using a BFS starting
+    // at anchorIdStart  and moving in the specified direction.
+    // It skips vertices that have less the minCommon OrientedReadIds
+    // in common with anchorIdStart.
+    class SubgraphVertex {
+    public:
+        AnchorId anchorId;
+        SubgraphVertex(AnchorId anchorId = invalid<AnchorId>) : anchorId(anchorId) {}
+    };
+    class SubgraphEdge {
+    public:
+        uint64_t commonCount;
+        SubgraphEdge(uint64_t commonCount) : commonCount(commonCount) {}
+    };
+
+    using SubgraphBaseClass = boost::adjacency_list<boost::listS, boost::vecS, boost::bidirectionalS,
+        SubgraphVertex, SubgraphEdge>;
+    class Subgraph: public SubgraphBaseClass {
+    public:
+        Subgraph(
+            const Anchors&,
+            const AnchorGraph& anchorGraph,
+            AnchorId,
+            uint64_t direction);
+        std::map<AnchorId, vertex_descriptor> vertexMap;
+    };
+
+
+
+
+public:
     // Constructor from binary data.
     AnchorGraph(const MappedMemoryOwner&, const string& name);
 

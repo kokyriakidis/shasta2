@@ -9,6 +9,7 @@
 #include "performanceLog.hpp"
 #include "ReadId.hpp"
 #include "timestamp.hpp"
+#include "transitiveReduction.hpp"
 using namespace shasta2;
 
 // Boost libraries.
@@ -410,3 +411,160 @@ AnchorGraph::AnchorGraph(
 }
 
 
+
+// This uses read following in the complete AnchorGraph
+// to create the AnchorGraph to be used for assembly.
+// This is meant to be used with strict anchor generation,
+// where most anchors correspond to a single copy.
+AnchorGraph::AnchorGraph(
+    const Anchors& anchors,
+    const AnchorGraph& completeAnchorGraph) :
+    MappedMemoryOwner(anchors),
+    MultithreadedObject<AnchorGraph>(*this)
+{
+    // Loop over all anchors.
+    BGL_FORALL_VERTICES(anchorIdStart, completeAnchorGraph, AnchorGraph) {
+        if(anchorIdToString(anchorIdStart) != "10000+") {
+            continue;
+        }
+
+        // Loop over both directions (0=forward, 1=backward).
+        for(uint64_t direction=0; direction<2; direction++) {
+
+            if(direction != 0) {
+                continue;
+            }
+
+            // Create a Subgraph starting at anchorIdStart and moving in this direction.
+            const Subgraph subgraph(anchors, completeAnchorGraph, anchorIdStart, direction);
+        }
+
+    }
+}
+
+
+
+// Do a BFS starting at anchorIdStart and moving in the specified direcrtion,
+// disregarding vertices that have no common OrientedReadIds with anchorIdStart.
+AnchorGraph::Subgraph::Subgraph(
+    const Anchors& anchors,
+    const AnchorGraph& anchorGraph,
+    AnchorId anchorIdStart,
+    uint64_t direction)
+{
+    const bool debug = true;
+    if(debug) {
+        cout << "Creating AnchorGraph::Subgraph for " << anchorIdToString(anchorIdStart) <<
+            " direction " << direction << endl;
+    }
+    Subgraph& subgraph = *this;
+
+    // Initialize the BFS.
+    std::queue<AnchorId> q;
+    q.push(anchorIdStart);
+    std::set<AnchorId> visited;
+    visited.insert(anchorIdStart);
+    vertexMap.insert(make_pair(anchorIdStart, add_vertex(SubgraphVertex(anchorIdStart), subgraph)));
+
+    // Main BFS loop.
+    while(not q.empty()) {
+
+        // Dequeue an AnchorId.
+        const AnchorId anchorId0 = q.front();
+        if(debug) {
+            cout << "Dequeued " << anchorIdToString(anchorId0) << endl;
+        }
+        q.pop();
+        const vertex_descriptor v0 = vertexMap.at(anchorId0);
+
+        vector<AnchorId> next;
+        if(direction == 0) {
+            BGL_FORALL_OUTEDGES(anchorId0, e, anchorGraph, AnchorGraph) {
+                next.push_back(target(e, anchorGraph));
+            }
+        } else {
+            BGL_FORALL_INEDGES(anchorId0, e, anchorGraph, AnchorGraph) {
+                next.push_back(source(e, anchorGraph));
+            }
+        }
+
+        for(const AnchorId anchorId1: next) {
+            if(debug) {
+                cout << "Found " << anchorIdToString(anchorId1) << endl;
+            }
+            const uint64_t commonCount = anchors.countCommon(anchorIdStart, anchorId1);
+            if(commonCount == 0) {
+                if(debug) {
+                    cout << "No common oriented reads, discarded." << endl;
+                }
+                continue;
+            } else {
+                if(debug) {
+                    cout << commonCount << " common oriented reads." << endl;
+                }
+            }
+
+            auto it1 = vertexMap.find(anchorId1);
+            if(it1 == vertexMap.end()) {
+                tie(it1, ignore) = vertexMap.insert(make_pair(anchorId1, add_vertex(SubgraphVertex(anchorId1), subgraph)));
+            }
+            const vertex_descriptor v1 = it1->second;
+
+            if(direction == 0) {
+                add_edge(v0, v1, SubgraphEdge(commonCount), subgraph);
+                if(debug) {
+                    cout << "Added edge " << anchorIdToString(anchorId0) << " " << anchorIdToString(anchorId1) << endl;
+                }
+            } else {
+                add_edge(v1, v0, SubgraphEdge(commonCount), subgraph);
+                if(debug) {
+                    cout << "Added edge " << anchorIdToString(anchorId1) << " " << anchorIdToString(anchorId0) << endl;
+                }
+            }
+            if(not visited.contains(anchorId1)) {
+                q.push(anchorId1);
+                visited.insert(anchorId1);
+                if(debug) {
+                    cout << "Enqueued " << anchorIdToString(anchorId1) << endl;
+                }
+                SHASTA2_ASSERT(subgraph[v1].anchorId == anchorId1);
+             }
+        }
+
+    }
+
+    shasta2::transitiveReduction(subgraph);
+
+    if(debug) {
+        cout << "The AnchorGraph::Subgraph for " << anchorIdToString(anchorIdStart) <<
+            " direction " << direction <<
+            " has " << num_vertices(subgraph) <<
+            " vertices and " << num_edges(subgraph) << " edges." << endl;
+
+        ofstream dot("Subgraph.dot");
+        dot << "digraph S {\n";
+        BGL_FORALL_VERTICES(v, subgraph, Subgraph) {
+            const AnchorId anchorId = subgraph[v].anchorId;
+            dot << "\"" << anchorIdToString(anchorId) << "\"";
+            dot << "[";
+            dot << "label=\"" << anchorIdToString(subgraph[v].anchorId) <<
+                "\\n" << anchors[anchorId].size() <<
+                "\"";
+            dot << "]";
+            dot << ";\n";
+        }
+        BGL_FORALL_EDGES(e, subgraph, Subgraph) {
+            const vertex_descriptor v0 = source(e, subgraph);
+            const vertex_descriptor v1 = target(e, subgraph);
+            dot <<
+                "\"" << anchorIdToString(subgraph[v0].anchorId) << "\""
+                "->"
+                "\"" << anchorIdToString(subgraph[v1].anchorId) << "\""
+                "["
+                "label=\"" << subgraph[e].commonCount << "\""
+                "]"
+                ";\n";
+        }
+        dot << "}\n";
+    }
+}

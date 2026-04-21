@@ -232,6 +232,12 @@ public:
     void createAnchorSimilarityGraph(const Options&);
     void accessAnchorSimilarityGraph();
 
+    // This uses read following in the complete AnchorGraph
+    // to create the AnchorGraph to be used for assembly.
+    // This is meant to be used with strict anchor generation,
+    // where most anchors correspond to a single copy.
+    void readFollowing();
+
 
 
     // AssemblyGraph.

@@ -148,8 +148,12 @@ PYBIND11_MODULE(shasta2, shasta2Module)
           &Assembler::anchorGraphTransitiveReduction)
       .def("createCompleteAnchorGraph",
           &Assembler::createCompleteAnchorGraph)
+      .def("accessCompleteAnchorGraph",
+          &Assembler::accessCompleteAnchorGraph)
       .def("createAnchorSimilarityGraph",
           &Assembler::createAnchorSimilarityGraph)
+      .def("readFollowing",
+          &Assembler::readFollowing)
 
       // AssemblyGraph.
       .def("createAssemblyGraph",
