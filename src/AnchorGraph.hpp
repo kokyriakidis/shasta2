@@ -111,10 +111,14 @@ public:
             commonCount(commonCount)
         {}
         SubgraphVertex() {}
+        // These are used by approximate topological sort.
+        uint64_t color = invalid<uint64_t>;
+        uint64_t rank = invalid<uint64_t>;
     };
     class SubgraphEdge {
     public:
         uint64_t coverage;
+        bool isDagEdge = false; // From approximate topological sort.
         SubgraphEdge(uint64_t coverage) : coverage(coverage) {}
     };
 
@@ -128,6 +132,7 @@ public:
             AnchorId,
             uint64_t direction);
         std::map<AnchorId, vertex_descriptor> vertexMap;
+        void approximateTopologicalSort();
         void writeGraphviz(const string& fileName, const Anchors&) const;
         void writeGraphviz(ostream&, const Anchors&) const;
         void writeHtml(ostream&, const Anchors&) const;

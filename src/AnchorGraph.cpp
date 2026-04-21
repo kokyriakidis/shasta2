@@ -2,6 +2,7 @@
 #include "AnchorGraph.hpp"
 #include "Anchor.hpp"
 #include "AnchorPair.hpp"
+#include "approximateTopologicalSort.hpp"
 #include "deduplicate.hpp"
 #include "graphvizToHtml.hpp"
 #include "Journeys.hpp"
@@ -19,6 +20,7 @@ using namespace shasta2;
 #include <boost/graph/adj_list_serialize.hpp>
 #include <boost/graph/filtered_graph.hpp>
 #include <boost/graph/iteration_macros.hpp>
+#include <boost/graph/topological_sort.hpp>
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/member.hpp>
@@ -552,6 +554,30 @@ AnchorGraph::Subgraph::Subgraph(
 
     }
 
+    approximateTopologicalSort();
+}
+
+
+
+void AnchorGraph::Subgraph::approximateTopologicalSort()
+{
+    Subgraph& subgraph = *this;
+
+    // Add the edges in order of decreasing coverage.
+    vector<pair<edge_descriptor, uint64_t> > edgesWithCoverage;
+    BGL_FORALL_EDGES(e, subgraph, Subgraph) {
+        const uint64_t coverage = subgraph[e].coverage;
+        edgesWithCoverage.push_back(make_pair(e, coverage));
+    }
+    sort(edgesWithCoverage.begin(), edgesWithCoverage.end(), OrderPairsBySecondOnlyGreater<edge_descriptor, uint64_t>());
+
+    vector<edge_descriptor> sortedEdges;
+    for(const auto& [e, ignore]: edgesWithCoverage) {
+        sortedEdges.push_back(e);
+    }
+
+    shasta2::approximateTopologicalSort(subgraph, sortedEdges);
+
 }
 
 
@@ -568,8 +594,16 @@ void AnchorGraph::Subgraph::writeGraphviz(ostream& dot, const Anchors& anchors) 
 {
     const Subgraph& subgraph = *this;
 
-    dot << "digraph S {\n";
+    // For better display, write the edges in rank order.
+    vector< pair<vertex_descriptor, uint64_t> > sortedVertices;
     BGL_FORALL_VERTICES(v, subgraph, Subgraph) {
+        const SubgraphVertex& vertex = subgraph[v];
+        sortedVertices.push_back(make_pair(v, vertex.rank));
+    }
+    sort(sortedVertices.begin(), sortedVertices.end(), OrderPairsBySecondOnly<vertex_descriptor, uint64_t>());
+
+    dot << "digraph S {\n";
+    for(const auto& [v, ignore]: sortedVertices) {
         const SubgraphVertex& vertex = subgraph[v];
         const AnchorId anchorId = vertex.anchorId;
         dot << "\"" << anchorIdToString(anchorId) << "\"";
@@ -577,6 +611,7 @@ void AnchorGraph::Subgraph::writeGraphviz(ostream& dot, const Anchors& anchors) 
         dot << "label=\"" << anchorIdToString(subgraph[v].anchorId) <<
             "\\nCoverage " << anchors[anchorId].size() <<
             "\\nCommon " << vertex.commonCount <<
+            "\\nRank " << vertex.rank <<
             "\"";
         dot << "]";
         dot << ";\n";
@@ -591,7 +626,11 @@ void AnchorGraph::Subgraph::writeGraphviz(ostream& dot, const Anchors& anchors) 
             "\"" << anchorIdToString(subgraph[v1].anchorId) << "\""
             "["
             "label=\"" << subgraph[e].coverage << "\""
-            " penwidth=" << std::fixed << std::setprecision(2) << 0.3 * double(edge.coverage) <<
+            " penwidth=" << std::fixed << std::setprecision(2) << 0.3 * double(edge.coverage);
+        if(not edge.isDagEdge) {
+            dot << " color=red";
+        }
+        dot <<
             "]"
             ";\n";
     }
