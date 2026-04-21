@@ -12,6 +12,7 @@
 #include "ReadId.hpp"
 #include "timestamp.hpp"
 #include "tmpDirectory.hpp"
+#include "transitiveReduction.hpp"
 using namespace shasta2;
 
 // Boost libraries.
@@ -428,6 +429,9 @@ AnchorGraph::AnchorGraph(
     MappedMemoryOwner(anchors),
     MultithreadedObject<AnchorGraph>(*this)
 {
+    // EXPOSE WHEN CODE STABILIZES.
+    const uint64_t minCommonCount = 3;
+
     // Loop over all anchors.
     BGL_FORALL_VERTICES(anchorIdStart, completeAnchorGraph, AnchorGraph) {
         if(anchorIdToString(anchorIdStart) != "10000+") {
@@ -442,7 +446,7 @@ AnchorGraph::AnchorGraph(
             }
 
             // Create a Subgraph starting at anchorIdStart and moving in this direction.
-            const Subgraph subgraph(anchors, completeAnchorGraph, anchorIdStart, direction);
+            const Subgraph subgraph(anchors, completeAnchorGraph, anchorIdStart, direction, minCommonCount);
         }
 
     }
@@ -456,7 +460,8 @@ AnchorGraph::Subgraph::Subgraph(
     const Anchors& anchors,
     const AnchorGraph& anchorGraph,
     AnchorId anchorIdStart,
-    uint64_t direction) :
+    uint64_t direction,
+    uint64_t minCommonCount) :
     direction(direction)
 {
     const bool debug = false;
@@ -505,9 +510,9 @@ AnchorGraph::Subgraph::Subgraph(
                 anchors.countCommon(anchorIdStart, anchorId1) :
                 anchors.countCommon(anchorId1, anchorIdStart);
 
-            if(commonCount == 0) {
+            if(commonCount < minCommonCount) {
                 if(debug) {
-                    cout << "No common oriented reads, discarded." << endl;
+                    cout << "Not enough common oriented reads, discarded." << endl;
                 }
                 continue;
             } else {
@@ -554,13 +559,12 @@ AnchorGraph::Subgraph::Subgraph(
         }
 
     }
-
-    approximateTopologicalSort();
 }
 
 
-
-void AnchorGraph::Subgraph::approximateTopologicalSort()
+// This does an approximate topological sort, then removes
+// edges not flagged as DAG edges.
+void AnchorGraph::Subgraph::removeCycles()
 {
     Subgraph& subgraph = *this;
 
@@ -579,7 +583,26 @@ void AnchorGraph::Subgraph::approximateTopologicalSort()
 
     shasta2::approximateTopologicalSort(subgraph, sortedEdges);
 
+    // Remove edges not flagged as DAG edges.
+    vector<edge_descriptor> edgesToBeRemoved;
+    BGL_FORALL_EDGES(e, subgraph, Subgraph) {
+        if(not subgraph[e].isDagEdge) {
+            edgesToBeRemoved.push_back(e);
+        }
+    }
+    for(const edge_descriptor e: edgesToBeRemoved) {
+        boost::remove_edge(e, subgraph);
+    }
+
 }
+
+
+
+void AnchorGraph::Subgraph::transitiveReduction()
+{
+    shasta2::transitiveReduction(*this);
+}
+
 
 
 
@@ -596,7 +619,7 @@ void AnchorGraph::Subgraph::writeGraphviz(ostream& dot, const Anchors& anchors) 
     const Subgraph& subgraph = *this;
     const uint64_t startAnchorIdCoverage = anchors[subgraph[vStart].anchorId].size();
 
-    // For better display, write the edges in rank order.
+    // For better display, write the vertices in rank order.
     vector< pair<vertex_descriptor, uint64_t> > sortedVertices;
     BGL_FORALL_VERTICES(v, subgraph, Subgraph) {
         if((v != vStart) and (out_degree(v, subgraph) == 0) and (in_degree(v, subgraph) == 0)) {
@@ -771,5 +794,50 @@ void AnchorGraph::Subgraph::prune(uint64_t minLeafCommonCount)
             cout << "Removing " << anchorIdToString(subgraph[v0].anchorId) << endl;
         }
         boost::clear_vertex(v0, subgraph);
+    }
+}
+
+
+
+void AnchorGraph::Subgraph::writeFasta(const string& fileName, const Anchors& anchors) const
+{
+    ofstream fasta(fileName);
+    writeFasta(fasta, anchors);
+}
+
+
+
+void AnchorGraph::Subgraph::writeFastaHtml(ostream& html, const Anchors& anchors) const
+{
+    html << "<pre>";
+    writeFasta(html, anchors);
+    html << "</pre>";
+}
+
+
+
+void AnchorGraph::Subgraph::writeFasta(ostream& fasta, const Anchors& anchors) const
+{
+    using shasta2::Base;
+    const Subgraph& subgraph = *this;
+
+
+    // Write the vertices in rank order.
+    vector< pair<vertex_descriptor, uint64_t> > sortedVertices;
+    BGL_FORALL_VERTICES(v, subgraph, Subgraph) {
+        if((v != vStart) and (out_degree(v, subgraph) == 0) and (in_degree(v, subgraph) == 0)) {
+            continue;
+        }
+        const SubgraphVertex& vertex = subgraph[v];
+        sortedVertices.push_back(make_pair(v, vertex.rank));
+    }
+    sort(sortedVertices.begin(), sortedVertices.end(), OrderPairsBySecondOnly<vertex_descriptor, uint64_t>());
+
+    for(const auto& [v, ignore]: sortedVertices) {
+        const AnchorId anchorId = subgraph[v].anchorId;
+        const vector<Base> kmerSequence = anchors.anchorKmerSequence(anchorId);
+        fasta << ">" << anchorIdToString(anchorId) << "\n";
+        std::ranges::copy(kmerSequence, ostream_iterator<Base>(fasta));
+        fasta << "\n";
     }
 }

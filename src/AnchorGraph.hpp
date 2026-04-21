@@ -130,12 +130,19 @@ public:
             const Anchors&,
             const AnchorGraph& anchorGraph,
             AnchorId,
-            uint64_t direction);
+            uint64_t direction,
+            uint64_t minCommonCount);
         vertex_descriptor vStart;
         uint64_t direction;
         std::map<AnchorId, vertex_descriptor> vertexMap;
 
-        void approximateTopologicalSort();
+        // This does an approximate topological sort, then removes
+        // edges not flagged as DAG edges.
+        void removeCycles();
+
+        void transitiveReduction();
+
+        void writeFasta() const;
 
         // Recursively prune leafs with commonCount less than minLeafCommonCount.
         void prune(uint64_t);
@@ -143,6 +150,10 @@ public:
         void writeGraphviz(const string& fileName, const Anchors&) const;
         void writeGraphviz(ostream&, const Anchors&) const;
         void writeHtml(ostream&, const Anchors&) const;
+
+        void writeFasta(const string& fileName, const Anchors&) const;
+        void writeFasta(ostream& fasta, const Anchors&) const;
+        void writeFastaHtml(ostream& html, const Anchors&) const;
     };
 
 

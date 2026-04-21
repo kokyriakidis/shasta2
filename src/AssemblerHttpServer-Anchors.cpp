@@ -710,8 +710,8 @@ void Assembler::exploreAnchorGraphSubgraph(
     string directionString = "forward";
     HttpServer::getParameterValue(request, "direction", directionString);
 
-    uint64_t minLeafCommonCount = 3;
-    HttpServer::getParameterValue(request, "minLeafCommonCount", minLeafCommonCount);
+    uint64_t minCommonCount = 3;
+    HttpServer::getParameterValue(request, "minCommonCount", minCommonCount);
 
 
     // Start the form.
@@ -741,12 +741,12 @@ void Assembler::exploreAnchorGraphSubgraph(
         (directionString == "backward" ? " checked=on" : "") <<
         ">Backward";
 
-    // minLeafCommonCount.
+    // minCommonCount.
     html <<
         "<tr>"
-        "<th>Min leaf common count<br>(for pruning)"
+        "<th>Min common count"
         "<td class=centered>"
-        "<input type=text name=minLeafCommonCount style='text-align:center' value=" << minLeafCommonCount << ">";
+        "<input type=text name=minCommonCount style='text-align:center' value=" << minCommonCount << ">";
 
     // End the form.
     html <<
@@ -788,15 +788,15 @@ void Assembler::exploreAnchorGraphSubgraph(
         ", " << directionString << " direction</h2>";
 
     // Create the Subgraph.
-    AnchorGraph::Subgraph subgraph(anchors(), *completeAnchorGraphPointer, anchorId, direction);
+    AnchorGraph::Subgraph subgraph(anchors(), *completeAnchorGraphPointer, anchorId, direction, minCommonCount);
+    subgraph.removeCycles();
+    subgraph.transitiveReduction();
 
     // Display it.
-    html << "<h3>Subgraph before pruning</h3>";
     subgraph.writeHtml(html, anchors());
+    subgraph.writeFastaHtml(html, anchors());
+    subgraph.writeFasta("SubgraphAnchors.fasta", anchors());
 
-    subgraph.prune(minLeafCommonCount);
-    html << "<h3>Subgraph after pruning</h3>";
-    subgraph.writeHtml(html, anchors());
 }
 
 
