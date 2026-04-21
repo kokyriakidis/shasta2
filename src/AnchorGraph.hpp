@@ -93,7 +93,6 @@ public:
     AnchorGraph(
         const Anchors&,
         const AnchorGraph& completeAnchorGraph);
-private:
 
     // Types and functions used by the above constructor.
 
@@ -122,6 +121,9 @@ private:
             AnchorId,
             uint64_t direction);
         std::map<AnchorId, vertex_descriptor> vertexMap;
+        void writeGraphviz(const string& fileName, const Anchors&) const;
+        void writeGraphviz(ostream&, const Anchors&) const;
+        void writeHtml(ostream&, const Anchors&) const;
     };
 
 

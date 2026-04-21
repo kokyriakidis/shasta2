@@ -316,6 +316,7 @@ public:
     void exploreJourney(const vector<string>&, ostream&);
     void exploreLocalReadAnchorGraph(const vector<string>&, ostream&);
     void exploreLocalAnchorGraph(const vector<string>&, ostream&);
+    void exploreAnchorGraphSubgraph(const vector<string>&, ostream&);
     void exploreSegments(const vector<string>&, ostream&);
     void exploreSegmentSequence(const vector<string>&, ostream&);
     void exploreSegmentSteps(const vector<string>&, ostream&);

@@ -698,6 +698,96 @@ void Assembler::exploreLocalAnchorGraph(
 
 
 
+void Assembler::exploreAnchorGraphSubgraph(
+    const vector<string>& request,
+    ostream& html)
+{
+    // Get the options from the request.
+    string anchorIdString;
+    HttpServer::getParameterValue(request, "anchorId", anchorIdString);
+    boost::trim(anchorIdString);
+
+    string directionString = "forward";
+    HttpServer::getParameterValue(request, "direction", directionString);
+
+
+    // Start the form.
+    html << "<form><table>";
+
+    // Startign AnchorId.
+    html <<
+        "<tr>"
+        "<th class=left>Starting anchor id"
+        "<td class=centered>"
+        "<input type=text name=anchorId style='text-align:center' required";
+    if(not anchorIdString.empty()) {
+        html << " value='" << anchorIdString + "'";
+    }
+    html << ">";
+
+    // Direction,
+    html <<
+        "<tr>"
+        "<th>Direction"
+        "<td class=left>"
+        "<input type=radio required name=direction value='forward'" <<
+        (directionString == "forward" ? " checked=on" : "") <<
+        ">Forward"
+        "<br>"
+        "<input type=radio required name=direction value='backward'" <<
+        (directionString == "backward" ? " checked=on" : "") <<
+        ">Backward";
+
+    // End the form.
+    html <<
+        "</table>"
+        "<input type=submit value='Create anchor graph subgraph'>"
+        "</form>";
+
+    // If the AnchorId is not present, stop here.
+    if(anchorIdString.empty()) {
+        return;
+    }
+
+    // Get the AnchorId.
+    const AnchorId anchorId = anchorIdFromString(anchorIdString);
+    if((anchorId == invalid<AnchorId>) or (anchorId >= anchors().size())) {
+        html << "<p>Invalid anchor id " << anchorIdString << ". Must be a number between 0 and " <<
+            anchors().size() / 2 - 1 << " followed by + or -.";
+        return;
+    }
+
+    // Get the direction.
+    uint64_t direction = invalid<uint64_t>;
+    if(directionString == "forward") {
+        direction = 0;
+    } else if(directionString == "backward") {
+        direction = 1;
+    } else {
+        html << "<br>Invalid direction string " << directionString;
+        return;
+    }
+
+    if(not completeAnchorGraphPointer) {
+        html << "<br>The complete AnchorGraph is not available.";
+        return;
+    }
+
+
+    html << "<h2>AnchorGraph subgraph starting at " << anchorIdString <<
+        ", " << directionString << " direction</h2>";
+
+    // Create the Subgraph.
+    AnchorGraph::Subgraph subgraph(anchors(), *completeAnchorGraphPointer, anchorId, direction);
+    html << "<br>The subgraph has " << num_vertices(subgraph) <<
+        " vertices and " << num_edges(subgraph) << " edges." << endl;
+
+    // Display it.
+    subgraph.writeHtml(html, anchors());
+}
+
+
+
 void Assembler::exploreLocalReadAnchorGraph(
     const vector<string>& request,
     ostream& html)

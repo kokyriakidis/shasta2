@@ -3,13 +3,14 @@
 #include "Anchor.hpp"
 #include "AnchorPair.hpp"
 #include "deduplicate.hpp"
+#include "graphvizToHtml.hpp"
 #include "Journeys.hpp"
 #include "Markers.hpp"
 #include "orderPairs.hpp"
 #include "performanceLog.hpp"
 #include "ReadId.hpp"
 #include "timestamp.hpp"
-#include "transitiveReduction.hpp"
+#include "tmpDirectory.hpp"
 using namespace shasta2;
 
 // Boost libraries.
@@ -22,6 +23,9 @@ using namespace shasta2;
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/member.hpp>
 #include <boost/serialization/vector.hpp>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
 
 // Standard library.
 #include "fstream.hpp"
@@ -452,7 +456,7 @@ AnchorGraph::Subgraph::Subgraph(
     AnchorId anchorIdStart,
     uint64_t direction)
 {
-    const bool debug = true;
+    const bool debug = false;
     if(debug) {
         cout << "Creating AnchorGraph::Subgraph for " << anchorIdToString(anchorIdStart) <<
             " direction " << direction << endl;
@@ -533,8 +537,6 @@ AnchorGraph::Subgraph::Subgraph(
 
     }
 
-    shasta2::transitiveReduction(subgraph);
-
     if(debug) {
         cout << "The AnchorGraph::Subgraph for " << anchorIdToString(anchorIdStart) <<
             " direction " << direction <<
@@ -568,3 +570,67 @@ AnchorGraph::Subgraph::Subgraph(
         dot << "}\n";
     }
 }
+
+
+
+void AnchorGraph::Subgraph::writeGraphviz(const string& fileName, const Anchors& anchors) const
+{
+    ofstream dot(fileName);
+    writeGraphviz(dot, anchors);
+}
+
+
+
+void AnchorGraph::Subgraph::writeGraphviz(ostream& dot, const Anchors& anchors) const
+{
+    const Subgraph& subgraph = *this;
+
+    dot << "digraph S {\n";
+    BGL_FORALL_VERTICES(v, subgraph, Subgraph) {
+        const AnchorId anchorId = subgraph[v].anchorId;
+        dot << "\"" << anchorIdToString(anchorId) << "\"";
+        dot << "[";
+        dot << "label=\"" << anchorIdToString(subgraph[v].anchorId) <<
+            "\\n" << anchors[anchorId].size() <<
+            "\"";
+        dot << "]";
+        dot << ";\n";
+    }
+    BGL_FORALL_EDGES(e, subgraph, Subgraph) {
+        const vertex_descriptor v0 = source(e, subgraph);
+        const vertex_descriptor v1 = target(e, subgraph);
+        dot <<
+            "\"" << anchorIdToString(subgraph[v0].anchorId) << "\""
+            "->"
+            "\"" << anchorIdToString(subgraph[v1].anchorId) << "\""
+            "["
+            "label=\"" << subgraph[e].commonCount << "\""
+            "]"
+            ";\n";
+    }
+    dot << "}\n";
+
+}
+
+
+
+void AnchorGraph::Subgraph::writeHtml(ostream& html, const Anchors& anchors) const
+{
+    // Write it in graphviz format.
+    const string uuid = to_string(boost::uuids::random_generator()());
+    const string dotFileName = tmpDirectory() + uuid + ".dot";
+    writeGraphviz(dotFileName, anchors);
+
+
+    // Display it in html in svg format.
+    const double timeout = 120.;
+    const string options = "-Nshape=rectangle -Gbgcolor=gray95";
+    html << "<p>";
+    try {
+        graphvizToHtml(dotFileName, "dot", timeout, options, html);
+    } catch(const std::exception& exception) {
+        html << "<br>Error during graph layout: " << exception.what();
+    }
+
+}
+
