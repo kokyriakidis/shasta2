@@ -119,7 +119,7 @@ public:
     public:
         uint64_t coverage;
         bool isDagEdge = false; // From approximate topological sort.
-        SubgraphEdge(uint64_t coverage) : coverage(coverage) {}
+        SubgraphEdge(uint64_t coverage, bool isDagEdge=false) : coverage(coverage), isDagEdge(isDagEdge) {}
     };
 
     using SubgraphBaseClass = boost::adjacency_list<boost::listS, boost::vecS, boost::bidirectionalS,
@@ -150,6 +150,10 @@ public:
         // Get the AnchorIds of the linear chain on vertices containing vStart.
         // They are returned in order.
         void getLinearPortion(vector<AnchorId>&) const;
+
+        // Constructor the dominator tree (in the given direction).
+        class DominatorTree{};
+        Subgraph(const Subgraph&, const DominatorTree&, const Anchors&);
 
         void writeGraphviz(const string& fileName, const Anchors&) const;
         void writeGraphviz(ostream&, const Anchors&) const;

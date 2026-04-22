@@ -797,6 +797,14 @@ void Assembler::exploreAnchorGraphSubgraph(
     subgraph.writeFastaHtml(html, anchors(), true);
     subgraph.writeFasta("SubgraphAnchors.fasta", anchors(), true);
 
+    // Create the dominator tree.
+    const AnchorGraph::Subgraph dominatorTree(
+        subgraph,
+        AnchorGraph::Subgraph::DominatorTree(),
+        anchors());
+    html << "<h2>Dominator tree</h2>";
+    dominatorTree.writeHtml(html, anchors());
+
 }
 
 

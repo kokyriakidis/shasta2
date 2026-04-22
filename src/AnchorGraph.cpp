@@ -4,6 +4,7 @@
 #include "AnchorPair.hpp"
 #include "approximateTopologicalSort.hpp"
 #include "deduplicate.hpp"
+#include "dominatorTree.hpp"
 #include "graphvizToHtml.hpp"
 #include "Journeys.hpp"
 #include "Markers.hpp"
@@ -21,6 +22,7 @@ using namespace shasta2;
 #include <boost/graph/adj_list_serialize.hpp>
 #include <boost/graph/filtered_graph.hpp>
 #include <boost/graph/iteration_macros.hpp>
+#include <boost/graph/reverse_graph.hpp>
 #include <boost/graph/topological_sort.hpp>
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/ordered_index.hpp>
@@ -978,3 +980,60 @@ void AnchorGraph::Subgraph::getLinearPortion(vector<AnchorId>& anchorIds) const
     }
 }
 
+
+
+// Constructor the dominator tree (in the given direction).
+AnchorGraph::Subgraph::Subgraph(
+    const Subgraph& subgraph,
+    const DominatorTree&,
+    const Anchors& anchors)
+{
+    Subgraph& dominatorTree = *this;
+
+    // Create vertices of the dominator tree.
+    BGL_FORALL_VERTICES(v, subgraph, Subgraph) {
+        const SubgraphVertex& vertex = subgraph[v];
+        const vertex_descriptor u = add_vertex(vertex, dominatorTree);
+        vertexMap[vertex.anchorId] = u;
+    }
+    vStart = vertexMap.at(subgraph[subgraph.vStart].anchorId);
+    direction = subgraph.direction;
+
+
+
+    if(direction == 0) {
+
+        // Compute the dominator tree of the input subgraph.
+        std::map<vertex_descriptor, vertex_descriptor> dominatorTreeMap;
+            shasta2::lengauer_tarjan_dominator_tree(subgraph, subgraph.vStart,
+                boost::make_assoc_property_map(dominatorTreeMap));
+
+        // Create edges of the dominator tree.
+        for(auto& [v1, v0]: dominatorTreeMap) {
+            const AnchorId anchorId0 = subgraph[v0].anchorId;
+            const AnchorId anchorId1 = subgraph[v1].anchorId;
+            const vertex_descriptor u0 = vertexMap.at(anchorId0);
+            const vertex_descriptor u1 = vertexMap.at(anchorId1);
+            const AnchorPair anchorPair(anchors, anchorId0, anchorId1, false);
+            add_edge(u0, u1, SubgraphEdge(anchorPair.size(), true), dominatorTree);
+        }
+    } else {
+
+        // Compute the dominator tree of the reverse_graph of the input subgraph.
+        using ReverseGraph = boost::reverse_graph<Subgraph>;
+        const ReverseGraph reverseGraph(subgraph);
+        std::map<vertex_descriptor, vertex_descriptor> dominatorTreeMap;
+            shasta2::lengauer_tarjan_dominator_tree(reverseGraph, subgraph.vStart,
+                boost::make_assoc_property_map(dominatorTreeMap));
+
+        // Create edges of the dominator tree.
+        for(auto& [v0, v1]: dominatorTreeMap) {
+            const AnchorId anchorId0 = subgraph[v0].anchorId;
+            const AnchorId anchorId1 = subgraph[v1].anchorId;
+            const vertex_descriptor u0 = vertexMap.at(anchorId0);
+            const vertex_descriptor u1 = vertexMap.at(anchorId1);
+            const AnchorPair anchorPair(anchors, anchorId0, anchorId1, false);
+            add_edge(u0, u1, SubgraphEdge(anchorPair.size(), true), dominatorTree);
+        }
+    }
+}
