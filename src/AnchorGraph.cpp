@@ -1158,3 +1158,33 @@ void AnchorGraph::Subgraph::walkUp(
         std::ranges::reverse(path);
     }
 }
+
+
+// This construct the dominato tree, then calls the lower level function.
+void AnchorGraph::Subgraph::walkUp(
+    vector<vertex_descriptor>& path,
+    const Anchors& anchors) const
+{
+    const Subgraph dominatorTree(*this, DominatorTree(), anchors);
+    walkUp(dominatorTree, path);
+}
+
+
+
+void AnchorGraph::Subgraph::walkUp(
+    const Subgraph& dominatorTree,
+    vector<vertex_descriptor>& path) const
+{
+    const Subgraph& subgraph = *this;
+
+    // Find the exit in the Subgraph.
+    vector<vertex_descriptor> exits;
+    subgraph.findExits(exits);
+    SHASTA2_ASSERT(exits.size() == 1);
+    const vertex_descriptor exit = exits.front();
+
+    // Walk up the dominator tree starting at the corresponding vertex.
+    const AnchorId exitAnchorId = subgraph[exit].anchorId;
+    dominatorTree.walkUp(dominatorTree.vertexMap.at(exitAnchorId), path);
+
+}

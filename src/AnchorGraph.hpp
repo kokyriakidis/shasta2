@@ -163,6 +163,10 @@ public:
         Subgraph(const Subgraph&, const DominatorTree&, const Anchors&);
 
         // Walk up the dominator tree.
+        void walkUp(vector<vertex_descriptor>& path, const Anchors&) const;
+        void walkUp(const Subgraph& dominatorTree, vector<vertex_descriptor>& path) const;
+
+        // Walk up the dominator tree.
         // This will assert if not called on the dominator tree.
         void walkUp(vertex_descriptor, vector<vertex_descriptor>& path) const;
 
