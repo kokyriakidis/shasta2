@@ -163,7 +163,7 @@ public:
         Subgraph(const Subgraph&, const DominatorTree&, const Anchors&);
 
         // Walk up the dominator tree.
-        void walkUp(vector<vertex_descriptor>& path, const Anchors&) const;
+        // Note this returns a path in the dominator tree.
         void walkUp(const Subgraph& dominatorTree, vector<vertex_descriptor>& path) const;
 
         // Walk up the dominator tree.
@@ -174,9 +174,18 @@ public:
         void writeGraphviz(ostream&, const Anchors&) const;
         void writeHtml(ostream&, const Anchors&) const;
 
-        void writeFasta(const string& fileName, const Anchors&, bool linearPortionOnly) const;
-        void writeFasta(ostream& fasta, const Anchors&, bool linearPortionOnly) const;
-        void writeFastaHtml(ostream& html, const Anchors&, bool linearPortionOnly) const;
+        void writeFasta(
+            const vector<vertex_descriptor>& path,
+            const string& fileName,
+            const Anchors&) const;
+        void writeFasta(
+            const vector<vertex_descriptor>& path,
+            ostream& fasta,
+            const Anchors&) const;
+        void writeFastaHtml(
+            const vector<vertex_descriptor>& path,
+            ostream& html,
+            const Anchors&) const;
     };
 
 

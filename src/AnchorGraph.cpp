@@ -868,67 +868,41 @@ void AnchorGraph::Subgraph::prune(uint64_t minLeafCommonCount)
 
 
 void AnchorGraph::Subgraph::writeFasta(
+    const vector<vertex_descriptor>& path,
     const string& fileName,
-    const Anchors& anchors,
-    bool linearPortionOnly) const
+    const Anchors& anchors) const
 {
     ofstream fasta(fileName);
-    writeFasta(fasta, anchors, linearPortionOnly);
+    writeFasta(path, fasta, anchors);
 }
 
 
 
 void AnchorGraph::Subgraph::writeFastaHtml(
+    const vector<vertex_descriptor>& path,
     ostream& html,
-    const Anchors& anchors,
-    bool linearPortionOnly) const
+    const Anchors& anchors) const
 {
     html << "<pre>";
-    writeFasta(html, anchors, linearPortionOnly);
+    writeFasta(path, html, anchors);
     html << "</pre>";
 }
 
 
 
 void AnchorGraph::Subgraph::writeFasta(
+    const vector<vertex_descriptor>& path,
     ostream& fasta,
-    const Anchors& anchors,
-    bool linearPortionOnly) const
+    const Anchors& anchors) const
 {
     using shasta2::Base;
     const Subgraph& subgraph = *this;
 
-
-    // Write the vertices in rank order.
-    vector< pair<vertex_descriptor, uint64_t> > sortedVertices;
-    if(linearPortionOnly) {
-
-        // Linear portion only.
-        vector<AnchorId> linearPortion;
-        getLinearPortion(linearPortion);
-        for(const AnchorId anchorId: linearPortion) {
-            sortedVertices.push_back(make_pair(vertexMap.at(anchorId), sortedVertices.size()));
-        }
-
-    } else {
-
-        // All vertices, in rank order.
-        BGL_FORALL_VERTICES(v, subgraph, Subgraph) {
-            if((v != vStart) and (out_degree(v, subgraph) == 0) and (in_degree(v, subgraph) == 0)) {
-                continue;
-            }
-            const SubgraphVertex& vertex = subgraph[v];
-            sortedVertices.push_back(make_pair(v, vertex.rank));
-        }
-        sort(sortedVertices.begin(), sortedVertices.end(), OrderPairsBySecondOnly<vertex_descriptor, uint64_t>());
-    }
-
-
-
-    for(const auto& [v, ignore]: sortedVertices) {
+    for(uint64_t i=0; i<path.size(); i++) {
+        const vertex_descriptor v = path[i];
         const AnchorId anchorId = subgraph[v].anchorId;
         const vector<Base> kmerSequence = anchors.anchorKmerSequence(anchorId);
-        fasta << ">" << anchorIdToString(anchorId) << "\n";
+        fasta << ">" << i << "-" << anchorIdToString(anchorId) << "\n";
         std::ranges::copy(kmerSequence, ostream_iterator<Base>(fasta));
         fasta << "\n";
     }
@@ -1112,7 +1086,6 @@ void AnchorGraph::Subgraph::pruneMultipleExits()
 
     // Sanity check.
     findExits(exits);
-    cout << "AAA " << exits.size() << endl;
     SHASTA2_ASSERT(exits.size() == 1);
 }
 
@@ -1160,17 +1133,10 @@ void AnchorGraph::Subgraph::walkUp(
 }
 
 
-// This construct the dominato tree, then calls the lower level function.
-void AnchorGraph::Subgraph::walkUp(
-    vector<vertex_descriptor>& path,
-    const Anchors& anchors) const
-{
-    const Subgraph dominatorTree(*this, DominatorTree(), anchors);
-    walkUp(dominatorTree, path);
-}
 
 
-
+// Walk up the dominator tree.
+// Note this returns a path in the dominator tree.
 void AnchorGraph::Subgraph::walkUp(
     const Subgraph& dominatorTree,
     vector<vertex_descriptor>& path) const
