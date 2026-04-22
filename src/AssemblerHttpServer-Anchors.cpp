@@ -794,8 +794,8 @@ void Assembler::exploreAnchorGraphSubgraph(
 
     // Display it.
     subgraph.writeHtml(html, anchors());
-    subgraph.writeFastaHtml(html, anchors());
-    subgraph.writeFasta("SubgraphAnchors.fasta", anchors());
+    subgraph.writeFastaHtml(html, anchors(), true);
+    subgraph.writeFasta("SubgraphAnchors.fasta", anchors(), true);
 
 }
 

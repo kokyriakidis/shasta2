@@ -799,24 +799,33 @@ void AnchorGraph::Subgraph::prune(uint64_t minLeafCommonCount)
 
 
 
-void AnchorGraph::Subgraph::writeFasta(const string& fileName, const Anchors& anchors) const
+void AnchorGraph::Subgraph::writeFasta(
+    const string& fileName,
+    const Anchors& anchors,
+    bool linearPortionOnly) const
 {
     ofstream fasta(fileName);
-    writeFasta(fasta, anchors);
+    writeFasta(fasta, anchors, linearPortionOnly);
 }
 
 
 
-void AnchorGraph::Subgraph::writeFastaHtml(ostream& html, const Anchors& anchors) const
+void AnchorGraph::Subgraph::writeFastaHtml(
+    ostream& html,
+    const Anchors& anchors,
+    bool linearPortionOnly) const
 {
     html << "<pre>";
-    writeFasta(html, anchors);
+    writeFasta(html, anchors, linearPortionOnly);
     html << "</pre>";
 }
 
 
 
-void AnchorGraph::Subgraph::writeFasta(ostream& fasta, const Anchors& anchors) const
+void AnchorGraph::Subgraph::writeFasta(
+    ostream& fasta,
+    const Anchors& anchors,
+    bool linearPortionOnly) const
 {
     using shasta2::Base;
     const Subgraph& subgraph = *this;
@@ -824,14 +833,29 @@ void AnchorGraph::Subgraph::writeFasta(ostream& fasta, const Anchors& anchors) c
 
     // Write the vertices in rank order.
     vector< pair<vertex_descriptor, uint64_t> > sortedVertices;
-    BGL_FORALL_VERTICES(v, subgraph, Subgraph) {
-        if((v != vStart) and (out_degree(v, subgraph) == 0) and (in_degree(v, subgraph) == 0)) {
-            continue;
+    if(linearPortionOnly) {
+
+        // Linear portion only.
+        vector<AnchorId> linearPortion;
+        getLinearPortion(linearPortion);
+        for(const AnchorId anchorId: linearPortion) {
+            sortedVertices.push_back(make_pair(vertexMap.at(anchorId), sortedVertices.size()));
         }
-        const SubgraphVertex& vertex = subgraph[v];
-        sortedVertices.push_back(make_pair(v, vertex.rank));
+
+    } else {
+
+        // All vertices, in rank order.
+        BGL_FORALL_VERTICES(v, subgraph, Subgraph) {
+            if((v != vStart) and (out_degree(v, subgraph) == 0) and (in_degree(v, subgraph) == 0)) {
+                continue;
+            }
+            const SubgraphVertex& vertex = subgraph[v];
+            sortedVertices.push_back(make_pair(v, vertex.rank));
+        }
+        sort(sortedVertices.begin(), sortedVertices.end(), OrderPairsBySecondOnly<vertex_descriptor, uint64_t>());
     }
-    sort(sortedVertices.begin(), sortedVertices.end(), OrderPairsBySecondOnly<vertex_descriptor, uint64_t>());
+
+
 
     for(const auto& [v, ignore]: sortedVertices) {
         const AnchorId anchorId = subgraph[v].anchorId;
@@ -841,3 +865,35 @@ void AnchorGraph::Subgraph::writeFasta(ostream& fasta, const Anchors& anchors) c
         fasta << "\n";
     }
 }
+
+
+
+// Get the AnchorIds of the linear chain on vertices containing vStart.
+// They are returned in order.
+void AnchorGraph::Subgraph::getLinearPortion(vector<AnchorId>& anchorIds) const
+{
+    const Subgraph& subgraph = *this;
+    anchorIds.clear();
+
+    vertex_descriptor v = vStart;
+
+    if(direction == 0) {
+        while(out_degree(v, subgraph) == 1) {
+            anchorIds.push_back(subgraph[v].anchorId);
+            auto [it, ignore] = out_edges(v, subgraph);
+            const edge_descriptor e = *it;
+            v = target(e, subgraph);
+        }
+    } else if(direction == 1) {
+        while(in_degree(v, subgraph) == 1) {
+            anchorIds.push_back(subgraph[v].anchorId);
+            auto [it, ignore] = in_edges(v, subgraph);
+            const edge_descriptor e = *it;
+            v = source(e, subgraph);
+        }
+        std::ranges::reverse(anchorIds);
+    } else {
+        SHASTA2_ASSERT(0);
+    }
+}
+

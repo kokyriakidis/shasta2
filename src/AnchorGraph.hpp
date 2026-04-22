@@ -147,13 +147,17 @@ public:
         // Recursively prune leafs with commonCount less than minLeafCommonCount.
         void prune(uint64_t);
 
+        // Get the AnchorIds of the linear chain on vertices containing vStart.
+        // They are returned in order.
+        void getLinearPortion(vector<AnchorId>&) const;
+
         void writeGraphviz(const string& fileName, const Anchors&) const;
         void writeGraphviz(ostream&, const Anchors&) const;
         void writeHtml(ostream&, const Anchors&) const;
 
-        void writeFasta(const string& fileName, const Anchors&) const;
-        void writeFasta(ostream& fasta, const Anchors&) const;
-        void writeFastaHtml(ostream& html, const Anchors&) const;
+        void writeFasta(const string& fileName, const Anchors&, bool linearPortionOnly) const;
+        void writeFasta(ostream& fasta, const Anchors&, bool linearPortionOnly) const;
+        void writeFastaHtml(ostream& html, const Anchors&, bool linearPortionOnly) const;
     };
 
 
