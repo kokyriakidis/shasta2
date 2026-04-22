@@ -432,24 +432,89 @@ AnchorGraph::AnchorGraph(
     // EXPOSE WHEN CODE STABILIZES.
     const uint64_t minCommonCount = 3;
 
+    // The AnchorIds of the edge we find.
+    // Indexed by edgeAnchorIds[direction][anchorId0] .
+    array<vector< vector<AnchorId> >, 2> edgeAnchorIds;
+    edgeAnchorIds[0].resize(anchors.size());
+    edgeAnchorIds[1].resize(anchors.size());
+
     // Loop over all anchors.
+    vector<AnchorId> linearPortion;
     BGL_FORALL_VERTICES(anchorIdStart, completeAnchorGraph, AnchorGraph) {
-        if(anchorIdToString(anchorIdStart) != "10000+") {
-            continue;
-        }
 
         // Loop over both directions (0=forward, 1=backward).
         for(uint64_t direction=0; direction<2; direction++) {
 
-            if(direction != 0) {
-                continue;
-            }
-
             // Create a Subgraph starting at anchorIdStart and moving in this direction.
-            const Subgraph subgraph(anchors, completeAnchorGraph, anchorIdStart, direction, minCommonCount);
+            Subgraph subgraph(anchors, completeAnchorGraph, anchorIdStart, direction, minCommonCount);
+            subgraph.removeCycles();
+            subgraph.transitiveReduction();
+            subgraph.getLinearPortion(linearPortion);
+
+            for(uint64_t i1=1; i1<linearPortion.size(); i1++) {
+                const uint64_t i0 = i1 - 1;
+                const AnchorId anchorId0 = linearPortion[i0];
+                const AnchorId anchorId1 = linearPortion[i1];
+                edgeAnchorIds[direction][anchorId0].push_back(anchorId1);
+            }
+        }
+    }
+
+    // Create the vertices, one for each AnchorId.
+    // In the AnchorGraph, vertex_descriptors are AnchorIds.
+    const uint64_t anchorCount = anchors.size();
+    for(AnchorId anchorId=0; anchorId<anchorCount; anchorId++) {
+        add_vertex(*this);
+    }
+
+    // Create the edges. An edge is added if it was found in both directions.
+    nextEdgeId = 0;
+    vector<AnchorId> goodAnchorIds;
+    for(AnchorId anchorIdA=0; anchorIdA<anchors.size(); anchorIdA++) {
+        for(uint64_t direction=0; direction<2; direction++) {
+            vector<AnchorId>& anchorIdsB = edgeAnchorIds[direction][anchorIdA];
+            deduplicate(anchorIdsB);
+            /*
+            cout << anchorIdToString(anchorIdA) << " " << direction << ":";
+            for(const AnchorId anchorIdB: anchorIdsB) {
+                cout << " " << anchorIdToString(anchorIdB);
+            }
+            cout << endl;
+            */
         }
 
+        // Get the ones that were found in both directions.
+        goodAnchorIds.clear();
+        std::set_intersection(
+            edgeAnchorIds[0][anchorIdA].begin(), edgeAnchorIds[0][anchorIdA].end(),
+            edgeAnchorIds[1][anchorIdA].begin(), edgeAnchorIds[1][anchorIdA].end(),
+            back_inserter(goodAnchorIds));
+
+        /*
+        cout << anchorIdToString(anchorIdA) << ":";
+        for(const AnchorId anchorIdB: goodAnchorIds) {
+            cout << " " << anchorIdToString(anchorIdB);
+        }
+        cout << endl;
+        */
+
+        // Generate these edges.
+        for(const AnchorId anchorIdB: goodAnchorIds) {
+            const AnchorPair anchorPair(anchors, anchorIdA, anchorIdB, false);
+            const uint64_t offset = anchorPair.getAverageOffset(anchors);
+            edge_descriptor e;
+            tie(e, ignore) = add_edge(anchorIdA, anchorIdB,
+                AnchorGraphEdge(anchorPair, offset, nextEdgeId++), *this);
+            (*this)[e].useForAssembly = true;
+        }
     }
+
+    cout << "The complete anchor graph has " <<
+        num_vertices(completeAnchorGraph) << " vertices and " <<
+        num_edges(completeAnchorGraph) << " edges." << endl;
+    cout << "The complete anchor graph has " <<
+        num_vertices(*this) << " vertices and " <<
+        num_edges(*this) << " edges." << endl;
 }
 
 
@@ -878,15 +943,31 @@ void AnchorGraph::Subgraph::getLinearPortion(vector<AnchorId>& anchorIds) const
     vertex_descriptor v = vStart;
 
     if(direction == 0) {
-        while(out_degree(v, subgraph) == 1) {
+        while(true) {
+            const uint64_t outDegree = out_degree(v, subgraph);
+            if(outDegree > 1) {
+                break;
+            }
             anchorIds.push_back(subgraph[v].anchorId);
+            if(outDegree == 0) {
+                break;
+            }
+            SHASTA2_ASSERT(outDegree == 1);
             auto [it, ignore] = out_edges(v, subgraph);
             const edge_descriptor e = *it;
             v = target(e, subgraph);
         }
     } else if(direction == 1) {
-        while(in_degree(v, subgraph) == 1) {
+        while(true) {
+            const uint64_t inDegree = in_degree(v, subgraph);
+            if(inDegree > 1) {
+                break;
+            }
             anchorIds.push_back(subgraph[v].anchorId);
+            if(inDegree == 0) {
+                break;
+            }
+            SHASTA2_ASSERT(inDegree == 1);
             auto [it, ignore] = in_edges(v, subgraph);
             const edge_descriptor e = *it;
             v = source(e, subgraph);
