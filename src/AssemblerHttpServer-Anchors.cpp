@@ -806,6 +806,22 @@ void Assembler::exploreAnchorGraphSubgraph(
     html << "<h2>Dominator tree</h2>";
     dominatorTree.writeHtml(html, anchors());
 
+    // Walk up the dominator tree.
+    using vertex_descriptor = AnchorGraph::Subgraph::vertex_descriptor;
+    vector<vertex_descriptor> exits;
+    subgraph.findExits(exits);
+    SHASTA2_ASSERT(exits.size() == 1);
+    const vertex_descriptor exit = exits.front();
+    const AnchorId exitAnchorId = subgraph[exit].anchorId;
+    vector<vertex_descriptor> path;
+    dominatorTree.walkUp(dominatorTree.vertexMap.at(exitAnchorId), path);
+
+    html << "<h2>Path</h2>";
+    for(const vertex_descriptor v: path) {
+        html << anchorIdToString(dominatorTree[v].anchorId) << " ";
+    }
+
+
 }
 
 

@@ -1115,3 +1115,46 @@ void AnchorGraph::Subgraph::pruneMultipleExits()
     cout << "AAA " << exits.size() << endl;
     SHASTA2_ASSERT(exits.size() == 1);
 }
+
+
+
+// Walk up the dominator tree.
+// This will assert if not called on the dominator tree.
+void AnchorGraph::Subgraph::walkUp(
+    vertex_descriptor v,
+    vector<vertex_descriptor>& path) const
+{
+    const Subgraph& dominatorTree = *this;
+    path.clear();
+
+    // Keep going until we reach vStart.
+    while(true) {
+
+        // Add v to the path.
+        path.push_back(v);
+
+        // If we reached vStart, stop here.
+        if(v == vStart) {
+            break;
+        }
+
+        // Move back.
+        if(direction == 0) {
+            auto[begin, end] = in_edges(v, dominatorTree);
+            SHASTA2_ASSERT(begin != end);
+            const edge_descriptor e = *begin++;
+            SHASTA2_ASSERT(begin == end);
+            v = source(e, dominatorTree);
+        } else {
+            auto[begin, end] = out_edges(v, dominatorTree);
+            SHASTA2_ASSERT(begin != end);
+            const edge_descriptor e = *begin++;
+            SHASTA2_ASSERT(begin == end);
+            v = target(e, dominatorTree);
+        }
+    }
+
+    if(direction == 0) {
+        std::ranges::reverse(path);
+    }
+}

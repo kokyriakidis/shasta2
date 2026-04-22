@@ -162,6 +162,10 @@ public:
         class DominatorTree{};
         Subgraph(const Subgraph&, const DominatorTree&, const Anchors&);
 
+        // Walk up the dominator tree.
+        // This will assert if not called on the dominator tree.
+        void walkUp(vertex_descriptor, vector<vertex_descriptor>& path) const;
+
         void writeGraphviz(const string& fileName, const Anchors&) const;
         void writeGraphviz(ostream&, const Anchors&) const;
         void writeHtml(ostream&, const Anchors&) const;
