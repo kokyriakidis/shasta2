@@ -147,6 +147,10 @@ public:
         // Recursively prune leafs with commonCount less than minLeafCommonCount.
         void prune(uint64_t);
 
+        // If there are multiple exits, keep only vertices that are
+        // reachable (backward) from all exits.
+        void pruneMultipleExits();
+
         // Get the AnchorIds of the linear chain on vertices containing vStart.
         // They are returned in order.
         void getLinearPortion(vector<AnchorId>&) const;

@@ -10,6 +10,7 @@
 #include "Markers.hpp"
 #include "orderPairs.hpp"
 #include "performanceLog.hpp"
+#include "findReachableVertices.hpp"
 #include "ReadId.hpp"
 #include "timestamp.hpp"
 #include "tmpDirectory.hpp"
@@ -1035,5 +1036,59 @@ AnchorGraph::Subgraph::Subgraph(
             const AnchorPair anchorPair(anchors, anchorId0, anchorId1, false);
             add_edge(u0, u1, SubgraphEdge(anchorPair.size(), true), dominatorTree);
         }
+    }
+}
+
+
+
+// If there are multiple exits, keep only vertices that are
+// reachable (backward) from all exits.
+void AnchorGraph::Subgraph::pruneMultipleExits()
+{
+    Subgraph& subgraph = *this;
+
+    // Find the exits.
+    vector<vertex_descriptor> exits;
+    BGL_FORALL_VERTICES(v, subgraph, Subgraph) {
+        const bool isExit =
+            ((direction == 0) and (out_degree(v, subgraph) == 0))
+            or
+            ((direction == 1) and (in_degree(v, subgraph) == 0));
+        if(isExit) {
+            exits.push_back(v);
+        }
+    }
+
+    // If there is just a single exit (the most common case), do nothing.
+    if(exits.size() < 2) {
+        return;
+    }
+
+    // Find how many times each vertex is reachable from one of the exits.
+    std::set<vertex_descriptor> reachableVertices;
+    std::map<vertex_descriptor, uint64_t> reachCount;
+    for(const vertex_descriptor exit: exits) {
+        findReachableVertices(subgraph, exit, 1 - direction, reachableVertices);
+        for(const vertex_descriptor v: reachableVertices) {
+            const auto it = reachCount.find(v);
+            if(it == reachCount.end()) {
+                reachCount.insert(make_pair(v, 1));
+            } else {
+                ++it->second;
+            }
+        }
+    }
+
+    // Remove the vertices that are not reachable from all the exits.
+    vector<vertex_descriptor> verticesToBeRemoved;
+    BGL_FORALL_VERTICES(v, subgraph, Subgraph) {
+        const auto it = reachCount.find(v);
+        if((it == reachCount.end()) or (it->second != exits.size())) {
+            verticesToBeRemoved.push_back(v);
+        }
+    }
+    for(const vertex_descriptor v: verticesToBeRemoved) {
+        // We can't remove it because the Subgraph uses vecS,
+        clear_vertex(v, subgraph);
     }
 }

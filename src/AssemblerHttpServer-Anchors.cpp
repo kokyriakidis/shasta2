@@ -791,6 +791,7 @@ void Assembler::exploreAnchorGraphSubgraph(
     AnchorGraph::Subgraph subgraph(anchors(), *completeAnchorGraphPointer, anchorId, direction, minCommonCount);
     subgraph.removeCycles();
     subgraph.transitiveReduction();
+    subgraph.pruneMultipleExits();
 
     // Display it.
     subgraph.writeHtml(html, anchors());
