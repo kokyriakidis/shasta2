@@ -1041,6 +1041,31 @@ AnchorGraph::Subgraph::Subgraph(
 
 
 
+// Find exits, ignoring isolated verties.
+void AnchorGraph::Subgraph::findExits(vector<vertex_descriptor>& exits) const
+{
+    const Subgraph& subgraph = *this;
+
+    exits.clear();
+    BGL_FORALL_VERTICES(v, subgraph, Subgraph) {
+        const uint64_t outDegree = out_degree(v, subgraph);
+        const uint64_t inDegree = in_degree(v, subgraph);
+        if((v != vStart) and (outDegree == 0) and (inDegree == 0)) {
+            continue;
+        }
+        const bool isExit =
+            ((direction == 0) and (outDegree == 0))
+            or
+            ((direction == 1) and (inDegree == 0));
+        if(isExit) {
+            exits.push_back(v);
+        }
+    }
+
+}
+
+
+
 // If there are multiple exits, keep only vertices that are
 // reachable (backward) from all exits.
 void AnchorGraph::Subgraph::pruneMultipleExits()
@@ -1049,15 +1074,7 @@ void AnchorGraph::Subgraph::pruneMultipleExits()
 
     // Find the exits.
     vector<vertex_descriptor> exits;
-    BGL_FORALL_VERTICES(v, subgraph, Subgraph) {
-        const bool isExit =
-            ((direction == 0) and (out_degree(v, subgraph) == 0))
-            or
-            ((direction == 1) and (in_degree(v, subgraph) == 0));
-        if(isExit) {
-            exits.push_back(v);
-        }
-    }
+    findExits(exits);
 
     // If there is just a single exit (the most common case), do nothing.
     if(exits.size() < 2) {
@@ -1091,4 +1108,10 @@ void AnchorGraph::Subgraph::pruneMultipleExits()
         // We can't remove it because the Subgraph uses vecS,
         clear_vertex(v, subgraph);
     }
+
+
+    // Sanity check.
+    findExits(exits);
+    cout << "AAA " << exits.size() << endl;
+    SHASTA2_ASSERT(exits.size() == 1);
 }

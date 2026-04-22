@@ -147,6 +147,9 @@ public:
         // Recursively prune leafs with commonCount less than minLeafCommonCount.
         void prune(uint64_t);
 
+        // Find exits, ignoring isolated verties.
+        void findExits(vector<vertex_descriptor>&) const;
+
         // If there are multiple exits, keep only vertices that are
         // reachable (backward) from all exits.
         void pruneMultipleExits();
