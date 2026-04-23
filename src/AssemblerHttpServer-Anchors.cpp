@@ -789,11 +789,25 @@ void Assembler::exploreAnchorGraphSubgraph(
 
     // Create the Subgraph.
     AnchorGraph::Subgraph subgraph(anchors(), *completeAnchorGraphPointer, anchorId, direction, minCommonCount);
+    html << "<h3>Initial subgraph</h3>";
+    subgraph.writeHtml(html, anchors());
+
+    // Remove cycles.
     subgraph.removeCycles();
+    html << "<h3>Subgraph after removing cycles</h3>";
+    subgraph.writeHtml(html, anchors());
+
+    // Transitive reduction.
     subgraph.transitiveReduction();
+    html << "<h3>Subgraph after transitive reduction</h3>";
+    subgraph.writeHtml(html, anchors());
+
+    // Prune multiple exists.
     subgraph.pruneMultipleExits();
 
     // Display it.
+    html << "<h3>Final subgraph</h3>";
+    subgraph.writeHtml(html, anchors());
     subgraph.writeHtml(html, anchors());
 
     // Create the dominator tree.
@@ -801,7 +815,7 @@ void Assembler::exploreAnchorGraphSubgraph(
         subgraph,
         AnchorGraph::Subgraph::DominatorTree(),
         anchors());
-    html << "<h2>Dominator tree</h2>";
+    html << "<h3>Dominator tree</h3>";
     dominatorTree.writeHtml(html, anchors());
 
     // Walk up the dominator tree.

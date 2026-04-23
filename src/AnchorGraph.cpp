@@ -442,7 +442,7 @@ AnchorGraph::AnchorGraph(
     edgeAnchorIds[1].resize(anchors.size());
 
     // Loop over all anchors.
-    vector<AnchorId> linearPortion;
+    vector<Subgraph::vertex_descriptor> path;
     BGL_FORALL_VERTICES(anchorIdStart, completeAnchorGraph, AnchorGraph) {
 
         // Loop over both directions (0=forward, 1=backward).
@@ -452,12 +452,23 @@ AnchorGraph::AnchorGraph(
             Subgraph subgraph(anchors, completeAnchorGraph, anchorIdStart, direction, minCommonCount);
             subgraph.removeCycles();
             subgraph.transitiveReduction();
-            subgraph.getLinearPortion(linearPortion);
+            subgraph.pruneMultipleExits();
 
-            for(uint64_t i1=1; i1<linearPortion.size(); i1++) {
+            // Create the dominator tree.
+            const Subgraph dominatorTree(
+                subgraph,
+                AnchorGraph::Subgraph::DominatorTree(),
+                anchors);
+
+            // Walk up from the exit.
+            subgraph.walkUp(dominatorTree, path);
+
+            for(uint64_t i1=1; i1<path.size(); i1++) {
                 const uint64_t i0 = i1 - 1;
-                const AnchorId anchorId0 = linearPortion[i0];
-                const AnchorId anchorId1 = linearPortion[i1];
+                const Subgraph::vertex_descriptor v0 = path[i0];
+                const Subgraph::vertex_descriptor v1 = path[i1];
+                const AnchorId anchorId0 = dominatorTree[v0].anchorId;
+                const AnchorId anchorId1 = dominatorTree[v1].anchorId;
                 edgeAnchorIds[direction][anchorId0].push_back(anchorId1);
             }
         }
@@ -515,7 +526,7 @@ AnchorGraph::AnchorGraph(
     cout << "The complete anchor graph has " <<
         num_vertices(completeAnchorGraph) << " vertices and " <<
         num_edges(completeAnchorGraph) << " edges." << endl;
-    cout << "The complete anchor graph has " <<
+    cout << "The anchor graph has " <<
         num_vertices(*this) << " vertices and " <<
         num_edges(*this) << " edges." << endl;
 }
@@ -709,9 +720,11 @@ void AnchorGraph::Subgraph::writeGraphviz(ostream& dot, const Anchors& anchors) 
         dot << "[";
         dot << "label=\"" << anchorIdToString(subgraph[v].anchorId) <<
             "\\nCoverage " << anchors[anchorId].size() <<
-            "\\nCommon " << vertex.commonCount <<
-            "\\nRank " << vertex.rank <<
-            "\"";
+            "\\nCommon " << vertex.commonCount;
+        if(isValid(vertex.rank)) {
+            dot << "\\nRank " << vertex.rank;
+        }
+        dot << "\"";
 
         string color;
         if(v == vStart) {
@@ -1046,47 +1059,43 @@ void AnchorGraph::Subgraph::pruneMultipleExits()
 {
     Subgraph& subgraph = *this;
 
-    // Find the exits.
-    vector<vertex_descriptor> exits;
-    findExits(exits);
 
-    // If there is just a single exit (the most common case), do nothing.
-    if(exits.size() < 2) {
-        return;
-    }
+    while(true) {
+        vector<vertex_descriptor> exits;
+        findExits(exits);
 
-    // Find how many times each vertex is reachable from one of the exits.
-    std::set<vertex_descriptor> reachableVertices;
-    std::map<vertex_descriptor, uint64_t> reachCount;
-    for(const vertex_descriptor exit: exits) {
-        findReachableVertices(subgraph, exit, 1 - direction, reachableVertices);
-        for(const vertex_descriptor v: reachableVertices) {
-            const auto it = reachCount.find(v);
-            if(it == reachCount.end()) {
-                reachCount.insert(make_pair(v, 1));
-            } else {
-                ++it->second;
+        if(exits.size() < 2) {
+            break;
+        }
+
+        // Find how many times each vertex is reachable from one of the exits.
+        std::set<vertex_descriptor> reachableVertices;
+        std::map<vertex_descriptor, uint64_t> reachCount;
+        for(const vertex_descriptor exit: exits) {
+            findReachableVertices(subgraph, exit, 1 - direction, reachableVertices);
+            for(const vertex_descriptor v: reachableVertices) {
+                const auto it = reachCount.find(v);
+                if(it == reachCount.end()) {
+                    reachCount.insert(make_pair(v, 1));
+                } else {
+                    ++it->second;
+                }
             }
         }
-    }
 
-    // Remove the vertices that are not reachable from all the exits.
-    vector<vertex_descriptor> verticesToBeRemoved;
-    BGL_FORALL_VERTICES(v, subgraph, Subgraph) {
-        const auto it = reachCount.find(v);
-        if((it == reachCount.end()) or (it->second != exits.size())) {
-            verticesToBeRemoved.push_back(v);
+        // Remove the vertices that are not reachable from all the exits.
+        vector<vertex_descriptor> verticesToBeRemoved;
+        BGL_FORALL_VERTICES(v, subgraph, Subgraph) {
+            const auto it = reachCount.find(v);
+            if((it == reachCount.end()) or (it->second != exits.size())) {
+                verticesToBeRemoved.push_back(v);
+            }
+        }
+        for(const vertex_descriptor v: verticesToBeRemoved) {
+            // We can't remove it because the Subgraph uses vecS,
+            clear_vertex(v, subgraph);
         }
     }
-    for(const vertex_descriptor v: verticesToBeRemoved) {
-        // We can't remove it because the Subgraph uses vecS,
-        clear_vertex(v, subgraph);
-    }
-
-
-    // Sanity check.
-    findExits(exits);
-    SHASTA2_ASSERT(exits.size() == 1);
 }
 
 

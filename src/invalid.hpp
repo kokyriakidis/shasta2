@@ -8,5 +8,10 @@
 namespace shasta2 {
     template<class T> static const T invalid = std::numeric_limits<T>::max();
     template<class T> static const T unlimited = std::numeric_limits<T>::max();
+
+    template<class T> inline bool isValid(const T& t)
+    {
+        return t != invalid<T>;
+    }
 }
 
