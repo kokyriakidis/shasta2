@@ -43,6 +43,10 @@ public:
     {
         return journeys[orientedReadId.getValue()];
     }
+    Journey operator[](uint64_t i) const
+    {
+        return journeys[i];
+    }
 
     uint64_t size() const
     {

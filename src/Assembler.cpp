@@ -288,7 +288,7 @@ void Assembler::createAnchorSimilarityGraph(const Options& options)
 void Assembler::readFollowing()
 {
     const AnchorGraph& completeAnchorGraph = *completeAnchorGraphPointer;
-    anchorGraphPointer = make_shared<AnchorGraph>(anchors(), completeAnchorGraph);
+    anchorGraphPointer = make_shared<AnchorGraph>(anchors(), journeys(), completeAnchorGraph);
     anchorGraphPointer->save("AnchorGraph");
 }
 

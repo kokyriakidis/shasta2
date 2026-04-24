@@ -92,6 +92,7 @@ public:
     // where most anchors correspond to a single copy.
     AnchorGraph(
         const Anchors&,
+        const Journeys&,
         const AnchorGraph& completeAnchorGraph);
 
     // Types and functions used by the above constructor.

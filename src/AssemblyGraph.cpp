@@ -459,14 +459,19 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
     deduplicate(additionalOrientedReadIds);
 
     ostream html(0);
-    LocalAssembly4 localAssembly(
-        anchors,
-        options.abpoaMaxLength,
-        html,
-        false,
-        edge[i].anchorPair,
-        additionalOrientedReadIds);
-    step.sequence = localAssembly.sequence;
+    try {
+        LocalAssembly4 localAssembly(
+            anchors,
+            options.abpoaMaxLength,
+            html,
+            false,
+            edge[i].anchorPair,
+            additionalOrientedReadIds);
+        step.sequence = localAssembly.sequence;
+    } catch(const std::exception&) {
+        cout << "Error occurred assembling segment " <<
+            assemblyGraph[e].id << " step " << i << endl;
+    }
 }
 
 

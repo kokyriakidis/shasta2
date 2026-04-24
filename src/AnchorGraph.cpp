@@ -5,12 +5,13 @@
 #include "approximateTopologicalSort.hpp"
 #include "deduplicate.hpp"
 #include "dominatorTree.hpp"
+#include "findLinearChains.hpp"
+#include "findReachableVertices.hpp"
 #include "graphvizToHtml.hpp"
 #include "Journeys.hpp"
 #include "Markers.hpp"
 #include "orderPairs.hpp"
 #include "performanceLog.hpp"
-#include "findReachableVertices.hpp"
 #include "ReadId.hpp"
 #include "timestamp.hpp"
 #include "tmpDirectory.hpp"
@@ -428,6 +429,7 @@ AnchorGraph::AnchorGraph(
 // where most anchors correspond to a single copy.
 AnchorGraph::AnchorGraph(
     const Anchors& anchors,
+    const Journeys&,
     const AnchorGraph& completeAnchorGraph) :
     MappedMemoryOwner(anchors),
     MultithreadedObject<AnchorGraph>(*this)
@@ -530,6 +532,233 @@ AnchorGraph::AnchorGraph(
         num_vertices(*this) << " vertices and " <<
         num_edges(*this) << " edges." << endl;
 }
+
+
+
+#if 0
+// Another experimental AnchorGraph constructor.
+// This uses the complete AnchorGraph as input.
+AnchorGraph::AnchorGraph(
+    const Anchors& anchors,
+    const Journeys& journeys,
+    const AnchorGraph& completeAnchorGraph) :
+    MappedMemoryOwner(anchors),
+    MultithreadedObject<AnchorGraph>(*this)
+{
+    // EXPOSE WHEN CODE STABILIZES.
+    const uint64_t minEdgeCoverage1 = 3;
+    const uint64_t minEdgeCoverage2 = 2;
+
+    // Create a filtered version of the complete AnchorGraph
+    // containing only the edges with coverage at least minEdgeCoverage.
+    class EdgePredicate {
+    public:
+        bool operator()(const AnchorGraph::edge_descriptor& e) const
+        {
+            return (*anchorGraph)[e].anchorPair.size() >= minEdgeCoverage1;
+        }
+        EdgePredicate(const AnchorGraph& anchorGraph) : anchorGraph(&anchorGraph) {}
+        EdgePredicate() : anchorGraph(0) {}
+        const AnchorGraph* anchorGraph;
+    };
+    using FilteredAnchorGraph = boost::filtered_graph<AnchorGraph, EdgePredicate>;
+    FilteredAnchorGraph filteredCompleteAnchorGraph(completeAnchorGraph, EdgePredicate(completeAnchorGraph));
+
+    // Find edge chains of length 2 or more in the filteredCompleteAnchorGraph.
+    vector< vector<edge_descriptor> > edgeChains;
+    findLinearChains(filteredCompleteAnchorGraph, 2, edgeChains);
+
+    // Each edge chain a vertex chain
+    // that includes only its internal vertices.
+    vector< vector<AnchorId> > chains;
+    for(const vector<edge_descriptor>& edgeChain: edgeChains) {
+        vector<AnchorId>& chain = chains.emplace_back();
+        for(uint64_t i=1; i<edgeChain.size(); i++) {
+            const edge_descriptor e = edgeChain[i];
+            chain.push_back(source(e, filteredCompleteAnchorGraph));
+        }
+    }
+
+    // Write out the chains.
+    {
+        ofstream csv("Chains.csv");
+        csv << "ChainId,Length\n";
+        for(uint64_t chainId=0; chainId<chains.size(); chainId++) {
+            const vector<AnchorId>& chain = chains[chainId];
+            csv << chainId << "," << chain.size() << ",";
+            for(uint64_t i=0; i<chain.size(); i++) {
+                const AnchorId anchorId = chain[i];
+                csv << anchorIdToString(anchorId) << ",";
+            }
+            csv << "\n";
+        }
+    }
+
+
+
+    // For each AnchorId, store the chain and position where it occurs, if any.
+    class AnchorLocation {
+    public:
+        uint64_t chainId = invalid<uint64_t>;
+        uint64_t position = invalid<uint64_t>;
+    };
+    vector<AnchorLocation> anchorLocations(anchors.size());
+    for(uint64_t chainId=0; chainId<chains.size(); chainId++) {
+        const vector<AnchorId>& chain = chains[chainId];
+        for(uint64_t position=0; position<chain.size(); position++) {
+            const AnchorId anchorId = chain[position];
+            AnchorLocation& anchorLocation = anchorLocations[anchorId];
+            anchorLocation.chainId = chainId;
+            anchorLocation.position = position;
+        }
+    }
+
+    // Count the number of anchors in these chains.
+    uint64_t anchorsInChainCount = 0;
+    for(AnchorId anchorId=0; anchorId<anchors.size(); anchorId++) {
+        if(isValid(anchorLocations[anchorId].chainId)) {
+            ++anchorsInChainCount;
+        }
+    }
+    cout << "Total number of anchors " << anchors.size() << endl;
+    cout << "Number of anchors in vertex chains " << anchorsInChainCount << endl;
+
+
+
+    // Create the vertices of the new AnchorGraph, one for each AnchorId.
+    // In the AnchorGraph, vertex_descriptors are AnchorIds.
+    const uint64_t anchorCount = anchors.size();
+    for(AnchorId anchorId=0; anchorId<anchorCount; anchorId++) {
+        add_vertex(*this);
+    }
+
+
+    // Now create edges between successive AnchorIds of each chain.
+    for(const vector<AnchorId>& chain: chains) {
+        for(uint64_t i1=1; i1<chain.size(); i1++) {
+            const uint64_t i0 = i1 - 1;
+            const AnchorId anchorId0 = chain[i0];
+            const AnchorId anchorId1 = chain[i1];
+
+            const AnchorPair anchorPair(anchors, anchorId0, anchorId1, true);
+            const uint64_t offset = anchorPair.getAverageOffset(anchors);
+            edge_descriptor e;
+            tie(e, ignore) = add_edge(anchorId0, anchorId1,
+                AnchorGraphEdge(anchorPair, offset, nextEdgeId++), *this);
+            (*this)[e].useForAssembly = true;
+        }
+    }
+
+
+
+    // Generate OrientedReadId journeys using only the AnchorIds that appear in one or more chain.
+    const uint64_t orientedReadCount = journeys.size();
+    vector< vector<AnchorId> > newJourneys(orientedReadCount);
+    for(uint64_t i=0; i<orientedReadCount; i++) {
+        const Journey& journey = journeys[i];
+        vector<AnchorId>& newJourney = newJourneys[i];
+        for(const AnchorId anchorId: journey) {
+            if(isValid(anchorLocations[anchorId].chainId)) {
+                newJourney.push_back(anchorId);
+            }
+        }
+    }
+
+    // Find transitions between chains in these journeys.
+    class ChainPair {
+    public:
+        uint64_t chainId0;
+        uint64_t chainId1;
+        bool operator<(const ChainPair& that) const {
+            return tie(chainId0, chainId1) < tie(that.chainId0, that.chainId1);
+        }
+        ChainPair swap() const
+        {
+            return ChainPair({chainId1, chainId0});
+        }
+    };
+    class Transition {
+    public:
+        AnchorId anchorId0;
+        AnchorId anchorId1;
+        uint64_t commonCount;
+        bool operator<(const Transition& that) const
+        {
+            return commonCount > that.commonCount;
+        }
+    };
+    std::map<ChainPair, vector<Transition> > transitionMap;
+    for(const vector<AnchorId>& newJourney: newJourneys) {
+        for(uint64_t i1=1; i1<newJourney.size(); i1++) {
+            const uint64_t i0 = i1 - 1;
+            const AnchorId anchorId0 = newJourney[i0];
+            const AnchorId anchorId1 = newJourney[i1];
+            const uint64_t chainId0 = anchorLocations[anchorId0].chainId;
+            const uint64_t chainId1 = anchorLocations[anchorId1].chainId;
+            SHASTA2_ASSERT(shasta2::isValid(chainId0));
+            SHASTA2_ASSERT(shasta2::isValid(chainId1));
+            if(chainId0 != chainId1) {
+                const uint64_t commonCount = anchors.countCommon(anchorId0, anchorId1);
+                if(commonCount < minEdgeCoverage2) {
+                    continue;
+                }
+                const ChainPair chainPair = {chainId0, chainId1};
+                const Transition transition = {anchorId0, anchorId1, commonCount};
+                transitionMap[chainPair].push_back(transition);
+            }
+        }
+    }
+
+
+    // The best transition between two chains is used to generate an edge.
+    for(auto&[chainPair, transitions]: transitionMap) {
+        if(transitionMap.contains(chainPair.swap())) {
+            continue;
+        }
+        sort(transitions.begin(), transitions.end());
+        const Transition& transition = transitions.front();
+        const AnchorId anchorId0 = transition.anchorId0;
+        const AnchorId anchorId1 = transition.anchorId1;
+        const AnchorPair anchorPair(anchors, anchorId0, anchorId1, false);
+        const uint64_t offset = anchorPair.getAverageOffset(anchors);
+        edge_descriptor e;
+        tie(e, ignore) = add_edge(anchorId0, anchorId1,
+            AnchorGraphEdge(anchorPair, offset, nextEdgeId++), *this);
+        (*this)[e].useForAssembly = true;
+    }
+
+
+
+    // Write out the transitionMap.
+    {
+        ofstream csv("TransitionMap.csv");
+        csv << "ChainId0,ChainId1,AnchorId0,AnchorId1,Commmon\n";
+        for(auto&[chainPair, transitions]: transitionMap) {
+            if(transitionMap.contains(chainPair.swap())) {
+                continue;
+            }
+            const Transition& transition = transitions.front();
+            const AnchorId anchorId0 = transition.anchorId0;
+            const AnchorId anchorId1 = transition.anchorId1;
+
+            csv <<
+                chainPair.chainId0 << "," <<
+                chainPair.chainId1 << "," <<
+                anchorIdToString(anchorId0) << "," <<
+                anchorIdToString(anchorId1) << "," <<
+                transition.commonCount << "\n";       }
+    }
+
+
+
+    cout << "The complete anchor graph has " <<
+        num_vertices(completeAnchorGraph) << " vertices and " <<
+        num_edges(completeAnchorGraph) << " edges." << endl;
+    cout << "The anchor graph has " <<
+        num_vertices(*this) << " vertices and " <<
+        num_edges(*this) << " edges." << endl;
+}
+#endif
 
 
 
