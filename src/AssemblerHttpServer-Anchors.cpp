@@ -808,7 +808,6 @@ void Assembler::exploreAnchorGraphSubgraph(
     // Display it.
     html << "<h3>Final subgraph</h3>";
     subgraph.writeHtml(html, anchors());
-    subgraph.writeHtml(html, anchors());
 
     // Create the dominator tree.
     const AnchorGraph::Subgraph dominatorTree(
