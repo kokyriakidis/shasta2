@@ -423,6 +423,7 @@ AnchorGraph::AnchorGraph(
 
 
 
+#if 0
 // This uses read following in the complete AnchorGraph
 // to create the AnchorGraph to be used for assembly.
 // This is meant to be used with strict anchor generation,
@@ -532,25 +533,28 @@ AnchorGraph::AnchorGraph(
         num_vertices(*this) << " vertices and " <<
         num_edges(*this) << " edges." << endl;
 }
+#endif
 
 
 
-#if 0
 // Another experimental AnchorGraph constructor.
 // This uses the complete AnchorGraph as input.
 AnchorGraph::AnchorGraph(
     const Anchors& anchors,
-    const Journeys& journeys,
+    const Journeys&,
     const AnchorGraph& completeAnchorGraph) :
     MappedMemoryOwner(anchors),
     MultithreadedObject<AnchorGraph>(*this)
 {
     // EXPOSE WHEN CODE STABILIZES.
-    const uint64_t minEdgeCoverage1 = 3;
+    const uint64_t minEdgeCoverage1 = 6;
     const uint64_t minEdgeCoverage2 = 2;
+    const uint64_t minInternalVertexCount = 2;
+
+
 
     // Create a filtered version of the complete AnchorGraph
-    // containing only the edges with coverage at least minEdgeCoverage.
+    // containing only the edges with coverage at least minEdgeCoverage1.
     class EdgePredicate {
     public:
         bool operator()(const AnchorGraph::edge_descriptor& e) const
@@ -564,11 +568,13 @@ AnchorGraph::AnchorGraph(
     using FilteredAnchorGraph = boost::filtered_graph<AnchorGraph, EdgePredicate>;
     FilteredAnchorGraph filteredCompleteAnchorGraph(completeAnchorGraph, EdgePredicate(completeAnchorGraph));
 
-    // Find edge chains of length 2 or more in the filteredCompleteAnchorGraph.
-    vector< vector<edge_descriptor> > edgeChains;
-    findLinearChains(filteredCompleteAnchorGraph, 2, edgeChains);
 
-    // Each edge chain a vertex chain
+
+    // Find edge chains of with at least minInternalVertexCount internal vertices.
+    vector< vector<edge_descriptor> > edgeChains;
+    findLinearChains(filteredCompleteAnchorGraph, minInternalVertexCount + 1, edgeChains);
+
+    // Each edge chain generates a vertex chain
     // that includes only its internal vertices.
     vector< vector<AnchorId> > chains;
     for(const vector<edge_descriptor>& edgeChain: edgeChains) {
@@ -596,7 +602,7 @@ AnchorGraph::AnchorGraph(
 
 
 
-    // For each AnchorId, store the chain and position where it occurs, if any.
+    // For each AnchorId, store the chain and position where that AnchorId occurs, if any.
     class AnchorLocation {
     public:
         uint64_t chainId = invalid<uint64_t>;
@@ -633,6 +639,7 @@ AnchorGraph::AnchorGraph(
     }
 
 
+
     // Now create edges between successive AnchorIds of each chain.
     for(const vector<AnchorId>& chain: chains) {
         for(uint64_t i1=1; i1<chain.size(); i1++) {
@@ -651,102 +658,183 @@ AnchorGraph::AnchorGraph(
 
 
 
-    // Generate OrientedReadId journeys using only the AnchorIds that appear in one or more chain.
-    const uint64_t orientedReadCount = journeys.size();
-    vector< vector<AnchorId> > newJourneys(orientedReadCount);
-    for(uint64_t i=0; i<orientedReadCount; i++) {
-        const Journey& journey = journeys[i];
-        vector<AnchorId>& newJourney = newJourneys[i];
-        for(const AnchorId anchorId: journey) {
-            if(isValid(anchorLocations[anchorId].chainId)) {
-                newJourney.push_back(anchorId);
-            }
-        }
-    }
+    // We will use AnchorGraph::Subgraph to add AnchorGraph edges
+    // between vertices of distinct chains.
 
-    // Find transitions between chains in these journeys.
-    class ChainPair {
+    class AnchorGraphEdgeCandidate {
     public:
-        uint64_t chainId0;
-        uint64_t chainId1;
-        bool operator<(const ChainPair& that) const {
-            return tie(chainId0, chainId1) < tie(that.chainId0, that.chainId1);
-        }
-        ChainPair swap() const
-        {
-            return ChainPair({chainId1, chainId0});
-        }
-    };
-    class Transition {
-    public:
-        AnchorId anchorId0;
-        AnchorId anchorId1;
+        AnchorId anchorIdA;
+        AnchorId anchorIdB;
+
         uint64_t commonCount;
-        bool operator<(const Transition& that) const
-        {
-            return commonCount > that.commonCount;
-        }
+
+        // The direction of the Subgraph that found this edge.
+        uint64_t direction;
+
+        // The positions of anchorIdA and anchorIdB in the two chains.
+        uint64_t positionA;
+        uint64_t positionB;
     };
-    std::map<ChainPair, vector<Transition> > transitionMap;
-    for(const vector<AnchorId>& newJourney: newJourneys) {
-        for(uint64_t i1=1; i1<newJourney.size(); i1++) {
-            const uint64_t i0 = i1 - 1;
-            const AnchorId anchorId0 = newJourney[i0];
-            const AnchorId anchorId1 = newJourney[i1];
-            const uint64_t chainId0 = anchorLocations[anchorId0].chainId;
-            const uint64_t chainId1 = anchorLocations[anchorId1].chainId;
-            SHASTA2_ASSERT(shasta2::isValid(chainId0));
-            SHASTA2_ASSERT(shasta2::isValid(chainId1));
-            if(chainId0 != chainId1) {
-                const uint64_t commonCount = anchors.countCommon(anchorId0, anchorId1);
-                if(commonCount < minEdgeCoverage2) {
+
+
+
+    // We use a ChainGraph in which each vertex corresponds
+    // to one of our chains. A ChainGraph edge contains
+    // information about possible future AnchorGraph edges
+    // connecting the two chains.
+    AnchorGraph::ChainGraph chainGraph(chains.size());
+
+
+
+    // Loop over terminal AnchorIds of all chains.
+    vector<Subgraph::vertex_descriptor> path;
+    for(uint64_t chainId0=0; chainId0<chains.size(); chainId0++) {
+        const vector<AnchorId>& chain0 = chains[chainId0];
+        for(uint64_t direction=0; direction<2; direction++) {
+            const AnchorId anchorId0 = (direction == 0) ? chain0.back() : chain0.front();
+
+            const bool debug = ((chainId0 == 57) and (direction == 0)) or ((chainId0 == 150) and (direction == 1));
+            if(debug) {
+                cout << "Working on " << anchorIdToString(anchorId0) << " direction " << direction << endl;
+            }
+
+            // Create a Subgraph starting at anchorId0 and moving in this direction.
+            Subgraph subgraph(anchors, completeAnchorGraph, anchorId0, direction, 1);
+            subgraph.removeCycles();
+            subgraph.transitiveReduction();
+            subgraph.pruneMultipleExits();
+
+            // Create the dominator tree.
+            const Subgraph dominatorTree(
+                subgraph,
+                AnchorGraph::Subgraph::DominatorTree(),
+                anchors);
+
+            // Create a path by walking back from the exit.
+            subgraph.walkUp(dominatorTree, path);
+
+            // Scan the path to generate AnchorEdgeCandidates.
+            for(const Subgraph::vertex_descriptor v1: path) {
+                const SubgraphVertex& vertex = dominatorTree[v1];
+                const AnchorId anchorId1 = vertex.anchorId;
+                const uint64_t commonCount = vertex.commonCount;
+                if(debug) {
+                    cout << "Found " << anchorIdToString(anchorId1) << ", commonCount " << commonCount << endl;
+                }
+                const AnchorLocation& anchorLocation1 = anchorLocations[anchorId1];
+                const uint64_t chainId1 = anchorLocation1.chainId;
+                if(not shasta2::isValid(chainId1)) {
+                    if(debug) {
+                        cout << "Not in a chain, skipped." << endl;
+                    }
                     continue;
                 }
-                const ChainPair chainPair = {chainId0, chainId1};
-                const Transition transition = {anchorId0, anchorId1, commonCount};
-                transitionMap[chainPair].push_back(transition);
+                if(chainId1 == chainId0) {
+                    if(debug) {
+                        cout << "Same chain, skipped." << endl;
+                    }
+                    continue;
+                }
+                if(commonCount < minEdgeCoverage2) {
+                    if(debug) {
+                        cout << "Low commonCount " << commonCount << ", skipped." << endl;
+                    }
+                    continue;
+                }
+
+                // Find the source and target chains and AnchorIds.
+                uint64_t chainIdA = chainId0;
+                uint64_t chainIdB = chainId1;
+                AnchorId anchorIdA = anchorId0;
+                AnchorId anchorIdB = anchorId1;
+                if(direction == 1) {
+                    std::swap(chainIdA, chainIdB);
+                    std::swap(anchorIdA, anchorIdB);
+                }
+
+                if(debug) {
+                    cout << "Storing edge candidate " << anchorIdToString(anchorIdA) <<
+                        " " << anchorIdToString(anchorIdB) << ", common " << commonCount << endl;
+                }
+
+                // Get the ChainGraphEdge, creating it if necessary.
+                auto[e, edgeExists] = boost::edge(chainIdA, chainIdB, chainGraph);
+                if(not edgeExists) {
+                    tie(e, edgeExists) = boost::add_edge(chainIdA, chainIdB, chainGraph);
+                }
+                SHASTA2_ASSERT(edgeExists);
+                ChainGraphEdge& chainGraphEdge = chainGraph[e];
+
+                // Add this EdgeCandidate.
+                EdgeCandidate& edgeCandidate = chainGraphEdge.emplace_back();
+                edgeCandidate.anchorIdA = anchorIdA;
+                edgeCandidate.anchorIdB = anchorIdB;
+                edgeCandidate.commonCount = commonCount;
+                edgeCandidate.direction = direction;
+                edgeCandidate.positionA = anchorLocations[anchorIdA].position;
+                edgeCandidate.positionB = anchorLocations[anchorIdB].position;
             }
         }
     }
+    cout << "The initial ChainGraph has " <<
+        num_vertices(chainGraph) << " vertices and " <<
+        num_edges(chainGraph) << " edges." << endl;
 
-
-    // The best transition between two chains is used to generate an edge.
-    for(auto&[chainPair, transitions]: transitionMap) {
-        if(transitionMap.contains(chainPair.swap())) {
-            continue;
-        }
-        sort(transitions.begin(), transitions.end());
-        const Transition& transition = transitions.front();
-        const AnchorId anchorId0 = transition.anchorId0;
-        const AnchorId anchorId1 = transition.anchorId1;
-        const AnchorPair anchorPair(anchors, anchorId0, anchorId1, false);
-        const uint64_t offset = anchorPair.getAverageOffset(anchors);
-        edge_descriptor e;
-        tie(e, ignore) = add_edge(anchorId0, anchorId1,
-            AnchorGraphEdge(anchorPair, offset, nextEdgeId++), *this);
-        (*this)[e].useForAssembly = true;
-    }
+    chainGraph.removeNonBidirectionalEdges();
+    cout << "After removing non-bidirectional edges, the ChainGraph has " <<
+        num_vertices(chainGraph) << " vertices and " <<
+        num_edges(chainGraph) << " edges." << endl;
+    chainGraph.writeGraphviz("ChainGraph.dot");
+    chainGraph.writeCsv("ChainGraph.csv");
 
 
 
-    // Write out the transitionMap.
-    {
-        ofstream csv("TransitionMap.csv");
-        csv << "ChainId0,ChainId1,AnchorId0,AnchorId1,Commmon\n";
-        for(auto&[chainPair, transitions]: transitionMap) {
-            if(transitionMap.contains(chainPair.swap())) {
-                continue;
+    // To generate AnchorGraph edges, loop over vertices of the ChainGraph.
+    // For each vertex use the best EdgeCandidate found in all of the out-edges
+    // and the best EdgeCandidate found in all of the in-edges.
+    for(uint64_t chainIdA=0; chainIdA<chains.size(); chainIdA++) {
+
+        // Forward.
+        if(out_degree(chainIdA, chainGraph) > 0) {
+            EdgeCandidate bestEdgeCandidate;
+            BGL_FORALL_OUTEDGES(chainIdA, e, chainGraph, ChainGraph) {
+                for(const EdgeCandidate& edgeCandidate: chainGraph[e]) {
+                    if(edgeCandidate.commonCount > bestEdgeCandidate.commonCount) {
+                        bestEdgeCandidate = edgeCandidate;
+                    }
+                }
             }
-            const Transition& transition = transitions.front();
-            const AnchorId anchorId0 = transition.anchorId0;
-            const AnchorId anchorId1 = transition.anchorId1;
 
-            csv <<
-                chainPair.chainId0 << "," <<
-                chainPair.chainId1 << "," <<
-                anchorIdToString(anchorId0) << "," <<
-                anchorIdToString(anchorId1) << "," <<
-                transition.commonCount << "\n";       }
+            const AnchorPair anchorPair(anchors, bestEdgeCandidate.anchorIdA, bestEdgeCandidate.anchorIdB, false);
+            const uint64_t offset = anchorPair.getAverageOffset(anchors);
+            auto [e, edgeExists] = boost::edge(bestEdgeCandidate.anchorIdA, bestEdgeCandidate.anchorIdB, *this);
+            if(not edgeExists){
+                tie(e, ignore) = add_edge(bestEdgeCandidate.anchorIdA, bestEdgeCandidate.anchorIdB,
+                    AnchorGraphEdge(anchorPair, offset, nextEdgeId++), *this);
+                (*this)[e].useForAssembly = true;
+            }
+        }
+
+        // Backward.
+        if(in_degree(chainIdA, chainGraph) > 0) {
+            EdgeCandidate bestEdgeCandidate;
+            BGL_FORALL_INEDGES(chainIdA, e, chainGraph, ChainGraph) {
+                for(const EdgeCandidate& edgeCandidate: chainGraph[e]) {
+                    if(edgeCandidate.commonCount > bestEdgeCandidate.commonCount) {
+                        bestEdgeCandidate = edgeCandidate;
+                    }
+                }
+            }
+
+            const AnchorPair anchorPair(anchors, bestEdgeCandidate.anchorIdA, bestEdgeCandidate.anchorIdB, false);
+            const uint64_t offset = anchorPair.getAverageOffset(anchors);
+            auto [e, edgeExists] = boost::edge(bestEdgeCandidate.anchorIdA, bestEdgeCandidate.anchorIdB, *this);
+            if(not edgeExists){
+                tie(e, ignore) = add_edge(bestEdgeCandidate.anchorIdA, bestEdgeCandidate.anchorIdB,
+                    AnchorGraphEdge(anchorPair, offset, nextEdgeId++), *this);
+                (*this)[e].useForAssembly = true;
+            }
+        }
     }
 
 
@@ -758,7 +846,100 @@ AnchorGraph::AnchorGraph(
         num_vertices(*this) << " vertices and " <<
         num_edges(*this) << " edges." << endl;
 }
-#endif
+
+
+
+bool AnchorGraph::ChainGraphEdge::isBidirectional() const
+{
+    array<bool, 2> found = {false, false};
+    for(const EdgeCandidate& edgeCandidate: *this) {
+        found[edgeCandidate.direction]  = true;
+    }
+    return found[0] and found[1];
+}
+
+
+
+void AnchorGraph::ChainGraph::removeNonBidirectionalEdges()
+{
+    ChainGraph& chainGraph = *this;
+
+    vector<edge_descriptor> edgesToBeRemoved;
+    BGL_FORALL_EDGES(e, chainGraph, ChainGraph) {
+        if(not chainGraph[e].isBidirectional()) {
+            edgesToBeRemoved.push_back(e);
+        }
+    }
+
+    for(const edge_descriptor e: edgesToBeRemoved) {
+        boost::remove_edge(e, chainGraph);
+    }
+}
+
+
+
+void AnchorGraph::ChainGraph::writeGraphviz(const string& fileName) const
+{
+    ofstream dot(fileName);
+    writeGraphviz(dot);
+}
+
+
+
+void AnchorGraph::ChainGraph::writeGraphviz(ostream& dot) const
+{
+    const ChainGraph& chainGraph = *this;
+
+    dot << "digraph ChainGraph {\n";
+
+    // Vertices.
+    BGL_FORALL_VERTICES(chainId, chainGraph, ChainGraph) {
+        dot << chainId << ";\n";
+    }
+
+    // Edges.
+    BGL_FORALL_EDGES(e, chainGraph, ChainGraph) {
+        const uint64_t chainIdA = source(e, chainGraph);
+        const uint64_t chainIdB = target(e, chainGraph);
+        dot << chainIdA << "->" << chainIdB << ";\n";
+    }
+
+    dot << "}\n";
+}
+
+
+
+void AnchorGraph::ChainGraph::writeCsv(const string& fileName) const
+{
+    ofstream csv(fileName);
+    writeCsv(csv);
+}
+
+
+
+void AnchorGraph::ChainGraph::writeCsv(ostream& csv) const
+{
+    const ChainGraph& chainGraph = *this;
+
+    csv << "ChainIdA,ChainIdB,AnchorIdA,AnchorIdB,CommonCount,Direction,PositionA,PositionB,\n";
+
+    BGL_FORALL_EDGES(e, chainGraph, ChainGraph) {
+        const uint64_t chainIdA = source(e, chainGraph);
+        const uint64_t chainIdB = target(e, chainGraph);
+        for(const EdgeCandidate& edgeCandidate: chainGraph[e]) {
+            csv << chainIdA << ",";
+            csv << chainIdB << ",";
+            csv << anchorIdToString(edgeCandidate.anchorIdA) << ",";
+            csv << anchorIdToString(edgeCandidate.anchorIdB) << ",";
+            csv << edgeCandidate.commonCount << ",";
+            csv << edgeCandidate.direction << ",";
+            csv << edgeCandidate.positionA << ",";
+            csv << edgeCandidate.positionB << ",";
+            csv << "\n";
+        }
+    }
+
+}
 
 
 

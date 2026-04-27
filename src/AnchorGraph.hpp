@@ -189,6 +189,44 @@ public:
             const Anchors&) const;
     };
 
+    class EdgeCandidate {
+    public:
+        AnchorId anchorIdA = invalid<AnchorId>;
+        AnchorId anchorIdB = invalid<AnchorId>;
+
+        uint64_t commonCount = 0;
+
+        // The direction of the Subgraph that found this edge.
+        uint64_t direction = invalid<uint64_t>;
+
+        // The positions of anchorIdA and anchorIdB in the two chains.
+        uint64_t positionA = invalid<uint64_t>;
+        uint64_t positionB = invalid<uint64_t>;
+    };
+
+    class ChainGraphVertex {
+    public:
+    };
+
+    class ChainGraphEdge : public vector<EdgeCandidate> {
+    public:
+        // This return true if the ChainGraphEdge contains EdgeCandidates
+        // found in both directions.
+        bool isBidirectional() const;
+    };
+
+    class ChainGraph : public boost::adjacency_list<
+        boost::listS, boost::vecS, boost::bidirectionalS,
+        ChainGraphVertex, ChainGraphEdge> {
+    public:
+        void removeNonBidirectionalEdges();
+        void writeGraphviz(const string& fileName) const;
+        void writeGraphviz(ostream&) const;
+        void writeCsv(const string& fileName) const;
+        void writeCsv(ostream&) const;
+    };
+
+
 
 
 
