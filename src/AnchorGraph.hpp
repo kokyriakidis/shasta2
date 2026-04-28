@@ -206,6 +206,7 @@ public:
 
     class ChainGraphVertex {
     public:
+        vector<AnchorId> chain;
     };
 
     class ChainGraphEdge : public vector<EdgeCandidate> {

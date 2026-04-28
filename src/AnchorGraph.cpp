@@ -684,6 +684,10 @@ AnchorGraph::AnchorGraph(
     // information about possible future AnchorGraph edges
     // connecting the two chains.
     AnchorGraph::ChainGraph chainGraph(chains.size());
+    for(uint64_t chainId=0; chainId<chains.size(); chainId++) {
+        const vector<AnchorId>& chain = chains[chainId];
+        chainGraph[chainId].chain = chain;
+    }
 
 
 
@@ -899,10 +903,25 @@ void AnchorGraph::ChainGraph::writeGraphviz(ostream& dot) const
 
     dot << "digraph ChainGraph {\n";
 
+
+
     // Vertices.
     BGL_FORALL_VERTICES(chainId, chainGraph, ChainGraph) {
-        dot << chainId << ";\n";
+        const vector<AnchorId>& chain = chainGraph[chainId].chain;
+        dot <<
+            chainId <<
+            "["
+            "label=\"" <<
+            chainId <<
+            "\\n" << chain.size() <<
+            "\\n" << anchorIdToString(chain.front()) <<
+            "\\n" <<anchorIdToString(chain.back()) <<
+            "\"" <<
+            "]" <<
+            ";\n";
     }
+
+
 
     // Edges.
     BGL_FORALL_EDGES(e, chainGraph, ChainGraph) {
