@@ -221,6 +221,7 @@ public:
         ChainGraphVertex, ChainGraphEdge> {
     public:
         void removeNonBidirectionalEdges();
+        EdgeCandidate getBestEdgeCandidate(edge_descriptor) const;
         void writeGraphviz(const string& fileName) const;
         void writeGraphviz(ostream&) const;
         void writeCsv(const string& fileName) const;

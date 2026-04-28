@@ -698,7 +698,7 @@ AnchorGraph::AnchorGraph(
         for(uint64_t direction=0; direction<2; direction++) {
             const AnchorId anchorId0 = (direction == 0) ? chain0.back() : chain0.front();
 
-            const bool debug = ((chainId0 == 57) and (direction == 0)) or ((chainId0 == 150) and (direction == 1));
+            const bool debug = false; // ((chainId0 == 57) and (direction == 0)) or ((chainId0 == 150) and (direction == 1));
             if(debug) {
                 cout << "Working on " << anchorIdToString(anchorId0) << " direction " << direction << endl;
             }
@@ -800,52 +800,17 @@ AnchorGraph::AnchorGraph(
 
 
 
-    // To generate AnchorGraph edges, loop over vertices of the ChainGraph.
-    // For each vertex use the best EdgeCandidate found in all of the out-edges
-    // and the best EdgeCandidate found in all of the in-edges.
-    for(uint64_t chainIdA=0; chainIdA<chains.size(); chainIdA++) {
+    // Each ChainGraph edge generates a new AnchorGraph edge.
+    BGL_FORALL_EDGES(ce, chainGraph, ChainGraph) {
+        const EdgeCandidate bestEdgeCandidate = chainGraph.getBestEdgeCandidate(ce);
 
-        // Forward.
-        if(out_degree(chainIdA, chainGraph) > 0) {
-            EdgeCandidate bestEdgeCandidate;
-            BGL_FORALL_OUTEDGES(chainIdA, e, chainGraph, ChainGraph) {
-                for(const EdgeCandidate& edgeCandidate: chainGraph[e]) {
-                    if(edgeCandidate.commonCount > bestEdgeCandidate.commonCount) {
-                        bestEdgeCandidate = edgeCandidate;
-                    }
-                }
-            }
-
-            const AnchorPair anchorPair(anchors, bestEdgeCandidate.anchorIdA, bestEdgeCandidate.anchorIdB, false);
-            const uint64_t offset = anchorPair.getAverageOffset(anchors);
-            auto [e, edgeExists] = boost::edge(bestEdgeCandidate.anchorIdA, bestEdgeCandidate.anchorIdB, *this);
-            if(not edgeExists){
-                tie(e, ignore) = add_edge(bestEdgeCandidate.anchorIdA, bestEdgeCandidate.anchorIdB,
-                    AnchorGraphEdge(anchorPair, offset, nextEdgeId++), *this);
-                (*this)[e].useForAssembly = true;
-            }
-        }
-
-        // Backward.
-        if(in_degree(chainIdA, chainGraph) > 0) {
-            EdgeCandidate bestEdgeCandidate;
-            BGL_FORALL_INEDGES(chainIdA, e, chainGraph, ChainGraph) {
-                for(const EdgeCandidate& edgeCandidate: chainGraph[e]) {
-                    if(edgeCandidate.commonCount > bestEdgeCandidate.commonCount) {
-                        bestEdgeCandidate = edgeCandidate;
-                    }
-                }
-            }
-
-            const AnchorPair anchorPair(anchors, bestEdgeCandidate.anchorIdA, bestEdgeCandidate.anchorIdB, false);
-            const uint64_t offset = anchorPair.getAverageOffset(anchors);
-            auto [e, edgeExists] = boost::edge(bestEdgeCandidate.anchorIdA, bestEdgeCandidate.anchorIdB, *this);
-            if(not edgeExists){
-                tie(e, ignore) = add_edge(bestEdgeCandidate.anchorIdA, bestEdgeCandidate.anchorIdB,
-                    AnchorGraphEdge(anchorPair, offset, nextEdgeId++), *this);
-                (*this)[e].useForAssembly = true;
-            }
-        }
+        const AnchorPair anchorPair(anchors, bestEdgeCandidate.anchorIdA, bestEdgeCandidate.anchorIdB, false);
+        const uint64_t offset = anchorPair.getAverageOffset(anchors);
+        auto [e, edgeExists] = boost::edge(bestEdgeCandidate.anchorIdA, bestEdgeCandidate.anchorIdB, *this);
+        SHASTA2_ASSERT(not edgeExists);
+        tie(e, ignore) = add_edge(bestEdgeCandidate.anchorIdA, bestEdgeCandidate.anchorIdB,
+            AnchorGraphEdge(anchorPair, offset, nextEdgeId++), *this);
+        (*this)[e].useForAssembly = true;
     }
 
 
@@ -856,6 +821,37 @@ AnchorGraph::AnchorGraph(
     cout << "The anchor graph has " <<
         num_vertices(*this) << " vertices and " <<
         num_edges(*this) << " edges." << endl;
+}
+
+
+
+AnchorGraph::EdgeCandidate AnchorGraph::ChainGraph::getBestEdgeCandidate(edge_descriptor e) const
+{
+    const ChainGraph& chainGraph = *this;
+    const vector<EdgeCandidate>& edgeCandidates = chainGraph[e];
+
+    const ChainGraph::vertex_descriptor vA = source(e, chainGraph);
+    const uint64_t& lengthA = chainGraph[vA].chain.size();
+
+    // Find the best EdgeCandidate.
+    EdgeCandidate bestEdgeCandidate;
+    for(const EdgeCandidate& edgeCandidate: edgeCandidates) {
+        if(edgeCandidate.commonCount > bestEdgeCandidate.commonCount) {
+            bestEdgeCandidate = edgeCandidate;
+        }
+        // Break ties by preferring edges that start near the end
+        // of the source chain and end near the beginning of the target chain.
+        else if(edgeCandidate.commonCount == bestEdgeCandidate.commonCount) {
+            const uint64_t bestEdgeCandidateDistance = (lengthA - 1 - bestEdgeCandidate.positionA) + bestEdgeCandidate.positionB;
+            const uint64_t edgeCandidateDistance = (lengthA - 1 - edgeCandidate.positionA) + edgeCandidate.positionB;
+            if(edgeCandidateDistance < bestEdgeCandidateDistance) {
+                bestEdgeCandidate = edgeCandidate;
+            }
+        }
+    }
+
+    return bestEdgeCandidate;
+
 }
 
 
