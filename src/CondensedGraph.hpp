@@ -8,11 +8,16 @@
 // The condensed graph is guaranteed to be acyclic.
 // https://en.wikipedia.org/wiki/Strongly_connected_component
 
-// This is intrusive: the CondensedGraph vertex type is required
-// to have a field that will contain the vertices of the
-// strongly connected component of the original graph it
-// corresponds to:
-// vector<Graph::vertex_descriptor> vertices.
+// This is intrusive:
+// - The CondensedGraph vertex type is required
+//   to have a field that will contain the vertices of the
+//   strongly connected component of the original graph it
+//   corresponds to:
+//   vector<Graph::vertex_descriptor> vertices;
+// - The CondensedGraph edge type is required
+//   to have a field that will contain the edge_descriptor
+//   in the Graph:
+//   Graph::edge_descriptor e;
 
 #include "SHASTA2_ASSERT.hpp"
 
@@ -77,8 +82,9 @@ template<class Graph, class CondensedGraph> CondensedGraph shasta2::createConden
         const typename CondensedGraph::vertex_descriptor cv0 = vertexMap[v0];
         const typename CondensedGraph::vertex_descriptor cv1 = vertexMap[v1];
         if(cv1 != cv0) {
-            const auto[e, edgeWasAdded] = add_edge(cv0, cv1, condensedGraph);
+            const auto[ce, edgeWasAdded] = add_edge(cv0, cv1, condensedGraph);
             SHASTA2_ASSERT(edgeWasAdded);
+            condensedGraph[ce].e = e;
         }
     }
 

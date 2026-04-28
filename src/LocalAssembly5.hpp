@@ -328,15 +328,21 @@ private:
     // https://en.wikipedia.org/wiki/Strongly_connected_component#Definitions
     // https://cp-algorithms.com/graph/strongly-connected-components.html
     class CondensedGraphVertex;
+    class CondensedGraphEdge;
     using CondensedGraphBaseClass = boost::adjacency_list<
         boost::listS,
         boost::listS,
         boost::bidirectionalS,
-        CondensedGraphVertex>;
+        CondensedGraphVertex,
+        CondensedGraphEdge>;
     class CondensedGraphVertex {
     public:
         vector<vertex_descriptor> vertices;
         CondensedGraphBaseClass::vertex_descriptor dominator = null_vertex();
+    };
+    class CondensedGraphEdge {
+    public:
+        LocalAssembly5::edge_descriptor e = {0, 0, 0};
     };
     class CondensedGraph : public CondensedGraphBaseClass {
     };

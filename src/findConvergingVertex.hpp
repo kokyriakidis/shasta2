@@ -274,8 +274,12 @@ template<class Graph> typename Graph::vertex_descriptor shasta2::findConvergingV
         vector<VL> vertices;
         Rational flow = 0;
     };
+    class CondensedGraphEdge {
+    public:
+        LocalGraph::edge_descriptor e;
+    };
     using CondensedGraph =
-        boost::adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS, CondensedGraphVertex>;
+        boost::adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS, CondensedGraphVertex, CondensedGraphEdge>;
     using VC = typename CondensedGraph::vertex_descriptor;
     std::map<VL, VC> vertexMap;
     CondensedGraph condensedGraph = createCondensedGraph<LocalGraph, CondensedGraph>(localGraph, vertexMap);
