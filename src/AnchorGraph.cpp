@@ -795,14 +795,14 @@ AnchorGraph::AnchorGraph(
         num_vertices(chainGraph) << " vertices and " <<
         num_edges(chainGraph) << " edges." << endl;
 
-    chainGraph.writeGraphviz("ChainGraph.dot");
+    chainGraph.writeGraphviz("ChainGraph.dot", minEdgeCoverage1);
     chainGraph.writeCsv("ChainGraph.csv");
 
 
 
     // Each ChainGraph edge generates a new AnchorGraph edge.
     BGL_FORALL_EDGES(ce, chainGraph, ChainGraph) {
-        const EdgeCandidate bestEdgeCandidate = chainGraph.getBestEdgeCandidate(ce);
+        const EdgeCandidate bestEdgeCandidate = chainGraph.getBestEdgeCandidate(ce, minEdgeCoverage1);
 
         const AnchorPair anchorPair(anchors, bestEdgeCandidate.anchorIdA, bestEdgeCandidate.anchorIdB, false);
         const uint64_t offset = anchorPair.getAverageOffset(anchors);
@@ -825,7 +825,9 @@ AnchorGraph::AnchorGraph(
 
 
 
-AnchorGraph::EdgeCandidate AnchorGraph::ChainGraph::getBestEdgeCandidate(edge_descriptor e) const
+AnchorGraph::EdgeCandidate AnchorGraph::ChainGraph::getBestEdgeCandidate(
+    edge_descriptor e,
+    uint64_t minEdgeCoverage1) const
 {
     const ChainGraph& chainGraph = *this;
     const vector<EdgeCandidate>& edgeCandidates = chainGraph[e];
@@ -833,7 +835,21 @@ AnchorGraph::EdgeCandidate AnchorGraph::ChainGraph::getBestEdgeCandidate(edge_de
     const ChainGraph::vertex_descriptor vA = source(e, chainGraph);
     const uint64_t& lengthA = chainGraph[vA].chain.size();
 
-    // Find the best EdgeCandidate.
+
+    // If there is an EdgeCandidate between the last anchor of chainA and the
+    // first andchor of chainB return that.
+    for(const EdgeCandidate& edgeCandidate: edgeCandidates) {
+        if(
+            (edgeCandidate.positionA == lengthA - 1) and
+            (edgeCandidate.positionB == 0)) {
+            return edgeCandidate;
+        }
+    }
+
+
+
+    // Otherwise, return an EdgeCandidate with maximum commonCount,
+    // using the distances from the ends to break ties.
     EdgeCandidate bestEdgeCandidate;
     for(const EdgeCandidate& edgeCandidate: edgeCandidates) {
         if(edgeCandidate.commonCount > bestEdgeCandidate.commonCount) {
@@ -885,15 +901,15 @@ void AnchorGraph::ChainGraph::removeNonBidirectionalEdges()
 
 
 
-void AnchorGraph::ChainGraph::writeGraphviz(const string& fileName) const
+void AnchorGraph::ChainGraph::writeGraphviz(const string& fileName, uint64_t minEdgeCoverage1) const
 {
     ofstream dot(fileName);
-    writeGraphviz(dot);
+    writeGraphviz(dot, minEdgeCoverage1);
 }
 
 
 
-void AnchorGraph::ChainGraph::writeGraphviz(ostream& dot) const
+void AnchorGraph::ChainGraph::writeGraphviz(ostream& dot, uint64_t minEdgeCoverage1) const
 {
     const ChainGraph& chainGraph = *this;
 
@@ -923,7 +939,24 @@ void AnchorGraph::ChainGraph::writeGraphviz(ostream& dot) const
     BGL_FORALL_EDGES(e, chainGraph, ChainGraph) {
         const uint64_t chainIdA = source(e, chainGraph);
         const uint64_t chainIdB = target(e, chainGraph);
-        dot << chainIdA << "->" << chainIdB << ";\n";
+        const EdgeCandidate bestEdgeCandidate = getBestEdgeCandidate(e, minEdgeCoverage1);
+
+        dot <<
+            chainIdA <<
+            "->" <<
+            chainIdB <<
+            "[label=\"" <<
+            bestEdgeCandidate.positionA <<
+            ":" <<
+            anchorIdToString(bestEdgeCandidate.anchorIdA) <<
+            "\\n" <<
+            bestEdgeCandidate.positionB <<
+            ":" <<
+            anchorIdToString(bestEdgeCandidate.anchorIdB) <<
+            "\\n" <<
+            bestEdgeCandidate.commonCount <<
+            "\"]"
+            ";\n";
     }
 
     dot << "}\n";
