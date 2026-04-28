@@ -276,7 +276,7 @@ template<class Graph> typename Graph::vertex_descriptor shasta2::findConvergingV
     };
     class CondensedGraphEdge {
     public:
-        LocalGraph::edge_descriptor e;
+        LocalGraph::edge_descriptor e = {0, 0, 0};
     };
     using CondensedGraph =
         boost::adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS, CondensedGraphVertex, CondensedGraphEdge>;
