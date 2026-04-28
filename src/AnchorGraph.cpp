@@ -11,6 +11,7 @@
 #include "Journeys.hpp"
 #include "Markers.hpp"
 #include "orderPairs.hpp"
+#include "partialTransitiveReduction.hpp"
 #include "performanceLog.hpp"
 #include "ReadId.hpp"
 #include "timestamp.hpp"
@@ -784,6 +785,12 @@ AnchorGraph::AnchorGraph(
     cout << "After removing non-bidirectional edges, the ChainGraph has " <<
         num_vertices(chainGraph) << " vertices and " <<
         num_edges(chainGraph) << " edges." << endl;
+
+    partialTransitiveReduction(chainGraph);
+    cout << "After transitive reduction, the ChainGraph has " <<
+        num_vertices(chainGraph) << " vertices and " <<
+        num_edges(chainGraph) << " edges." << endl;
+
     chainGraph.writeGraphviz("ChainGraph.dot");
     chainGraph.writeCsv("ChainGraph.csv");
 
