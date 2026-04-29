@@ -827,7 +827,7 @@ AnchorGraph::AnchorGraph(
 
 AnchorGraph::EdgeCandidate AnchorGraph::ChainGraph::getBestEdgeCandidate(
     edge_descriptor e,
-    uint64_t minEdgeCoverage1) const
+    [[maybe_unused]] uint64_t minEdgeCoverage1) const
 {
     const ChainGraph& chainGraph = *this;
     const vector<EdgeCandidate>& edgeCandidates = chainGraph[e];
