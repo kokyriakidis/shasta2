@@ -312,16 +312,17 @@ bool AnchorGraph::transitiveReductionCanRemove(
 AnchorGraph::AnchorGraph(
     const Anchors& anchors,
     const Journeys& journeys,
-    uint64_t minEdgeCoverage,
+    [[maybe_unused]] uint64_t /* minEdgeCoverage */,
     const UseSimilarity&) :
     MappedMemoryOwner(anchors),
     MultithreadedObject<AnchorGraph>(*this)
 {
     // EXPOSE WHEN CODE STABILIZES.
-    const double a = 1.;
-    const double b = 1.;
+    const uint64_t minCommonCount = 3;
+    const double a = 3.;
+    const double b = 10.;
     const double minLogP = 0.;
-    const uint64_t m = 100;
+    const uint64_t m = 1000000000;
 
     AnchorGraph& anchorGraph = *this;
 
@@ -359,7 +360,7 @@ AnchorGraph::AnchorGraph(
     for(AnchorId anchorIdA=0; anchorIdA<anchorCount; anchorIdA++) {
         const Anchor anchorA = anchors[anchorIdA];
 
-        const bool debug = anchorIdToString(anchorIdA) == "436-";
+        const bool debug = false; // anchorIdToString(anchorIdA) == "436-";
 
         // Loop over OrientedReadIds in this anchor.
         // For each OrientedReadId, gather the AnchorIds
@@ -375,7 +376,7 @@ AnchorGraph::AnchorGraph(
                 anchorIds.push_back(journey[positionInJourney]);
             }
         }
-        deduplicateAndCountWithThreshold(anchorIds, count, minEdgeCoverage);
+        deduplicateAndCountWithThreshold(anchorIds, count, minCommonCount);
 
         // For each of these AnchorIds that meets out requirements, create an EdgeCandidate.
         edgeCandidates.clear();
@@ -385,7 +386,7 @@ AnchorGraph::AnchorGraph(
             if(debug) {
                 cout << anchorIdToString(anchorIdA) << " " << anchorIdToString(anchorIdB) << " " << info.common << endl;
             }
-            if(info.common < minEdgeCoverage) {
+            if(info.common < minCommonCount) {
                 if(debug) {
                     cout << "Skipped due to low commonCount." << endl;
                 }
