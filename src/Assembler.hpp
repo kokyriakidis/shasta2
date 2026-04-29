@@ -21,6 +21,7 @@ namespace shasta2 {
     class AssemblyGraphPostprocessor;
     class AssemblyGraphPostprocessor;
     class AnchorGraph;
+    class AnchorSimilarityGraph;
     class Anchors;
     class AssemblerInfo;
     class Journeys;
@@ -224,12 +225,9 @@ public:
     void createCompleteAnchorGraph();
     void accessCompleteAnchorGraph();
 
-    // The anchorSimilarityGraph is another AnchorGraph,
-    // in which an edge between two anchors is created if the
-    // oriented read compositions of the two anchors are
-    // sufficiently similar.
-    shared_ptr<AnchorGraph> anchorSimilarityGraphPointer;
-    void createAnchorSimilarityGraph(const Options&);
+    // AnchorSimilarityGraph
+    shared_ptr<AnchorSimilarityGraph> anchorSimilarityGraphPointer;
+    void createAnchorSimilarityGraph();
     void accessAnchorSimilarityGraph();
 
     // This uses read following in the complete AnchorGraph
