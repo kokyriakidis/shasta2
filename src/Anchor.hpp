@@ -338,6 +338,11 @@ public:
         return double(intersectionCount()) / double(correctedUnionCount());
     }
 
+    uint64_t missingCount() const
+    {
+        return onlyA + onlyB - onlyAShort - onlyBShort;
+    }
+
     void reverse()
     {
         swap(totalA, totalB);

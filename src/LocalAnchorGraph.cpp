@@ -969,7 +969,7 @@ void LocalAnchorGraph::writeVertices(
             "' id='" << anchorIdString << "'>"
             "<title>" << anchorIdString << ", coverage " << coverage;
         if(options.vertexColoring == "byReadComposition") {
-            html << ", common " << info.common << ", J " <<
+            html << ", common " << info.common << ", missing " << info.missingCount() << ", J " <<
                 std::fixed << std::setprecision(2) << info.jaccard() <<
                 ", J' " << info.correctedJaccard();
             if(info.common > 0) {
