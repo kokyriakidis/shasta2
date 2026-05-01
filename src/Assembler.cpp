@@ -358,6 +358,13 @@ void Assembler::anchorSimilarityGraphShortestPaths(AnchorId anchorId) const
 
 
 
+void Assembler::anchorSimilarityGraphAllShortestPaths() const
+{
+    anchorSimilarityGraphPointer->allShortestPaths(anchors());
+}
+
+
+
 void Assembler::createReadSummaries()
 {
     readSummaries.createNew(largeDataName("ReadSummaries"), largeDataPageSize);

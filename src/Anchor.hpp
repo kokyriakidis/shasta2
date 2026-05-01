@@ -39,6 +39,12 @@ namespace shasta2 {
 
     string anchorIdToString(AnchorId);
     AnchorId anchorIdFromString(const string&);
+
+    inline AnchorId reverseComplementAnchorId(AnchorId anchorId)
+    {
+        return anchorId ^ 1UL;
+
+    }
 }
 
 

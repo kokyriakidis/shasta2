@@ -47,6 +47,7 @@ public:
     double weight = invalid<double>;
 
     uint64_t baseOffset = invalid<uint64_t>;
+    bool isShortestPathEdge = false;
 
     AnchorSimilarityGraphEdge(
         double weight = invalid<double>,
@@ -61,6 +62,7 @@ public:
     {
         ar & weight;
         ar & baseOffset;
+        ar & isShortestPathEdge;
     }
 };
 
@@ -83,19 +85,22 @@ public:
     // Compute a shortest path tree starting at the given AnchorId.
     void shortestPaths(AnchorId) const;
 
-    // More efficient version with work areas.
-    // The 3 work areas (predecessorMap, distanceMap, colorMap)
-    // are vectors of size anchors.size().
-    // On input, they must be set as follows.
-    // On exit, they are returned in exactly the same state.
+    // More efficient version.
+    // On input, predecessorMap, distanceMap, and colorMap
+    // must be vectors of size anchors.size() set as follows:
+    // - predecessorMap[anchorId] == anchorId
+    // - distanceMap[anchorId] == std::numeric_limits<double>::max()
+    // - colorMap[anchorId] == boost::default_color_type::white_color
     // For performance, these conditions are not checked.
-    // - predecessorMap[anchorId] == anchorId for all anchorIds.
-    // - distanceMap[anchorId] == std::numeric_limits<double>::max().
-    // - colorMap[anchorId] == boost::default_color_type::white_color.
-    // This allows using dijkstra_shortest_paths_no_init.
-    // On exit, the accessibleVertices contains the AnchorIds
-    // that were seen and for which the predecessorMap and distanceMap
-    // contains a valid value.
+    // On exit, the accessibleVertices vector contains the AnchorIds
+    // in the shortest path tree, that is, all the AnchorIds
+    // accessible from the root anchorid.
+    // In addition, on exit, predecessorMap, distanceMap, and colorMap
+    // describe the shortest path tree with root at the given AnchorId.
+    // Only the entries corresponding to the accessibleVertices are
+    // changed. Therefore, the caller can quickly reset the
+    // predecessorMap, distanceMap, and colorMap to the initial conditions
+    // for reuse.
     void shortestPathsFast(
         AnchorId,
         vector<AnchorId>& predecessorMap,
@@ -104,6 +109,8 @@ public:
         vector<AnchorId>& accessibleVertices
         ) const;
     void shortestPathsFast(AnchorId, const Anchors&) const;
+
+    void allShortestPaths(const Anchors&);
 
     // Serialization.
     friend class boost::serialization::access;
