@@ -46,13 +46,21 @@ public:
     // It is low if the two anchors have very similar read composition.
     double weight = invalid<double>;
 
-    AnchorSimilarityGraphEdge(double weight = invalid<double>) : weight(weight) {}
+    uint64_t baseOffset = invalid<uint64_t>;
+
+    AnchorSimilarityGraphEdge(
+        double weight = invalid<double>,
+        uint64_t baseOffset = invalid<uint64_t>) :
+        weight(weight),
+        baseOffset(baseOffset)
+    {}
 
     template<class Archive> void serialize(
         Archive& ar,
         [[maybe_unused]] unsigned int version)
     {
         ar & weight;
+        ar & baseOffset;
     }
 };
 
@@ -71,6 +79,9 @@ public:
 
     // Constructor from binary data.
     AnchorSimilarityGraph(const MappedMemoryOwner&, const string& name);
+
+    // Compute a shortest path tree starting at teh given AnchorId.
+    void shortestPaths(AnchorId) const;
 
     // Serialization.
     friend class boost::serialization::access;

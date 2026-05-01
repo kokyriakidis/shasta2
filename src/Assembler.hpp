@@ -229,6 +229,7 @@ public:
     shared_ptr<AnchorSimilarityGraph> anchorSimilarityGraphPointer;
     void createAnchorSimilarityGraph();
     void accessAnchorSimilarityGraph();
+    void anchorSimilarityGraphShortestPaths(AnchorId) const;
 
     // This uses read following in the complete AnchorGraph
     // to create the AnchorGraph to be used for assembly.

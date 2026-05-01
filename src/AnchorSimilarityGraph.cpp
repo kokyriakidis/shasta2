@@ -3,14 +3,17 @@
 #include "Anchor.hpp"
 #include "AnchorGraph.hpp"
 #include "SHASTA2_ASSERT.hpp"
+#include "timestamp.hpp"
 using namespace shasta2;
 
 // Boost libraries.
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/graph/adj_list_serialize.hpp>
+#include "boost/graph/dijkstra_shortest_paths.hpp"
 
 // Standard library.
+#include "fstream.hpp"
 #include <queue>
 
 
@@ -137,7 +140,7 @@ void AnchorSimilarityGraph::createEdges(
     AnchorSimilarityGraph& anchorSimilarityGraph = *this;
     const bool debug = false;
     if(debug) {
-        cout << "Creating AnchorSimilarityGraph with source " << anchorIdToString(anchorIdA) << endl;
+        cout << "Creating AnchorSimilarityGraph edges with source " << anchorIdToString(anchorIdA) << endl;
     }
 
     // Initialize the BFS.
@@ -175,12 +178,9 @@ void AnchorSimilarityGraph::createEdges(
             color[anchorId1] = 1;
             visited.push_back(anchorId1);
 
-            // Check anchorId1 against anchorIdA.
-            AnchorPairInfo info;
-            anchors.analyzeAnchorPair(anchorIdA, anchorId1, info);
-
             // If no common reads, skip it entirely.
-            if(info.common == 0) {
+            auto [commonCount, nonPositiveOffsetFound] = anchors.countCommonWithFlag(anchorIdA, anchorId1);
+            if(commonCount == 0) {
                 continue;
             }
 
@@ -189,12 +189,21 @@ void AnchorSimilarityGraph::createEdges(
 
             // If it satisfies our requirements, add an edge anchorIdA->anchorId1
             // to the AnchorSimilarityGraph.
-            const uint64_t common = info.common;
-            const uint64_t missing = info.missingCount();
-            const double logP = a * double(common) - b * double(missing);
-            if((common >= minCommonCount) and (logP >= minLogP)) {
-                const double weight = std::pow(10., -0.1 * logP);
-                add_edge(anchorIdA, anchorId1, AnchorSimilarityGraphEdge(weight), anchorSimilarityGraph);
+            if((commonCount >=  minCommonCount) and (not nonPositiveOffsetFound)) {
+                AnchorPairInfo info;
+                anchors.analyzeAnchorPair(anchorIdA, anchorId1, info);
+                SHASTA2_ASSERT(info.commonPositiveOffset == commonCount);
+                SHASTA2_ASSERT(info.commonNonPositiveOffset == 0);
+                SHASTA2_ASSERT(info.offsetInBases < 1000000000);
+                const uint64_t missingCount = info.missingCount();
+                const double logP = a * double(commonCount) - b * double(missingCount);
+                if(logP >= minLogP) {
+                    const double weight = std::pow(10., -0.1 * logP);
+                    if(debug) {
+                        cout << anchorIdToString(anchorIdA) << " " << anchorIdToString(anchorId1) << " " << info.offsetInBases << endl;
+                    }
+                    add_edge(anchorIdA, anchorId1, AnchorSimilarityGraphEdge(weight, info.offsetInBases), anchorSimilarityGraph);
+                }
             }
          }
     }
@@ -207,3 +216,82 @@ void AnchorSimilarityGraph::createEdges(
     visited.clear();
 }
 
+
+
+
+// Compute a shortest path tree starting at teh given AnchorId.
+void AnchorSimilarityGraph::shortestPaths(AnchorId anchorIdA) const
+{
+    using namespace boost;
+
+    using Graph = AnchorSimilarityGraph;
+    const Graph& graph = *this;
+
+    cout << "AnchorSimilarityGraph::shortestPaths begins for " <<
+        anchorIdToString(anchorIdA) << endl;
+
+    cout << "The anchor similarity graph has " << num_vertices(*this) <<
+        " vertices and " << num_edges(*this) << " edges." << endl;
+
+    std::map<vertex_descriptor, vertex_descriptor> predecessorMap;
+    std::map<vertex_descriptor, double> distanceMap;
+    std::map<vertex_descriptor, uint64_t> linearDistanceMap;
+    std::map<vertex_descriptor, uint64_t> baseDistanceMap;
+    linearDistanceMap.insert(make_pair(anchorIdA, 0));
+    baseDistanceMap.insert(make_pair(anchorIdA, 0));
+
+    class DijkstraVisitor : public boost::dijkstra_visitor<> {
+    public:
+        void examine_vertex(AnchorId anchorId, const Graph& graph)
+        {
+            const AnchorId predecessor = predecessorMapPointer->at(anchorId);
+            if(predecessor == anchorId) {
+                return;
+            }
+            linearDistanceMapPointer->insert(make_pair(anchorId, linearDistanceMapPointer->at(predecessor) + 1));
+            auto[e, edgeExists] = boost::edge(predecessor, anchorId, graph);
+            SHASTA2_ASSERT(edgeExists);
+            const uint64_t baseOffset = graph[e].baseOffset;
+            SHASTA2_ASSERT(baseOffset < 1000000000UL);
+            baseDistanceMapPointer->insert(make_pair(anchorId, baseDistanceMapPointer->at(predecessor) + baseOffset));
+        }
+        std::map<vertex_descriptor, vertex_descriptor>* predecessorMapPointer;
+        std::map<vertex_descriptor, double>* distanceMapPointer;
+        std::map<vertex_descriptor, uint64_t>* linearDistanceMapPointer;
+        std::map<vertex_descriptor, uint64_t>* baseDistanceMapPointer;
+    };
+    DijkstraVisitor dijkstraVisitor;
+    dijkstraVisitor.predecessorMapPointer = &predecessorMap;
+    dijkstraVisitor.distanceMapPointer = &distanceMap;
+    dijkstraVisitor.linearDistanceMapPointer = &linearDistanceMap;
+    dijkstraVisitor.baseDistanceMapPointer = &baseDistanceMap;
+
+
+
+    dijkstra_shortest_paths(graph, anchorIdA,
+       weight_map(get(&AnchorSimilarityGraphEdge::weight, graph)).
+       predecessor_map(make_assoc_property_map(predecessorMap)).
+       distance_map(make_assoc_property_map(distanceMap)).
+       visitor(dijkstraVisitor));
+
+    {
+        ofstream csv("DistanceMap.csv");
+        csv << "AnchorId,Linear distance,Weight distance,Base distance,Weight per base,Predecessor,\n";
+        for(const auto& [anchorId, weightDistance]: distanceMap) {
+            if(weightDistance != std::numeric_limits<double>::max()) {
+                const uint64_t linearDistance = linearDistanceMap.at(anchorId);
+                const uint64_t baseDistance = baseDistanceMap.at(anchorId);
+                const double weightPerBase = weightDistance / double(baseDistance);
+                csv << anchorIdToString(anchorId) << "," <<
+                    linearDistance << "," <<
+                    weightDistance << "," <<
+                    baseDistance << "," <<
+                    weightPerBase << "," <<
+                    anchorIdToString(predecessorMap.at(anchorId)) << "," <<
+                    "\n";
+            }
+        }
+    }
+
+    cout << "AnchorSimilarityGraph::shortestPaths ends." << endl;
+}

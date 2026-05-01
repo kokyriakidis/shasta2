@@ -186,6 +186,49 @@ uint64_t Anchors::countCommon(
 
 
 
+// Return  a pair consisting of:
+// - The number of common oriented reads between two Anchors,
+//   counting only oriented reads that have a positive offset
+//   (greater ordinal on anchorId1 than on anchorId0).
+// - A bool which is true if all common oriented reads have a positive offset.
+pair<uint64_t, bool> Anchors::countCommonWithFlag(AnchorId anchorId0, AnchorId anchorId1) const
+{
+    const Anchors& anchors = *this;
+    const Anchor anchor0 = anchors[anchorId0];
+    const Anchor anchor1 = anchors[anchorId1];
+
+    auto it0 = anchor0.begin();
+    auto it1 = anchor1.begin();
+
+    const auto end0 = anchor0.end();
+    const auto end1 = anchor1.end();
+
+    uint64_t count = 0;
+    bool nonPositiveOffsetFound = false;
+    while((it0 != end0) and (it1 != end1)) {
+        const OrientedReadId orientedReadId0 = it0->orientedReadId;
+        const OrientedReadId orientedReadId1 = it1->orientedReadId;
+        if(orientedReadId0 < orientedReadId1) {
+            ++it0;
+        } else if(orientedReadId1 < orientedReadId0) {
+            ++it1;
+        } else {
+            if(it0->ordinal < it1->ordinal) {
+                ++count;
+            } else {
+                nonPositiveOffsetFound = true;
+            }
+            ++it0;
+            ++it1;
+        }
+    }
+
+    return make_pair(count, nonPositiveOffsetFound);
+
+}
+
+
+
 // Same as above, but also compute the average offset in bases.
 uint64_t Anchors::countCommon(
     AnchorId anchorId0,
@@ -261,8 +304,12 @@ void Anchors::analyzeAnchorPair(
 
 
     // Joint loop over the MarkerIntervals of the two Anchors,
-    // to count the common oreiented reads and compute average offsets.
-    info.common = 0;
+    // to count the common oriented reads with positive offset
+    // and compute average offsets.
+    info.commonPositiveOffset = 0;
+    info.commonNonPositiveOffset = 0;
+    info.minOffsetInBases = std::numeric_limits<uint64_t>::max();
+    info.maxOffsetInBases = 0;
     int64_t sumMarkerOffsets = 0;
     int64_t sumBaseOffsets = 0;
     auto itA = beginA;
@@ -280,40 +327,51 @@ void Anchors::analyzeAnchorPair(
         }
 
         // We found a common OrientedReadId.
-        ++info.common;
         const OrientedReadId orientedReadId = itA->orientedReadId;
         const auto orientedReadMarkers = markers[orientedReadId.getValue()];
 
         // Compute the offset in markers.
         const uint32_t ordinalA = itA->ordinal;
         const uint32_t ordinalB = itB->ordinal;
-        sumMarkerOffsets += int64_t(ordinalB) - int64_t(ordinalA);
 
         // Compute the offset in bases.
-        const int64_t positionA = int64_t(orientedReadMarkers[ordinalA].position);
-        const int64_t positionB = int64_t(orientedReadMarkers[ordinalB].position);
-        sumBaseOffsets += positionB - positionA;
+        const uint64_t positionA = orientedReadMarkers[ordinalA].position;
+        const uint64_t positionB = orientedReadMarkers[ordinalB].position;
+
+        // Update.
+        if(ordinalA < ordinalB) {
+            ++info.commonPositiveOffset;
+            sumMarkerOffsets += ordinalB - ordinalA;
+            const uint64_t offsetInBases = positionB - positionA;
+            sumBaseOffsets += offsetInBases;
+            info.minOffsetInBases = min(info.minOffsetInBases, offsetInBases);
+            info.maxOffsetInBases = max(info.maxOffsetInBases, offsetInBases);
+        } else {
+            ++info.commonNonPositiveOffset;
+        }
 
         // Continue the joint loop.
         ++itA;
         ++itB;
 
     }
-    info.onlyA = info.totalA - info.common;
-    info.onlyB = info.totalB - info.common;
+    info.onlyA = info.totalA - info.commonPositiveOffset - info.commonNonPositiveOffset;
+    info.onlyB = info.totalB - info.commonPositiveOffset - info.commonNonPositiveOffset;
 
-    // If there are no common reads, this is all we can do.
-    if(info.common == 0) {
-        info.offsetInMarkers = invalid<int64_t>;
-        info.offsetInBases = invalid<int64_t>;
+    // If there are no common reads with positive offset, this is all we can do.
+    if(info.commonPositiveOffset == 0) {
+        info.offsetInMarkers = invalid<uint64_t>;
+        info.offsetInBases = invalid<uint64_t>;
         info.onlyAShort = invalid<uint64_t>;
         info.onlyBShort = invalid<uint64_t>;
+        info.minOffsetInBases = invalid<uint64_t>;
+        info.maxOffsetInBases = invalid<uint64_t>;
         return;
     }
 
     // Compute the estimated offsets.
-    info.offsetInMarkers = int64_t(std::round(double(sumMarkerOffsets) / double(info.common)));
-    info.offsetInBases = int64_t(std::round(double(sumBaseOffsets) / double(info.common)));
+    info.offsetInMarkers = uint64_t(std::round(double(sumMarkerOffsets) / double(info.commonPositiveOffset)));
+    info.offsetInBases = uint64_t(std::round(double(sumBaseOffsets) / double(info.commonPositiveOffset)));
 
 
 
@@ -404,15 +462,13 @@ void Anchors::writeHtml(
 
     // Total.
     html <<
-        "<tr><th class=left>Total ";
-    writeInformationIcon(html, "The total number of oriented reads on each of the two anchors.");
-    html << "<td class=centered>" << info.totalA << "<td class=centered>" << info.totalB;
+        "<tr><th class=left>Total<td class=centered>" << info.totalA << "<td class=centered>" << info.totalB;
 
     // Common.
-    html << "<tr><th class=left>Common ";
-    writeInformationIcon(html, "The number of common oriented reads between the two anchors.");
-    html <<
-        "<td class=centered colspan = 2>" << info.common;
+    html << "<tr><th class=left>Common, positive offset<td class=centered colspan=2>" <<
+        info.commonPositiveOffset;
+    html << "<tr><th class=left>Common, non-positive offset<td class=centered colspan=2>" <<
+        info.commonNonPositiveOffset;
 
     // Only.
     html <<
@@ -421,31 +477,27 @@ void Anchors::writeHtml(
     html <<
         "<td class=centered>" << info.onlyA << "<td class=centered>" << info.onlyB;
 
-    // The rest of the summary table can only be written if there are common reads.
-    if(info.common > 0) {
+    // The rest of the summary table can only be written if there are common reads with positive offset.
+    if(info.commonPositiveOffset > 0) {
 
         // Only, short.
         html <<
-            "<tr><th class=left>Only, short ";
-        writeInformationIcon(html, "The number of oriented reads that appear in one anchor only "
-            " and are too short to appear on the other anchor, based on the estimated base offset.");
-        html <<
-            "<td class=centered>" << info.onlyAShort << "<td class=centered>" << info.onlyBShort;
+            "<tr><th class=left>Only, short<td class=centered>" <<
+            info.onlyAShort << "<td class=centered>" << info.onlyBShort;
 
-        // Only, missing.
-        html <<
-            "<tr><th class=left>Only, missing ";
-        writeInformationIcon(html, "The number of oriented reads that appear in one anchor only "
-            " and are not too short to appear on the other anchor, based on the estimated base offset.");
-        html <<
-            "<td class=centered>" << info.onlyA - info.onlyAShort << "<td class=centered>" << info.onlyB - info.onlyBShort;
+            // Only, missing.
+            html <<
+                "<tr><th class=left>Only, missing<td class=centered>" <<
+                info.onlyA - info.onlyAShort << "<td class=centered>" << info.onlyB - info.onlyBShort;
     }
 
     // End the summary table.
     html << "</table>";
 
-    // Only write out the rest if there are common reads.
-    if(info.common == 0) {
+
+
+    // Only write out the rest if there are common reads with positive offset.
+    if(info.commonPositiveOffset == 0) {
         return;
     }
 
@@ -460,6 +512,8 @@ void Anchors::writeHtml(
         fixed << setprecision(2) << info.correctedJaccard() <<
         "<tr><th class=left>Estimated offset in markers<td class=centered>" << info.offsetInMarkers <<
         "<tr><th class=left>Estimated offset in bases<td class=centered>" << info.offsetInBases <<
+        "<tr><th class=left>Minimum offset in bases<td class=centered>" << info.minOffsetInBases <<
+        "<tr><th class=left>Maximum offset in bases<td class=centered>" << info.maxOffsetInBases <<
         "</table>";
 
 

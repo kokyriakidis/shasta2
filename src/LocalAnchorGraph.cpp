@@ -240,9 +240,9 @@ void LocalAnchorGraph::writeGraphviz(
             if(not annotationText.empty()) {
                 s << annotationText;
             }
-            if((options.vertexColoring == "byReadComposition") and (info.common > 0)) {
+            if((options.vertexColoring == "byReadComposition") and (info.commonPositiveOffset > 0)) {
                 s <<
-                    "\\nCommon " << info.common <<
+                    "\\nCommon " << info.commonPositiveOffset <<
                     "\\nJ " <<
                     std::fixed << std::setprecision(2) << info.jaccard() <<
                     "\\nJ' " << info.correctedJaccard() <<
@@ -266,7 +266,7 @@ void LocalAnchorGraph::writeGraphviz(
                 double hue = 1.;    // 0=red, 1=green.
                 if(options.similarityMeasure == "commonCount") {
                     // By common count.
-                    hue = double(info.common) / double(referenceAnchorIdCoverage);
+                    hue = double(info.commonPositiveOffset) / double(referenceAnchorIdCoverage);
 
                 } else if(options.similarityMeasure == "jaccard") {
                     // By Jaccard similarity.
@@ -277,10 +277,10 @@ void LocalAnchorGraph::writeGraphviz(
                  }
 
                 string colorString = "\"" + to_string(hue / 3.) + " 1 1\"";
-                if(info.common == 0) {
+                if(info.commonPositiveOffset == 0) {
                     colorString = "Grey";
                 }
-                if(info.common == 1) {
+                if(info.commonPositiveOffset == 1) {
                     colorString = "LightGrey";
                 }
                 if(options.vertexLabels) {
@@ -917,7 +917,7 @@ void LocalAnchorGraph::writeVertices(
                 double hue = 1.;    // 0=red, 1=green.
                 if(options.similarityMeasure == "commonCount") {
                     // By common count.
-                    hue = double(info.common) / double(referenceAnchorIdCoverage);
+                    hue = double(info.commonPositiveOffset) / double(referenceAnchorIdCoverage);
 
                 } else if(options.similarityMeasure == "jaccard") {
                     // By Jaccard similarity.
@@ -927,9 +927,9 @@ void LocalAnchorGraph::writeVertices(
                     hue = info.correctedJaccard();
                 }
 
-                if(info.common == 0) {
+                if(info.commonPositiveOffset == 0) {
                     color = "Black";
-                } else if(info.common == 1) {
+                } else if(info.commonPositiveOffset == 1) {
                     color = "Grey";
                 } else {
                     color = "hsl(" + to_string(uint32_t(std::round(hue * 120.))) +
@@ -969,10 +969,10 @@ void LocalAnchorGraph::writeVertices(
             "' id='" << anchorIdString << "'>"
             "<title>" << anchorIdString << ", coverage " << coverage;
         if(options.vertexColoring == "byReadComposition") {
-            html << ", common " << info.common << ", missing " << info.missingCount() << ", J " <<
+            html << ", common " << info.commonPositiveOffset << ", missing " << info.missingCount() << ", J " <<
                 std::fixed << std::setprecision(2) << info.jaccard() <<
                 ", J' " << info.correctedJaccard();
-            if(info.common > 0) {
+            if(info.commonPositiveOffset > 0) {
                 html << ", offset " << info.offsetInBases;
             }
         }

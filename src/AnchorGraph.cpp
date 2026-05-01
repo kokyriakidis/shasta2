@@ -384,9 +384,12 @@ AnchorGraph::AnchorGraph(
             EdgeCandidate& edgeCandidate = edgeCandidates.emplace_back(anchors, anchorIdA, anchorIdB);
             const AnchorPairInfo& info = edgeCandidate.anchorPairInfo;
             if(debug) {
-                cout << anchorIdToString(anchorIdA) << " " << anchorIdToString(anchorIdB) << " " << info.common << endl;
+                cout <<
+                    anchorIdToString(anchorIdA) << " " <<
+                    anchorIdToString(anchorIdB) << " " <<
+                    info.commonPositiveOffset << endl;
             }
-            if(info.common < minCommonCount) {
+            if(info.commonPositiveOffset < minCommonCount) {
                 if(debug) {
                     cout << "Skipped due to low commonCount." << endl;
                 }
@@ -394,9 +397,9 @@ AnchorGraph::AnchorGraph(
                 continue;
             }
             const uint64_t missing = info.onlyA + info.onlyB - info.onlyAShort - info.onlyBShort;
-            edgeCandidate.logP = a * double(info.common) - b * double(missing);
+            edgeCandidate.logP = a * double(info.commonPositiveOffset) - b * double(missing);
             if(debug) {
-                cout << "Common " << info.common << ", missing " << missing << ", logP " << edgeCandidate.logP << endl;
+                cout << "Common " << info.commonPositiveOffset << ", missing " << missing << ", logP " << edgeCandidate.logP << endl;
             }
             if(edgeCandidate.logP < minLogP)  {
                 edgeCandidates.pop_back();

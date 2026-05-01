@@ -178,6 +178,13 @@ public:
     // Same as above, but also compute the average offset in bases.
     uint64_t countCommon(AnchorId anchorId0, AnchorId anchorId1, uint64_t& baseOffset) const;
 
+    // Return  a pair consisting of:
+    // - The number of common oriented reads between two Anchors,
+    //   counting only oriented reads that have a positive offset
+    //   (greater ordinal on anchorId1 than on anchorId0).
+    // - A bool which is true if all common oriented reads have a positive offset.
+    pair<uint64_t, bool> countCommonWithFlag(AnchorId anchorId0, AnchorId anchorId1) const;
+
     // Analyze the oriented read composition of two anchors.
     void analyzeAnchorPair(AnchorId, AnchorId, AnchorPairInfo&) const;
     void writeHtml(AnchorId, AnchorId, AnchorPairInfo&, const Journeys&
@@ -293,8 +300,12 @@ public:
     uint64_t totalA = 0;
     uint64_t totalB = 0;
 
-    // The number of common oriented reads.
-    uint64_t common = 0;
+    // The number of common oriented reads with positive offset
+    // (anchor B occurs after anchor A in the oriented read).
+    uint64_t commonPositiveOffset = 0;
+
+    // Also store the number of common oriented reads with non-positive offset.
+    uint64_t commonNonPositiveOffset = 0;
 
     // The number of oriented reads present in A but not in B.
     uint64_t onlyA = 0;
@@ -306,24 +317,27 @@ public:
     // of common oriented reads is not 0.
 
     // The estimated offset between the two Anchors.
-    // The estimate is done using the common oriented reads.
-    int64_t offsetInMarkers = invalid<int64_t>;
-    int64_t offsetInBases = invalid<int64_t>;
+    // The estimate is done using the common oriented reads
+    // with positive offset.
+    uint64_t offsetInMarkers = invalid<int64_t>;
+    uint64_t offsetInBases = invalid<int64_t>;
+    uint64_t minOffsetInBases  = invalid<int64_t>;
+    uint64_t maxOffsetInBases  = invalid<int64_t>;
 
-    // The number of onlyA reads which are too short to be on edge B,
+    // The number of onlyA reads which are too short to be on anchor B,
     // based on the above estimated offset.
     uint64_t onlyAShort = invalid<uint64_t>;
 
-    // The number of onlyB reads which are too short to be on edge A,
+    // The number of onlyB reads which are too short to be on anchor A,
     // based on the above estimated offset.
     uint64_t onlyBShort = invalid<uint64_t>;
 
-    uint64_t intersectionCount() const
+    uint64_t intersectionCountPositiveOffset() const
     {
-        return common;
+        return commonPositiveOffset;
     }
     uint64_t unionCount() const {
-        return totalA + totalB - common;
+        return totalA + totalB - commonPositiveOffset - commonNonPositiveOffset;
     }
     uint64_t correctedUnionCount() const
     {
@@ -331,18 +345,19 @@ public:
     }
     double jaccard() const
     {
-        return double(intersectionCount()) / double(unionCount());
+        return double(intersectionCountPositiveOffset()) / double(unionCount());
     }
     double correctedJaccard() const
     {
-        return double(intersectionCount()) / double(correctedUnionCount());
+        return double(intersectionCountPositiveOffset()) / double(correctedUnionCount());
     }
 
     uint64_t missingCount() const
     {
-        return onlyA + onlyB - onlyAShort - onlyBShort;
+        return onlyA + onlyB - onlyAShort - onlyBShort + commonNonPositiveOffset;
     }
 
+#if 0
     void reverse()
     {
         swap(totalA, totalB);
@@ -351,5 +366,5 @@ public:
         offsetInMarkers = - offsetInMarkers;
         offsetInBases = - offsetInBases;
     }
-
+#endif
 };
