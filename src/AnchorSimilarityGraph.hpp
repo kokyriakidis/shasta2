@@ -125,6 +125,10 @@ public:
     void save(const string& name) const;
     void load(const string& name);
 
+    // Graphviz output only includes the edges flgged as shortest path edges.
+    void writeGraphviz(const string& fileName) const;
+    void writeGraphviz(ostream&) const;
+
 private:
 
     // EXPOSE WHEN CODE STABILIZES.

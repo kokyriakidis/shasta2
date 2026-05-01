@@ -546,4 +546,48 @@ void AnchorSimilarityGraph::allShortestPaths(const Anchors& anchors)
     cout << "Flagged " << shortesPathEdgeCount <<
         " edges as shortest path edges out of " << num_edges(graph) << " total." << endl;
 
+    writeGraphviz("AnchorSimilarityGraph.dot");
+
+}
+
+
+
+// Graphviz output only includes the edges flgged as shortest path edges.
+void AnchorSimilarityGraph::writeGraphviz(const string& fileName) const
+{
+    ofstream dot(fileName);
+    writeGraphviz(dot);
+}
+
+
+
+void AnchorSimilarityGraph::writeGraphviz(ostream& dot) const
+{
+    using Graph = AnchorSimilarityGraph;
+    const Graph& graph = *this;
+
+    dot << "digraph AnchorSimilarityGraph { \n";
+
+    BGL_FORALL_VERTICES(anchorId, graph, Graph) {
+        dot << "\"" << anchorIdToString(anchorId) << "\"";
+
+        if((in_degree(anchorId, graph) == 0) or (out_degree(anchorId, graph) == 0)) {
+            dot << "[style=filled color=red]";
+        }
+
+        dot << ";\n";
+    }
+
+
+
+    BGL_FORALL_EDGES(e, graph, Graph) {
+        if(graph[e].isShortestPathEdge) {
+            const AnchorId anchorId0 = source(e, graph);
+            const AnchorId anchorId1 = target(e, graph);
+            dot <<
+                "\"" << anchorIdToString(anchorId0) << "\"->\"" <<
+                anchorIdToString(anchorId1) << "\";\n";
+        }
+    }
+    dot << "}\n";
 }
