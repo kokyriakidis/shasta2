@@ -12,6 +12,8 @@ anchorId = shasta2.anchorIdFromString(anchorIdString);
 
 # Access what we need.
 assembler = shasta2.Assembler()
+assembler.accessMarkers()
+assembler.accessAnchors()
 assembler.accessAnchorSimilarityGraph()
 
 # Call the shortest path code.

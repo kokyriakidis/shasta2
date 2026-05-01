@@ -353,7 +353,7 @@ void Assembler::accessAnchorSimilarityGraph()
 
 void Assembler::anchorSimilarityGraphShortestPaths(AnchorId anchorId) const
 {
-    anchorSimilarityGraphPointer->shortestPaths(anchorId);
+    anchorSimilarityGraphPointer->shortestPathsFast(anchorId, anchors());
 }
 
 

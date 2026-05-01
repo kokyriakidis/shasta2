@@ -80,8 +80,30 @@ public:
     // Constructor from binary data.
     AnchorSimilarityGraph(const MappedMemoryOwner&, const string& name);
 
-    // Compute a shortest path tree starting at teh given AnchorId.
+    // Compute a shortest path tree starting at the given AnchorId.
     void shortestPaths(AnchorId) const;
+
+    // More efficient version with work areas.
+    // The 3 work areas (predecessorMap, distanceMap, colorMap)
+    // are vectors of size anchors.size().
+    // On input, they must be set as follows.
+    // On exit, they are returned in exactly the same state.
+    // For performance, these conditions are not checked.
+    // - predecessorMap[anchorId] == anchorId for all anchorIds.
+    // - distanceMap[anchorId] == std::numeric_limits<double>::max().
+    // - colorMap[anchorId] == boost::default_color_type::white_color.
+    // This allows using dijkstra_shortest_paths_no_init.
+    // On exit, the accessibleVertices contains the AnchorIds
+    // that were seen and for which the predecessorMap and distanceMap
+    // contains a valid value.
+    void shortestPathsFast(
+        AnchorId,
+        vector<AnchorId>& predecessorMap,
+        vector<double>& distanceMap,
+        vector<boost::default_color_type>& colorMap,
+        vector<AnchorId>& accessibleVertices
+        ) const;
+    void shortestPathsFast(AnchorId, const Anchors&) const;
 
     // Serialization.
     friend class boost::serialization::access;
