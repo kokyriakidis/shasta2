@@ -207,6 +207,51 @@ private:
     void writeGraphviz(const string& fileName) const;
     void writeGraphviz(ostream&) const;
 
+
+
+    // Classes to describe a shortest path tree rooted at a given AnchorId.
+
+    class ShortestPathTreeVertex {
+    public:
+        AnchorId anchorId;
+
+        // Distance (number of edges) to the root and to the most distant leaf down
+        // from this vertex.
+        uint64_t distanceToRoot = invalid<uint64_t>;
+        uint64_t longestDistanceToLeaf = invalid<uint64_t>;
+        ShortestPathTreeVertex(AnchorId anchorId = invalid<AnchorId>) : anchorId(anchorId) {}
+    };
+
+    class ShortestPathTreeEdge {
+    public:
+        double logP;
+        ShortestPathTreeEdge(double logP) : logP(logP) {}
+    };
+
+    using ShortestPathTreeBaseClass = boost::adjacency_list<
+        boost::vecS,
+        boost::vecS,
+        boost::bidirectionalS,
+        ShortestPathTreeVertex,
+        ShortestPathTreeEdge>;
+
+    class ShortestPathTree : public ShortestPathTreeBaseClass {
+    public:
+        ShortestPathTree(
+            const AnchorSimilarityGraph&,
+            AnchorId rootAnchorId,
+            const ShortestPathTreeWorkAreas&);
+        AnchorId rootAnchorId;
+        std::map<AnchorId, vertex_descriptor> vertexMap;
+
+        uint64_t maximumPathLength() const;
+
+        void writeGraphviz(const string& fileName) const;
+        void writeGraphviz(ostream&) const;
+    private:
+        void computeDistancesToRoot();
+        void computeLongestDistancesToLeaf();
+    };
 };
 
 
