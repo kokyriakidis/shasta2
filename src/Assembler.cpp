@@ -351,16 +351,16 @@ void Assembler::accessAnchorSimilarityGraph()
 
 
 
-void Assembler::anchorSimilarityGraphShortestPaths(AnchorId anchorId) const
+void Assembler::anchorSimilarityGraphCreateShortestPathTree(AnchorId anchorId) const
 {
-    anchorSimilarityGraphPointer->shortestPathsFast(anchorId, anchors());
+    anchorSimilarityGraphPointer->createShortestPathTree(anchorId, anchors());
 }
 
 
 
-void Assembler::anchorSimilarityGraphAllShortestPaths() const
+void Assembler::anchorSimilarityGraphFlagShortestPathEdges() const
 {
-    anchorSimilarityGraphPointer->allShortestPaths(anchors());
+    anchorSimilarityGraphPointer->flagShortestPathEdges(anchors());
 }
 
 

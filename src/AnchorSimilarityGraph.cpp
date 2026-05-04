@@ -253,9 +253,9 @@ void AnchorSimilarityGraph::createEdges(
 
 
 
-
-// Compute a shortest path tree starting at teh given AnchorId.
-void AnchorSimilarityGraph::shortestPaths(AnchorId anchorIdA) const
+#if 0
+// Compute a shortest path tree starting at the given AnchorId.
+void AnchorSimilarityGraph::createShortestPathTree(AnchorId anchorIdA) const
 {
     using namespace boost;
 
@@ -325,10 +325,11 @@ void AnchorSimilarityGraph::shortestPaths(AnchorId anchorIdA) const
 
     cout << "AnchorSimilarityGraph::shortestPaths ends." << endl;
 }
+#endif
 
 
 
-void AnchorSimilarityGraph::shortestPathsFast(
+void AnchorSimilarityGraph::createShortestPathTree(
     AnchorId anchorId,
     vector<AnchorId>& predecessorMap,
     vector<double>& distanceMap,
@@ -339,31 +340,20 @@ void AnchorSimilarityGraph::shortestPathsFast(
     using namespace boost;
     const AnchorSimilarityGraph& graph = *this;
     accessibleVertices.clear();
+    accessibleVertices.push_back(anchorId);
 
     class DijkstraVisitor : public dijkstra_visitor<> {
     public:
-        DijkstraVisitor(
-            vector<AnchorId>& accessibleVertices,
-            vector<AnchorId>& predecessorMap) :
-            accessibleVerticesPointer(&accessibleVertices),
-            predecessorMapPointer(&predecessorMap)
+        DijkstraVisitor(vector<AnchorId>& accessibleVertices) :
+            accessibleVerticesPointer(&accessibleVertices)
         {}
-        void examine_vertex(AnchorId anchorId, const AnchorSimilarityGraph&)
+        void discover_vertex(AnchorId anchorId, const AnchorSimilarityGraph&)
         {
             accessibleVerticesPointer->push_back(anchorId);
         }
-        /*
-        void examine_edge(edge_descriptor e, const AnchorSimilarityGraph& graph)
-        {
-            const AnchorId anchorId0 = source(e, graph);
-            const AnchorId anchorId1 = target(e, graph);
-            cout << "examine_edge " << anchorIdToString(anchorId0) << " " << anchorIdToString(anchorId1) << endl;
-        }
-        */
         vector<AnchorId>* accessibleVerticesPointer;
-        vector<AnchorId>* predecessorMapPointer;
     };
-    DijkstraVisitor dijkstraVisitor(accessibleVertices, predecessorMap);
+    DijkstraVisitor dijkstraVisitor(accessibleVertices);
 
     // Create the shortest path tree starting at anchorId.
     // THE DOCUMENTATION for dijkstra_shortest_paths_no_init
@@ -388,7 +378,7 @@ void AnchorSimilarityGraph::shortestPathsFast(
 
 
 
-void AnchorSimilarityGraph::shortestPathsFast(
+void AnchorSimilarityGraph::createShortestPathTree(
     AnchorId anchorId,
     const Anchors& anchors) const
 {
@@ -405,7 +395,7 @@ void AnchorSimilarityGraph::shortestPathsFast(
     vector<AnchorId> accessibleVertices;
 
     const auto t0 = steady_clock::now();
-    shortestPathsFast(anchorId, predecessorMap, distanceMap, colorMap, accessibleVertices);
+    createShortestPathTree(anchorId, predecessorMap, distanceMap, colorMap, accessibleVertices);
     const auto t1 = steady_clock::now();
     cout << "Shortest path tree computation took " << seconds(t1-t0) << " s." << endl;
 
@@ -416,19 +406,17 @@ void AnchorSimilarityGraph::shortestPathsFast(
         colorMap[anchorId] = boost::default_color_type::white_color;
     }
 
-#if 0
     // Check that the work areas were reset correctly.
     for(AnchorId anchorId=0; anchorId<anchors.size(); anchorId++) {
         SHASTA2_ASSERT(predecessorMap[anchorId] == anchorId);
         SHASTA2_ASSERT(distanceMap[anchorId] == std::numeric_limits<double>::max());
         SHASTA2_ASSERT(colorMap[anchorId] == boost::default_color_type::white_color);
     }
-#endif
 }
 
 
 
-void AnchorSimilarityGraph::allShortestPaths(const Anchors& anchors)
+void AnchorSimilarityGraph::flagShortestPathEdges(const Anchors& anchors)
 {
     using Graph = AnchorSimilarityGraph;
     Graph& graph = *this;
@@ -456,13 +444,11 @@ void AnchorSimilarityGraph::allShortestPaths(const Anchors& anchors)
 
     // Loop over all entrances.
     BGL_FORALL_VERTICES(anchorIdA, graph, Graph) {
-        if((anchorIdA % 1000) == 0) {
-            cout << timestamp << anchorIdA << "/" << anchors.size() << endl;
-        }
         if(in_degree(anchorIdA, graph) > 0) {
             continue;
         }
 
+#if 1
         // Check that the work areas are set correctly.
         // Remove this when done debugging.
         for(AnchorId anchorId=0; anchorId<anchors.size(); anchorId++) {
@@ -470,12 +456,13 @@ void AnchorSimilarityGraph::allShortestPaths(const Anchors& anchors)
             SHASTA2_ASSERT(distanceMap[anchorId] == std::numeric_limits<double>::max());
             SHASTA2_ASSERT(colorMap[anchorId] == boost::default_color_type::white_color);
         }
+#endif
 
         // Find the shortest path tree.
-        shortestPathsFast(anchorIdA, predecessorMap, distanceMap, colorMap, accessibleVertices);
+        createShortestPathTree(anchorIdA, predecessorMap, distanceMap, colorMap, accessibleVertices);
 
         // DEBUG: CHECK THE predecessorMap.
-        {
+        if(false) {
             ofstream csv("PredecessorMap.csv");
             for(AnchorId anchorId=0; anchorId<anchors.size(); anchorId++) {
                 csv << anchorIdToString(anchorId) << ",";
@@ -509,6 +496,9 @@ void AnchorSimilarityGraph::allShortestPaths(const Anchors& anchors)
 
     }
 
+
+
+#if 0
     // Also flag as shortest path edges the reverse complements
     // of the edges already flagged as shortest path edges.
     vector<edge_descriptor> shortestPathEdges;
@@ -533,7 +523,7 @@ void AnchorSimilarityGraph::allShortestPaths(const Anchors& anchors)
         SHASTA2_ASSERT(edgeExists);
         graph[eRc].isShortestPathEdge = true;
     }
-
+#endif
 
 
     // Count the edges we flagged.

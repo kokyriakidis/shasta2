@@ -82,10 +82,12 @@ public:
     // Constructor from binary data.
     AnchorSimilarityGraph(const MappedMemoryOwner&, const string& name);
 
-    // Compute a shortest path tree starting at the given AnchorId.
-    void shortestPaths(AnchorId) const;
 
-    // More efficient version.
+
+private:
+    // Compute a shortest path tree starting at the given AnchorId.
+    // These are forward paths. Backward paths can be created
+    // by reverse complementing.
     // On input, predecessorMap, distanceMap, and colorMap
     // must be vectors of size anchors.size() set as follows:
     // - predecessorMap[anchorId] == anchorId
@@ -94,23 +96,25 @@ public:
     // For performance, these conditions are not checked.
     // On exit, the accessibleVertices vector contains the AnchorIds
     // in the shortest path tree, that is, all the AnchorIds
-    // accessible from the root anchorid.
+    // accessible from the root anchorId.
     // In addition, on exit, predecessorMap, distanceMap, and colorMap
     // describe the shortest path tree with root at the given AnchorId.
     // Only the entries corresponding to the accessibleVertices are
     // changed. Therefore, the caller can quickly reset the
     // predecessorMap, distanceMap, and colorMap to the initial conditions
     // for reuse.
-    void shortestPathsFast(
+    void createShortestPathTree(
         AnchorId,
         vector<AnchorId>& predecessorMap,
         vector<double>& distanceMap,
         vector<boost::default_color_type>& colorMap,
         vector<AnchorId>& accessibleVertices
         ) const;
-    void shortestPathsFast(AnchorId, const Anchors&) const;
+public:
+    void createShortestPathTree(AnchorId, const Anchors&) const;
+    void flagShortestPathEdges(const Anchors&);
 
-    void allShortestPaths(const Anchors&);
+
 
     // Serialization.
     friend class boost::serialization::access;
@@ -124,10 +128,6 @@ public:
     // These do save/load to/from mapped memory.
     void save(const string& name) const;
     void load(const string& name);
-
-    // Graphviz output only includes the edges flgged as shortest path edges.
-    void writeGraphviz(const string& fileName) const;
-    void writeGraphviz(ostream&) const;
 
 private:
 
@@ -149,5 +149,10 @@ private:
         const AnchorGraph& completeAnchorGraph,
         AnchorId anchorIdA,
         vector<uint8_t>& color);
+
+    // Graphviz output only includes the edges flagged as shortest path edges.
+    void writeGraphviz(const string& fileName) const;
+    void writeGraphviz(ostream&) const;
+
 };
 
