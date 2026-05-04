@@ -84,7 +84,65 @@ public:
 
 
 
-private:
+    // Work areas for the computation of shortest path trees.
+    // This implements property maps that can be used in the call to
+    // dijkstra_shortest_paths_no_init. This gives better memory
+    // locality than using property maps created using
+    // using boost::make_iterator_property_map.
+    class ShortestPathTreeWorkAreas {
+    public:
+
+        class Data {
+        public:
+            AnchorId predecessor;
+            double distance = std::numeric_limits<double>::max();
+            boost::default_color_type color = boost::default_color_type::white_color;
+        };
+        vector<Data> data;
+
+        // After a call to dijkstra_shortest_paths_no_init
+        // using the above DijkstraVisitor, the accessibleVertices
+        // vector contains the vertices that were reached and for
+        // which the data values need to be reset.
+        vector<AnchorId> accessibleVertices;
+
+        ShortestPathTreeWorkAreas(uint64_t anchorCount);
+        void reset();
+        void check() const;
+
+
+
+        // Property maps.
+        class PropertyMap {
+        public:
+            ShortestPathTreeWorkAreas& workAreas;
+            PropertyMap(ShortestPathTreeWorkAreas& workAreas) :
+                workAreas(workAreas) {}
+        };
+        class PredecessorMap : public PropertyMap {
+        public:
+            PredecessorMap(ShortestPathTreeWorkAreas& workAreas) :
+                PropertyMap(workAreas) {}
+        };
+        class DistanceMap : public PropertyMap {
+        public:
+            DistanceMap(ShortestPathTreeWorkAreas& workAreas) :
+                PropertyMap(workAreas) {}
+            using value_type = double;
+        };
+        class ColorMap : public PropertyMap {
+        public:
+            ColorMap(ShortestPathTreeWorkAreas& workAreas) :
+                PropertyMap(workAreas) {}
+            using value_type = boost::default_color_type;
+        };
+        PredecessorMap predecessorMap = *this;
+        DistanceMap distanceMap = *this;
+        ColorMap colorMap = *this;
+    };
+
+
+
     // Compute a shortest path tree starting at the given AnchorId.
     // These are forward paths. Backward paths can be created
     // by reverse complementing.
@@ -97,20 +155,15 @@ private:
     // On exit, the accessibleVertices vector contains the AnchorIds
     // in the shortest path tree, that is, all the AnchorIds
     // accessible from the root anchorId.
-    // In addition, on exit, predecessorMap, distanceMap, and colorMap
+    // In addition, on exit, the ShortestPathTreeWorkAreas
     // describe the shortest path tree with root at the given AnchorId.
     // Only the entries corresponding to the accessibleVertices are
-    // changed. Therefore, the caller can quickly reset the
-    // predecessorMap, distanceMap, and colorMap to the initial conditions
-    // for reuse.
+    // changed. The caller should call ShortestPathTreeWorkAreas::reset
+    // before reusing the ShortestPathTreeWorkAreas.
     void createShortestPathTree(
         AnchorId,
-        vector<AnchorId>& predecessorMap,
-        vector<double>& distanceMap,
-        vector<boost::default_color_type>& colorMap,
-        vector<AnchorId>& accessibleVertices
+        ShortestPathTreeWorkAreas&
         ) const;
-public:
     void createShortestPathTree(AnchorId, const Anchors&) const;
     void flagShortestPathEdges(const Anchors&);
 
@@ -156,3 +209,75 @@ private:
 
 };
 
+
+
+// Get/put functions and boost::property_traits specializations
+// for ShortestPathTreeWorkAreas property maps.
+// There is probably a better way to do this.
+namespace shasta2 {
+    inline
+        AnchorId get(
+        AnchorSimilarityGraph::ShortestPathTreeWorkAreas::PredecessorMap& predecessorMap,
+        AnchorId anchorId)
+    {
+        return predecessorMap.workAreas.data[anchorId].predecessor;
+    }
+    inline
+        double get(
+        AnchorSimilarityGraph::ShortestPathTreeWorkAreas::DistanceMap& distanceMap,
+        AnchorId anchorId)
+    {
+        return distanceMap.workAreas.data[anchorId].distance;
+    }
+    inline
+        boost::default_color_type get(
+        AnchorSimilarityGraph::ShortestPathTreeWorkAreas::ColorMap& colorMap,
+        AnchorId anchorId)
+    {
+        return colorMap.workAreas.data[anchorId].color;
+    }
+    inline
+        void put(
+        AnchorSimilarityGraph::ShortestPathTreeWorkAreas::PredecessorMap& predecessorMap,
+        AnchorId anchorId,
+        AnchorId predecessor)
+    {
+        predecessorMap.workAreas.data[anchorId].predecessor = predecessor;
+    }
+    inline
+        void put(
+        AnchorSimilarityGraph::ShortestPathTreeWorkAreas::DistanceMap& distanceMap,
+        AnchorId anchorId,
+        double distance)
+    {
+        distanceMap.workAreas.data[anchorId].distance = distance;
+    }
+    inline
+        void put(
+        AnchorSimilarityGraph::ShortestPathTreeWorkAreas::ColorMap& colorMap,
+        AnchorId anchorId,
+        boost::default_color_type color)
+    {
+        colorMap.workAreas.data[anchorId].color = color;
+    }
+}
+namespace boost {
+    template<> struct property_traits<shasta2::AnchorSimilarityGraph::ShortestPathTreeWorkAreas::PredecessorMap> {
+        typedef shasta2::AnchorId key_type;
+        typedef shasta2::AnchorId value_type;
+        typedef shasta2::AnchorId reference;
+        typedef boost::lvalue_property_map_tag category;
+    };
+    template<> struct property_traits<shasta2::AnchorSimilarityGraph::ShortestPathTreeWorkAreas::DistanceMap> {
+        typedef shasta2::AnchorId key_type;
+        typedef double value_type;
+        typedef double reference;
+        typedef boost::lvalue_property_map_tag category;
+    };
+    template<> struct property_traits<shasta2::AnchorSimilarityGraph::ShortestPathTreeWorkAreas::ColorMap> {
+        typedef shasta2::AnchorId key_type;
+        typedef boost::default_color_type value_type;
+        typedef boost::default_color_type reference;
+        typedef boost::lvalue_property_map_tag category;
+    };
+}
