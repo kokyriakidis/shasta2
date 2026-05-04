@@ -246,6 +246,12 @@ private:
 
         uint64_t maximumPathLength() const;
 
+        // Find the sequence of vertices or AnchorIds
+        // of a path starting at root and ending at the
+        // specified vertex or AnchorId.
+        void findPath(vertex_descriptor, vector<vertex_descriptor>&) const;
+        void findPathAnchorIds(AnchorId, vector<AnchorId>&) const;
+
         void writeGraphviz(const string& fileName) const;
         void writeGraphviz(ostream&) const;
     private:

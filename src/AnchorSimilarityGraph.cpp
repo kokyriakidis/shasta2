@@ -2,6 +2,7 @@
 #include "AnchorSimilarityGraph.hpp"
 #include "Anchor.hpp"
 #include "AnchorGraph.hpp"
+#include "LocalAssembly4.hpp"
 #include "SHASTA2_ASSERT.hpp"
 #include "timestamp.hpp"
 using namespace shasta2;
@@ -417,20 +418,73 @@ void AnchorSimilarityGraph::createShortestPathTree(
     const Anchors& anchors) const
 {
     ShortestPathTreeWorkAreas workAreas(anchors.size());
-
-    const auto t0 = steady_clock::now();
     createShortestPathTree(anchorId, workAreas);
-    const auto t1 = steady_clock::now();
-    cout << "Shortest path tree computation took " << seconds(t1-t0) << " s." << endl;
-
     const ShortestPathTree tree(*this, anchorId, workAreas);
+    workAreas.reset();
+
     cout << "The shortest path tree has " << num_vertices(tree) <<
         " vertices and " << num_edges(tree) << " edges." << endl;
     cout << "The maximum path length in this tree is " << tree.maximumPathLength() << endl;
     SHASTA2_ASSERT(num_edges(tree) == num_vertices(tree) - 1);
     tree.writeGraphviz("ShortestPathTree.dot");
 
-    workAreas.reset();
+    // Interactive loop.
+    while(true) {
+        cout << "Enter final AnchorId for assembly path:" << endl;
+        string endAnchorIdString;
+        cin >> endAnchorIdString;
+        const AnchorId endAnchorId = anchorIdFromString(endAnchorIdString);
+
+        vector<AnchorId> path;
+        tree.findPathAnchorIds(endAnchorId, path);
+        cout << "Path ending at " << anchorIdToString(endAnchorId) << ":";
+        for(const AnchorId anchorId: path) {
+            cout << " " << anchorIdToString(anchorId);
+        }
+        cout << endl;
+
+        // Assemble the path.
+        vector<shasta2::Base> sequence;
+        for(uint64_t i1=1; i1<path.size(); i1++) {
+            const uint64_t i0 = i1 - 1;
+            const AnchorId anchorId0 = path[i0];
+            const AnchorId anchorId1 = path[i1];
+            const AnchorPair anchorPair(anchors, anchorId0, anchorId1, false);
+            ostream html(0);
+            vector<OrientedReadId> additionalOrientedReadIds;
+            const LocalAssembly4 localAssembly(anchors, 5000, html, false, anchorPair, additionalOrientedReadIds);
+
+            std::ranges::copy(localAssembly.sequence, back_inserter(sequence));
+        }
+        ofstream fasta("ShortestPathTree.fasta");
+        fasta << ">ShortestPathTree\n";
+        std::ranges::copy(sequence, ostream_iterator<shasta2::Base>(fasta));
+    }
+
+
+#if 0
+    // Do a local assembly for each edge of the tree.
+    ofstream fasta("ShortestPathTree.fasta");
+    BGL_FORALL_EDGES(e, tree, ShortestPathTree) {
+        const ShortestPathTree::vertex_descriptor v0 = source(e, tree);
+        const ShortestPathTree::vertex_descriptor v1 = target(e, tree);
+        const AnchorId anchorId0 = tree[v0].anchorId;
+        const AnchorId anchorId1 = tree[v1].anchorId;
+        AnchorPair anchorPair(anchors, anchorId0, anchorId1, false);
+
+        cout << anchorIdToString(anchorId0) << " " << anchorIdToString(anchorId1) <<
+            " " << anchorPair.orientedReadIds.size() << endl;
+
+        ostream html(0);
+        vector<OrientedReadId> additionalOrientedReadIds;
+        const LocalAssembly4 localAssembly(anchors, 5000, html, false, anchorPair, additionalOrientedReadIds);
+
+        fasta << ">" << anchorIdToString(anchorId0) << "_" << anchorIdToString(anchorId1) << "\n";
+        std::ranges::copy(localAssembly.sequence, ostream_iterator<shasta2::Base>(fasta));
+        fasta << "\n";
+
+    }
+#endif
 }
 
 
@@ -707,5 +761,53 @@ void AnchorSimilarityGraph::ShortestPathTree::computeLongestDistancesToLeaf()
             }
             tree[v0].longestDistanceToLeaf = maxChildrenDistance + 1;
         }
+    }
+}
+
+
+
+// Find the sequence of vertices of a path starting at root
+// and ending at the specified vertex.
+void AnchorSimilarityGraph::ShortestPathTree::findPath(
+    vertex_descriptor v,
+    vector<vertex_descriptor>& path) const
+{
+    using Tree = ShortestPathTree;
+    const Tree& tree = *this;
+
+    const vertex_descriptor root = vertexMap.at(rootAnchorId);
+
+    path.clear();
+    while(true) {
+        path.push_back(v);
+        if(v == root) {
+            break;
+        }
+
+        auto [it, ignore] = in_edges(v, tree);
+        const edge_descriptor e = *it;
+        v = source(e, tree);
+    }
+
+    std::ranges::reverse(path);
+}
+
+
+
+// Find the sequence of AnchorIds of a path starting at root
+// and ending at the specified AnchorId.
+void AnchorSimilarityGraph::ShortestPathTree::findPathAnchorIds(
+    AnchorId anchorId,
+    vector<AnchorId>& anchorIds) const
+{
+    using Tree = ShortestPathTree;
+    const Tree& tree = *this;
+
+    vector<vertex_descriptor> path;
+    findPath(vertexMap.at(anchorId), path);
+
+    anchorIds.clear();
+    for(const vertex_descriptor v: path) {
+        anchorIds.push_back(tree[v].anchorId);
     }
 }
