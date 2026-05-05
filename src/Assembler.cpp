@@ -364,6 +364,7 @@ void Assembler::anchorSimilarityGraphFlagShortestPathEdges() const
 {
     anchorSimilarityGraphPointer->flagShortestPathEdges(anchors());
     anchorSimilarityGraphPointer->checkStrandInvariant();
+    anchorSimilarityGraphPointer->save("AnchorSimilarityGraph");
 }
 
 

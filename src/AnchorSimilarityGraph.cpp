@@ -3,6 +3,7 @@
 #include "Anchor.hpp"
 #include "AnchorGraph.hpp"
 #include "LocalAssembly4.hpp"
+#include "MurmurHash2.hpp"
 #include "SHASTA2_ASSERT.hpp"
 #include "timestamp.hpp"
 using namespace shasta2;
@@ -48,6 +49,7 @@ AnchorSimilarityGraph::AnchorSimilarityGraph(
     }
     cout << "The anchor similarity graph has " << entranceCount <<
         " entrances and " << exitCount << " exits." << endl;
+    writeGraphviz("AnchorSimilarityGraphFull.dot", false);
 }
 
 
@@ -254,8 +256,14 @@ void AnchorSimilarityGraph::createEdges(
                 continue;
             }
 
+            // To compute the weight, perturb logP a bit to reduce ties
+            // when looking for shortest paths.
+            const uint64_t sum = anchorIdA + anchorId1;
+            const uint64_t hashValue = MurmurHash2(&sum, sizeof(sum), 267457831);
+            const double perturbedLogP = logP + double(hashValue) / double(std::numeric_limits<uint32_t>::max());
+
             // Ok, now we can add the pair of edges.
-            const double weight = std::pow(10., -0.1 * logP);
+            const double weight = std::pow(10., -0.1 * perturbedLogP);
             AnchorSimilarityGraphEdge edge(weight, info.offsetInBases);
             {
                 auto [ignore, edgeExists] = boost::edge(anchorIdA, anchorId1, anchorSimilarityGraph);
@@ -443,6 +451,7 @@ void AnchorSimilarityGraph::createShortestPathTree(
     AnchorId anchorId,
     const Anchors& anchors) const
 {
+
     ShortestPathTreeWorkAreas workAreas(anchors.size());
     createShortestPathTree(anchorId, workAreas);
     const ShortestPathTree tree(*this, anchorId, workAreas);
@@ -461,10 +470,17 @@ void AnchorSimilarityGraph::createShortestPathTree(
         cin >> endAnchorIdString;
         const AnchorId endAnchorId = anchorIdFromString(endAnchorIdString);
 
-        vector<AnchorId> path;
-        tree.findPathAnchorIds(endAnchorId, path);
+        // Write out the AnchorSimilarityGraph, highlighting the tree and the path.
+        {
+            vector<ShortestPathTree::vertex_descriptor> path;
+            tree.findPath(tree.vertexMap.at(endAnchorId), path);
+            writeGraphviz("AnchorSimilarityGraph.dot", tree, path);
+        }
+
+        vector<AnchorId> pathAnchorIds;
+        tree.findPathAnchorIds(endAnchorId, pathAnchorIds);
         cout << "Path ending at " << anchorIdToString(endAnchorId) << ":";
-        for(const AnchorId anchorId: path) {
+        for(const AnchorId anchorId: pathAnchorIds) {
             cout << " " << anchorIdToString(anchorId);
         }
         cout << endl;
@@ -473,10 +489,10 @@ void AnchorSimilarityGraph::createShortestPathTree(
         vector<shasta2::Base> sequence;
         ofstream csv("ShortestPath.csv");
         csv << "Step,AnchorId0,AnchorId1,Common,LogP,Length,Begin,End,\n";
-        for(uint64_t i1=1; i1<path.size(); i1++) {
+        for(uint64_t i1=1; i1<pathAnchorIds.size(); i1++) {
             const uint64_t i0 = i1 - 1;
-            const AnchorId anchorId0 = path[i0];
-            const AnchorId anchorId1 = path[i1];
+            const AnchorId anchorId0 = pathAnchorIds[i0];
+            const AnchorId anchorId1 = pathAnchorIds[i1];
             const ShortestPathTree::vertex_descriptor v0 = tree.vertexMap.at(anchorId0);
             const ShortestPathTree::vertex_descriptor v1 = tree.vertexMap.at(anchorId1);
             auto [e, edgeExists] = boost::edge(v0, v1, tree);
@@ -485,7 +501,7 @@ void AnchorSimilarityGraph::createShortestPathTree(
             ostream html(0);
             vector<OrientedReadId> additionalOrientedReadIds;
             cout << "Assembling " << anchorIdToString(anchorId0) << " to " << anchorIdToString(anchorId1) <<
-                " " << i0 << "/" << path.size()-1 << endl;
+                " " << i0 << "/" << pathAnchorIds.size()-1 << endl;
             const LocalAssembly4 localAssembly(anchors, 5000, html, false, anchorPair, additionalOrientedReadIds);
 
             const uint64_t sequenceBegin = sequence.size();
@@ -622,22 +638,24 @@ void AnchorSimilarityGraph::flagShortestPathEdges(const Anchors& anchors)
     cout << "Flagged " << shortesPathEdgeCount <<
         " edges as shortest path edges out of " << num_edges(graph) << " total." << endl;
 
-    writeGraphviz("AnchorSimilarityGraph.dot");
+    writeGraphviz("AnchorSimilarityGraph.dot", true);
 
 }
 
 
 
 // Graphviz output only includes the edges flgged as shortest path edges.
-void AnchorSimilarityGraph::writeGraphviz(const string& fileName) const
+void AnchorSimilarityGraph::writeGraphviz(
+    const string& fileName,
+    bool shortPathEdgesOnly) const
 {
     ofstream dot(fileName);
-    writeGraphviz(dot);
+    writeGraphviz(dot, shortPathEdgesOnly);
 }
 
 
 
-void AnchorSimilarityGraph::writeGraphviz(ostream& dot) const
+void AnchorSimilarityGraph::writeGraphviz(ostream& dot, bool shortPathEdgesOnly) const
 {
     using Graph = AnchorSimilarityGraph;
     const Graph& graph = *this;
@@ -657,16 +675,129 @@ void AnchorSimilarityGraph::writeGraphviz(ostream& dot) const
 
 
     BGL_FORALL_EDGES(e, graph, Graph) {
-        if(graph[e].isShortestPathEdge) {
+
+        // Skip it if we are only writing shortest path edges
+        // and this is not a shortest path edge.
+        if(shortPathEdgesOnly) {
+            if(not graph[e].isShortestPathEdge) {
+                continue;
+            }
+        }
+
+        const AnchorId anchorId0 = source(e, graph);
+        const AnchorId anchorId1 = target(e, graph);
+        dot <<
+            "\"" << anchorIdToString(anchorId0) << "\"->\"" <<
+            anchorIdToString(anchorId1) << "\";\n";
+    }
+    dot << "}\n";
+}
+
+
+
+// Graphviz output of shortest path edges (only) of the AnchorSimilarityGraph,
+// highlighting a given ShortestPathTree and a path on the ShortestPathTree.
+void AnchorSimilarityGraph::writeGraphviz(
+    const string& fileName,
+    const ShortestPathTree& tree,
+    const vector<ShortestPathTree::vertex_descriptor>& path) const
+{
+    ofstream dot(fileName);
+    writeGraphviz(dot, tree, path);
+}
+
+
+
+// Graphviz output of shortest path edges (only) of the AnchorSimilarityGraph,
+// highlighting a given ShortestPathTree and a path on the ShortestPathTree.
+void AnchorSimilarityGraph::writeGraphviz(
+    ostream& dot,
+    const ShortestPathTree& tree,
+    const vector<ShortestPathTree::vertex_descriptor>& path) const
+{
+    using Graph = AnchorSimilarityGraph;
+    const Graph& graph = *this;
+
+    // Find AnchorSimilarityGraph vertices that are in the ShortestPathTree.
+    std::set<AnchorId> treeVertices;
+    BGL_FORALL_VERTICES(v, tree, ShortestPathTree) {
+        treeVertices.insert(tree[v].anchorId);
+    }
+
+    // Find AnchorSimilarityGraph edges that are in the ShortestPathTree.
+    std::set<edge_descriptor> treeEdges;
+    BGL_FORALL_EDGES(e, tree, ShortestPathTree) {
+        const ShortestPathTree::vertex_descriptor v0 = source(e, tree);
+        const ShortestPathTree::vertex_descriptor v1 = target(e, tree);
+        const AnchorId anchorId0 = tree[v0].anchorId;
+        const AnchorId anchorId1 = tree[v1].anchorId;
+        auto[ee, edgeExists] = boost::edge(anchorId0, anchorId1, graph);
+        SHASTA2_ASSERT(edgeExists);
+        treeEdges.insert(ee);
+    }
+
+    // Find AnchorSimilarityGraph vertices that are in the path.
+    std::set<AnchorId> pathVertices;
+    for(const ShortestPathTree::vertex_descriptor v: path) {
+        pathVertices.insert(tree[v].anchorId);
+    }
+
+    // Find AnchorSimilarityGraph edges that are in the path.
+    std::set<edge_descriptor> pathEdges;
+    for(uint64_t i1=1; i1<path.size(); i1++) {
+        const uint64_t i0 = i1 - 1;
+        const ShortestPathTree::vertex_descriptor v0 = path[i0];
+        const ShortestPathTree::vertex_descriptor v1 = path[i1];
+        const AnchorId anchorId0 = tree[v0].anchorId;
+        const AnchorId anchorId1 = tree[v1].anchorId;
+        auto[ee, edgeExists] = boost::edge(anchorId0, anchorId1, graph);
+        SHASTA2_ASSERT(edgeExists);
+        pathEdges.insert(ee);
+    }
+
+
+    dot << "digraph AnchorSimilarityGraph { \n";
+
+    BGL_FORALL_VERTICES(anchorId, graph, Graph) {
+        dot << "\"" << anchorIdToString(anchorId) << "\"";
+
+        if(pathVertices.contains(anchorId)) {
+            dot << "[style=filled fillcolor=cyan]";
+        } else if(treeVertices.contains(anchorId)) {
+            dot << "[style=filled fillcolor=red]";
+        }
+
+        dot << ";\n";
+    }
+
+
+
+    BGL_FORALL_EDGES(e, graph, Graph) {
+        const AnchorSimilarityGraphEdge& edge = graph[e];
+
+        if(edge.isShortestPathEdge) {
             const AnchorId anchorId0 = source(e, graph);
             const AnchorId anchorId1 = target(e, graph);
+            const double logP = -10. * log10(edge.weight);
+
             dot <<
                 "\"" << anchorIdToString(anchorId0) << "\"->\"" <<
-                anchorIdToString(anchorId1) << "\";\n";
+                anchorIdToString(anchorId1) << "\"[";
+
+            dot << "penwidth=" << std::fixed << std::setprecision(2) << 0.05 + 0.1 * logP;
+
+            if(pathEdges.contains(e)) {
+                dot << " color=cyan";
+            } else if(treeEdges.contains(e)) {
+                dot << " color=red";
+            }
+
+            dot << "];\n";
         }
     }
     dot << "}\n";
 }
+
 
 
 
@@ -713,7 +844,8 @@ AnchorSimilarityGraph::ShortestPathTree::ShortestPathTree(
 
 
 
-void AnchorSimilarityGraph::ShortestPathTree::writeGraphviz(const string& fileName) const
+void AnchorSimilarityGraph::ShortestPathTree::writeGraphviz(
+    const string& fileName) const
 {
     ofstream dot(fileName);
     writeGraphviz(dot);
@@ -721,7 +853,8 @@ void AnchorSimilarityGraph::ShortestPathTree::writeGraphviz(const string& fileNa
 
 
 
-void AnchorSimilarityGraph::ShortestPathTree::writeGraphviz(ostream& dot) const
+void AnchorSimilarityGraph::ShortestPathTree::writeGraphviz(
+    ostream& dot) const
 {
     using Tree = ShortestPathTree;
     const Tree& tree = *this;

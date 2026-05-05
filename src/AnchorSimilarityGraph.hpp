@@ -194,10 +194,10 @@ public:
 private:
 
     // EXPOSE WHEN CODE STABILIZES.
-    const uint64_t minCommonCount = 3;
+    const uint64_t minCommonCount = 6;
     const double a = 3.;
     const double b = 10.;
-    const double minLogP = 0.;
+    const double minLogP = 10.;
 
 
     void createVertices(const Anchors&);
@@ -213,8 +213,8 @@ private:
         vector<uint8_t>& color);
 
     // Graphviz output only includes the edges flagged as shortest path edges.
-    void writeGraphviz(const string& fileName) const;
-    void writeGraphviz(ostream&) const;
+    void writeGraphviz(const string& fileName, bool shortPathEdgesOnly) const;
+    void writeGraphviz(ostream&, bool shortPathEdgesOnly) const;
 
 
 
@@ -267,6 +267,18 @@ private:
         void computeDistancesToRoot();
         void computeLongestDistancesToLeaf();
     };
+
+    // Graphviz output of shortest path edges (only) of the AnchorSimilarityGraph,
+    // highlighting a given ShortestPathTree and a path on the ShortestPathTree.
+    void writeGraphviz(
+        const string& fileName,
+        const ShortestPathTree&,
+        const vector<ShortestPathTree::vertex_descriptor>& path) const;
+    void writeGraphviz(
+        ostream&,
+        const ShortestPathTree&,
+        const vector<ShortestPathTree::vertex_descriptor>& path) const;
+
 };
 
 
