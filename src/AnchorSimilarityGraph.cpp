@@ -184,7 +184,7 @@ void AnchorSimilarityGraph::createEdges(
     std::queue<AnchorId> q;         // Pass as argument instead to reduce memory allocation activity.
     q.push(anchorIdA);
 
-
+    const AnchorId anchorIdARc = reverseComplementAnchorId(anchorIdA);
 
     // Main BFS loop.
     while(not q.empty()) {
@@ -221,27 +221,53 @@ void AnchorSimilarityGraph::createEdges(
             // Enqueue it.
             q.push(anchorId1);
 
-            // If it satisfies our requirements, add an edge anchorIdA->anchorId1
-            // to the AnchorSimilarityGraph.
-            if((commonCount >=  minCommonCount) and (not nonPositiveOffsetFound)) {
-                AnchorPairInfo info;
-                anchors.analyzeAnchorPair(anchorIdA, anchorId1, info);
-                SHASTA2_ASSERT(info.commonPositiveOffset == commonCount);
-                SHASTA2_ASSERT(info.commonNonPositiveOffset == 0);
-                SHASTA2_ASSERT(info.offsetInBases < 1000000000);
-                const uint64_t missingCount = info.missingCount();
-                const double logP = a * double(commonCount) - b * double(missingCount);
-                if(logP >= minLogP) {
-                    const double weight = std::pow(10., -0.1 * logP);
-                    if(debug) {
-                        cout << "Added edge " << anchorIdToString(anchorIdA) << " " << anchorIdToString(anchorId1) << " " << info.offsetInBases << endl;
-                    }
-                    auto [ignore, edgeExists] = boost::edge(anchorIdA, anchorId1, anchorSimilarityGraph);
-                    SHASTA2_ASSERT(not edgeExists);
-                    add_edge(anchorIdA, anchorId1, AnchorSimilarityGraphEdge(weight, info.offsetInBases), anchorSimilarityGraph);
-                }
+            // If it satisfies our requirements add a pair of reverse complemented edges,
+            // anchorIdA->anchorId1 and anchorId1Rc->anchorIdARc.
+            // We only do this if anchorIdA < anchorId1, and the two are not identical
+            // or reverse complement of each other.
+            const AnchorId anchorId1Rc = reverseComplementAnchorId(anchorId1);
+            if(anchorId1 == anchorIdA) {
+                continue;
             }
-         }
+            if(anchorId1 == anchorIdARc) {
+                continue;
+            }
+            if(anchorIdA > anchorId1) {
+                continue;
+            }
+            if(commonCount < minCommonCount) {
+                continue;
+            }
+            if(nonPositiveOffsetFound) {
+                continue;
+            }
+
+            // All good but we still have to check logP.
+            AnchorPairInfo info;
+            anchors.analyzeAnchorPair(anchorIdA, anchorId1, info);
+            SHASTA2_ASSERT(info.commonPositiveOffset == commonCount);
+            SHASTA2_ASSERT(info.commonNonPositiveOffset == 0);
+            SHASTA2_ASSERT(info.offsetInBases < 1000000000);
+            const uint64_t missingCount = info.missingCount();
+            const double logP = a * double(commonCount) - b * double(missingCount);
+            if(logP < minLogP) {
+                continue;
+            }
+
+            // Ok, now we can add the pair of edges.
+            const double weight = std::pow(10., -0.1 * logP);
+            AnchorSimilarityGraphEdge edge(weight, info.offsetInBases);
+            {
+                auto [ignore, edgeExists] = boost::edge(anchorIdA, anchorId1, anchorSimilarityGraph);
+                SHASTA2_ASSERT(not edgeExists);
+                boost::add_edge(anchorIdA, anchorId1, edge, anchorSimilarityGraph);
+            }
+            {
+                auto [ignore, edgeExists] = boost::edge(anchorId1Rc, anchorIdARc, anchorSimilarityGraph);
+                SHASTA2_ASSERT(not edgeExists);
+                boost::add_edge(anchorId1Rc, anchorIdARc, edge, anchorSimilarityGraph);
+            }
+        }
     }
 
 
@@ -452,6 +478,8 @@ void AnchorSimilarityGraph::createShortestPathTree(
             const AnchorPair anchorPair(anchors, anchorId0, anchorId1, false);
             ostream html(0);
             vector<OrientedReadId> additionalOrientedReadIds;
+            cout << "Assembling " << anchorIdToString(anchorId0) << " to " << anchorIdToString(anchorId1) <<
+                " " << i1 << "/" << path.size() << endl;
             const LocalAssembly4 localAssembly(anchors, 5000, html, false, anchorPair, additionalOrientedReadIds);
 
             std::ranges::copy(localAssembly.sequence, back_inserter(sequence));
@@ -534,6 +562,34 @@ void AnchorSimilarityGraph::flagShortestPathEdges(const Anchors& anchors)
 
         // Reset the work areas.
         workAreas.reset();
+    }
+
+
+
+    // Also flag the reverse complement of each flagged edge.
+    // This is not guaranteed due to the possibility of ties
+    // when looking for shortest paths.
+    vector<edge_descriptor> additionalEdgesToFlag;
+    BGL_FORALL_EDGES(e, graph, Graph) {
+        if(not graph[e].isShortestPathEdge) {
+            continue;
+        }
+
+        const AnchorId anchorId0 = source(e, graph);
+        const AnchorId anchorId1 = target(e, graph);
+
+        const AnchorId anchorId0Rc = reverseComplementAnchorId(anchorId0);
+        const AnchorId anchorId1Rc = reverseComplementAnchorId(anchorId1);
+
+        auto[eRc, edgeExists] = boost::edge(anchorId1Rc, anchorId0Rc, graph);
+        SHASTA2_ASSERT(edgeExists);
+
+        if(not graph[eRc].isShortestPathEdge) {
+            additionalEdgesToFlag.push_back(eRc);
+        }
+    }
+    for(const edge_descriptor e: additionalEdgesToFlag) {
+        graph[e].isShortestPathEdge = true;
     }
 
 
@@ -809,5 +865,53 @@ void AnchorSimilarityGraph::ShortestPathTree::findPathAnchorIds(
     anchorIds.clear();
     for(const vertex_descriptor v: path) {
         anchorIds.push_back(tree[v].anchorId);
+    }
+}
+
+
+
+void AnchorSimilarityGraph::checkStrandInvariant() const
+{
+    using Graph = AnchorSimilarityGraph;
+    const Graph& graph = *this;
+
+    BGL_FORALL_EDGES(e, graph, Graph) {
+        const AnchorId anchorId0 = source(e, graph);
+        const AnchorId anchorId1 = target(e, graph);
+
+        const AnchorId anchorId0Rc = reverseComplementAnchorId(anchorId0);
+        const AnchorId anchorId1Rc = reverseComplementAnchorId(anchorId1);
+
+        // Check that the reverse complement edge exists.
+        auto[eRc, edgeExists] = boost::edge(anchorId1Rc, anchorId0Rc, graph);
+        if(not edgeExists) {
+            cout << "AnchorSimilarityGraph strand invariance violation:" << endl;
+            cout << "Edge " << anchorIdToString(anchorId0) << " -> " <<
+                anchorIdToString(anchorId1) << " exists" << endl;
+            cout << "but edge " << anchorIdToString(anchorId1Rc) << " -> " <<
+                anchorIdToString(anchorId0Rc) << " does not exist." << endl;
+            throw runtime_error("AnchorSimilarityGraph strand invariance violation.");
+        }
+
+        // Check that the edges are identical.
+        const auto& edge = graph[e];
+        const auto& edgeRc = graph[eRc];
+        if(edgeRc != edge) {
+            cout << "AnchorSimilarityGraph strand invariance violation:" << endl;
+            cout << "The following pair of reverse complement edges are not identical." << endl;
+            cout << "Edge " << anchorIdToString(anchorId0) << " -> " <<
+                anchorIdToString(anchorId1) << ":" << endl;
+            cout << "weight " << edge.weight << endl;
+            cout << "baseOffset " << edge.baseOffset << endl;
+            cout << "isShortestPathEdge " << int(edge.isShortestPathEdge) << endl;
+            cout << "Edge " << anchorIdToString(anchorId1Rc) << " -> " <<
+                anchorIdToString(anchorId0Rc) << ":" << endl;
+            cout << "weight " << edgeRc.weight << endl;
+            cout << "baseOffset " << edgeRc.baseOffset << endl;
+            cout << "isShortestPathEdge " << int(edgeRc.isShortestPathEdge) << endl;
+            cout << "Weight difference " << edge.weight - edgeRc.weight << endl;
+            throw runtime_error("AnchorSimilarityGraph strand invariance violation.");
+        }
+
     }
 }

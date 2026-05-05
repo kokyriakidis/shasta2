@@ -56,6 +56,14 @@ public:
         baseOffset(baseOffset)
     {}
 
+    bool operator==(const AnchorSimilarityGraphEdge& that) const
+    {
+        return
+            (weight == that.weight) and
+            (baseOffset == that.baseOffset) and
+            (isShortestPathEdge == that.isShortestPathEdge);
+    }
+
     template<class Archive> void serialize(
         Archive& ar,
         [[maybe_unused]] unsigned int version)
@@ -167,6 +175,7 @@ public:
     void createShortestPathTree(AnchorId, const Anchors&) const;
     void flagShortestPathEdges(const Anchors&);
 
+    void checkStrandInvariant() const;
 
 
     // Serialization.

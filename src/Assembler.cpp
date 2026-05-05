@@ -277,6 +277,7 @@ void Assembler::createAnchorSimilarityGraph()
 
     anchorSimilarityGraphPointer = make_shared<AnchorSimilarityGraph>(
         anchors(), completeAnchorGraph);
+    anchorSimilarityGraphPointer->checkStrandInvariant();
     anchorSimilarityGraphPointer->save("AnchorSimilarityGraph");
 }
 
@@ -347,6 +348,7 @@ void Assembler::accessAnchorSimilarityGraph()
 {
     const MappedMemoryOwner& mappedMemoryOwner = *this;
     anchorSimilarityGraphPointer = make_shared<AnchorSimilarityGraph>(mappedMemoryOwner, "AnchorSimilarityGraph");
+    anchorSimilarityGraphPointer->checkStrandInvariant();
 }
 
 
@@ -361,6 +363,7 @@ void Assembler::anchorSimilarityGraphCreateShortestPathTree(AnchorId anchorId) c
 void Assembler::anchorSimilarityGraphFlagShortestPathEdges() const
 {
     anchorSimilarityGraphPointer->flagShortestPathEdges(anchors());
+    anchorSimilarityGraphPointer->checkStrandInvariant();
 }
 
 
