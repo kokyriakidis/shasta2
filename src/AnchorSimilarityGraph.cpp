@@ -471,21 +471,39 @@ void AnchorSimilarityGraph::createShortestPathTree(
 
         // Assemble the path.
         vector<shasta2::Base> sequence;
+        ofstream csv("ShortestPath.csv");
+        csv << "Step,AnchorId0,AnchorId1,Common,LogP,Length,Begin,End,\n";
         for(uint64_t i1=1; i1<path.size(); i1++) {
             const uint64_t i0 = i1 - 1;
             const AnchorId anchorId0 = path[i0];
             const AnchorId anchorId1 = path[i1];
+            const ShortestPathTree::vertex_descriptor v0 = tree.vertexMap.at(anchorId0);
+            const ShortestPathTree::vertex_descriptor v1 = tree.vertexMap.at(anchorId1);
+            auto [e, edgeExists] = boost::edge(v0, v1, tree);
+            SHASTA2_ASSERT(edgeExists);
             const AnchorPair anchorPair(anchors, anchorId0, anchorId1, false);
             ostream html(0);
             vector<OrientedReadId> additionalOrientedReadIds;
             cout << "Assembling " << anchorIdToString(anchorId0) << " to " << anchorIdToString(anchorId1) <<
-                " " << i1 << "/" << path.size() << endl;
+                " " << i0 << "/" << path.size()-1 << endl;
             const LocalAssembly4 localAssembly(anchors, 5000, html, false, anchorPair, additionalOrientedReadIds);
 
+            const uint64_t sequenceBegin = sequence.size();
             std::ranges::copy(localAssembly.sequence, back_inserter(sequence));
+            const uint64_t sequenceEnd = sequence.size();
+
+            csv << i0 << ",";
+            csv << anchorIdToString(anchorId0) << ",";
+            csv << anchorIdToString(anchorId1) << ",";
+            csv << anchors.countCommon(anchorId0, anchorId1) << ",";
+            csv << tree[e].logP << ",";
+            csv << localAssembly.sequence.size() << ",";
+            csv << sequenceBegin << ",";
+            csv << sequenceEnd << ",";
+            csv << endl;
         }
-        ofstream fasta("ShortestPathTree.fasta");
-        fasta << ">ShortestPathTree\n";
+        ofstream fasta("ShortestPath.fasta");
+        fasta << ">ShortestPath\n";
         std::ranges::copy(sequence, ostream_iterator<shasta2::Base>(fasta));
     }
 
