@@ -465,6 +465,7 @@ void AnchorSimilarityGraph::createShortestPathTree(
     tree.writeGraphviz("ShortestPathTree-Initial.dot");
 
     tree.prune(pruneLength);
+    tree.fillInEdgeInformation(anchors);
     tree.writeGraphviz("ShortestPathTree-Final.dot");
 
     // Interactive loop.
@@ -877,11 +878,25 @@ void AnchorSimilarityGraph::ShortestPathTree::writeGraphviz(
 
     dot << std::fixed << std::setprecision(1);
     BGL_FORALL_EDGES(e, tree, Tree) {
+        const auto& edge = tree[e];
         const vertex_descriptor v0 = source(e, tree);
         const vertex_descriptor v1 = target(e, tree);
         dot << "\"" << anchorIdToString(tree[v0].anchorId) << "\"->\"";
         dot << anchorIdToString(tree[v1].anchorId) << "\"";
-        dot << "[label=\"" << tree[e].logP << "\"]";
+
+        // Label.
+        dot <<
+            "[label=\"" <<
+            tree[e].logP;
+        if(isValid(edge.common)) {
+            dot <<
+                "\\n" << edge.common << "/" << edge.missing <<
+                "\\n" << edge.minOffset <<
+                "\\n" << edge.offset <<
+                "\\n" << edge.maxOffset;
+        }
+        dot << "\"]";
+
         dot << ";\n";
     }
 
@@ -1127,3 +1142,35 @@ void AnchorSimilarityGraph::ShortestPathTree::prune(uint64_t pruneLength)
         boost::remove_vertex(v, tree);
     }
 }
+
+
+
+// Store the rest of the information (other than logP)
+// in the edges.
+void AnchorSimilarityGraph::ShortestPathTree::fillInEdgeInformation(
+    const Anchors& anchors)
+{
+    using Tree = ShortestPathTree;
+    Tree& tree = *this;
+
+    vector<edge_descriptor> edgesToBeRemoved;
+    BGL_FORALL_EDGES(e, tree, Tree) {
+        ShortestPathTreeEdge& edge = tree[e];
+        const vertex_descriptor v0 = source(e, tree);
+        const vertex_descriptor v1 = target(e, tree);
+        const AnchorId anchorId0 = tree[v0].anchorId;
+        const AnchorId anchorId1 = tree[v1].anchorId;
+
+        AnchorPairInfo info;
+        anchors.analyzeAnchorPair(anchorId0, anchorId1, info);
+        SHASTA2_ASSERT(info.commonPositiveOffset > 0);
+
+        edge.common = info.commonPositiveOffset;
+        edge.missing = info.missingCount();
+        edge.offset = info.offsetInBases;
+        edge.minOffset = info.minOffsetInBases;
+        edge.maxOffset = info.maxOffsetInBases;
+    }
+
+}
+

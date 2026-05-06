@@ -235,6 +235,12 @@ private:
     class ShortestPathTreeEdge {
     public:
         double logP;
+        // The rest is filled in by fillInEdgeInformation().
+        uint64_t common = invalid<uint64_t>;
+        uint64_t missing = invalid<uint64_t>;
+        uint64_t offset = invalid<uint64_t>;
+        uint64_t minOffset = invalid<uint64_t>;
+        uint64_t maxOffset = invalid<uint64_t>;
         ShortestPathTreeEdge(double logP) : logP(logP) {}
     };
 
@@ -260,6 +266,10 @@ private:
         // and their descendants, as long as they have a sibling
         // with greater longestDistanceToLeaf.
         void prune(uint64_t pruneLength);
+
+        // Store the rest of the information (other than logP)
+        // in the edges.
+        void fillInEdgeInformation(const Anchors&);
 
         // Find the sequence of vertices or AnchorIds
         // of a path starting at root and ending at the
