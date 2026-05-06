@@ -229,6 +229,10 @@ private:
         // from this vertex.
         uint64_t rank = invalid<uint64_t>;
         uint64_t longestDistanceToLeaf = invalid<uint64_t>;
+
+        // Distance to the root, using estimated base offsets.
+        uint64_t offset =  invalid<uint64_t>;
+
         ShortestPathTreeVertex(AnchorId anchorId = invalid<AnchorId>) : anchorId(anchorId) {}
     };
 
@@ -260,6 +264,7 @@ private:
         AnchorId rootAnchorId;
         std::map<AnchorId, vertex_descriptor> vertexMap;
 
+        uint64_t maximumRank() const;
         uint64_t maximumPathLength() const;
 
         // This removes vertices with longestDistanceToLeaf < pruneLength
@@ -267,9 +272,10 @@ private:
         // with greater longestDistanceToLeaf.
         void prune(uint64_t pruneLength);
 
-        // Store the rest of the information (other than logP)
-        // in the edges.
-        void fillInEdgeInformation(const Anchors&);
+        // Store additionalInformation in the vertices and edges.
+        // The one for the edges must be called first.
+        void fillEdgeInformation(const Anchors&);
+        void fillVertexInformation();
 
         // Find the sequence of vertices or AnchorIds
         // of a path starting at root and ending at the
@@ -282,10 +288,7 @@ private:
     private:
         void computeRanks();
         void computeLongestDistancesToLeaf();
-
         void gatherVerticesByRank(vector< vector<vertex_descriptor> >&) const;
-
-
     };
 
     // Graphviz output of shortest path edges (only) of the AnchorSimilarityGraph,

@@ -460,12 +460,14 @@ void AnchorSimilarityGraph::createShortestPathTree(
 
     cout << "The shortest path tree has " << num_vertices(tree) <<
         " vertices and " << num_edges(tree) << " edges." << endl;
-    cout << "The maximum path length in this tree is " << tree.maximumPathLength() << endl;
     SHASTA2_ASSERT(num_edges(tree) == num_vertices(tree) - 1);
     tree.writeGraphviz("ShortestPathTree-Initial.dot");
 
     tree.prune(pruneLength);
-    tree.fillInEdgeInformation(anchors);
+    tree.fillEdgeInformation(anchors);
+    tree.fillVertexInformation();
+    cout << "The maximum rank in this tree is " << tree.maximumRank() << endl;
+    cout << "The maximum path length in this tree is " << tree.maximumPathLength() << endl;
     tree.writeGraphviz("ShortestPathTree-Final.dot");
 
     // Interactive loop.
@@ -867,12 +869,16 @@ void AnchorSimilarityGraph::ShortestPathTree::writeGraphviz(
     dot << "digraph ShortestPathTree {\n";
 
     BGL_FORALL_VERTICES(v, tree, Tree) {
-        dot << "\"" << anchorIdToString(tree[v].anchorId) << "\"";
+        const auto& vertex = tree[v];
+        dot << "\"" << anchorIdToString(vertex.anchorId) << "\"";
         dot << "[label=\"" <<
-            anchorIdToString(tree[v].anchorId) <<
-            "\\n" << tree[v].rank <<
-            "\\n" << tree[v].longestDistanceToLeaf <<
-            "\"]";
+            anchorIdToString(vertex.anchorId) <<
+            "\\n" << vertex.rank <<
+            "\\n" << vertex.longestDistanceToLeaf;
+        if(isValid(vertex.offset)) {
+            dot << "\\n" << vertex.offset;
+        }
+        dot << "\"]";
         dot << ";\n";
     }
 
@@ -933,7 +939,7 @@ void AnchorSimilarityGraph::ShortestPathTree::computeRanks()
 
 
 
-uint64_t AnchorSimilarityGraph::ShortestPathTree::maximumPathLength() const
+uint64_t AnchorSimilarityGraph::ShortestPathTree::maximumRank() const
 {
     using Tree = ShortestPathTree;
     const Tree& tree = *this;
@@ -942,6 +948,21 @@ uint64_t AnchorSimilarityGraph::ShortestPathTree::maximumPathLength() const
 
     BGL_FORALL_VERTICES(v, tree, Tree) {
         length = max(length, tree[v].rank);
+    }
+    return length;
+}
+
+
+
+uint64_t AnchorSimilarityGraph::ShortestPathTree::maximumPathLength() const
+{
+    using Tree = ShortestPathTree;
+    const Tree& tree = *this;
+
+    uint64_t length = 0;
+
+    BGL_FORALL_VERTICES(v, tree, Tree) {
+        length = max(length, tree[v].offset);
     }
     return length;
 }
@@ -1139,9 +1160,8 @@ void AnchorSimilarityGraph::ShortestPathTree::prune(uint64_t pruneLength)
 
 
 
-// Store the rest of the information (other than logP)
-// in the edges.
-void AnchorSimilarityGraph::ShortestPathTree::fillInEdgeInformation(
+// Store additionalInformation in the edges.
+void AnchorSimilarityGraph::ShortestPathTree::fillEdgeInformation(
     const Anchors& anchors)
 {
     using Tree = ShortestPathTree;
@@ -1166,6 +1186,28 @@ void AnchorSimilarityGraph::ShortestPathTree::fillInEdgeInformation(
         edge.maxOffset = info.maxOffsetInBases;
     }
 
+}
+
+
+
+// Store additionalInformation in the edges.
+void AnchorSimilarityGraph::ShortestPathTree::fillVertexInformation()
+{
+    using Tree = ShortestPathTree;
+    Tree& tree = *this;
+
+    vector< vector<vertex_descriptor> > verticesByRank;
+    gatherVerticesByRank(verticesByRank);
+    tree[vertexMap.at(rootAnchorId)].offset = 0;
+
+    for(uint64_t rank=1; rank<verticesByRank.size(); rank++) {
+        for(const vertex_descriptor v: verticesByRank[rank]) {
+            auto [it, ignore] = in_edges(v, tree);
+            const edge_descriptor e = *it;
+            const vertex_descriptor parent = source(e, tree);
+            tree[v].offset = tree[parent].offset + tree[e].offset;
+        }
+    }
 }
 
 
