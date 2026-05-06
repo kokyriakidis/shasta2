@@ -960,15 +960,9 @@ void AnchorSimilarityGraph::ShortestPathTree::computeLongestDistancesToLeaf()
         }
     }
 
-    // Then loop over non-leaf vertices in order of decreasing distance from root.
+    // Then loop over non-leaf vertices in order of decreasing rank.
     vector < vector<vertex_descriptor> > verticesByRank;
-    BGL_FORALL_VERTICES(v, tree, Tree) {
-        const uint64_t rank = tree[v].rank;
-        if(verticesByRank.size() <= rank) {
-            verticesByRank.resize(rank + 1);
-        }
-        verticesByRank[rank].push_back(v);
-    }
+    gatherVerticesByRank(verticesByRank);
     for(auto it=verticesByRank.rbegin(); it!=verticesByRank.rend(); ++it) {
         const vector<vertex_descriptor>& verticesAtThisDistance = *it;
         for(const vertex_descriptor v0: verticesAtThisDistance) {
@@ -1174,3 +1168,22 @@ void AnchorSimilarityGraph::ShortestPathTree::fillInEdgeInformation(
 
 }
 
+
+
+void AnchorSimilarityGraph::ShortestPathTree::gatherVerticesByRank(
+    vector< vector<vertex_descriptor> >& verticesByRank) const
+{
+    using Tree = ShortestPathTree;
+    const Tree& tree = *this;
+
+    verticesByRank.clear();
+
+    BGL_FORALL_VERTICES(v, tree, Tree) {
+        const uint64_t rank = tree[v].rank;
+        if(verticesByRank.size() <= rank) {
+            verticesByRank.resize(rank + 1);
+        }
+        verticesByRank[rank].push_back(v);
+    }
+
+}

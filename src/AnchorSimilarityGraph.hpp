@@ -283,6 +283,9 @@ private:
         void computeRanks();
         void computeLongestDistancesToLeaf();
 
+        void gatherVerticesByRank(vector< vector<vertex_descriptor> >&) const;
+
+
     };
 
     // Graphviz output of shortest path edges (only) of the AnchorSimilarityGraph,
