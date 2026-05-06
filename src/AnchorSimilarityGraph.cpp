@@ -2,6 +2,7 @@
 #include "AnchorSimilarityGraph.hpp"
 #include "Anchor.hpp"
 #include "AnchorGraph.hpp"
+#include "findReachableVertices.hpp"
 #include "LocalAssembly4.hpp"
 #include "MurmurHash2.hpp"
 #include "SHASTA2_ASSERT.hpp"
@@ -454,14 +455,17 @@ void AnchorSimilarityGraph::createShortestPathTree(
 
     ShortestPathTreeWorkAreas workAreas(anchors.size());
     createShortestPathTree(anchorId, workAreas);
-    const ShortestPathTree tree(*this, anchorId, workAreas);
+    ShortestPathTree tree(*this, anchorId, workAreas);
     workAreas.reset();
 
     cout << "The shortest path tree has " << num_vertices(tree) <<
         " vertices and " << num_edges(tree) << " edges." << endl;
     cout << "The maximum path length in this tree is " << tree.maximumPathLength() << endl;
     SHASTA2_ASSERT(num_edges(tree) == num_vertices(tree) - 1);
-    tree.writeGraphviz("ShortestPathTree.dot");
+    tree.writeGraphviz("ShortestPathTree-Initial.dot");
+
+    tree.prune(pruneLength);
+    tree.writeGraphviz("ShortestPathTree-Final.dot");
 
     // Interactive loop.
     while(true) {
@@ -1064,5 +1068,62 @@ void AnchorSimilarityGraph::checkStrandInvariant() const
             throw runtime_error("AnchorSimilarityGraph strand invariance violation.");
         }
 
+    }
+}
+
+
+
+// This removes vertices with longestDistanceToLeaf < pruneLength
+// and their descendants, as long as they have a sibling
+// with greater longestDistanceToLeaf.
+void AnchorSimilarityGraph::ShortestPathTree::prune(uint64_t pruneLength)
+{
+    using Tree = ShortestPathTree;
+    Tree& tree = *this;
+
+    vector<edge_descriptor> edgesToBeRemoved;
+    BGL_FORALL_EDGES(e, tree, Tree) {
+        const vertex_descriptor parent = source(e, tree);
+        const vertex_descriptor v = target(e, tree);
+
+        // If longestDistanceToLeaf is large enough, do nothing.
+        if(tree[v].longestDistanceToLeaf >= pruneLength) {
+            continue;
+        }
+
+        // Check the other siblings.
+        bool found = false;
+        BGL_FORALL_OUTEDGES(parent, eSibling, tree, Tree) {
+            const vertex_descriptor sibling = target(eSibling, tree);
+            if(tree[sibling].longestDistanceToLeaf > tree[v].longestDistanceToLeaf) {
+                found = true;
+                break;
+            }
+        }
+
+        if(found) {
+            edgesToBeRemoved.push_back(e);
+        }
+    }
+
+    // Remove all these edges.
+    for(const edge_descriptor e: edgesToBeRemoved) {
+        boost::remove_edge(e, tree);
+    }
+
+    // Now remove all vertices that are no longer reachable from the root.
+    std::set<vertex_descriptor> reachableVertices;
+    findReachableVertices(tree, vertexMap.at(rootAnchorId), 0, reachableVertices);
+
+    // Remove all vertices that are not reachable.
+    vector<vertex_descriptor> verticesToBeRemoved;
+    BGL_FORALL_VERTICES(v, tree, Tree) {
+        if(not reachableVertices.contains(v)) {
+            verticesToBeRemoved.push_back(v);
+        }
+    }
+    for(const vertex_descriptor v: verticesToBeRemoved) {
+        boost::clear_vertex(v, tree);
+        boost::remove_vertex(v, tree);
     }
 }

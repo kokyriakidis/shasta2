@@ -198,6 +198,7 @@ private:
     const double a = 3.;
     const double b = 10.;
     const double minLogP = 10.;
+    const uint64_t pruneLength = 10;
 
 
     void createVertices(const Anchors&);
@@ -238,8 +239,8 @@ private:
     };
 
     using ShortestPathTreeBaseClass = boost::adjacency_list<
-        boost::vecS,
-        boost::vecS,
+        boost::listS,
+        boost::listS,
         boost::bidirectionalS,
         ShortestPathTreeVertex,
         ShortestPathTreeEdge>;
@@ -255,6 +256,11 @@ private:
 
         uint64_t maximumPathLength() const;
 
+        // This removes vertices with longestDistanceToLeaf < pruneLength
+        // and their descendants, as long as they have a sibling
+        // with greater longestDistanceToLeaf.
+        void prune(uint64_t pruneLength);
+
         // Find the sequence of vertices or AnchorIds
         // of a path starting at root and ending at the
         // specified vertex or AnchorId.
@@ -266,6 +272,7 @@ private:
     private:
         void computeDistancesToRoot();
         void computeLongestDistancesToLeaf();
+
     };
 
     // Graphviz output of shortest path edges (only) of the AnchorSimilarityGraph,
