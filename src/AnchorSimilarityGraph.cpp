@@ -843,7 +843,7 @@ AnchorSimilarityGraph::ShortestPathTree::ShortestPathTree(
         }
     }
 
-    computeDistancesToRoot();
+    computeRanks();
     computeLongestDistancesToLeaf();
 }
 
@@ -870,7 +870,7 @@ void AnchorSimilarityGraph::ShortestPathTree::writeGraphviz(
         dot << "\"" << anchorIdToString(tree[v].anchorId) << "\"";
         dot << "[label=\"" <<
             anchorIdToString(tree[v].anchorId) <<
-            "\\n" << tree[v].distanceToRoot <<
+            "\\n" << tree[v].rank <<
             "\\n" << tree[v].longestDistanceToLeaf <<
             "\"]";
         dot << ";\n";
@@ -906,13 +906,13 @@ void AnchorSimilarityGraph::ShortestPathTree::writeGraphviz(
 
 
 
-void AnchorSimilarityGraph::ShortestPathTree::computeDistancesToRoot()
+void AnchorSimilarityGraph::ShortestPathTree::computeRanks()
 {
     using Tree = ShortestPathTree;
     Tree& tree = *this;
 
     const vertex_descriptor root = vertexMap.at(rootAnchorId);
-    tree[root].distanceToRoot = 0;
+    tree[root].rank = 0;
 
     std::queue<vertex_descriptor> q;
     q.push(root);
@@ -920,13 +920,13 @@ void AnchorSimilarityGraph::ShortestPathTree::computeDistancesToRoot()
     while(not q.empty()) {
         const vertex_descriptor v0 = q.front();
         q.pop();
-        const uint64_t distance0 = tree[v0].distanceToRoot;
+        const uint64_t distance0 = tree[v0].rank;
         const uint64_t distance1 = distance0 + 1;
 
         BGL_FORALL_OUTEDGES(v0, e, tree, Tree) {
             const vertex_descriptor v1 = target(e, tree);
             q.push(v1);
-            tree[v1].distanceToRoot = distance1;
+            tree[v1].rank = distance1;
         }
     }
 }
@@ -941,7 +941,7 @@ uint64_t AnchorSimilarityGraph::ShortestPathTree::maximumPathLength() const
     uint64_t length = 0;
 
     BGL_FORALL_VERTICES(v, tree, Tree) {
-        length = max(length, tree[v].distanceToRoot);
+        length = max(length, tree[v].rank);
     }
     return length;
 }
@@ -961,15 +961,15 @@ void AnchorSimilarityGraph::ShortestPathTree::computeLongestDistancesToLeaf()
     }
 
     // Then loop over non-leaf vertices in order of decreasing distance from root.
-    vector < vector<vertex_descriptor> > verticesByDistanceFromRoot;
+    vector < vector<vertex_descriptor> > verticesByRank;
     BGL_FORALL_VERTICES(v, tree, Tree) {
-        const uint64_t distanceFromRoot = tree[v].distanceToRoot;
-        if(verticesByDistanceFromRoot.size() <= distanceFromRoot) {
-            verticesByDistanceFromRoot.resize(distanceFromRoot + 1);
+        const uint64_t rank = tree[v].rank;
+        if(verticesByRank.size() <= rank) {
+            verticesByRank.resize(rank + 1);
         }
-        verticesByDistanceFromRoot[distanceFromRoot].push_back(v);
+        verticesByRank[rank].push_back(v);
     }
-    for(auto it=verticesByDistanceFromRoot.rbegin(); it!=verticesByDistanceFromRoot.rend(); ++it) {
+    for(auto it=verticesByRank.rbegin(); it!=verticesByRank.rend(); ++it) {
         const vector<vertex_descriptor>& verticesAtThisDistance = *it;
         for(const vertex_descriptor v0: verticesAtThisDistance) {
             if(out_degree(v0, tree) == 0) {

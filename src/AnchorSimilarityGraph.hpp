@@ -227,7 +227,7 @@ private:
 
         // Distance (number of edges) to the root and to the most distant leaf down
         // from this vertex.
-        uint64_t distanceToRoot = invalid<uint64_t>;
+        uint64_t rank = invalid<uint64_t>;
         uint64_t longestDistanceToLeaf = invalid<uint64_t>;
         ShortestPathTreeVertex(AnchorId anchorId = invalid<AnchorId>) : anchorId(anchorId) {}
     };
@@ -280,7 +280,7 @@ private:
         void writeGraphviz(const string& fileName) const;
         void writeGraphviz(ostream&) const;
     private:
-        void computeDistancesToRoot();
+        void computeRanks();
         void computeLongestDistancesToLeaf();
 
     };
