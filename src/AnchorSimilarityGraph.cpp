@@ -40,16 +40,21 @@ AnchorSimilarityGraph::AnchorSimilarityGraph(
     // Count entrances and exits.
     uint64_t entranceCount = 0;
     uint64_t exitCount = 0;
+    uint64_t isolatedCount = 0;
     BGL_FORALL_VERTICES(anchorId, anchorSimilarityGraph, AnchorSimilarityGraph) {
-        if(in_degree(anchorId, anchorSimilarityGraph) == 0) {
+        const uint64_t hasIncomingEdges = (in_degree(anchorId, anchorSimilarityGraph) > 0);
+        const uint64_t hasOutgoingEdges = (out_degree(anchorId, anchorSimilarityGraph) > 0);
+        if((not hasIncomingEdges) and (not hasOutgoingEdges)) {
+            ++isolatedCount;
+        } else if(not hasIncomingEdges) {
             ++entranceCount;
-        }
-        if(out_degree(anchorId, anchorSimilarityGraph) == 0) {
+        } else if(not hasOutgoingEdges) {
             ++exitCount;
         }
     }
     cout << "The anchor similarity graph has " << entranceCount <<
-        " entrances and " << exitCount << " exits." << endl;
+        " entrances, " << exitCount << " exits, and " <<
+        isolatedCount << " isolated vertices." << endl;
     writeGraphviz("AnchorSimilarityGraphFull.dot", false);
 }
 
