@@ -19,6 +19,7 @@ using namespace shasta2;
 // Standard library.
 #include "chrono.hpp"
 #include "fstream.hpp"
+#include "memory.hpp"
 #include <queue>
 
 
@@ -469,11 +470,11 @@ void AnchorSimilarityGraph::createShortestPathTree(
     cout << "The shortest path tree has " << num_vertices(tree) <<
         " vertices and " << num_edges(tree) << " edges." << endl;
     SHASTA2_ASSERT(num_edges(tree) == num_vertices(tree) - 1);
+    tree.fillEdgeInformation(anchors);
+    tree.fillVertexInformation();
     tree.writeGraphviz("ShortestPathTree-Initial.dot");
 
     tree.prune(pruneLength);
-    tree.fillEdgeInformation(anchors);
-    tree.fillVertexInformation();
     cout << "The maximum rank in this tree is " << tree.maximumRank() << endl;
     cout << "The maximum path length in this tree is " << tree.maximumPathLength() << endl;
     tree.writeGraphviz("ShortestPathTree-Final.dot");
@@ -585,7 +586,10 @@ void AnchorSimilarityGraph::writeGraphviz(ostream& dot) const
     BGL_FORALL_VERTICES(anchorId, graph, Graph) {
         dot << "\"" << anchorIdToString(anchorId) << "\"";
 
-        if((in_degree(anchorId, graph) == 0) or (out_degree(anchorId, graph) == 0)) {
+        if(in_degree(anchorId, graph) == 0) {
+            dot << "[style=filled color=green]";
+        }
+        else if(out_degree(anchorId, graph) == 0) {
             dot << "[style=filled color=red]";
         }
 
@@ -601,6 +605,57 @@ void AnchorSimilarityGraph::writeGraphviz(ostream& dot) const
         dot <<
             "\"" << anchorIdToString(anchorId0) << "\"->\"" <<
             anchorIdToString(anchorId1) << "\";\n";
+    }
+    dot << "}\n";
+}
+
+
+
+void AnchorSimilarityGraph::writeComponentGraphviz(
+    const string& fileName,
+    uint64_t componentId) const
+{
+    ofstream dot(fileName);
+    writeComponentGraphviz(dot, componentId);
+}
+
+
+
+void AnchorSimilarityGraph::writeComponentGraphviz(
+    ostream& dot,
+    uint64_t componentId) const
+{
+    using Graph = AnchorSimilarityGraph;
+    const Graph& graph = *this;
+
+    SHASTA2_ASSERT(componentId < connectedComponents.size());
+    const vector<AnchorId>& component = connectedComponents[componentId];
+
+    dot << "digraph AnchorSimilarityGraphComponent" << componentId << " { \n";
+
+    for(const AnchorId anchorId: component) {
+        SHASTA2_ASSERT(graph[anchorId].componentId == componentId);
+        dot << "\"" << anchorIdToString(anchorId) << "\"";
+
+        if(in_degree(anchorId, graph) == 0) {
+            dot << "[shape=ellipse style=filled color=green]";
+        }
+        else if(out_degree(anchorId, graph) == 0) {
+            dot << "[shape=ellipse style=filled color=red]";
+        }
+
+        dot << ";\n";
+    }
+
+
+    for(const AnchorId anchorId0: component) {
+        BGL_FORALL_OUTEDGES(anchorId0, e, graph, Graph) {
+            const AnchorId anchorId1 = target(e, graph);
+            SHASTA2_ASSERT(graph[anchorId1].componentId == componentId);
+            dot <<
+                "\"" << anchorIdToString(anchorId0) << "\"->\"" <<
+                anchorIdToString(anchorId1) << "\";\n";
+        }
     }
     dot << "}\n";
 }
@@ -1149,6 +1204,14 @@ void AnchorSimilarityGraph::computeConnectedComponents()
     cout << "Found " << connectedComponents.size() <<
         " connected components of size at least " << minConnectedComponentSize << endl;
 
+    // Store the connected component eahc vertex belongs to.
+    for(uint64_t componentId=0; componentId<connectedComponents.size(); componentId++) {
+        const vector<AnchorId>& component = connectedComponents[componentId];
+        for(const AnchorId anchorId: component) {
+            graph[anchorId].componentId = componentId;
+        }
+    }
+
     // Write out the size of each connected component.
     {
         ofstream csv("AnchorSimilarityGraphComponentSizes.csv");
@@ -1198,11 +1261,219 @@ void AnchorSimilarityGraph::computeConnectedComponents()
 
 // Compute an optimal path in a single connected component.
 void AnchorSimilarityGraph::computeOptimalPath(
+    const Anchors& anchors,
     uint64_t componentId,
     [[maybe_unused]] vector<AnchorId>& optimalPath) const
 {
+    using Graph = AnchorSimilarityGraph;
+    const Graph& graph = *this;
+
+    using Tree = ShortestPathTree;
+
+    SHASTA2_ASSERT(componentId < connectedComponents.size());
     const vector<AnchorId>& component = connectedComponents[componentId];
+    writeComponentGraphviz("AnchorSimilarityGraphComponent.dot", componentId);
 
     cout << "Computing the optimal path in connected component " <<
         componentId << " with " << component.size() << " vertices." << endl;
+
+
+
+    // Gather the entrances and the exists.
+    vector<AnchorId> entrances;
+    vector<AnchorId> exits;
+    for(const AnchorId anchorId: component) {
+        const bool isEntrance = (in_degree(anchorId, graph) == 0);
+        const bool isExit = (out_degree(anchorId, graph) == 0);
+
+        // A vertex cannot be an entrance and an exit at the
+        // same time because we don't use trivial connected
+        // components consisting of just one vertex.
+        SHASTA2_ASSERT(not (isEntrance and isExit));
+
+        if(isEntrance) {
+            entrances.push_back(anchorId);
+        }
+        if(isExit) {
+            exits.push_back(anchorId);
+        }
+    }
+    cout << "This connected component has " << entrances.size() <<
+        " entrances and " << exits.size() << " exits." << endl;
+
+
+
+    // Compute a ShortestPathTree for each entrance.
+    vector< shared_ptr<Tree> > entranceTrees;
+    ShortestPathTreeWorkAreas workAreas(num_vertices(graph));
+    cout << timestamp << "Computation of shortest paths begins." << endl;
+    for(const AnchorId entrance: entrances) {
+        createShortestPathTree(entrance, workAreas);
+
+        shared_ptr<Tree> tree = std::make_shared<Tree>(*this, entrance, workAreas);
+        tree->prune(pruneLength);
+        tree->fillEdgeInformation(anchors);
+        tree->fillVertexInformation();
+        entranceTrees.push_back(tree);
+
+        workAreas.reset();
+    }
+
+    // Compute a reversed ShortestPathTree for each exit.
+    vector< shared_ptr<Tree> > exitTrees;
+    for(const AnchorId exit: exits) {
+        createShortestPathTree(reverseComplementAnchorId(exit), workAreas);
+
+        shared_ptr<Tree> tree = std::make_shared<Tree>(*this, reverseComplementAnchorId(exit), workAreas);
+        tree->prune(pruneLength);
+        tree->fillEdgeInformation(anchors);
+        tree->fillVertexInformation();
+        exitTrees.push_back(tree);
+
+        workAreas.reset();
+    }
+    cout << timestamp << "Computation of shortest paths ends." << endl;
+
+
+
+    // The significant exits are the ones that appear in the forward trees.
+    vector<uint64_t> significantExits;
+    for(uint64_t i0=0; i0<entrances.size(); i0++) {
+        const Tree& tree = *(entranceTrees[i0]);
+        BGL_FORALL_VERTICES(v, tree, Tree) {
+            if(out_degree(v, tree) == 0) {
+
+                // Look it up in the exits.
+                const AnchorId anchorId1 = tree[v].anchorId;
+                const auto it1 = find(exits.begin(), exits.end(), anchorId1);
+                if((it1 != exits.end()) and (*it1 == anchorId1)) {
+                    const uint64_t i1 = it1 - exits.begin();
+                    significantExits.push_back(i1);
+                }
+            }
+        }
+    }
+    deduplicate(significantExits);
+
+
+
+    // The significant entrances are the ones that appear in the backward trees.
+    vector<uint64_t> significantEntrances;
+    for(uint64_t i1=0; i1<entrances.size(); i1++) {
+        const Tree& tree = *(exitTrees[i1]);
+        BGL_FORALL_VERTICES(v, tree, Tree) {
+            if(out_degree(v, tree) == 0) {
+
+                // Look it up in the exits.
+                const AnchorId anchorId0 = reverseComplementAnchorId(tree[v].anchorId);
+                const auto it0 = find(entrances.begin(), entrances.end(), anchorId0);
+                if((it0 != entrances.end()) and (*it0 == anchorId0)) {
+                    const uint64_t i0 = it0 - entrances.begin();
+                    significantEntrances.push_back(i0);
+                }
+            }
+        }
+    }
+    deduplicate(significantEntrances);
+
+    cout << "Found " << significantEntrances.size() << " significant entrances:" << endl;
+    for(const uint64_t i0: significantEntrances) {
+        cout << anchorIdToString(entrances[i0]) << " ";
+    }
+    cout << endl;
+    cout << "Found " << significantExits.size() << " significant exits:" << endl;
+    for(const uint64_t i1: significantExits) {
+        cout << anchorIdToString(exits[i1]) << " ";
+    }
+    cout << endl;
+
+
+#if 0
+    // Find entrance/exit pairs that appear in the backward trees.
+    vector< pair<uint64_t, uint64_t> > backwardAnchorPairs;
+    for(uint64_t i1=0; i1<exits.size(); i1++) {
+        const Tree& tree = *(exitTrees[i1]);
+        BGL_FORALL_VERTICES(v, tree, Tree) {
+            if(out_degree(v, tree) == 0) {
+
+                // Look it up in the exits.
+                const AnchorId anchorId0 = reverseComplementAnchorId(tree[v].anchorId);
+                const auto it0 = find(entrances.begin(), entrances.end(), anchorId0);
+                if((it0 != entrances.end()) and (*it0 == anchorId0)) {
+                    const uint64_t i0 = it0 - entrances.begin();
+                    backwardAnchorPairs.push_back(make_pair(i0, i1));
+                }
+            }
+        }
+    }
+
+
+    // Find the pairs that appear in both directions.
+    vector< pair<uint64_t, uint64_t> > bidirectionalAnchorPairs;
+    std::set_intersection(
+        forwardAnchorPairs.begin(), forwardAnchorPairs.end(),
+        backwardAnchorPairs.begin(), backwardAnchorPairs.end(),
+        back_inserter(bidirectionalAnchorPairs));
+    cout << "Found " << bidirectionalAnchorPairs.size() <<
+        " bidirectional anchor pairs:" << endl;
+    for(const auto&[i0, i1]: bidirectionalAnchorPairs) {
+        const AnchorId anchorId0 = entrances[i0];
+        const AnchorId anchorId1 = exits[i1];
+        cout << anchorIdToString(anchorId0) << " " <<
+            anchorIdToString(anchorId1) << endl;
+    }
+#endif
+
+#if 0
+    // For each entrance/exit pair we can define a distance (measured in
+    // bases), which is the length of the path, in bases,
+    // between that entrance/exit pair on the ShortestPathTree
+    // rooted at that entrance. Note that ShortestPathTrees are
+    // constructed using sum of weight as a path length, not sum
+    // of base offsets.
+    vector< vector<uint64_t> > distance(entrances.size(), vector<uint64_t>(exits.size(), invalid<uint64_t>));
+    for(uint64_t i0=0; i0<entrances.size(); i0++) {
+        const Tree& tree = *(trees[i0]);
+
+        BGL_FORALL_VERTICES(v, tree, Tree) {
+            if(out_degree(v, tree) == 0) {
+
+                // Look it up in the exits.
+                const AnchorId anchorId1 = tree[v].anchorId;
+                const auto it1 = find(exits.begin(), exits.end(), anchorId1);
+                if((it1 != exits.end()) and (*it1 == anchorId1)) {
+                    const uint64_t i1 = it1 - exits.begin();
+                    distance[i0][i1] = tree[v].offset;
+                }
+            }
+        }
+    }
+
+
+
+    // Write the distance matrix.
+    {
+        ofstream csv("EntranceExitDistanceMatrix.csv");
+        csv << ",";
+        for(uint64_t i1=0; i1<exits.size(); i1++) {
+            const AnchorId anchorId1 = exits[i1];
+            csv << anchorIdToString(anchorId1) << ",";
+        }
+        csv << "\n";
+
+        for(uint64_t i0=0; i0<entrances.size(); i0++) {
+            const AnchorId anchorId0 = entrances[i0];
+            csv << anchorIdToString(anchorId0) << ",";
+
+            for(uint64_t i1=0; i1<exits.size(); i1++) {
+                const uint64_t d = distance[i0][i1];
+                if(isValid(d)) {
+                    csv << d;
+                }
+                csv << ",";
+            }
+            csv << endl;
+        }
+    }
+#endif
 }

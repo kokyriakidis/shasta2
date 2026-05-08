@@ -230,6 +230,7 @@ public:
     void createAnchorSimilarityGraph();
     void accessAnchorSimilarityGraph();
     void anchorSimilarityGraphCreateShortestPathTree(AnchorId) const;
+    void anchorSimilarityGraphComputeOptimalPath(uint64_t componentId) const;
 
     // This uses read following in the complete AnchorGraph
     // to create the AnchorGraph to be used for assembly.

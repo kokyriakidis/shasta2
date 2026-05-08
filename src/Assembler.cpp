@@ -360,6 +360,14 @@ void Assembler::anchorSimilarityGraphCreateShortestPathTree(AnchorId anchorId) c
 
 
 
+void Assembler::anchorSimilarityGraphComputeOptimalPath(uint64_t componentId) const
+{
+    vector<AnchorId> path;
+    anchorSimilarityGraphPointer->computeOptimalPath(anchors(), componentId, path);
+}
+
+
+
 void Assembler::createReadSummaries()
 {
     readSummaries.createNew(largeDataName("ReadSummaries"), largeDataPageSize);

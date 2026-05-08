@@ -117,6 +117,7 @@ public:
 
     // Compute an optimal path in a single connected component.
     void computeOptimalPath(
+        const Anchors&,
         uint64_t componentId,
         vector<AnchorId>&) const;
 
@@ -245,6 +246,8 @@ private:
 
     void writeGraphviz(const string& fileName) const;
     void writeGraphviz(ostream&) const;
+    void writeComponentGraphviz(const string& fileName, uint64_t componentId) const;
+    void writeComponentGraphviz(ostream&, uint64_t componentId) const;
 
 
 
