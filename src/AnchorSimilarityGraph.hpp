@@ -16,6 +16,7 @@
 // Boost libraries.
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/serialization/base_object.hpp>
+#include <boost/serialization/vector.hpp>
 
 // Standard library.
 #include "iosfwd.hpp"
@@ -25,17 +26,35 @@
 
 namespace shasta2 {
 
-    class AnchorSimilarityGraphEdge;
+class AnchorSimilarityGraphVertex;
+class AnchorSimilarityGraphEdge;
     class AnchorSimilarityGraph;
     using AnchorSimilarityGraphBaseClass = boost::adjacency_list<
-        boost::vecS,
+        boost::listS,
         boost::vecS,
         boost::bidirectionalS,
-        boost::no_property,
+        AnchorSimilarityGraphVertex,
         AnchorSimilarityGraphEdge>;
 
     class AnchorGraph;
 }
+
+
+
+// The AmchorId is the vertex_descriptor, so we don't need to store it.
+class shasta2::AnchorSimilarityGraphVertex {
+public:
+
+    // The connected component this vertex belongs to.
+    uint64_t componentId = invalid<uint64_t>;
+
+    template<class Archive> void serialize(
+        Archive& ar,
+        [[maybe_unused]] unsigned int version)
+    {
+        ar & componentId;
+    }
+};
 
 
 
@@ -88,6 +107,13 @@ public:
     AnchorSimilarityGraph(const MappedMemoryOwner&, const string& name);
 
 
+    // Compute the connected components.
+    // They are sorted by decreasing size.
+    // In each component, the AnchorIds are sorted.
+    // Each vertex also stores the id of the component
+    // it belongs to (that is, the index in this vector).
+    vector< vector<AnchorId> > connectedComponents;
+    void computeConnectedComponents();
 
     // Work areas for the computation of shortest path trees.
     // This implements property maps that can be used in the call to
@@ -179,6 +205,7 @@ public:
     template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
     {
         ar & boost::serialization::base_object<AnchorSimilarityGraphBaseClass>(*this);
+        ar & connectedComponents;
     }
     void save(ostream&) const;
     void load(istream&);
@@ -194,6 +221,7 @@ private:
     const double a = 3.;
     const double b = 10.;
     const double minLogP = 10.;
+    const uint64_t minConnectedComponentSize = 2;
     const uint64_t pruneLength = 10;
 
 

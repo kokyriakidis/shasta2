@@ -2,6 +2,7 @@
 #include "AnchorSimilarityGraph.hpp"
 #include "Anchor.hpp"
 #include "AnchorGraph.hpp"
+#include "DisjointSets.hpp"
 #include "findReachableVertices.hpp"
 #include "LocalAssembly4.hpp"
 #include "MurmurHash2.hpp"
@@ -36,6 +37,8 @@ AnchorSimilarityGraph::AnchorSimilarityGraph(
 
     cout << "The anchor similarity graph has " << num_vertices(*this) <<
         " vertices and " << num_edges(*this) << " edges." << endl;
+
+    computeConnectedComponents();
 
     // Count entrances and exits.
     uint64_t entranceCount = 0;
@@ -1126,4 +1129,67 @@ void AnchorSimilarityGraph::ShortestPathTree::gatherVerticesByRank(
         verticesByRank[rank].push_back(v);
     }
 
+}
+
+
+
+void AnchorSimilarityGraph::computeConnectedComponents()
+{
+    using Graph = AnchorSimilarityGraph;
+    Graph& graph = *this;
+
+    DisjointSets disjointSets(num_vertices(graph));
+    BGL_FORALL_EDGES(e, graph, Graph) {
+        const AnchorId anchorId0 = source(e, graph);
+        const AnchorId anchorId1 = target(e, graph);
+        disjointSets.unionSet(anchorId0, anchorId1);
+    }
+
+    disjointSets.gatherComponents(minConnectedComponentSize, connectedComponents);
+    cout << "Found " << connectedComponents.size() <<
+        " connected components of size at least " << minConnectedComponentSize << endl;
+
+    // Write out the size of each connected component.
+    {
+        ofstream csv("AnchorSimilarityGraphComponentSizes.csv");
+        csv << "ComponentId,VertexCount,CumulativeVertexCount\n";
+        uint64_t cumulativeVertexCount = 0;
+        for(uint64_t componentId=0; componentId<connectedComponents.size(); componentId++) {
+            const uint64_t vertexCount = connectedComponents[componentId].size();
+            cumulativeVertexCount += vertexCount;
+            csv <<
+                componentId << "," <<
+                vertexCount << "," <<
+                cumulativeVertexCount << "\n";
+        }
+    }
+
+    // Histogram component sizes.
+    vector<uint64_t> histogram;
+    for(uint64_t componentId=0; componentId<connectedComponents.size(); componentId++) {
+        const uint64_t vertexCount = connectedComponents[componentId].size();
+        if(vertexCount >= histogram.size()) {
+            histogram.resize(vertexCount + 1, 0);
+        }
+        ++histogram[vertexCount];
+    }
+
+    // Write out the histogram.
+    {
+        ofstream csv("AnchorSimilarityGraphComponentSizeHistogram.csv");
+        csv << "ComponentSize,ComponentCount,VertexCount,CumulativeVertexCount\n";
+        uint64_t cumulativeVertexCount = 0;
+        for(uint64_t componentSize=0; componentSize<histogram.size(); componentSize++) {
+            const uint64_t componentCount = histogram[componentSize];
+            if(componentCount > 0) {
+                const uint64_t vertexCount = componentSize * componentCount;
+                cumulativeVertexCount += vertexCount;
+                csv <<
+                    componentSize << "," <<
+                    componentCount << "," <<
+                    vertexCount << "," <<
+                    cumulativeVertexCount << "\n";
+            }
+        }
+    }
 }
