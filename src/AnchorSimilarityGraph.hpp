@@ -115,6 +115,12 @@ public:
     vector< vector<AnchorId> > connectedComponents;
     void computeConnectedComponents();
 
+    // Compute an optimal path in a single connected component.
+    void computeOptimalPath(
+        uint64_t componentId,
+        vector<AnchorId>&) const;
+
+
     // Work areas for the computation of shortest path trees.
     // This implements property maps that can be used in the call to
     // dijkstra_shortest_paths_no_init. This gives better memory

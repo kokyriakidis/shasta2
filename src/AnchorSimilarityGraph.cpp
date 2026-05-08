@@ -1193,3 +1193,16 @@ void AnchorSimilarityGraph::computeConnectedComponents()
         }
     }
 }
+
+
+
+// Compute an optimal path in a single connected component.
+void AnchorSimilarityGraph::computeOptimalPath(
+    uint64_t componentId,
+    [[maybe_unused]] vector<AnchorId>& optimalPath) const
+{
+    const vector<AnchorId>& component = connectedComponents[componentId];
+
+    cout << "Computing the optimal path in connected component " <<
+        componentId << " with " << component.size() << " vertices." << endl;
+}
