@@ -156,8 +156,6 @@ PYBIND11_MODULE(shasta2, shasta2Module)
           &Assembler::accessAnchorSimilarityGraph)
       .def("anchorSimilarityGraphCreateShortestPathTree",
           &Assembler::anchorSimilarityGraphCreateShortestPathTree)
-      .def("anchorSimilarityGraphFlagShortestPathEdges",
-          &Assembler::anchorSimilarityGraphFlagShortestPathEdges)
       .def("readFollowing",
           &Assembler::readFollowing)
 

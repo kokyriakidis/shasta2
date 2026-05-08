@@ -360,15 +360,6 @@ void Assembler::anchorSimilarityGraphCreateShortestPathTree(AnchorId anchorId) c
 
 
 
-void Assembler::anchorSimilarityGraphFlagShortestPathEdges() const
-{
-    anchorSimilarityGraphPointer->flagShortestPathEdges(anchors());
-    anchorSimilarityGraphPointer->checkStrandInvariant();
-    anchorSimilarityGraphPointer->save("AnchorSimilarityGraph");
-}
-
-
-
 void Assembler::createReadSummaries()
 {
     readSummaries.createNew(largeDataName("ReadSummaries"), largeDataPageSize);

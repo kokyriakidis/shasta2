@@ -55,7 +55,7 @@ AnchorSimilarityGraph::AnchorSimilarityGraph(
     cout << "The anchor similarity graph has " << entranceCount <<
         " entrances, " << exitCount << " exits, and " <<
         isolatedCount << " isolated vertices." << endl;
-    writeGraphviz("AnchorSimilarityGraphFull.dot", false);
+    writeGraphviz("AnchorSimilarityGraphFull.dot");
 }
 
 
@@ -563,111 +563,16 @@ void AnchorSimilarityGraph::createShortestPathTree(
 
 
 
-void AnchorSimilarityGraph::flagShortestPathEdges(const Anchors& anchors)
-{
-    using Graph = AnchorSimilarityGraph;
-    Graph& graph = *this;
-
-    const bool debug = false;
-
-    // Make sure all edges are not flagged as shortest path edges.
-    BGL_FORALL_EDGES(e, graph, Graph) {
-        graph[e].isShortestPathEdge = false;
-    }
-
-    // Create the work areas required for shortest path trees.
-    ShortestPathTreeWorkAreas workAreas(anchors.size());
-
-
-
-    // Loop over all entrances.
-    BGL_FORALL_VERTICES(anchorIdA, graph, Graph) {
-        if(in_degree(anchorIdA, graph) > 0) {
-            continue;
-        }
-
-        // Find the shortest path tree.
-        createShortestPathTree(anchorIdA, workAreas);
-
-        // Flag all edges of the shortest path.
-        for(const AnchorId anchorIdB: workAreas.accessibleVertices) {
-            if(anchorIdB == anchorIdA) {
-                continue;
-            }
-            const AnchorId anchorIdC = workAreas.data[anchorIdB].predecessor;
-            if(debug) {
-                cout << "Predecessor of  " << anchorIdToString(anchorIdB) <<
-                    " is " << anchorIdToString(anchorIdC) << endl;
-            }
-            if(anchorIdC != anchorIdB) {
-                auto [e, edgeExists] = boost::edge(anchorIdC, anchorIdB, graph);
-                SHASTA2_ASSERT(edgeExists);
-                graph[e].isShortestPathEdge = true;
-            }
-        }
-
-        // Reset the work areas.
-        workAreas.reset();
-    }
-
-
-
-    // Also flag the reverse complement of each flagged edge.
-    // This is not guaranteed due to the possibility of ties
-    // when looking for shortest paths.
-    vector<edge_descriptor> additionalEdgesToFlag;
-    BGL_FORALL_EDGES(e, graph, Graph) {
-        if(not graph[e].isShortestPathEdge) {
-            continue;
-        }
-
-        const AnchorId anchorId0 = source(e, graph);
-        const AnchorId anchorId1 = target(e, graph);
-
-        const AnchorId anchorId0Rc = reverseComplementAnchorId(anchorId0);
-        const AnchorId anchorId1Rc = reverseComplementAnchorId(anchorId1);
-
-        auto[eRc, edgeExists] = boost::edge(anchorId1Rc, anchorId0Rc, graph);
-        SHASTA2_ASSERT(edgeExists);
-
-        if(not graph[eRc].isShortestPathEdge) {
-            additionalEdgesToFlag.push_back(eRc);
-        }
-    }
-    for(const edge_descriptor e: additionalEdgesToFlag) {
-        graph[e].isShortestPathEdge = true;
-    }
-
-
-
-    // Count the edges we flagged.
-    uint64_t shortesPathEdgeCount = 0;
-    BGL_FORALL_EDGES(e, graph, Graph) {
-        if(graph[e].isShortestPathEdge) {
-            ++shortesPathEdgeCount;
-        }
-    }
-    cout << "Flagged " << shortesPathEdgeCount <<
-        " edges as shortest path edges out of " << num_edges(graph) << " total." << endl;
-
-    writeGraphviz("AnchorSimilarityGraph.dot", true);
-
-}
-
-
-
 // Graphviz output only includes the edges flgged as shortest path edges.
-void AnchorSimilarityGraph::writeGraphviz(
-    const string& fileName,
-    bool shortPathEdgesOnly) const
+void AnchorSimilarityGraph::writeGraphviz(const string& fileName) const
 {
     ofstream dot(fileName);
-    writeGraphviz(dot, shortPathEdgesOnly);
+    writeGraphviz(dot);
 }
 
 
 
-void AnchorSimilarityGraph::writeGraphviz(ostream& dot, bool shortPathEdgesOnly) const
+void AnchorSimilarityGraph::writeGraphviz(ostream& dot) const
 {
     using Graph = AnchorSimilarityGraph;
     const Graph& graph = *this;
@@ -688,14 +593,6 @@ void AnchorSimilarityGraph::writeGraphviz(ostream& dot, bool shortPathEdgesOnly)
 
     BGL_FORALL_EDGES(e, graph, Graph) {
 
-        // Skip it if we are only writing shortest path edges
-        // and this is not a shortest path edge.
-        if(shortPathEdgesOnly) {
-            if(not graph[e].isShortestPathEdge) {
-                continue;
-            }
-        }
-
         const AnchorId anchorId0 = source(e, graph);
         const AnchorId anchorId1 = target(e, graph);
         dot <<
@@ -707,7 +604,7 @@ void AnchorSimilarityGraph::writeGraphviz(ostream& dot, bool shortPathEdgesOnly)
 
 
 
-// Graphviz output of shortest path edges (only) of the AnchorSimilarityGraph,
+// Graphviz output of the AnchorSimilarityGraph,
 // highlighting a given ShortestPathTree and a path on the ShortestPathTree.
 void AnchorSimilarityGraph::writeGraphviz(
     const string& fileName,
@@ -720,7 +617,7 @@ void AnchorSimilarityGraph::writeGraphviz(
 
 
 
-// Graphviz output of shortest path edges (only) of the AnchorSimilarityGraph,
+// Graphviz output of the AnchorSimilarityGraph,
 // highlighting a given ShortestPathTree and a path on the ShortestPathTree.
 void AnchorSimilarityGraph::writeGraphviz(
     ostream& dot,
@@ -787,25 +684,23 @@ void AnchorSimilarityGraph::writeGraphviz(
     BGL_FORALL_EDGES(e, graph, Graph) {
         const AnchorSimilarityGraphEdge& edge = graph[e];
 
-        if(edge.isShortestPathEdge) {
-            const AnchorId anchorId0 = source(e, graph);
-            const AnchorId anchorId1 = target(e, graph);
-            const double logP = -10. * log10(edge.weight);
+        const AnchorId anchorId0 = source(e, graph);
+        const AnchorId anchorId1 = target(e, graph);
+        const double logP = -10. * log10(edge.weight);
 
-            dot <<
-                "\"" << anchorIdToString(anchorId0) << "\"->\"" <<
-                anchorIdToString(anchorId1) << "\"[";
+        dot <<
+            "\"" << anchorIdToString(anchorId0) << "\"->\"" <<
+            anchorIdToString(anchorId1) << "\"[";
 
-            dot << "penwidth=" << std::fixed << std::setprecision(2) << 0.05 + 0.1 * logP;
+        dot << "penwidth=" << std::fixed << std::setprecision(2) << 0.05 + 0.1 * logP;
 
-            if(pathEdges.contains(e)) {
-                dot << " color=cyan";
-            } else if(treeEdges.contains(e)) {
-                dot << " color=red";
-            }
-
-            dot << "];\n";
+        if(pathEdges.contains(e)) {
+            dot << " color=cyan";
+        } else if(treeEdges.contains(e)) {
+            dot << " color=red";
         }
+
+        dot << "];\n";
     }
     dot << "}\n";
 }
@@ -1093,12 +988,10 @@ void AnchorSimilarityGraph::checkStrandInvariant() const
                 anchorIdToString(anchorId1) << ":" << endl;
             cout << "weight " << edge.weight << endl;
             cout << "baseOffset " << edge.baseOffset << endl;
-            cout << "isShortestPathEdge " << int(edge.isShortestPathEdge) << endl;
             cout << "Edge " << anchorIdToString(anchorId1Rc) << " -> " <<
                 anchorIdToString(anchorId0Rc) << ":" << endl;
             cout << "weight " << edgeRc.weight << endl;
             cout << "baseOffset " << edgeRc.baseOffset << endl;
-            cout << "isShortestPathEdge " << int(edgeRc.isShortestPathEdge) << endl;
             cout << "Weight difference " << edge.weight - edgeRc.weight << endl;
             throw runtime_error("AnchorSimilarityGraph strand invariance violation.");
         }

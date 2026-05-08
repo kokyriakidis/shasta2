@@ -47,7 +47,6 @@ public:
     double weight = invalid<double>;
 
     uint64_t baseOffset = invalid<uint64_t>;
-    bool isShortestPathEdge = false;
 
     AnchorSimilarityGraphEdge(
         double weight = invalid<double>,
@@ -60,8 +59,7 @@ public:
     {
         return
             (weight == that.weight) and
-            (baseOffset == that.baseOffset) and
-            (isShortestPathEdge == that.isShortestPathEdge);
+            (baseOffset == that.baseOffset);
     }
 
     template<class Archive> void serialize(
@@ -70,7 +68,6 @@ public:
     {
         ar & weight;
         ar & baseOffset;
-        ar & isShortestPathEdge;
     }
 };
 
@@ -173,7 +170,6 @@ public:
         ShortestPathTreeWorkAreas&
         ) const;
     void createShortestPathTree(AnchorId, const Anchors&) const;
-    void flagShortestPathEdges(const Anchors&);
 
     void checkStrandInvariant() const;
 
@@ -213,9 +209,8 @@ private:
         AnchorId anchorIdA,
         vector<uint8_t>& color);
 
-    // Graphviz output only includes the edges flagged as shortest path edges.
-    void writeGraphviz(const string& fileName, bool shortPathEdgesOnly) const;
-    void writeGraphviz(ostream&, bool shortPathEdgesOnly) const;
+    void writeGraphviz(const string& fileName) const;
+    void writeGraphviz(ostream&) const;
 
 
 
@@ -291,7 +286,7 @@ private:
         void gatherVerticesByRank(vector< vector<vertex_descriptor> >&) const;
     };
 
-    // Graphviz output of shortest path edges (only) of the AnchorSimilarityGraph,
+    // Graphviz output of the AnchorSimilarityGraph,
     // highlighting a given ShortestPathTree and a path on the ShortestPathTree.
     void writeGraphviz(
         const string& fileName,

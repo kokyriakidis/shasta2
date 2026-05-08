@@ -230,7 +230,6 @@ public:
     void createAnchorSimilarityGraph();
     void accessAnchorSimilarityGraph();
     void anchorSimilarityGraphCreateShortestPathTree(AnchorId) const;
-    void anchorSimilarityGraphFlagShortestPathEdges() const;
 
     // This uses read following in the complete AnchorGraph
     // to create the AnchorGraph to be used for assembly.
