@@ -19,8 +19,9 @@ os.system("sudo apt-get update")
 command = "sudo apt-get install " + " ".join(packages)
 os.system(command)
 
-# Build abpoa and poasta
+# Build abpoa, poasta, and theseus.
 import BuildAbpoa
 import BuildPoasta
+import BuildTheseus
 
 
