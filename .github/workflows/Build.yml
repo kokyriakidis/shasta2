@@ -18,7 +18,7 @@ jobs:
         mkdir shasta2-build
         cd shasta2-build 
         cmake .. 
-        make -i -j 8 all
+        make -j 8 all
         make install/strip
         mv shasta2-install shasta2-Ubuntu-24.04
         tar -cvf shasta2-Ubuntu-24.04.tar shasta2-Ubuntu-24.04  
