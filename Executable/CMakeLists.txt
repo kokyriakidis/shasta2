@@ -21,13 +21,16 @@ endif(BUILD_DEBUG)
 # Source files
 file(GLOB SOURCES ../src/*.cpp)
 
-# Include directories for abpoa and poasta..
-include_directories(../src ~/.shasta2Build/abpoa/abPOA/include)
+# Include directories.
+include_directories(../src)
+include_directories(~/.shasta2Build/abpoa/abPOA/include)
 include_directories(~/.shasta2Build/poasta-c/poasta-c)
+include_directories(~/.shasta2Build/theseus/theseus-lib/include)
 
-# Link directories for abpoa and poasta.
+# Link directories for abpoa, poasta, and theseus.
 link_directories(~/.shasta2Build/abpoa/abPOA/lib)
 link_directories(~/.shasta2Build/poasta-c/poasta-c/target/release)
+link_directories(~/.shasta2Build/theseus/theseus-lib/staticBuild)
 
 # Define our executable.
 add_executable(shasta2Executable ${SOURCES})
@@ -40,7 +43,7 @@ set_target_properties(shasta2Executable PROPERTIES LINK_FLAGS "-static" )
 target_link_libraries(
     shasta2Executable
     atomic boost_program_options boost_chrono boost_serialization png z
-    abpoa poasta_c z m pthread)
+    abpoa poasta_c theseus z m pthread)
 
   
 # The static executable goes to the bin directory.
