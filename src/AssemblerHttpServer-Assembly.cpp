@@ -8,6 +8,7 @@
 #include "GTest.hpp"
 #include "LocalAssembly3.hpp"
 #include "LocalAssembly4.hpp"
+#include "LocalAssembly5.hpp"
 #include "Markers.hpp"
 #include "RestrictedAnchorGraph.hpp"
 #include "SegmentStepSupport.hpp"
@@ -881,8 +882,8 @@ void Assembler::exploreSegmentStep(
     const bool stepIdStringIsPresent = HttpServer::getParameterValue(request, "stepId", stepIdString);
     boost::trim(stepIdString);
 
-    string useLocalAssembly4String;
-    const bool useLocalAssembly4 = getParameterValue(request, "useLocalAssembly4", useLocalAssembly4String);
+    int localAssemblyVersion = 4;
+    getParameterValue(request, "localAssemblyVersion", localAssemblyVersion);
 
     string showAlignmentString;
     const bool showAlignment = getParameterValue(request, "showAlignment", showAlignmentString);
@@ -922,8 +923,15 @@ void Assembler::exploreSegmentStep(
     html <<
         ">"
 
-        "<tr><th>Use LocalAssembly4<td class=centered><input type=checkbox name=useLocalAssembly4" <<
-        (useLocalAssembly4 ? " checked" : "") << ">"
+        "<tr><th>Local assembly version<td class=centered>"
+        "<input type=radio name=localAssemblyVersion value=3" <<
+        (localAssemblyVersion == 3 ? " checked=on" : "") << "> 3"
+        "<br><input type=radio name=localAssemblyVersion value=4" <<
+        (localAssemblyVersion == 4 ? " checked=on" : "") << "> 4"
+        "<br><input type=radio name=localAssemblyVersion value=5" <<
+        (localAssemblyVersion == 5 ? " checked=on" : "") << "> 5"
+        "<br><input type=radio name=localAssemblyVersion value=6" <<
+        (localAssemblyVersion == 6 ? " checked=on" : "") << "> 6"
 
         "<tr><th>Show the alignment<td class=centered><input type=checkbox name=showAlignment" <<
         (showAlignment ? " checked" : "") << ">"
@@ -1010,48 +1018,65 @@ void Assembler::exploreSegmentStep(
 
 
 
-    if(useLocalAssembly4) {
-        LocalAssembly4 localAssembly(
-            anchors(),
-            httpServerData.options->abpoaMaxLength,
-            html,
-            debug,
-            edge[stepId].anchorPair,
-            additionalOrientedReadIds);
-        return;
+    switch(localAssemblyVersion) {
+    case 3:
+        {
+            LocalAssembly3 localAssembly(
+                anchors(),
+                httpServerData.options->abpoaMaxLength,
+                html,
+                debug,
+                edge[stepId].anchorPair,
+                additionalOrientedReadIds);
+
+            html <<
+                "<h3>Assembled sequence</h3>"
+                "<p><span style='font-family:monospace'>"
+                ">LocalAssembly " << localAssembly.sequence.size() <<
+                "<br>";
+            std::ranges::copy(localAssembly.sequence, ostream_iterator<Base>(html));
+            html << "</span>";
+
+            html << "<p><table><tr><th>Position<th>Base<th>Coverage";
+            for(uint64_t position=0; position<localAssembly.sequence.size(); position++) {
+                html <<
+                    "<tr><td class=centered>" << position <<
+                    "<td class=centered>" << localAssembly.sequence[position] <<
+                    "<td class=centered>" << localAssembly.coverage[position];
+            }
+            html << "</table>";
+
+            // Also output the sequence to fasta.
+            ofstream fasta("LocalAssembly.fasta");
+            fasta << ">LocalAssembly " << localAssembly.sequence.size() << endl;
+            std::ranges::copy(localAssembly.sequence, ostream_iterator<Base>(fasta));
+            break;
+        }
+    case 4:
+        {
+            LocalAssembly4 localAssembly(
+                anchors(),
+                httpServerData.options->abpoaMaxLength,
+                html,
+                debug,
+                edge[stepId].anchorPair,
+                additionalOrientedReadIds);
+            return;
+         }
+    case 5:
+        {
+            LocalAssembly5 localAssembly(
+                anchors(),
+                httpServerData.options->abpoaMaxLength,
+                html,
+                debug,
+                edge[stepId].anchorPair,
+                additionalOrientedReadIds);
+            return;
+         }
+    default:
+        throw runtime_error("Invalid local assembly version.");
     }
-
-
-
-    LocalAssembly3 localAssembly(
-        anchors(),
-        httpServerData.options->abpoaMaxLength,
-        html,
-        debug,
-        edge[stepId].anchorPair,
-        additionalOrientedReadIds);
-
-    html <<
-        "<h3>Assembled sequence</h3>"
-        "<p><span style='font-family:monospace'>"
-        ">LocalAssembly " << localAssembly.sequence.size() <<
-        "<br>";
-    std::ranges::copy(localAssembly.sequence, ostream_iterator<Base>(html));
-    html << "</span>";
-
-    html << "<p><table><tr><th>Position<th>Base<th>Coverage";
-    for(uint64_t position=0; position<localAssembly.sequence.size(); position++) {
-        html <<
-            "<tr><td class=centered>" << position <<
-            "<td class=centered>" << localAssembly.sequence[position] <<
-            "<td class=centered>" << localAssembly.coverage[position];
-    }
-    html << "</table>";
-
-    // Also output the sequence to fasta.
-    ofstream fasta("LocalAssembly.fasta");
-    fasta << ">LocalAssembly " << localAssembly.sequence.size() << endl;
-    std::ranges::copy(localAssembly.sequence, ostream_iterator<Base>(fasta));
 
 }
 
