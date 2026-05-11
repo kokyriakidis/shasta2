@@ -39,6 +39,10 @@ set_target_properties(shasta2Executable PROPERTIES OUTPUT_NAME "shasta2")
 # Request a static executable.
 set_target_properties(shasta2Executable PROPERTIES LINK_FLAGS "-static" )
 
+# This is necessary to suppress errors caused by the rust libraries
+# (brought in by poasta).
+set_target_properties(shasta2Executable PROPERTIES LINK_WARNING_AS_ERROR OFF)
+
 # Libraries to link with.
 target_link_libraries(
     shasta2Executable
