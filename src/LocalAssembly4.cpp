@@ -1,7 +1,6 @@
 // Shasta.
 #include "LocalAssembly4.hpp"
 #include "Anchor.hpp"
-#include "LocalAssembly5.hpp"
 #include "Markers.hpp"
 #include "poastaWrapper.hpp"
 #include "ReadId.hpp"
@@ -16,9 +15,9 @@ using namespace shasta2;
 
 LocalAssembly4::LocalAssembly4(
     const Anchors& anchors,
-    uint64_t abpoaMaxLength,
+    [[maybe_unused]] uint64_t abpoaMaxLength,
     ostream& html,
-    bool debug,
+    [[maybe_unused]] bool debug,
     const AnchorPair& anchorPair,
     const vector<OrientedReadId>& additionalOrientedReadIds) :
     anchors(anchors),
@@ -45,30 +44,6 @@ LocalAssembly4::LocalAssembly4(
     if(html) {
         writeCommonOrientedReads();
     }
-
-
-
-    // If coverage is too low, use LocalAssembly5 instead,
-    // which can use OrientedReadIds that appear only on the left
-    // or only on the right.
-    if(false /* commonOrientedReadInfos.size() < minCoverage */) {
-        if(html) {
-            html << "<br><br>Switching to LocalAssembly5 due to low coverage<hr>";
-        }
-        LocalAssembly5 localAssembly5(
-            anchors,
-            abpoaMaxLength,
-            html,
-            debug,
-            anchorPair,
-            additionalOrientedReadIds);
-
-        sequence = localAssembly5.sequence;
-        coverage = localAssembly5.coverage;
-        return;
-    }
-
-
 
     assemble();
     if(html) {
