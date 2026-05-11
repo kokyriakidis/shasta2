@@ -15,9 +15,7 @@ using namespace shasta2;
 
 LocalAssembly4::LocalAssembly4(
     const Anchors& anchors,
-    [[maybe_unused]] uint64_t abpoaMaxLength,
     ostream& html,
-    [[maybe_unused]] bool debug,
     const AnchorPair& anchorPair,
     const vector<OrientedReadId>& additionalOrientedReadIds) :
     anchors(anchors),

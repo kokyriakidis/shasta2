@@ -462,9 +462,7 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
     try {
         LocalAssembly4 localAssembly(
             anchors,
-            options.abpoaMaxLength,
             html,
-            false,
             edge[i].anchorPair,
             additionalOrientedReadIds);
         step.sequence = localAssembly.sequence;

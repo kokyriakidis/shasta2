@@ -1056,9 +1056,7 @@ void Assembler::exploreSegmentStep(
         {
             LocalAssembly4 localAssembly(
                 anchors(),
-                httpServerData.options->abpoaMaxLength,
                 html,
-                debug,
                 edge[stepId].anchorPair,
                 additionalOrientedReadIds);
             return;

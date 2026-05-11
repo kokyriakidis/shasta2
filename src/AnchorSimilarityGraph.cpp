@@ -518,7 +518,7 @@ void AnchorSimilarityGraph::createShortestPathTree(
             vector<OrientedReadId> additionalOrientedReadIds;
             cout << "Assembling " << anchorIdToString(anchorId0) << " to " << anchorIdToString(anchorId1) <<
                 " " << i0 << "/" << pathAnchorIds.size()-1 << endl;
-            const LocalAssembly4 localAssembly(anchors, 5000, html, false, anchorPair, additionalOrientedReadIds);
+            const LocalAssembly4 localAssembly(anchors, html, anchorPair, additionalOrientedReadIds);
 
             const uint64_t sequenceBegin = sequence.size();
             std::ranges::copy(localAssembly.sequence, back_inserter(sequence));

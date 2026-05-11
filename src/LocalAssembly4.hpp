@@ -36,9 +36,7 @@ public:
     // that are also in the AnchorPair.
     LocalAssembly4(
         const Anchors&,
-        uint64_t abpoaMaxLength,
         ostream& html,
-        bool debug,
         const AnchorPair& anchorPair,
         const vector<OrientedReadId>& additionalOrientedReadIds);
 
