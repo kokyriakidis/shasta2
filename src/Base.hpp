@@ -14,6 +14,7 @@
 #include "iostream.hpp"
 #include "stdexcept.hpp"
 #include "string.hpp"
+#include "vector.hpp"
 
 namespace shasta2 {
     class Base;
@@ -22,7 +23,9 @@ namespace shasta2 {
     class AlignedBase;
     class AlignedBaseInitializer;
     inline ostream& operator<<(ostream&, AlignedBase);
-    void testBase();
+    inline string toString(const vector<Base>&);    void testBase();
+    inline vector<Base> vectorOfBasesFromString(const string&);
+    inline vector<AlignedBase> vectorOfAlignedBasesFromString(const string&);
 }
 
 
@@ -325,3 +328,35 @@ inline std::ostream& shasta2::operator<<(
     return s;
 }
 
+
+
+inline std::string shasta2::toString(const vector<Base>& v)
+{
+    string s;
+    for(const Base b: v) {
+        s.push_back(b.character());
+    }
+    return s;
+}
+
+
+
+inline std::vector<shasta2::Base> shasta2::vectorOfBasesFromString(const string& s)
+{
+    vector<Base> v;
+    for(const char c: s) {
+        v.push_back(Base::fromCharacter(c));
+    }
+    return v;
+}
+
+
+
+inline std::vector<shasta2::AlignedBase> shasta2::vectorOfAlignedBasesFromString(const string& s)
+{
+    vector<AlignedBase> v;
+    for(const char c: s) {
+        v.push_back(AlignedBase::fromCharacter(c));
+    }
+    return v;
+}

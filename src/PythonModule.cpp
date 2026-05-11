@@ -23,6 +23,7 @@
 #include "ShortBaseSequence.hpp"
 #include "SimpleMap.hpp"
 #include "splitRange.hpp"
+#include "theseusWrapper.hpp"
 using namespace shasta2;
 
 // Pybind11
@@ -292,6 +293,9 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         );
     shasta2Module.def("testPoasta2",
         testPoasta2
+        );
+    shasta2Module.def("testTheseus",
+        testTheseus
         );
 }
 
