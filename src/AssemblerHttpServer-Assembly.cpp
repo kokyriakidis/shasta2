@@ -9,6 +9,7 @@
 #include "LocalAssembly3.hpp"
 #include "LocalAssembly4.hpp"
 #include "LocalAssembly5.hpp"
+#include "LocalAssembly6.hpp"
 #include "Markers.hpp"
 #include "RestrictedAnchorGraph.hpp"
 #include "SegmentStepSupport.hpp"
@@ -1072,6 +1073,24 @@ void Assembler::exploreSegmentStep(
                 additionalOrientedReadIds);
             return;
          }
+    case 6:
+        {
+            // Combine the Oriented reads in the AnchorPair
+            // and the additional OrientedReadIds.
+            vector<OrientedReadId> orientedReadIds = additionalOrientedReadIds;
+            const AnchorPair& anchorPair = edge[stepId].anchorPair;
+            std::ranges::copy(anchorPair.orientedReadIds, back_inserter(orientedReadIds));
+            deduplicate(orientedReadIds);
+
+            LocalAssembly6 localAssembly(
+                anchors(),
+                anchorPair.anchorIdA,
+                anchorPair.anchorIdB,
+                html,
+                debug,
+                orientedReadIds);
+            return;
+        }
     default:
         throw runtime_error("Invalid local assembly version.");
     }

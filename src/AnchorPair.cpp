@@ -527,6 +527,7 @@ void AnchorPair::writeAllHtml(
     writeSummaryHtml(html, anchors);
     writeOrientedReadIdsHtml(html, anchors);
 
+#if 0
     // Get the positions of anchorIdA and anchorIdB in the
     // journeys of all OrientedReadids.
     vector< pair<uint32_t, uint32_t> > positionsInJourneys;
@@ -534,7 +535,7 @@ void AnchorPair::writeAllHtml(
 
     // Write the journey portions between anchorIdA and anchorIdB.
     writeJourneysHtml(html, journeys, positionsInJourneys);
-
+#endif
 }
 
 
