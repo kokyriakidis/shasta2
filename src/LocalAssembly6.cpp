@@ -4,6 +4,7 @@
 #include "Base.hpp"
 #include "Markers.hpp"
 #include "Reads.hpp"
+#include "theseusWrapper.hpp"
 using namespace shasta2;
 
 // Standard library.
@@ -35,15 +36,17 @@ LocalAssembly6::LocalAssembly6(
     estimateOffset();
     gatherOrientedReadsSequences();
     writeOrientedReads();
+    assemble();
 }
 
 
 
 void LocalAssembly6::gatherOrientedReads(
-    [[maybe_unused]] const vector<OrientedReadId>& orientedReadIds)
+    const vector<OrientedReadId>& orientedReadIds)
 {
     const Anchor anchorA = anchors[anchorIdA];
     const Anchor anchorB = anchors[anchorIdB];
+    const uint32_t kHalf = uint32_t(anchors.k / 2);
 
     if(html) {
         html << "<h4>" << orientedReadIds.size() << " input oriented reads</h4><table>";
@@ -87,11 +90,11 @@ void LocalAssembly6::gatherOrientedReads(
         info.orientedReadId = orientedReadId;
         if(isOnA) {
             info.ordinalA = itA->ordinal;
-            info.positionA = markers[info.ordinalA].position;
+            info.positionA = markers[info.ordinalA].position + kHalf;
         }
         if(isOnB) {
             info.ordinalB = itB->ordinal;
-            info.positionB = markers[info.ordinalB].position;
+            info.positionB = markers[info.ordinalB].position + kHalf;
         }
 
     }
@@ -278,7 +281,7 @@ void LocalAssembly6::writeOrientedReads() const
 
     html << "<h4>Oriented read sequences used for assembly</h4>"
         "<table><tr>"
-        "<th>Id"
+        "<th>Sequence<br>id"
         "<th>Fixed<br>on A"
         "<th>Fixed<br>on B"
         "<th>Length"
@@ -312,3 +315,55 @@ void LocalAssembly6::writeSequenceTable(
     }
 }
 
+
+
+void LocalAssembly6::assemble()
+{
+    vector< pair<vector<Base>, uint64_t> > fixedSequences;
+    vector< pair<vector<Base>, uint64_t> > leftFixedSequences;
+    vector< pair<vector<Base>, uint64_t> > rightFixedSequences;
+
+    for(const SequenceInfo& sequenceInfo: fixedSequencesTable) {
+        fixedSequences.emplace_back(*(sequenceInfo.sequencePointer), sequenceInfo.orientedReadIds.size());
+    }
+    for(const SequenceInfo& sequenceInfo: leftFixedSequencesTable) {
+        leftFixedSequences.emplace_back(*(sequenceInfo.sequencePointer), sequenceInfo.orientedReadIds.size());
+    }
+    for(const SequenceInfo& sequenceInfo: rightFixedSequencesTable) {
+        rightFixedSequences.emplace_back(*(sequenceInfo.sequencePointer), sequenceInfo.orientedReadIds.size());
+    }
+
+    vector< vector<AlignedBase> > alignment;
+    const bool computeAlignment = bool(html);
+    theseus(fixedSequences, leftFixedSequences, rightFixedSequences,
+        sequence, alignment, computeAlignment);
+
+    if(not html) {
+        return;
+    }
+
+    SHASTA2_ASSERT(alignment.size() ==
+        fixedSequences.size() + leftFixedSequences.size() + rightFixedSequences.size());
+
+
+    html << "<h4>Alignment</h4>"
+        "<table><tr>"
+        "<th>Sequence<br>id"
+        "<th class=left>Alignment";
+
+    uint64_t sequenceId = 0;
+    for(const vector<AlignedBase>& alignmentRow: alignment) {
+        html <<
+            "<tr>"
+            "<td class=centered>" << sequenceId++ <<
+            "<td style='font-family:monospace'>";
+        std::ranges::copy(alignmentRow, ostream_iterator<AlignedBase>(html));
+    }
+    html << "</table>";
+
+
+    html << "<h4>Consensus</h4>"
+        "<div style='font-family:monospace'>";
+    std::ranges::copy(sequence, ostream_iterator<Base>(html));
+    html << "</div>";
+}

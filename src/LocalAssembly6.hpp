@@ -145,4 +145,6 @@ private:
         bool fixedOnA,
         bool fixedOnB) const;
 
+    void assemble();
+
 };
