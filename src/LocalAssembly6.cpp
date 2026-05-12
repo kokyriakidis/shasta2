@@ -333,6 +333,11 @@ void LocalAssembly6::assemble()
         rightFixedSequences.emplace_back(*(sequenceInfo.sequencePointer), sequenceInfo.orientedReadIds.size());
     }
 
+    if(html) {
+        theseusWriteFile(fixedSequences, leftFixedSequences, rightFixedSequences,
+            "Pericles.fasta");
+    }
+
     vector< vector<AlignedBase> > alignment;
     const bool computeAlignment = bool(html);
     theseus(fixedSequences, leftFixedSequences, rightFixedSequences,

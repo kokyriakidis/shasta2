@@ -11,6 +11,7 @@ using namespace shasta2;
 
 #include <boost/tokenizer.hpp>
 
+#include "fstream.hpp"
 #include "iterator.hpp"
 #include <sstream>
 
@@ -137,5 +138,44 @@ void shasta2::testTheseus()
             cout << base;
         }
         cout << endl;
+    }
+}
+
+
+
+// This writes a file that can be used as input to pericles.
+void shasta2::theseusWriteFile(
+
+    // The input sequences fixed on both sides, with their coverage.
+    // They are passed to theseus in this order.
+    const vector< pair<vector<Base>, uint64_t> >& fixedSequences,
+
+    // The input sequences fixed on the left only, with their coverage.
+    const vector< pair<vector<Base>, uint64_t> >& leftFixedSequences,
+
+    // The input sequences fixed on the right only, with their coverage.
+    const vector< pair<vector<Base>, uint64_t> >& rightFixedSequences,
+
+    const string& fileName
+)
+{
+    ofstream out(fileName);
+
+    for(const auto& [sequence, weight]: fixedSequences) {
+        out << ">0 0 " << weight << "\n";
+        std::ranges::copy(sequence, ostream_iterator<Base>(out));
+        out << "\n";
+    }
+
+    for(const auto& [sequence, weight]: leftFixedSequences) {
+        out << ">0 1 " << weight << "\n";
+        std::ranges::copy(sequence, ostream_iterator<Base>(out));
+        out << "\n";
+    }
+
+    for(const auto& [sequence, weight]: rightFixedSequences) {
+        out << ">1 1 " << weight << "\n";
+        std::ranges::copy(sequence, ostream_iterator<Base>(out));
+        out << "\n";
     }
 }
