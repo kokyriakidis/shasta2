@@ -4,7 +4,6 @@
 using namespace shasta2;
 
 #pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma GCC diagnostic ignored "-Wfloat-conversion"
 #include "theseus/theseus_msa_aligner.h"
 #pragma GCC diagnostic pop
