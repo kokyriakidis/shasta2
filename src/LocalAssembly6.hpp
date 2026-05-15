@@ -116,6 +116,11 @@ private:
     void gatherOrientedReadsSequences();
     void writeOrientedReads() const;
 
+    // If the offsets of oriented reads constrained at both A and B
+    // are too different, remove the outliers.
+    void removeOutliers();
+    static bool checkOffsets(uint64_t, uint64_t);
+
     uint32_t offset;
     void estimateOffset();
 
