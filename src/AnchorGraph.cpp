@@ -2,6 +2,7 @@
 #include "AnchorGraph.hpp"
 #include "Anchor.hpp"
 #include "AnchorPair.hpp"
+#include "AnchorSimilarityGraph.hpp"
 #include "approximateTopologicalSort.hpp"
 #include "deduplicate.hpp"
 #include "dominatorTree.hpp"
@@ -1631,4 +1632,129 @@ void AnchorGraph::Subgraph::walkUp(
     const AnchorId exitAnchorId = subgraph[exit].anchorId;
     dominatorTree.walkUp(dominatorTree.vertexMap.at(exitAnchorId), path);
 
+}
+
+
+
+// Constructor from an AnchorSimilarityGraph.
+AnchorGraph::AnchorGraph(
+    const Anchors& anchors,
+    const AnchorSimilarityGraph& anchorSimilarityGraph) :
+    MappedMemoryOwner(anchors),
+    MultithreadedObject<AnchorGraph>(*this)
+{
+    // EXPOSE WHEN CODE STABILIZES.
+    const uint64_t minComponentSize = 10;
+
+    cout << timestamp << "AnchorGraph creation from the AnchorSimilarityGraph begins." << endl;
+    AnchorGraph& anchorGraph = *this;
+    using ShortestPathTree = AnchorSimilarityGraph::ShortestPathTree;
+
+    // Create the vertices, one for each AnchorId.
+    // In the AnchorGraph, vertex_descriptors are AnchorIds.
+    const uint64_t anchorCount = anchors.size();
+    for(AnchorId anchorId=0; anchorId<anchorCount; anchorId++) {
+        add_vertex(anchorGraph);
+    }
+
+
+    // To create edges, loop over connected components of the
+    // AnchorSimilarityGraph. For each connected component,
+    // compute shortest path trees starting at all entrances.
+    // For now, just use the longest shortest path in each
+    // connected component, where "longest" is as measured by
+    // estimated base offset, while "shortest" is as measured by
+    // AnchorSimilarityGraph edge weights.
+    // Generate edges between successive anchorIds of that path.
+    AnchorSimilarityGraph::ShortestPathTreeWorkAreas workAreas(num_vertices(anchorSimilarityGraph));
+    for(uint64_t componentId=0; componentId<anchorSimilarityGraph.connectedComponents.size(); componentId++) {
+        const vector<AnchorId>& component = anchorSimilarityGraph.connectedComponents[componentId];
+        if(component.size() < minComponentSize) {
+            continue;
+        }
+        cout << "Working on AnchorSimilarityGraph component " << componentId <<
+            " with " << component.size() << " anchors." << endl;
+
+        // Gather the entrances and the exits of this component.
+        vector<AnchorId> entrances;
+        vector<AnchorId> exits;
+        for(const AnchorId anchorId: component) {
+            const bool isEntrance = (in_degree(anchorId, anchorSimilarityGraph) == 0);
+            const bool isExit = (out_degree(anchorId, anchorSimilarityGraph) == 0);
+
+            // A vertex cannot be an entrance and an exit at the
+            // same time because we don't use trivial connected
+            // components consisting of just one vertex.
+            SHASTA2_ASSERT(not (isEntrance and isExit));
+
+            if(isEntrance) {
+                entrances.push_back(anchorId);
+            }
+            if(isExit) {
+                exits.push_back(anchorId);
+            }
+        }
+        cout << "This connected component has " << entrances.size() <<
+            " entrances and " << exits.size() << " exits." << endl;
+
+
+
+        // Compute a ShortestPathTree for each entrance, without pruning it.
+        // Find the longest path (as measured by base offset).
+        vector<AnchorId> bestPath;
+        uint64_t bestOffset = 0;
+        for(const AnchorId entrance: entrances) {
+            anchorSimilarityGraph.createShortestPathTree(entrance, workAreas);
+
+            ShortestPathTree tree (anchorSimilarityGraph, entrance, workAreas);
+            tree.fillEdgeInformation(anchors);
+            tree.fillVertexInformation();
+
+            // Loop over exits of the tree that are also exits of this component.
+            // Find the vertex with the longest path in this tree, as measured by base offset.
+            ShortestPathTree::vertex_descriptor vBest = ShortestPathTree::null_vertex();
+            BGL_FORALL_VERTICES(v, tree, ShortestPathTree) {
+                if(out_degree(v, tree) == 0) {
+
+                    // Look it up in the exits.
+                    const AnchorId anchorId1 = tree[v].anchorId;
+                    const auto it1 = find(exits.begin(), exits.end(), anchorId1);
+                    if((it1 != exits.end()) and (*it1 == anchorId1)) {
+                        if(tree[v].offset > bestOffset) {
+                            bestOffset = tree[v].offset;
+                            vBest = v;
+                        }
+                    }
+                }
+            }
+
+            // If we found a vertex with a larger offset than our current
+            // best offset, replace our path with the path ending at this vertex.
+            if(vBest != ShortestPathTree::null_vertex()) {
+                tree.findPathAnchorIds(tree[vBest].anchorId, bestPath);
+            }
+
+            workAreas.reset();
+        }
+        cout << "Best path offset in this component is " << bestOffset << endl;
+
+        // Use the best path to generate AnchorGraph edges.
+        for(uint64_t i1=1; i1<bestPath.size(); i1++) {
+            const uint64_t i0 = i1 - 1;
+            const AnchorId anchorId0 = bestPath[i0];
+            const AnchorId anchorId1 = bestPath[i1];
+            const AnchorPair anchorPair(anchors, anchorId0, anchorId1, false);
+            const uint64_t offset = anchorPair.getAverageOffset(anchors);
+            edge_descriptor e;
+            tie(e, ignore) = add_edge(anchorId0, anchorId1,
+                AnchorGraphEdge(anchorPair, offset, nextEdgeId++), anchorGraph);
+            anchorGraph[e].useForAssembly = true;
+        }
+    }
+
+
+    cout << "The anchor graph has " << num_vertices(*this) <<
+        " vertices and " << num_edges(*this) << " edges." << endl;
+
+    cout << timestamp << "AnchorGraph creation from the AnchorSimilarityGraph ends." << endl;
 }

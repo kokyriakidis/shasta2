@@ -283,6 +283,13 @@ void Assembler::createAnchorSimilarityGraph()
 
 
 
+void Assembler::createAnchorGraphFromAnchorSimilarityGraph()
+{
+    anchorGraphPointer = make_shared<AnchorGraph>(anchors(), *anchorSimilarityGraphPointer);
+}
+
+
+
 // This uses read following in the complete AnchorGraph
 // to create the AnchorGraph to be used for assembly.
 // This is meant to be used with strict anchor generation,

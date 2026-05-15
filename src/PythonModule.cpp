@@ -151,6 +151,8 @@ PYBIND11_MODULE(shasta2, shasta2Module)
           &Assembler::createCompleteAnchorGraph)
       .def("accessCompleteAnchorGraph",
           &Assembler::accessCompleteAnchorGraph)
+      .def("createAnchorGraphFromAnchorSimilarityGraph",
+          &Assembler::createAnchorGraphFromAnchorSimilarityGraph)
 
       // AnchorSimilarityGraph.
       .def("createAnchorSimilarityGraph",

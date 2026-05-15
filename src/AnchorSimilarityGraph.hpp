@@ -221,8 +221,6 @@ public:
     void save(const string& name) const;
     void load(const string& name);
 
-private:
-
     // EXPOSE WHEN CODE STABILIZES.
     const uint64_t minCommonCount = 6;
     const double a = 3.;
