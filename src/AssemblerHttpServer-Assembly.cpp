@@ -883,7 +883,7 @@ void Assembler::exploreSegmentStep(
     const bool stepIdStringIsPresent = HttpServer::getParameterValue(request, "stepId", stepIdString);
     boost::trim(stepIdString);
 
-    int localAssemblyVersion = 4;
+    int localAssemblyVersion = 6;
     getParameterValue(request, "localAssemblyVersion", localAssemblyVersion);
 
     string showAlignmentString;
