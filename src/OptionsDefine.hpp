@@ -192,8 +192,11 @@ SHASTA2_OPTION_DEFINE(
 
 
 
-// Assembly.
+// Local assembly.
 SHASTA2_OPTION_DEFINE(
     uint64_t, abpoaMaxLength, "--abpoa-max-length", 1000,
     "Maximum MSA alignment for abpoa. Switch to poasta above that. "
     "This is currently ignored and poasta is used in all cases.")
+SHASTA2_OPTION_DEFINE(
+    uint64_t, localAssemblyMethod, "--local-assembly-method", 4,
+    "Local assembly method (4 or 6).")

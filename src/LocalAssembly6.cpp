@@ -73,11 +73,17 @@ void LocalAssembly6::gatherOrientedReads(
         while((itB != endB) and (itB->orientedReadId < orientedReadId)) {
             ++itB;
         }
+
         const bool isOnA = (itA != endA) and (itA->orientedReadId == orientedReadId);
         const bool isOnB = (itB != endB) and (itB->orientedReadId == orientedReadId);
 
         // If on neither anchor, this OrientedReadId cannot be used.
         if(not (isOnA or isOnB)) {
+            continue;
+        }
+
+        // If on both anchors and negative offset, this OrientedReadId cannot be used.
+        if(isOnA and isOnB and (itA->ordinal > itB->ordinal)) {
             continue;
         }
 

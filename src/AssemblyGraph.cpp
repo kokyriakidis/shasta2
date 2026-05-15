@@ -13,9 +13,10 @@
 #include "findConvergingVertex.hpp"
 #include "findReachableVertices.hpp"
 #include "Journeys.hpp"
-#include "LocalAssembly3.hpp"
 #include "LocalAssembly4.hpp"
+#include "LocalAssembly6.hpp"
 #include "longestPath.hpp"
+#include "memoryInformation.hpp"
 #include "Options.hpp"
 #include "performanceLog.hpp"
 #include "ReadFollowing4.hpp"
@@ -439,7 +440,8 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
     AssemblyGraphEdge& edge = assemblyGraph[e];
     AssemblyGraphEdgeStep& step = edge[i];
 
-    // cout << timestamp << "Begin local assembly for edge " << edge.id << " " << " step " << i << endl;
+    // cout << timestamp << " " << getPeakMemoryUsage() <<
+    //     " Begin local assembly for edge " << edge.id << " " << " step " << i << endl;
 
     if(step.anchorPair.anchorIdA == step.anchorPair.anchorIdB) {
         step.sequence.clear();
@@ -448,7 +450,7 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
 
 
 
-    // Let LocalAssembly3 use OrientedReadIds from the previous and next step.
+    // Let the local assembly use OrientedReadIds from the previous and next step.
     vector<OrientedReadId> additionalOrientedReadIds;
     if(i > 0) {
         std::ranges::copy(edge[i - 1].anchorPair.orientedReadIds, back_inserter(additionalOrientedReadIds));
@@ -460,15 +462,45 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
 
     ostream html(0);
     try {
-        LocalAssembly4 localAssembly(
-            anchors,
-            html,
-            edge[i].anchorPair,
-            additionalOrientedReadIds);
-        step.sequence = localAssembly.sequence;
+
+        if(options.localAssemblyMethod == 4) {
+            LocalAssembly4 localAssembly(
+                anchors,
+                html,
+                edge[i].anchorPair,
+                additionalOrientedReadIds);
+            step.sequence = localAssembly.sequence;
+        }
+
+        else if(options.localAssemblyMethod == 6) {
+
+            // Combine the Oriented reads in the AnchorPair
+            // and the additional OrientedReadIds.
+            vector<OrientedReadId> orientedReadIds = additionalOrientedReadIds;
+            const AnchorPair& anchorPair = edge[i].anchorPair;
+            std::ranges::copy(anchorPair.orientedReadIds, back_inserter(orientedReadIds));
+            deduplicate(orientedReadIds);
+
+            LocalAssembly6 localAssembly(
+                anchors,
+                anchorPair.anchorIdA,
+                anchorPair.anchorIdB,
+                html,
+                false,
+                orientedReadIds);
+            step.sequence = localAssembly.sequence;
+        }
+
+        else {
+            throw runtime_error("Invalid local assembly method " +
+                to_string(options.localAssemblyMethod) +
+                ". Must be 4 or 6.");
+        }
+
     } catch(const std::exception&) {
         cout << "Error occurred assembling segment " <<
             assemblyGraph[e].id << " step " << i << endl;
+        throw;
     }
 }
 
