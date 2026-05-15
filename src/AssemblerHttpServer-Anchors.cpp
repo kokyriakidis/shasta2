@@ -405,7 +405,7 @@ void Assembler::exploreAnchorPair2(const vector<string>& request, ostream& html)
 
     // Output to html.
     html << "<h2>Anchor pair</h2>";
-    anchorPair.writeAllHtml(html, anchors(), journeys());
+    anchorPair.writeAllHtml(html, anchors());
 
 
     html << "<h2>Complete pair analysis for these two anchor ids</h2>";

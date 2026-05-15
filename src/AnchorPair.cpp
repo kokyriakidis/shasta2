@@ -520,22 +520,10 @@ string AnchorPair::url() const
 
 void AnchorPair::writeAllHtml(
     ostream& html,
-    const Anchors& anchors,
-    const Journeys& journeys) const
+    const Anchors& anchors) const
 {
-    // Write the summary and oriented reads.
     writeSummaryHtml(html, anchors);
     writeOrientedReadIdsHtml(html, anchors);
-
-#if 0
-    // Get the positions of anchorIdA and anchorIdB in the
-    // journeys of all OrientedReadids.
-    vector< pair<uint32_t, uint32_t> > positionsInJourneys;
-    getPositionsInJourneys(anchors, positionsInJourneys);
-
-    // Write the journey portions between anchorIdA and anchorIdB.
-    writeJourneysHtml(html, journeys, positionsInJourneys);
-#endif
 }
 
 
