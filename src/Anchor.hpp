@@ -325,7 +325,6 @@ public:
     // The estimated offset between the two Anchors.
     // The estimate is done using the common oriented reads
     // with positive offset.
-    uint64_t offsetInMarkers = invalid<int64_t>;
     uint64_t offsetInBases = invalid<int64_t>;
     uint64_t minOffsetInBases  = invalid<int64_t>;
     uint64_t maxOffsetInBases  = invalid<int64_t>;

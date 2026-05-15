@@ -310,7 +310,6 @@ void Anchors::analyzeAnchorPair(
     info.commonNonPositiveOffset = 0;
     info.minOffsetInBases = std::numeric_limits<uint64_t>::max();
     info.maxOffsetInBases = 0;
-    int64_t sumMarkerOffsets = 0;
     int64_t sumBaseOffsets = 0;
     auto itA = beginA;
     auto itB = beginB;
@@ -341,7 +340,6 @@ void Anchors::analyzeAnchorPair(
         // Update.
         if(ordinalA < ordinalB) {
             ++info.commonPositiveOffset;
-            sumMarkerOffsets += ordinalB - ordinalA;
             const uint64_t offsetInBases = positionB - positionA;
             sumBaseOffsets += offsetInBases;
             info.minOffsetInBases = min(info.minOffsetInBases, offsetInBases);
@@ -360,7 +358,6 @@ void Anchors::analyzeAnchorPair(
 
     // If there are no common reads with positive offset, this is all we can do.
     if(info.commonPositiveOffset == 0) {
-        info.offsetInMarkers = invalid<uint64_t>;
         info.offsetInBases = invalid<uint64_t>;
         info.onlyAShort = invalid<uint64_t>;
         info.onlyBShort = invalid<uint64_t>;
@@ -370,7 +367,6 @@ void Anchors::analyzeAnchorPair(
     }
 
     // Compute the estimated offsets.
-    info.offsetInMarkers = uint64_t(std::round(double(sumMarkerOffsets) / double(info.commonPositiveOffset)));
     info.offsetInBases = uint64_t(std::round(double(sumBaseOffsets) / double(info.commonPositiveOffset)));
 
 
@@ -508,7 +504,6 @@ void Anchors::writeHtml(
         "<br><table>"
         "<tr><th class=left>Corrected Jaccard similarity<td class=centered>" <<
         fixed << setprecision(2) << info.correctedJaccard() <<
-        "<tr><th class=left>Estimated offset in markers<td class=centered>" << info.offsetInMarkers <<
         "<tr><th class=left>Estimated offset in bases<td class=centered>" << info.offsetInBases <<
         "<tr><th class=left>Minimum offset in bases<td class=centered>" << info.minOffsetInBases <<
         "<tr><th class=left>Maximum offset in bases<td class=centered>" << info.maxOffsetInBases <<
