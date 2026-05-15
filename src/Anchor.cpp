@@ -501,13 +501,11 @@ void Anchors::writeHtml(
         return;
     }
 
-    // Write the table with Jaccard similarities and estimated offsets.
+    // Write the table with Jaccard similarity and estimated offsets.
     using std::fixed;
     using std::setprecision;
     html <<
         "<br><table>"
-        "<tr><th class=left>Jaccard similarity<td class=centered>" <<
-        fixed << setprecision(2) << info.jaccard() <<
         "<tr><th class=left>Corrected Jaccard similarity<td class=centered>" <<
         fixed << setprecision(2) << info.correctedJaccard() <<
         "<tr><th class=left>Estimated offset in markers<td class=centered>" << info.offsetInMarkers <<

@@ -349,10 +349,6 @@ public:
     {
         return unionCount() - onlyAShort - onlyBShort;
     }
-    double jaccard() const
-    {
-        return double(intersectionCountPositiveOffset()) / double(unionCount());
-    }
     double correctedJaccard() const
     {
         return double(intersectionCountPositiveOffset()) / double(correctedUnionCount());
@@ -363,14 +359,4 @@ public:
         return onlyA + onlyB - onlyAShort - onlyBShort + commonNonPositiveOffset;
     }
 
-#if 0
-    void reverse()
-    {
-        swap(totalA, totalB);
-        swap(onlyA, onlyB);
-        swap(onlyAShort, onlyBShort);
-        offsetInMarkers = - offsetInMarkers;
-        offsetInBases = - offsetInBases;
-    }
-#endif
 };

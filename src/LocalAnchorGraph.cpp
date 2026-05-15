@@ -244,7 +244,7 @@ void LocalAnchorGraph::writeGraphviz(
                 s <<
                     "\\nCommon " << info.commonPositiveOffset <<
                     "\\nJ " <<
-                    std::fixed << std::setprecision(2) << info.jaccard() <<
+                    std::fixed << std::setprecision(2) <<
                     "\\nJ' " << info.correctedJaccard() <<
                     "\\nOffset " << info.offsetInBases;
             }
@@ -268,9 +268,6 @@ void LocalAnchorGraph::writeGraphviz(
                     // By common count.
                     hue = double(info.commonPositiveOffset) / double(referenceAnchorIdCoverage);
 
-                } else if(options.similarityMeasure == "jaccard") {
-                    // By Jaccard similarity.
-                    hue = info.jaccard();
                 } else {
                     // By corrected Jaccard similarity.
                     hue = info.correctedJaccard();
@@ -553,8 +550,6 @@ void LocalAnchorGraphDisplayOptions::writeForm(ostream& html) const
         "<div style='padding-left:50px'>"
         "<input type=radio required name=similarityMeasure value='commonCount'" <<
         (similarityMeasure == "commonCount" ? " checked=on" : "") << ">Number of common oriented reads"
-        "<br><input type=radio required name=similarityMeasure value='jaccard'" <<
-        (similarityMeasure == "jaccard" ? " checked=on" : "") << ">Jaccard similarity"
         "<br><input type=radio required name=similarityMeasure value='correctedJaccard'" <<
         (similarityMeasure == "correctedJaccard" ? " checked=on" : "") << ">Corrected Jaccard similarity"
 
@@ -919,9 +914,6 @@ void LocalAnchorGraph::writeVertices(
                     // By common count.
                     hue = double(info.commonPositiveOffset) / double(referenceAnchorIdCoverage);
 
-                } else if(options.similarityMeasure == "jaccard") {
-                    // By Jaccard similarity.
-                    hue = info.jaccard();
                 } else {
                     // By corrected Jaccard similarity.
                     hue = info.correctedJaccard();
@@ -969,8 +961,8 @@ void LocalAnchorGraph::writeVertices(
             "' id='" << anchorIdString << "'>"
             "<title>" << anchorIdString << ", coverage " << coverage;
         if(options.vertexColoring == "byReadComposition") {
-            html << ", common " << info.commonPositiveOffset << ", missing " << info.missingCount() << ", J " <<
-                std::fixed << std::setprecision(2) << info.jaccard() <<
+            html << ", common " << info.commonPositiveOffset << ", missing " << info.missingCount() <<
+                std::fixed << std::setprecision(2) <<
                 ", J' " << info.correctedJaccard();
             if(info.commonPositiveOffset > 0) {
                 html << ", offset " << info.offsetInBases;
