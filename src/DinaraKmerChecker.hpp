@@ -21,9 +21,8 @@ public:
     bool isMarker(const Kmer&) const;
 
     // Construct from a vector of k-mers.
-    // Both each k-mer and its reverse complement are added to the table,
-    // so the KmerChecker invariant (marker iff reverse complement is also a marker)
-    // is guaranteed.
+    // isMarker checks both the k-mer and its reverse complement,
+    // so the KmerChecker invariant is guaranteed.
     DinaraKmerChecker(uint64_t k, const std::vector<Kmer>& kmers);
 
 private:

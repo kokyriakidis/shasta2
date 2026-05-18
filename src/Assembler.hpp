@@ -143,8 +143,8 @@ public:
     public:
     void createKmerChecker(uint64_t k, double markerDensity);
 
-    // Create a KmerChecker that treats all specified k-mers as markers.
-    // Each k-mer and its reverse complement are both treated as markers.
+    // Create a DinaraKmerChecker that treats all specified k-mers
+    // (and their reverse complements) as markers.
     void createKmerCheckerFromKmers(uint64_t k, const vector<Kmer>& kmers);
 
     // Create a DinaraKmerChecker from an ExternalAnchors file.
