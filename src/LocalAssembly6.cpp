@@ -349,8 +349,10 @@ void LocalAssembly6::assemble()
 
     vector< vector<AlignedBase> > alignment;
     const bool computeAlignment = bool(html);
+    vector<AlignedBase> alignedConsensus;
+    vector<uint64_t> coverage;
     theseus(fixedSequences, leftFixedSequences, rightFixedSequences,
-        sequence, alignment, computeAlignment);
+        sequence, alignedConsensus, coverage, alignment, computeAlignment);
 
     if(not html) {
         return;
