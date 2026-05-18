@@ -317,6 +317,11 @@ public:
         return commonForwardAdjacent + commonForwardNonAdjacent;
     }
 
+    double adjacentFraction() const
+    {
+        return double(commonForwardAdjacent) / double(commonForward());
+    }
+
     // The number of common oriented reads with negative offset
     // (anchor B occurs before anchor A in the oriented read).
     // Zero offset is not possible if the two anchors are distinct.
@@ -365,6 +370,28 @@ public:
     uint64_t missingCount() const
     {
         return onlyA + onlyB - onlyAShort - onlyBShort + commonBackward;
+    }
+
+    uint64_t missingA() const
+    {
+        return onlyA - onlyAShort - commonBackward;
+    }
+    uint64_t missingB() const
+    {
+        return onlyB - onlyBShort - commonBackward;
+    }
+
+    double missingAFraction() const
+    {
+        return double(missingA()) / double(totalA);
+    }
+    double missingBFraction() const
+    {
+        return double(missingB()) / double(totalB);
+    }
+    double minMissingFraction() const
+    {
+        return min(missingAFraction(), missingBFraction());
     }
 
 };
