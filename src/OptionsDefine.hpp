@@ -23,6 +23,11 @@ SHASTA2_OPTION_DEFINE(
     string, externalAnchorsName, "--external-anchors-name", "",
     "External anchors name. Must be an absolute path without the .toc/.data extensions.")
 
+SHASTA2_BOOL_OPTION_DEFINE(
+    useDinaraKmerChecker, "--use-dinara-kmer-checker", false,
+    "Use DinaraKmerChecker when using external anchors. "
+    "This creates markers only at k-mers found at external anchor positions.")
+
 
 
 // Http server.

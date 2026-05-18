@@ -1,6 +1,7 @@
 #pragma once
 
 // Shasta.
+#include "Kmer.hpp"
 #include "Options.hpp"
 #include "HttpServer.hpp"
 #include "MappedMemoryOwner.hpp"
@@ -141,6 +142,15 @@ public:
     shared_ptr<KmerChecker> kmerChecker;
     public:
     void createKmerChecker(uint64_t k, double markerDensity);
+
+    // Create a KmerChecker that treats all specified k-mers as markers.
+    // Each k-mer and its reverse complement are both treated as markers.
+    void createKmerCheckerFromKmers(uint64_t k, const vector<Kmer>& kmers);
+
+    // Create a DinaraKmerChecker from an ExternalAnchors file.
+    // Extracts the k-mer at each anchor position in the reads
+    // and treats all of them as markers.
+    void createKmerCheckerFromExternalAnchors(uint64_t k, const string& externalAnchorsName);
 
 
 
