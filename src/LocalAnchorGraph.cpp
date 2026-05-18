@@ -240,11 +240,11 @@ void LocalAnchorGraph::writeGraphviz(
             if(not annotationText.empty()) {
                 s << annotationText;
             }
-            if((options.vertexColoring == "byReadComposition") and (info.commonPositiveOffset > 0)) {
+            if((options.vertexColoring == "byReadComposition") and (info.commonForward() > 0)) {
                 s <<
-                    "\\nCommon " << info.commonPositiveOffset <<
+                    "\\nCommon " << info.commonForward() <<
                     "\\nJ " <<
-                    std::fixed << std::setprecision(2) << info.jaccard() <<
+                    std::fixed << std::setprecision(2) <<
                     "\\nJ' " << info.correctedJaccard() <<
                     "\\nOffset " << info.offsetInBases;
             }
@@ -266,21 +266,18 @@ void LocalAnchorGraph::writeGraphviz(
                 double hue = 1.;    // 0=red, 1=green.
                 if(options.similarityMeasure == "commonCount") {
                     // By common count.
-                    hue = double(info.commonPositiveOffset) / double(referenceAnchorIdCoverage);
+                    hue = double(info.commonForward()) / double(referenceAnchorIdCoverage);
 
-                } else if(options.similarityMeasure == "jaccard") {
-                    // By Jaccard similarity.
-                    hue = info.jaccard();
                 } else {
                     // By corrected Jaccard similarity.
                     hue = info.correctedJaccard();
                  }
 
                 string colorString = "\"" + to_string(hue / 3.) + " 1 1\"";
-                if(info.commonPositiveOffset == 0) {
+                if(info.commonForward() == 0) {
                     colorString = "Grey";
                 }
-                if(info.commonPositiveOffset == 1) {
+                if(info.commonForward() == 1) {
                     colorString = "LightGrey";
                 }
                 if(options.vertexLabels) {
@@ -553,8 +550,6 @@ void LocalAnchorGraphDisplayOptions::writeForm(ostream& html) const
         "<div style='padding-left:50px'>"
         "<input type=radio required name=similarityMeasure value='commonCount'" <<
         (similarityMeasure == "commonCount" ? " checked=on" : "") << ">Number of common oriented reads"
-        "<br><input type=radio required name=similarityMeasure value='jaccard'" <<
-        (similarityMeasure == "jaccard" ? " checked=on" : "") << ">Jaccard similarity"
         "<br><input type=radio required name=similarityMeasure value='correctedJaccard'" <<
         (similarityMeasure == "correctedJaccard" ? " checked=on" : "") << ">Corrected Jaccard similarity"
 
@@ -917,19 +912,16 @@ void LocalAnchorGraph::writeVertices(
                 double hue = 1.;    // 0=red, 1=green.
                 if(options.similarityMeasure == "commonCount") {
                     // By common count.
-                    hue = double(info.commonPositiveOffset) / double(referenceAnchorIdCoverage);
+                    hue = double(info.commonForward()) / double(referenceAnchorIdCoverage);
 
-                } else if(options.similarityMeasure == "jaccard") {
-                    // By Jaccard similarity.
-                    hue = info.jaccard();
                 } else {
                     // By corrected Jaccard similarity.
                     hue = info.correctedJaccard();
                 }
 
-                if(info.commonPositiveOffset == 0) {
+                if(info.commonForward() == 0) {
                     color = "Black";
-                } else if(info.commonPositiveOffset == 1) {
+                } else if(info.commonForward() == 1) {
                     color = "Grey";
                 } else {
                     color = "hsl(" + to_string(uint32_t(std::round(hue * 120.))) +
@@ -969,10 +961,10 @@ void LocalAnchorGraph::writeVertices(
             "' id='" << anchorIdString << "'>"
             "<title>" << anchorIdString << ", coverage " << coverage;
         if(options.vertexColoring == "byReadComposition") {
-            html << ", common " << info.commonPositiveOffset << ", missing " << info.missingCount() << ", J " <<
-                std::fixed << std::setprecision(2) << info.jaccard() <<
+            html << ", common " << info.commonForward() << ", missing " << info.missingCount() <<
+                std::fixed << std::setprecision(2) <<
                 ", J' " << info.correctedJaccard();
-            if(info.commonPositiveOffset > 0) {
+            if(info.commonForward() > 0) {
                 html << ", offset " << info.offsetInBases;
             }
         }

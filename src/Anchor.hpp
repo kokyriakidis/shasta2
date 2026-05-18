@@ -308,10 +308,19 @@ public:
 
     // The number of common oriented reads with positive offset
     // (anchor B occurs after anchor A in the oriented read).
-    uint64_t commonPositiveOffset = 0;
+    // Count separately the ones with journey offset equal to 1
+    // ("adjacent") and greater than 1 ("non-adjacent").
+    uint64_t commonForwardAdjacent = 0;
+    uint64_t commonForwardNonAdjacent = 0;
+    uint64_t commonForward() const
+    {
+        return commonForwardAdjacent + commonForwardNonAdjacent;
+    }
 
-    // Also store the number of common oriented reads with non-positive offset.
-    uint64_t commonNonPositiveOffset = 0;
+    // The number of common oriented reads with negative offset
+    // (anchor B occurs before anchor A in the oriented read).
+    // Zero offset is not possible if the two anchors are distinct.
+    uint64_t commonBackward = 0;
 
     // The number of oriented reads present in A but not in B.
     uint64_t onlyA = 0;
@@ -325,7 +334,6 @@ public:
     // The estimated offset between the two Anchors.
     // The estimate is done using the common oriented reads
     // with positive offset.
-    uint64_t offsetInMarkers = invalid<int64_t>;
     uint64_t offsetInBases = invalid<int64_t>;
     uint64_t minOffsetInBases  = invalid<int64_t>;
     uint64_t maxOffsetInBases  = invalid<int64_t>;
@@ -340,18 +348,14 @@ public:
 
     uint64_t intersectionCountPositiveOffset() const
     {
-        return commonPositiveOffset;
+        return commonForward();
     }
     uint64_t unionCount() const {
-        return totalA + totalB - commonPositiveOffset - commonNonPositiveOffset;
+        return totalA + totalB - commonForward() - commonBackward;
     }
     uint64_t correctedUnionCount() const
     {
         return unionCount() - onlyAShort - onlyBShort;
-    }
-    double jaccard() const
-    {
-        return double(intersectionCountPositiveOffset()) / double(unionCount());
     }
     double correctedJaccard() const
     {
@@ -360,17 +364,7 @@ public:
 
     uint64_t missingCount() const
     {
-        return onlyA + onlyB - onlyAShort - onlyBShort + commonNonPositiveOffset;
+        return onlyA + onlyB - onlyAShort - onlyBShort + commonBackward;
     }
 
-#if 0
-    void reverse()
-    {
-        swap(totalA, totalB);
-        swap(onlyA, onlyB);
-        swap(onlyAShort, onlyBShort);
-        offsetInMarkers = - offsetInMarkers;
-        offsetInBases = - offsetInBases;
-    }
-#endif
 };

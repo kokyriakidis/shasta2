@@ -150,6 +150,10 @@ private:
         bool fixedOnA,
         bool fixedOnB) const;
 
+    // The sequences are passed to theseus in the above order.
+    // This returns the SequenceInfo with a given index in that order.
+    const SequenceInfo& getSequenceInfo(uint64_t, bool& fixedOnA, bool& fixedOnB) const;
+
     void assemble();
 
 };

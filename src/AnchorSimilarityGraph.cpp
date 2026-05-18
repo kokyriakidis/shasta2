@@ -257,8 +257,8 @@ void AnchorSimilarityGraph::createEdges(
             // All good but we still have to check logP.
             AnchorPairInfo info;
             anchors.analyzeAnchorPair(anchorIdA, anchorId1, info);
-            SHASTA2_ASSERT(info.commonPositiveOffset == commonCount);
-            SHASTA2_ASSERT(info.commonNonPositiveOffset == 0);
+            SHASTA2_ASSERT(info.commonForward() == commonCount);
+            SHASTA2_ASSERT(info.commonBackward == 0);
             SHASTA2_ASSERT(info.offsetInBases < 1000000000);
             const uint64_t missingCount = info.missingCount();
             const double logP = a * double(commonCount) - b * double(missingCount);
@@ -1133,9 +1133,9 @@ void AnchorSimilarityGraph::ShortestPathTree::fillEdgeInformation(
 
         AnchorPairInfo info;
         anchors.analyzeAnchorPair(anchorId0, anchorId1, info);
-        SHASTA2_ASSERT(info.commonPositiveOffset > 0);
+        SHASTA2_ASSERT(info.commonForward() > 0);
 
-        edge.common = info.commonPositiveOffset;
+        edge.common = info.commonForward();
         edge.missing = info.missingCount();
         edge.offset = info.offsetInBases;
         edge.minOffset = info.minOffsetInBases;

@@ -23,8 +23,10 @@ namespace shasta2 {
         // The input sequences fixed on the right only, with their coverage.
         const vector< pair<vector<Base>, uint64_t> >& rightFixedSequences,
 
-        // The consensus sequence.
+        // The consensus sequence and its coverage.
         vector<Base>& consensus,
+        vector<AlignedBase>& alignedConsensus,
+        vector<uint64_t>& coverage,
 
         // The alignment is only computed if computeAlignment is true.
         vector< vector<AlignedBase> >& alignment,
