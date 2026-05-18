@@ -306,7 +306,8 @@ void Anchors::analyzeAnchorPair(
     // Joint loop over the MarkerIntervals of the two Anchors,
     // to count the common oriented reads with positive offset
     // and compute average offsets.
-    info.commonForward = 0;
+    info.commonForwardAdjacent = 0;
+    info.commonForwardNonAdjacent = 0;
     info.commonBackward = 0;
     info.minOffsetInBases = std::numeric_limits<uint64_t>::max();
     info.maxOffsetInBases = 0;
@@ -339,7 +340,12 @@ void Anchors::analyzeAnchorPair(
 
         // Update.
         if(ordinalA < ordinalB) {
-            ++info.commonForward;
+            const uint64_t journeyOffset = itB->positionInJourney - itA->positionInJourney;
+            if(journeyOffset == 1) {
+                ++info.commonForwardAdjacent;
+            } else {
+                ++info.commonForwardNonAdjacent;
+            }
             const uint64_t offsetInBases = positionB - positionA;
             sumBaseOffsets += offsetInBases;
             info.minOffsetInBases = min(info.minOffsetInBases, offsetInBases);
@@ -353,11 +359,11 @@ void Anchors::analyzeAnchorPair(
         ++itB;
 
     }
-    info.onlyA = info.totalA - info.commonForward - info.commonBackward;
-    info.onlyB = info.totalB - info.commonForward - info.commonBackward;
+    info.onlyA = info.totalA - info.commonForward() - info.commonBackward;
+    info.onlyB = info.totalB - info.commonForward() - info.commonBackward;
 
     // If there are no common reads with positive offset, this is all we can do.
-    if(info.commonForward == 0) {
+    if(info.commonForward() == 0) {
         info.offsetInBases = invalid<uint64_t>;
         info.onlyAShort = invalid<uint64_t>;
         info.onlyBShort = invalid<uint64_t>;
@@ -367,7 +373,7 @@ void Anchors::analyzeAnchorPair(
     }
 
     // Compute the estimated offsets.
-    info.offsetInBases = uint64_t(std::round(double(sumBaseOffsets) / double(info.commonForward)));
+    info.offsetInBases = uint64_t(std::round(double(sumBaseOffsets) / double(info.commonForward())));
 
 
 
@@ -462,7 +468,7 @@ void Anchors::writeHtml(
 
     // Common.
     html << "<tr><th class=left>Common, forward<td class=centered colspan=2>" <<
-        info.commonForward;
+        info.commonForward();
     html << "<tr><th class=left>Common, backward<td class=centered colspan=2>" <<
         info.commonBackward;
 
@@ -474,7 +480,7 @@ void Anchors::writeHtml(
         "<td class=centered>" << info.onlyA << "<td class=centered>" << info.onlyB;
 
     // The rest of the summary table can only be written if there are common reads with positive offset.
-    if(info.commonForward > 0) {
+    if(info.commonForward() > 0) {
 
         // Only, short.
         html <<
@@ -493,7 +499,7 @@ void Anchors::writeHtml(
 
 
     // Only write out the rest if there are common reads with positive offset.
-    if(info.commonForward == 0) {
+    if(info.commonForward() == 0) {
         return;
     }
 

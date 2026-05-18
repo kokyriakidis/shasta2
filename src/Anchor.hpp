@@ -308,7 +308,14 @@ public:
 
     // The number of common oriented reads with positive offset
     // (anchor B occurs after anchor A in the oriented read).
-    uint64_t commonForward = 0;
+    // Count separately the ones with journey offset equal to 1
+    // ("adjacent") and greater than 1 ("non-adjacent").
+    uint64_t commonForwardAdjacent = 0;
+    uint64_t commonForwardNonAdjacent = 0;
+    uint64_t commonForward() const
+    {
+        return commonForwardAdjacent + commonForwardNonAdjacent;
+    }
 
     // The number of common oriented reads with negative offset
     // (anchor B occurs before anchor A in the oriented read).
@@ -341,10 +348,10 @@ public:
 
     uint64_t intersectionCountPositiveOffset() const
     {
-        return commonForward;
+        return commonForward();
     }
     uint64_t unionCount() const {
-        return totalA + totalB - commonForward - commonBackward;
+        return totalA + totalB - commonForward() - commonBackward;
     }
     uint64_t correctedUnionCount() const
     {

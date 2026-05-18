@@ -388,9 +388,9 @@ AnchorGraph::AnchorGraph(
                 cout <<
                     anchorIdToString(anchorIdA) << " " <<
                     anchorIdToString(anchorIdB) << " " <<
-                    info.commonForward << endl;
+                    info.commonForward() << endl;
             }
-            if(info.commonForward < minCommonCount) {
+            if(info.commonForward() < minCommonCount) {
                 if(debug) {
                     cout << "Skipped due to low commonCount." << endl;
                 }
@@ -398,9 +398,9 @@ AnchorGraph::AnchorGraph(
                 continue;
             }
             const uint64_t missing = info.onlyA + info.onlyB - info.onlyAShort - info.onlyBShort;
-            edgeCandidate.logP = a * double(info.commonForward) - b * double(missing);
+            edgeCandidate.logP = a * double(info.commonForward()) - b * double(missing);
             if(debug) {
-                cout << "Common " << info.commonForward << ", missing " << missing << ", logP " << edgeCandidate.logP << endl;
+                cout << "Common " << info.commonForward() << ", missing " << missing << ", logP " << edgeCandidate.logP << endl;
             }
             if(edgeCandidate.logP < minLogP)  {
                 edgeCandidates.pop_back();
