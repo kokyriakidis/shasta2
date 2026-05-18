@@ -319,7 +319,7 @@ void LocalAssembly6::writeSequenceTable(
             "<td class=centered>" << (fixedOnB ? "&check;" : "") <<
             "<td class=centered>" << sequenceInfo.sequencePointer->size() <<
             "<td class=centered>" << sequenceInfo.orientedReadIds.size() <<
-            "<td class=left style='font-family:monospace'>";
+            "<td class=left style='font-family:monospace;white-space: nowrap'>";
         std::ranges::copy(*(sequenceInfo.sequencePointer), ostream_iterator<Base>(html));
     }
 }
@@ -362,26 +362,170 @@ void LocalAssembly6::assemble()
         fixedSequences.size() + leftFixedSequences.size() + rightFixedSequences.size());
 
 
-    html << "<h4>Alignment</h4>"
+
+    // Write the alignment.
+    html <<
+        "<h4>Alignment</h4>"
         "<table><tr>"
         "<th>Sequence<br>id"
+        "<th>Fixed<br>on A"
+        "<th>Fixed<br>on B"
+        "<th>Length"
+        "<th>Coverage"
         "<th class=left>Alignment";
 
-    uint64_t sequenceId = 0;
-    for(const vector<AlignedBase>& alignmentRow: alignment) {
+    for(uint64_t sequenceId=0; sequenceId<alignment.size(); sequenceId++) {
+        const vector<AlignedBase>& alignmentRow = alignment[sequenceId];
+        bool fixedOnA = false;
+        bool fixedOnB = false;
+        const SequenceInfo& sequenceInfo = getSequenceInfo(sequenceId, fixedOnA, fixedOnB);
         html <<
             "<tr>"
-            "<td class=centered>" << sequenceId++ <<
-            "<td style='font-family:monospace'>";
-        std::ranges::copy(alignmentRow, ostream_iterator<AlignedBase>(html));
+            "<td class=centered>" << sequenceInfo.id <<
+            "<td class=centered>" << (fixedOnA ? "&check;" : "") <<
+            "<td class=centered>" << (fixedOnB ? "&check;" : "") <<
+            "<td class=centered>" << sequenceInfo.sequencePointer->size() <<
+            "<td class=centered>" << sequenceInfo.orientedReadIds.size() <<
+            "<td class=left style='font-family:monospace;white-space:nowrap'>";
+        for(uint64_t position=0; position<alignmentRow.size(); position++) {
+            const AlignedBase base = alignmentRow[position];
+            const bool isMismatch = (base != alignedConsensus[position]);
+            if(isMismatch) {
+                html << "<span style='background-color:Pink'>";
+            }
+            html << base;
+            if(isMismatch) {
+                html << "</span>";
+            }
+        }
+    }
+
+
+
+    // Write a line with aligned consensus.
+    html <<
+        "<tr>"
+        "<th colspan=3 class=left>Aligned consensus"
+        "<td class=centered>" << sequence.size() <<
+        "<td>"
+        "<td class=left style='font-family:monospace;white-space:nowrap'>";
+    uint64_t nonAlignedPosition = 0;
+    for(uint64_t position=0; position<alignedConsensus.size(); position++) {
+        const AlignedBase base = alignedConsensus[position];
+        if(base.isGap()) {
+            html << "<span style='background-color:Pink'>-</span>";
+        } else {
+            const uint64_t c = coverage[nonAlignedPosition];
+            const bool isMaximumCoverage = (c == orientedReadInfos.size());
+            html << "<span title='";
+            html << "Position " << nonAlignedPosition << " coverage " << c;
+            html << "'";
+            if(not isMaximumCoverage) {
+                html << " style='background-color:Pink'";
+            }
+            html << ">";
+            html << base;
+            html << "</span>";
+             ++nonAlignedPosition;
+        }
+    }
+    SHASTA2_ASSERT(nonAlignedPosition == sequence.size());
+
+
+
+    // Write a line with aligned consensus coverage.
+    html <<
+        "<tr>"
+        "<th colspan=3 class=left>Coverage"
+        "<td>"
+        "<td>"
+        "<td class=left style='font-family:monospace;white-space:nowrap'>";
+    nonAlignedPosition = 0;
+    std::map<char, uint64_t> coverageLegend;
+    for(uint64_t position=0; position<alignedConsensus.size(); position++) {
+        if(alignedConsensus[position].isGap()) {
+            html << "<span style='background-color:Pink'>-</span>";
+        } else {
+            const uint64_t c = coverage[nonAlignedPosition];
+            const bool isMaximumCoverage = (c == orientedReadInfos.size());
+            if(not isMaximumCoverage) {
+                html << "<span style='background-color:Pink'>";
+            }
+            char coverageCharacter = ' ';
+            if(c < 10) {
+                coverageCharacter = char(c - '0');
+            } else if(c < 36) {
+                coverageCharacter = char(c - 10 + 'A');
+            } else {
+                coverageCharacter = '*';
+            }
+            html << coverageCharacter;
+            coverageLegend[coverageCharacter] = c;
+            if(not isMaximumCoverage) {
+                html << "</span>";
+            }
+            ++nonAlignedPosition;
+        }
+    }
+    SHASTA2_ASSERT(nonAlignedPosition == sequence.size());
+
+    html << "</table>";
+
+
+
+    // Write the consensus.
+    html <<
+        "<h4>Consensus</h4>"
+        "<table>"
+        "<tr><th class=left>Length<td class=left>" << sequence.size() <<
+        "<tr><th class=left>Sequence<td class=left style='font-family:monospace;white-space:nowrap'>";
+    for(uint64_t position=0; position<sequence.size(); position++) {
+        html << "<span title='Position " << position <<
+            " coverage " << coverage[position] << "'";
+        if(coverage[position] != orientedReadInfos.size()) {
+            html << " style='background-color:Pink'";
+        }
+        html << ">";
+        html << sequence[position];
+        html << "</span>";
+
+    }
+    html <<
+        "<tr><th class=left>Coverage<td class=left style='font-family:monospace;white-space:nowrap'>";
+    for(uint64_t position=0; position<sequence.size(); position++) {
+        const uint64_t c = coverage[position];
+        const bool isMaximumCoverage = (c == orientedReadInfos.size());
+        if(not isMaximumCoverage) {
+            html << "<span style='background-color:Pink'>";
+        }
+        char coverageCharacter = ' ';
+        if(c < 10) {
+            coverageCharacter = char(c - '0');
+        } else if(c < 36) {
+            coverageCharacter = char(c - 10 + 'A');
+        } else {
+            coverageCharacter = '*';
+        }
+        html << coverageCharacter;
+        if(not isMaximumCoverage) {
+            html << "</span>";
+        }
     }
     html << "</table>";
 
 
-    html << "<h4>Consensus</h4>"
-        "<div style='font-family:monospace'>";
-    std::ranges::copy(sequence, ostream_iterator<Base>(html));
-    html << "</div>";
+
+    // Write coverage legend.
+    html << "<h4>Coverage legend</h4>"
+        "<table><tr><td class=centered>Character<td class=centered>Coverage";
+    for(const auto& [character, coverage]: coverageLegend) {
+        html << "<tr><td class=centered>" << character <<
+            "<td class=centered>" << coverage;
+    }
+    html << "</table>";
+
+
+
 }
 
 
@@ -492,3 +636,32 @@ bool LocalAssembly6::checkOffsets(uint64_t offset0, uint64_t offset1)
 
 }
 
+
+
+// The sequences are passed to theseus in the above order.
+// This returns the SequenceInfo with a given index in that order.
+const LocalAssembly6::SequenceInfo& LocalAssembly6::getSequenceInfo(
+    uint64_t sequenceId,
+    bool& fixedOnA,
+    bool& fixedOnB) const
+{
+    if(sequenceId < fixedSequencesTable.size()) {
+        fixedOnA = true;
+        fixedOnB = true;
+        return fixedSequencesTable[sequenceId];
+    }
+    sequenceId -= fixedSequencesTable.size();
+    if(sequenceId < leftFixedSequencesTable.size()) {
+        fixedOnA = true;
+        fixedOnB = false;
+        return leftFixedSequencesTable[sequenceId];
+    }
+    sequenceId -= leftFixedSequencesTable.size();
+    if(sequenceId < rightFixedSequencesTable.size()) {
+        fixedOnA = false;
+        fixedOnB = true;
+        return rightFixedSequencesTable[sequenceId];
+    } else {
+        SHASTA2_ASSERT(0);
+    }
+}
