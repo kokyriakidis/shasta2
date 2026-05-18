@@ -8,6 +8,7 @@
 #include "Base.hpp"
 #include "CycleAvoider.hpp"
 #include "deduplicate.hpp"
+#include "DinaraKmerChecker.hpp"
 #include "ExternalAnchors.hpp"
 #include "extractKmer128.hpp"
 #include "findConvergingVertex.hpp"
@@ -44,6 +45,13 @@ PYBIND11_MODULE(shasta2, shasta2Module)
     class_<HashedKmerChecker>(shasta2Module, "HashedKmerChecker")
         .def(pybind11::init<uint64_t, double>())
         .def("isMarker", &HashedKmerChecker::isMarker);
+
+    // DinaraKmerChecker
+    class_<DinaraKmerChecker>(shasta2Module, "DinaraKmerChecker")
+        .def(pybind11::init<uint64_t, const std::vector<Kmer>&>(),
+            arg("k"),
+            arg("kmers"))
+        .def("isMarker", &DinaraKmerChecker::isMarker);
 
 	// Class Options.
     class_<Options>(shasta2Module, "Options")
@@ -101,6 +109,14 @@ PYBIND11_MODULE(shasta2, shasta2Module)
             &Assembler::createKmerChecker,
             arg("k"),
             arg("markerDensity"))
+        .def("createKmerCheckerFromKmers",
+            &Assembler::createKmerCheckerFromKmers,
+            arg("k"),
+            arg("kmers"))
+        .def("createKmerCheckerFromExternalAnchors",
+            &Assembler::createKmerCheckerFromExternalAnchors,
+            arg("k"),
+            arg("externalAnchorsName"))
 
          // Markers.
         .def("accessMarkers",

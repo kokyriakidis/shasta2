@@ -4,6 +4,8 @@
 #include "AnchorSimilarityGraph.hpp"
 #include "AssemblyGraph.hpp"
 #include "deduplicate.hpp"
+#include "DinaraKmerChecker.hpp"
+#include "ExternalAnchors.hpp"
 #include "Journeys.hpp"
 #include "KmerCheckerFactory.hpp"
 #include "Markers.hpp"
@@ -79,7 +81,14 @@ void Assembler::assemble(
         options.threadCount);
     createReadSummaries();
 
-    createKmerChecker(options.k, options.markerDensity);
+    if(options.useDinaraKmerChecker) {
+        if(options.externalAnchorsName.empty()) {
+            throw runtime_error("--use-dinara-kmer-checker requires --external-anchors-name.");
+        }
+        createKmerCheckerFromExternalAnchors(options.k, options.externalAnchorsName);
+    } else {
+        createKmerChecker(options.k, options.markerDensity);
+    }
     createMarkers(options.threadCount);
 
     findPalindromicReads();
@@ -122,6 +131,58 @@ void Assembler::createKmerChecker(
     kmerChecker = KmerCheckerFactory::createNew(
         k,
         markerDensity);
+}
+
+
+
+void Assembler::createKmerCheckerFromKmers(
+    uint64_t k,
+    const vector<Kmer>& kmers)
+{
+    assemblerInfo->k = k;
+    assemblerInfo->markerDensity = 0.;
+    kmerChecker = make_shared<DinaraKmerChecker>(k, kmers);
+}
+
+
+
+void Assembler::createKmerCheckerFromExternalAnchors(
+    uint64_t k,
+    const string& externalAnchorsName)
+{
+    // Access the ExternalAnchors.
+    SHASTA2_ASSERT(not externalAnchorsName.empty());
+    if(externalAnchorsName[0] != '/') {
+        throw runtime_error("--external-anchors-name must specify an absolute path.");
+    }
+    const ExternalAnchors externalAnchors(externalAnchorsName, ExternalAnchors::AccessExisting());
+    cout << "Reading external anchors for DinaraKmerChecker from " << externalAnchorsName << endl;
+    cout << "Found " << externalAnchors.data.size() << " external anchors." << endl;
+
+    // Extract the k-mer at each anchor position.
+    // We only need one oriented read per anchor since all oriented reads
+    // in an anchor share the same k-mer.
+    vector<Kmer> kmers;
+    for(uint64_t i = 0; i < externalAnchors.data.size(); i++) {
+        const auto externalAnchor = externalAnchors.data[i];
+        if(externalAnchor.size() == 0) {
+            continue;
+        }
+        const ExternalAnchors::OrientedRead& orientedRead = externalAnchor[0];
+        try {
+            const Kmer kmer = reads().getKmer(k, orientedRead.orientedReadId, orientedRead.position);
+            kmers.push_back(kmer);
+        } catch(const std::exception&) {
+            // Skip anchors where the k-mer can't be extracted
+            // (e.g. position too close to end of read).
+        }
+    }
+
+    cout << "Extracted " << kmers.size() << " k-mers from external anchors." << endl;
+
+    assemblerInfo->k = k;
+    assemblerInfo->markerDensity = 0.;
+    kmerChecker = make_shared<DinaraKmerChecker>(k, kmers);
 }
 
 
