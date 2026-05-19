@@ -34,6 +34,7 @@ ReadFollower::ReadFollower(const AssemblyGraph& assemblyGraph) :
             " has " << num_vertices(searchGraphs[direction]) <<
             " vertices and " << num_edges(searchGraphs[direction]) << " edges." << endl;
     }
+    searchGraphs[0].writeGraphviz(assemblyGraph, "Initial");
 
     // Prune.
     for(uint64_t direction=0; direction<2; direction++) {
@@ -42,7 +43,7 @@ ReadFollower::ReadFollower(const AssemblyGraph& assemblyGraph) :
     searchGraphs[0].writeGraphviz(assemblyGraph, "Pruned");
 
     for(uint64_t direction=0; direction<2; direction++) {
-        cout << "After pruning, the read following graph for direction " << direction <<
+        cout << "After pruning, the read following search graph for direction " << direction <<
             " has " << num_vertices(searchGraphs[direction]) <<
             " vertices and " << num_edges(searchGraphs[direction]) << " edges." << endl;
     }
@@ -944,6 +945,8 @@ GraphEdge::DirectConnectionType GraphEdge::directConnectionType() const
 // and store them in the Graph.
 void ReadFollower::findShortestPaths()
 {
+    const bool debug = false;
+
     // Add edges.
     vector<Segment> path;
     BGL_FORALL_VERTICES(v0, graph, Graph) {
@@ -951,10 +954,16 @@ void ReadFollower::findShortestPaths()
 
         // Loop for shortest paths in both directions.
         for(uint64_t direction=0; direction<2; direction++) {
+            if(debug) {
+                cout << "Working on " << assemblyGraph[segment0].id << " direction " << direction << endl;
+            }
             findShortestPath(segment0, direction, path);
 
             // Discard a trivial path.
             if(path.size() < 2) {
+                if(debug) {
+                    cout << "Trivial path of size " << path.size() << endl;
+                }
                 continue;
             }
 
@@ -964,6 +973,10 @@ void ReadFollower::findShortestPaths()
                 SHASTA2_ASSERT(s0 == segment0);
             } else {
                 SHASTA2_ASSERT(s1 == segment0);
+            }
+            if(debug) {
+                cout << "Found a shortest path using direction " << direction <<
+                    ":" << assemblyGraph[s0].id << " " << assemblyGraph[s1].id << endl;
             }
 
             const Graph::vertex_descriptor u0 = graph.vertexMap.at(s0);
