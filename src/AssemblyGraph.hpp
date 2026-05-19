@@ -279,6 +279,8 @@ public:
     void removeLowN50Components();
 
 
+    void connectDanglingSegments();
+
 
 public:
 
