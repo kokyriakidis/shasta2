@@ -95,7 +95,8 @@ uint64_t SuperbubbleChain::phase1(
             }
 
             // Do the likelihood ratio test (G test).
-            // The two final bool parameters request that all hypotheses be considered.
+            // The two final bool parameters request that only hypotheses
+            // that correspond to permutations be considered.
             const GTest gTest(
                 tangleMatrix.tangleMatrix,
                 assemblyGraph.options.detangleEpsilon,
