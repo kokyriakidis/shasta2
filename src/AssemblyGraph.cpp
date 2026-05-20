@@ -161,7 +161,7 @@ void AssemblyGraph::simplifyAndAssemble()
     compress();
     writeIntermediateStageIfRequested("B");
 
-    // Phase SuperbubbleChains, considering all hypotheses.
+    // Phase SuperbubbleChains.
     phaseSuperbubbleChains();
     writeIntermediateStageIfRequested("C");
 
@@ -185,6 +185,13 @@ void AssemblyGraph::simplifyAndAssemble()
     // Connect dangling segments.
     connectDanglingSegments();
     writeIntermediateStageIfRequested("I");
+
+    // A final round of phasing.More opportunities for phasing
+    // may have emerged.
+    phaseSuperbubbleChains();
+    writeIntermediateStageIfRequested("J");
+
+
 
     // Sequence assembly.
     assembleAll();
@@ -2748,7 +2755,7 @@ void AssemblyGraph::connectDanglingSegments()
 {
     // EXPOSE WHEN CODE STABILIZES.
     const uint64_t minLength = 50000;
-    const uint64_t minReadCount = 2;
+    const uint64_t minReadCount = 1;
 
     AssemblyGraph& assemblyGraph = *this;
     const bool debug = true;
