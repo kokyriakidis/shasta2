@@ -2923,3 +2923,90 @@ void AssemblyGraph::connectDanglingSegments()
 
     compress();
 }
+
+
+
+// Simple connection of two segments (edges) without using
+// the RestrictedAnchorGraph.
+void AssemblyGraph::simpleConnect(edge_descriptor e0, edge_descriptor e1)
+{
+    AssemblyGraph& assemblyGraph = *this;
+
+    // Access the target vertex of e0 and the source vertex of e1.
+    const vertex_descriptor v0 = target(e0, assemblyGraph);
+    const vertex_descriptor v1 = source(e1, assemblyGraph);
+
+    // If the two vertices are the same, e0 and e1 are already connected,
+    // and we don't have to do anything.
+    if(v0 == v1) {
+        return;
+    }
+
+    // Get the corresponding AnchorIds.
+    const AnchorId anchorId0 = assemblyGraph[v0].anchorId;
+    const AnchorId anchorId1 = assemblyGraph[v1].anchorId;
+
+    // If the anchorIds are the same, connect v0 and v1 using an empty
+    // AssemblyGraphEdge.
+    if(anchorId0 == anchorId1) {
+        add_edge(v0, v1, AssemblyGraphEdge(assemblyGraph.nextEdgeId++), assemblyGraph);
+        return;
+    }
+
+    // Otherwise, create a new AssemblyGraphEdge consisting of a single
+    // AssemblyGraphEdgeStep, using the common reads between the last
+    // step of e0 and the first step of e1.
+    vector<OrientedReadId> orientedReadIds;
+    findOrientedReadIdsForSimpleConnect(e0, e1, orientedReadIds);
+    SHASTA2_ASSERT(not orientedReadIds.empty());
+    const auto [eNew, ignore] = add_edge(v0, v1, AssemblyGraphEdge(assemblyGraph.nextEdgeId++), assemblyGraph);
+    AssemblyGraphEdge& edgeNew = assemblyGraph[eNew];
+    AnchorPair anchorPair;
+    anchorPair.anchorIdA = anchorId0;
+    anchorPair.anchorIdB = anchorId1;
+    anchorPair.orientedReadIds = orientedReadIds;
+    const uint32_t offset = anchorPair.getAverageOffset(anchors);
+    edgeNew.push_back(AssemblyGraphEdgeStep(anchorPair, offset));
+
+}
+
+
+
+bool AssemblyGraph::canSimpleConnect(edge_descriptor e0, edge_descriptor e1)
+{
+    vector<OrientedReadId> orientedReadIds;
+    findOrientedReadIdsForSimpleConnect(e0, e1, orientedReadIds);
+    return not orientedReadIds.empty();
+}
+
+
+
+void AssemblyGraph::findOrientedReadIdsForSimpleConnect(
+    edge_descriptor e0,
+    edge_descriptor e1,
+    vector<OrientedReadId>& orientedReadIds) const
+{
+    const AssemblyGraph& assemblyGraph = *this;
+    orientedReadIds.clear();
+
+    // Access the two edges.
+    const AssemblyGraphEdge& edge0 = assemblyGraph[e0];
+    const AssemblyGraphEdge& edge1 = assemblyGraph[e1];
+
+    if(edge0.empty() or edge1.empty()) {
+        return;
+    }
+
+    // Access the last step of e0 and the first step of e1.
+    const AssemblyGraphEdgeStep& step0 = edge0.back();
+    const AssemblyGraphEdgeStep& step1 = edge1.back();
+
+    const AnchorPair& anchorPair0 = step0.anchorPair;
+    const AnchorPair& anchorPair1 = step1.anchorPair;
+
+    // Find common oriented reads between step0 and step1.
+    std::ranges::set_intersection(
+        anchorPair0.orientedReadIds,
+        anchorPair1.orientedReadIds,
+        back_inserter(orientedReadIds));
+}

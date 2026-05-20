@@ -355,6 +355,12 @@ public:
     void readFollowing();
 
 
+    // Simple connection of two segments (edges) without using
+    // the RestrictedAnchorGraph.
+    void simpleConnect(edge_descriptor, edge_descriptor);
+    bool canSimpleConnect(edge_descriptor, edge_descriptor);
+    void findOrientedReadIdsForSimpleConnect(edge_descriptor, edge_descriptor, vector<OrientedReadId>&) const;
+
 
     // Output.
     void write(const string& stage);
