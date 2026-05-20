@@ -2999,7 +2999,7 @@ void AssemblyGraph::findOrientedReadIdsForSimpleConnect(
 
     // Access the last step of e0 and the first step of e1.
     const AssemblyGraphEdgeStep& step0 = edge0.back();
-    const AssemblyGraphEdgeStep& step1 = edge1.back();
+    const AssemblyGraphEdgeStep& step1 = edge1.front();
 
     const AnchorPair& anchorPair0 = step0.anchorPair;
     const AnchorPair& anchorPair1 = step1.anchorPair;
