@@ -179,11 +179,12 @@ void AssemblyGraph::simplifyAndAssemble()
     removeIsolatedVertices();
     removeLowN50Components();
     writeIntermediateStageIfRequested("G");
-
     compress();
     writeIntermediateStageIfRequested("H");
 
-
+    // Connect dangling segments.
+    connectDanglingSegments();
+    writeIntermediateStageIfRequested("I");
 
     // Sequence assembly.
     assembleAll();
