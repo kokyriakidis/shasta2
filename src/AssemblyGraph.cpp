@@ -494,7 +494,6 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
                 anchorPair.anchorIdA,
                 anchorPair.anchorIdB,
                 html,
-                false,
                 orientedReadIds);
             step.sequence = localAssembly.sequence;
         }

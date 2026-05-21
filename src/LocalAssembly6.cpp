@@ -20,13 +20,11 @@ LocalAssembly6::LocalAssembly6(
     AnchorId anchorIdA,
     AnchorId anchorIdB,
     ostream& html,
-    bool debug,
     const vector<OrientedReadId>& orientedReadIds) :
     anchors(anchors),
     anchorIdA(anchorIdA),
     anchorIdB(anchorIdB),
-    html(html),
-    debug(debug)
+    html(html)
 {
     if(html) {
         html << "<h3>Local assembly between " <<

@@ -882,9 +882,6 @@ void Assembler::exploreSegmentStep(
     const bool stepIdStringIsPresent = HttpServer::getParameterValue(request, "stepId", stepIdString);
     boost::trim(stepIdString);
 
-    string debugString;
-    const bool debug = getParameterValue(request, "debug", debugString);
-
 
     // Start the form.
     html << "<h2>Assembly graph segment step</h2><form><table>";
@@ -915,10 +912,6 @@ void Assembler::exploreSegmentStep(
         html << " value='" << stepIdString + "'";
     }
     html << ">";
-
-    html <<
-        "<tr><th>Show debug information<td class=centered><input type=checkbox name=debug" <<
-        (debug ? " checked" : "") << ">";
 
     // End the form.
     html <<
@@ -1012,7 +1005,6 @@ void Assembler::exploreSegmentStep(
         anchorPair.anchorIdA,
         anchorPair.anchorIdB,
         html,
-        debug,
         orientedReadIds);
     return;
 

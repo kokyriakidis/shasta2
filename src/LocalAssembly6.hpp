@@ -35,7 +35,6 @@ public:
         AnchorId anchorIdA,
         AnchorId anchorIdB,
         ostream& html,
-        bool debug,
         const vector<OrientedReadId>& orientedReadIds);
 
     // Assembled sequence and its coverage.
@@ -47,7 +46,6 @@ private:
     AnchorId anchorIdA;     // Left Anchor.
     AnchorId anchorIdB;     // Right Anchor.
     ostream& html;          // Pass ostream(0) ti suppress html output.
-    bool debug;
 
 
 
