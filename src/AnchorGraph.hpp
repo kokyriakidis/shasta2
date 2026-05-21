@@ -33,7 +33,6 @@ namespace shasta2 {
         AnchorGraphEdge>;
 
     class Anchors;
-    class AnchorSimilarityGraph;
     class Journeys;
     class ReadLengthDistribution;
 }
@@ -84,10 +83,6 @@ public:
     // sufficiently similar.
     class UseSimilarity {};
     AnchorGraph(const Anchors&, const Journeys&, uint64_t minEdgeCoverage, const UseSimilarity&);
-
-    // Constructor from an AnchorSimilarityGraph.
-    AnchorGraph(const Anchors&, const AnchorSimilarityGraph&);
-
 
     // This uses read following in the complete AnchorGraph
     // to create the AnchorGraph to be used for assembly.

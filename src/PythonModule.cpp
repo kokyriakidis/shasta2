@@ -154,16 +154,6 @@ PYBIND11_MODULE(shasta2, shasta2Module)
       .def("createAnchorGraphFromAnchorSimilarityGraph",
           &Assembler::createAnchorGraphFromAnchorSimilarityGraph)
 
-      // AnchorSimilarityGraph.
-      .def("createAnchorSimilarityGraph",
-          &Assembler::createAnchorSimilarityGraph)
-      .def("accessAnchorSimilarityGraph",
-          &Assembler::accessAnchorSimilarityGraph)
-      .def("anchorSimilarityGraphCreateShortestPathTree",
-          &Assembler::anchorSimilarityGraphCreateShortestPathTree)
-      .def("anchorSimilarityGraphComputeOptimalPath",
-          &Assembler::anchorSimilarityGraphComputeOptimalPath)
-
       .def("readFollowing",
           &Assembler::readFollowing)
 

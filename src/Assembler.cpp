@@ -1,7 +1,6 @@
 #include "Assembler.hpp"
 #include "Anchor.hpp"
 #include "AnchorGraph.hpp"
-#include "AnchorSimilarityGraph.hpp"
 #include "AssemblyGraph.hpp"
 #include "deduplicate.hpp"
 #include "Journeys.hpp"
@@ -271,25 +270,6 @@ void Assembler::createCompleteAnchorGraph()
 
 
 
-void Assembler::createAnchorSimilarityGraph()
-{
-    const AnchorGraph& completeAnchorGraph = *completeAnchorGraphPointer;
-
-    anchorSimilarityGraphPointer = make_shared<AnchorSimilarityGraph>(
-        anchors(), completeAnchorGraph);
-    anchorSimilarityGraphPointer->checkStrandInvariant();
-    anchorSimilarityGraphPointer->save("AnchorSimilarityGraph");
-}
-
-
-
-void Assembler::createAnchorGraphFromAnchorSimilarityGraph()
-{
-    anchorGraphPointer = make_shared<AnchorGraph>(anchors(), *anchorSimilarityGraphPointer);
-}
-
-
-
 // This uses read following in the complete AnchorGraph
 // to create the AnchorGraph to be used for assembly.
 // This is meant to be used with strict anchor generation,
@@ -347,30 +327,6 @@ void Assembler::accessCompleteAnchorGraph()
 {
     const MappedMemoryOwner& mappedMemoryOwner = *this;
     completeAnchorGraphPointer = make_shared<AnchorGraph>(mappedMemoryOwner, "CompleteAnchorGraph");
-}
-
-
-
-void Assembler::accessAnchorSimilarityGraph()
-{
-    const MappedMemoryOwner& mappedMemoryOwner = *this;
-    anchorSimilarityGraphPointer = make_shared<AnchorSimilarityGraph>(mappedMemoryOwner, "AnchorSimilarityGraph");
-    anchorSimilarityGraphPointer->checkStrandInvariant();
-}
-
-
-
-void Assembler::anchorSimilarityGraphCreateShortestPathTree(AnchorId anchorId) const
-{
-    anchorSimilarityGraphPointer->createShortestPathTree(anchorId, anchors());
-}
-
-
-
-void Assembler::anchorSimilarityGraphComputeOptimalPath(uint64_t componentId) const
-{
-    vector<AnchorId> path;
-    anchorSimilarityGraphPointer->computeOptimalPath(anchors(), componentId, path);
 }
 
 
