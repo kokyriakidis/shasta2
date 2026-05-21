@@ -413,16 +413,12 @@ void LocalAssembly6::assemble()
     for(uint64_t position=0; position<alignedConsensus.size(); position++) {
         const AlignedBase base = alignedConsensus[position];
         if(base.isGap()) {
-            html << "<span style='background-color:Pink'>-</span>";
+            html << "-";
         } else {
             const uint64_t c = coverage[nonAlignedPosition];
-            const bool isMaximumCoverage = (c == orientedReadInfos.size());
             html << "<span title='";
             html << "Position " << nonAlignedPosition << " coverage " << c;
             html << "'";
-            if(not isMaximumCoverage) {
-                html << " style='background-color:Pink'";
-            }
             html << ">";
             html << base;
             html << "</span>";
@@ -444,13 +440,9 @@ void LocalAssembly6::assemble()
     std::map<char, uint64_t> coverageLegend;
     for(uint64_t position=0; position<alignedConsensus.size(); position++) {
         if(alignedConsensus[position].isGap()) {
-            html << "<span style='background-color:Pink'>-</span>";
+            html << "-";
         } else {
             const uint64_t c = coverage[nonAlignedPosition];
-            const bool isMaximumCoverage = (c == orientedReadInfos.size());
-            if(not isMaximumCoverage) {
-                html << "<span style='background-color:Pink'>";
-            }
             char coverageCharacter = ' ';
             if(c < 10) {
                 coverageCharacter = char(c - '0');
@@ -461,9 +453,6 @@ void LocalAssembly6::assemble()
             }
             html << coverageCharacter;
             coverageLegend[coverageCharacter] = c;
-            if(not isMaximumCoverage) {
-                html << "</span>";
-            }
             ++nonAlignedPosition;
         }
     }
@@ -482,9 +471,6 @@ void LocalAssembly6::assemble()
     for(uint64_t position=0; position<sequence.size(); position++) {
         html << "<span title='Position " << position <<
             " coverage " << coverage[position] << "'";
-        if(coverage[position] != orientedReadInfos.size()) {
-            html << " style='background-color:Pink'";
-        }
         html << ">";
         html << sequence[position];
         html << "</span>";
@@ -494,10 +480,6 @@ void LocalAssembly6::assemble()
         "<tr><th class=left>Coverage<td class=left style='font-family:monospace;white-space:nowrap'>";
     for(uint64_t position=0; position<sequence.size(); position++) {
         const uint64_t c = coverage[position];
-        const bool isMaximumCoverage = (c == orientedReadInfos.size());
-        if(not isMaximumCoverage) {
-            html << "<span style='background-color:Pink'>";
-        }
         char coverageCharacter = ' ';
         if(c < 10) {
             coverageCharacter = char(c - '0');
@@ -507,9 +489,6 @@ void LocalAssembly6::assemble()
             coverageCharacter = '*';
         }
         html << coverageCharacter;
-        if(not isMaximumCoverage) {
-            html << "</span>";
-        }
     }
     html << "</table>";
 
