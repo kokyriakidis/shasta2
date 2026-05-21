@@ -1136,7 +1136,7 @@ void Anchors::constructThreadFunctionPass2(uint64_t /* threadId */)
             // Reverse complement the usableMarkerInfos, then
             // generate the second anchor in the pair.
             for(MarkerInfo& markerInfo: usableMarkerInfos) {
-                markerInfo = markerInfo.reverseComplement(markers);
+                markerInfo = markerInfo.reverseComplement(reads, markers);
             }
             const auto& anchorMarkerInfos1 = anchorMarkerInfos[anchorId + 1];
             SHASTA2_ASSERT(anchorMarkerInfos1.size() == usableMarkerInfos.size());
