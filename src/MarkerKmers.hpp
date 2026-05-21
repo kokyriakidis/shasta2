@@ -95,6 +95,7 @@ public:
 
     // Constructor arguments.
     uint64_t k;
+    uint64_t kHalf;
     const Reads& reads;
     const MemoryMapped::Vector<ReadSummary>* readSummariesPointer = 0;
     const Markers& markers;

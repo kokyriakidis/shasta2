@@ -27,6 +27,7 @@ MarkerKmers::MarkerKmers(
     MappedMemoryOwner(mappedMemoryOwner),
     MultithreadedObject<MarkerKmers>(*this),
     k(k),
+    kHalf(k/2),
     reads(reads),
     readSummariesPointer(&readSummaries),
     markers(markers)
@@ -86,6 +87,7 @@ MarkerKmers::MarkerKmers(
     MappedMemoryOwner(mappedMemoryOwner),
     MultithreadedObject<MarkerKmers>(*this),
     k(k),
+    kHalf(k/2),
     reads(reads),
     markers(markers)
 {
@@ -126,6 +128,7 @@ void MarkerKmers::gatherMarkersPass12(uint64_t pass)
 
             // Get the sequence for this read (without reverse complementing).
             const LongBaseSequenceView readSequence = reads.getRead(readId);
+            const uint32_t orientedReadBaseCount = uint32_t(readSequence.baseCount);
 
             // Get the two OrientedReadIds corresponding to this ReadId.
             const OrientedReadId orientedReadId0(readId, 0);
@@ -152,7 +155,7 @@ void MarkerKmers::gatherMarkersPass12(uint64_t pass)
                         markerInfos.incrementCountMultithreaded(bucketId);
                     } else {
                         // This marker occurs on orientedReadId0.
-                        MarkerInfo markerInfo(orientedReadId0, ordinal);
+                        MarkerInfo markerInfo(orientedReadId0, ordinal, position + uint32_t(kHalf));
                         markerInfos.storeMultithreaded(bucketId, markerInfo);
                     }
                 } else {
@@ -161,7 +164,10 @@ void MarkerKmers::gatherMarkersPass12(uint64_t pass)
                         markerInfos.incrementCountMultithreaded(bucketId);
                     } else {
                         // This marker occurs on orientedReadId1.
-                        MarkerInfo markerInfo(orientedReadId1, orientedReadMarkerCount - 1 - ordinal);
+                        MarkerInfo markerInfo(
+                            orientedReadId1,
+                            orientedReadMarkerCount - 1 - ordinal,
+                            orientedReadBaseCount - 1 - position - uint32_t(kHalf));
                         markerInfos.storeMultithreaded(bucketId, markerInfo);
                     }
                 }
