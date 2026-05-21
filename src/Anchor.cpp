@@ -59,7 +59,6 @@ Anchors::Anchors(
 {
     anchorMarkerInfos.accessExisting(largeDataName(baseName + "-AnchorMarkerInfos"), writeAccess);
     anchorInfos.accessExistingReadOnly(largeDataName(baseName + "-AnchorInfos"));
-    kmerToAnchorTable.accessExistingReadOnly(largeDataName(baseName + "-KmerToAnchorTable"));
 }
 
 
@@ -923,19 +922,15 @@ Anchors::Anchors(
             largeDataName(baseName + "-AnchorMarkerInfos"),
             largeDataPageSize);
     anchorInfos.createNew(largeDataName(baseName + "-AnchorInfos"), largeDataPageSize);
-    kmerToAnchorTable.createNew(largeDataName(baseName + "-KmerToAnchorTable"), largeDataPageSize);
-    kmerToAnchorTable.resize(markerKmerCount);
     AnchorId anchorId = 0;
     for(uint64_t kmerIndex=0; kmerIndex<markerKmerCount; kmerIndex++) {
         const uint64_t coverage = data.coverage[kmerIndex];
         if(coverage == 0) {
             // This k-mer does not generate any anchors.
-            kmerToAnchorTable[kmerIndex] = invalid<AnchorId>;
         } else {
             // This k-mer generates two anchors.
             anchorMarkerInfos.appendVector(coverage);
             anchorMarkerInfos.appendVector(coverage);
-            kmerToAnchorTable[kmerIndex] = anchorId;
             anchorInfos.push_back(AnchorInfo(kmerIndex));
             anchorInfos.push_back(AnchorInfo(kmerIndex));
             anchorId += 2;
@@ -1188,10 +1183,6 @@ Anchors::Anchors(
         largeDataPageSize);
     anchorInfos.createNew(largeDataName(baseName + "-AnchorInfos"), largeDataPageSize);
 
-    // Create the kmerToAnchorTable and fill it in with invalid<AnchorId>.
-    kmerToAnchorTable.createNew(largeDataName(baseName + "-KmerToAnchorTable"), largeDataPageSize);
-    kmerToAnchorTable.resize(markerKmers.size());
-    fill(kmerToAnchorTable.begin(), kmerToAnchorTable.end(), invalid<AnchorId>);
 
 
     // Loop over external anchors.
@@ -1287,5 +1278,4 @@ void Anchors::remove()
 {
     anchorMarkerInfos.remove();
     anchorInfos.remove();
-    kmerToAnchorTable.remove();
 }
