@@ -210,7 +210,6 @@ public:
     // AnchorGraph.
     shared_ptr<AnchorGraph> anchorGraphPointer;
     void createAnchorGraph(const Options&);
-    void createAnchorGraphFromAnchorSimilarityGraph();
     void accessAnchorGraph();
     void saveAnchorGraph();
     void anchorGraphTransitiveReduction(const Options&);
