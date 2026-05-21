@@ -71,7 +71,7 @@ private:
     void threadFunction3(uint64_t threadId);
     void threadFunction4(uint64_t threadId);
 
-    // Temporary storage of journeys with ordinals.
-    MemoryMapped::VectorOfVectors<pair<uint64_t, uint32_t>, uint64_t> journeysWithOrdinals;
+    // Temporary storage of journeys with positions.
+    MemoryMapped::VectorOfVectors<pair<uint64_t, uint32_t>, uint64_t> journeysWithPositions;
 
 };
