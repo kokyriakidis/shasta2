@@ -8,7 +8,6 @@
 
 namespace shasta2 {
     class MarkerInfo;
-    class MarkerInterval;
     class Markers;
     class Reads;
 }
@@ -30,21 +29,3 @@ public:
         const Markers&) const;
 };
 
-
-
-class shasta2::MarkerInterval {
-public:
-    OrientedReadId orientedReadId;
-    uint32_t ordinalA;
-    uint32_t ordinalB;
-
-    MarkerInterval(
-        OrientedReadId orientedReadId,
-        uint32_t ordinalA,
-        uint32_t ordinalB) :
-        orientedReadId(orientedReadId),
-        ordinalA(ordinalA),
-        ordinalB(ordinalB)
-    {}
-
-};
