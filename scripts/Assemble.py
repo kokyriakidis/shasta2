@@ -16,7 +16,7 @@ options = shasta2.Options()
 # Create the Assembler and access what we need.
 assembler = shasta2.Assembler()
 assembler.accessMarkers()
-assembler.accessMarkerKmers()
+# assembler.accessMarkerKmers()
 assembler.accessAnchors()
 assembler.accessJourneys()
 
