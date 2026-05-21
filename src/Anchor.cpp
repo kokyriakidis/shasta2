@@ -46,7 +46,6 @@ Anchors::Anchors(
     const Reads& reads,
     uint64_t k,
     const Markers& markers,
-    const MarkerKmers& markerKmers,
     bool writeAccess) :
     MultithreadedObject<Anchors>(*this),
     MappedMemoryOwner(mappedMemoryOwner),
@@ -54,8 +53,7 @@ Anchors::Anchors(
     reads(reads),
     k(k),
     kHalf(k/2),
-    markers(markers),
-    markerKmers(markerKmers)
+    markers(markers)
 {
     anchorMarkerInfos.accessExisting(largeDataName(baseName + "-AnchorMarkerInfos"), writeAccess);
     anchorInfos.accessExistingReadOnly(largeDataName(baseName + "-AnchorInfos"));
@@ -883,8 +881,7 @@ Anchors::Anchors(
     reads(reads),
     k(k),
     kHalf(k/2),
-    markers(markers),
-    markerKmers(markerKmers)
+    markers(markers)
 {
 
     performanceLog << timestamp << "Anchor creation begins." << endl;
@@ -896,6 +893,7 @@ Anchors::Anchors(
 
     // Store arguments so all threads can see them.
     ConstructData& data = constructData;
+    data.markerKmersPointer = &markerKmers;
     data.minAnchorCoverage = minAnchorCoverage;
     data.maxAnchorCoverage = maxAnchorCoverage;
     data.maxAnchorRepeatLength = maxAnchorRepeatLength;
@@ -962,6 +960,7 @@ void Anchors::constructThreadFunctionPass1(uint64_t /* threadId */)
 {
 
     ConstructData& data = constructData;
+    const MarkerKmers& markerKmers = *(data.markerKmersPointer);
     const uint64_t minAnchorCoverage = data.minAnchorCoverage;
     const uint64_t maxAnchorCoverage = data.maxAnchorCoverage;
     const vector<uint64_t> maxAnchorRepeatLength = data.maxAnchorRepeatLength;
@@ -1070,6 +1069,7 @@ void Anchors::constructThreadFunctionPass2(uint64_t /* threadId */)
 {
 
     ConstructData& data = constructData;
+    const MarkerKmers& markerKmers = *(data.markerKmersPointer);
     const uint64_t minAnchorCoverage = data.minAnchorCoverage;
     const uint64_t maxAnchorCoverage = data.maxAnchorCoverage;
 
@@ -1154,7 +1154,6 @@ Anchors::Anchors(
     const Reads& reads,
     uint64_t k,
     const Markers& markers,
-    const MarkerKmers& markerKmers,
     const string& externalAnchorsName) :
     MultithreadedObject<Anchors>(*this),
     MappedMemoryOwner(mappedMemoryOwner),
@@ -1162,8 +1161,7 @@ Anchors::Anchors(
     reads(reads),
     k(k),
     kHalf(k/2),
-    markers(markers),
-    markerKmers(markerKmers)
+    markers(markers)
 {
 
     // Access the ExternalAnchors.

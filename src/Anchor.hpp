@@ -133,7 +133,6 @@ public:
         const Reads& reads,
         uint64_t k,
         const Markers& markers,
-        const MarkerKmers&,
         const string& externalAnchorsName);
 
     // Constructor to accesses existing Anchors from binary data.
@@ -143,7 +142,6 @@ public:
         const Reads& reads,
         uint64_t k,
         const Markers& markers,
-        const MarkerKmers&,
         bool writeAccess);
 
     void remove();
@@ -206,7 +204,6 @@ public:
     const uint64_t k;
     const uint64_t kHalf;
     const Markers& markers;
-    const MarkerKmers& markerKmers;
 
 private:
 
@@ -246,6 +243,7 @@ private:
     // Data and functions used when constructing the Anchors.
     class ConstructData {
     public:
+        const MarkerKmers* markerKmersPointer = 0;
         uint64_t minAnchorCoverage;
         uint64_t maxAnchorCoverage;
         vector<uint64_t> maxAnchorRepeatLength;
