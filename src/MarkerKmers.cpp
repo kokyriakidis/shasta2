@@ -167,7 +167,7 @@ void MarkerKmers::gatherMarkersPass12(uint64_t pass)
                         MarkerInfo markerInfo(
                             orientedReadId1,
                             orientedReadMarkerCount - 1 - ordinal,
-                            orientedReadBaseCount - 1 - position - uint32_t(kHalf));
+                            orientedReadBaseCount - position - uint32_t(kHalf));
                         markerInfos.storeMultithreaded(bucketId, markerInfo);
                     }
                 }

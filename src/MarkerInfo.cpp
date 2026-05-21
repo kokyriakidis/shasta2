@@ -16,7 +16,7 @@ MarkerInfo MarkerInfo::reverseComplement(
 
     markerInfoRc.orientedReadId.flipStrand();
     markerInfoRc.ordinal = orientedReadMarkerCount - 1 - markerInfoRc.ordinal;
-    markerInfoRc.position = orientedReadBaseCount - 1 - markerInfoRc.position;
+    markerInfoRc.position = orientedReadBaseCount - markerInfoRc.position;
 
     return markerInfoRc;
 }

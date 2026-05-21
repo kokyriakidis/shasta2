@@ -127,7 +127,19 @@ void Anchors::check() const
 
     for(AnchorId anchorId=0; anchorId<size(); anchorId++) {
         const Anchor& anchor = anchors[anchorId];
+        // cout << "Checking " << anchorIdToString(anchorId) << endl;
         anchor.check();
+
+        // Check that the positions are consistent with the ordinals.
+        for(const AnchorMarkerInfo& anchorMarkerInfo: anchor) {
+            const OrientedReadId orientedReadId = anchorMarkerInfo.orientedReadId;
+            const uint32_t ordinal = anchorMarkerInfo.ordinal;
+            const uint32_t position = anchorMarkerInfo.position;
+
+            const auto orientedReadMarkers = markers[orientedReadId.getValue()];
+            // cout << orientedReadId << " " << position << " " << orientedReadMarkers[ordinal].position << endl;
+            SHASTA2_ASSERT(position == orientedReadMarkers[ordinal].position + kHalf);
+        }
     }
 }
 
@@ -137,6 +149,7 @@ void Anchor::check() const
 {
     const Anchor& anchor = *this;
 
+    // Check that the ReadIds are in strictly increasing order.
     for(uint64_t i=1; i<size(); i++) {
         SHASTA2_ASSERT(anchor[i-1].orientedReadId.getReadId() < anchor[i].orientedReadId.getReadId());
     }
@@ -950,6 +963,8 @@ Anchors::Anchors(
 
     cout << "Number of anchors per strand: " << anchorCount / 2 << endl;
     performanceLog << timestamp << "Anchor creation from marker kmers ends." << endl;
+
+    // check();
 
 }
 
