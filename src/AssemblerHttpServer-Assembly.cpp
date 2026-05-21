@@ -6,7 +6,6 @@
 #include "deduplicate.hpp"
 #include "findConvergingVertex.hpp"
 #include "GTest.hpp"
-#include "LocalAssembly4.hpp"
 #include "LocalAssembly6.hpp"
 #include "Markers.hpp"
 #include "RestrictedAnchorGraph.hpp"

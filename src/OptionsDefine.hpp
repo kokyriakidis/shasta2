@@ -190,13 +190,3 @@ SHASTA2_OPTION_DEFINE(
     uint64_t, readFollowingPathCountThreshold2, "--read-following-path-count-threshold2", 60,
     "Second path count threshold for read following.")
 
-
-
-// Local assembly.
-SHASTA2_OPTION_DEFINE(
-    uint64_t, abpoaMaxLength, "--abpoa-max-length", 1000,
-    "Maximum MSA alignment for abpoa. Switch to poasta above that. "
-    "This is currently ignored and poasta is used in all cases.")
-SHASTA2_OPTION_DEFINE(
-    uint64_t, localAssemblyMethod, "--local-assembly-method", 6,
-    "Local assembly method (4 or 6).")
