@@ -5,8 +5,8 @@
 #include "graphvizToHtml.hpp"
 #include "KmerChecker.hpp"
 #include "Markers.hpp"
-#include "MarkerKmerPair.hpp"
 #include "MarkerKmers.hpp"
+#include "Reads.hpp"
 #include "tmpDirectory.hpp"
 using namespace shasta2;
 
