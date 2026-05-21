@@ -1152,43 +1152,6 @@ void Anchors::constructThreadFunctionPass2(uint64_t /* threadId */)
 
 
 
-// Use the kmerToAnchorTable table to get the AnchorId corresponding to a given Kmer.
-// When using ExternalAnchors, this always returns invalid<AnchorId>.
-// This is only used in the http server.
-// It is not used in the standard assembly process.
-AnchorId Anchors::getAnchorIdFromKmer(const Kmer& kmer) const
-{
-    const Kmer kmerRc = kmer.reverseComplement(k);
-
-    if(kmer <= kmerRc) {
-
-        // kmer is canonical.
-
-        const uint64_t globalIndex = markerKmers.getGlobalIndex(kmer);
-        const uint64_t anchorId = kmerToAnchorTable[globalIndex];
-        if(anchorId == invalid<uint64_t>) {
-            return invalid<uint64_t>;
-        } else {
-            return anchorId;
-        }
-
-    } else {
-
-        // kmerRc is canonical.
-
-        const uint64_t globalIndex = markerKmers.getGlobalIndex(kmerRc);
-        const uint64_t anchorId = kmerToAnchorTable[globalIndex];
-        if(anchorId == invalid<uint64_t>) {
-            return invalid<uint64_t>;
-        } else {
-            return anchorId + 1;
-        }
-
-    }
-}
-
-
-
 // Constructor to read Anchors from ExternalAnchors.
 Anchors::Anchors(
     const string& baseName,

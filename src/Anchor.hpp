@@ -187,10 +187,6 @@ public:
     // When using ExternalAnchors, it is filled with invalid<AnchorId>.
     MemoryMapped::Vector<AnchorId> kmerToAnchorTable;
 
-    // Use the above table to get the AnchorId corresponding to a given Kmer.
-    // When using ExternalAnchors, this always returns invalid<AnchorId>.
-    AnchorId getAnchorIdFromKmer(const Kmer&) const;
-
     // Get the ordinal for the AnchorMarkerInfo corresponding to a
     // given AnchorId and OrientedReadId.
     // This asserts if the given AnchorId does not contain an AnchorMarkerInfo
