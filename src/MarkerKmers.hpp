@@ -111,8 +111,8 @@ private:
             const Kmer xKmer = markerKmers.getKmer(x);
             const Kmer yKmer = markerKmers.getKmer(y);
             return
-                tie(xKmer, x.orientedReadId, x.ordinal) <
-                tie(yKmer, y.orientedReadId, y.ordinal);
+                tie(xKmer, x.orientedReadId, x.position) <
+                tie(yKmer, y.orientedReadId, y.position);
         }
     private:
         const MarkerKmers& markerKmers;
