@@ -270,18 +270,6 @@ void Assembler::createCompleteAnchorGraph()
 
 
 
-// This uses read following in the complete AnchorGraph
-// to create the AnchorGraph to be used for assembly.
-// This is meant to be used with strict anchor generation,
-// where most anchors correspond to a single copy.
-void Assembler::readFollowing()
-{
-    const AnchorGraph& completeAnchorGraph = *completeAnchorGraphPointer;
-    anchorGraphPointer = make_shared<AnchorGraph>(anchors(), journeys(), completeAnchorGraph);
-    anchorGraphPointer->save("AnchorGraph");
-}
-
-
 
 void Assembler::createAssemblyGraph(const Options& options)
 {

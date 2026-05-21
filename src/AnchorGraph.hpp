@@ -84,16 +84,6 @@ public:
     class UseSimilarity {};
     AnchorGraph(const Anchors&, const Journeys&, uint64_t minEdgeCoverage, const UseSimilarity&);
 
-    // This uses read following in the complete AnchorGraph
-    // to create the AnchorGraph to be used for assembly.
-    // This is meant to be used with strict anchor generation,
-    // where most anchors correspond to a single copy.
-    AnchorGraph(
-        const Anchors&,
-        const Journeys&,
-        const AnchorGraph& completeAnchorGraph);
-
-    // Types and functions used by the above constructor.
 
     // A Subgraph of the AnchorGraph, created using a BFS starting
     // at anchorIdStart  and moving in the specified direction.
