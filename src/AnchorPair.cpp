@@ -69,7 +69,7 @@ AnchorPair::AnchorPair(
 
 
 
-// Get positions in journey, ordinals, and base positions
+// Get positions in journey and base positions
 // for each of the two reads and for each of the two anchors.
 // The positions returned are the midpoint of the markers
 // corresponding to anchorIdA and anchorIdB.
@@ -113,17 +113,11 @@ void AnchorPair::get(
         if(orientedReadId == *it) {
             ++it;
 
-            const auto orientedReadMarkers = anchors.markers[orientedReadId.getValue()];
-
             const uint32_t positionInJourneyA = itA->positionInJourney;
             const uint32_t positionInJourneyB = itB->positionInJourney;
             SHASTA2_ASSERT(positionInJourneyB >= positionInJourneyA);    // Allow degenerate AnchorPair witn anchorIdA==anchorIdB
-            const uint32_t ordinalA = itA->ordinal;
-            const uint32_t ordinalB = itB->ordinal;
-            const uint32_t positionA = orientedReadMarkers[ordinalA].position + kHalf;
-            const uint32_t positionB = orientedReadMarkers[ordinalB].position + kHalf;
-            SHASTA2_ASSERT(positionA == itA->position);
-            SHASTA2_ASSERT(positionB == itB->position);
+            const uint32_t positionA = itA->position;
+            const uint32_t positionB = itB->position;
 
             positions.push_back(make_pair(
                 Positions(positionInJourneyA, positionA),
