@@ -20,3 +20,12 @@ MarkerInfo MarkerInfo::reverseComplement(
 
     return markerInfoRc;
 }
+
+
+
+// Get the Kmer corresponding to this MarkerInfo.
+Kmer MarkerInfo::getKmer(uint64_t k, const Reads& reads) const
+{
+    // The MarkerInfo contains the mid position of the marker.
+    return reads.getKmer(k, orientedReadId, position - k/2);
+}

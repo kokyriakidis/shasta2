@@ -1,6 +1,7 @@
 #pragma once
 
 // Shasta.
+#include "Kmer.hpp"
 #include "ReadId.hpp"
 
 // Standard library.
@@ -38,5 +39,8 @@ public:
     MarkerInfo reverseComplement(
         const Reads&,
         const Markers&) const;
+
+    // Get the Kmer corresponding to this MarkerInfo.
+    Kmer getKmer(uint64_t k, const Reads&) const;
 };
 
