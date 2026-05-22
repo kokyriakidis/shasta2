@@ -179,6 +179,7 @@ void MarkerKmers::gatherMarkersPass12(uint64_t pass)
 
 
 
+#if 1
 // Get the Kmer corresponding to a given MarkerInfo.
 Kmer MarkerKmers::getKmer(const MarkerInfo& markerInfo) const
 {
@@ -214,6 +215,7 @@ Kmer MarkerKmers::getKmer(const MarkerInfo& markerInfo) const
         return kmer0.reverseComplement(k);
     }
 }
+#endif
 
 
 
@@ -248,11 +250,11 @@ void MarkerKmers::fillKmerInfosPass1(uint64_t /* threadId */)
             // The bucket is sorted by Kmer.
             // Find streaks with the same Kmer.
             for(uint64_t streakBegin=0; streakBegin<bucket.size(); /* Increment later */) {
-                const Kmer kmer = getKmer(bucket[streakBegin]);
+                const Kmer kmer = bucket[streakBegin].getKmer(k, reads);
 
                 uint64_t streakEnd = streakBegin + 1;
                 for(; streakEnd<bucket.size(); streakEnd++) {
-                    if(getKmer(bucket[streakEnd]) != kmer) {
+                    if(bucket[streakEnd].getKmer(k, reads) != kmer) {
                         break;
                     }
                 }
