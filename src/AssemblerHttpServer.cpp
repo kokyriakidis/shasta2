@@ -36,8 +36,6 @@ void Assembler::fillServerFunctionTable()
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreReadSequence);
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreReadMarkers);
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreMarkerKmer);
-    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreMarkerKmerAnalysisWithMarkerOffset);
-    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreMarkerKmerAnalysisWithBaseOffset);
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreFindMarkerKmers);
 
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreAnchor);
@@ -211,8 +209,6 @@ void Assembler::writeNavigation(ostream& html) const
     writeNavigation(html, "Markers", {
         {"Markers", "exploreReadMarkers"},
         {"Marker k-mer", "exploreMarkerKmer"},
-        {"Marker k-mer analysis (marker offset)", "exploreMarkerKmerAnalysisWithMarkerOffset"},
-        {"Marker k-mer analysis (base offset)", "exploreMarkerKmerAnalysisWithBaseOffset"},
         {"Find marker k-mers in sequence", "exploreFindMarkerKmers"}
         });
 
