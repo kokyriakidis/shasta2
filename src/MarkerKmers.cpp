@@ -288,11 +288,11 @@ void MarkerKmers::fillKmerInfosPass2(uint64_t /* threadId */)
             // The bucket is sorted by Kmer.
             // Find streaks with the same Kmer.
             for(uint64_t streakBegin=0; streakBegin<markerInfoBucket.size(); /* Increment later */) {
-                const Kmer kmer = getKmer(markerInfoBucket[streakBegin]);
+                const Kmer kmer = markerInfoBucket[streakBegin].getKmer(k, reads);
 
                 uint64_t streakEnd = streakBegin + 1;
                 for(; streakEnd<markerInfoBucket.size(); streakEnd++) {
-                    if(getKmer(markerInfoBucket[streakEnd]) != kmer) {
+                    if(markerInfoBucket[streakEnd].getKmer(k, reads) != kmer) {
                         break;
                     }
                 }
