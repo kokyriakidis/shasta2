@@ -243,7 +243,6 @@ void AnchorPair::createChildren(
 
 uint32_t AnchorPair::getAverageOffset(const Anchors& anchors) const
 {
-    const uint32_t kHalf = uint32_t(anchors.markers.k / 2);
 
     uint64_t sumBaseOffset = 0;
 
@@ -279,21 +278,17 @@ uint32_t AnchorPair::getAverageOffset(const Anchors& anchors) const
         if(orientedReadId == *it) {
             ++it;
 
-            const auto orientedReadMarkers = anchors.markers[orientedReadId.getValue()];
-
-            const uint32_t ordinalA = itA->ordinal;
-            const uint32_t ordinalB = itB->ordinal;
-            if(ordinalB < ordinalA) {       // Degenerate AnchorPair with AnchorIdA==AnchorIdB is ok.
+            const uint32_t positionA = itA->position;
+            const uint32_t positionB = itB->position;
+            if(positionB < positionA) {       // Degenerate AnchorPair with AnchorIdA==AnchorIdB is ok.
                 throw runtime_error(
                     "Order violation at anchor pair " +
                     anchorIdToString(anchorIdA) + " " +
                     anchorIdToString(anchorIdB) + " " +
                     orientedReadId.getString() + " ordinals " +
-                    to_string(ordinalA) + " " +
-                    to_string(ordinalB));
+                    to_string(positionA) + " " +
+                    to_string(positionB));
             }
-            const uint32_t positionA = orientedReadMarkers[ordinalA].position + kHalf;
-            const uint32_t positionB = orientedReadMarkers[ordinalB].position + kHalf;
             SHASTA2_ASSERT(positionB >= positionA);      // Degenerate AnchorPair with AnchorIdA==AnchorIdB is ok.
 
             const uint32_t offset = positionB - positionA;
