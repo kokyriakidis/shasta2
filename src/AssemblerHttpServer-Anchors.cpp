@@ -225,13 +225,12 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
 
     // Write the marker intervals of this Anchor.
     html <<
-        "<h2>Marker intervals</h2>"
+        "<h2>Marker information</h2>"
         "<table>"
         "<tr>"
         "<th>Index"
         "<th>Oriented<br>read<br>id"
         "<th>Position<br>in<br>journey"
-        "<th>Ordinal"
         "<th>Position"
         "<th>Previous<br>anchor<br>in journey"
         "<th>Next<br>anchor<br>in journey";
@@ -242,10 +241,7 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
         const OrientedReadId orientedReadId = markerInfo.orientedReadId;
         const auto journey = journeys()[orientedReadId];
 
-        const uint32_t ordinal = markerInfo.ordinal;
-
-        const auto orientedReadMarkers = markers()[orientedReadId.getValue()];
-        const uint32_t position = orientedReadMarkers[ordinal].position;
+        const uint32_t position = markerInfo.position;
 
         AnchorId previousAnchorInJourney = invalid<AnchorId>;
         if(markerInfo.positionInJourney > 0) {
@@ -275,7 +271,6 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
 
        html <<
             "<td class=centered>" << markerInfo.positionInJourney <<
-            "<td class=centered>" << ordinal <<
             "<td class=centered>" << position;
 
        // Previous anchor in journey.
