@@ -78,7 +78,6 @@ void AnchorPair::get(
     vector< pair<Positions, Positions> >& positions) const
 {
 
-    const uint32_t kHalf = uint32_t(anchors.markers.k / 2);
     positions.clear();
 
     const Anchor anchorA = anchors[anchorIdA];
@@ -132,27 +131,6 @@ void AnchorPair::get(
 
 
 
-// Remove from the AnchorPair OrientedReadIds that have negative offsets.
-void AnchorPair::removeNegativeOffsets(const Anchors& anchors)
-{
-    vector< pair<uint32_t, uint32_t> > ordinals;
-    getOrdinals(anchors, ordinals);
-    SHASTA2_ASSERT(ordinals.size() == orientedReadIds.size());
-
-    vector<OrientedReadId> newOrientedReadIds;
-    for(uint64_t i=0; i<orientedReadIds.size(); i++) {
-        const auto& p = ordinals[i];
-        if(p.second >= p.first) {
-            newOrientedReadIds.push_back(orientedReadIds[i]);
-        }
-    }
-
-    orientedReadIds.swap(newOrientedReadIds);
-}
-
-
-
-
 // Same as the above, but also returns compute the sequences.
 void AnchorPair::get(
     const Anchors& anchors,
@@ -179,60 +157,6 @@ void AnchorPair::get(
             sequence.push_back(reads.getOrientedReadBase(orientedReadId, position));
         }
     }
-}
-
-
-
-// Same as the above, but only compute the ordinals.
-void AnchorPair::getOrdinals(
-    const Anchors& anchors,
-    vector< pair<uint32_t, uint32_t> >& ordinals) const
-{
-    ordinals.clear();
-
-    const Anchor anchorA = anchors[anchorIdA];
-    const Anchor anchorB = anchors[anchorIdB];
-
-    const auto beginA = anchorA.begin();
-    const auto beginB = anchorB.begin();
-    const auto endA = anchorA.end();
-    const auto endB = anchorB.end();
-
-    auto itA = beginA;
-    auto itB = beginB;
-    auto it = orientedReadIds.begin();
-    const auto itEnd = orientedReadIds.end();
-    while(itA != endA and itB != endB and it != itEnd) {
-
-        if(itA->orientedReadId < itB->orientedReadId) {
-            ++itA;
-            continue;
-        }
-
-        if(itB->orientedReadId < itA->orientedReadId) {
-            ++itB;
-            continue;
-        }
-
-        // We found a common OrientedReadId.
-        const OrientedReadId orientedReadId = itA->orientedReadId;
-        SHASTA2_ASSERT(orientedReadId == itB->orientedReadId);
-
-        // Only process is this is one of our OrientedReadIds;
-        if(orientedReadId == *it) {
-            ++it;
-
-            const uint32_t ordinalA = itA->ordinal;
-            const uint32_t ordinalB = itB->ordinal;
-
-            ordinals.push_back(make_pair(ordinalA, ordinalB));
-        }
-
-        ++itA;
-        ++itB;
-    }
-
-    SHASTA2_ASSERT(it == orientedReadIds.end());
 }
 
 

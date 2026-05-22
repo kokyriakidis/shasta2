@@ -108,17 +108,11 @@ public:
         vector< pair<Positions, Positions> >& positions,
         vector< vector<Base> >&) const;
 
-    // Just return the ordinals.
-    void getOrdinals(const Anchors&, vector< pair<uint32_t, uint32_t> >&) const;
-
     // Just return the positions in journeys.
     void getPositionsInJourneys(const Anchors&, vector< pair<uint32_t, uint32_t> >&) const;
 
     // Count OrientedReadIds in common with another AnchorPair.
     uint64_t countCommon(const AnchorPair&) const;
-
-    // Remove from the AnchorPair OrientedReadIds that have negative offsets.
-    void removeNegativeOffsets(const Anchors&);
 
     bool contains(OrientedReadId) const;
 
