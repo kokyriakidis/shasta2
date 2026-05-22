@@ -103,7 +103,6 @@ void SegmentStepSupport::append(
     vector<SegmentStepSupport>& v
     )
 {
-    const uint32_t kHalf = uint32_t(assemblyGraph.anchors.k / 2);
 
     const AssemblyGraphEdge& edge = assemblyGraph[e];
     SHASTA2_ASSERT(stepId < uint32_t(edge.size()));
@@ -111,7 +110,6 @@ void SegmentStepSupport::append(
     const AnchorPair& anchorPair = step.anchorPair;
 
     for(const OrientedReadId orientedReadId: anchorPair.orientedReadIds) {
-        const auto orientedReadMarkers = assemblyGraph.anchors.markers[orientedReadId.getValue()];
 
         v.emplace_back();
         SegmentStepSupport& stepSupport = v.back();
@@ -124,13 +122,13 @@ void SegmentStepSupport::append(
         const AnchorId anchorIdA = anchorPair.anchorIdA;
         const AnchorMarkerInfo& anchorMarkerInfoA = assemblyGraph.anchors.getAnchorMarkerInfo(anchorIdA, orientedReadId);
         stepSupport.positionInJourneyA = anchorMarkerInfoA.positionInJourney;
-        stepSupport.positionA = orientedReadMarkers[anchorMarkerInfoA.ordinal].position + kHalf;
+        stepSupport.positionA = anchorMarkerInfoA.position;
 
         // Get position information at the right AnchorId of this step.
         const AnchorId anchorIdB = anchorPair.anchorIdB;
         const AnchorMarkerInfo& anchorMarkerInfoB = assemblyGraph.anchors.getAnchorMarkerInfo(anchorIdB, orientedReadId);
         stepSupport.positionInJourneyB = anchorMarkerInfoB.positionInJourney;
-        stepSupport.positionB = orientedReadMarkers[anchorMarkerInfoB.ordinal].position + kHalf;
+        stepSupport.positionB = anchorMarkerInfoB.position;
 
     }
 }
