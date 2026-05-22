@@ -226,7 +226,7 @@ void MarkerKmers::sortMarkers(uint64_t /* threadId */)
 
         for(uint64_t bucketId=begin; bucketId<end; bucketId++) {
             span<MarkerInfo> bucket = markerInfos[bucketId];
-            sort(bucket.begin(), bucket.end(), MarkerInfoSorter(*this));
+            sort(bucket.begin(), bucket.end(), MarkerInfoSorter(k, reads));
         }
     }
 }
@@ -559,7 +559,7 @@ void MarkerKmers::get(
         for(const MarkerInfo& markerInfo: s) {
             v.push_back(markerInfo.reverseComplement(reads, markers));
         }
-        sort(v.begin(), v.end(), MarkerInfoSorter(*this));
+        sort(v.begin(), v.end(), MarkerInfoSorter(k, reads));
     }
 }
 
@@ -619,7 +619,7 @@ void MarkerKmers::getWithUniqueReadIds(
                 v.push_back(markerInfo.reverseComplement(reads, markers));
             }
         }
-        sort(v.begin(), v.end(), MarkerInfoSorter(*this));
+        sort(v.begin(), v.end(), MarkerInfoSorter(k, reads));
     }
 
 }
