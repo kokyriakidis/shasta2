@@ -179,46 +179,6 @@ void MarkerKmers::gatherMarkersPass12(uint64_t pass)
 
 
 
-#if 1
-// Get the Kmer corresponding to a given MarkerInfo.
-Kmer MarkerKmers::getKmer(const MarkerInfo& markerInfo) const
-{
-    // Get the OrientedReadId and marker ordinal.
-    const OrientedReadId orientedReadId = markerInfo.orientedReadId;
-    const uint32_t ordinal = markerInfo.ordinal;
-
-    // Get the ReadId and Strand.
-    const ReadId readId = orientedReadId.getReadId();
-    const Strand strand = orientedReadId.getStrand();
-
-    // Get the sequence for this read (without reverse complementing).
-    const LongBaseSequenceView readSequence = reads.getRead(readId);
-
-    if(strand == 0) {
-        const auto orientedReadMarkers = markers[orientedReadId.getValue()];
-        const Marker& marker = orientedReadMarkers[ordinal];
-        const uint32_t position = marker.position;
-        Kmer kmer;
-        extractKmer128(readSequence, position, k, kmer);
-        return kmer;
-    } else {
-
-        // Find the corresponding marker on strand 0, then reverse complement it.
-        const OrientedReadId orientedReadId0(readId, 0);
-        const auto orientedRead0Markers = markers[orientedReadId0.getValue()];
-        const uint32_t markerCount = uint32_t(orientedRead0Markers.size());
-        const uint32_t ordinal0 = markerCount - 1 - ordinal;
-        const Marker& marker0 = orientedRead0Markers[ordinal0];
-        const uint32_t position0 = marker0.position;
-        Kmer kmer0;
-        extractKmer128(readSequence, position0, k, kmer0);
-        return kmer0.reverseComplement(k);
-    }
-}
-#endif
-
-
-
 // This sorts markers in buckets by their Kmer.
 void MarkerKmers::sortMarkers(uint64_t /* threadId */)
 {

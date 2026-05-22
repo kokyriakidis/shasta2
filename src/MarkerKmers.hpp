@@ -85,9 +85,6 @@ public:
     // or does not exist in the table.
     uint64_t getGlobalIndex(const Kmer&) const;
 
-    // Get the Kmer corresponding to a given MarkerInfo.
-    Kmer getKmer(const MarkerInfo&) const;
-
     // Given a K-mer, find pairs(Kmer, coverage) for the K-mers that
     // immediately follow/preceed it in one or more oriented reads.
     void getNext(const Kmer&, vector< pair<Kmer, uint64_t> >&);
