@@ -1010,7 +1010,7 @@ void Anchors::constructThreadFunctionPass1(uint64_t /* threadId */)
 
             // Check for repeats.
             bool skipDueToRepeats = false;
-            const Kmer kmer = markerKmers.getKmer(markerInfos.front());
+            const Kmer kmer = markerInfos.front().getKmer(k, reads);
             for(uint64_t i=0; i<maxAnchorRepeatLength.size(); i++) {
                 const uint64_t period = i + 1;
                 const uint64_t maxAllowedCopyNumber = maxAnchorRepeatLength[i];
