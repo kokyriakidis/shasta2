@@ -285,14 +285,12 @@ void Assembler::exploreMarkerKmer(const vector<string>& request, ostream& html)
     html <<
         "<h3>Occurrences of this k-mer</h3>"
         "<table>"
-        "<tr><th>Oriented<br>read<th>Ordinal<th>Position<th>Repeated<br>ReadId";
+        "<tr><th>Oriented<br>read<th>Position<th>Repeated<br>ReadId";
     for(uint64_t i=0; i<markerInfos.size(); i++) {
         const MarkerInfo& markerInfo = markerInfos[i];
         const OrientedReadId orientedReadId = markerInfo.orientedReadId;
         const ReadId readId = orientedReadId.getReadId();
-        const uint32_t ordinal = markerInfo.ordinal;
-        const Marker& marker = markers()[orientedReadId.getValue()][ordinal];
-        const uint32_t position = marker.position;
+        const uint32_t position = markerInfo.position;
 
         // Figure out if it is a repeated ReadId.
         bool isRepeatedReadId = false;
@@ -307,7 +305,6 @@ void Assembler::exploreMarkerKmer(const vector<string>& request, ostream& html)
         html <<
             "<tr>"
             "<td class=centered>" << orientedReadId <<
-            "<td class=centered>" << ordinal <<
             "<td class=centered>" << position <<
             "<td class=centered>";
         if(isRepeatedReadId) {
