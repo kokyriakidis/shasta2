@@ -288,7 +288,7 @@ void MarkerKmers::writeCsv() const
 void MarkerKmers::writeMarkerInfosCsv1() const
 {
     ofstream csv("MarkerKmers-MarkerInfos1.csv");
-    csv << "Kmer,Global index,Bucket,Index in bucket,OrientedReadId,Ordinal,Position,\n";
+    csv << "Kmer,Global index,Bucket,Index in bucket,OrientedReadId,Position,\n";
 
     // Loop over all buckets.
     for(uint64_t bucketId=0; bucketId<markerInfos.size(); bucketId++) {
@@ -299,13 +299,10 @@ void MarkerKmers::writeMarkerInfosCsv1() const
             const MarkerInfo& markerInfo = bucket[i];
 
             const OrientedReadId orientedReadId = markerInfo.orientedReadId;
-            const uint32_t ordinal= markerInfo.ordinal;
 
             const Kmer kmer = markerInfo.getKmer(k, reads);
 
-            const auto orientedReadMarkers = markers[orientedReadId.getValue()];
-            const Marker& marker = orientedReadMarkers[ordinal];
-            const uint32_t position = marker.position;
+            const uint32_t position = markerInfo.position;
 
             kmer.write(csv, k);
             csv << ",";
@@ -314,7 +311,6 @@ void MarkerKmers::writeMarkerInfosCsv1() const
             csv << bucketId << ",";
             csv << i << ",";
             csv << orientedReadId << ",";
-            csv << ordinal << ",";
             csv << position << ",";
 
             csv << "\n";
@@ -328,7 +324,7 @@ void MarkerKmers::writeMarkerInfosCsv1() const
 void MarkerKmers::writeMarkerInfosCsv2() const
 {
     ofstream csv("MarkerKmers-MarkerInfos2.csv");
-    csv << "Kmer,Frequency,OrientedReadId,Ordinal,Position,\n";
+    csv << "Kmer,Frequency,OrientedReadId,Position,\n";
 
     // Loop over all buckets.
     for(uint64_t bucketId=0; bucketId<markerInfos.size(); bucketId++) {
@@ -343,18 +339,14 @@ void MarkerKmers::writeMarkerInfosCsv2() const
             for(uint64_t i=kmerInfo.begin; i!=kmerInfo.end; i++) {
                 const MarkerInfo& markerInfo = markerInfos.begin()[i];
                 const OrientedReadId orientedReadId = markerInfo.orientedReadId;
-                const uint32_t ordinal = markerInfo.ordinal;
 
-                const auto orientedReadMarkers = markers[orientedReadId.getValue()];
-                const Marker& marker = orientedReadMarkers[ordinal];
-                const uint32_t position = marker.position;
+                const uint32_t position = markerInfo.position;
 
                 kmer.write(csv, k);
                 csv << ",";
                 csv << kmerInfo.end - kmerInfo.begin << ",";
 
                 csv << orientedReadId << ",";
-                csv << ordinal << ",";
                 csv << position << ",";
 
                 csv << "\n";
