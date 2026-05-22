@@ -63,16 +63,6 @@ private:
     public:
         OrientedReadId orientedReadId;
 
-        // The ordinals of this OrientedReadId in the two Anchors, if any.
-        uint32_t ordinalA = invalid<uint32_t>;
-        uint32_t ordinalB = invalid<uint32_t>;
-        uint32_t ordinalOffsetAB() const
-        {
-            SHASTA2_ASSERT(isOnBothAnchors());
-            SHASTA2_ASSERT(ordinalB > ordinalA);
-            return ordinalB - ordinalA;
-        }
-
         // The base positions of this OrientedReadId in the two Anchors, if any.
         // These are positions in the oriented read sequence
         // of the mid point of the marker.
@@ -86,8 +76,8 @@ private:
         }
 
         // Whether this OrientedReadId appears in the two Anchors.
-        bool isOnAnchorA() const {return isValid(ordinalA);}
-        bool isOnAnchorB() const {return isValid(ordinalB);}
+        bool isOnAnchorA() const {return isValid(positionA);}
+        bool isOnAnchorB() const {return isValid(positionB);}
         bool isOnBothAnchors() const
         {
             return isOnAnchorA() and isOnAnchorB();
