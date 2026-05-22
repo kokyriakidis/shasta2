@@ -503,7 +503,7 @@ span<const MarkerInfo> MarkerKmers::getMarkerInfos(const Kmer& kmer) const
     const uint64_t bucketId = findBucket(kmer);
     const span<const KmerInfo> bucket = kmerInfos[bucketId];
     for(const KmerInfo& kmerInfo: bucket) {
-        if(getKmer(kmerInfo.markerInfo) == kmer) {
+        if(kmerInfo.markerInfo.getKmer(k, reads) == kmer) {
             const MarkerInfo* const begin = markerInfos.begin() + kmerInfo.begin;
             const MarkerInfo* const end   = markerInfos.begin() + kmerInfo.end;
             return span<const MarkerInfo>(begin, end);
@@ -527,7 +527,7 @@ uint64_t MarkerKmers::getGlobalIndex(const Kmer& kmer) const
 
     // Scan the bucket looking for this Kmer.
     for(const KmerInfo& kmerInfo: bucket) {
-        if(getKmer(kmerInfo.markerInfo) == kmer) {
+        if(kmerInfo.markerInfo.getKmer(k, reads) == kmer) {
             return &kmerInfo - kmerInfos.begin();
         }
     }
