@@ -85,11 +85,6 @@ public:
     // or does not exist in the table.
     uint64_t getGlobalIndex(const Kmer&) const;
 
-    // Given a K-mer, find pairs(Kmer, coverage) for the K-mers that
-    // immediately follow/preceed it in one or more oriented reads.
-    void getNext(const Kmer&, vector< pair<Kmer, uint64_t> >&);
-    void getPrevious(const Kmer&, vector< pair<Kmer, uint64_t> >&);
-
     // Constructor arguments.
     uint64_t k;
     uint64_t kHalf;
