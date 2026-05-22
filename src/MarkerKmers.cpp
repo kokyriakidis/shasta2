@@ -341,7 +341,7 @@ void MarkerKmers::writeMarkerInfosCsv1() const
             const OrientedReadId orientedReadId = markerInfo.orientedReadId;
             const uint32_t ordinal= markerInfo.ordinal;
 
-            const Kmer kmer = getKmer(markerInfo);
+            const Kmer kmer = markerInfo.getKmer(k, reads);
 
             const auto orientedReadMarkers = markers[orientedReadId.getValue()];
             const Marker& marker = orientedReadMarkers[ordinal];
@@ -378,7 +378,7 @@ void MarkerKmers::writeMarkerInfosCsv2() const
         for(uint64_t i=0; i<bucket.size(); i++) {
             const KmerInfo& kmerInfo = bucket[i];
 
-            const Kmer kmer = getKmer(kmerInfo.markerInfo);
+            const Kmer kmer = kmerInfo.markerInfo.getKmer(k, reads);
 
             for(uint64_t i=kmerInfo.begin; i!=kmerInfo.end; i++) {
                 const MarkerInfo& markerInfo = markerInfos.begin()[i];
@@ -418,7 +418,7 @@ void MarkerKmers::writeKmerInfosCsv() const
         for(uint64_t i=0; i<bucket.size(); i++) {
             const KmerInfo& kmerInfo = bucket[i];
 
-            const Kmer kmer = getKmer(kmerInfo.markerInfo);
+            const Kmer kmer = kmerInfo.markerInfo.getKmer(k, reads);
 
             kmer.write(csv, k);
             csv << ",";
