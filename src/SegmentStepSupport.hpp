@@ -37,22 +37,15 @@ public:
 
     // Position information at the left AnchorId of this step.
     uint32_t positionInJourneyA;
-    uint32_t ordinalA;
     uint32_t positionA;
 
     // Position information at the right AnchorId of this step.
     uint32_t positionInJourneyB;
-    uint32_t ordinalB;
     uint32_t positionB;
 
     uint32_t positionInJourneyOffset() const
     {
         return positionInJourneyB - positionInJourneyA;
-    }
-
-    uint32_t ordinalOffset() const
-    {
-        return ordinalB - ordinalA;
     }
 
     uint32_t positionOffset() const

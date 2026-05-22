@@ -124,14 +124,12 @@ void SegmentStepSupport::append(
         const AnchorId anchorIdA = anchorPair.anchorIdA;
         const AnchorMarkerInfo& anchorMarkerInfoA = assemblyGraph.anchors.getAnchorMarkerInfo(anchorIdA, orientedReadId);
         stepSupport.positionInJourneyA = anchorMarkerInfoA.positionInJourney;
-        stepSupport.ordinalA = anchorMarkerInfoA.ordinal;
         stepSupport.positionA = orientedReadMarkers[anchorMarkerInfoA.ordinal].position + kHalf;
 
         // Get position information at the right AnchorId of this step.
         const AnchorId anchorIdB = anchorPair.anchorIdB;
         const AnchorMarkerInfo& anchorMarkerInfoB = assemblyGraph.anchors.getAnchorMarkerInfo(anchorIdB, orientedReadId);
         stepSupport.positionInJourneyB = anchorMarkerInfoB.positionInJourney;
-        stepSupport.ordinalB = anchorMarkerInfoB.ordinal;
         stepSupport.positionB = orientedReadMarkers[anchorMarkerInfoB.ordinal].position + kHalf;
 
     }
@@ -226,9 +224,6 @@ void SegmentStepSupport::writeHtml(
         "<th>Left<br>position<br>in journey"
         "<th>Right<br>position<br>in journey"
         "<th>Position<br>in journey<br>offset"
-        "<th>Left<br>ordinal"
-        "<th>Right<br>ordinal"
-        "<th>Ordinal<br>offset"
         "<th>Read<br>length"
         "<th>Left<br>position"
         "<th>Right<br>position"
@@ -250,10 +245,6 @@ void SegmentStepSupport::writeHtml(
             "<td class=centered>" << stepSupport.positionInJourneyA <<
             "<td class=centered>" << stepSupport.positionInJourneyB <<
             "<td class=centered>" << stepSupport.positionInJourneyOffset() <<
-
-            "<td class=centered>" << stepSupport.ordinalA <<
-            "<td class=centered>" << stepSupport.ordinalB <<
-            "<td class=centered>" << stepSupport.ordinalOffset() <<
 
             "<td class=centered>" << assemblyGraph.anchors.reads.getReadSequenceLength(stepSupport.orientedReadId.getReadId()) <<
             "<td class=centered>" << stepSupport.positionA <<
