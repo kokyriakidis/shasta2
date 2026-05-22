@@ -337,19 +337,13 @@ void Anchors::analyzeAnchorPair(
         }
 
         // We found a common OrientedReadId.
-        const OrientedReadId orientedReadId = itA->orientedReadId;
-        const auto orientedReadMarkers = markers[orientedReadId.getValue()];
-
-        // Compute the offset in markers.
-        const uint32_t ordinalA = itA->ordinal;
-        const uint32_t ordinalB = itB->ordinal;
 
         // Compute the offset in bases.
-        const uint64_t positionA = orientedReadMarkers[ordinalA].position;
-        const uint64_t positionB = orientedReadMarkers[ordinalB].position;
+        const uint64_t positionA = itA->position;
+        const uint64_t positionB = itB->position;
 
         // Update.
-        if(ordinalA < ordinalB) {
+        if(positionA < positionB) {
             const uint64_t journeyOffset = itB->positionInJourney - itA->positionInJourney;
             if(journeyOffset == 1) {
                 ++info.commonForwardAdjacent;
@@ -404,11 +398,9 @@ void Anchors::analyzeAnchorPair(
             // This oriented read only appears in Anchor A.
             ++onlyACheck;
             const OrientedReadId orientedReadId = itA->orientedReadId;
-            const auto orientedReadMarkers = markers[orientedReadId.getValue()];
             const int64_t lengthInBases = int64_t(reads.getReadSequenceLength(orientedReadId.getReadId()));
 
-            const uint32_t ordinalA = itA->ordinal;
-            const int64_t positionA = int64_t(orientedReadMarkers[ordinalA].position);
+            const int64_t positionA = itA->position;
 
             // Find the hypothetical positions of anchor B, assuming the estimated base offset.
             const int64_t positionB = positionA + info.offsetInBases;
@@ -426,12 +418,10 @@ void Anchors::analyzeAnchorPair(
             // This oriented read only appears in Anchor B.
             ++onlyBCheck;
             const OrientedReadId orientedReadId = itB->orientedReadId;
-            const auto orientedReadMarkers = markers[orientedReadId.getValue()];
             const int64_t lengthInBases = int64_t(reads.getReadSequenceLength(orientedReadId.getReadId()));
 
             // Get the positions of edge B in this oriented read.
-            const uint32_t ordinalB = itB->ordinal;
-            const int64_t positionB = int64_t(orientedReadMarkers[ordinalB].position);
+            const int64_t positionB = itB->position;
 
             // Find the hypothetical positions of anchor A, assuming the estimated base offset.
             const int64_t positionA = positionB - info.offsetInBases;
@@ -446,7 +436,7 @@ void Anchors::analyzeAnchorPair(
         }
 
         else {
-            // This oriented read appears in both edges. In this loop, we
+            // This oriented read appears in both anchors. In this loop, we
             // don't need to do anything.
             ++itA;
             ++itB;
@@ -537,23 +527,19 @@ void Anchors::writeHtml(
     html <<
         "<tr>"
         "<th class=centered rowspan=2>Oriented<br>read id"
-        "<th class=centered colspan=3>Length"
-        "<th colspan=3>Anchor A"
-        "<th colspan=3>Anchor B"
-        "<th colspan=3>Offset"
+        "<th class=centered colspan=2>Length"
+        "<th colspan=2>Anchor A"
+        "<th colspan=2>Anchor B"
+        "<th colspan=2>Offset"
         "<th rowspan=2>Classification"
         "<tr>"
         "<th>Bases"
-        "<th>Markers"
         "<th>Anchors"
         "<th>Base<br>Position"
-        "<th>Marker<br>ordinal"
         "<th>Position<br>in journey"
         "<th>Base<br>Position"
-        "<th>Marker<br>ordinal"
         "<th>Position<br>in journey"
         "<th>Base<br>Position"
-        "<th>Marker<br>ordinal"
         "<th>Position<br>in journey";
 
     // Prepare for the joint loop over OrientedReadIds of the two anchors.
@@ -575,13 +561,11 @@ void Anchors::writeHtml(
         else if(itB == endB or ((itA!=endA) and (itA->orientedReadId < itB->orientedReadId))) {
             // This oriented read only appears in Anchor A.
             const OrientedReadId orientedReadId = itA->orientedReadId;
-            const auto orientedReadMarkers = markers[orientedReadId.getValue()];
             const int64_t lengthInBases = int64_t(reads.getReadSequenceLength(orientedReadId.getReadId()));
             const auto journey = journeys[orientedReadId];
 
             // Get the positions of Anchor A in this oriented read.
-            const uint32_t ordinalA = itA->ordinal;
-            const int64_t positionA = int64_t(orientedReadMarkers[ordinalA].position);
+            const int64_t positionA = itA->position;
 
             // Find the hypothetical positions of Anchor B, assuming the estimated base offset.
             const int64_t positionB = positionA + info.offsetInBases;
@@ -592,14 +576,11 @@ void Anchors::writeHtml(
                 "<a href='exploreRead?readId=" << orientedReadId.getReadId() <<
                 "&strand=" << orientedReadId.getStrand() << "'>" << orientedReadId << "</a>"
                 "<td class=centered>" << lengthInBases <<
-                "<td class=centered>" << orientedReadMarkers.size() <<
                 "<td class=centered>" << journey.size() <<
                 "<td class=centered>" << positionA <<
-                "<td class=centered>" << ordinalA <<
                 "<td class=centered>" << itA->positionInJourney <<
                 "<td class=centered style='color:Red'>" << positionB <<
-                "<td>"
-                "<td class=centered style='color:Red'>" << "<td><td><td>"
+                "<td class=centered style='color:Red'>" << "<td><td>"
                 "<td class=centered>OnlyA, " << (isShort ? "short" : "missing");
 
             ++itA;
@@ -609,13 +590,11 @@ void Anchors::writeHtml(
         else if(itA == endA or ((itB!=endB) and (itB->orientedReadId < itA->orientedReadId))) {
             // This oriented read only appears in Anchor B.
             const OrientedReadId orientedReadId = itB->orientedReadId;
-            const auto orientedReadMarkers = markers[orientedReadId.getValue()];
             const int64_t lengthInBases = int64_t(reads.getReadSequenceLength(orientedReadId.getReadId()));
             const auto journey = journeys[orientedReadId];
 
             // Get the positions of Anchor B in this oriented read.
-            const uint32_t ordinalB = itB->ordinal;
-            const int64_t positionB = int64_t(orientedReadMarkers[ordinalB].position);
+            const int64_t positionB = itB->position;
 
             // Find the hypothetical positions of edge A, assuming the estimated base offset.
             const int64_t positionA = positionB - info.offsetInBases;
@@ -626,14 +605,12 @@ void Anchors::writeHtml(
                 "<a href='exploreRead?readId=" << orientedReadId.getReadId() <<
                 "&strand=" << orientedReadId.getStrand() << "'>" << orientedReadId << "</a>"
                 "<td class=centered>" << lengthInBases <<
-                "<td class=centered>" << orientedReadMarkers.size() <<
                 "<td class=centered>" << journey.size() <<
                 "<td class=centered style='color:Red'>" << positionA <<
-                "<td><td>"
+                "<td>"
                 "<td class=centered>" << positionB <<
-                "<td class=centered>" << ordinalB <<
                 "<td class=centered>" << itB->positionInJourney <<
-                "<td class=centered>" << "<td><td>"
+                "<td class=centered>" << "<td>"
                 "<td class=centered>OnlyB, " << (isShort ? "short" : "missing");
 
             ++itB;
@@ -643,20 +620,16 @@ void Anchors::writeHtml(
         else {
             // This oriented read appears in both Anchors.
             const OrientedReadId orientedReadId = itA->orientedReadId;
-            const auto orientedReadMarkers = markers[orientedReadId.getValue()];
             const int64_t lengthInBases = int64_t(reads.getReadSequenceLength(orientedReadId.getReadId()));
             const auto journey = journeys[orientedReadId];
 
             // Get the positions of Anchor A in this oriented read.
-            const uint32_t ordinalA = itA->ordinal;
-            const int64_t positionA = int64_t(orientedReadMarkers[ordinalA].position);
+            const int64_t positionA = itA->position;
 
             // Get the positions of Anchor B in this oriented read.
-            const uint32_t ordinalB = itB->ordinal;
-            const int64_t positionB = int64_t(orientedReadMarkers[ordinalB].position);
+            const int64_t positionB = itB->position;
 
             // Compute estimated offsets.
-            const int64_t ordinalOffset = uint64_t(ordinalB) - uint64_t(ordinalA);
             const int64_t baseOffset = positionB - positionA;
 
             html <<
@@ -664,16 +637,12 @@ void Anchors::writeHtml(
                 "<a href='exploreRead?readId=" << orientedReadId.getReadId() <<
                 "&strand=" << orientedReadId.getStrand() << "'>" << orientedReadId << "</a>"
                 "<td class=centered>" << lengthInBases <<
-                "<td class=centered>" << orientedReadMarkers.size() <<
                 "<td class=centered>" << journey.size() <<
                 "<td class=centered>" << positionA <<
-                "<td class=centered>" << ordinalA <<
                 "<td class=centered>" << itA->positionInJourney <<
                 "<td class=centered>" << positionB <<
-                "<td class=centered>" << ordinalB <<
                 "<td class=centered>" << itB->positionInJourney <<
                 "<td class=centered>" << baseOffset <<
-                "<td class=centered>" << ordinalOffset <<
                 "<td class=centered>" << int64_t(itB->positionInJourney) - int64_t(itA->positionInJourney) <<
                 "<td class=centered>Common";
 
