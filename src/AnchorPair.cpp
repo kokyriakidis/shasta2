@@ -122,10 +122,12 @@ void AnchorPair::get(
             const uint32_t ordinalB = itB->ordinal;
             const uint32_t positionA = orientedReadMarkers[ordinalA].position + kHalf;
             const uint32_t positionB = orientedReadMarkers[ordinalB].position + kHalf;
+            SHASTA2_ASSERT(positionA == itA->position);
+            SHASTA2_ASSERT(positionB == itB->position);
 
             positions.push_back(make_pair(
-                Positions(positionInJourneyA, ordinalA, positionA),
-                Positions(positionInJourneyB, ordinalB, positionB)
+                Positions(positionInJourneyA, positionA),
+                Positions(positionInJourneyB, positionB)
                 ));
         }
 
@@ -553,7 +555,6 @@ void AnchorPair::writeOrientedReadIdsHtml(ostream& html, const Anchors& anchors)
         "<table>"
         "<tr><th>Oriented<br>read id"
         "<th>Position<br>in journey<br>A<th>Position<br>in journey<br>B<th>Journey<br>offset"
-        "<th>OrdinalA<th>OrdinalB<th>Ordinal<br>offset"
         "<th>A middle<br>position"
         "<th>B middle<br>position"
         "<th>Sequence<br>length";
@@ -571,9 +572,6 @@ void AnchorPair::writeOrientedReadIdsHtml(ostream& html, const Anchors& anchors)
             "<td class=centered>" << positionsA.positionInJourney <<
             "<td class=centered>" << positionsB.positionInJourney <<
             "<td class=centered>" << positionsB.positionInJourney - positionsA.positionInJourney <<
-            "<td class=centered>" << positionsA.ordinal <<
-            "<td class=centered>" << positionsB.ordinal <<
-            "<td class=centered>" << positionsB.ordinal - positionsA.ordinal <<
             "<td class=centered>" << positionsA.basePosition <<
             "<td class=centered>" << positionsB.basePosition <<
             "<td class=centered>" << positionsB.basePosition - positionsA.basePosition;
