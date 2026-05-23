@@ -358,7 +358,6 @@ void RestrictedAnchorGraph::fillJourneyPortions(
     using OrientedReadInfo = TangleMatrix1::OrientedReadInfo;
 
     const Anchors& anchors = tangleMatrix1.assemblyGraph.anchors;
-    const Markers& markers = anchors.markers;
 
     const vector<OrientedReadInfo>& entranceOrientedReadInfos = tangleMatrix1.entranceOrientedReadInfos[iEntrance];
     const vector<OrientedReadInfo>& exitOrientedReadInfos = tangleMatrix1.exitOrientedReadInfos[iExit];
@@ -469,12 +468,10 @@ void RestrictedAnchorGraph::fillJourneyPortions(
                 const uint32_t end = itExit->positionInJourney + 1;
 
                 // Begin the JourneyPortion at a distance maxOffset before begin.
-                const auto orientedReadMarkers = markers[orientedReadId.getValue()];
                 uint32_t endPosition = invalid<uint32_t>;
                 for(uint32_t positionInJourney=end-1; /* Check later */ ; positionInJourney--) {
                     const AnchorId anchorId = journey[positionInJourney];
-                    const uint32_t ordinal = anchors.getOrdinal(anchorId, orientedReadId);
-                    const uint32_t position = orientedReadMarkers[ordinal].position;
+                    const uint32_t position = anchors.getPosition(anchorId, orientedReadId) - uint32_t(anchors.kHalf);
                     if(positionInJourney == end - 1) {
                         endPosition = position;
                     } else {
