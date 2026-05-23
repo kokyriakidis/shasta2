@@ -179,12 +179,6 @@ public:
 
     MemoryMapped::VectorOfVectors<AnchorMarkerInfo, uint64_t> anchorMarkerInfos;
 
-    // Get the ordinal for the AnchorMarkerInfo corresponding to a
-    // given AnchorId and OrientedReadId.
-    // This asserts if the given AnchorId does not contain an AnchorMarkerInfo
-    // for the requested OrientedReadId.
-    uint32_t getOrdinal(AnchorId, OrientedReadId) const;
-
     // Get the position for the AnchorMarkerInfo corresponding to a
     // given AnchorId and OrientedReadId.
     // This asserts if the given AnchorId does not contain an AnchorMarkerInfo

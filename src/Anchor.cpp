@@ -762,23 +762,6 @@ void Anchors::findParents(
 
 
 
-// Get the ordinal for the AnchorMarkerInfo corresponding to a
-// given AnchorId and OrientedReadId.
-// This asserts if the given AnchorId does not contain an AnchorMarkerInfo
-// for the requested OrientedReadId.
-uint32_t Anchors::getOrdinal(AnchorId anchorId, OrientedReadId orientedReadId) const
-{
-    for(const auto& markerInfo: anchorMarkerInfos[anchorId]) {
-        if(markerInfo.orientedReadId == orientedReadId) {
-            return markerInfo.ordinal;
-        }
-    }
-
-    SHASTA2_ASSERT(0);
-}
-
-
-
 // Get the position for the AnchorMarkerInfo corresponding to a
 // given AnchorId and OrientedReadId.
 // This asserts if the given AnchorId does not contain an AnchorMarkerInfo
