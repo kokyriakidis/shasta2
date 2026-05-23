@@ -432,12 +432,10 @@ void RestrictedAnchorGraph::fillJourneyPortions(
                 uint32_t end = uint32_t(journey.size());
 
                 // End the JourneyPortion at a distance maxOffset after begin.
-                const auto orientedReadMarkers = markers[orientedReadId.getValue()];
                 uint32_t beginPosition = invalid<uint32_t>;
                 for(uint32_t positionInJourney=begin; positionInJourney<end; positionInJourney++) {
                     const AnchorId anchorId = journey[positionInJourney];
-                    const uint32_t ordinal = anchors.getOrdinal(anchorId, orientedReadId);
-                    const uint32_t position = orientedReadMarkers[ordinal].position;
+                    const uint32_t position = anchors.getPosition(anchorId, orientedReadId) - uint32_t(anchors.kHalf);
                     if(positionInJourney == begin) {
                         beginPosition = position;
                     } else {
