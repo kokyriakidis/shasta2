@@ -196,7 +196,6 @@ void Assembler::accessJourneys()
 // Store anchor gaps information in ReadSummary for each read.
 void Assembler::storeAnchorGaps()
 {
-    const uint32_t kHalf = uint32_t(anchors().kHalf);
 
     // Loop over all Reads.
     for(ReadId readId=0; readId<reads().readCount(); readId++) {
@@ -225,11 +224,8 @@ void Assembler::storeAnchorGaps()
             const AnchorId anchorId0 = journey[i0];
             const AnchorId anchorId1 = journey[i1];
 
-            const uint32_t ordinal0 = anchors().getOrdinal(anchorId0, orientedReadId);
-            const uint32_t ordinal1 = anchors().getOrdinal(anchorId1, orientedReadId);
-
-            const uint32_t position0 = orientedReadMarkers[ordinal0].position + kHalf;
-            const uint32_t position1 = orientedReadMarkers[ordinal1].position + kHalf;
+            const uint32_t position0 = anchors().getPosition(anchorId0, orientedReadId);
+            const uint32_t position1 = anchors().getPosition(anchorId1, orientedReadId);
 
             const uint32_t gap = position1 - position0;
             maxGap = max(maxGap, gap);
@@ -238,13 +234,11 @@ void Assembler::storeAnchorGaps()
 
         // Compute the number of bases preceding the first anchor on the journey.
         const AnchorId anchorId0 = journey.front();
-        const uint32_t ordinal0 = anchors().getOrdinal(anchorId0, orientedReadId);
-        readSummary.initialAnchorGap = orientedReadMarkers[ordinal0].position + kHalf;
+        readSummary.initialAnchorGap = anchors().getPosition(anchorId0, orientedReadId);
 
         // Compute the number of bases following the last anchor on the journey.
         const AnchorId anchorId1 = journey.back();
-        const uint32_t ordinal1 = anchors().getOrdinal(anchorId1, orientedReadId);
-        readSummary.finalAnchorGap = readLength - orientedReadMarkers[ordinal1].position - kHalf;
+        readSummary.finalAnchorGap = readLength - anchors().getPosition(anchorId1, orientedReadId);
 
     }
 
