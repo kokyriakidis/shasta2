@@ -519,7 +519,6 @@ void Assembler::exploreJourney(const vector<string>& request, ostream& html)
         "<th>Position<br>in journey"
         "<th>Anchor"
         "<th>Anchor<br>coverage"
-        "<th>Marker<br>ordinal"
         "<th>Marker<br>position";
 
     // Loop over the anchors in the journey of this oriented read.
@@ -528,10 +527,7 @@ void Assembler::exploreJourney(const vector<string>& request, ostream& html)
         const uint64_t anchorCoverage = anchors()[anchorId].coverage();
         const string anchorIdString = anchorIdToString(anchorId);
 
-        const uint64_t ordinal = anchors().getOrdinal(anchorId, orientedReadId);
-
-        const auto orientedReadMarkers = markers()[orientedReadId.getValue()];
-        const uint32_t position = orientedReadMarkers[ordinal].position;
+        const uint32_t position = anchors().getPosition(anchorId, orientedReadId);
 
         if(position < beginPosition) {
             continue;
@@ -547,7 +543,6 @@ void Assembler::exploreJourney(const vector<string>& request, ostream& html)
             "<a href='exploreAnchor?anchorIdString=" << HttpServer::urlEncode(anchorIdString) << "'>" <<
             anchorIdString << "</a>"
             "<td class=centered>" << anchorCoverage <<
-            "<td class=centered>" << ordinal <<
             "<td class=centered>" << position;
     }
 
