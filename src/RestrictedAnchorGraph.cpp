@@ -390,12 +390,10 @@ void RestrictedAnchorGraph::fillJourneyPortions(
             const uint32_t exitPositionInJourney = itExit->positionInJourney;
             const AnchorId entranceAnchorId = journey[entrancePositionInJourney];
             const AnchorId exitAnchorId = journey[exitPositionInJourney];
-            const uint32_t entranceOrdinal = anchors.getOrdinal(entranceAnchorId, orientedReadId);
-            const uint32_t exitOrdinal = anchors.getOrdinal(exitAnchorId, orientedReadId);
-            const auto orientedReadMarkers = markers[orientedReadId.getValue()];
-            const uint64_t offset =
-                orientedReadMarkers[exitOrdinal].position -
-                orientedReadMarkers[entranceOrdinal].position;
+            const uint32_t entrancePosition = anchors.getPosition(entranceAnchorId, orientedReadId);
+            const uint32_t exitPosition = anchors.getPosition(exitAnchorId, orientedReadId);
+            SHASTA2_ASSERT(exitPosition > entrancePosition);
+            const uint32_t offset = exitPosition - entrancePosition;
             offsetSum += offset;
             ++offsetCount;
         }
