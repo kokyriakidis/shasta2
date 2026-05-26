@@ -196,8 +196,6 @@ public:
     const uint64_t k;
     const uint64_t kHalf;
 private:
-    const Markers& markers;
-
 
     void check() const;
 

@@ -45,15 +45,14 @@ Anchors::Anchors(
     const MappedMemoryOwner& mappedMemoryOwner,
     const Reads& reads,
     uint64_t k,
-    const Markers& markers,
+    const Markers&,
     bool writeAccess) :
     MultithreadedObject<Anchors>(*this),
     MappedMemoryOwner(mappedMemoryOwner),
     baseName(baseName),
     reads(reads),
     k(k),
-    kHalf(k/2),
-    markers(markers)
+    kHalf(k/2)
 {
     anchorMarkerInfos.accessExisting(largeDataName(baseName + "-AnchorMarkerInfos"), writeAccess);
     anchorInfos.accessExistingReadOnly(largeDataName(baseName + "-AnchorInfos"));
@@ -753,7 +752,7 @@ Anchors::Anchors(
     const MappedMemoryOwner& mappedMemoryOwner,
     const Reads& reads,
     uint64_t k,
-    const Markers& markers,
+    const Markers&,
     const MarkerKmers& markerKmers,
     uint64_t minAnchorCoverage,
     uint64_t maxAnchorCoverage,
@@ -765,8 +764,7 @@ Anchors::Anchors(
     baseName(baseName),
     reads(reads),
     k(k),
-    kHalf(k/2),
-    markers(markers)
+    kHalf(k/2)
 {
 
     performanceLog << timestamp << "Anchor creation begins." << endl;
@@ -1040,15 +1038,14 @@ Anchors::Anchors(
     const MappedMemoryOwner& mappedMemoryOwner,
     const Reads& reads,
     uint64_t k,
-    const Markers& markers,
+    const Markers&,
     const string& externalAnchorsName) :
     MultithreadedObject<Anchors>(*this),
     MappedMemoryOwner(mappedMemoryOwner),
     baseName(baseName),
     reads(reads),
     k(k),
-    kHalf(k/2),
-    markers(markers)
+    kHalf(k/2)
 {
 
     // Access the ExternalAnchors.
