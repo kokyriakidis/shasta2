@@ -1121,7 +1121,7 @@ Anchors::Anchors(
         // the reverse complemented Anchor.
         // We are not filling AnchorInfo::kmerIndex.
         for(AnchorMarkerInfo& markerInfo: markerInfos) {
-            markerInfo.reverseComplement(reads);
+            markerInfo = markerInfo.reverseComplement(reads);
         }
         anchorMarkerInfos.appendVector(markerInfos);
         anchorInfos.push_back(AnchorInfo());
