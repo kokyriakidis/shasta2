@@ -149,49 +149,6 @@ uint64_t Anchors::countCommon(
 
 
 
-// Return  a pair consisting of:
-// - The number of common oriented reads between two Anchors,
-//   counting only oriented reads that have a positive offset
-//   (greater ordinal on anchorId1 than on anchorId0).
-// - A bool which is true if all common oriented reads have a positive offset.
-pair<uint64_t, bool> Anchors::countCommonWithFlag(AnchorId anchorId0, AnchorId anchorId1) const
-{
-    const Anchors& anchors = *this;
-    const Anchor anchor0 = anchors[anchorId0];
-    const Anchor anchor1 = anchors[anchorId1];
-
-    auto it0 = anchor0.begin();
-    auto it1 = anchor1.begin();
-
-    const auto end0 = anchor0.end();
-    const auto end1 = anchor1.end();
-
-    uint64_t count = 0;
-    bool nonPositiveOffsetFound = false;
-    while((it0 != end0) and (it1 != end1)) {
-        const OrientedReadId orientedReadId0 = it0->orientedReadId;
-        const OrientedReadId orientedReadId1 = it1->orientedReadId;
-        if(orientedReadId0 < orientedReadId1) {
-            ++it0;
-        } else if(orientedReadId1 < orientedReadId0) {
-            ++it1;
-        } else {
-            if(it0->ordinal < it1->ordinal) {
-                ++count;
-            } else {
-                nonPositiveOffsetFound = true;
-            }
-            ++it0;
-            ++it1;
-        }
-    }
-
-    return make_pair(count, nonPositiveOffsetFound);
-
-}
-
-
-
 // Same as above, but also compute the average offset in bases.
 uint64_t Anchors::countCommon(
     AnchorId anchorId0,

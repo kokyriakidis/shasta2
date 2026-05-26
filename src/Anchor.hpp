@@ -162,13 +162,6 @@ public:
     // Same as above, but also compute the average offset in bases.
     uint64_t countCommon(AnchorId anchorId0, AnchorId anchorId1, uint64_t& baseOffset) const;
 
-    // Return  a pair consisting of:
-    // - The number of common oriented reads between two Anchors,
-    //   counting only oriented reads that have a positive offset
-    //   (greater ordinal on anchorId1 than on anchorId0).
-    // - A bool which is true if all common oriented reads have a positive offset.
-    pair<uint64_t, bool> countCommonWithFlag(AnchorId anchorId0, AnchorId anchorId1) const;
-
     // Analyze the oriented read composition of two anchors.
     void analyzeAnchorPair(AnchorId, AnchorId, AnchorPairInfo&) const;
     void writeHtml(AnchorId, AnchorId, AnchorPairInfo&, const Journeys&
