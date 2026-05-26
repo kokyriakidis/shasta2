@@ -15,6 +15,10 @@ SHASTA2_OPTION_DEFINE(
     string, memoryBacking, "--memory-backing", "4K",
     "Memory backing. Specify disk, 4K, or 2M.")
 
+SHASTA2_BOOL_OPTION_DEFINE(
+    keepBinaryData, "--keep-binary-data", false,
+    "Keep binary data. Only effective if --memory-mode filesystem.")
+
 SHASTA2_OPTION_DEFINE(
     uint64_t, threadCount, "--threads", 0,
     "Number of threads (0 to use hardware_concurrency).")
