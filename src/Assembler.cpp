@@ -162,10 +162,10 @@ void Assembler::readExternalAnchors(const string& externalAnchorsName)
 
 
 // Access existing Anchors.
-void Assembler::accessAnchors(bool writeAccess)
+void Assembler::accessAnchors()
 {
      anchorsPointer = make_shared<Anchors>("Anchors",
-         MappedMemoryOwner(*this), reads(), assemblerInfo->k, writeAccess);
+         MappedMemoryOwner(*this), reads(), assemblerInfo->k);
 }
 
 

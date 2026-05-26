@@ -375,7 +375,7 @@ void Assembler::accessAllSoft()
     }
 
     try {
-        accessAnchors(false);
+        accessAnchors();
     } catch(const exception& e) {
         cout << "The anchors are not accessible." << endl;
         allDataAreAvailable = false;

@@ -138,8 +138,7 @@ public:
         const string& baseName,
         const MappedMemoryOwner&,
         const Reads& reads,
-        uint64_t k,
-        bool writeAccess);
+        uint64_t k);
 
     void remove();
 

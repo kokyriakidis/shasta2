@@ -44,8 +44,7 @@ Anchors::Anchors(
     const string& baseName,
     const MappedMemoryOwner& mappedMemoryOwner,
     const Reads& reads,
-    uint64_t k,
-    bool writeAccess) :
+    uint64_t k) :
     MultithreadedObject<Anchors>(*this),
     MappedMemoryOwner(mappedMemoryOwner),
     baseName(baseName),
@@ -53,7 +52,7 @@ Anchors::Anchors(
     k(k),
     kHalf(k/2)
 {
-    anchorMarkerInfos.accessExisting(largeDataName(baseName + "-AnchorMarkerInfos"), writeAccess);
+    anchorMarkerInfos.accessExistingReadOnly(largeDataName(baseName + "-AnchorMarkerInfos"));
     anchorInfos.accessExistingReadOnly(largeDataName(baseName + "-AnchorInfos"));
 }
 

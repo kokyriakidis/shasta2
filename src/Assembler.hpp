@@ -188,7 +188,7 @@ public:
     void readExternalAnchors(const string& name);
 
     // Access existing Anchors.
-    void accessAnchors(bool writeAccess);
+    void accessAnchors();
 
 
 

@@ -125,9 +125,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
            arg("minAnchorDistinctSubkmerCount"),
            arg("threadCount") = 0)
        .def("readExternalAnchors", &Assembler::readExternalAnchors)
-       .def("accessAnchors",
-           &Assembler::accessAnchors,
-           arg("writeAccess") = false)
+       .def("accessAnchors", &Assembler::accessAnchors)
 
        // Journeys.
       .def("createJourneys",
