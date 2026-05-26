@@ -63,10 +63,9 @@ public:
         MarkerInfo(markerInfo)
     {}
 
-    // Constructor from OrientedReadId, ordinal, and position.
+    // Constructor from OrientedReadId and position.
     AnchorMarkerInfo(
         OrientedReadId orientedReadId,
-        uint32_t,
         uint32_t position) :
         MarkerInfo(orientedReadId, position)
     {}

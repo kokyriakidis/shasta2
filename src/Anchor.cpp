@@ -1117,7 +1117,7 @@ Anchors::Anchors(
             }
 
             // Store this MarkerInfo.
-            markerInfos.emplace_back(orientedReadId, ordinal, position + kHalf);
+            markerInfos.emplace_back(orientedReadId, position + kHalf);
         }
 
         // Sort the MarkerInfos by OrientedReadId.
