@@ -220,17 +220,10 @@ uint64_t Anchors::countCommon(
         } else {
 
             // We found a common oriented read.
-            const uint32_t ordinal0 = it0->ordinal;
-            const uint32_t ordinal1 = it1->ordinal;
-            if(ordinal0 < ordinal1) {
+            const uint32_t position0 = it0->position;
+            const uint32_t position1 = it1->position;
+            if(position0 < position1) {
                 ++count;
-
-                const OrientedReadId orientedReadId = it0->orientedReadId;
-                const auto orientedReadMarkers = markers[orientedReadId.getValue()];
-
-                const uint64_t position0 = uint64_t(orientedReadMarkers[ordinal0].position);
-                const uint64_t position1 = uint64_t(orientedReadMarkers[ordinal1].position);
-                SHASTA2_ASSERT(position1 > position0);
                 sumBaseOffsets += position1 - position0;
             }
 
