@@ -19,7 +19,6 @@ namespace shasta2 {
 class shasta2::MarkerInfo {
 public:
     OrientedReadId orientedReadId;
-    uint32_t ordinal;
 
     // The position of the middle of the marker relative to the beginning of the oriented read.
     // This equals the position of the first base of the marker plus k/2.
@@ -28,10 +27,9 @@ public:
     MarkerInfo() {}
     MarkerInfo(
         OrientedReadId orientedReadId,
-        uint32_t ordinal,
+        uint32_t,
         uint32_t position) :
         orientedReadId(orientedReadId),
-        ordinal(ordinal),
         position(position)
     {}
 
