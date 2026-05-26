@@ -486,6 +486,7 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
         step.sequence = localAssembly.sequence;
 
     } catch(const std::exception&) {
+        std::lock_guard<std::mutex> lock(mutex);
         cout << "Error occurred assembling segment " <<
             assemblyGraph[e].id << " step " << i << endl;
         throw;
