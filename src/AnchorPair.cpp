@@ -137,8 +137,8 @@ void AnchorPair::get(
     vector< pair<Positions, Positions> >& positions,
     vector< vector<Base> >& sequences) const
 {
-    const uint32_t kHalf = uint32_t(anchors.markers.k / 2);
-    const Reads& reads = anchors.markers.reads;
+    const uint32_t kHalf = uint32_t(anchors.kHalf);
+    const Reads& reads = anchors.reads;
 
     get(anchors, positions);
 
@@ -348,8 +348,6 @@ void AnchorPair::getOffsets(
         // Only process is this is one of our OrientedReadIds;
         if(orientedReadId == *it) {
             ++it;
-
-            const auto orientedReadMarkers = anchors.markers[orientedReadId.getValue()];
 
             const uint32_t positionA = itA->position;
             const uint32_t positionB = itB->position;

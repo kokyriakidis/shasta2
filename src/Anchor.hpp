@@ -195,9 +195,9 @@ public:
     const Reads& reads;
     const uint64_t k;
     const uint64_t kHalf;
+private:
     const Markers& markers;
 
-private:
 
     void check() const;
 
