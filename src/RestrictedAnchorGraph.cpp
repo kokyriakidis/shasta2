@@ -7,7 +7,6 @@
 #include "graphvizToHtml.hpp"
 #include "Journeys.hpp"
 #include "longestPath.hpp"
-#include "Markers.hpp"
 #include "TangleMatrix1.hpp"
 #include "tmpDirectory.hpp"
 using namespace shasta2;

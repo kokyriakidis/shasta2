@@ -3,7 +3,6 @@
 #include "Anchor.hpp"
 #include "HttpServer.hpp"
 #include "Journeys.hpp"
-#include "Markers.hpp"
 #include "Reads.hpp"
 using namespace shasta2;
 

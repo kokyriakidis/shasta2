@@ -10,7 +10,6 @@
 #include "Journeys.hpp"
 #include "MarkerInfo.hpp"
 #include "MarkerKmers.hpp"
-#include "Markers.hpp"
 #include "orderPairs.hpp"
 #include "orderVectors.hpp"
 #include "performanceLog.hpp"

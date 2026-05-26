@@ -2,7 +2,6 @@
 #include "LocalAssembly6.hpp"
 #include "Anchor.hpp"
 #include "Base.hpp"
-#include "Markers.hpp"
 #include "orderPairs.hpp"
 #include "Reads.hpp"
 #include "theseusWrapper.hpp"

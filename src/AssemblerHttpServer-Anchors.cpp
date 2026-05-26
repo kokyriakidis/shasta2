@@ -10,7 +10,6 @@
 #include "Journeys.hpp"
 #include "LocalAnchorGraph.hpp"
 #include "LocalReadAnchorGraph.hpp"
-#include "Markers.hpp"
 #include "orderPairs.hpp"
 #include "Reads.hpp"
 #include "ReadId.hpp"
@@ -505,7 +504,6 @@ void Assembler::exploreJourney(const vector<string>& request, ostream& html)
 
     // Access the information we need.
     const OrientedReadId orientedReadId(readId, strand);
-    const span<const Marker> orientedReadMarkers = markers()[orientedReadId.getValue()];
     SHASTA2_ASSERT(journeys().isOpen());
     SHASTA2_ASSERT(journeys().size() == 2 * reads().readCount());
     const span<const AnchorId> journey = journeys()[orientedReadId];

@@ -20,9 +20,7 @@
 namespace shasta2 {
 
     class Base;
-    class Marker;
     class MarkerKmers;
-    class Markers;
     class MarkerInfo;
     class Reads;
 

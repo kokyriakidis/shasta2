@@ -1,7 +1,6 @@
 // Shasta.
 #include "SegmentStepSupport.hpp"
 #include "Anchor.hpp"
-#include "Markers.hpp"
 #include "Reads.hpp"
 using namespace shasta2;
 

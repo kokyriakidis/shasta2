@@ -1,5 +1,4 @@
 #include "MarkerInfo.hpp"
-#include "Markers.hpp"
 #include "Reads.hpp"
 using namespace shasta2;
 
