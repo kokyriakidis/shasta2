@@ -136,7 +136,7 @@ uint64_t Anchors::countCommon(
         } else if(orientedReadId1 < orientedReadId0) {
             ++it1;
         } else {
-            if(it0->ordinal < it1->ordinal) {
+            if(it0->position < it1->position) {
                 ++count;
             }
             ++it0;
