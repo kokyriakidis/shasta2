@@ -152,7 +152,6 @@ public:
 
     // This returns the sequence of the marker k-mer
     // that this anchor was created from.
-    vector<Base> anchorKmerSequence(AnchorId) const;
     Kmer anchorKmer(AnchorId) const;
 
     // Return the number of common oriented reads between two Anchors,

@@ -68,48 +68,13 @@ Anchor Anchors::operator[](AnchorId anchorId) const
 
 
 
-// This returns the sequence of the marker k-mer
-// that this anchor was created from.
-vector<Base> Anchors::anchorKmerSequence(AnchorId anchorId) const
-{
-    // Get the first AnchorMarkerInterval for this Anchor.
-    const Anchor anchor = (*this)[anchorId];
-    const AnchorMarkerInfo& firstMarkerInfo = anchor.front();
-
-    // Get the OrientedReadId and the ordinals.
-    const OrientedReadId orientedReadId = firstMarkerInfo.orientedReadId;
-    const uint32_t ordinal = firstMarkerInfo.ordinal;
-
-    // Access the markers of this OrientedReadId.
-    const auto orientedReadMarkers = markers[orientedReadId.getValue()];
-
-    const Marker& marker = orientedReadMarkers[ordinal];
-
-    const uint32_t begin = marker.position;
-    const uint32_t end = begin + uint32_t(k);
-
-    vector<Base> sequence;
-    for(uint32_t position=begin; position!=end; position++) {
-        sequence.push_back(reads.getOrientedReadBase(orientedReadId, position));
-    }
-
-    return sequence;
-}
-
-
-
 Kmer Anchors::anchorKmer(AnchorId anchorId) const
 {
     // Get the first AnchorMarkerInterval for this Anchor.
     const Anchor anchor = (*this)[anchorId];
     const AnchorMarkerInfo& firstMarkerInfo = anchor.front();
 
-    // Get the OrientedReadId and the ordinal.
-    const OrientedReadId orientedReadId = firstMarkerInfo.orientedReadId;
-    const uint32_t ordinal = firstMarkerInfo.ordinal;
-
-    return markers.getKmer(orientedReadId, ordinal);
-
+    return firstMarkerInfo.getKmer(k, reads);
 }
 
 

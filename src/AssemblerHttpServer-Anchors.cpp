@@ -92,7 +92,7 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
 
     const auto markerInfos = anchors()[anchorId];
     const uint64_t coverage = markerInfos.size();
-    const vector<Base> kmerSequence = anchors().anchorKmerSequence(anchorId);
+    const Kmer kmer = anchors().anchorKmer(anchorId);
 
 
     vector<AnchorId> parents;
@@ -109,9 +109,9 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
         "<tr><th class=left>Coverage<td class=centered>" << coverage <<
         "<tr><th class=left>K-mer sequence<td class=centered style='font-family:monospace'>"
         "<a href='exploreMarkerKmer?kmer=";
-    copy(kmerSequence.begin(), kmerSequence.end(), ostream_iterator<Base>(html));
+    kmer.write(html, k);
     html << "'>";
-    copy(kmerSequence.begin(), kmerSequence.end(), ostream_iterator<Base>(html));
+    kmer.write(html, k);
     html << "</a>";
 
     html <<
