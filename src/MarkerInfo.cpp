@@ -6,9 +6,7 @@ using namespace shasta2;
 
 
 // Construct the reverse complement of a MarkerInfo.
-MarkerInfo MarkerInfo::reverseComplement(
-    const Reads& reads,
-    const Markers&) const
+MarkerInfo MarkerInfo::reverseComplement(const Reads& reads) const
 {
     MarkerInfo markerInfoRc = *this;
     const uint32_t orientedReadBaseCount = uint32_t(reads.getReadSequenceLength(orientedReadId.getReadId()));

@@ -1023,7 +1023,7 @@ void Anchors::constructThreadFunctionPass2(uint64_t /* threadId */)
             // Reverse complement the usableMarkerInfos, then
             // generate the second anchor in the pair.
             for(MarkerInfo& markerInfo: usableMarkerInfos) {
-                markerInfo = markerInfo.reverseComplement(reads, markers);
+                markerInfo = markerInfo.reverseComplement(reads);
             }
             const auto& anchorMarkerInfos1 = anchorMarkerInfos[anchorId + 1];
             SHASTA2_ASSERT(anchorMarkerInfos1.size() == usableMarkerInfos.size());
@@ -1145,7 +1145,7 @@ Anchors::Anchors(
         // the reverse complemented Anchor.
         // We are not filling AnchorInfo::kmerIndex.
         for(AnchorMarkerInfo& markerInfo: markerInfos) {
-            markerInfo.reverseComplement(reads, markers);
+            markerInfo.reverseComplement(reads);
         }
         anchorMarkerInfos.appendVector(markerInfos);
         anchorInfos.push_back(AnchorInfo());

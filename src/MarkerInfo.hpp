@@ -33,9 +33,7 @@ public:
     {}
 
     // Construct the reverse complement of a MarkerInfo.
-    MarkerInfo reverseComplement(
-        const Reads&,
-        const Markers&) const;
+    MarkerInfo reverseComplement(const Reads&) const;
 
     // Get the Kmer corresponding to this MarkerInfo.
     Kmer getKmer(uint64_t k, const Reads&) const;

@@ -509,7 +509,7 @@ void MarkerKmers::get(
         // Kmer is not canonical but kmerRc is.
         span<const MarkerInfo> s = getMarkerInfos(kmerRc);
         for(const MarkerInfo& markerInfo: s) {
-            v.push_back(markerInfo.reverseComplement(reads, markers));
+            v.push_back(markerInfo.reverseComplement(reads));
         }
         sort(v.begin(), v.end(), MarkerInfoSorter(k, reads));
     }
@@ -568,7 +568,7 @@ void MarkerKmers::getWithUniqueReadIds(
             }
 
             if(not isRepeatedReadId) {
-                v.push_back(markerInfo.reverseComplement(reads, markers));
+                v.push_back(markerInfo.reverseComplement(reads));
             }
         }
         sort(v.begin(), v.end(), MarkerInfoSorter(k, reads));
