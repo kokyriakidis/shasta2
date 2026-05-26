@@ -62,5 +62,5 @@ public:
     MemoryMapped::VectorOfVectors<char, uint64_t> names;
 
     // Write information about the i-th external anchor.
-    void write(ostream&, uint64_t i, uint64_t k, const Reads&, const Markers&) const;
+    void write(ostream&, uint64_t i, uint64_t k, const Reads&) const;
 };

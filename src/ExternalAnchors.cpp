@@ -65,8 +65,7 @@ void ExternalAnchors::write(
     ostream& s,
     uint64_t i,
     uint64_t k,
-    const Reads& reads,
-    const Markers& markers) const
+    const Reads& reads) const
 {
     const span<const OrientedRead>& orientedReads = data[i];
     const span<const char> name = names[i];
@@ -79,40 +78,10 @@ void ExternalAnchors::write(
     for(const OrientedRead& orientedRead: orientedReads) {
         const OrientedReadId orientedReadId = orientedRead.orientedReadId;
         const uint32_t position = orientedRead.position;
-        const span<const Marker> orientedReadMarkers = markers[orientedReadId.getValue()];
+        const Kmer kmer = reads.getKmer(k, orientedReadId, position);
 
-        // Find the ordinal at this position, if there is one.
-        uint32_t ordinal = invalid<uint32_t>;
-        Marker targetMarker;
-        targetMarker.position = position;
-        const auto it = std::lower_bound(orientedReadMarkers.begin(), orientedReadMarkers.end(), targetMarker);
-        if((it != orientedReadMarkers.end()) and (it->position == position)) {
-            ordinal = uint32_t(it - orientedReadMarkers.begin());
-        }
-
-        // Get the Kmer at this position, without relying on the ordinal.
-        Kmer kmer;
-        bool kmerIAvailable = false;
-        try {
-            kmer = reads.getKmer(k, orientedReadId, position);
-            kmerIAvailable = true;
-        } catch (const std::exception&) {
-        }
-
-        s << orientedReadId << " position " << position << ", ordinal ";
-        if(ordinal == invalid<uint32_t>) {
-            s << "(no ordinal)";
-        } else {
-            s << ordinal;
-        }
-
-        s << ", k-mer ";
-        if(kmerIAvailable) {
-            kmer.write(s, k);
-        } else {
-            s << "(not available)";
-        }
+        s << orientedReadId << " position " << position << ", k-mer ";
+        kmer.write(s, k);
         s << endl;
-
     }
 }

@@ -1095,7 +1095,7 @@ Anchors::Anchors(
                     " does not have a marker at position " << position;
                 cout << message.str() << endl;
                 cout << "Offending external anchor:" << endl;
-                externalAnchors.write(cout, i, k, reads, markers);
+                externalAnchors.write(cout, i, k, reads);
                 throw runtime_error(message.str());
             }
             const uint32_t ordinal = uint32_t(it - orientedReadMarkers.begin());
@@ -1111,7 +1111,7 @@ Anchors::Anchors(
                         " position " << position << " ordinal " << ordinal << endl;
                     cout << message.str() << endl;
                     cout << "Offending external anchor:" << endl;
-                    externalAnchors.write(cout, i, k, reads, markers);
+                    externalAnchors.write(cout, i, k, reads);
                     throw runtime_error(message.str());
                 }
             }
@@ -1130,7 +1130,7 @@ Anchors::Anchors(
                 std::ostringstream message;
                 message << "Duplicate ReadId " << markerInfos[i0].orientedReadId.getReadId() << endl;
                 cout << "Offending external anchor:" << endl;
-                externalAnchors.write(cout, i, k, reads, markers);
+                externalAnchors.write(cout, i, k, reads);
                 throw runtime_error(message.str());
             }
         }
