@@ -1083,32 +1083,16 @@ Anchors::Anchors(
         for(const ExternalAnchors::OrientedRead& orientedRead: externalAnchor) {
             const OrientedReadId orientedReadId = orientedRead.orientedReadId;
             const uint32_t position = orientedRead.position;
-            const span<const Marker> orientedReadMarkers = markers[orientedReadId.getValue()];
-
-            // Locate the marker at this position.
-            Marker targetMarker;
-            targetMarker.position = position;
-            const auto it = std::lower_bound(orientedReadMarkers.begin(), orientedReadMarkers.end(), targetMarker);
-            if((it==orientedReadMarkers.end()) or (it->position != position)) {
-                std::ostringstream message;
-                message << "Oriented read " << orientedReadId <<
-                    " does not have a marker at position " << position;
-                cout << message.str() << endl;
-                cout << "Offending external anchor:" << endl;
-                externalAnchors.write(cout, i, k, reads);
-                throw runtime_error(message.str());
-            }
-            const uint32_t ordinal = uint32_t(it - orientedReadMarkers.begin());
 
             // Check the Kmer.
-            const Kmer orientedReadKmer = markers.getKmer(orientedReadId, ordinal);
+            const Kmer orientedReadKmer = reads.getKmer(k, orientedReadId, position);
             if(markerInfos.empty()) {
                 kmer = orientedReadKmer;
             } else {
                 if(orientedReadKmer != kmer) {
                     std::ostringstream message;
                     message << "Inconsistent kmer at oriented read " << orientedReadId <<
-                        " position " << position << " ordinal " << ordinal << endl;
+                        " position " << position << endl;
                     cout << message.str() << endl;
                     cout << "Offending external anchor:" << endl;
                     externalAnchors.write(cout, i, k, reads);
