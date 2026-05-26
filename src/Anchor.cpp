@@ -45,7 +45,6 @@ Anchors::Anchors(
     const MappedMemoryOwner& mappedMemoryOwner,
     const Reads& reads,
     uint64_t k,
-    const Markers&,
     bool writeAccess) :
     MultithreadedObject<Anchors>(*this),
     MappedMemoryOwner(mappedMemoryOwner),
@@ -752,7 +751,6 @@ Anchors::Anchors(
     const MappedMemoryOwner& mappedMemoryOwner,
     const Reads& reads,
     uint64_t k,
-    const Markers&,
     const MarkerKmers& markerKmers,
     uint64_t minAnchorCoverage,
     uint64_t maxAnchorCoverage,
@@ -1038,7 +1036,6 @@ Anchors::Anchors(
     const MappedMemoryOwner& mappedMemoryOwner,
     const Reads& reads,
     uint64_t k,
-    const Markers&,
     const string& externalAnchorsName) :
     MultithreadedObject<Anchors>(*this),
     MappedMemoryOwner(mappedMemoryOwner),

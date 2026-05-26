@@ -138,7 +138,6 @@ void Assembler::createAnchors(
         MappedMemoryOwner(*this),
         reads(),
         assemblerInfo->k,
-        markers(),
         *markerKmers,
         minAnchorCoverage,
         maxAnchorCoverage,
@@ -157,7 +156,6 @@ void Assembler::readExternalAnchors(const string& externalAnchorsName)
         MappedMemoryOwner(*this),
         reads(),
         assemblerInfo->k,
-        markers(),
         externalAnchorsName);
 }
 
@@ -167,7 +165,7 @@ void Assembler::readExternalAnchors(const string& externalAnchorsName)
 void Assembler::accessAnchors(bool writeAccess)
 {
      anchorsPointer = make_shared<Anchors>("Anchors",
-         MappedMemoryOwner(*this), reads(), assemblerInfo->k, markers(), writeAccess);
+         MappedMemoryOwner(*this), reads(), assemblerInfo->k, writeAccess);
 }
 
 

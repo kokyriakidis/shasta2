@@ -118,7 +118,6 @@ public:
         const MappedMemoryOwner&,
         const Reads& reads,
         uint64_t k,
-        const Markers& markers,
         const MarkerKmers&,
         uint64_t minAnchorCoverage,
         uint64_t maxAnchorCoverage,
@@ -132,7 +131,6 @@ public:
         const MappedMemoryOwner&,
         const Reads& reads,
         uint64_t k,
-        const Markers& markers,
         const string& externalAnchorsName);
 
     // Constructor to accesses existing Anchors from binary data.
@@ -141,7 +139,6 @@ public:
         const MappedMemoryOwner&,
         const Reads& reads,
         uint64_t k,
-        const Markers& markers,
         bool writeAccess);
 
     void remove();
