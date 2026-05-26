@@ -66,9 +66,9 @@ public:
     // Constructor from OrientedReadId, ordinal, and position.
     AnchorMarkerInfo(
         OrientedReadId orientedReadId,
-        uint32_t ordinal,
+        uint32_t,
         uint32_t position) :
-        MarkerInfo(orientedReadId, ordinal, position)
+        MarkerInfo(orientedReadId, position)
     {}
 
     bool operator<(const AnchorMarkerInfo& that) const

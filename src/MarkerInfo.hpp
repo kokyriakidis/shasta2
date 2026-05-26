@@ -27,7 +27,6 @@ public:
     MarkerInfo() {}
     MarkerInfo(
         OrientedReadId orientedReadId,
-        uint32_t,
         uint32_t position) :
         orientedReadId(orientedReadId),
         position(position)

@@ -136,7 +136,6 @@ void MarkerKmers::gatherMarkersPass12(uint64_t pass)
 
             // Get the markers on this read, without reverse complementing (strand 0).
             const auto orientedReadMarkers = markers[orientedReadId0.getValue()];
-            const uint32_t orientedReadMarkerCount = uint32_t(orientedReadMarkers.size());
 
             // Loop  over the markers.
             for(uint32_t ordinal=0; ordinal<orientedReadMarkers.size(); ordinal++) {
@@ -155,7 +154,7 @@ void MarkerKmers::gatherMarkersPass12(uint64_t pass)
                         markerInfos.incrementCountMultithreaded(bucketId);
                     } else {
                         // This marker occurs on orientedReadId0.
-                        MarkerInfo markerInfo(orientedReadId0, ordinal, position + uint32_t(kHalf));
+                        MarkerInfo markerInfo(orientedReadId0, position + uint32_t(kHalf));
                         markerInfos.storeMultithreaded(bucketId, markerInfo);
                     }
                 } else {
@@ -166,7 +165,6 @@ void MarkerKmers::gatherMarkersPass12(uint64_t pass)
                         // This marker occurs on orientedReadId1.
                         MarkerInfo markerInfo(
                             orientedReadId1,
-                            orientedReadMarkerCount - 1 - ordinal,
                             orientedReadBaseCount - position - uint32_t(kHalf));
                         markerInfos.storeMultithreaded(bucketId, markerInfo);
                     }
