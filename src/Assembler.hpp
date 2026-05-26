@@ -313,5 +313,23 @@ public:
         const Options&);
     std::map<string, shared_ptr<AssemblyGraphPostprocessor> > assemblyGraphTable;
 
+
+
+    // Remove the memory mapped objects owned by an object of type T,
+    // if the options allow it. Type T must implement close()
+    // and remove().
+    template<class T> void removeIfAllowed(const Options& options, T& t) const
+    {
+        if(options.memoryMode == "filesystem") {
+            if(options.keepBinaryData) {
+                t.close();
+            } else {
+                t.remove();
+            }
+        } else {
+            t.close();
+        }
+    }
+
 };
 

@@ -85,6 +85,10 @@ void Assembler::assemble(
 
     createMarkerKmers(options.maxMarkerErrorRate, options.threadCount);
 
+    // Remove the Markers, if allowed by the options.
+    removeIfAllowed(options, *markersPointer);
+    markersPointer = 0;
+
     if(options.externalAnchorsName.empty()) {
         createAnchors(
             options.minAnchorCoverage,
@@ -204,7 +208,6 @@ void Assembler::storeAnchorGaps()
         const OrientedReadId orientedReadId(readId, 0);
 
         // Get the markers and the journey of this oriented read.
-        const auto orientedReadMarkers = markers()[orientedReadId.getValue()];
         const auto journey = journeys()[orientedReadId];
 
         if(journey.empty()) {
