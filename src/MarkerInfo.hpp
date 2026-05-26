@@ -1,6 +1,7 @@
 #pragma once
 
 // Shasta.
+#include "Kmer.hpp"
 #include "ReadId.hpp"
 
 // Standard library.
@@ -8,8 +9,8 @@
 
 namespace shasta2 {
     class MarkerInfo;
-    class MarkerInterval;
     class Markers;
+    class Reads;
 }
 
 
@@ -19,29 +20,27 @@ class shasta2::MarkerInfo {
 public:
     OrientedReadId orientedReadId;
     uint32_t ordinal;
+
+    // The position of the middle of the marker relative to the beginning of the oriented read.
+    // This equals the position of the first base of the marker plus k/2.
+    uint32_t position;
+
     MarkerInfo() {}
-    MarkerInfo(OrientedReadId orientedReadId, uint32_t ordinal) :
-        orientedReadId(orientedReadId), ordinal(ordinal) {}
-
-    // Construct the reverse complement of a MarkerInfo.
-    MarkerInfo reverseComplement(const Markers&) const;
-};
-
-
-
-class shasta2::MarkerInterval {
-public:
-    OrientedReadId orientedReadId;
-    uint32_t ordinalA;
-    uint32_t ordinalB;
-
-    MarkerInterval(
+    MarkerInfo(
         OrientedReadId orientedReadId,
-        uint32_t ordinalA,
-        uint32_t ordinalB) :
+        uint32_t ordinal,
+        uint32_t position) :
         orientedReadId(orientedReadId),
-        ordinalA(ordinalA),
-        ordinalB(ordinalB)
+        ordinal(ordinal),
+        position(position)
     {}
 
+    // Construct the reverse complement of a MarkerInfo.
+    MarkerInfo reverseComplement(
+        const Reads&,
+        const Markers&) const;
+
+    // Get the Kmer corresponding to this MarkerInfo.
+    Kmer getKmer(uint64_t k, const Reads&) const;
 };
+

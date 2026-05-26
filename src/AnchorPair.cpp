@@ -69,7 +69,7 @@ AnchorPair::AnchorPair(
 
 
 
-// Get positions in journey, ordinals, and base positions
+// Get positions in journey and base positions
 // for each of the two reads and for each of the two anchors.
 // The positions returned are the midpoint of the markers
 // corresponding to anchorIdA and anchorIdB.
@@ -78,7 +78,6 @@ void AnchorPair::get(
     vector< pair<Positions, Positions> >& positions) const
 {
 
-    const uint32_t kHalf = uint32_t(anchors.markers.k / 2);
     positions.clear();
 
     const Anchor anchorA = anchors[anchorIdA];
@@ -113,19 +112,15 @@ void AnchorPair::get(
         if(orientedReadId == *it) {
             ++it;
 
-            const auto orientedReadMarkers = anchors.markers[orientedReadId.getValue()];
-
             const uint32_t positionInJourneyA = itA->positionInJourney;
             const uint32_t positionInJourneyB = itB->positionInJourney;
             SHASTA2_ASSERT(positionInJourneyB >= positionInJourneyA);    // Allow degenerate AnchorPair witn anchorIdA==anchorIdB
-            const uint32_t ordinalA = itA->ordinal;
-            const uint32_t ordinalB = itB->ordinal;
-            const uint32_t positionA = orientedReadMarkers[ordinalA].position + kHalf;
-            const uint32_t positionB = orientedReadMarkers[ordinalB].position + kHalf;
+            const uint32_t positionA = itA->position;
+            const uint32_t positionB = itB->position;
 
             positions.push_back(make_pair(
-                Positions(positionInJourneyA, ordinalA, positionA),
-                Positions(positionInJourneyB, ordinalB, positionB)
+                Positions(positionInJourneyA, positionA),
+                Positions(positionInJourneyB, positionB)
                 ));
         }
 
@@ -133,27 +128,6 @@ void AnchorPair::get(
         ++itB;
     }
 }
-
-
-
-// Remove from the AnchorPair OrientedReadIds that have negative offsets.
-void AnchorPair::removeNegativeOffsets(const Anchors& anchors)
-{
-    vector< pair<uint32_t, uint32_t> > ordinals;
-    getOrdinals(anchors, ordinals);
-    SHASTA2_ASSERT(ordinals.size() == orientedReadIds.size());
-
-    vector<OrientedReadId> newOrientedReadIds;
-    for(uint64_t i=0; i<orientedReadIds.size(); i++) {
-        const auto& p = ordinals[i];
-        if(p.second >= p.first) {
-            newOrientedReadIds.push_back(orientedReadIds[i]);
-        }
-    }
-
-    orientedReadIds.swap(newOrientedReadIds);
-}
-
 
 
 
@@ -183,60 +157,6 @@ void AnchorPair::get(
             sequence.push_back(reads.getOrientedReadBase(orientedReadId, position));
         }
     }
-}
-
-
-
-// Same as the above, but only compute the ordinals.
-void AnchorPair::getOrdinals(
-    const Anchors& anchors,
-    vector< pair<uint32_t, uint32_t> >& ordinals) const
-{
-    ordinals.clear();
-
-    const Anchor anchorA = anchors[anchorIdA];
-    const Anchor anchorB = anchors[anchorIdB];
-
-    const auto beginA = anchorA.begin();
-    const auto beginB = anchorB.begin();
-    const auto endA = anchorA.end();
-    const auto endB = anchorB.end();
-
-    auto itA = beginA;
-    auto itB = beginB;
-    auto it = orientedReadIds.begin();
-    const auto itEnd = orientedReadIds.end();
-    while(itA != endA and itB != endB and it != itEnd) {
-
-        if(itA->orientedReadId < itB->orientedReadId) {
-            ++itA;
-            continue;
-        }
-
-        if(itB->orientedReadId < itA->orientedReadId) {
-            ++itB;
-            continue;
-        }
-
-        // We found a common OrientedReadId.
-        const OrientedReadId orientedReadId = itA->orientedReadId;
-        SHASTA2_ASSERT(orientedReadId == itB->orientedReadId);
-
-        // Only process is this is one of our OrientedReadIds;
-        if(orientedReadId == *it) {
-            ++it;
-
-            const uint32_t ordinalA = itA->ordinal;
-            const uint32_t ordinalB = itB->ordinal;
-
-            ordinals.push_back(make_pair(ordinalA, ordinalB));
-        }
-
-        ++itA;
-        ++itB;
-    }
-
-    SHASTA2_ASSERT(it == orientedReadIds.end());
 }
 
 
@@ -323,7 +243,6 @@ void AnchorPair::createChildren(
 
 uint32_t AnchorPair::getAverageOffset(const Anchors& anchors) const
 {
-    const uint32_t kHalf = uint32_t(anchors.markers.k / 2);
 
     uint64_t sumBaseOffset = 0;
 
@@ -359,21 +278,17 @@ uint32_t AnchorPair::getAverageOffset(const Anchors& anchors) const
         if(orientedReadId == *it) {
             ++it;
 
-            const auto orientedReadMarkers = anchors.markers[orientedReadId.getValue()];
-
-            const uint32_t ordinalA = itA->ordinal;
-            const uint32_t ordinalB = itB->ordinal;
-            if(ordinalB < ordinalA) {       // Degenerate AnchorPair with AnchorIdA==AnchorIdB is ok.
+            const uint32_t positionA = itA->position;
+            const uint32_t positionB = itB->position;
+            if(positionB < positionA) {       // Degenerate AnchorPair with AnchorIdA==AnchorIdB is ok.
                 throw runtime_error(
                     "Order violation at anchor pair " +
                     anchorIdToString(anchorIdA) + " " +
                     anchorIdToString(anchorIdB) + " " +
-                    orientedReadId.getString() + " ordinals " +
-                    to_string(ordinalA) + " " +
-                    to_string(ordinalB));
+                    orientedReadId.getString() + " positions " +
+                    to_string(positionA) + " " +
+                    to_string(positionB));
             }
-            const uint32_t positionA = orientedReadMarkers[ordinalA].position + kHalf;
-            const uint32_t positionB = orientedReadMarkers[ordinalB].position + kHalf;
             SHASTA2_ASSERT(positionB >= positionA);      // Degenerate AnchorPair with AnchorIdA==AnchorIdB is ok.
 
             const uint32_t offset = positionB - positionA;
@@ -397,7 +312,6 @@ void AnchorPair::getOffsets(
     uint32_t& minBaseOffset,
     uint32_t& maxBaseOffset) const
 {
-    const uint32_t kHalf = uint32_t(anchors.markers.k / 2);
 
     uint64_t sumBaseOffset = 0;
     minBaseOffset = std::numeric_limits<uint32_t>::max();
@@ -437,19 +351,17 @@ void AnchorPair::getOffsets(
 
             const auto orientedReadMarkers = anchors.markers[orientedReadId.getValue()];
 
-            const uint32_t ordinalA = itA->ordinal;
-            const uint32_t ordinalB = itB->ordinal;
-            if(ordinalB < ordinalA) {          // Degenerate AnchorPair with AnchorIdA==AnchorIdB is ok.
+            const uint32_t positionA = itA->position;
+            const uint32_t positionB = itB->position;
+            if(positionB < positionA) {          // Degenerate AnchorPair with AnchorIdA==AnchorIdB is ok.
                 throw runtime_error(
                     "Order violation at anchor pair " +
                     anchorIdToString(anchorIdA) + " " +
                     anchorIdToString(anchorIdB) + " " +
-                    orientedReadId.getString() + " ordinals " +
-                    to_string(ordinalA) + " " +
-                    to_string(ordinalB));
+                    orientedReadId.getString() + " positions " +
+                    to_string(positionA) + " " +
+                    to_string(positionB));
             }
-            const uint32_t positionA = orientedReadMarkers[ordinalA].position + kHalf;
-            const uint32_t positionB = orientedReadMarkers[ordinalB].position + kHalf;
             SHASTA2_ASSERT(positionB > positionA);
 
             const uint32_t offset = positionB - positionA;
@@ -553,7 +465,6 @@ void AnchorPair::writeOrientedReadIdsHtml(ostream& html, const Anchors& anchors)
         "<table>"
         "<tr><th>Oriented<br>read id"
         "<th>Position<br>in journey<br>A<th>Position<br>in journey<br>B<th>Journey<br>offset"
-        "<th>OrdinalA<th>OrdinalB<th>Ordinal<br>offset"
         "<th>A middle<br>position"
         "<th>B middle<br>position"
         "<th>Sequence<br>length";
@@ -571,9 +482,6 @@ void AnchorPair::writeOrientedReadIdsHtml(ostream& html, const Anchors& anchors)
             "<td class=centered>" << positionsA.positionInJourney <<
             "<td class=centered>" << positionsB.positionInJourney <<
             "<td class=centered>" << positionsB.positionInJourney - positionsA.positionInJourney <<
-            "<td class=centered>" << positionsA.ordinal <<
-            "<td class=centered>" << positionsB.ordinal <<
-            "<td class=centered>" << positionsB.ordinal - positionsA.ordinal <<
             "<td class=centered>" << positionsA.basePosition <<
             "<td class=centered>" << positionsB.basePosition <<
             "<td class=centered>" << positionsB.basePosition - positionsA.basePosition;

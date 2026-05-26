@@ -13,7 +13,6 @@
 #include "findConvergingVertex.hpp"
 #include "findReachableVertices.hpp"
 #include "Journeys.hpp"
-#include "LocalAssembly4.hpp"
 #include "LocalAssembly6.hpp"
 #include "longestPath.hpp"
 #include "memoryInformation.hpp"
@@ -161,7 +160,7 @@ void AssemblyGraph::simplifyAndAssemble()
     compress();
     writeIntermediateStageIfRequested("B");
 
-    // Phase SuperbubbleChains, considering all hypotheses.
+    // Phase SuperbubbleChains.
     phaseSuperbubbleChains();
     writeIntermediateStageIfRequested("C");
 
@@ -179,9 +178,17 @@ void AssemblyGraph::simplifyAndAssemble()
     removeIsolatedVertices();
     removeLowN50Components();
     writeIntermediateStageIfRequested("G");
-
     compress();
     writeIntermediateStageIfRequested("H");
+
+    // Connect dangling segments.
+    connectDanglingSegments();
+    writeIntermediateStageIfRequested("I");
+
+    // A final round of phasing.More opportunities for phasing
+    // may have emerged.
+    phaseSuperbubbleChains();
+    writeIntermediateStageIfRequested("J");
 
 
 
@@ -463,39 +470,20 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
     ostream html(0);
     try {
 
-        if(options.localAssemblyMethod == 4) {
-            LocalAssembly4 localAssembly(
-                anchors,
-                html,
-                edge[i].anchorPair,
-                additionalOrientedReadIds);
-            step.sequence = localAssembly.sequence;
-        }
+        // Combine the Oriented reads in the AnchorPair
+        // and the additional OrientedReadIds.
+        vector<OrientedReadId> orientedReadIds = additionalOrientedReadIds;
+        const AnchorPair& anchorPair = edge[i].anchorPair;
+        std::ranges::copy(anchorPair.orientedReadIds, back_inserter(orientedReadIds));
+        deduplicate(orientedReadIds);
 
-        else if(options.localAssemblyMethod == 6) {
-
-            // Combine the Oriented reads in the AnchorPair
-            // and the additional OrientedReadIds.
-            vector<OrientedReadId> orientedReadIds = additionalOrientedReadIds;
-            const AnchorPair& anchorPair = edge[i].anchorPair;
-            std::ranges::copy(anchorPair.orientedReadIds, back_inserter(orientedReadIds));
-            deduplicate(orientedReadIds);
-
-            LocalAssembly6 localAssembly(
-                anchors,
-                anchorPair.anchorIdA,
-                anchorPair.anchorIdB,
-                html,
-                false,
-                orientedReadIds);
-            step.sequence = localAssembly.sequence;
-        }
-
-        else {
-            throw runtime_error("Invalid local assembly method " +
-                to_string(options.localAssemblyMethod) +
-                ". Must be 4 or 6.");
-        }
+        LocalAssembly6 localAssembly(
+            anchors,
+            anchorPair.anchorIdA,
+            anchorPair.anchorIdB,
+            html,
+            orientedReadIds);
+        step.sequence = localAssembly.sequence;
 
     } catch(const std::exception&) {
         cout << "Error occurred assembling segment " <<
@@ -2739,4 +2727,266 @@ void AssemblyGraph::readFollowing()
 {
     ReadFollowing4::ReadFollower readFollower(*this);
     readFollower.updateAssemblyGraph(*this);
+}
+
+
+
+void AssemblyGraph::connectDanglingSegments()
+{
+    // EXPOSE WHEN CODE STABILIZES.
+    const uint64_t minLength = 50000;
+    const uint64_t minReadCount = 1;
+
+    AssemblyGraph& assemblyGraph = *this;
+    const bool debug = true;
+
+
+    // A graph to store information about dangling segments.
+    class Vertex {
+    public:
+        edge_descriptor segment;
+        bool isSource;
+        bool isTarget;
+    };
+    using Graph = boost::adjacency_list<
+        boost::listS,
+        boost::listS,
+        boost::bidirectionalS,
+        Vertex>;
+    Graph graph;
+
+
+
+    // To generate Graph vertices, loop over AssemblyGraph edges (segments).
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+
+        // If not dangling, skip it.
+        const vertex_descriptor v0 = source(e, assemblyGraph);
+        const vertex_descriptor v1 = target(e, assemblyGraph);
+        const bool isSource = (out_degree(v1, assemblyGraph) == 0);
+        const bool isTarget = (in_degree(v0, assemblyGraph) == 0);
+        if(not (isSource or isTarget)) {
+            continue;
+        }
+
+        // If too short, skip it.
+        if(assemblyGraph[e].length() < minLength) {
+            continue;
+        }
+
+        // Create a vertex.
+        add_vertex(Vertex({e, isSource, isTarget}), graph);
+        if(false) {
+            cout << "Dangling segment " << assemblyGraph[e].id;
+            if(isSource) {
+                cout << " source";
+            }
+            if(isTarget) {
+                cout << " target";
+            }
+            cout << endl;
+        }
+
+    }
+
+
+
+    // To generate edges, loop over pairs of vertices in which the first is
+    // a source and the second is a target.
+    BGL_FORALL_VERTICES(v0, graph, Graph) {
+        if(not graph[v0].isSource) {
+            continue;
+        }
+        BGL_FORALL_VERTICES(v1, graph, Graph) {
+            if(not graph[v1].isTarget) {
+                continue;
+            }
+
+            const edge_descriptor e0 = graph[v0].segment;
+            const edge_descriptor e1 = graph[v1].segment;
+
+
+
+            // Create the tangle matrix.
+            std::ostream html(0);
+            const TangleMatrix1 tangleMatrix(
+                assemblyGraph,
+                vector<edge_descriptor>(1, e0),
+                vector<edge_descriptor>(1, e1),
+                html);
+            const double m = tangleMatrix.tangleMatrix[0][0];
+
+            if(debug and (m > 0.)) {
+                cout << "Dangling segments pair " <<
+                    assemblyGraph[e0].id << " " << assemblyGraph[e1].id <<
+                    " " << m << endl;
+            }
+
+            if(m >= double(minReadCount)) {
+                add_edge(v0, v1, graph);
+                if(debug) {
+                    cout << "Adding edge for dangling segments pair " <<
+                        assemblyGraph[e0].id << " " << assemblyGraph[e1].id <<
+                        " " << m << endl;
+                }
+            }
+        }
+    }
+
+
+
+    // Now we loop over all edges v0->v1 such that out_degree(v0)==1
+    // and in_degree(v1)==1 and connected the segments corresponding to v0 and v1.
+    BGL_FORALL_EDGES(e, graph, Graph) {
+        const vertex_descriptor v0 = source(e, graph);
+        const vertex_descriptor v1 = target(e, graph);
+        if((out_degree(v0, graph) == 1) and (in_degree(v1, graph) == 1)) {
+            const edge_descriptor e0 = graph[v0].segment;
+            const edge_descriptor e1 = graph[v1].segment;
+            if(canConnect(e0, e1)) {
+                if(debug) {
+                    cout << "Connecting dangling segments " <<
+                        assemblyGraph[e0].id << " " <<
+                        assemblyGraph[e1].id << endl;
+                }
+
+                const AssemblyGraph::vertex_descriptor u0 = target(e0, assemblyGraph);
+                const AssemblyGraph::vertex_descriptor u1 = source(e1, assemblyGraph);
+
+                const AnchorId anchorId0 = assemblyGraph[u0].anchorId;
+                const AnchorId anchorId1 = assemblyGraph[u1].anchorId;
+
+                // Create the new edge.
+                // If the two anchors are the same, leave it empty without any steps.
+                // Otherwise use the same process in Tangle1::addConnectPair.
+                edge_descriptor newSegment;
+                tie(newSegment, ignore) = add_edge(u0, u1, AssemblyGraphEdge(assemblyGraph.nextEdgeId++), assemblyGraph);
+                AssemblyGraphEdge& newEdge = assemblyGraph[newSegment];
+                if(anchorId0 != anchorId1) {
+
+                    // Create the RestrictedAnchorGraph, then:
+                    // - Remove vertices not accessible from anchorId0 and anchorId1.
+                    // - Remove cycles.
+                    // - Find the longest path.
+                    // - Add one step for each edge of the longest path of the RestrictedAnchorGraph.
+
+                    ostream html(0);
+                    const TangleMatrix1 tangleMatrix(
+                        assemblyGraph,
+                        vector<edge_descriptor>(1, e0),
+                        vector<edge_descriptor>(1, e1),
+                        html);
+
+                    try {
+                        RestrictedAnchorGraph restrictedAnchorGraph(assemblyGraph.anchors, assemblyGraph.journeys, tangleMatrix, 0, 0, html);
+                        vector<RestrictedAnchorGraph::edge_descriptor> longestPath;
+                        // restrictedAnchorGraph.findLongestPath(longestPath);
+                        restrictedAnchorGraph.findOptimalPath(anchorId0, anchorId1, longestPath);
+
+                        for(const RestrictedAnchorGraph::edge_descriptor re: longestPath) {
+                            const auto& rEdge = restrictedAnchorGraph[re];
+                            if(rEdge.anchorPair.size() == 0) {
+                                newEdge.clear();
+                                SHASTA2_ASSERT(0);
+                            }
+                            newEdge.push_back(AssemblyGraphEdgeStep(rEdge.anchorPair, rEdge.offset));
+                        }
+                    } catch(RestrictedAnchorGraph::NoTransitions&) {
+                        cout << "Could not connect " << assemblyGraph[e0].id <<
+                            " with " << assemblyGraph[e1].id << endl;
+                        SHASTA2_ASSERT(0);
+                    }
+                }
+            }
+        }
+    }
+
+    compress();
+}
+
+
+
+// Simple connection of two segments (edges) without using
+// the RestrictedAnchorGraph.
+void AssemblyGraph::simpleConnect(edge_descriptor e0, edge_descriptor e1)
+{
+    AssemblyGraph& assemblyGraph = *this;
+
+    // Access the target vertex of e0 and the source vertex of e1.
+    const vertex_descriptor v0 = target(e0, assemblyGraph);
+    const vertex_descriptor v1 = source(e1, assemblyGraph);
+
+    // If the two vertices are the same, e0 and e1 are already connected,
+    // and we don't have to do anything.
+    if(v0 == v1) {
+        return;
+    }
+
+    // Get the corresponding AnchorIds.
+    const AnchorId anchorId0 = assemblyGraph[v0].anchorId;
+    const AnchorId anchorId1 = assemblyGraph[v1].anchorId;
+
+    // If the anchorIds are the same, connect v0 and v1 using an empty
+    // AssemblyGraphEdge.
+    if(anchorId0 == anchorId1) {
+        add_edge(v0, v1, AssemblyGraphEdge(assemblyGraph.nextEdgeId++), assemblyGraph);
+        return;
+    }
+
+    // Otherwise, create a new AssemblyGraphEdge consisting of a single
+    // AssemblyGraphEdgeStep, using the common reads between the last
+    // step of e0 and the first step of e1.
+    vector<OrientedReadId> orientedReadIds;
+    findOrientedReadIdsForSimpleConnect(e0, e1, orientedReadIds);
+    SHASTA2_ASSERT(not orientedReadIds.empty());
+    const auto [eNew, ignore] = add_edge(v0, v1, AssemblyGraphEdge(assemblyGraph.nextEdgeId++), assemblyGraph);
+    AssemblyGraphEdge& edgeNew = assemblyGraph[eNew];
+    AnchorPair anchorPair;
+    anchorPair.anchorIdA = anchorId0;
+    anchorPair.anchorIdB = anchorId1;
+    anchorPair.orientedReadIds = orientedReadIds;
+    const uint32_t offset = anchorPair.getAverageOffset(anchors);
+    edgeNew.push_back(AssemblyGraphEdgeStep(anchorPair, offset));
+
+}
+
+
+
+bool AssemblyGraph::canSimpleConnect(edge_descriptor e0, edge_descriptor e1)
+{
+    vector<OrientedReadId> orientedReadIds;
+    findOrientedReadIdsForSimpleConnect(e0, e1, orientedReadIds);
+    return not orientedReadIds.empty();
+}
+
+
+
+void AssemblyGraph::findOrientedReadIdsForSimpleConnect(
+    edge_descriptor e0,
+    edge_descriptor e1,
+    vector<OrientedReadId>& orientedReadIds) const
+{
+    const AssemblyGraph& assemblyGraph = *this;
+    orientedReadIds.clear();
+
+    // Access the two edges.
+    const AssemblyGraphEdge& edge0 = assemblyGraph[e0];
+    const AssemblyGraphEdge& edge1 = assemblyGraph[e1];
+
+    if(edge0.empty() or edge1.empty()) {
+        return;
+    }
+
+    // Access the last step of e0 and the first step of e1.
+    const AssemblyGraphEdgeStep& step0 = edge0.back();
+    const AssemblyGraphEdgeStep& step1 = edge1.front();
+
+    const AnchorPair& anchorPair0 = step0.anchorPair;
+    const AnchorPair& anchorPair1 = step1.anchorPair;
+
+    // Find common oriented reads between step0 and step1.
+    std::ranges::set_intersection(
+        anchorPair0.orientedReadIds,
+        anchorPair1.orientedReadIds,
+        back_inserter(orientedReadIds));
 }

@@ -27,6 +27,7 @@ MarkerKmers::MarkerKmers(
     MappedMemoryOwner(mappedMemoryOwner),
     MultithreadedObject<MarkerKmers>(*this),
     k(k),
+    kHalf(k/2),
     reads(reads),
     readSummariesPointer(&readSummaries),
     markers(markers)
@@ -86,6 +87,7 @@ MarkerKmers::MarkerKmers(
     MappedMemoryOwner(mappedMemoryOwner),
     MultithreadedObject<MarkerKmers>(*this),
     k(k),
+    kHalf(k/2),
     reads(reads),
     markers(markers)
 {
@@ -126,6 +128,7 @@ void MarkerKmers::gatherMarkersPass12(uint64_t pass)
 
             // Get the sequence for this read (without reverse complementing).
             const LongBaseSequenceView readSequence = reads.getRead(readId);
+            const uint32_t orientedReadBaseCount = uint32_t(readSequence.baseCount);
 
             // Get the two OrientedReadIds corresponding to this ReadId.
             const OrientedReadId orientedReadId0(readId, 0);
@@ -152,7 +155,7 @@ void MarkerKmers::gatherMarkersPass12(uint64_t pass)
                         markerInfos.incrementCountMultithreaded(bucketId);
                     } else {
                         // This marker occurs on orientedReadId0.
-                        MarkerInfo markerInfo(orientedReadId0, ordinal);
+                        MarkerInfo markerInfo(orientedReadId0, ordinal, position + uint32_t(kHalf));
                         markerInfos.storeMultithreaded(bucketId, markerInfo);
                     }
                 } else {
@@ -161,51 +164,16 @@ void MarkerKmers::gatherMarkersPass12(uint64_t pass)
                         markerInfos.incrementCountMultithreaded(bucketId);
                     } else {
                         // This marker occurs on orientedReadId1.
-                        MarkerInfo markerInfo(orientedReadId1, orientedReadMarkerCount - 1 - ordinal);
+                        MarkerInfo markerInfo(
+                            orientedReadId1,
+                            orientedReadMarkerCount - 1 - ordinal,
+                            orientedReadBaseCount - position - uint32_t(kHalf));
                         markerInfos.storeMultithreaded(bucketId, markerInfo);
                     }
                 }
             }
         }
 
-    }
-}
-
-
-
-// Get the Kmer corresponding to a given MarkerInfo.
-Kmer MarkerKmers::getKmer(const MarkerInfo& markerInfo) const
-{
-    // Get the OrientedReadId and marker ordinal.
-    const OrientedReadId orientedReadId = markerInfo.orientedReadId;
-    const uint32_t ordinal = markerInfo.ordinal;
-
-    // Get the ReadId and Strand.
-    const ReadId readId = orientedReadId.getReadId();
-    const Strand strand = orientedReadId.getStrand();
-
-    // Get the sequence for this read (without reverse complementing).
-    const LongBaseSequenceView readSequence = reads.getRead(readId);
-
-    if(strand == 0) {
-        const auto orientedReadMarkers = markers[orientedReadId.getValue()];
-        const Marker& marker = orientedReadMarkers[ordinal];
-        const uint32_t position = marker.position;
-        Kmer kmer;
-        extractKmer128(readSequence, position, k, kmer);
-        return kmer;
-    } else {
-
-        // Find the corresponding marker on strand 0, then reverse complement it.
-        const OrientedReadId orientedReadId0(readId, 0);
-        const auto orientedRead0Markers = markers[orientedReadId0.getValue()];
-        const uint32_t markerCount = uint32_t(orientedRead0Markers.size());
-        const uint32_t ordinal0 = markerCount - 1 - ordinal;
-        const Marker& marker0 = orientedRead0Markers[ordinal0];
-        const uint32_t position0 = marker0.position;
-        Kmer kmer0;
-        extractKmer128(readSequence, position0, k, kmer0);
-        return kmer0.reverseComplement(k);
     }
 }
 
@@ -220,7 +188,7 @@ void MarkerKmers::sortMarkers(uint64_t /* threadId */)
 
         for(uint64_t bucketId=begin; bucketId<end; bucketId++) {
             span<MarkerInfo> bucket = markerInfos[bucketId];
-            sort(bucket.begin(), bucket.end(), MarkerInfoSorter(*this));
+            sort(bucket.begin(), bucket.end(), MarkerInfoSorter(k, reads));
         }
     }
 }
@@ -242,11 +210,11 @@ void MarkerKmers::fillKmerInfosPass1(uint64_t /* threadId */)
             // The bucket is sorted by Kmer.
             // Find streaks with the same Kmer.
             for(uint64_t streakBegin=0; streakBegin<bucket.size(); /* Increment later */) {
-                const Kmer kmer = getKmer(bucket[streakBegin]);
+                const Kmer kmer = bucket[streakBegin].getKmer(k, reads);
 
                 uint64_t streakEnd = streakBegin + 1;
                 for(; streakEnd<bucket.size(); streakEnd++) {
-                    if(getKmer(bucket[streakEnd]) != kmer) {
+                    if(bucket[streakEnd].getKmer(k, reads) != kmer) {
                         break;
                     }
                 }
@@ -280,11 +248,11 @@ void MarkerKmers::fillKmerInfosPass2(uint64_t /* threadId */)
             // The bucket is sorted by Kmer.
             // Find streaks with the same Kmer.
             for(uint64_t streakBegin=0; streakBegin<markerInfoBucket.size(); /* Increment later */) {
-                const Kmer kmer = getKmer(markerInfoBucket[streakBegin]);
+                const Kmer kmer = markerInfoBucket[streakBegin].getKmer(k, reads);
 
                 uint64_t streakEnd = streakBegin + 1;
                 for(; streakEnd<markerInfoBucket.size(); streakEnd++) {
-                    if(getKmer(markerInfoBucket[streakEnd]) != kmer) {
+                    if(markerInfoBucket[streakEnd].getKmer(k, reads) != kmer) {
                         break;
                     }
                 }
@@ -320,7 +288,7 @@ void MarkerKmers::writeCsv() const
 void MarkerKmers::writeMarkerInfosCsv1() const
 {
     ofstream csv("MarkerKmers-MarkerInfos1.csv");
-    csv << "Kmer,Global index,Bucket,Index in bucket,OrientedReadId,Ordinal,Position,\n";
+    csv << "Kmer,Global index,Bucket,Index in bucket,OrientedReadId,Position,\n";
 
     // Loop over all buckets.
     for(uint64_t bucketId=0; bucketId<markerInfos.size(); bucketId++) {
@@ -331,13 +299,10 @@ void MarkerKmers::writeMarkerInfosCsv1() const
             const MarkerInfo& markerInfo = bucket[i];
 
             const OrientedReadId orientedReadId = markerInfo.orientedReadId;
-            const uint32_t ordinal= markerInfo.ordinal;
 
-            const Kmer kmer = getKmer(markerInfo);
+            const Kmer kmer = markerInfo.getKmer(k, reads);
 
-            const auto orientedReadMarkers = markers[orientedReadId.getValue()];
-            const Marker& marker = orientedReadMarkers[ordinal];
-            const uint32_t position = marker.position;
+            const uint32_t position = markerInfo.position;
 
             kmer.write(csv, k);
             csv << ",";
@@ -346,7 +311,6 @@ void MarkerKmers::writeMarkerInfosCsv1() const
             csv << bucketId << ",";
             csv << i << ",";
             csv << orientedReadId << ",";
-            csv << ordinal << ",";
             csv << position << ",";
 
             csv << "\n";
@@ -360,7 +324,7 @@ void MarkerKmers::writeMarkerInfosCsv1() const
 void MarkerKmers::writeMarkerInfosCsv2() const
 {
     ofstream csv("MarkerKmers-MarkerInfos2.csv");
-    csv << "Kmer,Frequency,OrientedReadId,Ordinal,Position,\n";
+    csv << "Kmer,Frequency,OrientedReadId,Position,\n";
 
     // Loop over all buckets.
     for(uint64_t bucketId=0; bucketId<markerInfos.size(); bucketId++) {
@@ -370,23 +334,19 @@ void MarkerKmers::writeMarkerInfosCsv2() const
         for(uint64_t i=0; i<bucket.size(); i++) {
             const KmerInfo& kmerInfo = bucket[i];
 
-            const Kmer kmer = getKmer(kmerInfo.markerInfo);
+            const Kmer kmer = kmerInfo.markerInfo.getKmer(k, reads);
 
             for(uint64_t i=kmerInfo.begin; i!=kmerInfo.end; i++) {
                 const MarkerInfo& markerInfo = markerInfos.begin()[i];
                 const OrientedReadId orientedReadId = markerInfo.orientedReadId;
-                const uint32_t ordinal = markerInfo.ordinal;
 
-                const auto orientedReadMarkers = markers[orientedReadId.getValue()];
-                const Marker& marker = orientedReadMarkers[ordinal];
-                const uint32_t position = marker.position;
+                const uint32_t position = markerInfo.position;
 
                 kmer.write(csv, k);
                 csv << ",";
                 csv << kmerInfo.end - kmerInfo.begin << ",";
 
                 csv << orientedReadId << ",";
-                csv << ordinal << ",";
                 csv << position << ",";
 
                 csv << "\n";
@@ -410,7 +370,7 @@ void MarkerKmers::writeKmerInfosCsv() const
         for(uint64_t i=0; i<bucket.size(); i++) {
             const KmerInfo& kmerInfo = bucket[i];
 
-            const Kmer kmer = getKmer(kmerInfo.markerInfo);
+            const Kmer kmer = kmerInfo.markerInfo.getKmer(k, reads);
 
             kmer.write(csv, k);
             csv << ",";
@@ -495,7 +455,7 @@ span<const MarkerInfo> MarkerKmers::getMarkerInfos(const Kmer& kmer) const
     const uint64_t bucketId = findBucket(kmer);
     const span<const KmerInfo> bucket = kmerInfos[bucketId];
     for(const KmerInfo& kmerInfo: bucket) {
-        if(getKmer(kmerInfo.markerInfo) == kmer) {
+        if(kmerInfo.markerInfo.getKmer(k, reads) == kmer) {
             const MarkerInfo* const begin = markerInfos.begin() + kmerInfo.begin;
             const MarkerInfo* const end   = markerInfos.begin() + kmerInfo.end;
             return span<const MarkerInfo>(begin, end);
@@ -519,7 +479,7 @@ uint64_t MarkerKmers::getGlobalIndex(const Kmer& kmer) const
 
     // Scan the bucket looking for this Kmer.
     for(const KmerInfo& kmerInfo: bucket) {
-        if(getKmer(kmerInfo.markerInfo) == kmer) {
+        if(kmerInfo.markerInfo.getKmer(k, reads) == kmer) {
             return &kmerInfo - kmerInfos.begin();
         }
     }
@@ -551,9 +511,9 @@ void MarkerKmers::get(
         // Kmer is not canonical but kmerRc is.
         span<const MarkerInfo> s = getMarkerInfos(kmerRc);
         for(const MarkerInfo& markerInfo: s) {
-            v.push_back(markerInfo.reverseComplement(markers));
+            v.push_back(markerInfo.reverseComplement(reads, markers));
         }
-        sort(v.begin(), v.end(), MarkerInfoSorter(*this));
+        sort(v.begin(), v.end(), MarkerInfoSorter(k, reads));
     }
 }
 
@@ -610,74 +570,10 @@ void MarkerKmers::getWithUniqueReadIds(
             }
 
             if(not isRepeatedReadId) {
-                v.push_back(markerInfo.reverseComplement(markers));
+                v.push_back(markerInfo.reverseComplement(reads, markers));
             }
         }
-        sort(v.begin(), v.end(), MarkerInfoSorter(*this));
+        sort(v.begin(), v.end(), MarkerInfoSorter(k, reads));
     }
 
-}
-
-
-
-// Given a K-mer, find pairs(Kmer, coverage) for the K-mers that
-// immediately follow/preced it in one or more oriented reads.
-void MarkerKmers::getNext(const Kmer& kmer0, vector< pair<Kmer, uint64_t> >& v)
-{
-    vector<MarkerInfo> markerInfos;
-    get(kmer0, markerInfos);
-
-    vector<Kmer> kmers;
-    for(const MarkerInfo& markerInfo: markerInfos) {
-        const OrientedReadId orientedReadId = markerInfo.orientedReadId;
-        const auto orientedReadMarkers = markers[orientedReadId.getValue()];
-        const uint32_t ordinal0 = markerInfo.ordinal;
-        const uint32_t ordinal1 = ordinal0 + 1;
-
-        if(ordinal1 >= orientedReadMarkers.size()) {
-            continue;
-        }
-
-        const Kmer kmer1 = markers.getKmer(orientedReadId, ordinal1);
-        kmers.push_back(kmer1);
-    }
-
-    vector<uint64_t> count;
-    deduplicateAndCount(kmers, count);
-
-    v.clear();
-    for(uint64_t i=0; i<kmers.size(); i++) {
-        v.push_back(make_pair(kmers[i], count[i]));
-    }
-}
-
-
-
-void MarkerKmers::getPrevious(const Kmer& kmer0, vector< pair<Kmer, uint64_t> >& v)
-{
-    vector<MarkerInfo> markerInfos;
-    get(kmer0, markerInfos);
-
-    vector<Kmer> kmers;
-    for(const MarkerInfo& markerInfo: markerInfos) {
-        const OrientedReadId orientedReadId = markerInfo.orientedReadId;
-        const auto orientedReadMarkers = markers[orientedReadId.getValue()];
-        const uint32_t ordinal0 = markerInfo.ordinal;
-
-        if(ordinal0 ==0) {
-            continue;
-        }
-        const uint32_t ordinal1 = ordinal0 - 1;
-
-        const Kmer kmer1 = markers.getKmer(orientedReadId, ordinal1);
-        kmers.push_back(kmer1);
-    }
-
-    vector<uint64_t> count;
-    deduplicateAndCount(kmers, count);
-
-    v.clear();
-    for(uint64_t i=0; i<kmers.size(); i++) {
-        v.push_back(make_pair(kmers[i], count[i]));
-    }
 }

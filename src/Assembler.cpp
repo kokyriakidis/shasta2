@@ -1,7 +1,6 @@
 #include "Assembler.hpp"
 #include "Anchor.hpp"
 #include "AnchorGraph.hpp"
-#include "AnchorSimilarityGraph.hpp"
 #include "AssemblyGraph.hpp"
 #include "deduplicate.hpp"
 #include "DinaraKmerChecker.hpp"
@@ -220,7 +219,6 @@ void Assembler::readExternalAnchors(const string& externalAnchorsName)
         reads(),
         assemblerInfo->k,
         markers(),
-        *markerKmers,
         externalAnchorsName);
 }
 
@@ -230,7 +228,7 @@ void Assembler::readExternalAnchors(const string& externalAnchorsName)
 void Assembler::accessAnchors(bool writeAccess)
 {
      anchorsPointer = make_shared<Anchors>("Anchors",
-         MappedMemoryOwner(*this), reads(), assemblerInfo->k, markers(), *markerKmers, writeAccess);
+         MappedMemoryOwner(*this), reads(), assemblerInfo->k, markers(), writeAccess);
 }
 
 
@@ -259,7 +257,6 @@ void Assembler::accessJourneys()
 // Store anchor gaps information in ReadSummary for each read.
 void Assembler::storeAnchorGaps()
 {
-    const uint32_t kHalf = uint32_t(anchors().kHalf);
 
     // Loop over all Reads.
     for(ReadId readId=0; readId<reads().readCount(); readId++) {
@@ -288,11 +285,8 @@ void Assembler::storeAnchorGaps()
             const AnchorId anchorId0 = journey[i0];
             const AnchorId anchorId1 = journey[i1];
 
-            const uint32_t ordinal0 = anchors().getOrdinal(anchorId0, orientedReadId);
-            const uint32_t ordinal1 = anchors().getOrdinal(anchorId1, orientedReadId);
-
-            const uint32_t position0 = orientedReadMarkers[ordinal0].position + kHalf;
-            const uint32_t position1 = orientedReadMarkers[ordinal1].position + kHalf;
+            const uint32_t position0 = anchors().getPosition(anchorId0, orientedReadId);
+            const uint32_t position1 = anchors().getPosition(anchorId1, orientedReadId);
 
             const uint32_t gap = position1 - position0;
             maxGap = max(maxGap, gap);
@@ -301,13 +295,11 @@ void Assembler::storeAnchorGaps()
 
         // Compute the number of bases preceding the first anchor on the journey.
         const AnchorId anchorId0 = journey.front();
-        const uint32_t ordinal0 = anchors().getOrdinal(anchorId0, orientedReadId);
-        readSummary.initialAnchorGap = orientedReadMarkers[ordinal0].position + kHalf;
+        readSummary.initialAnchorGap = anchors().getPosition(anchorId0, orientedReadId);
 
         // Compute the number of bases following the last anchor on the journey.
         const AnchorId anchorId1 = journey.back();
-        const uint32_t ordinal1 = anchors().getOrdinal(anchorId1, orientedReadId);
-        readSummary.finalAnchorGap = readLength - orientedReadMarkers[ordinal1].position - kHalf;
+        readSummary.finalAnchorGap = readLength - anchors().getPosition(anchorId1, orientedReadId);
 
     }
 
@@ -330,37 +322,6 @@ void Assembler::createCompleteAnchorGraph()
     completeAnchorGraphPointer->save("CompleteAnchorGraph");
 }
 
-
-
-void Assembler::createAnchorSimilarityGraph()
-{
-    const AnchorGraph& completeAnchorGraph = *completeAnchorGraphPointer;
-
-    anchorSimilarityGraphPointer = make_shared<AnchorSimilarityGraph>(
-        anchors(), completeAnchorGraph);
-    anchorSimilarityGraphPointer->checkStrandInvariant();
-    anchorSimilarityGraphPointer->save("AnchorSimilarityGraph");
-}
-
-
-
-void Assembler::createAnchorGraphFromAnchorSimilarityGraph()
-{
-    anchorGraphPointer = make_shared<AnchorGraph>(anchors(), *anchorSimilarityGraphPointer);
-}
-
-
-
-// This uses read following in the complete AnchorGraph
-// to create the AnchorGraph to be used for assembly.
-// This is meant to be used with strict anchor generation,
-// where most anchors correspond to a single copy.
-void Assembler::readFollowing()
-{
-    const AnchorGraph& completeAnchorGraph = *completeAnchorGraphPointer;
-    anchorGraphPointer = make_shared<AnchorGraph>(anchors(), journeys(), completeAnchorGraph);
-    anchorGraphPointer->save("AnchorGraph");
-}
 
 
 
@@ -408,30 +369,6 @@ void Assembler::accessCompleteAnchorGraph()
 {
     const MappedMemoryOwner& mappedMemoryOwner = *this;
     completeAnchorGraphPointer = make_shared<AnchorGraph>(mappedMemoryOwner, "CompleteAnchorGraph");
-}
-
-
-
-void Assembler::accessAnchorSimilarityGraph()
-{
-    const MappedMemoryOwner& mappedMemoryOwner = *this;
-    anchorSimilarityGraphPointer = make_shared<AnchorSimilarityGraph>(mappedMemoryOwner, "AnchorSimilarityGraph");
-    anchorSimilarityGraphPointer->checkStrandInvariant();
-}
-
-
-
-void Assembler::anchorSimilarityGraphCreateShortestPathTree(AnchorId anchorId) const
-{
-    anchorSimilarityGraphPointer->createShortestPathTree(anchorId, anchors());
-}
-
-
-
-void Assembler::anchorSimilarityGraphComputeOptimalPath(uint64_t componentId) const
-{
-    vector<AnchorId> path;
-    anchorSimilarityGraphPointer->computeOptimalPath(anchors(), componentId, path);
 }
 
 

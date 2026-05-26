@@ -46,7 +46,6 @@ Anchors::Anchors(
     const Reads& reads,
     uint64_t k,
     const Markers& markers,
-    const MarkerKmers& markerKmers,
     bool writeAccess) :
     MultithreadedObject<Anchors>(*this),
     MappedMemoryOwner(mappedMemoryOwner),
@@ -54,12 +53,10 @@ Anchors::Anchors(
     reads(reads),
     k(k),
     kHalf(k/2),
-    markers(markers),
-    markerKmers(markerKmers)
+    markers(markers)
 {
     anchorMarkerInfos.accessExisting(largeDataName(baseName + "-AnchorMarkerInfos"), writeAccess);
     anchorInfos.accessExistingReadOnly(largeDataName(baseName + "-AnchorInfos"));
-    kmerToAnchorTable.accessExistingReadOnly(largeDataName(baseName + "-KmerToAnchorTable"));
 }
 
 
@@ -130,7 +127,19 @@ void Anchors::check() const
 
     for(AnchorId anchorId=0; anchorId<size(); anchorId++) {
         const Anchor& anchor = anchors[anchorId];
+        // cout << "Checking " << anchorIdToString(anchorId) << endl;
         anchor.check();
+
+        // Check that the positions are consistent with the ordinals.
+        for(const AnchorMarkerInfo& anchorMarkerInfo: anchor) {
+            const OrientedReadId orientedReadId = anchorMarkerInfo.orientedReadId;
+            const uint32_t ordinal = anchorMarkerInfo.ordinal;
+            const uint32_t position = anchorMarkerInfo.position;
+
+            const auto orientedReadMarkers = markers[orientedReadId.getValue()];
+            // cout << orientedReadId << " " << position << " " << orientedReadMarkers[ordinal].position << endl;
+            SHASTA2_ASSERT(position == orientedReadMarkers[ordinal].position + kHalf);
+        }
     }
 }
 
@@ -140,6 +149,7 @@ void Anchor::check() const
 {
     const Anchor& anchor = *this;
 
+    // Check that the ReadIds are in strictly increasing order.
     for(uint64_t i=1; i<size(); i++) {
         SHASTA2_ASSERT(anchor[i-1].orientedReadId.getReadId() < anchor[i].orientedReadId.getReadId());
     }
@@ -327,19 +337,13 @@ void Anchors::analyzeAnchorPair(
         }
 
         // We found a common OrientedReadId.
-        const OrientedReadId orientedReadId = itA->orientedReadId;
-        const auto orientedReadMarkers = markers[orientedReadId.getValue()];
-
-        // Compute the offset in markers.
-        const uint32_t ordinalA = itA->ordinal;
-        const uint32_t ordinalB = itB->ordinal;
 
         // Compute the offset in bases.
-        const uint64_t positionA = orientedReadMarkers[ordinalA].position;
-        const uint64_t positionB = orientedReadMarkers[ordinalB].position;
+        const uint64_t positionA = itA->position;
+        const uint64_t positionB = itB->position;
 
         // Update.
-        if(ordinalA < ordinalB) {
+        if(positionA < positionB) {
             const uint64_t journeyOffset = itB->positionInJourney - itA->positionInJourney;
             if(journeyOffset == 1) {
                 ++info.commonForwardAdjacent;
@@ -394,11 +398,9 @@ void Anchors::analyzeAnchorPair(
             // This oriented read only appears in Anchor A.
             ++onlyACheck;
             const OrientedReadId orientedReadId = itA->orientedReadId;
-            const auto orientedReadMarkers = markers[orientedReadId.getValue()];
             const int64_t lengthInBases = int64_t(reads.getReadSequenceLength(orientedReadId.getReadId()));
 
-            const uint32_t ordinalA = itA->ordinal;
-            const int64_t positionA = int64_t(orientedReadMarkers[ordinalA].position);
+            const int64_t positionA = itA->position;
 
             // Find the hypothetical positions of anchor B, assuming the estimated base offset.
             const int64_t positionB = positionA + info.offsetInBases;
@@ -416,12 +418,10 @@ void Anchors::analyzeAnchorPair(
             // This oriented read only appears in Anchor B.
             ++onlyBCheck;
             const OrientedReadId orientedReadId = itB->orientedReadId;
-            const auto orientedReadMarkers = markers[orientedReadId.getValue()];
             const int64_t lengthInBases = int64_t(reads.getReadSequenceLength(orientedReadId.getReadId()));
 
             // Get the positions of edge B in this oriented read.
-            const uint32_t ordinalB = itB->ordinal;
-            const int64_t positionB = int64_t(orientedReadMarkers[ordinalB].position);
+            const int64_t positionB = itB->position;
 
             // Find the hypothetical positions of anchor A, assuming the estimated base offset.
             const int64_t positionA = positionB - info.offsetInBases;
@@ -436,7 +436,7 @@ void Anchors::analyzeAnchorPair(
         }
 
         else {
-            // This oriented read appears in both edges. In this loop, we
+            // This oriented read appears in both anchors. In this loop, we
             // don't need to do anything.
             ++itA;
             ++itB;
@@ -527,23 +527,19 @@ void Anchors::writeHtml(
     html <<
         "<tr>"
         "<th class=centered rowspan=2>Oriented<br>read id"
-        "<th class=centered colspan=3>Length"
-        "<th colspan=3>Anchor A"
-        "<th colspan=3>Anchor B"
-        "<th colspan=3>Offset"
+        "<th class=centered colspan=2>Length"
+        "<th colspan=2>Anchor A"
+        "<th colspan=2>Anchor B"
+        "<th colspan=2>Offset"
         "<th rowspan=2>Classification"
         "<tr>"
         "<th>Bases"
-        "<th>Markers"
         "<th>Anchors"
         "<th>Base<br>Position"
-        "<th>Marker<br>ordinal"
         "<th>Position<br>in journey"
         "<th>Base<br>Position"
-        "<th>Marker<br>ordinal"
         "<th>Position<br>in journey"
         "<th>Base<br>Position"
-        "<th>Marker<br>ordinal"
         "<th>Position<br>in journey";
 
     // Prepare for the joint loop over OrientedReadIds of the two anchors.
@@ -565,13 +561,11 @@ void Anchors::writeHtml(
         else if(itB == endB or ((itA!=endA) and (itA->orientedReadId < itB->orientedReadId))) {
             // This oriented read only appears in Anchor A.
             const OrientedReadId orientedReadId = itA->orientedReadId;
-            const auto orientedReadMarkers = markers[orientedReadId.getValue()];
             const int64_t lengthInBases = int64_t(reads.getReadSequenceLength(orientedReadId.getReadId()));
             const auto journey = journeys[orientedReadId];
 
             // Get the positions of Anchor A in this oriented read.
-            const uint32_t ordinalA = itA->ordinal;
-            const int64_t positionA = int64_t(orientedReadMarkers[ordinalA].position);
+            const int64_t positionA = itA->position;
 
             // Find the hypothetical positions of Anchor B, assuming the estimated base offset.
             const int64_t positionB = positionA + info.offsetInBases;
@@ -582,14 +576,11 @@ void Anchors::writeHtml(
                 "<a href='exploreRead?readId=" << orientedReadId.getReadId() <<
                 "&strand=" << orientedReadId.getStrand() << "'>" << orientedReadId << "</a>"
                 "<td class=centered>" << lengthInBases <<
-                "<td class=centered>" << orientedReadMarkers.size() <<
                 "<td class=centered>" << journey.size() <<
                 "<td class=centered>" << positionA <<
-                "<td class=centered>" << ordinalA <<
                 "<td class=centered>" << itA->positionInJourney <<
                 "<td class=centered style='color:Red'>" << positionB <<
-                "<td>"
-                "<td class=centered style='color:Red'>" << "<td><td><td>"
+                "<td class=centered style='color:Red'>" << "<td><td>"
                 "<td class=centered>OnlyA, " << (isShort ? "short" : "missing");
 
             ++itA;
@@ -599,13 +590,11 @@ void Anchors::writeHtml(
         else if(itA == endA or ((itB!=endB) and (itB->orientedReadId < itA->orientedReadId))) {
             // This oriented read only appears in Anchor B.
             const OrientedReadId orientedReadId = itB->orientedReadId;
-            const auto orientedReadMarkers = markers[orientedReadId.getValue()];
             const int64_t lengthInBases = int64_t(reads.getReadSequenceLength(orientedReadId.getReadId()));
             const auto journey = journeys[orientedReadId];
 
             // Get the positions of Anchor B in this oriented read.
-            const uint32_t ordinalB = itB->ordinal;
-            const int64_t positionB = int64_t(orientedReadMarkers[ordinalB].position);
+            const int64_t positionB = itB->position;
 
             // Find the hypothetical positions of edge A, assuming the estimated base offset.
             const int64_t positionA = positionB - info.offsetInBases;
@@ -616,14 +605,12 @@ void Anchors::writeHtml(
                 "<a href='exploreRead?readId=" << orientedReadId.getReadId() <<
                 "&strand=" << orientedReadId.getStrand() << "'>" << orientedReadId << "</a>"
                 "<td class=centered>" << lengthInBases <<
-                "<td class=centered>" << orientedReadMarkers.size() <<
                 "<td class=centered>" << journey.size() <<
                 "<td class=centered style='color:Red'>" << positionA <<
-                "<td><td>"
+                "<td>"
                 "<td class=centered>" << positionB <<
-                "<td class=centered>" << ordinalB <<
                 "<td class=centered>" << itB->positionInJourney <<
-                "<td class=centered>" << "<td><td>"
+                "<td class=centered>" << "<td>"
                 "<td class=centered>OnlyB, " << (isShort ? "short" : "missing");
 
             ++itB;
@@ -633,20 +620,16 @@ void Anchors::writeHtml(
         else {
             // This oriented read appears in both Anchors.
             const OrientedReadId orientedReadId = itA->orientedReadId;
-            const auto orientedReadMarkers = markers[orientedReadId.getValue()];
             const int64_t lengthInBases = int64_t(reads.getReadSequenceLength(orientedReadId.getReadId()));
             const auto journey = journeys[orientedReadId];
 
             // Get the positions of Anchor A in this oriented read.
-            const uint32_t ordinalA = itA->ordinal;
-            const int64_t positionA = int64_t(orientedReadMarkers[ordinalA].position);
+            const int64_t positionA = itA->position;
 
             // Get the positions of Anchor B in this oriented read.
-            const uint32_t ordinalB = itB->ordinal;
-            const int64_t positionB = int64_t(orientedReadMarkers[ordinalB].position);
+            const int64_t positionB = itB->position;
 
             // Compute estimated offsets.
-            const int64_t ordinalOffset = uint64_t(ordinalB) - uint64_t(ordinalA);
             const int64_t baseOffset = positionB - positionA;
 
             html <<
@@ -654,16 +637,12 @@ void Anchors::writeHtml(
                 "<a href='exploreRead?readId=" << orientedReadId.getReadId() <<
                 "&strand=" << orientedReadId.getStrand() << "'>" << orientedReadId << "</a>"
                 "<td class=centered>" << lengthInBases <<
-                "<td class=centered>" << orientedReadMarkers.size() <<
                 "<td class=centered>" << journey.size() <<
                 "<td class=centered>" << positionA <<
-                "<td class=centered>" << ordinalA <<
                 "<td class=centered>" << itA->positionInJourney <<
                 "<td class=centered>" << positionB <<
-                "<td class=centered>" << ordinalB <<
                 "<td class=centered>" << itB->positionInJourney <<
                 "<td class=centered>" << baseOffset <<
-                "<td class=centered>" << ordinalOffset <<
                 "<td class=centered>" << int64_t(itB->positionInJourney) - int64_t(itA->positionInJourney) <<
                 "<td class=centered>Common";
 
@@ -800,6 +779,23 @@ uint32_t Anchors::getOrdinal(AnchorId anchorId, OrientedReadId orientedReadId) c
 
 
 
+// Get the position for the AnchorMarkerInfo corresponding to a
+// given AnchorId and OrientedReadId.
+// This asserts if the given AnchorId does not contain an AnchorMarkerInfo
+// for the requested OrientedReadId.
+uint32_t Anchors::getPosition(AnchorId anchorId, OrientedReadId orientedReadId) const
+{
+    for(const auto& markerInfo: anchorMarkerInfos[anchorId]) {
+        if(markerInfo.orientedReadId == orientedReadId) {
+            return markerInfo.position;
+        }
+    }
+
+    SHASTA2_ASSERT(0);
+}
+
+
+
 // Get the positionInJourney for the AnchorMarkerInfo corresponding to a
 // given AnchorId and OrientedReadId.
 // This asserts if the given AnchorId does not contain an AnchorMarkerInfo
@@ -884,8 +880,7 @@ Anchors::Anchors(
     reads(reads),
     k(k),
     kHalf(k/2),
-    markers(markers),
-    markerKmers(markerKmers)
+    markers(markers)
 {
 
     performanceLog << timestamp << "Anchor creation begins." << endl;
@@ -897,6 +892,7 @@ Anchors::Anchors(
 
     // Store arguments so all threads can see them.
     ConstructData& data = constructData;
+    data.markerKmersPointer = &markerKmers;
     data.minAnchorCoverage = minAnchorCoverage;
     data.maxAnchorCoverage = maxAnchorCoverage;
     data.maxAnchorRepeatLength = maxAnchorRepeatLength;
@@ -923,19 +919,15 @@ Anchors::Anchors(
             largeDataName(baseName + "-AnchorMarkerInfos"),
             largeDataPageSize);
     anchorInfos.createNew(largeDataName(baseName + "-AnchorInfos"), largeDataPageSize);
-    kmerToAnchorTable.createNew(largeDataName(baseName + "-KmerToAnchorTable"), largeDataPageSize);
-    kmerToAnchorTable.resize(markerKmerCount);
     AnchorId anchorId = 0;
     for(uint64_t kmerIndex=0; kmerIndex<markerKmerCount; kmerIndex++) {
         const uint64_t coverage = data.coverage[kmerIndex];
         if(coverage == 0) {
             // This k-mer does not generate any anchors.
-            kmerToAnchorTable[kmerIndex] = invalid<AnchorId>;
         } else {
             // This k-mer generates two anchors.
             anchorMarkerInfos.appendVector(coverage);
             anchorMarkerInfos.appendVector(coverage);
-            kmerToAnchorTable[kmerIndex] = anchorId;
             anchorInfos.push_back(AnchorInfo(kmerIndex));
             anchorInfos.push_back(AnchorInfo(kmerIndex));
             anchorId += 2;
@@ -958,6 +950,8 @@ Anchors::Anchors(
     cout << "Number of anchors per strand: " << anchorCount / 2 << endl;
     performanceLog << timestamp << "Anchor creation from marker kmers ends." << endl;
 
+    // check();
+
 }
 
 
@@ -967,6 +961,7 @@ void Anchors::constructThreadFunctionPass1(uint64_t /* threadId */)
 {
 
     ConstructData& data = constructData;
+    const MarkerKmers& markerKmers = *(data.markerKmersPointer);
     const uint64_t minAnchorCoverage = data.minAnchorCoverage;
     const uint64_t maxAnchorCoverage = data.maxAnchorCoverage;
     const vector<uint64_t> maxAnchorRepeatLength = data.maxAnchorRepeatLength;
@@ -1032,7 +1027,7 @@ void Anchors::constructThreadFunctionPass1(uint64_t /* threadId */)
 
             // Check for repeats.
             bool skipDueToRepeats = false;
-            const Kmer kmer = markerKmers.getKmer(markerInfos.front());
+            const Kmer kmer = markerInfos.front().getKmer(k, reads);
             for(uint64_t i=0; i<maxAnchorRepeatLength.size(); i++) {
                 const uint64_t period = i + 1;
                 const uint64_t maxAllowedCopyNumber = maxAnchorRepeatLength[i];
@@ -1075,6 +1070,7 @@ void Anchors::constructThreadFunctionPass2(uint64_t /* threadId */)
 {
 
     ConstructData& data = constructData;
+    const MarkerKmers& markerKmers = *(data.markerKmersPointer);
     const uint64_t minAnchorCoverage = data.minAnchorCoverage;
     const uint64_t maxAnchorCoverage = data.maxAnchorCoverage;
 
@@ -1141,49 +1137,12 @@ void Anchors::constructThreadFunctionPass2(uint64_t /* threadId */)
             // Reverse complement the usableMarkerInfos, then
             // generate the second anchor in the pair.
             for(MarkerInfo& markerInfo: usableMarkerInfos) {
-                markerInfo = markerInfo.reverseComplement(markers);
+                markerInfo = markerInfo.reverseComplement(reads, markers);
             }
             const auto& anchorMarkerInfos1 = anchorMarkerInfos[anchorId + 1];
             SHASTA2_ASSERT(anchorMarkerInfos1.size() == usableMarkerInfos.size());
             copy(usableMarkerInfos.begin(), usableMarkerInfos.end(), anchorMarkerInfos1.begin());
         }
-    }
-}
-
-
-
-// Use the kmerToAnchorTable table to get the AnchorId corresponding to a given Kmer.
-// When using ExternalAnchors, this always returns invalid<AnchorId>.
-// This is only used in the http server.
-// It is not used in the standard assembly process.
-AnchorId Anchors::getAnchorIdFromKmer(const Kmer& kmer) const
-{
-    const Kmer kmerRc = kmer.reverseComplement(k);
-
-    if(kmer <= kmerRc) {
-
-        // kmer is canonical.
-
-        const uint64_t globalIndex = markerKmers.getGlobalIndex(kmer);
-        const uint64_t anchorId = kmerToAnchorTable[globalIndex];
-        if(anchorId == invalid<uint64_t>) {
-            return invalid<uint64_t>;
-        } else {
-            return anchorId;
-        }
-
-    } else {
-
-        // kmerRc is canonical.
-
-        const uint64_t globalIndex = markerKmers.getGlobalIndex(kmerRc);
-        const uint64_t anchorId = kmerToAnchorTable[globalIndex];
-        if(anchorId == invalid<uint64_t>) {
-            return invalid<uint64_t>;
-        } else {
-            return anchorId + 1;
-        }
-
     }
 }
 
@@ -1196,7 +1155,6 @@ Anchors::Anchors(
     const Reads& reads,
     uint64_t k,
     const Markers& markers,
-    const MarkerKmers& markerKmers,
     const string& externalAnchorsName) :
     MultithreadedObject<Anchors>(*this),
     MappedMemoryOwner(mappedMemoryOwner),
@@ -1204,8 +1162,7 @@ Anchors::Anchors(
     reads(reads),
     k(k),
     kHalf(k/2),
-    markers(markers),
-    markerKmers(markerKmers)
+    markers(markers)
 {
 
     // Access the ExternalAnchors.
@@ -1225,10 +1182,6 @@ Anchors::Anchors(
         largeDataPageSize);
     anchorInfos.createNew(largeDataName(baseName + "-AnchorInfos"), largeDataPageSize);
 
-    // Create the kmerToAnchorTable and fill it in with invalid<AnchorId>.
-    kmerToAnchorTable.createNew(largeDataName(baseName + "-KmerToAnchorTable"), largeDataPageSize);
-    kmerToAnchorTable.resize(markerKmers.size());
-    fill(kmerToAnchorTable.begin(), kmerToAnchorTable.end(), invalid<AnchorId>);
 
 
     // Loop over external anchors.
@@ -1278,7 +1231,7 @@ Anchors::Anchors(
             }
 
             // Store this MarkerInfo.
-            markerInfos.emplace_back(orientedReadId, ordinal);
+            markerInfos.emplace_back(orientedReadId, ordinal, position + kHalf);
         }
 
         // Sort the MarkerInfos by OrientedReadId.
@@ -1320,105 +1273,8 @@ Anchors::Anchors(
 
 
 
-// Constructor to create an empty Anchors object.
-Anchors::Anchors(
-    const string& baseName,
-    const MappedMemoryOwner& mappedMemoryOwner,
-    const Reads& reads,
-    uint64_t k,
-    const Markers& markers,
-    const MarkerKmers& markerKmers) :
-    MultithreadedObject<Anchors>(*this),
-    MappedMemoryOwner(mappedMemoryOwner),
-    baseName(baseName),
-    reads(reads),
-    k(k),
-    kHalf(k/2),
-    markers(markers),
-    markerKmers(markerKmers)
-{
-    anchorMarkerInfos.createNew(largeDataName(baseName + "-AnchorMarkerInfos"), largeDataPageSize);
-    anchorInfos.createNew(largeDataName(baseName + "-AnchorInfos"), largeDataPageSize);
-    kmerToAnchorTable.createNew(largeDataName(baseName + "-KmerToAnchorTable"), largeDataPageSize);
-}
-
-
-
-// Constructor that makes a copy of a source Anchors object, but removing
-// a specified set of AnchorMarkerInfos.
-// The keep vector specifies which AnchorMarkerInfos should be kept.
-// It must be of size that.anchorMarkerInfos.totalSize() and
-// is indexed by the global position of the AnchorMarkerInfo
-// in that.anchorMarkerInfos, that is, &anchorMarkerInfo-that.anchorMarkerInfos.begin().
-Anchors::Anchors(
-    const Anchors& sourceAnchors,
-    const string& baseName,
-    const vector<bool>& keep) :
-    MultithreadedObject<Anchors>(*this),
-    MappedMemoryOwner(sourceAnchors),
-    baseName(baseName),
-    reads(sourceAnchors.reads),
-    k(sourceAnchors.k),
-    kHalf(k/2),
-    markers(sourceAnchors.markers),
-    markerKmers(sourceAnchors.markerKmers)
-{
-    const bool debug = false;
-
-    // Initialize MemoryMapped objects.
-    anchorMarkerInfos.createNew(largeDataName(baseName + "-AnchorMarkerInfos"), largeDataPageSize);
-    anchorInfos.createNew(largeDataName(baseName + "-AnchorInfos"), largeDataPageSize);
-    kmerToAnchorTable.createNew(largeDataName(baseName + "-KmerToAnchorTable"), largeDataPageSize);
-
-    // Initialize the kmerToAnchorTable.
-    kmerToAnchorTable.resize(sourceAnchors.markerKmers.size());
-    std::ranges::fill(kmerToAnchorTable, invalid<AnchorId>);
-
-    // Loop over anchors in the sourceAnchors.
-    // Each of them generates an Anchor,
-    // with some AnchorMarkerInfos possibly excluded.
-    for(AnchorId sourceAnchorId=0; sourceAnchorId<sourceAnchors.size(); sourceAnchorId++) {
-        const Anchor sourceAnchor = sourceAnchors[sourceAnchorId];
-
-        // Get the anchorId for the new anchor we are generating.
-        // Since we are nto removing any anchors, this must be the same
-        // as the sourceAnchorId.
-        const AnchorId anchorId = size();
-        SHASTA2_ASSERT(anchorId == sourceAnchorId);
-
-        // Copy the AnchorInfo.
-        const AnchorInfo& sourceAnchorInfo = sourceAnchors.anchorInfos[sourceAnchorId];
-        anchorInfos.push_back(sourceAnchorInfo);
-
-        // Update the kmerToAnchorTable.
-        kmerToAnchorTable[sourceAnchorInfo.kmerIndex] = anchorId;
-
-        // Generate the AnchorMarkerInfos for this new anchor.
-        // They are the same as for sourceAnchor, but some
-        // AnchorMarkerInfos may be removed.
-        anchorMarkerInfos.appendVector();
-        uint64_t newCoverage = 0;
-        for(const AnchorMarkerInfo& sourceAnchorMarkerInfo: sourceAnchor) {
-            if(keep[&sourceAnchorMarkerInfo - sourceAnchors.anchorMarkerInfos.begin()]) {
-                anchorMarkerInfos.append(sourceAnchorMarkerInfo);
-                ++newCoverage;
-            }
-        }
-
-        if(debug) {
-            if(newCoverage != sourceAnchor.size()) {
-                cout << anchorIdToString(anchorId) << " old coverage " << sourceAnchor.size() <<
-                    ", new coverage " << newCoverage << endl;
-            }
-        }
-    }
-}
-
-
-
 void Anchors::remove()
 {
     anchorMarkerInfos.remove();
     anchorInfos.remove();
-    kmerToAnchorTable.remove();
 }

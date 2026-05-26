@@ -225,13 +225,12 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
 
     // Write the marker intervals of this Anchor.
     html <<
-        "<h2>Marker intervals</h2>"
+        "<h2>Marker information</h2>"
         "<table>"
         "<tr>"
         "<th>Index"
         "<th>Oriented<br>read<br>id"
         "<th>Position<br>in<br>journey"
-        "<th>Ordinal"
         "<th>Position"
         "<th>Previous<br>anchor<br>in journey"
         "<th>Next<br>anchor<br>in journey";
@@ -242,10 +241,7 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
         const OrientedReadId orientedReadId = markerInfo.orientedReadId;
         const auto journey = journeys()[orientedReadId];
 
-        const uint32_t ordinal = markerInfo.ordinal;
-
-        const auto orientedReadMarkers = markers()[orientedReadId.getValue()];
-        const uint32_t position = orientedReadMarkers[ordinal].position;
+        const uint32_t position = markerInfo.position;
 
         AnchorId previousAnchorInJourney = invalid<AnchorId>;
         if(markerInfo.positionInJourney > 0) {
@@ -275,7 +271,6 @@ void Assembler::exploreAnchor(const vector<string>& request, ostream& html)
 
        html <<
             "<td class=centered>" << markerInfo.positionInJourney <<
-            "<td class=centered>" << ordinal <<
             "<td class=centered>" << position;
 
        // Previous anchor in journey.
@@ -524,7 +519,6 @@ void Assembler::exploreJourney(const vector<string>& request, ostream& html)
         "<th>Position<br>in journey"
         "<th>Anchor"
         "<th>Anchor<br>coverage"
-        "<th>Marker<br>ordinal"
         "<th>Marker<br>position";
 
     // Loop over the anchors in the journey of this oriented read.
@@ -533,10 +527,7 @@ void Assembler::exploreJourney(const vector<string>& request, ostream& html)
         const uint64_t anchorCoverage = anchors()[anchorId].coverage();
         const string anchorIdString = anchorIdToString(anchorId);
 
-        const uint64_t ordinal = anchors().getOrdinal(anchorId, orientedReadId);
-
-        const auto orientedReadMarkers = markers()[orientedReadId.getValue()];
-        const uint32_t position = orientedReadMarkers[ordinal].position;
+        const uint32_t position = anchors().getPosition(anchorId, orientedReadId);
 
         if(position < beginPosition) {
             continue;
@@ -552,7 +543,6 @@ void Assembler::exploreJourney(const vector<string>& request, ostream& html)
             "<a href='exploreAnchor?anchorIdString=" << HttpServer::urlEncode(anchorIdString) << "'>" <<
             anchorIdString << "</a>"
             "<td class=centered>" << anchorCoverage <<
-            "<td class=centered>" << ordinal <<
             "<td class=centered>" << position;
     }
 
@@ -699,142 +689,6 @@ void Assembler::exploreLocalAnchorGraph(
 
     // Write it to html.
     graph.writeHtml(html, displayOptions, assemblyGraphPointer);
-
-}
-
-
-
-void Assembler::exploreAnchorGraphSubgraph(
-    const vector<string>& request,
-    ostream& html)
-{
-    // Get the options from the request.
-    string anchorIdString;
-    HttpServer::getParameterValue(request, "anchorId", anchorIdString);
-    boost::trim(anchorIdString);
-
-    string directionString = "forward";
-    HttpServer::getParameterValue(request, "direction", directionString);
-
-    uint64_t minCommonCount = 3;
-    HttpServer::getParameterValue(request, "minCommonCount", minCommonCount);
-
-
-    // Start the form.
-    html << "<form><table>";
-
-    // Starting AnchorId.
-    html <<
-        "<tr>"
-        "<th class=left>Starting anchor id"
-        "<td class=centered>"
-        "<input type=text name=anchorId style='text-align:center' required";
-    if(not anchorIdString.empty()) {
-        html << " value='" << anchorIdString + "'";
-    }
-    html << ">";
-
-    // Direction.
-    html <<
-        "<tr>"
-        "<th>Direction"
-        "<td class=left>"
-        "<input type=radio required name=direction value='forward'" <<
-        (directionString == "forward" ? " checked=on" : "") <<
-        ">Forward"
-        "<br>"
-        "<input type=radio required name=direction value='backward'" <<
-        (directionString == "backward" ? " checked=on" : "") <<
-        ">Backward";
-
-    // minCommonCount.
-    html <<
-        "<tr>"
-        "<th>Min common count"
-        "<td class=centered>"
-        "<input type=text name=minCommonCount style='text-align:center' value=" << minCommonCount << ">";
-
-    // End the form.
-    html <<
-        "</table>"
-        "<input type=submit value='Create anchor graph subgraph'>"
-        "</form>";
-
-    // If the AnchorId is not present, stop here.
-    if(anchorIdString.empty()) {
-        return;
-    }
-
-    // Get the AnchorId.
-    const AnchorId anchorId = anchorIdFromString(anchorIdString);
-    if((anchorId == invalid<AnchorId>) or (anchorId >= anchors().size())) {
-        html << "<p>Invalid anchor id " << anchorIdString << ". Must be a number between 0 and " <<
-            anchors().size() / 2 - 1 << " followed by + or -.";
-        return;
-    }
-
-    // Get the direction.
-    uint64_t direction = invalid<uint64_t>;
-    if(directionString == "forward") {
-        direction = 0;
-    } else if(directionString == "backward") {
-        direction = 1;
-    } else {
-        html << "<br>Invalid direction string " << directionString;
-        return;
-    }
-
-    if(not completeAnchorGraphPointer) {
-        html << "<br>The complete AnchorGraph is not available.";
-        return;
-    }
-
-
-    html << "<h2>AnchorGraph subgraph starting at " << anchorIdString <<
-        ", " << directionString << " direction</h2>";
-
-    // Create the Subgraph.
-    AnchorGraph::Subgraph subgraph(anchors(), *completeAnchorGraphPointer, anchorId, direction, minCommonCount);
-    html << "<h3>Initial subgraph</h3>";
-    subgraph.writeHtml(html, anchors());
-
-    // Remove cycles.
-    subgraph.removeCycles();
-    html << "<h3>Subgraph after removing cycles</h3>";
-    subgraph.writeHtml(html, anchors());
-
-    // Transitive reduction.
-    subgraph.transitiveReduction();
-    html << "<h3>Subgraph after transitive reduction</h3>";
-    subgraph.writeHtml(html, anchors());
-
-    // Prune multiple exists.
-    subgraph.pruneMultipleExits();
-
-    // Display it.
-    html << "<h3>Final subgraph</h3>";
-    subgraph.writeHtml(html, anchors());
-
-    // Create the dominator tree.
-    const AnchorGraph::Subgraph dominatorTree(
-        subgraph,
-        AnchorGraph::Subgraph::DominatorTree(),
-        anchors());
-    html << "<h3>Dominator tree</h3>";
-    dominatorTree.writeHtml(html, anchors());
-
-    // Walk up the dominator tree.
-    using vertex_descriptor = AnchorGraph::Subgraph::vertex_descriptor;
-    vector<vertex_descriptor> path;
-    subgraph.walkUp(dominatorTree, path);
-
-    html << "<h2>Path</h2>";
-    for(const vertex_descriptor v: path) {
-        html << anchorIdToString(dominatorTree[v].anchorId) << " ";
-    }
-
-    dominatorTree.writeFastaHtml(path, html, anchors());
-    dominatorTree.writeFasta(path, "SubgraphAnchors.fasta", anchors());
 
 }
 

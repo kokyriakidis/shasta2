@@ -358,7 +358,6 @@ void RestrictedAnchorGraph::fillJourneyPortions(
     using OrientedReadInfo = TangleMatrix1::OrientedReadInfo;
 
     const Anchors& anchors = tangleMatrix1.assemblyGraph.anchors;
-    const Markers& markers = anchors.markers;
 
     const vector<OrientedReadInfo>& entranceOrientedReadInfos = tangleMatrix1.entranceOrientedReadInfos[iEntrance];
     const vector<OrientedReadInfo>& exitOrientedReadInfos = tangleMatrix1.exitOrientedReadInfos[iExit];
@@ -390,12 +389,10 @@ void RestrictedAnchorGraph::fillJourneyPortions(
             const uint32_t exitPositionInJourney = itExit->positionInJourney;
             const AnchorId entranceAnchorId = journey[entrancePositionInJourney];
             const AnchorId exitAnchorId = journey[exitPositionInJourney];
-            const uint32_t entranceOrdinal = anchors.getOrdinal(entranceAnchorId, orientedReadId);
-            const uint32_t exitOrdinal = anchors.getOrdinal(exitAnchorId, orientedReadId);
-            const auto orientedReadMarkers = markers[orientedReadId.getValue()];
-            const uint64_t offset =
-                orientedReadMarkers[exitOrdinal].position -
-                orientedReadMarkers[entranceOrdinal].position;
+            const uint32_t entrancePosition = anchors.getPosition(entranceAnchorId, orientedReadId);
+            const uint32_t exitPosition = anchors.getPosition(exitAnchorId, orientedReadId);
+            SHASTA2_ASSERT(exitPosition > entrancePosition);
+            const uint32_t offset = exitPosition - entrancePosition;
             offsetSum += offset;
             ++offsetCount;
         }
@@ -434,12 +431,10 @@ void RestrictedAnchorGraph::fillJourneyPortions(
                 uint32_t end = uint32_t(journey.size());
 
                 // End the JourneyPortion at a distance maxOffset after begin.
-                const auto orientedReadMarkers = markers[orientedReadId.getValue()];
                 uint32_t beginPosition = invalid<uint32_t>;
                 for(uint32_t positionInJourney=begin; positionInJourney<end; positionInJourney++) {
                     const AnchorId anchorId = journey[positionInJourney];
-                    const uint32_t ordinal = anchors.getOrdinal(anchorId, orientedReadId);
-                    const uint32_t position = orientedReadMarkers[ordinal].position;
+                    const uint32_t position = anchors.getPosition(anchorId, orientedReadId) - uint32_t(anchors.kHalf);
                     if(positionInJourney == begin) {
                         beginPosition = position;
                     } else {
@@ -473,12 +468,10 @@ void RestrictedAnchorGraph::fillJourneyPortions(
                 const uint32_t end = itExit->positionInJourney + 1;
 
                 // Begin the JourneyPortion at a distance maxOffset before begin.
-                const auto orientedReadMarkers = markers[orientedReadId.getValue()];
                 uint32_t endPosition = invalid<uint32_t>;
                 for(uint32_t positionInJourney=end-1; /* Check later */ ; positionInJourney--) {
                     const AnchorId anchorId = journey[positionInJourney];
-                    const uint32_t ordinal = anchors.getOrdinal(anchorId, orientedReadId);
-                    const uint32_t position = orientedReadMarkers[ordinal].position;
+                    const uint32_t position = anchors.getPosition(anchorId, orientedReadId) - uint32_t(anchors.kHalf);
                     if(positionInJourney == end - 1) {
                         endPosition = position;
                     } else {

@@ -583,8 +583,10 @@ void LocalAnchorGraphDisplayOptions::writeForm(ostream& html) const
 		(edgeColoring == "byFlags" ? " checked=on" : "") << "> By flags"
         "<br><input type=radio required name=edgeColoring value='random'" <<
         (edgeColoring == "random" ? " checked=on" : "") << "> Random"
-        "<br><input type=radio required name=edgeColoring value='byCoverageLoss'" <<
-        (edgeColoring == "byCoverageLoss" ? " checked=on" : "") << "> By coverage loss"
+        "<br><input type=radio required name=edgeColoring value='byMinMissingFraction'" <<
+        (edgeColoring == "byMinMissingFraction" ? " checked=on" : "") << "> By minMissingFraction"
+        "<br><input type=radio required name=edgeColoring value='byAdjacentFraction'" <<
+        (edgeColoring == "byAdjacentFraction" ? " checked=on" : "") << "> By adjacentFraction"
         "<hr>"
 
         "<b>Edge graphics</b>"
@@ -1046,6 +1048,22 @@ void LocalAnchorGraph::writeEdges(
             const uint32_t hashValue = MurmurHash2(&p, sizeof(p), 759);
             const uint32_t hue = hashValue % 360;
             color = "hsl(" + to_string(hue) + ",50%,50%)";
+        }
+
+        else if(options.edgeColoring == "byMinMissingFraction") {
+            AnchorPairInfo info;
+            anchors.analyzeAnchorPair(anchorId0, anchorId1, info);
+            const double hue = 1. - info.minMissingFraction();
+            color = "hsl(" + to_string(uint32_t(std::round(hue * 120.))) +
+                ",100%,50%)";
+        }
+
+        else if(options.edgeColoring == "byAdjacentFraction") {
+            AnchorPairInfo info;
+            anchors.analyzeAnchorPair(anchorId0, anchorId1, info);
+            const double hue = info.adjacentFraction();
+            color = "hsl(" + to_string(uint32_t(std::round(hue * 120.))) +
+                ",100%,50%)";
         }
 
         // Hyperlink.

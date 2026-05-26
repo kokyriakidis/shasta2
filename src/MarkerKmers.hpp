@@ -85,16 +85,9 @@ public:
     // or does not exist in the table.
     uint64_t getGlobalIndex(const Kmer&) const;
 
-    // Get the Kmer corresponding to a given MarkerInfo.
-    Kmer getKmer(const MarkerInfo&) const;
-
-    // Given a K-mer, find pairs(Kmer, coverage) for the K-mers that
-    // immediately follow/preced it in one or more oriented reads.
-    void getNext(const Kmer&, vector< pair<Kmer, uint64_t> >&);
-    void getPrevious(const Kmer&, vector< pair<Kmer, uint64_t> >&);
-
     // Constructor arguments.
     uint64_t k;
+    uint64_t kHalf;
     const Reads& reads;
     const MemoryMapped::Vector<ReadSummary>* readSummariesPointer = 0;
     const Markers& markers;
@@ -104,17 +97,22 @@ private:
     // A function object class that sorts MarkerInfo objects by Kmer.
     class MarkerInfoSorter {
     public:
-        MarkerInfoSorter(const MarkerKmers& markerKmers) : markerKmers(markerKmers) {}
+        MarkerInfoSorter(
+            uint64_t k,
+            const Reads& reads) :
+            k(k),
+            reads(reads) {}
         bool operator()(const MarkerInfo& x, const MarkerInfo& y) const
         {
-            const Kmer xKmer = markerKmers.getKmer(x);
-            const Kmer yKmer = markerKmers.getKmer(y);
+            const Kmer xKmer = x.getKmer(k, reads);
+            const Kmer yKmer = y.getKmer(k, reads);
             return
-                tie(xKmer, x.orientedReadId, x.ordinal) <
-                tie(yKmer, y.orientedReadId, y.ordinal);
+                tie(xKmer, x.orientedReadId, x.position) <
+                tie(yKmer, y.orientedReadId, y.position);
         }
     private:
-        const MarkerKmers& markerKmers;
+        uint64_t k;
+        const Reads& reads;
     };
 
     // A hash table that will contain a MarkerInfo object

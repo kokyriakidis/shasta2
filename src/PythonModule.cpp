@@ -167,21 +167,6 @@ PYBIND11_MODULE(shasta2, shasta2Module)
           &Assembler::createCompleteAnchorGraph)
       .def("accessCompleteAnchorGraph",
           &Assembler::accessCompleteAnchorGraph)
-      .def("createAnchorGraphFromAnchorSimilarityGraph",
-          &Assembler::createAnchorGraphFromAnchorSimilarityGraph)
-
-      // AnchorSimilarityGraph.
-      .def("createAnchorSimilarityGraph",
-          &Assembler::createAnchorSimilarityGraph)
-      .def("accessAnchorSimilarityGraph",
-          &Assembler::accessAnchorSimilarityGraph)
-      .def("anchorSimilarityGraphCreateShortestPathTree",
-          &Assembler::anchorSimilarityGraphCreateShortestPathTree)
-      .def("anchorSimilarityGraphComputeOptimalPath",
-          &Assembler::anchorSimilarityGraphComputeOptimalPath)
-
-      .def("readFollowing",
-          &Assembler::readFollowing)
 
       // AssemblyGraph.
       .def("createAssemblyGraph",
@@ -211,8 +196,8 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def("write", &AssemblyGraph::write)
         .def("writeFasta", &AssemblyGraph::writeFasta)
         .def("computeJourneys", &AssemblyGraph::computeJourneys)
-        .def("findAndConnectAssemblyPaths", &AssemblyGraph::findAndConnectAssemblyPaths)
-        .def("findAndConnectAndCompressAssemblyPaths", &AssemblyGraph::findAndConnectAndCompressAssemblyPaths)
+        .def("readFollowing", &AssemblyGraph::readFollowing)
+        .def("connectDanglingSegments", &AssemblyGraph::connectDanglingSegments)
         .def("removeIsolatedVertices", &AssemblyGraph::removeIsolatedVertices)
         .def("removeLowN50Components", &AssemblyGraph::removeLowN50Components)
         ;

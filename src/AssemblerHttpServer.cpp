@@ -36,10 +36,6 @@ void Assembler::fillServerFunctionTable()
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreReadSequence);
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreReadMarkers);
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreMarkerKmer);
-    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreMarkerKmerAnalysisWithMarkerOffset);
-    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreMarkerKmerAnalysisWithBaseOffset);
-    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreLocalKmerGraph);
-    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreMarkerKmerPair);
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreFindMarkerKmers);
 
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreAnchor);
@@ -48,7 +44,6 @@ void Assembler::fillServerFunctionTable()
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreLocalReadAnchorGraph);
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreSimilarSequences);
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreLocalAnchorGraph);
-    SHASTA2_ADD_TO_FUNCTION_TABLE(exploreAnchorGraphSubgraph);
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreSegments);
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreSegmentSequence);
     SHASTA2_ADD_TO_FUNCTION_TABLE(exploreSegmentSteps);
@@ -214,10 +209,6 @@ void Assembler::writeNavigation(ostream& html) const
     writeNavigation(html, "Markers", {
         {"Markers", "exploreReadMarkers"},
         {"Marker k-mer", "exploreMarkerKmer"},
-        {"Marker k-mer analysis (marker offset)", "exploreMarkerKmerAnalysisWithMarkerOffset"},
-        {"Marker k-mer analysis (base offset)", "exploreMarkerKmerAnalysisWithBaseOffset"},
-        {"Local k-mer graph", "exploreLocalKmerGraph"},
-        {"Marker k-mer pair", "exploreMarkerKmerPair"},
         {"Find marker k-mers in sequence", "exploreFindMarkerKmers"}
         });
 
@@ -229,7 +220,6 @@ void Assembler::writeNavigation(ostream& html) const
         {"Anchor pair", "exploreAnchorPair2"},
         {"Journey", "exploreJourney"},
         {"Local anchor graph", "exploreLocalAnchorGraph"},
-        {"Anchor graph subgraph", "exploreAnchorGraphSubgraph"},
         {"Local read-anchor graph", "exploreLocalReadAnchorGraph"},
         });
 

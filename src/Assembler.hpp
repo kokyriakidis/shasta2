@@ -22,7 +22,6 @@ namespace shasta2 {
     class AssemblyGraphPostprocessor;
     class AssemblyGraphPostprocessor;
     class AnchorGraph;
-    class AnchorSimilarityGraph;
     class Anchors;
     class AssemblerInfo;
     class Journeys;
@@ -221,7 +220,6 @@ public:
     // AnchorGraph.
     shared_ptr<AnchorGraph> anchorGraphPointer;
     void createAnchorGraph(const Options&);
-    void createAnchorGraphFromAnchorSimilarityGraph();
     void accessAnchorGraph();
     void saveAnchorGraph();
     void anchorGraphTransitiveReduction(const Options&);
@@ -235,19 +233,6 @@ public:
     shared_ptr<AnchorGraph> completeAnchorGraphPointer;
     void createCompleteAnchorGraph();
     void accessCompleteAnchorGraph();
-
-    // AnchorSimilarityGraph
-    shared_ptr<AnchorSimilarityGraph> anchorSimilarityGraphPointer;
-    void createAnchorSimilarityGraph();
-    void accessAnchorSimilarityGraph();
-    void anchorSimilarityGraphCreateShortestPathTree(AnchorId) const;
-    void anchorSimilarityGraphComputeOptimalPath(uint64_t componentId) const;
-
-    // This uses read following in the complete AnchorGraph
-    // to create the AnchorGraph to be used for assembly.
-    // This is meant to be used with strict anchor generation,
-    // where most anchors correspond to a single copy.
-    void readFollowing();
 
 
 
@@ -292,10 +277,6 @@ public:
     void exploreReadSequence(const vector<string>&, ostream&);
     void exploreReadMarkers(const vector<string>&, ostream&);
     void exploreMarkerKmer(const vector<string>&, ostream&);
-    void exploreMarkerKmerAnalysisWithMarkerOffset(const vector<string>&, ostream&);
-    void exploreMarkerKmerAnalysisWithBaseOffset(const vector<string>&, ostream&);
-    void exploreMarkerKmerPair(const vector<string>&, ostream&);
-    void exploreLocalKmerGraph(const vector<string>&, ostream&);
     void exploreFindMarkerKmers(const vector<string>&, ostream&);
     static void addScaleSvgButtons(ostream&, uint64_t sizePixels);
 
@@ -327,7 +308,6 @@ public:
     void exploreJourney(const vector<string>&, ostream&);
     void exploreLocalReadAnchorGraph(const vector<string>&, ostream&);
     void exploreLocalAnchorGraph(const vector<string>&, ostream&);
-    void exploreAnchorGraphSubgraph(const vector<string>&, ostream&);
     void exploreSegments(const vector<string>&, ostream&);
     void exploreSegmentSequence(const vector<string>&, ostream&);
     void exploreSegmentSteps(const vector<string>&, ostream&);

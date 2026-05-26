@@ -20,13 +20,11 @@ LocalAssembly6::LocalAssembly6(
     AnchorId anchorIdA,
     AnchorId anchorIdB,
     ostream& html,
-    bool debug,
     const vector<OrientedReadId>& orientedReadIds) :
     anchors(anchors),
     anchorIdA(anchorIdA),
     anchorIdB(anchorIdB),
-    html(html),
-    debug(debug)
+    html(html)
 {
     if(html) {
         html << "<h3>Local assembly between " <<
@@ -49,7 +47,6 @@ void LocalAssembly6::gatherOrientedReads(
 {
     const Anchor anchorA = anchors[anchorIdA];
     const Anchor anchorB = anchors[anchorIdB];
-    const uint32_t kHalf = uint32_t(anchors.k / 2);
 
     if(html) {
         html << "<h4>" << orientedReadIds.size() << " input oriented reads</h4><table>";
@@ -86,24 +83,20 @@ void LocalAssembly6::gatherOrientedReads(
         }
 
         // If on both anchors and negative offset, this OrientedReadId cannot be used.
-        if(isOnA and isOnB and (itA->ordinal > itB->ordinal)) {
+        if(isOnA and isOnB and (itA->position > itB->position)) {
             continue;
         }
 
         // We can use this OrientedReadId for assembly.
-        // Get its markers.
-        const auto markers = anchors.markers[orientedReadId.getValue()];
 
         // Create an OrientedReadInfo.
         OrientedReadInfo& info = orientedReadInfos.emplace_back();
         info.orientedReadId = orientedReadId;
         if(isOnA) {
-            info.ordinalA = itA->ordinal;
-            info.positionA = markers[info.ordinalA].position + kHalf;
+            info.positionA = itA->position;
         }
         if(isOnB) {
-            info.ordinalB = itB->ordinal;
-            info.positionB = markers[info.ordinalB].position + kHalf;
+            info.positionB = itB->position;
         }
 
     }
@@ -241,11 +234,7 @@ void LocalAssembly6::writeOrientedReads() const
         "<th>Oriented<br>read id"
         "<th>On A"
         "<th>On B"
-        "<th>OrdinalA"
-        "<th>OrdinalB"
-        "<th>Marker<br>count"
-        "<th>Ordinal<br>offset"
-        "<th>PositionA"
+         "<th>PositionA"
         "<th>PositionB"
         "<th>Length<br>(bases)"
         "<th>PositionAB<br>offset"
@@ -266,10 +255,6 @@ void LocalAssembly6::writeOrientedReads() const
             "<th class=centered>" << info.orientedReadId <<
             "<td class=centered>" << (info.isOnAnchorA() ? "&check;" : "") <<
             "<td class=centered>" << (info.isOnAnchorB() ? "&check;" : "") <<
-            "<td class=centered>" << (info.isOnAnchorA() ? to_string(info.ordinalA) : "") <<
-            "<td class=centered>" << (info.isOnAnchorB() ? to_string(info.ordinalB) : "") <<
-            "<td class=centered>" << anchors.markers[info.orientedReadId.getValue()].size() <<
-            "<td class=centered>" << (info.isOnBothAnchors() ? to_string(info.ordinalOffsetAB()) : "") <<
             "<td class=centered>" << (info.isOnAnchorA() ? to_string(info.positionA) : "") <<
             "<td class=centered>" << (info.isOnAnchorB() ? to_string(info.positionB) : "") <<
             "<td class=centered>" << anchors.reads.getReadSequenceLength(info.orientedReadId.getReadId()) <<
@@ -413,16 +398,12 @@ void LocalAssembly6::assemble()
     for(uint64_t position=0; position<alignedConsensus.size(); position++) {
         const AlignedBase base = alignedConsensus[position];
         if(base.isGap()) {
-            html << "<span style='background-color:Pink'>-</span>";
+            html << "-";
         } else {
             const uint64_t c = coverage[nonAlignedPosition];
-            const bool isMaximumCoverage = (c == orientedReadInfos.size());
             html << "<span title='";
             html << "Position " << nonAlignedPosition << " coverage " << c;
             html << "'";
-            if(not isMaximumCoverage) {
-                html << " style='background-color:Pink'";
-            }
             html << ">";
             html << base;
             html << "</span>";
@@ -444,13 +425,9 @@ void LocalAssembly6::assemble()
     std::map<char, uint64_t> coverageLegend;
     for(uint64_t position=0; position<alignedConsensus.size(); position++) {
         if(alignedConsensus[position].isGap()) {
-            html << "<span style='background-color:Pink'>-</span>";
+            html << "-";
         } else {
             const uint64_t c = coverage[nonAlignedPosition];
-            const bool isMaximumCoverage = (c == orientedReadInfos.size());
-            if(not isMaximumCoverage) {
-                html << "<span style='background-color:Pink'>";
-            }
             char coverageCharacter = ' ';
             if(c < 10) {
                 coverageCharacter = char(c - '0');
@@ -461,9 +438,6 @@ void LocalAssembly6::assemble()
             }
             html << coverageCharacter;
             coverageLegend[coverageCharacter] = c;
-            if(not isMaximumCoverage) {
-                html << "</span>";
-            }
             ++nonAlignedPosition;
         }
     }
@@ -482,9 +456,6 @@ void LocalAssembly6::assemble()
     for(uint64_t position=0; position<sequence.size(); position++) {
         html << "<span title='Position " << position <<
             " coverage " << coverage[position] << "'";
-        if(coverage[position] != orientedReadInfos.size()) {
-            html << " style='background-color:Pink'";
-        }
         html << ">";
         html << sequence[position];
         html << "</span>";
@@ -494,10 +465,6 @@ void LocalAssembly6::assemble()
         "<tr><th class=left>Coverage<td class=left style='font-family:monospace;white-space:nowrap'>";
     for(uint64_t position=0; position<sequence.size(); position++) {
         const uint64_t c = coverage[position];
-        const bool isMaximumCoverage = (c == orientedReadInfos.size());
-        if(not isMaximumCoverage) {
-            html << "<span style='background-color:Pink'>";
-        }
         char coverageCharacter = ' ';
         if(c < 10) {
             coverageCharacter = char(c - '0');
@@ -507,9 +474,6 @@ void LocalAssembly6::assemble()
             coverageCharacter = '*';
         }
         html << coverageCharacter;
-        if(not isMaximumCoverage) {
-            html << "</span>";
-        }
     }
     html << "</table>";
 
