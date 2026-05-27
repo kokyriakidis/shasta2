@@ -252,7 +252,9 @@ void AssemblyGraph::write(const string& stage)
         num_vertices(*this) << " vertices, " <<
         num_edges(*this) << " edges. Next edge id is " << nextEdgeId << "." << endl;
 
-    save(stage);
+    if((options.memoryMode == "filesystem") and options.keepBinaryData) {
+        save(stage);
+    }
     writeGfa("Assembly-" + stage + ".gfa");
     writeGraphviz("Assembly-" + stage + ".dot");
     writeCsv("Assembly-" + stage + ".csv");
