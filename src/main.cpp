@@ -46,6 +46,7 @@ namespace shasta2 {
         void setupHugePages();
         void segmentFaultHandler(int);
         void setupSegmentFaultHandler();
+        void finalMemoryCleanup(const Options&);
 
         // Functions that implement --command keywords
         void assemble(const Options&, int argumentCount, char** arguments);
@@ -285,11 +286,17 @@ void shasta2::main::assemble(
         pageSize,
         dataDirectory);
 
-    // Create the Assembler.
-    Assembler assembler(dataDirectory, pageSize);
 
-    // Run the assembly.
-    assembler.assemble(options, inputFileAbsolutePaths);
+    {
+        // Create the Assembler.
+        Assembler assembler(dataDirectory, pageSize);
+
+        // Run the assembly.
+        assembler.assemble(options, inputFileAbsolutePaths);
+    }
+
+    // Final memory cleanup must happen after the Assembler is destroyed.
+    finalMemoryCleanup(options);
 
     // Write performance information.
     const auto steadyClock1 = std::chrono::steady_clock::now();
@@ -697,4 +704,44 @@ void shasta2::main::writeHtmlLogFinalOutput(double elapsedTime, double cpuTime)
 
     htmlLog.precision(oldPrecision);
     htmlLog.flags(oldFlags);
+}
+
+
+
+// If --memory-mode filesystem and --keep-binary-data
+// is not used, get rid of the binary data directory.
+// This must be called after the Assembler destructor.
+void shasta2::main::finalMemoryCleanup(const Options& options)
+{
+    // If --memory-mode anonymous, the process cleanup will take care of it.
+    if(options.memoryMode == "anonymous") {
+        return;
+    }
+
+    // --memory-mode filesystem
+    SHASTA2_ASSERT(options.memoryMode == "filesystem");
+
+    // If --keep-binary-data, don't do anything.
+    if(options.keepBinaryData) {
+        return;
+    }
+
+    // Remove all files in the Data directory.
+    vector<string> fileNames;
+    for(const auto& directoryEntry : std::filesystem::directory_iterator("Data")) {
+        fileNames.push_back(string(directoryEntry.path()));
+    }
+    for(const string& fileName: fileNames) {
+        try {
+            std::filesystem::remove(fileName);
+        } catch(...) {
+            // Ignore.
+        }
+    }
+
+    // Remove the Data directory, if --memory-backing disk.
+    // Don't do anything if --memory-backing 2M, to avoid complications.
+    if(options.memoryBacking == "disk") {
+        std::filesystem::remove_all("Data");
+    }
 }
