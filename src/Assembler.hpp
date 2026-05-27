@@ -104,7 +104,8 @@ public:
     void assemble(
         const Options& options,
         const vector<string>& inputFileNames,
-        const string& externalAnchorsNameAbsolutePath);
+        const string& externalAnchorsNameAbsolutePath,
+        const string& externalAnchorGraphNameAbsolutePath);
 
 
     // Reads.
@@ -211,7 +212,7 @@ public:
     // AnchorGraph.
     shared_ptr<AnchorGraph> anchorGraphPointer;
     void createAnchorGraph(const Options&);
-    void accessAnchorGraph();
+    void accessAnchorGraph(string name = "");
     void saveAnchorGraph();
     void anchorGraphTransitiveReduction(const Options&);
 

@@ -140,7 +140,7 @@ void AnchorGraph::load(const string& name)
     // Access the binary data.
     MemoryMapped::Vector<char> data;
     try {
-        data.accessExistingReadOnly(largeDataName(name));
+        data.accessExistingReadOnly(name);
     } catch (std::exception&) {
         throw runtime_error(name + " is not available.");
     }

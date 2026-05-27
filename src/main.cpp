@@ -237,6 +237,10 @@ void shasta2::main::assemble(
     if(not options.externalAnchorsName.empty()) {
         externalAnchorsNameAbsolutePath = filesystem::getAbsolutePath(options.externalAnchorsName);
     }
+    string externalAnchorGraphNameAbsolutePath;
+    if(not options.externalAnchorGraphName.empty()) {
+        externalAnchorGraphNameAbsolutePath = filesystem::getAbsolutePath(options.externalAnchorGraphName);
+    }
 
 
 
@@ -299,7 +303,8 @@ void shasta2::main::assemble(
         assembler.assemble(
             options,
             inputFileAbsolutePaths,
-            externalAnchorsNameAbsolutePath);
+            externalAnchorsNameAbsolutePath,
+            externalAnchorGraphNameAbsolutePath);
     }
 
     // Final memory cleanup must happen after the Assembler is destroyed.

@@ -69,7 +69,8 @@ Assembler::Assembler(const string& largeDataFileNamePrefix) :
 void Assembler::assemble(
     const Options& options,
     const vector<string>& inputFileNames,
-    const string& externalAnchorsNameAbsolutePath)
+    const string& externalAnchorsNameAbsolutePath,
+    const string& externalAnchorGraphNameAbsolutePath)
 {
     cout << "Number of threads: " << options.threadCount << endl;
 
@@ -115,13 +116,26 @@ void Assembler::assemble(
 
 
 
+    // Create the Journeys.
     createJourneys(options.threadCount);
     storeAnchorGaps();
 
-    createAnchorGraph(options);
-    anchorGraphTransitiveReduction(options);
-    saveAnchorGraph();
 
+
+    // Create the AnchorGraph using the Journeys or read it in.
+    if(externalAnchorsNameAbsolutePath.empty() or externalAnchorGraphNameAbsolutePath.empty()) {
+        createAnchorGraph(options);
+        anchorGraphTransitiveReduction(options);
+    } else {
+        accessAnchorGraph(externalAnchorGraphNameAbsolutePath);
+    }
+    if((options.memoryMode == "filesystem") and options.keepBinaryData) {
+        saveAnchorGraph();
+    }
+
+
+
+    // Create the AssemblyGraph.
     createAssemblyGraph(options);
 
     writeReadSummaries();
@@ -296,10 +310,15 @@ void Assembler::createAssemblyGraph(const Options& options)
 
 
 
-void Assembler::accessAnchorGraph()
+void Assembler::accessAnchorGraph(string name)
 {
     const MappedMemoryOwner& mappedMemoryOwner = *this;
-    anchorGraphPointer = make_shared<AnchorGraph>(mappedMemoryOwner, "AnchorGraph");
+    if(name.empty()) {
+        name = largeDataName("AnchorGraph");
+    } else {
+        cout << "Loading AnchorGraph from " << name << endl;
+    }
+    anchorGraphPointer = make_shared<AnchorGraph>(mappedMemoryOwner, name);
 }
 
 
