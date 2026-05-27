@@ -485,6 +485,12 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
             orientedReadIds);
         step.sequence = localAssembly.sequence;
 
+        if(step.sequence.empty()) {
+            std::lock_guard<std::mutex> lock(mutex);
+            cout << "Local assembly for segment " << edge.id << " " << " step " << i <<
+                ": empty consensus sequence." << endl;
+        }
+
     } catch(const std::exception&) {
         std::lock_guard<std::mutex> lock(mutex);
         cout << "Error occurred assembling segment " <<
