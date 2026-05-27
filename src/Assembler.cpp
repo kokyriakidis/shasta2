@@ -107,6 +107,8 @@ void Assembler::assemble(
             options.maxAnchorRepeatLength,
             options.minAnchorDistinctSubkmerCount,
             options.threadCount);
+        removeIfAllowed(options, *markerKmers);
+        markerKmers = 0;
 
     } else {
 

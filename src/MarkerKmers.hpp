@@ -50,6 +50,11 @@ public:
         return markerInfos.isOpen() and kmerInfos.isOpen();
     }
 
+    void close()
+    {
+        markerInfos.close();
+        kmerInfos.close();
+    }
     void remove()
     {
         markerInfos.remove();
