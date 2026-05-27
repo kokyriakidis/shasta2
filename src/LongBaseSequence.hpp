@@ -298,6 +298,11 @@ public:
 
     uint64_t totalBaseCount() const;
 
+    uint64_t sequenceBaseCount(uint64_t i) const
+    {
+        return baseCount[i];
+    }
+
 
 private:
 

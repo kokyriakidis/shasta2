@@ -63,7 +63,10 @@ public:
     vector<Base> getOrientedReadSequence(OrientedReadId) const;
 
     // Return the length of the sequence of a read.
-    uint64_t getReadSequenceLength(ReadId) const;
+    uint64_t getReadSequenceLength(ReadId readId) const
+    {
+        return reads.sequenceBaseCount(readId);
+    }
 
     // Return a meta data field for a read, or an empty string
     // if that field is missing. This treats the meta data

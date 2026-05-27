@@ -75,13 +75,6 @@ vector<Base> Reads::getOrientedReadSequence(OrientedReadId orientedReadId) const
 
 
 
-uint64_t Reads::getReadSequenceLength(ReadId readId) const
-{
-    return reads[readId].baseCount;
-}
-
-
-
 // Create a histogram of read lengths.
 void Reads::computeReadLengthHistogram() {
     checkReadsAreOpen();
