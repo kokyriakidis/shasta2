@@ -125,10 +125,10 @@ void Assembler::assemble(
     // Create the AnchorGraph using the Journeys or read it in.
     if(externalAnchorsNameAbsolutePath.empty() or externalAnchorGraphNameAbsolutePath.empty()) {
         createAnchorGraph(options);
-        anchorGraphTransitiveReduction(options);
     } else {
         accessAnchorGraph(externalAnchorGraphNameAbsolutePath);
     }
+    anchorGraphTransitiveReduction(options);
     if((options.memoryMode == "filesystem") and options.keepBinaryData) {
         saveAnchorGraph();
     }
