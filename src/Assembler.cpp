@@ -112,7 +112,7 @@ void Assembler::assemble(
 
     } else {
 
-        // Generate the Anchors from ExternalAnchors.
+        assemblerInfo->k = options.k;
         readExternalAnchors(externalAnchorsNameAbsolutePath);
     }
 
