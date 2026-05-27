@@ -294,10 +294,13 @@ uint64_t SuperbubbleChain::phase1(
     uint64_t changeCount = 0;
 
 
-    // To permit multitherading,acquire the AssemblyGraph mutex before making any
-    // change to the AssemblyGraph.
+    // To permit multithreading,acquire the AssemblyGraph mutex before making any
+    // changes to the AssemblyGraph.
     std::lock_guard<std::mutex> lock(assemblyGraph.mutex);
-    performanceLog << timestamp << "Acquired assembly graph mutex for superbubble chain " << superbubbleChainId << endl;
+    if(debug) {
+        performanceLog << timestamp << "Acquired assembly graph mutex for superbubble chain " <<
+            superbubbleChainId << endl;
+    }
 
     // Loop over the longest paths. Each edge of a longest path generates a Tangle1 that can
     // be detangled using the Hypothesis stored in the edge and its connectivity matrix.
@@ -434,7 +437,9 @@ uint64_t SuperbubbleChain::phase1(
 
         }
     }
-    performanceLog << timestamp << "Released assembly graph mutex for superbubble chain " << superbubbleChainId << endl;
+    if(debug) {
+        performanceLog << timestamp << "Released assembly graph mutex for superbubble chain " << superbubbleChainId << endl;
+    }
 
     return changeCount;
 }

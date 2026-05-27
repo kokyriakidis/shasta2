@@ -548,7 +548,7 @@ void AssemblyGraph::assembleThreadFunction(uint64_t /* threadId */)
         // Loop over all assembly steps assigned to this batch.
         for(uint64_t j=begin; j!=end; j++) {
 
-            if((j % 1000) == 0) {
+            if((j % 1000000) == 0) {
                 std::lock_guard<std::mutex> lock(mutex);
                 performanceLog << timestamp << "Starting sequence assembly step " << j << " of " <<
                     stepsToBeAssembled.size() << endl;
@@ -2747,7 +2747,7 @@ void AssemblyGraph::connectDanglingSegments()
     const uint64_t minReadCount = 1;
 
     AssemblyGraph& assemblyGraph = *this;
-    const bool debug = true;
+    const bool debug = false;
 
 
     // A graph to store information about dangling segments.
@@ -2828,15 +2828,15 @@ void AssemblyGraph::connectDanglingSegments()
             if(debug and (m > 0.)) {
                 cout << "Dangling segments pair " <<
                     assemblyGraph[e0].id << " " << assemblyGraph[e1].id <<
-                    " " << m << endl;
+                    ", " << m << " common oriented reads." << endl;
             }
 
             if(m >= double(minReadCount)) {
                 add_edge(v0, v1, graph);
                 if(debug) {
-                    cout << "Adding edge for dangling segments pair " <<
+                    cout << "Dangling segments pair " <<
                         assemblyGraph[e0].id << " " << assemblyGraph[e1].id <<
-                        " " << m << endl;
+                        " connected, " << m << " common reads." << endl;
                 }
             }
         }

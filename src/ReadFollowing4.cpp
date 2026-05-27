@@ -24,15 +24,19 @@ ReadFollower::ReadFollower(const AssemblyGraph& assemblyGraph) :
     MultithreadedObject<ReadFollower>(*this),
     assemblyGraph(assemblyGraph)
 {
+    const bool debug = false;
+
     fillSupportMaps();
     findSegmentPairs();
     createVertices();
     createEdges();
 
-    for(uint64_t direction=0; direction<2; direction++) {
-        cout << "The initial read following graph for direction " << direction <<
-            " has " << num_vertices(searchGraphs[direction]) <<
-            " vertices and " << num_edges(searchGraphs[direction]) << " edges." << endl;
+    if(debug) {
+        for(uint64_t direction=0; direction<2; direction++) {
+            cout << "The initial read following graph for direction " << direction <<
+                " has " << num_vertices(searchGraphs[direction]) <<
+                " vertices and " << num_edges(searchGraphs[direction]) << " edges." << endl;
+        }
     }
     searchGraphs[0].writeGraphviz(assemblyGraph, "Initial");
 
@@ -42,14 +46,15 @@ ReadFollower::ReadFollower(const AssemblyGraph& assemblyGraph) :
     }
     searchGraphs[0].writeGraphviz(assemblyGraph, "Pruned");
 
-    for(uint64_t direction=0; direction<2; direction++) {
-        cout << "After pruning, the read following search graph for direction " << direction <<
-            " has " << num_vertices(searchGraphs[direction]) <<
-            " vertices and " << num_edges(searchGraphs[direction]) << " edges." << endl;
+    if(debug) {
+        for(uint64_t direction=0; direction<2; direction++) {
+            cout << "After pruning, the read following search graph for direction " << direction <<
+                " has " << num_vertices(searchGraphs[direction]) <<
+                " vertices and " << num_edges(searchGraphs[direction]) << " edges." << endl;
+        }
+        cout << "The read following graph has " << num_vertices(graph) <<
+            " vertices and " << num_edges(graph) << " edges." << endl;
     }
-
-    cout << "The read following graph has " << num_vertices(graph) <<
-        " vertices and " << num_edges(graph) << " edges." << endl;
     graph.writeGraphviz(assemblyGraph, "A");
 
     // Before we can compute shortest paths we have to create the vertex index map
@@ -62,8 +67,10 @@ ReadFollower::ReadFollower(const AssemblyGraph& assemblyGraph) :
     // and store them in the Graph.
     findShortestPaths();
 
-    cout << "After finding shortest paths, the read following graph has " << num_vertices(graph) <<
-        " vertices and " << num_edges(graph) << " edges." << endl;
+    if(debug) {
+        cout << "After finding shortest paths, the read following graph has " << num_vertices(graph) <<
+            " vertices and " << num_edges(graph) << " edges." << endl;
+    }
     graph.writeGraphviz(assemblyGraph, "B");
 
     graph.removeWeakEdges();
@@ -1155,7 +1162,7 @@ vector<Segment> Graph::getAssemblyPath(edge_descriptor e) const
 // Use the ReadFollower::Graph to update the AssemblyGraph.
 void ReadFollower::updateAssemblyGraph(AssemblyGraph& assemblyGraph) const
 {
-    const bool debug = true;
+    const bool debug = false;
 
     // Create a disconnected version of each long Segment.
     std::map<Segment, Segment> longSegmentMap; // (oldSegment, newSegment) (They have the same id).

@@ -215,7 +215,7 @@ void AnchorGraph::transitiveReduction(
             ++useForAssemblyCount;
         }
     }
-    cout << useForAssemblyCount << " flagged for use in assembly out of " <<
+    cout << useForAssemblyCount << " anchor graph edges flagged for use in assembly out of " <<
         num_edges(anchorGraph) << " total." << endl;
 
 }
