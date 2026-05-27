@@ -73,33 +73,47 @@ void Assembler::assemble(
 {
     cout << "Number of threads: " << options.threadCount << endl;
 
+    // Load the reads.
     addReads(
         inputFileNames,
         options.minReadLength,
         options.threadCount);
     createReadSummaries();
 
-    createKmerChecker(options.k, options.markerDensity);
-    createMarkers(options.threadCount);
 
-    findPalindromicReads();
 
-    createMarkerKmers(options.maxMarkerErrorRate, options.threadCount);
-
-    // Remove the Markers, if allowed by the options.
-    removeIfAllowed(options, *markersPointer);
-    markersPointer = 0;
-
+    // Generates Anchors from MarkerKmers or from ExternalAnchors.
     if(externalAnchorsNameAbsolutePath.empty()) {
+
+        // Create the Markers.
+        createKmerChecker(options.k, options.markerDensity);
+        createMarkers(options.threadCount);
+        kmerChecker = 0;
+
+        // Flag palindromic reads. They will be excluded from the rest of
+        // the assembly process.
+        findPalindromicReads();
+
+        // Create the MarkerKmers.
+        createMarkerKmers(options.maxMarkerErrorRate, options.threadCount);
+        removeIfAllowed(options, *markersPointer);
+        markersPointer = 0;
+
+        // Create the Anchors.
         createAnchors(
             options.minAnchorCoverage,
             options.maxAnchorCoverage,
             options.maxAnchorRepeatLength,
             options.minAnchorDistinctSubkmerCount,
             options.threadCount);
+
     } else {
+
+        // Generate the Anchors from ExternalAnchors.
         readExternalAnchors(externalAnchorsNameAbsolutePath);
     }
+
+
 
     createJourneys(options.threadCount);
     storeAnchorGaps();
