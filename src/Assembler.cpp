@@ -68,7 +68,8 @@ Assembler::Assembler(const string& largeDataFileNamePrefix) :
 //   or relative to the run directory, which is the current directory.
 void Assembler::assemble(
     const Options& options,
-    vector<string> inputFileNames)
+    const vector<string>& inputFileNames,
+    const string& externalAnchorsNameAbsolutePath)
 {
     cout << "Number of threads: " << options.threadCount << endl;
 
@@ -89,7 +90,7 @@ void Assembler::assemble(
     removeIfAllowed(options, *markersPointer);
     markersPointer = 0;
 
-    if(options.externalAnchorsName.empty()) {
+    if(externalAnchorsNameAbsolutePath.empty()) {
         createAnchors(
             options.minAnchorCoverage,
             options.maxAnchorCoverage,
@@ -97,7 +98,7 @@ void Assembler::assemble(
             options.minAnchorDistinctSubkmerCount,
             options.threadCount);
     } else {
-        readExternalAnchors(options.externalAnchorsName);
+        readExternalAnchors(externalAnchorsNameAbsolutePath);
     }
 
     createJourneys(options.threadCount);

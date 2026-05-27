@@ -233,6 +233,10 @@ void shasta2::main::assemble(
         }
         inputFileAbsolutePaths.push_back(filesystem::getAbsolutePath(inputFileName));
     }
+    string externalAnchorsNameAbsolutePath;
+    if(not options.externalAnchorsName.empty()) {
+        externalAnchorsNameAbsolutePath = filesystem::getAbsolutePath(options.externalAnchorsName);
+    }
 
 
 
@@ -292,7 +296,10 @@ void shasta2::main::assemble(
         Assembler assembler(dataDirectory, pageSize);
 
         // Run the assembly.
-        assembler.assemble(options, inputFileAbsolutePaths);
+        assembler.assemble(
+            options,
+            inputFileAbsolutePaths,
+            externalAnchorsNameAbsolutePath);
     }
 
     // Final memory cleanup must happen after the Assembler is destroyed.

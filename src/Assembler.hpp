@@ -103,7 +103,8 @@ public:
     //   or relative to the run directory, which is the current directory.
     void assemble(
         const Options& options,
-        vector<string> inputFileNames);
+        const vector<string>& inputFileNames,
+        const string& externalAnchorsNameAbsolutePath);
 
 
     // Reads.
