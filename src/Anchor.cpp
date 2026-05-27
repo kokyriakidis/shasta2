@@ -966,7 +966,7 @@ void Anchors::constructThreadFunctionPass2(uint64_t /* threadId */)
     while(getNextBatch(begin, end)) {
 
         // Loop over marker k-mers assigned to this batch.
-        for(AnchorId anchorId=0; anchorId!=end; anchorId+=2) {
+        for(AnchorId anchorId=begin; anchorId!=end; anchorId+=2) {
             const uint64_t kmerIndex = anchorInfos[anchorId].kmerIndex;
 
             // Get the MarkerInfos for this marker Kmer.
