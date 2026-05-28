@@ -55,6 +55,7 @@ AnchorGraph::AnchorGraph(
     MappedMemoryOwner(anchors),
     MultithreadedObject<AnchorGraph>(*this)
 {
+    performanceLog << timestamp << "AnchorGraph construction begins." << endl;
     AnchorGraph& anchorGraph = *this;
 
     // Create the vertices, one for each AnchorId.
@@ -82,6 +83,7 @@ AnchorGraph::AnchorGraph(
 
     cout << "The anchor graph has " << num_vertices(*this) <<
         " vertices and " << num_edges(*this) << " edges." << endl;
+    performanceLog << timestamp << "AnchorGraph construction ends." << endl;
 }
 
 
@@ -162,7 +164,7 @@ void AnchorGraph::transitiveReduction(
     uint64_t transitiveReductionMaxDistance)
 {
     AnchorGraph& anchorGraph = *this;
-    cout << "AnchorGraph transitive reduction begins." << endl;
+    performanceLog << timestamp << "AnchorGraph transitive reduction begins." << endl;
 
     // Initially make sure all edges are flag as "useForAssembly".
     // The transitive reduction process sets useForAssembly to false
@@ -207,7 +209,6 @@ void AnchorGraph::transitiveReduction(
             ": processed " << edgesToProcess.size() <<
             " edges and flagged " << edgesToRemove.size() << endl;
     }
-    cout << "AnchorGraph transitive reduction ends." << endl;
 
     uint64_t useForAssemblyCount = 0;
     BGL_FORALL_EDGES(e, anchorGraph, AnchorGraph) {
@@ -218,6 +219,7 @@ void AnchorGraph::transitiveReduction(
     cout << useForAssemblyCount << " anchor graph edges flagged for use in assembly out of " <<
         num_edges(anchorGraph) << " total." << endl;
 
+    performanceLog << timestamp << "AnchorGraph transitive reduction ends." << endl;
 }
 
 
