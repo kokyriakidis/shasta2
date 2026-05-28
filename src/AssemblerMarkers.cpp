@@ -62,8 +62,7 @@ void Assembler::createMarkerKmers(double maxMarkerErrorRate, uint64_t threadCoun
         threadCount);
 
     // Compute marker error rates using all reads and store them in the ReadSummaries.
-    vector<uint64_t> lowFrequencyMarkerCount;
-    computeMarkerErrorRates(lowFrequencyMarkerCount);
+    computeMarkerErrorRatesMultithreaded(threadCount);
     for(ReadId readId=0; readId<readCount; readId++) {
         const auto readMarkers = markers()[OrientedReadId(readId, 0).getValue()];
         const uint64_t readMarkerCount = readMarkers.size();
@@ -98,7 +97,7 @@ void Assembler::createMarkerKmers(double maxMarkerErrorRate, uint64_t threadCoun
         threadCount);
 
     // Compute marker error rates.
-    computeMarkerErrorRates(lowFrequencyMarkerCount);
+    computeMarkerErrorRatesMultithreaded(threadCount);
     for(ReadId readId=0; readId<readCount; readId++) {
         const auto readMarkers = markers()[OrientedReadId(readId, 0).getValue()];
         const uint64_t readMarkerCount = readMarkers.size();
@@ -125,10 +124,9 @@ void Assembler::accessMarkerKmers()
 
 
 
-// Compute marker error rates for each read by counting the
-// marker k-mers with frequency 1.
-void Assembler::computeMarkerErrorRates(
-    vector<uint64_t>& lowFrequencyMarkerCount) const
+// This computes the number of low frequency markers for each ReadId
+// and stores it in the lowFrequencyMarkerCount vector.
+void Assembler::computeMarkerErrorRates()
 {
     SHASTA2_ASSERT(markerKmers);
     const uint64_t k = assemblerInfo->k;
@@ -155,6 +153,57 @@ void Assembler::computeMarkerErrorRates(
             }
         }
     }
+}
+
+
+// This computes the number of low frequency markers for each ReadId
+// and stores it in the lowFrequencyMarkerCount vector.
+void Assembler::computeMarkerErrorRatesMultithreaded(uint64_t threadCount)
+{
+    const uint64_t readCount = reads().readCount();
+    lowFrequencyMarkerCount.clear();
+    lowFrequencyMarkerCount.resize(readCount, 0);
+
+    const uint64_t batchCount = 10;
+    setupLoadBalancing(readCount, batchCount);
+    runThreads(&Assembler::computeMarkerErrorRatesThreadFunction, threadCount);
+
+}
+
+
+
+void Assembler::computeMarkerErrorRatesThreadFunction([[maybe_unused]] uint64_t threadId)
+{
+    const uint64_t k = assemblerInfo->k;
+
+    // Loop over batches assigned to this thread.
+    uint64_t begin, end;
+    while(getNextBatch(begin, end)) {
+
+        // Loop over all ReadIds in this batch.
+        for(ReadId readId=ReadId(begin); readId!=ReadId(end); readId++) {
+
+            const auto readSequence = reads().getRead(readId);
+            const auto readMarkers = markers()[OrientedReadId(readId, 0).getValue()];
+
+            // Count frequency 1 marker kmers in this read.
+            uint64_t lowFrequencyCount = 0;
+            for(const Marker& marker: readMarkers) {
+                const uint32_t position = marker.position;
+                Kmer kmer;
+                extractKmer128(readSequence, position, k, kmer);
+                const uint64_t frequency = markerKmers->getFrequency(kmer);
+                // Also count frequency 0.
+                // Possible, for reads for which useRead is false;
+                if(frequency <= 1) {
+                    ++lowFrequencyCount;
+                }
+            }
+            lowFrequencyMarkerCount[readId] = lowFrequencyCount;
+
+        }
+    }
+
 }
 
 

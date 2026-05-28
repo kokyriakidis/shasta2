@@ -164,9 +164,13 @@ public:
     void createMarkerKmers(double maxMarkerErrorRate, uint64_t threadCount);
     void accessMarkerKmers();
 
-    // Compute marker error rates for each read..
-    void computeMarkerErrorRates(
-        vector<uint64_t>& lowFrequencyMarkerCount) const;
+    // Compute marker error rates for each read.
+    // This computes the number of low frequency markers for each ReadId
+    // and stores it in the lowFrequencyMarkerCount vector.
+    void computeMarkerErrorRates();
+    void computeMarkerErrorRatesMultithreaded(uint64_t threadCount);
+    void computeMarkerErrorRatesThreadFunction(uint64_t threadId);
+    vector<uint64_t> lowFrequencyMarkerCount;
 
 
 
