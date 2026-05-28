@@ -93,7 +93,7 @@ void Assembler::assemble(
 
         // Flag palindromic reads. They will be excluded from the rest of
         // the assembly process.
-        findPalindromicReads();
+        findPalindromicReadsMultithreaded(options.threadCount);
 
         // Create the MarkerKmers.
         createMarkerKmers(options.maxMarkerErrorRate, options.threadCount);

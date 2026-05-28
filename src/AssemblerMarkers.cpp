@@ -234,6 +234,52 @@ void Assembler::findPalindromicReads()
 
 
 
+void Assembler::findPalindromicReadsMultithreaded(uint64_t threadCount)
+{
+    const ReadId readCount = reads().readCount();
+    const uint64_t batchSize = 10;
+    setupLoadBalancing(readCount, batchSize);
+    runThreads(&Assembler::findPalindromicReadsThreadFunction, threadCount);
+
+    uint64_t palindromicReadCount = 0;
+    for(ReadId readId=0; readId<readCount; readId++) {
+        if(readSummaries[readId].isPalindromic) {
+            ++palindromicReadCount;
+        }
+    }
+    cout << "Flagged " << palindromicReadCount << " reads as palindromic." << endl;
+}
+
+
+
+void Assembler::findPalindromicReadsThreadFunction([[maybe_unused]] uint64_t threadId)
+{
+    // EXPOSE WHEN CODE STABILIZES.
+    const double palindromicRateThreshold = 0.2;
+
+    // Loop over batches assigned to this thread.
+    uint64_t begin, end;
+    while(getNextBatch(begin, end)) {
+
+        // Loop over all ReadIds in this batch.
+        for(ReadId readId=ReadId(begin); readId!=ReadId(end); readId++) {
+            ReadSummary& readSummary = readSummaries[readId];
+
+            readSummary.palindromicRate = analyzeStrandReversal(readId, false);
+
+            if(readSummary.palindromicRate > palindromicRateThreshold) {
+                readSummary.isPalindromic = true;
+            }
+
+        }
+    }
+
+}
+
+
+
+
+
 double Assembler::analyzeStrandReversal(ReadId readId, bool debug) const
 {
     // EXPOSE WHEN CODE STABILIZES.

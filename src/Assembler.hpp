@@ -126,6 +126,8 @@ public:
     void histogramReadLength(const string& fileName);
 
     void findPalindromicReads();
+    void findPalindromicReadsMultithreaded(uint64_t threadCount);
+    void findPalindromicReadsThreadFunction(uint64_t threadId);
     double analyzeStrandReversal(ReadId, bool debug) const;
 
 
