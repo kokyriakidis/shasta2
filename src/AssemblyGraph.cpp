@@ -692,7 +692,7 @@ uint64_t AssemblyGraph::bubbleCleanup()
 
     vector< pair<vertex_descriptor, vertex_descriptor> > excludeList;
     while(true) {
-        const uint64_t modifiedCountThisIteration = bubbleCleanupIteration(excludeList);
+        const uint64_t modifiedCountThisIteration = bubbleCleanupIterationMultithreaded(excludeList, options.threadCount);
         if(modifiedCountThisIteration == 0) {
             break;
         }
@@ -768,6 +768,96 @@ uint64_t AssemblyGraph::bubbleCleanupIteration(
 
     performanceLog << timestamp << "Bubble cleanup iteration ends." << endl;
     return modifiedCount;
+}
+
+
+
+uint64_t AssemblyGraph::bubbleCleanupIterationMultithreaded(
+    vector< pair<vertex_descriptor, vertex_descriptor> >& excludeList,
+    uint64_t threadCount)
+{
+    performanceLog << timestamp << "Bubble cleanup iteration begins." << endl;
+    AssemblyGraph& assemblyGraph = *this;
+
+    // Find all bubbles.
+    vector<Bubble> allBubbles;
+    findBubbles(allBubbles);
+    // cout << "Found " << allBubbles.size() << " bubbles." << endl;
+
+    // Find candidate bubbles.
+    // These are the ones that are not in the exclude list and
+    // in which no branch has offset greater than
+    // options.bubbleCleanupMaxBubbleLength.
+    vector<Bubble>& candidateBubbles = bubbleCleanupIterationData.candidateBubbles;
+    candidateBubbles.clear();
+    for(const Bubble& bubble: allBubbles) {
+
+        if(std::ranges::contains(excludeList, make_pair(bubble.v0, bubble.v1))) {
+            continue;
+        }
+
+        bool hasLongBranch = false;
+        for(const edge_descriptor e: bubble.edges) {
+            if(assemblyGraph[e].offset() > options.bubbleCleanupMaxBubbleLength) {
+                hasLongBranch = true;
+                break;
+            }
+        }
+
+        if(not hasLongBranch) {
+            candidateBubbles.push_back(bubble);
+        }
+    }
+    // cout << candidateBubbles.size() << " bubbles are candidate for clean up." << endl;
+
+    // Assemble sequence for all the edges of these bubbles.
+    edgesToBeAssembled.clear();
+    for(const Bubble& bubble: candidateBubbles) {
+        for(const edge_descriptor e: bubble.edges) {
+            if(not assemblyGraph[e].wasAssembled) {
+                edgesToBeAssembled.push_back(e);
+            }
+        }
+    }
+    assemble();
+
+
+    // Process the bubbles in multithreaded code.
+    // All changes to the AssemblyGraph are done under mutex.
+    bubbleCleanupIterationData.modifiedCount = 0;
+    const uint64_t batchSize = 10;
+    setupLoadBalancing(candidateBubbles.size(), batchSize);
+    runThreads(&AssemblyGraph::bubbleCleanupIterationThreadFunction, threadCount);
+    // cout << "Bubble cleanup modified " << modifiedCount << " bubbles." << endl;
+
+    // Update the excludeList.
+    for(const Bubble& bubble: candidateBubbles) {
+        excludeList.push_back(make_pair(bubble.v0, bubble.v1));
+    }
+    std::ranges::sort(excludeList);
+
+    performanceLog << timestamp << "Bubble cleanup iteration ends." << endl;
+    return bubbleCleanupIterationData.modifiedCount;
+
+}
+
+
+
+void AssemblyGraph::bubbleCleanupIterationThreadFunction([[maybe_unused]] uint64_t threadId)
+{
+    vector<Bubble>& candidateBubbles = bubbleCleanupIterationData.candidateBubbles;
+
+    // Loop over batches assigned to this thread.
+    uint64_t begin, end;
+    while(getNextBatch(begin, end)) {
+
+        // Loop over candidate bubbles in this batch.
+        for(uint64_t i=begin; i!=end; ++i) {
+            if(bubbleCleanup(candidateBubbles[i])) {
+                __sync_fetch_and_add(&bubbleCleanupIterationData.modifiedCount, 1);
+            }
+        }
+    }
 }
 
 
@@ -967,6 +1057,8 @@ bool AssemblyGraph::bubbleCleanup(const Bubble& bubble)
             continue;
         }
 
+        // Here we are making changes to the AssemblyGraph, so we need to grab the mutex.
+        std::lock_guard<std::mutex> lock(mutex);
         edge_descriptor e;
         tie(e, ignore) = add_edge(bubble.v0, bubble.v1, AssemblyGraphEdge(nextEdgeId++), assemblyGraph);
         AssemblyGraphEdge& edge = assemblyGraph[e];
@@ -984,8 +1076,6 @@ bool AssemblyGraph::bubbleCleanup(const Bubble& bubble)
         }
     }
 
-    SHASTA2_ASSERT(out_degree(bubble.v0, assemblyGraph) > 0);
-    SHASTA2_ASSERT(in_degree(bubble.v1, assemblyGraph) > 0);
 
     return true;
 }

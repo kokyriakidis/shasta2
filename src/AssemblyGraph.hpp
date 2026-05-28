@@ -195,6 +195,16 @@ private:
 public:
     uint64_t bubbleCleanup();
     uint64_t bubbleCleanupIteration(vector< pair<vertex_descriptor, vertex_descriptor> >& excludeList);
+    uint64_t bubbleCleanupIterationMultithreaded(
+        vector< pair<vertex_descriptor, vertex_descriptor> >& excludeList,
+        uint64_t threadCount);
+    void bubbleCleanupIterationThreadFunction(uint64_t threadId);
+    class BubbleCleanupIterationData {
+    public:
+        vector<Bubble> candidateBubbles;
+        uint64_t modifiedCount = 0;
+    };
+    BubbleCleanupIterationData bubbleCleanupIterationData;
 private:
     bool bubbleCleanup(const Bubble&);
 
