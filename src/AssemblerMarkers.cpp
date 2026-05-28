@@ -216,19 +216,12 @@ void Assembler::findPalindromicReads()
 
     const ReadId readCount = reads().readCount();
 
-    ofstream csv("PalindromicMetrics.csv");
-    csv << "ReadId,PalindromicRate\n";
-
     // Loop over all reads.
     uint64_t palindromicReadCount = 0;
     for(ReadId readId=0; readId<readCount; readId++) {
         ReadSummary& readSummary = readSummaries[readId];
 
         readSummary.palindromicRate = analyzeStrandReversal(readId, false);
-
-        csv << readId << ",";
-        csv << readSummary.palindromicRate << ",";
-        csv << "\n";
 
         if(readSummary.palindromicRate > palindromicRateThreshold) {
             readSummary.isPalindromic = true;
