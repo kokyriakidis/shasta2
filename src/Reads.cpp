@@ -258,3 +258,11 @@ Kmer Reads::getKmer(uint64_t k, OrientedReadId orientedReadId, uint32_t position
         return kmer.reverseComplement(k);
     }
 }
+
+
+
+void Reads::unreserve()
+{
+    reads.unreserve();
+    readNames.unreserve();
+}

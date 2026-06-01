@@ -23,6 +23,7 @@ namespace shasta2 {
     class AnchorGraph;
     class Anchors;
     class AssemblerInfo;
+    class FastaLoader;
     class Journeys;
     class KmerChecker;
     class KmersOptions;
@@ -122,7 +123,8 @@ public:
     void addReads(
         const string& fileName,
         uint64_t minReadLength,
-        size_t threadCount);
+        size_t threadCount,
+        FastaLoader&);
     void histogramReadLength(const string& fileName);
 
     void findPalindromicReads();

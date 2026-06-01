@@ -1,5 +1,6 @@
 // Shasta.
 #include "Assembler.hpp"
+#include "FastaLoader.hpp"
 #include "performanceLog.hpp"
 #include "ReadLoader.hpp"
 #include "timestamp.hpp"
@@ -22,12 +23,20 @@ void Assembler::addReads(
 
     const auto t0 = steady_clock::now();
 
+    FastaLoader fastaLoader(minReadLength, threadCount, *readsPointer);
     for(const string& fileName: fileNames) {
         addReads(
             fileName,
             minReadLength,
-            threadCount);
+            threadCount,
+            fastaLoader);
     }
+
+    // Free up unused allocated memory.
+    readsPointer->unreserve();
+
+    reads().checkSanity();
+    readsPointer->computeReadLengthHistogram();
 
     if(reads().readCount() == 0) {
         throw runtime_error("There are no input reads.");
@@ -48,21 +57,22 @@ void Assembler::addReads(
 void Assembler::addReads(
     const string& fileName,
     uint64_t minReadLength,
-    const size_t threadCount)
+    const size_t threadCount,
+    FastaLoader& fastaLoader)
 {
-    readsPointer->checkReadsAreOpen();
-    readsPointer->checkReadNamesAreOpen();
+    const string extension = std::filesystem::path(fileName).extension();
 
-    ReadLoader readLoader(
-        fileName,
-        minReadLength,
-        threadCount,
-        largeDataFileNamePrefix,
-        largeDataPageSize,
-        *readsPointer);
-
-    readsPointer->checkSanity();
-    readsPointer->computeReadLengthHistogram();
+    if(extension == ".fasta") {
+        fastaLoader.read(fileName);
+    } else {
+        ReadLoader readLoader(
+            fileName,
+            minReadLength,
+            threadCount,
+            largeDataFileNamePrefix,
+            largeDataPageSize,
+            *readsPointer);
+    }
 }
 
 

@@ -37,6 +37,8 @@ public:
         const string& readIdsSortedByNameDataName
     );
 
+    void unreserve();
+
     inline ReadId readCount() const {
         return ReadId(reads.size());
     }
@@ -160,5 +162,6 @@ private:
     uint64_t n50;    
 
     friend class ReadLoader;
+    friend class FastaLoader;
 };
 

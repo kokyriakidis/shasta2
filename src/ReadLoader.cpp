@@ -635,9 +635,5 @@ void ReadLoader::storeReads()
     threadReadNames.clear();
     threadReads.clear();
 
-    // Free up unused allocated memory.
-    reads.readNames.unreserve();
-    reads.reads.unreserve();
-
 }
 

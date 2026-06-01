@@ -206,6 +206,16 @@ public:
         }
     }
 
+    void assign(const vector<Base>& s)
+    {
+        baseCount = s.size();
+        data.resize(wordCount(baseCount));
+        begin = data.data();
+        for(size_t i=0; i<baseCount; i++) {
+            set(i, s[i]);
+        }
+    }
+
     LongBaseSequence(const LongBaseSequenceView& view)
     {
         baseCount = view.baseCount;
