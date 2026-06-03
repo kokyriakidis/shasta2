@@ -19,7 +19,7 @@ void Assembler::addReads(
     uint64_t minReadLength,
     size_t threadCount)
 {
-    writePerformanceStatistics("Assembler::addReads begins");
+    writeMemoryStatistics("Assembler::addReads begins");
 
     const auto t0 = steady_clock::now();
 
@@ -47,7 +47,7 @@ void Assembler::addReads(
     const auto t1 = steady_clock::now();
     performanceLog << "Read loading took " << seconds(t1-t0) << "s." << endl;
 
-    writePerformanceStatistics("Assembler::addReads ends");
+    writeMemoryStatistics("Assembler::addReads ends");
 }
 
 

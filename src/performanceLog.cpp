@@ -20,7 +20,7 @@ void shasta2::openPerformanceLog(const string& fileName)
 
 
 
-void shasta2::writePerformanceStatistics(const string& name)
+void shasta2::writeMemoryStatistics(const string& name)
 {
     performanceLog <<
         timestamp << "At " << name << ":\n" <<

@@ -298,7 +298,7 @@ void Assembler::createCompleteAnchorGraph()
 
 void Assembler::createAssemblyGraph(const Options& options)
 {
-    writePerformanceStatistics("Assembler::createAssemblyGraph begins");
+    writeMemoryStatistics("Assembler::createAssemblyGraph begins");
 
     AssemblyGraph assemblyGraph(
         anchors(),
@@ -307,7 +307,7 @@ void Assembler::createAssemblyGraph(const Options& options)
         options);
     assemblyGraph.simplifyAndAssemble();
 
-    writePerformanceStatistics("Assembler::createAssemblyGraph ends");
+    writeMemoryStatistics("Assembler::createAssemblyGraph ends");
 }
 
 
