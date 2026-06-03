@@ -46,10 +46,10 @@ void shasta2::theseus(
     const int gape = 1;
     theseus::Penalties penalties(match, mismatch, gapo, gape);
 
-    // Use pericles default heuristics.
-    const bool densityDrop = false;
+    // Theseus heuristics.
     const bool lagPruning = false;
-    theseus::Heuristics heuristics(densityDrop, lagPruning);
+    const bool densityDrop = false;
+    theseus::Heuristics heuristics(lagPruning, densityDrop);
 
     // Create the theseus aligner, passing in the first sequence fixed on both sides.
     SHASTA2_ASSERT(not fixedSequences.empty());
