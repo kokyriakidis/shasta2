@@ -3,6 +3,7 @@
 #include "deduplicate.hpp"
 #include "extractKmer128.hpp"
 #include "Markers.hpp"
+#include "memoryInformation.hpp"
 #include "MarkerKmers.hpp"
 #include "performanceLog.hpp"
 #include "Reads.hpp"

@@ -7,6 +7,7 @@
 #include "KmerCheckerFactory.hpp"
 #include "Markers.hpp"
 #include "MarkerKmers.hpp"
+#include "memoryInformation.hpp"
 #include "MurmurHash2.hpp"
 #include "Options.hpp"
 #include "performanceLog.hpp"

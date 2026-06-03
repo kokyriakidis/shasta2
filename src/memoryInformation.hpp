@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include "string.hpp"
 
 namespace shasta2 {
 
@@ -10,4 +11,6 @@ namespace shasta2 {
     // Get total physical memory available, in bytes.
     uint64_t getTotalPhysicalMemory();
 
+
+    void writeMemoryStatistics(const string&);
 }

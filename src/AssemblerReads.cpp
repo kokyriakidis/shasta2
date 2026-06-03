@@ -1,6 +1,7 @@
 // Shasta.
 #include "Assembler.hpp"
 #include "FastaLoader.hpp"
+#include "memoryInformation.hpp"
 #include "performanceLog.hpp"
 #include "ReadLoader.hpp"
 #include "timestamp.hpp"

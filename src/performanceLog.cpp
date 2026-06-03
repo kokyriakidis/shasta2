@@ -17,14 +17,3 @@ void shasta2::openPerformanceLog(const string& fileName)
 {
     performanceLog.open(fileName);
 }
-
-
-
-void shasta2::writeMemoryStatistics(const string& name)
-{
-    performanceLog <<
-        timestamp << "At " << name << ":\n" <<
-        "    Peak virtual memory usage " << getPeakMemoryUsage() << "\n" <<
-        flush;
-
-}

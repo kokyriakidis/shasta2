@@ -1,7 +1,10 @@
 #include "memoryInformation.hpp"
+#include "performanceLog.hpp"
+#include "timestamp.hpp"
 using namespace shasta2;
 
 #include "fstream.hpp"
+#include "iostream.hpp"
 #include "string.hpp"
 
 
@@ -42,3 +45,15 @@ uint64_t shasta2::getTotalPhysicalMemory()
     meminfo >> s >> memoryKb;
     return 1024 * memoryKb;
 }
+
+
+
+void shasta2::writeMemoryStatistics(const string& name)
+{
+    performanceLog <<
+        timestamp << "At " << name << ":\n" <<
+        "    Peak virtual memory usage " << getPeakMemoryUsage() << "\n" <<
+        flush;
+
+}
+
