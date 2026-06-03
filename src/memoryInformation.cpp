@@ -5,6 +5,7 @@ using namespace shasta2;
 
 #include "fstream.hpp"
 #include "iostream.hpp"
+#include <sstream>
 #include "string.hpp"
 
 
@@ -32,6 +33,36 @@ uint64_t shasta2::getPeakMemoryUsage() {
     }
 
     return peakMemoryUsage;
+}
+
+
+
+// Get current and peak virtual memory utilization of the current process, in bytes.
+VirtualMemoryInfo shasta2::getVirtualMemoryInfo()
+{
+    VirtualMemoryInfo virtualMemoryInfo;
+
+    ifstream procStats("/proc/self/status");
+    if (procStats) {
+        string line;
+        uint64_t done = 0;
+        while((done < 2) and std::getline(procStats, line)) {
+            std::istringstream is(line);
+            string name;
+            string value;
+            is >> name >> value;
+            if(name == "VmSize:") {
+                virtualMemoryInfo.current = 1024UL * std::stol(value);
+                ++done;
+            }
+            if(name == "VmPeak:") {
+                virtualMemoryInfo.peak = 1024UL * std::stol(value);
+                ++done;
+            }
+        }
+    }
+
+    return virtualMemoryInfo;
 }
 
 
