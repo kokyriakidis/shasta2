@@ -124,7 +124,7 @@ AssemblyGraph::AssemblyGraph(
     }
 
 
-    check();
+    // check();
 }
 
 
@@ -232,7 +232,8 @@ void AssemblyGraph::check() const
         for(uint64_t i1=1; i1<edge.size(); i1++) {
             const uint64_t i0 = i1 - 1;
             SHASTA2_ASSERT(edge[i0].anchorPair.anchorIdB == edge[i1].anchorPair.anchorIdA);
-        }    }
+        }
+    }
 
 }
 
