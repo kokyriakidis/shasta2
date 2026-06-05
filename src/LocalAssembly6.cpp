@@ -429,7 +429,7 @@ void LocalAssembly6::assemble()
             const uint64_t c = coverage[nonAlignedPosition];
             char coverageCharacter = ' ';
             if(c < 10) {
-                coverageCharacter = char(c - '0');
+                coverageCharacter = char(c + '0');
             } else if(c < 36) {
                 coverageCharacter = char(c - 10 + 'A');
             } else {
@@ -466,7 +466,7 @@ void LocalAssembly6::assemble()
         const uint64_t c = coverage[position];
         char coverageCharacter = ' ';
         if(c < 10) {
-            coverageCharacter = char(c - '0');
+            coverageCharacter = char(c + '0');
         } else if(c < 36) {
             coverageCharacter = char(c - 10 + 'A');
         } else {
