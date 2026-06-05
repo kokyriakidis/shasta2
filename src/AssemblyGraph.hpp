@@ -383,6 +383,8 @@ private:
     void writeGraphviz(ostream&) const;
     void writeCsv(const string& fileName) const;
     void writeCsv(ostream&) const;
+    void writeDetailsCsv(const string& fileName) const;
+    void writeDetailsCsv(ostream&) const;
 
 
 

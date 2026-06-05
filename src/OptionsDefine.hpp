@@ -132,6 +132,10 @@ SHASTA2_BOOL_OPTION_DEFINE(
     writeIntermediateAssemblyStages, "--write-intermediate-assembly-stages", false,
     "Write intermediate assembly stages.")
 
+SHASTA2_BOOL_OPTION_DEFINE(
+    writeAssemblyDetails, "--write-assembly-details", false,
+    "Write assembly details in csv format.")
+
 SHASTA2_OPTION_DEFINE(
     uint64_t, bubbleCleanupMaxBubbleLength, "--bubble-cleanup-max-bubble-length", 10000,
     "Maximum bubble length for bubble cleanup.")

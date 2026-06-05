@@ -196,6 +196,9 @@ void AssemblyGraph::simplifyAndAssemble()
     assembleAll();
     write("Final");
     writeFasta("Final");
+    if(options.writeAssemblyDetails) {
+        writeDetailsCsv("AssemblyDetails-Final.csv");
+    }
 
     writeMemoryStatistics("AssemblyGraph::simplifyAndAssemble ends");
 }
@@ -1426,6 +1429,50 @@ void AssemblyGraph::writeCsv(ostream& csv) const
             csv << edge.sequenceLength();
         }
         csv << "," << edge.annotation << ",\n";
+    }
+}
+
+
+
+void AssemblyGraph::writeDetailsCsv(const string& fileName) const
+{
+    ofstream csv(fileName);
+    writeDetailsCsv(csv);
+}
+
+
+
+void AssemblyGraph::writeDetailsCsv(ostream& csv) const
+{
+    const AssemblyGraph& assemblyGraph = *this;
+
+    // Write a csv header.
+    csv << "SegmentId,Step,AnchorIdA,AnchorIdB,Coverage,Length,Sequence begin,Sequence end,\n";
+
+    // Loop over all segments (AssemblyGraph edges).
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        const AssemblyGraphEdge& edge = assemblyGraph[e];
+        uint64_t begin = 0;
+
+        // Loop over all steps of this segment.
+        for(uint64_t stepId=0; stepId<edge.size(); stepId++) {
+            const AssemblyGraphEdgeStep& step = edge[stepId];
+            const uint64_t length = step.sequence.size();
+            const uint64_t end = begin + length;
+
+            csv <<
+                edge.id << "," <<
+                stepId << "," <<
+                anchorIdToString(step.anchorPair.anchorIdA) << "," <<
+                anchorIdToString(step.anchorPair.anchorIdB) << "," <<
+                step.anchorPair.orientedReadIds.size() << "," <<
+                length << "," <<
+                begin << "," <<
+                end << "," <<
+                "\n";
+
+            begin = end;
+        }
     }
 }
 
