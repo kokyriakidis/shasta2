@@ -237,7 +237,7 @@ public:
 
 
     // AssemblyGraph.
-    void createAssemblyGraph(const Options&);
+    void createAssemblyGraph(const Options&, bool removeAnchorGraph);
 
 
 

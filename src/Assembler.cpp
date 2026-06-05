@@ -139,7 +139,7 @@ void Assembler::assemble(
 
 
     // Create the AssemblyGraph.
-    createAssemblyGraph(options);
+    createAssemblyGraph(options, true);
 
     writeReadSummaries();
 }
@@ -297,7 +297,7 @@ void Assembler::createCompleteAnchorGraph()
 
 
 
-void Assembler::createAssemblyGraph(const Options& options)
+void Assembler::createAssemblyGraph(const Options& options, bool removeAnchorGraph)
 {
     writeMemoryStatistics("Assembler::createAssemblyGraph begins");
 
@@ -306,6 +306,11 @@ void Assembler::createAssemblyGraph(const Options& options)
         journeys(),
         *anchorGraphPointer,
         options);
+
+    if(removeAnchorGraph) {
+        anchorGraphPointer = 0;
+    }
+
     assemblyGraph.simplifyAndAssemble();
 
     writeMemoryStatistics("Assembler::createAssemblyGraph ends");
