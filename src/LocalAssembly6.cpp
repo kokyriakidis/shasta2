@@ -2,6 +2,7 @@
 #include "LocalAssembly6.hpp"
 #include "Anchor.hpp"
 #include "Base.hpp"
+#include "msa.hpp"
 #include "orderPairs.hpp"
 #include "Reads.hpp"
 #include "theseusWrapper.hpp"
@@ -337,6 +338,10 @@ void LocalAssembly6::assemble()
     vector<uint64_t> coverage;
     theseus(fixedSequences, leftFixedSequences, rightFixedSequences,
         sequence, alignedConsensus, coverage, alignment, computeAlignment);
+#if 0
+    msa::Graph(fixedSequences, leftFixedSequences, rightFixedSequences,
+        sequence, alignedConsensus, coverage, alignment, computeAlignment); return;
+#endif
 
     if(not html) {
         return;

@@ -53,6 +53,7 @@ MarkerKmers::MarkerKmers(
     setupLoadBalancing(reads.readCount(), batchSize);
     runThreads(&MarkerKmers::gatherMarkersPass2, threadCount);
     markerInfos.endPass2(true, true);
+    markerInfos.unreserve();
 
     // Sort each bucket by Kmer.
     setupLoadBalancing(bucketCount, batchSize);
@@ -67,11 +68,8 @@ MarkerKmers::MarkerKmers(
     setupLoadBalancing(bucketCount, batchSize);
     runThreads(&MarkerKmers::fillKmerInfosPass2, threadCount);
     kmerInfos.endPass2(false, true);
+    kmerInfos.unreserve();
 
-    // This is no longer true because only a subset of the reads
-    // (the ones with low marker error rate) are used to
-    // create marker kmers.
-    // SHASTA2_ASSERT(2 * markerInfos.totalSize() == markers.totalSize());
 
     writeFrequencyHistogram();
     performanceLog << timestamp << "Marker k-mer creation ends." << endl;

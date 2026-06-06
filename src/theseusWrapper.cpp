@@ -48,7 +48,7 @@ void shasta2::theseus(
 
     // Theseus heuristics.
     const bool lagPruning = false;
-    const bool densityDrop = false;
+    const bool densityDrop = true;
     theseus::Heuristics heuristics(lagPruning, densityDrop);
 
     // Create the theseus aligner, passing in the first sequence fixed on both sides.
