@@ -37,29 +37,31 @@ Journeys::Journeys(
     const uint64_t anchorBatchCount = 1000;
     const uint64_t orientedReadBatchCount = 1000;
 
-    // Pass1: make space for the journeysWithOrdinals.
+    // Pass1: make space for the journeysWithPositions.
     journeysWithPositions.createNew(largeDataName("tmp-JourneysWithPositions"), largeDataPageSize);
     journeysWithPositions.beginPass1(orientedReadCount);
     setupLoadBalancing(anchorCount, anchorBatchCount);
     runThreads(&Journeys::threadFunction1, threadCount);
 
-    // Pass2: store the unsorted journeysWithOrdinals.
+    // Pass2: store the unsorted journeysWithPositions.
     journeysWithPositions.beginPass2();
     setupLoadBalancing(anchorCount, anchorBatchCount);
     runThreads(&Journeys::threadFunction2, threadCount);
     journeysWithPositions.endPass2();
+    journeysWithPositions.unreserve();
 
-    // Pass 3:sort the journeysWithOrdinals and make space for the journeys
+    // Pass 3:sort the journeysWithPostions and make space for the journeys.
     journeys.createNew(largeDataName("Journeys"), largeDataPageSize);
     journeys.beginPass1(orientedReadCount);
     setupLoadBalancing(orientedReadCount, orientedReadBatchCount);
     runThreads(&Journeys::threadFunction3, threadCount);
 
-    // Pass 4: copy the sorted journeysWithOrdinals to the journeys.
+    // Pass 4: copy the sorted journeysWithPositions to the journeys.
     journeys.beginPass2();
     setupLoadBalancing(orientedReadCount, orientedReadBatchCount);
     runThreads(&Journeys::threadFunction4, threadCount);
     journeys.endPass2(false, true);
+    journeys.unreserve();
 
     journeysWithPositions.remove();
 
