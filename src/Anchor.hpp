@@ -212,17 +212,10 @@ public:
         uint64_t minCoverage = 0) const;
 
 
-    // In addition to the marker intervals, we also store an AnchorInfo for each Anchor.
-    MemoryMapped::Vector<AnchorInfo> anchorInfos;
-    void storeAnchorInfo(AnchorId)
-    {
-        // For now there is nothing to store.
-        // AnchorInfo& anchorInfo = anchorInfos[anchorId];
-    }
-
-
-
 private:
+
+    MemoryMapped::Vector<AnchorInfo> anchorInfos;
+
 
     // Data and functions used when constructing the Anchors.
     class ConstructData {

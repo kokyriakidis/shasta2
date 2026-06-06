@@ -52,7 +52,6 @@ Anchors::Anchors(
     kHalf(k/2)
 {
     anchorMarkerInfos.accessExistingReadOnly(largeDataName(baseName + "-AnchorMarkerInfos"));
-    anchorInfos.accessExistingReadOnly(largeDataName(baseName + "-AnchorInfos"));
 }
 
 
@@ -828,7 +827,7 @@ Anchors::Anchors(
     setupLoadBalancing(anchorCount, batchSize);
     runThreads(&Anchors::constructThreadFunctionPass2, threadCount);
 
-
+    anchorInfos.remove();
 
     cout << "Number of anchors per strand: " << anchorCount / 2 << endl;
     performanceLog << timestamp << "Anchor creation from marker kmers ends." << endl;
@@ -1061,7 +1060,6 @@ Anchors::Anchors(
     anchorMarkerInfos.createNew(
         largeDataName(baseName + "-AnchorMarkerInfos"),
         largeDataPageSize);
-    anchorInfos.createNew(largeDataName(baseName + "-AnchorInfos"), largeDataPageSize);
 
 
 
@@ -1118,7 +1116,6 @@ Anchors::Anchors(
         // without reverse complementing.
         // We are not filling AnchorInfo::kmerIndex.
         anchorMarkerInfos.appendVector(markerInfos);
-        anchorInfos.push_back(AnchorInfo());
 
         // Reverse complement the MarkerInfos, then generate
         // the reverse complemented Anchor.
@@ -1127,7 +1124,6 @@ Anchors::Anchors(
             markerInfo = markerInfo.reverseComplement(reads);
         }
         anchorMarkerInfos.appendVector(markerInfos);
-        anchorInfos.push_back(AnchorInfo());
     }
 
     cout << "Generated " << anchorMarkerInfos.size() << " anchors from " <<
