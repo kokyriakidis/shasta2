@@ -38,7 +38,7 @@ template class MultithreadedObject<Anchors>;
 
 
 
-// Constructor to accesses existing Anchors.
+// Constructor to access existing Anchors.
 Anchors::Anchors(
     const string& baseName,
     const MappedMemoryOwner& mappedMemoryOwner,
@@ -817,6 +817,9 @@ Anchors::Anchors(
     const uint64_t anchorCount = anchorMarkerInfos.size();
     SHASTA2_ASSERT(anchorId == anchorCount);
     SHASTA2_ASSERT(anchorInfos.size() == anchorCount);
+
+    anchorMarkerInfos.unreserve();
+    anchorInfos.unreserve();
 
 
 
