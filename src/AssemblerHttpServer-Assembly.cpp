@@ -7,6 +7,7 @@
 #include "findConvergingVertex.hpp"
 #include "GTest.hpp"
 #include "LocalAssembly6.hpp"
+#include "LocalAssembly7.hpp"
 #include "Markers.hpp"
 #include "RestrictedAnchorGraph.hpp"
 #include "SegmentStepSupport.hpp"
@@ -880,6 +881,9 @@ void Assembler::exploreSegmentStep(
     const bool stepIdStringIsPresent = HttpServer::getParameterValue(request, "stepId", stepIdString);
     boost::trim(stepIdString);
 
+    int localAssemblyVersion = 6;
+    getParameterValue(request, "localAssemblyVersion", localAssemblyVersion);
+
 
     // Start the form.
     html << "<h2>Assembly graph segment step</h2><form><table>";
@@ -910,6 +914,13 @@ void Assembler::exploreSegmentStep(
         html << " value='" << stepIdString + "'";
     }
     html << ">";
+
+    html <<
+        "<tr><th>Local assembly version<td class=centered>"
+        "<input type=radio name=localAssemblyVersion value=6" <<
+        (localAssemblyVersion == 6 ? " checked=on" : "") << "> 6"
+        "<br><input type=radio name=localAssemblyVersion value=7" <<
+        (localAssemblyVersion == 7 ? " checked=on" : "") << "> 7";
 
     // End the form.
     html <<
@@ -997,14 +1008,33 @@ void Assembler::exploreSegmentStep(
     std::ranges::copy(anchorPair.orientedReadIds, back_inserter(orientedReadIds));
     deduplicate(orientedReadIds);
 
+
+
     // Do the local assembly.
-    LocalAssembly6 localAssembly(
-        anchors(),
-        anchorPair.anchorIdA,
-        anchorPair.anchorIdB,
-        html,
-        orientedReadIds);
-    return;
+    switch(localAssemblyVersion) {
+    case 6:
+        {
+            LocalAssembly6 localAssembly(
+                anchors(),
+                anchorPair.anchorIdA,
+                anchorPair.anchorIdB,
+                html,
+                orientedReadIds);
+            return;
+        }
+    case 7:
+        {
+            LocalAssembly7 localAssembly(
+                anchors(),
+                anchorPair.anchorIdA,
+                anchorPair.anchorIdB,
+                html,
+                orientedReadIds);
+            return;
+        }
+    default:
+        SHASTA2_ASSERT(0);
+    }
 
 }
 

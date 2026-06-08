@@ -1,0 +1,226 @@
+#pragma once
+
+// Shasta.
+#include "Base.hpp"
+#include "invalid.hpp"
+#include "ReadId.hpp"
+#include "shastaTypes.hpp"
+
+// Boost libraries.
+#include <boost/graph/adjacency_list.hpp>
+
+// Standard library.
+#include "iosfwd.hpp"
+#include "vector.hpp"
+
+namespace shasta2 {
+    class LocalAssembly7;
+
+    class Anchors;
+}
+
+
+
+class shasta2::LocalAssembly7 {
+public:
+
+    // Local assembly using a DeBruijn graph.
+    // This assembles sequence between two anchors using an input vector
+    // of oriented reads, which must be sorted.
+    // * Of the oriented reads given on input, only the ones that appear
+    //   in at least one of the two anchors can be used for assembly.
+    // * At least one of the input oriented reads must appear on both anchors.
+    // When this completes successfully, the assembled sequence is stored
+    // in the sequence vector below. If an error occurs,
+    // this throws a std::runtime_error.
+    LocalAssembly7(
+        const Anchors&,
+        AnchorId anchorIdA,
+        AnchorId anchorIdB,
+        ostream& html,
+        const vector<OrientedReadId>& orientedReadIds);
+
+    // Assembled sequence and its coverage.
+    bool success = false;
+    vector<Base> sequence;
+
+private:
+
+    // EXPOSE WHEN CODE STABILIZES.
+
+    // K-mer length for the De Bruijn graph.
+    const uint64_t k = 40;
+
+    // For reads fixed on one side only, we use a sequence length
+    // equal to aDrift * offset + bDrift.
+    const double aDrift = 0.1;
+    const double bDrift = 30.;
+
+    // Coefficient to compute edge weights.
+    // logP = logPCoefficient * coverage, with logPCoefficient in dB.
+    // weight = pow(10, -0.1 * logP)
+    const double logPCoefficient = 10.;
+
+
+
+    const Anchors& anchors;
+    AnchorId anchorIdA;     // Left Anchor.
+    AnchorId anchorIdB;     // Right Anchor.
+    ostream& html;          // Pass ostream(0) to suppress html output.
+
+
+
+    // The oriented reads used in this local assembly.
+    class OrientedReadInfo {
+    public:
+        OrientedReadId orientedReadId;
+
+        // The base positions of this OrientedReadId in the two Anchors, if any.
+        // These are positions in the oriented read sequence
+        // of the mid point of the marker.
+        uint32_t positionA = invalid<uint32_t>;
+        uint32_t positionB = invalid<uint32_t>;
+        uint32_t positionOffsetAB() const
+        {
+            SHASTA2_ASSERT(isOnBothAnchors());
+            SHASTA2_ASSERT(positionB > positionA);
+            return positionB - positionA;
+        }
+
+        // Whether this OrientedReadId appears in the two Anchors.
+        bool isOnAnchorA() const {return isValid(positionA);}
+        bool isOnAnchorB() const {return isValid(positionB);}
+        bool isOnBothAnchors() const
+        {
+            return isOnAnchorA() and isOnAnchorB();
+        }
+
+        // The above portion is filled in by gatherOrientedReads().
+        // The rest is filled in by gatherSequences().
+
+        // The region of this oriented read that will be used in this local assembly.
+        // The positions are positions of the marker midpoints.
+        uint32_t positionBegin = invalid<uint32_t>;
+        uint32_t positionEnd = invalid<uint32_t>;
+
+        uint32_t positionOffsetForAssembly() const
+        {
+            return positionEnd - positionBegin;
+        }
+
+        uint64_t sequenceId = invalid<uint64_t>;
+
+    };
+    vector<OrientedReadInfo> orientedReadInfos;
+    void gatherOrientedReads(const vector<OrientedReadId>&);
+
+    uint32_t offset;
+    void estimateOffset();
+
+
+
+    // The distinct sequences to be used for assembly.
+    class SequenceInfo {
+    public:
+        bool isOnAnchorA = false;
+        bool isOnAnchorB = false;
+        vector<OrientedReadId> orientedReadIds;
+        uint64_t coverage() const
+        {
+            return orientedReadIds.size();
+        }
+        vector<Base> sequence;
+        SequenceInfo(
+            uint64_t k,
+            bool isOnAnchorA,
+            bool isOnAnchorB,
+            OrientedReadId orientedReadId,
+            const vector<Base>& sequence) :
+            isOnAnchorA(isOnAnchorA),
+            isOnAnchorB(isOnAnchorB),
+            orientedReadIds(1, orientedReadId),
+            sequence(sequence)
+        {
+            constructRleSequence();
+            constructDeBruijnRleSequence(k);
+        }
+
+        // RLE sequence.
+        // The DeBruijn graph is constructed using the RLE sequence.
+        vector<Base> rleSequence;
+        vector<uint32_t> repeatCount;
+        void constructRleSequence();
+
+        // The sequence used for the DeBruijn graph is the same RLE, but:
+        // - If isOnAnchorA, k copies of Base::fromInteger(10) are added at the beginning.
+        // - If isOnAnchorB, k copies of Base::fromInteger(20) are added at the end.
+        vector<Base> deBruijnRleSequence;
+        vector<uint32_t> deBruijnRepeatCount;
+        void constructDeBruijnRleSequence(uint64_t k);
+
+    };
+    vector<SequenceInfo> sequences;
+    void gatherSequences();
+
+    void writeOrientedReads() const;
+    void writeSequences() const;
+
+
+    // The DeBruijn graph.
+    class KmerOccurrence {
+    public:
+        // The id of the sequence where this k-mer occurs.
+        uint64_t sequenceId;
+        // The position of the firts base of the k-mer in that sequence.
+        uint64_t position;
+    };
+    class Vertex {
+    public:
+        vector<Base> kmer;
+        vector<KmerOccurrence> occurrences;
+        uint64_t coverage = invalid<uint64_t>;
+        bool isAVertex = false;
+        bool isBVertex = false;
+        bool isOnAssemblyPath = false;
+        Vertex() {}
+        Vertex(
+            const vector<Base>& kmer,
+            const vector<KmerOccurrence>& occurrences,
+            uint64_t coverage) :
+            kmer(kmer),
+            occurrences(occurrences),
+            coverage(coverage)
+        {}
+    };
+    class Edge {
+    public:
+        uint64_t coverage = 0;
+        double weight = 0.;
+    };
+    using GraphBaseClass = boost::adjacency_list<
+        boost::listS,
+        boost::vecS,
+        boost::bidirectionalS,
+        Vertex,
+        Edge>;
+    class Graph : public GraphBaseClass {
+    public:
+        vertex_descriptor vA;
+        vertex_descriptor vB;
+        void disconnectUnreachableVertices();
+        uint64_t countNonIsolatedVertices() const;
+        void writeGraphviz(const string& fileName) const;
+        void writeGraphviz(ostream&) const;
+
+        // The assembly path is a minimum weight path between vA and vB.
+        vector<vertex_descriptor> assemblyPath;
+        void computeAssemblyPath();
+    };
+    using vertex_descriptor = Graph::vertex_descriptor;
+    using edge_descriptor = Graph::edge_descriptor;
+    Graph graph;
+    void createGraph();
+    void writeGraph();
+
+
+};
