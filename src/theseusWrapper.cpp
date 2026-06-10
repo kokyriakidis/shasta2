@@ -47,9 +47,7 @@ void shasta2::theseus(
     theseus::Penalties penalties(match, mismatch, gapo, gape);
 
     // Theseus heuristics.
-    const bool lagPruning = false;
-    const bool densityDrop = false;
-    theseus::Heuristics heuristics(lagPruning, densityDrop);
+    theseus::Heuristics heuristics;
 
     // Create the theseus aligner, passing in the first sequence fixed on both sides.
     SHASTA2_ASSERT(not fixedSequences.empty());
@@ -60,17 +58,23 @@ void shasta2::theseus(
     // Pass to the aligner the remaining sequences fixed on both sides.
     for(uint64_t i=1; i<fixedSequences.size(); i++) {
         const auto& [sequence, weight] = fixedSequences[i];
-        aligner.align(toString(sequence), int(weight), false, false);
+        const bool densityDrop = false;
+        const bool lagPruning = false;
+        aligner.align(toString(sequence), int(weight), false, false, densityDrop, lagPruning);
     }
 
     // Pass to the aligner the sequences fixed on the left only
     for(const auto& [sequence, weight]:  leftFixedSequences) {
-        aligner.align(toString(sequence), int(weight), false, true);
+        const bool densityDrop = false;
+        const bool lagPruning = false;
+        aligner.align(toString(sequence), int(weight), false, true, densityDrop, lagPruning);
     }
 
     // Pass to the aligner the sequences fixed on the right only
     for(const auto& [sequence, weight]:  rightFixedSequences) {
-        aligner.align(toString(sequence), int(weight), true, true);
+        const bool densityDrop = false;
+        const bool lagPruning = false;
+        aligner.align(toString(sequence), int(weight), true, true, densityDrop, lagPruning);
     }
 
     // Get the consensus.
@@ -192,19 +196,19 @@ void shasta2::theseusWriteFile(
     ofstream out(fileName);
 
     for(const auto& [sequence, weight]: fixedSequences) {
-        out << ">0 0 " << weight << "\n";
+        out << ">0 0 " << weight << " 0 0 \n";
         std::ranges::copy(sequence, ostream_iterator<Base>(out));
         out << "\n";
     }
 
     for(const auto& [sequence, weight]: leftFixedSequences) {
-        out << ">0 1 " << weight << "\n";
+        out << ">0 1 " << weight << " 0 0\n";
         std::ranges::copy(sequence, ostream_iterator<Base>(out));
         out << "\n";
     }
 
     for(const auto& [sequence, weight]: rightFixedSequences) {
-        out << ">1 1 " << weight << "\n";
+        out << ">1 1 " << weight << " 0 0\n";
         std::ranges::copy(sequence, ostream_iterator<Base>(out));
         out << "\n";
     }
