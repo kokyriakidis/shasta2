@@ -24,7 +24,6 @@ namespace shasta2 {
 
 class shasta2::LocalAssembly7 {
 public:
-    using Base = shasta2::Base;
 
     // Local assembly using a DeBruijn graph.
     // This assembles sequence between two anchors using an input vector
@@ -205,12 +204,16 @@ private:
         Edge>;
     class Graph : public GraphBaseClass {
     public:
+        using Base = shasta2::Base;
         vertex_descriptor vA;
         vertex_descriptor vB;
         void disconnectUnreachableVertices();
         uint64_t countNonIsolatedVertices() const;
+
         void writeGraphviz(const string& fileName) const;
         void writeGraphviz(ostream&) const;
+        void writeVertices(const string& fileName) const;
+        void writeVertices(ostream&) const;
 
         // The assembly path is a minimum weight path between vA and vB.
         vector<vertex_descriptor> assemblyPath;

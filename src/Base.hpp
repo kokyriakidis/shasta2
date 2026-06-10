@@ -129,7 +129,7 @@ public:
         case 2: return 'G';
         case 3: return 'T';
         default:
-            throw runtime_error("Invalid base value " + to_string(value));
+            return 'N';
         }
     }
 

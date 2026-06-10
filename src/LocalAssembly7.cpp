@@ -53,6 +53,7 @@ LocalAssembly7::LocalAssembly7(
     createGraph();
     graph.disconnectUnreachableVertices();
 
+
     // If the graph has cycles, declare failure and stop here.
     {
         std::map<vertex_descriptor, uint64_t> componentMap;
@@ -60,6 +61,7 @@ LocalAssembly7::LocalAssembly7(
             if(html) {
                 html << "<br>The De Bruijn graph contains cycles.";
                 writeGraph();
+                graph.writeVertices("LocalAssemblyGraph7.csv");
             }
             return;
         }
@@ -67,6 +69,9 @@ LocalAssembly7::LocalAssembly7(
 
     graph.computeAssemblyPath();
     writeGraph();
+    if(html) {
+        graph.writeVertices("LocalAssemblyGraph7.csv");
+    }
 
     assemble();
     writeSequence();
@@ -542,6 +547,33 @@ void LocalAssembly7::Graph::writeGraphviz(ostream& dot) const
     dot << "}\n";
 }
 
+
+
+void LocalAssembly7::Graph::writeVertices(const string& fileName) const
+{
+    ofstream csv(fileName);
+    writeVertices(csv);
+}
+
+
+
+void LocalAssembly7::Graph::writeVertices(ostream& csv) const
+{
+    const Graph& graph = *this;
+    csv << "v,coverage,RLE kmer,\n";
+
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        if((in_degree(v, graph) == 0) and (out_degree(v, graph) == 0)) {
+            continue;
+        }
+        const Vertex& vertex = graph[v];
+        csv << v << ",";
+        csv << vertex.coverage << ",";
+        std::ranges::copy(vertex.kmer, ostream_iterator<Base>(csv));
+        csv << ",";
+        csv << "\n";
+    }
+}
 
 
 

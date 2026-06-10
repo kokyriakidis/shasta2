@@ -496,8 +496,8 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
         } else {
 
             // EXPOSE WHEN CODE STABILIZES.
-            const uint64_t k = 40;
-            const uint64_t kMax = 320;
+            const uint64_t k = 32;
+            const uint64_t kMax = 4096;
 
             LocalAssembly7Driver localAssembly(
                 anchors,
