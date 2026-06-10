@@ -23,6 +23,7 @@ namespace shasta2 {
 
 class shasta2::LocalAssembly7 {
 public:
+    using Base = shasta2::Base;
 
     // Local assembly using a DeBruijn graph.
     // This assembles sequence between two anchors using an input vector
@@ -171,7 +172,7 @@ private:
     public:
         // The id of the sequence where this k-mer occurs.
         uint64_t sequenceId;
-        // The position of the firts base of the k-mer in that sequence.
+        // The position of the first base of the k-mer in that sequence.
         uint64_t position;
     };
     class Vertex {
@@ -222,5 +223,9 @@ private:
     void createGraph();
     void writeGraph();
 
+    // Get the "optimal" repeat count at a given position of a vertex.
+    uint32_t getRepeatCount(vertex_descriptor v, uint64_t position);
 
+    void assemble();
+    void writeSequence() const;
 };

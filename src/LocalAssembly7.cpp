@@ -62,9 +62,11 @@ LocalAssembly7::LocalAssembly7(
         }
     }
 
-
     graph.computeAssemblyPath();
     writeGraph();
+
+    assemble();
+    writeSequence();
 
 }
 
@@ -284,7 +286,7 @@ void LocalAssembly7::writeSequences() const
         "<th>Sequence<br>id"
         "<th>On A"
         "<th>On B"
-        "<th>Length"
+        "<th>Length<br>RLE length"
         "<th>Coverage"
         "<th class=left>Sequence<br>RLE sequence<br>Repeat count";
 
@@ -298,6 +300,7 @@ void LocalAssembly7::writeSequences() const
             "<td class=centered>" << (sequenceInfo.isOnAnchorA ? "&check;" : "") <<
             "<td class=centered>" << (sequenceInfo.isOnAnchorB ? "&check;" : "") <<
             "<td class=centered>" << sequenceInfo.sequence.size() <<
+            "<br>" << sequenceInfo.rleSequence.size() <<
             "<td class=centered>" << sequenceInfo.orientedReadIds.size() <<
             "<td class=left style='font-family:monospace;white-space: nowrap'>";
         std::ranges::copy(sequenceInfo.sequence, ostream_iterator<Base>(html));
@@ -504,7 +507,7 @@ void LocalAssembly7::Graph::writeGraphviz(ostream& dot) const
             continue;
         }
         dot << v << " [";
-        dot << "label=\"" << graph[v].coverage << "\"";
+        dot << "label=\"v" << v << "\\n" << graph[v].coverage << "\"";
         if(graph[v].isAVertex) {
             dot << " style=filled fillcolor=Pink";
         } else if(graph[v].isBVertex) {
@@ -602,4 +605,133 @@ void LocalAssembly7::Graph::computeAssemblyPath()
     for(const vertex_descriptor v: assemblyPath) {
         graph[v].isOnAssemblyPath = true;
     }
+}
+
+
+
+
+// This uses the assembly path to assemble sequence.
+// The assembly path begins at vA, which contains invalid equence (Base::fromInteger(10)),
+// and ends at vB, which also contains invalid sequence (Base::fromInteger(20)).
+// If the assembly path has N vertices, the base offset between vA and vB is N-1.
+// The true RLE assembled sequence begins k bases after vA and ends at the base before vB,
+// so its length is n = N-1-k.
+
+// For each assembled base position, we can choose among k vertices the one
+// from which we get the RLE base and the repeat count.
+// The RLE base will be the same for all of the k vertices, but the repeat
+// count can vary. So among the k vertices we choose the one with the highest coverage.
+void LocalAssembly7::assemble()
+{
+    const bool debug = false;
+
+    const uint64_t N = graph.assemblyPath.size();
+    const uint64_t n = N - 1 - k;
+    vector<Base> rleSequence(n);
+    vector<uint32_t> repeatCount(n);
+
+    if(html) {
+        html << "<br>The assembly path contains " << N << " vertices.";
+        html << "<br>RLE assembled sequence is " << n << " bases long.";
+    }
+
+
+
+    // Look over all positions of assembled RLE sequence.
+    for(uint64_t position=0; position<n; position++) {
+
+        // Loop over the k vertices we can use to get the
+        // RLE base and repeat count at this position.
+        // Find the vertex with the highest coverage.
+        vertex_descriptor vBest = Graph::null_vertex();
+        uint64_t bestCoverage = 0;
+        uint64_t bestPositionInVertexKmer = invalid<uint64_t>;
+        Base b;
+        for(uint64_t i=0; i<k; i++){
+            const uint64_t positionInPath = position + k - i;
+            const uint64_t positionInVertexKmer = i;
+            const vertex_descriptor v = graph.assemblyPath[positionInPath];
+            const Vertex& vertex = graph[v];
+            if(i == 0) {
+                b = vertex.kmer[positionInVertexKmer];
+            } else {
+                SHASTA2_ASSERT(b == vertex.kmer[positionInVertexKmer]);
+            }
+            if(vertex.coverage > bestCoverage) {
+                bestCoverage = vertex.coverage;
+                vBest = v;
+                bestPositionInVertexKmer = positionInVertexKmer;
+            }
+        }
+        rleSequence[position] = b;
+        repeatCount[position] = getRepeatCount(vBest, bestPositionInVertexKmer);
+        if(debug) {
+            cout << "RLE assembled position " << position << ": " << endl;
+            cout << "   " << b << ", use vertex " << vBest <<
+            ", coverage " << bestCoverage << ", repeat count " << repeatCount[position] << endl;
+        }
+    }
+
+
+    // Now we can create the sequence.
+    sequence.clear();
+    for(uint64_t i=0; i<n; i++) {
+        const Base b = rleSequence[i];
+        const uint32_t r = repeatCount[i];
+        for(uint64_t j=0; j<r; j++) {
+            sequence.push_back(b);
+        }
+    }
+
+}
+
+
+
+// Get the "optimal" repeat count at a given position of a vertex.
+// For now this just retur
+uint32_t LocalAssembly7::getRepeatCount(vertex_descriptor v, uint64_t positionInVertexKmer)
+{
+    const Vertex& vertex = graph[v];
+
+    uint64_t sum = 0;
+    uint64_t sumWeights = 0;
+    for(const KmerOccurrence& kmerOccurrence: vertex.occurrences) {
+        const SequenceInfo& sequence = sequences[kmerOccurrence.sequenceId];
+        const uint64_t positionInSequence = positionInVertexKmer + kmerOccurrence.position;
+        const uint32_t repeatCount = sequence.deBruijnRepeatCount[positionInSequence];
+        const uint64_t weight = sequence.orientedReadIds.size();
+        /*
+        cout << "AAA "
+            "v " << v <<
+            ", sequenceId " << kmerOccurrence.sequenceId <<
+            ", positionInVertexKmer " << positionInVertexKmer <<
+            ", kmerOccurrence.position " << kmerOccurrence.position <<
+            ", positionInSequence " << positionInSequence <<
+            ", repeatCount " << repeatCount <<
+            ", weight " << weight << endl;
+        */
+        sum += weight * repeatCount;
+        sumWeights += weight;
+    }
+
+    return uint32_t(std::round(double(sum) / double(sumWeights)));
+}
+
+
+
+void LocalAssembly7::writeSequence() const
+{
+    if(not html) {
+        return;
+    }
+
+    // Write the consensus.
+    html <<
+        "<h4>Assembled sequence</h4>"
+        "<table>"
+        "<tr><th class=left>Length<td class=left>" << sequence.size() <<
+        "<tr><th class=left>Sequence<td class=left style='font-family:monospace;white-space:nowrap'>";
+    std::ranges::copy(sequence, ostream_iterator<Base>(html));
+    html << "</table>";
+
 }
