@@ -15,6 +15,7 @@
 
 namespace shasta2 {
     class LocalAssembly7;
+    class LocalAssembly7Driver;
 
     class Anchors;
 }
@@ -38,6 +39,7 @@ public:
         const Anchors&,
         AnchorId anchorIdA,
         AnchorId anchorIdB,
+        uint64_t k,
         ostream& html,
         const vector<OrientedReadId>& orientedReadIds);
 
@@ -48,10 +50,6 @@ public:
 private:
 
     // EXPOSE WHEN CODE STABILIZES.
-
-    // K-mer length for the De Bruijn graph.
-    const uint64_t k = 40;
-
     // For reads fixed on one side only, we use a sequence length
     // equal to aDrift * offset + bDrift.
     const double aDrift = 0.1;
@@ -67,6 +65,7 @@ private:
     const Anchors& anchors;
     AnchorId anchorIdA;     // Left Anchor.
     AnchorId anchorIdB;     // Right Anchor.
+    uint64_t k;
     ostream& html;          // Pass ostream(0) to suppress html output.
 
 
@@ -228,4 +227,22 @@ private:
 
     void assemble();
     void writeSequence() const;
+};
+
+
+
+
+// This doubles k until success is achieved.
+class shasta2::LocalAssembly7Driver {
+public:
+    LocalAssembly7Driver(
+        const Anchors&,
+        AnchorId anchorIdA,
+        AnchorId anchorIdB,
+        uint64_t k,
+        uint64_t kMax,
+        ostream& html,
+        const vector<OrientedReadId>& orientedReadIds);
+    vector<Base> sequence;
+    bool success = false;
 };

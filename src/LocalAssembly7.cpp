@@ -29,11 +29,13 @@ LocalAssembly7::LocalAssembly7(
     const Anchors& anchors,
     AnchorId anchorIdA,
     AnchorId anchorIdB,
+    uint64_t k,
     ostream& html,
     const vector<OrientedReadId>& orientedReadIds) :
     anchors(anchors),
     anchorIdA(anchorIdA),
     anchorIdB(anchorIdB),
+    k(k),
     html(html)
 {
     if(html) {
@@ -57,6 +59,7 @@ LocalAssembly7::LocalAssembly7(
         if(boost::strong_components(graph, boost::make_assoc_property_map(componentMap)) != num_vertices(graph)) {
             if(html) {
                 html << "<br>The De Bruijn graph contains cycles.";
+                writeGraph();
             }
             return;
         }
@@ -67,6 +70,7 @@ LocalAssembly7::LocalAssembly7(
 
     assemble();
     writeSequence();
+    success = true;
 
 }
 
@@ -734,4 +738,27 @@ void LocalAssembly7::writeSequence() const
     std::ranges::copy(sequence, ostream_iterator<Base>(html));
     html << "</table>";
 
+}
+
+
+
+LocalAssembly7Driver::LocalAssembly7Driver(
+    const Anchors& anchors,
+    AnchorId anchorIdA,
+    AnchorId anchorIdB,
+    uint64_t k,
+    uint64_t kMax,
+    ostream& html,
+    const vector<OrientedReadId>& orientedReadIds)
+{
+    while(k <= kMax) {
+        LocalAssembly7 localAssembly(anchors, anchorIdA, anchorIdB, k, html, orientedReadIds);
+        if(localAssembly.success) {
+            success = true;
+            sequence = localAssembly.sequence;
+            break;
+        } else {
+            k *= 2;
+        }
+    }
 }

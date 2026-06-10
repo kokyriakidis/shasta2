@@ -14,6 +14,7 @@
 #include "findReachableVertices.hpp"
 #include "Journeys.hpp"
 #include "LocalAssembly6.hpp"
+#include "LocalAssembly7.hpp"
 #include "longestPath.hpp"
 #include "memoryInformation.hpp"
 #include "Options.hpp"
@@ -483,18 +484,42 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
         std::ranges::copy(anchorPair.orientedReadIds, back_inserter(orientedReadIds));
         deduplicate(orientedReadIds);
 
-        LocalAssembly6 localAssembly(
-            anchors,
-            anchorPair.anchorIdA,
-            anchorPair.anchorIdB,
-            html,
-            orientedReadIds);
-        step.sequence = localAssembly.sequence;
+        if(true) {
+            LocalAssembly6 localAssembly(
+                anchors,
+                anchorPair.anchorIdA,
+                anchorPair.anchorIdB,
+                html,
+                orientedReadIds);
+            step.sequence = localAssembly.sequence;
+
+        } else {
+
+            // EXPOSE WHEN CODE STABILIZES.
+            const uint64_t k = 40;
+            const uint64_t kMax = 320;
+
+            LocalAssembly7Driver localAssembly(
+                anchors,
+                anchorPair.anchorIdA,
+                anchorPair.anchorIdB,
+                k,
+                kMax,
+                html,
+                orientedReadIds);
+            step.sequence = localAssembly.sequence;
+
+            if(not localAssembly.success) {
+                std::lock_guard<std::mutex> lock(mutex);
+                throw runtime_error("Local assembly for segment " + to_string(edge.id) +
+                    " step " + to_string(i) + " failed.");
+            }
+        }
 
         if(step.sequence.empty()) {
             std::lock_guard<std::mutex> lock(mutex);
-            cout << "Local assembly for segment " << edge.id << " " << " step " << i <<
-                ": empty consensus sequence." << endl;
+            throw runtime_error("Local assembly for segment " + to_string(edge.id) +
+                " step " + to_string(i) + ": empty sequence assembled.");
         }
 
     } catch(const std::exception&) {
