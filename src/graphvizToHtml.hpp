@@ -35,6 +35,8 @@ namespace shasta2 {
         const string& options,
 
         // Svg output goes here.
-        ostream& html
+        ostream& html,
+
+        bool keepDotFile = false
         );
 }

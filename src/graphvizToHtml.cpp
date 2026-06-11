@@ -39,7 +39,10 @@ void shasta2::graphvizToHtml(
     const string& options,
 
     // Svg output goes here.
-    shasta2::ostream& html
+    shasta2::ostream& html,
+
+    bool keepDotFile
+
     )
 {
     // Construct the Graphviz command.
@@ -62,7 +65,9 @@ void shasta2::graphvizToHtml(
     }
 
     // Success, we can remove the Graphviz file.
-    std::filesystem::remove(dotFileName);
+    if(not keepDotFile) {
+        std::filesystem::remove(dotFileName);
+    }
 
     // Write the svg to html.
     html << "<div style='display:inline-block'>";
