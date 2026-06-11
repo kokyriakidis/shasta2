@@ -140,22 +140,14 @@ private:
             orientedReadIds(1, orientedReadId),
             sequence(sequence)
         {
-            constructRleSequence();
-            constructDeBruijnRleSequence(k);
+            constructDeBruijnSequence(k);
         }
 
-        // RLE sequence.
-        // The DeBruijn graph is constructed using the RLE sequence.
-        vector<Base> rleSequence;
-        vector<uint32_t> repeatCount;
-        void constructRleSequence();
-
-        // The sequence used for the DeBruijn graph is the same RLE, but:
+        // The sequence used for the DeBruijn graph is the same as the sequence, but:
         // - If isOnAnchorA, k copies of Base::fromInteger(10) are added at the beginning.
         // - If isOnAnchorB, k copies of Base::fromInteger(20) are added at the end.
-        vector<Base> deBruijnRleSequence;
-        vector<uint32_t> deBruijnRepeatCount;
-        void constructDeBruijnRleSequence(uint64_t k);
+        vector<Base> deBruijnSequence;
+        void constructDeBruijnSequence(uint64_t k);
 
     };
     vector<SequenceInfo> sequences;
@@ -224,9 +216,6 @@ private:
     Graph graph;
     void createGraph();
     void writeGraph();
-
-    // Get the "optimal" repeat count at a given position of a vertex.
-    uint32_t getRepeatCount(vertex_descriptor v, uint64_t position);
 
     void assemble();
     void writeSequence() const;
