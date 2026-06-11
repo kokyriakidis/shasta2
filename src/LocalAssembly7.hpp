@@ -3,6 +3,7 @@
 // Shasta.
 #include "Base.hpp"
 #include "invalid.hpp"
+#include "orderPairs.hpp"
 #include "ReadId.hpp"
 #include "shastaTypes.hpp"
 
@@ -111,6 +112,8 @@ private:
     };
     vector<OrientedReadInfo> orientedReadInfos;
     void gatherOrientedReads(const vector<OrientedReadId>&);
+    void removeOutliers();
+    static bool checkOffsets(uint64_t, uint64_t);
 
     uint32_t offset;
     void estimateOffset();

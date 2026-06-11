@@ -43,6 +43,7 @@ LocalAssembly7::LocalAssembly7(
     }
 
     gatherOrientedReads(orientedReadIds);
+    removeOutliers();
     estimateOffset();
     gatherSequences();
     writeOrientedReads();
@@ -677,6 +678,112 @@ void LocalAssembly7::writeSequence() const
         "<tr><th class=left>Sequence<td class=left style='font-family:monospace;white-space:nowrap'>";
     std::ranges::copy(sequence, ostream_iterator<Base>(html));
     html << "</table>";
+
+}
+
+
+
+void LocalAssembly7::removeOutliers()
+{
+    // Gather the offsets.
+    vector<pair<uint64_t, uint64_t > > offsetTable; // (index in orientedReadInfos, offset).
+    for(uint64_t i=0; i<orientedReadInfos.size(); i++) {
+        const OrientedReadInfo& orientedReadInfo = orientedReadInfos[i];
+        if(orientedReadInfo.isOnBothAnchors()) {
+            const uint64_t offset = orientedReadInfo.positionOffsetAB();
+            offsetTable.push_back({i, offset});
+        }
+    }
+    sort(offsetTable.begin(), offsetTable.end(), OrderPairsBySecondOnly<uint64_t, uint64_t>());
+
+    // Find places where there is an unreasonably jump in the offset.
+    vector<uint64_t> violations(1, 0);
+    for(uint64_t i1=1; i1<offsetTable.size(); i1++) {
+        const uint64_t i0 = i1 - 1;
+        const uint64_t offset0 = offsetTable[i0].second;
+        const uint64_t offset1 = offsetTable[i1].second;
+        if(not checkOffsets(offset0, offset1)) {
+            violations.push_back(i1);
+            // cout << "Violation " << offset0 << " " << offset1 << " " << i1 << endl;
+        }
+    }
+    violations.push_back(offsetTable.size());
+
+    // If no violations were found, keep all the OrientedReadInfos.
+    // This is the most common case.
+    if(violations.size() == 2) {
+        return;
+    }
+
+#if 0
+    cout << "violations vector ";
+    std::ranges::copy(violations, ostream_iterator<uint64_t>(cout, " "));
+    cout << endl;
+#endif
+
+    // Find the largest interval between violations.
+    uint64_t keepBegin = 0;
+    uint64_t keepEnd = 0;
+    for(uint64_t i1=1; i1<violations.size(); i1++) {
+        const uint64_t i0 = i1 - 1;
+        const uint64_t violation0 = violations[i0];
+        const uint64_t violation1 = violations[i1];
+        if(violation1 - violation0 > keepEnd - keepBegin) {
+            keepBegin = violation0;
+            keepEnd = violation1;
+        }
+    }
+    // cout << "keepBegin " << keepBegin << ", keepEnd " << keepEnd << endl;
+
+    // Only keep OrientedReadInfos that are at positions [keepBegin, keepEnd)
+    // in the offset table.
+    std::set<uint64_t> discard;
+    for(uint64_t i=0; i<keepBegin; i++) {
+        const uint64_t j = offsetTable[i].first;
+        discard.insert(j);
+        if(html) {
+            html << "<br>Discarding " << orientedReadInfos[j].orientedReadId <<
+                " due to inconsistent offsets.";
+        }
+    }
+    for(uint64_t i=keepEnd; i<offsetTable.size(); i++) {
+        const uint64_t j = offsetTable[i].first;
+        discard.insert(j);
+        if(html) {
+            html << "<br>Discarding " << orientedReadInfos[j].orientedReadId <<
+                " due to inconsistent offsets.";
+        }
+    }
+
+    vector<OrientedReadInfo> newOrientedReadInfos;
+    for(uint64_t i=0; i<orientedReadInfos.size(); i++) {
+        if(not discard.contains(i)) {
+            newOrientedReadInfos.push_back(orientedReadInfos[i]);
+        }
+    }
+    orientedReadInfos.swap(newOrientedReadInfos);
+}
+
+
+
+bool LocalAssembly7::checkOffsets(uint64_t offset0, uint64_t offset1)
+{
+    // EXPOSE WHEN CODE STABILIZES.
+    const double aDrift = 0.02;
+    const double bDrift = 100.;
+
+    if(offset1 == offset0) {
+        return true;
+    }
+
+    SHASTA2_ASSERT(offset1 > offset0);
+
+    const double average = 0.5 * double(offset0 + offset1);
+    const uint64_t difference = offset1 - offset0;
+
+    const double acceptableDifference = aDrift * average + bDrift;
+
+    return difference < uint64_t(std::round(acceptableDifference));
 
 }
 
