@@ -73,8 +73,8 @@ LocalAssembly7::LocalAssembly7(
             if(boost::strong_components(graph, boost::make_assoc_property_map(componentMap)) != num_vertices(graph)) {
                 if(html) {
                     html << "<br>The De Bruijn graph contains cycles.";
-                    graph.writeVertices("LocalAssemblyGraph7-" + to_string(k) + ".csv");
-                    writeGraph(graph);
+                    graph.writeVertices("DeBruijnGraph-" + to_string(k) + ".csv");
+                    writeGraph(k, graph);
                 }
                 k *= 2;
 
@@ -93,9 +93,9 @@ LocalAssembly7::LocalAssembly7(
 
         graph.computeAssemblyPath();
         if(html) {
-            graph.writeVertices("LocalAssemblyGraph7-" + to_string(k) + ".csv");
+            graph.writeVertices("DeBruijnGraph-" + to_string(k) + ".csv");
         }
-        writeGraph(graph);
+        writeGraph(k, graph);
         assemble(k, graph);
         writeSequence();
         success = true;
@@ -445,7 +445,7 @@ void LocalAssembly7::createGraph(uint64_t k, Graph& graph)
 
 
 
-void LocalAssembly7::writeGraph(const Graph& graph)
+void LocalAssembly7::writeGraph(uint64_t k, const Graph& graph)
 {
     if(not html) {
         return;
@@ -457,14 +457,18 @@ void LocalAssembly7::writeGraph(const Graph& graph)
         " non-isolated vertices and " << num_edges(graph) << " edges.";
 
     // Write it in graphviz format.
-    const string dotFileName = "DeBruijnGraph.dot";
+    const string dotFileName = "DeBruijnGraph-" + to_string(k) + ".dot";
     graph.writeGraphviz(dotFileName);
 
     // Display it in html in svg format.
     const double timeout = 30.;
     const string options = "-Nshape=rectangle";
     html << "<br>";
-    graphvizToHtml(dotFileName, "dot", timeout, options, html);
+    try {
+        graphvizToHtml(dotFileName, "dot", timeout, options, html, true);
+    } catch(std::exception&) {
+        html << "Unable to display the graph." << endl;
+    }
 }
 
 

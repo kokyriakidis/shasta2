@@ -214,7 +214,7 @@ private:
     using vertex_descriptor = Graph::vertex_descriptor;
     using edge_descriptor = Graph::edge_descriptor;
     void createGraph(uint64_t k, Graph&);
-    void writeGraph(const Graph&);
+    void writeGraph(uint64_t k, const Graph&);
 
     void assemble(uint64_t k, Graph&);
     void writeSequence() const;
