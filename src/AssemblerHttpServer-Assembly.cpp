@@ -884,7 +884,7 @@ void Assembler::exploreSegmentStep(
     int localAssemblyVersion = 6;
     getParameterValue(request, "localAssemblyVersion", localAssemblyVersion);
 
-    uint64_t k = 40;
+    uint64_t k = 32;
     getParameterValue(request, "k", k);
 
 
