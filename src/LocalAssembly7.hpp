@@ -15,7 +15,6 @@
 
 namespace shasta2 {
     class LocalAssembly7;
-    class LocalAssembly7Driver;
 
     class Anchors;
 }
@@ -25,7 +24,6 @@ namespace shasta2 {
 class shasta2::LocalAssembly7 {
 public:
 
-    // Local assembly using a DeBruijn graph.
     // This assembles sequence between two anchors using an input vector
     // of oriented reads, which must be sorted.
     // * Of the oriented reads given on input, only the ones that appear
@@ -38,7 +36,6 @@ public:
         const Anchors&,
         AnchorId anchorIdA,
         AnchorId anchorIdB,
-        uint64_t k,
         ostream& html,
         const vector<OrientedReadId>& orientedReadIds);
 
@@ -53,18 +50,20 @@ private:
     // equal to aDrift * offset + bDrift.
     const double aDrift = 0.1;
     const double bDrift = 30.;
+    const uint64_t kStart = 32;
+    const uint64_t kMax = 256;
 
-    // Coefficient to compute edge weights.
+    // Coefficient to compute edge weights for the DeBruijn graph.
     // logP = logPCoefficient * coverage, with logPCoefficient in dB.
     // weight = pow(10, -0.1 * logP)
     const double logPCoefficient = 10.;
 
 
 
+    // Parameters filled in by the constructor.
     const Anchors& anchors;
     AnchorId anchorIdA;     // Left Anchor.
     AnchorId anchorIdB;     // Right Anchor.
-    uint64_t k;
     ostream& html;          // Pass ostream(0) to suppress html output.
 
 
@@ -130,7 +129,6 @@ private:
         }
         vector<Base> sequence;
         SequenceInfo(
-            uint64_t k,
             bool isOnAnchorA,
             bool isOnAnchorB,
             OrientedReadId orientedReadId,
@@ -140,7 +138,6 @@ private:
             orientedReadIds(1, orientedReadId),
             sequence(sequence)
         {
-            constructDeBruijnSequence(k);
         }
 
         // The sequence used for the DeBruijn graph is the same as the sequence, but:
@@ -213,28 +210,9 @@ private:
     };
     using vertex_descriptor = Graph::vertex_descriptor;
     using edge_descriptor = Graph::edge_descriptor;
-    Graph graph;
-    void createGraph();
-    void writeGraph();
+    void createGraph(uint64_t k, Graph&);
+    void writeGraph(const Graph&);
 
-    void assemble();
+    void assemble(uint64_t k, Graph&);
     void writeSequence() const;
-};
-
-
-
-
-// This doubles k until success is achieved.
-class shasta2::LocalAssembly7Driver {
-public:
-    LocalAssembly7Driver(
-        const Anchors&,
-        AnchorId anchorIdA,
-        AnchorId anchorIdB,
-        uint64_t k,
-        uint64_t kMax,
-        ostream& html,
-        const vector<OrientedReadId>& orientedReadIds);
-    vector<Base> sequence;
-    bool success = false;
 };

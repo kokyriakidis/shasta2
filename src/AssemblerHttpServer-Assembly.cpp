@@ -884,10 +884,6 @@ void Assembler::exploreSegmentStep(
     int localAssemblyVersion = 6;
     getParameterValue(request, "localAssemblyVersion", localAssemblyVersion);
 
-    uint64_t k = 32;
-    getParameterValue(request, "k", k);
-
-
     // Start the form.
     html << "<h2>Assembly graph segment step</h2><form><table>";
 
@@ -924,11 +920,6 @@ void Assembler::exploreSegmentStep(
         (localAssemblyVersion == 6 ? " checked=on" : "") << "> 6"
         "<br><input type=radio name=localAssemblyVersion value=7" <<
         (localAssemblyVersion == 7 ? " checked=on" : "") << "> 7";
-
-    html <<
-        "<tr>"
-        "<th class=left>K value for local assembly version 7"
-        "<td class=centered><input type=text name=k style='text-align:center' value='" << k << "'>";
 
     // End the form.
     html <<
@@ -1036,7 +1027,6 @@ void Assembler::exploreSegmentStep(
                 anchors(),
                 anchorPair.anchorIdA,
                 anchorPair.anchorIdB,
-                k,
                 html,
                 orientedReadIds);
             return;

@@ -29,13 +29,11 @@ LocalAssembly7::LocalAssembly7(
     const Anchors& anchors,
     AnchorId anchorIdA,
     AnchorId anchorIdB,
-    uint64_t k,
     ostream& html,
     const vector<OrientedReadId>& orientedReadIds) :
     anchors(anchors),
     anchorIdA(anchorIdA),
     anchorIdB(anchorIdB),
-    k(k),
     html(html)
 {
     if(html) {
@@ -50,32 +48,58 @@ LocalAssembly7::LocalAssembly7(
     writeOrientedReads();
     writeSequences();
 
-    createGraph();
-    graph.disconnectUnreachableVertices();
 
 
-    // If the graph has cycles, declare failure and stop here.
-    {
-        std::map<vertex_descriptor, uint64_t> componentMap;
-        if(boost::strong_components(graph, boost::make_assoc_property_map(componentMap)) != num_vertices(graph)) {
-            if(html) {
-                html << "<br>The De Bruijn graph contains cycles.";
-                graph.writeVertices("LocalAssemblyGraph7.csv");
-                writeGraph();
-            }
-            return;
+    // Loop over DeBruijn graphs with increasing k.
+    uint64_t k = kStart;
+    while(true) {
+        if(html) {
+            html << "<br>Using a De Bruijn graph with k = " << k << ".";
         }
-    }
 
-    graph.computeAssemblyPath();
-    if(html) {
-        graph.writeVertices("LocalAssemblyGraph7.csv");
-    }
-    writeGraph();
+        for(SequenceInfo& sequenceInfo: sequences) {
+            sequenceInfo.constructDeBruijnSequence(k);
+        }
 
-    assemble();
-    writeSequence();
-    success = true;
+        Graph graph;
+        createGraph(k, graph);
+        graph.disconnectUnreachableVertices();
+
+
+        // If the graph has cycles, double k.
+        {
+            std::map<vertex_descriptor, uint64_t> componentMap;
+            if(boost::strong_components(graph, boost::make_assoc_property_map(componentMap)) != num_vertices(graph)) {
+                if(html) {
+                    html << "<br>The De Bruijn graph contains cycles.";
+                    graph.writeVertices("LocalAssemblyGraph7-" + to_string(k) + ".csv");
+                    writeGraph(graph);
+                }
+                k *= 2;
+
+                if(k > kMax) {
+                    if(html) {
+                        html << "<br>Cannot increase k above " << kMax << ".";
+                    }
+                    // Leave success set to false.
+                    return;
+                } else {
+                    // Try the new value of k.
+                    continue;
+                }
+            }
+        }
+
+        graph.computeAssemblyPath();
+        if(html) {
+            graph.writeVertices("LocalAssemblyGraph7-" + to_string(k) + ".csv");
+        }
+        writeGraph(graph);
+        assemble(k, graph);
+        writeSequence();
+        success = true;
+        break;
+    }
 
 }
 
@@ -223,7 +247,7 @@ void LocalAssembly7::gatherSequences()
         }
         if(not found) {
             info.sequenceId = sequences.size();
-            sequences.emplace_back(k, info.isOnAnchorA(), info.isOnAnchorB(), orientedReadId, sequence);
+            sequences.emplace_back(info.isOnAnchorA(), info.isOnAnchorB(), orientedReadId, sequence);
         }
     }
 }
@@ -319,6 +343,8 @@ void LocalAssembly7::writeSequences() const
 
 void LocalAssembly7::SequenceInfo::constructDeBruijnSequence(uint64_t k)
 {
+    deBruijnSequence.clear();
+
     if(isOnAnchorA) {
         for(uint64_t i=0; i<k; i++) {
             deBruijnSequence.push_back(Base::fromInteger(uint8_t(10)));
@@ -335,7 +361,7 @@ void LocalAssembly7::SequenceInfo::constructDeBruijnSequence(uint64_t k)
 
 
 // This can be sped up if necessary.
-void LocalAssembly7::createGraph()
+void LocalAssembly7::createGraph(uint64_t k, Graph& graph)
 {
     // The k-mers of each of the sequences.
     using Kmer = vector<Base>;
@@ -418,7 +444,7 @@ void LocalAssembly7::createGraph()
 
 
 
-void LocalAssembly7::writeGraph()
+void LocalAssembly7::writeGraph(const Graph& graph)
 {
     if(not html) {
         return;
@@ -505,7 +531,7 @@ void LocalAssembly7::Graph::writeVertices(const string& fileName) const
 void LocalAssembly7::Graph::writeVertices(ostream& csv) const
 {
     const Graph& graph = *this;
-    csv << "v,coverage,RLE kmer,\n";
+    csv << "v,coverage,Kmer,\n";
 
     BGL_FORALL_VERTICES(v, graph, Graph) {
         if((in_degree(v, graph) == 0) and (out_degree(v, graph) == 0)) {
@@ -600,7 +626,7 @@ void LocalAssembly7::Graph::computeAssemblyPath()
 
 // For each assembled base position, we can choose among k vertices the one
 // from which we get the base, which will be the same for all of the k vertices.
-void LocalAssembly7::assemble()
+void LocalAssembly7::assemble(uint64_t k, Graph& graph)
 {
 
     const uint64_t N = graph.assemblyPath.size();
@@ -654,25 +680,3 @@ void LocalAssembly7::writeSequence() const
 
 }
 
-
-
-LocalAssembly7Driver::LocalAssembly7Driver(
-    const Anchors& anchors,
-    AnchorId anchorIdA,
-    AnchorId anchorIdB,
-    uint64_t k,
-    uint64_t kMax,
-    ostream& html,
-    const vector<OrientedReadId>& orientedReadIds)
-{
-    while(k <= kMax) {
-        LocalAssembly7 localAssembly(anchors, anchorIdA, anchorIdB, k, html, orientedReadIds);
-        if(localAssembly.success) {
-            success = true;
-            sequence = localAssembly.sequence;
-            break;
-        } else {
-            k *= 2;
-        }
-    }
-}
