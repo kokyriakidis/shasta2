@@ -74,6 +74,7 @@ LocalAssembly7::LocalAssembly7(
                 if(html) {
                     html << "<br>The De Bruijn graph contains cycles.";
                     graph.writeVertices("DeBruijnGraph-" + to_string(k) + ".csv");
+                    writeKmerOccurrences(graph, "DeBruijnGraph-KmerOccurrences-" + to_string(k) + ".csv");
                     writeGraph(k, graph);
                 }
                 k *= 2;
@@ -791,3 +792,39 @@ bool LocalAssembly7::checkOffsets(uint64_t offset0, uint64_t offset1)
 
 }
 
+
+
+void LocalAssembly7::writeKmerOccurrences(const Graph& graph, const string& fileName) const
+{
+    ofstream csv(fileName);
+    writeKmerOccurrences(graph, csv);
+}
+
+
+
+void LocalAssembly7::writeKmerOccurrences(const Graph& graph, ostream& csv) const
+{
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        const Vertex& vertex = graph[v];
+        for(const KmerOccurrence& kmerOccurrence: vertex.occurrences) {
+            const SequenceInfo& sequence = sequences[kmerOccurrence.sequenceId];
+            const uint64_t positionInSequence = kmerOccurrence.position;
+
+            // Estimate the offset relative to the left anchor.
+            int64_t offsetFromLeft;
+            if(sequence.isOnAnchorA) {
+                offsetFromLeft = positionInSequence;
+            } else {
+                const uint64_t sequenceLength = sequence.sequence.size();
+                offsetFromLeft = int64_t(positionInSequence) + (int64_t(offset) - int64_t(sequenceLength));
+            }
+
+            csv << v << ",";
+            csv << vertex.coverage << ",";
+            csv << kmerOccurrence.sequenceId << ",";
+            csv << positionInSequence << ",";
+            csv << offsetFromLeft << ",";
+            csv << "\n";
+        }
+    }
+}

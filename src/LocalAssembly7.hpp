@@ -216,6 +216,9 @@ private:
     void createGraph(uint64_t k, Graph&);
     void writeGraph(uint64_t k, const Graph&);
 
+    void writeKmerOccurrences(const Graph&, const string& fileName) const;
+    void writeKmerOccurrences(const Graph&, ostream&) const;
+
     void assemble(uint64_t k, Graph&);
     void writeSequence() const;
 };
