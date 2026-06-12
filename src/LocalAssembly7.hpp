@@ -51,8 +51,8 @@ private:
     // equal to aDrift * offset + bDrift.
     const double aDrift = 0.1;
     const double bDrift = 30.;
-    const uint64_t kStart = 32;
-    const uint64_t kMax = 256;
+    const uint64_t kStart = 64;
+    const uint64_t kMax = 64;
 
     // Coefficient to compute edge weights for the DeBruijn graph.
     // logP = logPCoefficient * coverage, with logPCoefficient in dB.
@@ -167,6 +167,7 @@ private:
     };
     class Vertex {
     public:
+        uint64_t kmerId;
         vector<Base> kmer;
         vector<KmerOccurrence> occurrences;
         uint64_t coverage = invalid<uint64_t>;
@@ -175,9 +176,11 @@ private:
         bool isOnAssemblyPath = false;
         Vertex() {}
         Vertex(
+            uint64_t kmerId,
             const vector<Base>& kmer,
             const vector<KmerOccurrence>& occurrences,
             uint64_t coverage) :
+            kmerId(kmerId),
             kmer(kmer),
             occurrences(occurrences),
             coverage(coverage)
@@ -201,6 +204,13 @@ private:
         vertex_descriptor vB;
         void disconnectUnreachableVertices();
         uint64_t countNonIsolatedVertices() const;
+
+        void merge();
+        void findMergeableChildrenGroups(
+            vertex_descriptor,
+            vector< vector<vertex_descriptor> >&
+            ) const;
+        vertex_descriptor mergeGroup(const vector<vertex_descriptor>& group);
 
         void writeGraphviz(const string& fileName) const;
         void writeGraphviz(ostream&) const;
