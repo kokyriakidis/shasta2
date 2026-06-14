@@ -164,14 +164,23 @@ private:
     void writeSequences() const;
 
 
-    // The DeBruijn graph.
+
+    // Functions and data to find the consensus using a De Bruijn graph
+    void runDeBruijn();
+    void runDeBruijn(uint64_t k);
+
+    // An occurrence of a k-mer in one of our sequences.
     class KmerOccurrence {
     public:
         // The id of the sequence where this k-mer occurs.
         uint64_t sequenceId;
-        // The position of the first base of the k-mer in that sequence.
+        // The position of the first base of the k-mer in the deBruijnSequence.
         uint64_t position;
     };
+
+
+
+    // A vertex of the De Bruijn graph.
     class Vertex {
     public:
         uint64_t kmerId;
@@ -193,11 +202,19 @@ private:
             coverage(coverage)
         {}
     };
+
+
+
+    // An edge of the De Bruijn graph.
     class Edge {
     public:
         uint64_t coverage = 0;
         double weight = 0.;
     };
+
+
+
+    // The De Bruijn graph.
     using GraphBaseClass = boost::adjacency_list<
         boost::listS,
         boost::vecS,
@@ -236,6 +253,7 @@ private:
     void writeKmerOccurrences(const Graph&, const string& fileName) const;
     void writeKmerOccurrences(const Graph&, ostream&) const;
 
+    // Use a De Bruijn graph to assemble sequence.
     void assemble(uint64_t k, Graph&);
     void writeSequence() const;
 };

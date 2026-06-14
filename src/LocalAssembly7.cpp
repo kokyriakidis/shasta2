@@ -43,6 +43,7 @@ LocalAssembly7::LocalAssembly7(
             anchorIdToString(anchorIdB) << "</h3>";
     }
 
+    // Fill in the orientedReads and the sequenceInfos.
     gatherOrientedReads(orientedReadIds);
     removeOutliers();
     estimateOffset();
@@ -50,60 +51,78 @@ LocalAssembly7::LocalAssembly7(
     writeOrientedReads();
     writeSequences();
 
+    runDeBruijn();
+}
 
 
-    // Loop over DeBruijn graphs with increasing k.
+
+
+// Loop over DeBruijn graphs with increasing k.
+void LocalAssembly7::runDeBruijn()
+{
     uint64_t k = kStart;
     while(true) {
         if(html) {
             html << "<br>Using a De Bruijn graph with k = " << k << ".";
         }
 
-        for(SequenceInfo& sequenceInfo: sequences) {
-            sequenceInfo.constructDeBruijnSequence(k);
-        }
+        runDeBruijn(k);
 
-        Graph graph;
-        createGraph(k, graph);
-        graph.disconnectUnreachableVertices();
-
-
-        // If the graph has cycles, double k.
-        {
-            std::map<vertex_descriptor, uint64_t> componentMap;
-            if(boost::strong_components(graph, boost::make_assoc_property_map(componentMap)) != num_vertices(graph)) {
+        if(success) {
+            break;
+        } else {
+            k *= 2;
+            if(k > kMax) {
                 if(html) {
-                    html << "<br>The De Bruijn graph contains cycles.";
-                    graph.writeVertices("DeBruijnGraph-" + to_string(k) + ".csv");
-                    writeKmerOccurrences(graph, "DeBruijnGraph-KmerOccurrences-" + to_string(k) + ".csv");
-                    writeGraph(k, graph);
+                    html << "<br>Cannot increase k above " << kMax << ".";
                 }
-                k *= 2;
-
-                if(k > kMax) {
-                    if(html) {
-                        html << "<br>Cannot increase k above " << kMax << ".";
-                    }
-                    // Leave success set to false.
-                    return;
-                } else {
-                    // Try the new value of k.
-                    continue;
-                }
+                break;
             }
         }
+    }
+}
 
-        graph.computeAssemblyPath();
-        if(html) {
-            graph.writeVertices("DeBruijnGraph-" + to_string(k) + ".csv");
-        }
-        writeGraph(k, graph);
-        assemble(k, graph);
-        writeSequence();
-        success = true;
-        break;
+
+
+// Construct the Dr Bruijn graph for a given k
+// and, if successful, use it to assemble sequence.
+void LocalAssembly7::runDeBruijn(uint64_t k)
+{
+    for(SequenceInfo& sequenceInfo: sequences) {
+        sequenceInfo.constructDeBruijnSequence(k);
     }
 
+    Graph graph;
+    createGraph(k, graph);
+    graph.disconnectUnreachableVertices();
+
+
+    // If the graph has cycles, give up, leaving success set to false;
+    {
+        std::map<vertex_descriptor, uint64_t> componentMap;
+        if(boost::strong_components(graph, boost::make_assoc_property_map(componentMap)) != num_vertices(graph)) {
+            if(html) {
+                html << "<br>The De Bruijn graph contains cycles.";
+                graph.writeVertices("DeBruijnGraph-" + to_string(k) + ".csv");
+                writeKmerOccurrences(graph, "DeBruijnGraph-KmerOccurrences-" + to_string(k) + ".csv");
+                writeGraph(k, graph);
+            }
+            return;
+        }
+    }
+
+    // Compute the optimal assembly path.
+    graph.computeAssemblyPath();
+
+    if(html) {
+        graph.writeVertices("DeBruijnGraph-" + to_string(k) + ".csv");
+    }
+    writeGraph(k, graph);
+
+    // Assemble sequence.
+    assemble(k, graph);
+    writeSequence();
+    success = true;
 }
 
 
