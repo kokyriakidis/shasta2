@@ -478,7 +478,8 @@ void LocalAssembly7::createGraph(uint64_t k, Graph& graph)
             for(const KmerOccurrence& occurrence: occurrences) {
                 occurrenceVector.front() = occurrence;
                 const uint64_t coverage = sequences[occurrence.sequenceId].coverage();
-                const Graph::vertex_descriptor v = boost::add_vertex(Vertex(kmerId, occurrenceVector, coverage), graph);
+                const Graph::vertex_descriptor v = boost::add_vertex(
+                    Vertex(graph.nextVertexId++, kmerId, occurrenceVector, coverage), graph);
                 vertexTable[occurrence.sequenceId][occurrence.position] = v;
             }
 
@@ -489,7 +490,8 @@ void LocalAssembly7::createGraph(uint64_t k, Graph& graph)
             for(const KmerOccurrence& occurrence: occurrences) {
                 coverage += sequences[occurrence.sequenceId].coverage();
             }
-            const Graph::vertex_descriptor v = boost::add_vertex(Vertex(kmerId, occurrences, coverage), graph);
+            const Graph::vertex_descriptor v = boost::add_vertex(
+                Vertex(graph.nextVertexId++, kmerId, occurrences, coverage), graph);
             for(const KmerOccurrence& occurrence: occurrences) {
                 vertexTable[occurrence.sequenceId][occurrence.position] = v;
             }
@@ -594,8 +596,9 @@ void LocalAssembly7::Graph::writeGraphviz(ostream& dot) const
         if((in_degree(v, graph) == 0) and (out_degree(v, graph) == 0)) {
             continue;
         }
-        dot << v << " [";
-        dot << "label=\"v" << v << "\\nk" << graph[v].kmerId << "\\n" << graph[v].coverage << "\"";
+        const Vertex& vertex = graph[v];
+        dot << vertex.vertexId << " [";
+        dot << "label=\"v" << vertex.vertexId << "\\nk" << vertex.kmerId << "\\n" << vertex.coverage << "\"";
         if(graph[v].isAVertex) {
             dot << " style=filled fillcolor=Pink";
         } else if(graph[v].isBVertex) {
@@ -606,15 +609,19 @@ void LocalAssembly7::Graph::writeGraphviz(ostream& dot) const
         dot << "];\n";
     }
 
+
+
     dot << std::fixed << std::setprecision(1);
     BGL_FORALL_EDGES(e, graph, Graph) {
         const vertex_descriptor v0 = source(e, graph);
         const vertex_descriptor v1 = target(e, graph);
-        dot << v0 << "->" << v1 <<
+        const Vertex& vertex0 = graph[v0];
+        const Vertex& vertex1 = graph[v1];
+        dot << vertex0.vertexId << "->" << vertex1.vertexId <<
             "[penwidth=" << 0.2*double(graph[e].coverage) <<
             " tooltip=\"" << graph[e].coverage << "\"";
 
-        if(graph[v0].isOnAssemblyPath and graph[v1].isOnAssemblyPath) {
+        if(vertex0.isOnAssemblyPath and vertex1.isOnAssemblyPath) {
             dot << " color=green";
         }
 
@@ -643,7 +650,7 @@ void LocalAssembly7::Graph::writeVertices(
     ostream& csv) const
 {
     const Graph& graph = *this;
-    csv << "v,coverage,Kmer,\n";
+    csv << "VertexId,KmerId,coverage,Kmer,\n";
 
     BGL_FORALL_VERTICES(v, graph, Graph) {
         if((in_degree(v, graph) == 0) and (out_degree(v, graph) == 0)) {
@@ -651,7 +658,8 @@ void LocalAssembly7::Graph::writeVertices(
         }
         const Vertex& vertex = graph[v];
         const Kmer& kmer = kmers[vertex.kmerId].first;
-        csv << v << ",";
+        csv << vertex.vertexId << ",";
+        csv << vertex.kmerId << ",";
         csv << vertex.coverage << ",";
         std::ranges::copy(kmer, ostream_iterator<Base>(csv));
         csv << ",";
@@ -1104,7 +1112,7 @@ LocalAssembly7::Graph::vertex_descriptor
         }
     }
 
-    const vertex_descriptor vNew = add_vertex(Vertex(kmerId, occurrences, coverage), graph);
+    const vertex_descriptor vNew = add_vertex(Vertex(graph.nextVertexId++, kmerId, occurrences, coverage), graph);
     for(const auto& [child, coverage]: childrenWithEdgeCoverage) {
         auto[e, ignore] = boost::add_edge(vNew, child, graph);
         graph[e].coverage = coverage;

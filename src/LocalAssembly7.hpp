@@ -204,6 +204,7 @@ private:
     // A vertex of the De Bruijn graph.
     class Vertex {
     public:
+        uint64_t vertexId;  // Only for display purposes.
         uint64_t kmerId;
         vector<KmerOccurrence> occurrences;
         uint64_t coverage = invalid<uint64_t>;
@@ -212,9 +213,11 @@ private:
         bool isOnAssemblyPath = false;
         Vertex() {}
         Vertex(
+            uint64_t vertexId,
             uint64_t kmerId,
             const vector<KmerOccurrence>& occurrences,
             uint64_t coverage) :
+            vertexId(vertexId),
             kmerId(kmerId),
             occurrences(occurrences),
             coverage(coverage)
@@ -244,6 +247,7 @@ private:
         using Base = shasta2::Base;
         vertex_descriptor vA;
         vertex_descriptor vB;
+        uint64_t nextVertexId = 0;
         void disconnectUnreachableVertices();
         uint64_t countNonIsolatedVertices() const;
 
