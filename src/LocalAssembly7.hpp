@@ -166,7 +166,7 @@ private:
         vector<Base> deBruijnSequence;
         void constructDeBruijnSequence(uint64_t k);
 
-        // The k-mer of the deBruijnSequence.
+        // The k-mers of the deBruijnSequence.
         vector<Kmer> kmers;
         void constructKmers(uint64_t k);
 
@@ -196,13 +196,15 @@ private:
         uint64_t position;
     };
 
+    // The k-mers of all the sequences and their occurrences.
+    vector< pair<Kmer, vector<KmerOccurrence> > > kmers;
+    void gatherKmers();
 
 
     // A vertex of the De Bruijn graph.
     class Vertex {
     public:
         uint64_t kmerId;
-        vector<Base> kmer;
         vector<KmerOccurrence> occurrences;
         uint64_t coverage = invalid<uint64_t>;
         bool isAVertex = false;
@@ -211,11 +213,9 @@ private:
         Vertex() {}
         Vertex(
             uint64_t kmerId,
-            const vector<Base>& kmer,
             const vector<KmerOccurrence>& occurrences,
             uint64_t coverage) :
             kmerId(kmerId),
-            kmer(kmer),
             occurrences(occurrences),
             coverage(coverage)
         {}
@@ -256,8 +256,12 @@ private:
 
         void writeGraphviz(const string& fileName) const;
         void writeGraphviz(ostream&) const;
-        void writeVertices(const string& fileName) const;
-        void writeVertices(ostream&) const;
+        void writeVertices(
+            const vector< pair<Kmer, vector<KmerOccurrence> > >& kmers,
+            const string& fileName) const;
+        void writeVertices(
+            const vector< pair<Kmer, vector<KmerOccurrence> > >& kmers,
+            ostream&) const;
 
         // The assembly path is a minimum weight path between vA and vB.
         vector<vertex_descriptor> assemblyPath;

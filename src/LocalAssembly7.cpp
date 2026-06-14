@@ -110,6 +110,7 @@ void LocalAssembly7::runDeBruijn(uint64_t k)
         sequenceInfo.constructDeBruijnSequence(k);
         sequenceInfo.constructKmers(k);
     }
+    gatherKmers();
 
     Graph graph;
     createGraph(k, graph);
@@ -122,7 +123,7 @@ void LocalAssembly7::runDeBruijn(uint64_t k)
         if(boost::strong_components(graph, boost::make_assoc_property_map(componentMap)) != num_vertices(graph)) {
             if(html) {
                 html << "<br>The De Bruijn graph contains cycles.";
-                graph.writeVertices("DeBruijnGraph-" + to_string(k) + ".csv");
+                graph.writeVertices(kmers, "DeBruijnGraph-" + to_string(k) + ".csv");
                 writeKmerOccurrences(graph, "DeBruijnGraph-KmerOccurrences-" + to_string(k) + ".csv");
                 writeGraph(k, graph);
             }
@@ -134,7 +135,7 @@ void LocalAssembly7::runDeBruijn(uint64_t k)
     graph.computeAssemblyPath();
 
     if(html) {
-        graph.writeVertices("DeBruijnGraph-" + to_string(k) + ".csv");
+        graph.writeVertices(kmers, "DeBruijnGraph-" + to_string(k) + ".csv");
     }
     writeGraph(k, graph);
 
@@ -420,22 +421,27 @@ void LocalAssembly7::SequenceInfo::constructKmers(uint64_t k)
 
 
 
-// This can be sped up if necessary.
-void LocalAssembly7::createGraph(uint64_t k, Graph& graph)
+void LocalAssembly7::gatherKmers()
 {
-
-    // Gather k-mer occurrences by k-mer.
-    std::map<Kmer, vector<KmerOccurrence> > kmerOccurrences;
+    std::map<Kmer, vector<KmerOccurrence> > kmersMap;
     for(uint64_t sequenceId=0; sequenceId<sequences.size(); sequenceId++) {
         vector<Kmer>& sequenceKmers = sequences[sequenceId].kmers;
         for(uint64_t position=0; position<sequenceKmers.size(); position++) {
             const Kmer& kmer = sequenceKmers[position];
-            kmerOccurrences[kmer].push_back(KmerOccurrence(sequenceId, position));
+            kmersMap[kmer].push_back(KmerOccurrence(sequenceId, position));
         }
     }
 
+    kmers.clear();
+    std::ranges::copy(kmersMap, back_inserter(kmers));
+}
 
-    // Vectors to store the vertex corresponding to eahc position os each sequence.
+
+
+void LocalAssembly7::createGraph(uint64_t k, Graph& graph)
+{
+
+    // Vectors to store the vertex corresponding to each position of each sequence.
     vector< vector<vertex_descriptor> > vertexTable;
     for(const SequenceInfo& sequenceInfo: sequences) {
         vector<vertex_descriptor>& v = vertexTable.emplace_back();
@@ -451,8 +457,8 @@ void LocalAssembly7::createGraph(uint64_t k, Graph& graph)
     // This helps avoid cycles that are short compared to read length.
     // However some merging of the vertices generated in this way will be necessary.
     vector<bool> appearsInSequence(sequences.size());
-    uint64_t kmerId = 0;
-    for(const auto& [kmer, occurrences]: kmerOccurrences) {
+    for(uint64_t kmerId=0; kmerId<kmers.size(); kmerId++) {
+        const auto& [kmer, occurrences] = kmers[kmerId];
 
         // Figure out if it appears more than once in any of the sequences.
         bool appearsMoreThanOnce = false;
@@ -472,7 +478,7 @@ void LocalAssembly7::createGraph(uint64_t k, Graph& graph)
             for(const KmerOccurrence& occurrence: occurrences) {
                 occurrenceVector.front() = occurrence;
                 const uint64_t coverage = sequences[occurrence.sequenceId].coverage();
-                const Graph::vertex_descriptor v = boost::add_vertex(Vertex(kmerId, kmer, occurrenceVector, coverage), graph);
+                const Graph::vertex_descriptor v = boost::add_vertex(Vertex(kmerId, occurrenceVector, coverage), graph);
                 vertexTable[occurrence.sequenceId][occurrence.position] = v;
             }
 
@@ -483,13 +489,11 @@ void LocalAssembly7::createGraph(uint64_t k, Graph& graph)
             for(const KmerOccurrence& occurrence: occurrences) {
                 coverage += sequences[occurrence.sequenceId].coverage();
             }
-            const Graph::vertex_descriptor v = boost::add_vertex(Vertex(kmerId, kmer, occurrences, coverage), graph);
+            const Graph::vertex_descriptor v = boost::add_vertex(Vertex(kmerId, occurrences, coverage), graph);
             for(const KmerOccurrence& occurrence: occurrences) {
                 vertexTable[occurrence.sequenceId][occurrence.position] = v;
             }
         }
-
-        ++kmerId;
     }
 
 
@@ -624,15 +628,19 @@ void LocalAssembly7::Graph::writeGraphviz(ostream& dot) const
 
 
 
-void LocalAssembly7::Graph::writeVertices(const string& fileName) const
+void LocalAssembly7::Graph::writeVertices(
+    const vector< pair<Kmer, vector<KmerOccurrence> > >& kmers,
+    const string& fileName) const
 {
     ofstream csv(fileName);
-    writeVertices(csv);
+    writeVertices(kmers, csv);
 }
 
 
 
-void LocalAssembly7::Graph::writeVertices(ostream& csv) const
+void LocalAssembly7::Graph::writeVertices(
+    const vector< pair<Kmer, vector<KmerOccurrence> > >& kmers,
+    ostream& csv) const
 {
     const Graph& graph = *this;
     csv << "v,coverage,Kmer,\n";
@@ -642,9 +650,10 @@ void LocalAssembly7::Graph::writeVertices(ostream& csv) const
             continue;
         }
         const Vertex& vertex = graph[v];
+        const Kmer& kmer = kmers[vertex.kmerId].first;
         csv << v << ",";
         csv << vertex.coverage << ",";
-        std::ranges::copy(vertex.kmer, ostream_iterator<Base>(csv));
+        std::ranges::copy(kmer, ostream_iterator<Base>(csv));
         csv << ",";
         csv << "\n";
     }
@@ -755,10 +764,11 @@ void LocalAssembly7::assemble(uint64_t k, Graph& graph)
             const uint64_t positionInVertexKmer = i;
             const vertex_descriptor v = graph.assemblyPath[positionInPath];
             const Vertex& vertex = graph[v];
+            const Kmer& kmer = kmers[vertex.kmerId].first;
             if(i == 0) {
-                b = vertex.kmer[positionInVertexKmer];
+                b = kmer[positionInVertexKmer];
             } else {
-                SHASTA2_ASSERT(b == vertex.kmer[positionInVertexKmer]);
+                SHASTA2_ASSERT(b == kmer[positionInVertexKmer]);
             }
         }
         sequence[position] = b;
@@ -1066,7 +1076,6 @@ LocalAssembly7::Graph::vertex_descriptor
         occurrences.push_back(vertex.occurrences.front());
         if(kmerId == invalid<uint64_t>) {
             kmerId = vertex.kmerId;
-            kmer = vertex.kmer;
         } else {
             SHASTA2_ASSERT(kmerId == vertex.kmerId);
         }
@@ -1095,7 +1104,7 @@ LocalAssembly7::Graph::vertex_descriptor
         }
     }
 
-    const vertex_descriptor vNew = add_vertex(Vertex(kmerId, kmer, occurrences, coverage), graph);
+    const vertex_descriptor vNew = add_vertex(Vertex(kmerId, occurrences, coverage), graph);
     for(const auto& [child, coverage]: childrenWithEdgeCoverage) {
         auto[e, ignore] = boost::add_edge(vNew, child, graph);
         graph[e].coverage = coverage;
