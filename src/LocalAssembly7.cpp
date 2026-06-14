@@ -155,14 +155,14 @@ void LocalAssembly7::gatherOrientedReads(
 
         // We can use this OrientedReadId for assembly.
 
-        // Create an OrientedReadInfo.
-        OrientedReadInfo& info = orientedReadInfos.emplace_back();
-        info.orientedReadId = orientedReadId;
+        // Create an OrientedRead.
+        OrientedRead& orientedRead = orientedReads.emplace_back();
+        orientedRead.orientedReadId = orientedReadId;
         if(isOnA) {
-            info.positionA = itA->position;
+            orientedRead.positionA = itA->position;
         }
         if(isOnB) {
-            info.positionB = itB->position;
+            orientedRead.positionB = itB->position;
         }
 
     }
@@ -174,9 +174,9 @@ void LocalAssembly7::estimateOffset()
 {
     uint64_t sum = 0;
     uint64_t n = 0;
-    for(const OrientedReadInfo& orientedReadInfo: orientedReadInfos) {
-        if(orientedReadInfo.isOnBothAnchors()) {
-            sum += orientedReadInfo.positionOffsetAB();
+    for(const OrientedRead& orientedRead: orientedReads) {
+        if(orientedRead.isOnBothAnchors()) {
+            sum += orientedRead.positionOffsetAB();
             ++n;
         }
     }
@@ -191,29 +191,29 @@ void LocalAssembly7::gatherSequences()
 {
     // For reads fixed on one side only, we use a sequence length
     // equal to offset + aDrift * offset + bDrift.
-    const uint32_t length = offset + uint32_t(std::round(aDrift * double(offset) + bDrift));
+    const uint32_t length = offset + uint32_t(std::round(aExtend * double(offset) + bExtend));
 
 
-    // Fill in the beginPosition and endPosition of each OrientedReadInfo.
+    // Fill in the beginPosition and endPosition of each OrientedRead.
     // Those are the position ranges of the sequences that will be used for assembly.
-    for(OrientedReadInfo& info: orientedReadInfos) {
+    for(OrientedRead& orientedRead: orientedReads) {
 
-        if(info.isOnBothAnchors()) {
-            info.positionBegin = info.positionA;
-            info.positionEnd  = info.positionB;
-        } else if(info.isOnAnchorA()) {
-            SHASTA2_ASSERT(not info.isOnAnchorB());
-            const ReadId readId = info.orientedReadId.getReadId();
+        if(orientedRead.isOnBothAnchors()) {
+            orientedRead.positionBegin = orientedRead.positionA;
+            orientedRead.positionEnd  = orientedRead.positionB;
+        } else if(orientedRead.isOnAnchorA()) {
+            SHASTA2_ASSERT(not orientedRead.isOnAnchorB());
+            const ReadId readId = orientedRead.orientedReadId.getReadId();
             const uint32_t readLength = uint32_t(anchors.reads.getReadSequenceLength(readId));
-            info.positionBegin = info.positionA;
-            info.positionEnd  = min(readLength, info.positionBegin + length);
-        } else if(info.isOnAnchorB()) {
-            SHASTA2_ASSERT(not info.isOnAnchorA());
-            info.positionEnd = info.positionB;
-            if(info.positionEnd > length) {
-                info.positionBegin = info.positionEnd - length;
+            orientedRead.positionBegin = orientedRead.positionA;
+            orientedRead.positionEnd  = min(readLength, orientedRead.positionBegin + length);
+        } else if(orientedRead.isOnAnchorB()) {
+            SHASTA2_ASSERT(not orientedRead.isOnAnchorA());
+            orientedRead.positionEnd = orientedRead.positionB;
+            if(orientedRead.positionEnd > length) {
+                orientedRead.positionBegin = orientedRead.positionEnd - length;
             } else {
-                info.positionBegin  = 0;
+                orientedRead.positionBegin  = 0;
             }
         } else {
             SHASTA2_ASSERT(0);
@@ -225,12 +225,12 @@ void LocalAssembly7::gatherSequences()
     // Now we can create the sequences.
     const Reads& reads = anchors.reads;
     vector<Base> sequence;
-    for(OrientedReadInfo& info: orientedReadInfos) {
-        const OrientedReadId orientedReadId = info.orientedReadId;
+    for(OrientedRead& orientedRead: orientedReads) {
+        const OrientedReadId orientedReadId = orientedRead.orientedReadId;
 
         // Create the sequence of this read (portion to be used for this local assembly).
         sequence.clear();
-        for(uint32_t position=info.positionBegin; position!=info.positionEnd; position++) {
+        for(uint32_t position=orientedRead.positionBegin; position!=orientedRead.positionEnd; position++) {
             sequence.push_back(reads.getOrientedReadBase(orientedReadId, position));
         }
 
@@ -239,18 +239,18 @@ void LocalAssembly7::gatherSequences()
         for(uint64_t sequenceId=0; sequenceId<sequences.size(); sequenceId++) {
             SequenceInfo& sequenceInfo = sequences[sequenceId];
             if(
-                (info.isOnAnchorA() == sequenceInfo.isOnAnchorA) and
-                (info.isOnAnchorB() == sequenceInfo.isOnAnchorB) and
+                (orientedRead.isOnAnchorA() == sequenceInfo.isOnAnchorA) and
+                (orientedRead.isOnAnchorB() == sequenceInfo.isOnAnchorB) and
                 (sequence == sequenceInfo.sequence)) {
-                info.sequenceId = sequenceId;
+                orientedRead.sequenceId = sequenceId;
                 sequenceInfo.orientedReadIds.push_back(orientedReadId);
                 found = true;
                 break;
             }
         }
         if(not found) {
-            info.sequenceId = sequences.size();
-            sequences.emplace_back(info.isOnAnchorA(), info.isOnAnchorB(), orientedReadId, sequence);
+            orientedRead.sequenceId = sequences.size();
+            sequences.emplace_back(orientedRead.isOnAnchorA(), orientedRead.isOnAnchorB(), orientedReadId, sequence);
         }
     }
 }
@@ -263,7 +263,7 @@ void LocalAssembly7::writeOrientedReads() const
         return;
     }
 
-    html << "<h4>" << orientedReadInfos.size() << " usable oriented reads</h4>";
+    html << "<h4>" << orientedReads.size() << " usable oriented reads</h4>";
 
     html << "<table><tr>"
         "<th>Oriented<br>read id"
@@ -281,23 +281,23 @@ void LocalAssembly7::writeOrientedReads() const
 
 
     uint64_t commonCount = 0;
-    for(const OrientedReadInfo& info: orientedReadInfos) {
-        if(info.isOnBothAnchors()) {
+    for(const OrientedRead& orientedRead: orientedReads) {
+        if(orientedRead.isOnBothAnchors()) {
             ++commonCount;
         }
         html <<
             "<tr>"
-            "<th class=centered>" << info.orientedReadId <<
-            "<td class=centered>" << (info.isOnAnchorA() ? "&check;" : "") <<
-            "<td class=centered>" << (info.isOnAnchorB() ? "&check;" : "") <<
-            "<td class=centered>" << (info.isOnAnchorA() ? to_string(info.positionA) : "") <<
-            "<td class=centered>" << (info.isOnAnchorB() ? to_string(info.positionB) : "") <<
-            "<td class=centered>" << anchors.reads.getReadSequenceLength(info.orientedReadId.getReadId()) <<
-            "<td class=centered>" << (info.isOnBothAnchors() ? to_string(info.positionOffsetAB()) : "") <<
-            "<td class=centered>" << info.positionBegin <<
-            "<td class=centered>" << info.positionEnd <<
-            "<td class=centered>" << info.positionOffsetForAssembly() <<
-            "<td class=centered>" << info.sequenceId
+            "<th class=centered>" << orientedRead.orientedReadId <<
+            "<td class=centered>" << (orientedRead.isOnAnchorA() ? "&check;" : "") <<
+            "<td class=centered>" << (orientedRead.isOnAnchorB() ? "&check;" : "") <<
+            "<td class=centered>" << (orientedRead.isOnAnchorA() ? to_string(orientedRead.positionA) : "") <<
+            "<td class=centered>" << (orientedRead.isOnAnchorB() ? to_string(orientedRead.positionB) : "") <<
+            "<td class=centered>" << anchors.reads.getReadSequenceLength(orientedRead.orientedReadId.getReadId()) <<
+            "<td class=centered>" << (orientedRead.isOnBothAnchors() ? to_string(orientedRead.positionOffsetAB()) : "") <<
+            "<td class=centered>" << orientedRead.positionBegin <<
+            "<td class=centered>" << orientedRead.positionEnd <<
+            "<td class=centered>" << orientedRead.positionOffsetForAssembly() <<
+            "<td class=centered>" << orientedRead.sequenceId
             ;
     }
 
@@ -750,10 +750,10 @@ void LocalAssembly7::removeOutliers()
 {
     // Gather the offsets.
     vector<pair<uint64_t, uint64_t > > offsetTable; // (index in orientedReadInfos, offset).
-    for(uint64_t i=0; i<orientedReadInfos.size(); i++) {
-        const OrientedReadInfo& orientedReadInfo = orientedReadInfos[i];
-        if(orientedReadInfo.isOnBothAnchors()) {
-            const uint64_t offset = orientedReadInfo.positionOffsetAB();
+    for(uint64_t i=0; i<orientedReads.size(); i++) {
+        const OrientedRead& orientedRead = orientedReads[i];
+        if(orientedRead.isOnBothAnchors()) {
+            const uint64_t offset = orientedRead.positionOffsetAB();
             offsetTable.push_back({i, offset});
         }
     }
@@ -798,14 +798,14 @@ void LocalAssembly7::removeOutliers()
     }
     // cout << "keepBegin " << keepBegin << ", keepEnd " << keepEnd << endl;
 
-    // Only keep OrientedReadInfos that are at positions [keepBegin, keepEnd)
+    // Only keep OrientedReads that are at positions [keepBegin, keepEnd)
     // in the offset table.
     std::set<uint64_t> discard;
     for(uint64_t i=0; i<keepBegin; i++) {
         const uint64_t j = offsetTable[i].first;
         discard.insert(j);
         if(html) {
-            html << "<br>Discarding " << orientedReadInfos[j].orientedReadId <<
+            html << "<br>Discarding " << orientedReads[j].orientedReadId <<
                 " due to inconsistent offsets.";
         }
     }
@@ -813,18 +813,18 @@ void LocalAssembly7::removeOutliers()
         const uint64_t j = offsetTable[i].first;
         discard.insert(j);
         if(html) {
-            html << "<br>Discarding " << orientedReadInfos[j].orientedReadId <<
+            html << "<br>Discarding " << orientedReads[j].orientedReadId <<
                 " due to inconsistent offsets.";
         }
     }
 
-    vector<OrientedReadInfo> newOrientedReadInfos;
-    for(uint64_t i=0; i<orientedReadInfos.size(); i++) {
+    vector<OrientedRead> newOrientedReads;
+    for(uint64_t i=0; i<orientedReads.size(); i++) {
         if(not discard.contains(i)) {
-            newOrientedReadInfos.push_back(orientedReadInfos[i]);
+            newOrientedReads.push_back(orientedReads[i]);
         }
     }
-    orientedReadInfos.swap(newOrientedReadInfos);
+    orientedReads.swap(newOrientedReads);
 }
 
 

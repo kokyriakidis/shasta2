@@ -46,17 +46,22 @@ public:
 
 private:
 
+
     // EXPOSE WHEN CODE STABILIZES.
+
     // For reads fixed on one side only, we use a sequence length
-    // equal to aDrift * offset + bDrift.
-    const double aDrift = 0.1;
-    const double bDrift = 30.;
-    const uint64_t kStart = 64;
-    const uint64_t kMax = 64;
+    // equal to aExtend * offset + bExtend.
+    const double aExtend = 0.1;
+    const double bExtend = 30.;
+
+    // The starting and maximum k for De Bruijn graphs.
+    const uint64_t kStart = 256;
+    const uint64_t kMax = 4096;
 
     // Coefficient to compute edge weights for the DeBruijn graph.
     // logP = logPCoefficient * coverage, with logPCoefficient in dB.
-    // weight = pow(10, -0.1 * logP)
+    // weight = pow(10, -0.1 * logP).
+    // Optimal paths are computed using this weight.
     const double logPCoefficient = 10.;
 
 
@@ -70,7 +75,7 @@ private:
 
 
     // The oriented reads used in this local assembly.
-    class OrientedReadInfo {
+    class OrientedRead {
     public:
         OrientedReadId orientedReadId;
 
@@ -110,11 +115,13 @@ private:
         uint64_t sequenceId = invalid<uint64_t>;
 
     };
-    vector<OrientedReadInfo> orientedReadInfos;
+    vector<OrientedRead> orientedReads;
     void gatherOrientedReads(const vector<OrientedReadId>&);
     void removeOutliers();
     static bool checkOffsets(uint64_t, uint64_t);
 
+    // Use the reads fixed on both sides to estimate the offset
+    // between anchorIdA and anchorIdB.
     uint32_t offset;
     void estimateOffset();
 
