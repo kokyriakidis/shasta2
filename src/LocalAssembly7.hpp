@@ -238,7 +238,7 @@ private:
     // The De Bruijn graph.
     using GraphBaseClass = boost::adjacency_list<
         boost::listS,
-        boost::vecS,
+        boost::listS,
         boost::bidirectionalS,
         Vertex,
         Edge>;
@@ -248,8 +248,7 @@ private:
         vertex_descriptor vA;
         vertex_descriptor vB;
         uint64_t nextVertexId = 0;
-        void disconnectUnreachableVertices();
-        uint64_t countNonIsolatedVertices() const;
+        void removeUnreachableVertices();
 
         void merge();
         void findMergeableChildrenGroups(

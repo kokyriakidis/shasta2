@@ -114,13 +114,24 @@ void LocalAssembly7::runDeBruijn(uint64_t k)
 
     Graph graph;
     createGraph(k, graph);
-    graph.disconnectUnreachableVertices();
+    graph.removeUnreachableVertices();
 
 
     // If the graph has cycles, give up, leaving success set to false;
     {
+        // Create a vertexIndexMap, needed below.
+        std::map<vertex_descriptor, uint64_t> vertexIndexMap;
+        uint64_t vertexIndex = 0;
+        BGL_FORALL_VERTICES(v, graph, Graph) {
+            vertexIndexMap.insert(make_pair(v, vertexIndex++));
+        }
+
         std::map<vertex_descriptor, uint64_t> componentMap;
-        if(boost::strong_components(graph, boost::make_assoc_property_map(componentMap)) != num_vertices(graph)) {
+        if(boost::strong_components(
+            graph,
+            boost::make_assoc_property_map(componentMap),
+            vertex_index_map(boost::make_assoc_property_map(vertexIndexMap)))
+            != num_vertices(graph)) {
             if(html) {
                 html << "<br>The De Bruijn graph contains cycles.";
                 graph.writeVertices(kmers, "DeBruijnGraph-" + to_string(k) + ".csv");
@@ -558,7 +569,7 @@ void LocalAssembly7::writeGraph(uint64_t k, const Graph& graph)
 
     html <<
         "<h4>De Bruijn graph</h4>"
-        "The De Bruijn graph has " << graph.countNonIsolatedVertices() <<
+        "The De Bruijn graph has " << num_vertices(graph) <<
         " non-isolated vertices and " << num_edges(graph) << " edges.";
 
     // Write it in graphviz format.
@@ -593,9 +604,6 @@ void LocalAssembly7::Graph::writeGraphviz(ostream& dot) const
     dot << "digraph DeBruijn {\n";
 
     BGL_FORALL_VERTICES(v, graph, Graph) {
-        if((in_degree(v, graph) == 0) and (out_degree(v, graph) == 0)) {
-            continue;
-        }
         const Vertex& vertex = graph[v];
         dot << vertex.vertexId << " [";
         dot << "label=\"v" << vertex.vertexId << "\\nk" << vertex.kmerId << "\\n" << vertex.coverage << "\"";
@@ -669,42 +677,36 @@ void LocalAssembly7::Graph::writeVertices(
 
 
 
-void LocalAssembly7::Graph::disconnectUnreachableVertices()
+void LocalAssembly7::Graph::removeUnreachableVertices()
 {
     Graph& graph = *this;
 
-    // Disconnect the vertices that are not reachable from vA moving forward.
+    // Remove the vertices that are not reachable from vA moving forward.
     std::set<vertex_descriptor> reachableVertices;
     findReachableVertices(graph, vA, 0, reachableVertices);
+    vector<vertex_descriptor> verticesToBeRemoved;
     BGL_FORALL_VERTICES(v, graph, Graph) {
         if(not reachableVertices.contains(v)) {
-            boost::clear_vertex(v, graph);
+            verticesToBeRemoved.push_back(v);
         }
+    }
+    for(const vertex_descriptor v: verticesToBeRemoved) {
+        boost::clear_vertex(v, graph);
+        boost::remove_vertex(v, graph);
     }
 
     // Disconnect the vertices that are not reachable from vB moving backward.
     findReachableVertices(graph, vB, 1, reachableVertices);
+    verticesToBeRemoved.clear();
     BGL_FORALL_VERTICES(v, graph, Graph) {
         if(not reachableVertices.contains(v)) {
-            boost::clear_vertex(v, graph);
+            verticesToBeRemoved.push_back(v);
         }
     }
-}
-
-
-
-uint64_t LocalAssembly7::Graph::countNonIsolatedVertices() const
-{
-    const Graph& graph = *this;
-
-    uint64_t n = 0;
-    BGL_FORALL_VERTICES(v, graph, Graph) {
-        if((in_degree(v, graph) > 0) and (out_degree(v, graph) > 0)) {
-            ++n;
-        }
+    for(const vertex_descriptor v: verticesToBeRemoved) {
+        boost::clear_vertex(v, graph);
+        boost::remove_vertex(v, graph);
     }
-
-    return n;
 }
 
 
@@ -713,8 +715,17 @@ void LocalAssembly7::Graph::computeAssemblyPath()
 {
     Graph& graph = *this;
 
+    // Create a vertexIndexMap, needed below.
+    std::map<vertex_descriptor, uint64_t> vertexIndexMap;
+    uint64_t vertexIndex = 0;
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        vertexIndexMap.insert(make_pair(v, vertexIndex++));
+    }
+
+    // Find a shortest path tree starting at vA.
     std::map<vertex_descriptor, vertex_descriptor> predecessorMap;
     dijkstra_shortest_paths(graph, vA,
+       vertex_index_map(boost::make_assoc_property_map(vertexIndexMap)).
        weight_map(boost::get(&Edge::weight, graph)).
        predecessor_map(boost::make_assoc_property_map(predecessorMap))
        );
@@ -1123,9 +1134,10 @@ LocalAssembly7::Graph::vertex_descriptor
     }
 
 
-    // Disconnect all the vertices in the group we merged.
+    // Remove all the vertices in the group we merged.
     for(const vertex_descriptor v: group) {
         boost::clear_vertex(v, graph);
+        boost::remove_vertex(v, graph);
     }
 
     return vNew;
