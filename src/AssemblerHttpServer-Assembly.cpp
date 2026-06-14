@@ -1024,6 +1024,7 @@ void Assembler::exploreSegmentStep(
     case 7:
         {
             LocalAssembly7 localAssembly(
+                LocalAssembly7::Method::DeBruijn,
                 anchors(),
                 anchorPair.anchorIdA,
                 anchorPair.anchorIdB,

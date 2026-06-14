@@ -27,6 +27,7 @@ using namespace shasta2;
 
 
 LocalAssembly7::LocalAssembly7(
+    Method method,
     const Anchors& anchors,
     AnchorId anchorIdA,
     AnchorId anchorIdB,
@@ -51,7 +52,24 @@ LocalAssembly7::LocalAssembly7(
     writeOrientedReads();
     writeSequences();
 
-    runDeBruijn();
+
+    switch(method) {
+    case Method::Adaptive:
+        runAdaptive();
+        break;
+    case Method::Abpoa:
+        runAbpoa();
+        break;
+    case Method::Poasta:
+        runPoasta();
+        break;
+    case Method::Theseus:
+        runTheseus();
+        break;
+    case Method::DeBruijn:
+        runDeBruijn();
+        break;
+    }
 }
 
 
@@ -1093,3 +1111,30 @@ LocalAssembly7::Graph::vertex_descriptor
     return vNew;
 }
 
+
+
+void LocalAssembly7::runAbpoa()
+{
+    throw runtime_error("LocalAssembly7::runAbpoa not implemented.");
+}
+
+
+
+void LocalAssembly7::runPoasta()
+{
+    throw runtime_error("LocalAssembly7::runPoasta not implemented.");
+}
+
+
+
+void LocalAssembly7::runTheseus()
+{
+    throw runtime_error("LocalAssembly7::runTheseus not implemented.");
+}
+
+
+
+void LocalAssembly7::runAdaptive()
+{
+    throw runtime_error("LocalAssembly7::runAdaptive not implemented.");
+}

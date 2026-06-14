@@ -25,6 +25,14 @@ namespace shasta2 {
 class shasta2::LocalAssembly7 {
 public:
 
+    enum class Method {
+        Adaptive,
+        Abpoa,
+        Poasta,
+        Theseus,
+        DeBruijn,
+    };
+
     // This assembles sequence between two anchors using an input vector
     // of oriented reads, which must be sorted.
     // * Of the oriented reads given on input, only the ones that appear
@@ -34,6 +42,7 @@ public:
     // in the sequence vector below. If an error occurs,
     // this throws a std::runtime_error.
     LocalAssembly7(
+        Method,
         const Anchors&,
         AnchorId anchorIdA,
         AnchorId anchorIdB,
@@ -163,6 +172,10 @@ private:
     void writeOrientedReads() const;
     void writeSequences() const;
 
+    void runAdaptive();
+    void runAbpoa();
+    void runPoasta();
+    void runTheseus();
 
 
     // Functions and data to find the consensus using a De Bruijn graph
