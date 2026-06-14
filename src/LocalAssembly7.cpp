@@ -108,6 +108,7 @@ void LocalAssembly7::runDeBruijn(uint64_t k)
 {
     for(SequenceInfo& sequenceInfo: sequences) {
         sequenceInfo.constructDeBruijnSequence(k);
+        sequenceInfo.constructKmers(k);
     }
 
     Graph graph;
@@ -400,31 +401,33 @@ void LocalAssembly7::SequenceInfo::constructDeBruijnSequence(uint64_t k)
 
 
 
+void LocalAssembly7::SequenceInfo::constructKmers(uint64_t k)
+{
+    kmers.clear();
+
+    // This can be made faster by shifting the k-mers instead of constructing
+    // all of them from scratch.
+    Kmer kmer;
+    kmer.reserve(k);
+    for(uint64_t position=0; position+k<=deBruijnSequence.size(); position++) {
+        kmer.clear();
+        for(uint64_t i=0; i<k; i++) {
+            kmer.push_back(deBruijnSequence[position + i]);
+        }
+        kmers.push_back(kmer);
+    }
+}
+
+
+
 // This can be sped up if necessary.
 void LocalAssembly7::createGraph(uint64_t k, Graph& graph)
 {
-    // The k-mers of each of the sequences.
-    using Kmer = vector<Base>;
-    vector< vector<Kmer> > kmers;
-    Kmer kmer;
-    for(const SequenceInfo& sequenceInfo: sequences) {
-        const vector<Base>& sequence = sequenceInfo.deBruijnSequence;
-        vector<Kmer>& sequenceKmers = kmers.emplace_back();
-
-        for(uint64_t position=0; position+k<=sequence.size(); position++) {
-            kmer.clear();
-            for(uint64_t i=0; i<k; i++) {
-                kmer.push_back(sequence[position + i]);
-            }
-            sequenceKmers.push_back(kmer);
-        }
-    }
-
 
     // Gather k-mer occurrences by k-mer.
     std::map<Kmer, vector<KmerOccurrence> > kmerOccurrences;
-    for(uint64_t sequenceId=0; sequenceId<kmers.size(); sequenceId++) {
-        vector<Kmer>& sequenceKmers = kmers[sequenceId];
+    for(uint64_t sequenceId=0; sequenceId<sequences.size(); sequenceId++) {
+        vector<Kmer>& sequenceKmers = sequences[sequenceId].kmers;
         for(uint64_t position=0; position<sequenceKmers.size(); position++) {
             const Kmer& kmer = sequenceKmers[position];
             kmerOccurrences[kmer].push_back(KmerOccurrence(sequenceId, position));
@@ -510,7 +513,7 @@ void LocalAssembly7::createGraph(uint64_t k, Graph& graph)
 
 
     // Now create the edges.
-    for(uint64_t sequenceId=0; sequenceId<kmers.size(); sequenceId++) {
+    for(uint64_t sequenceId=0; sequenceId<sequences.size(); sequenceId++) {
         const uint64_t coverage = sequences[sequenceId].coverage();
         const vector<vertex_descriptor>& sequenceVertices = vertexTable[sequenceId];
         for(uint64_t position1=1; position1<sequenceVertices.size(); position1++) {
@@ -931,7 +934,7 @@ void LocalAssembly7::writeKmerOccurrences(const Graph& graph, ostream& csv) cons
 void LocalAssembly7::Graph::merge()
 {
     Graph& graph = *this;
-    const bool debug = true;
+    const bool debug = false;
 
     // Check that all vertices have in-degree and out-degree
     // no greater than their number of occurrences.

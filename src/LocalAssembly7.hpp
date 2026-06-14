@@ -137,6 +137,7 @@ private:
 
 
     // The distinct sequences to be used for assembly.
+    using Kmer = vector<Base>;
     class SequenceInfo {
     public:
         bool isOnAnchorA = false;
@@ -164,6 +165,10 @@ private:
         // - If isOnAnchorB, k copies of Base::fromInteger(20) are added at the end.
         vector<Base> deBruijnSequence;
         void constructDeBruijnSequence(uint64_t k);
+
+        // The k-mer of the deBruijnSequence.
+        vector<Kmer> kmers;
+        void constructKmers(uint64_t k);
 
     };
     vector<SequenceInfo> sequences;
