@@ -115,9 +115,15 @@ void LocalAssembly7::runDeBruijn(uint64_t k)
     Graph graph;
     createGraph(k, graph);
     graph.removeUnreachableVertices();
+    if(html) {
+        html <<
+            "<br>After removing unreachable vertices, the De Bruijn graph has " <<
+            num_vertices(graph) <<
+            " vertices and " << num_edges(graph) << " edges.";
+    }
 
 
-    // If the graph has cycles, give up, leaving success set to false;
+    // If the graph has cycles, give up, leaving success set to false.
     {
         // Create a vertexIndexMap, needed below.
         std::map<vertex_descriptor, uint64_t> vertexIndexMap;
@@ -445,6 +451,10 @@ void LocalAssembly7::gatherKmers()
 
     kmers.clear();
     std::ranges::copy(kmersMap, back_inserter(kmers));
+
+    if(html) {
+        html << "<br>There are " << kmers.size() << " De Bruijn k-mers.";
+    }
 }
 
 
@@ -547,8 +557,15 @@ void LocalAssembly7::createGraph(uint64_t k, Graph& graph)
         }
     }
 
-    graph.writeGraphviz("DeBruijnGraph-BeforeMerge-" + to_string(k) + ".dot");
+    if(html) {
+        html << "<br>Before merge, the De Bruijn graph has " <<
+            num_vertices(graph) << " vertices and " << num_edges(graph) << " edges.";
+    }
     graph.merge();
+    if(html) {
+        html << "<br>After merge, the De Bruijn graph has " <<
+            num_vertices(graph) << " vertices and " << num_edges(graph) << " edges.";
+    }
 
     // Compute edge weights.
     BGL_FORALL_EDGES(e, graph, Graph) {
@@ -566,11 +583,6 @@ void LocalAssembly7::writeGraph(uint64_t k, const Graph& graph)
     if(not html) {
         return;
     }
-
-    html <<
-        "<h4>De Bruijn graph</h4>"
-        "The De Bruijn graph has " << num_vertices(graph) <<
-        " non-isolated vertices and " << num_edges(graph) << " edges.";
 
     // Write it in graphviz format.
     const string dotFileName = "DeBruijnGraph-" + to_string(k) + ".dot";
@@ -707,6 +719,7 @@ void LocalAssembly7::Graph::removeUnreachableVertices()
         boost::clear_vertex(v, graph);
         boost::remove_vertex(v, graph);
     }
+
 }
 
 
