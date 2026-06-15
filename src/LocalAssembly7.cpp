@@ -477,10 +477,11 @@ void LocalAssembly7::createGraph(uint64_t k, Graph& graph)
     // each occurrence of that k-mer generate a separate vertex.
     // This helps avoid cycles that are short compared to read length.
     // However some merging of the vertices generated in this way will be necessary.
-    vector<bool> appearsInSequence(sequences.size());
+    // vector<bool> appearsInSequence(sequences.size());
     for(uint64_t kmerId=0; kmerId<kmers.size(); kmerId++) {
         const auto& [kmer, occurrences] = kmers[kmerId];
 
+        /*
         // Figure out if it appears more than once in any of the sequences.
         bool appearsMoreThanOnce = false;
         std::ranges::fill(appearsInSequence, false);
@@ -492,9 +493,11 @@ void LocalAssembly7::createGraph(uint64_t k, Graph& graph)
             }
             appearsInSequence[sequenceId] = true;
         }
+        */
 
-        // If it appears more than once, generate a vertex for each occurrence.
-        if(appearsMoreThanOnce) {
+         if(shouldSplit(occurrences)) {
+
+             // Generate a separate vertex for each occurrence.
             vector<KmerOccurrence> occurrenceVector(1);
             for(const KmerOccurrence& occurrence: occurrences) {
                 occurrenceVector.front() = occurrence;
@@ -574,6 +577,27 @@ void LocalAssembly7::createGraph(uint64_t k, Graph& graph)
         edge.weight = std::pow(10., -0.1 * logP);
     }
 
+}
+
+
+
+// Given the KmerOccurrences of a Kmer, decide if we should generate
+// a single vertex for that Kmer or one separate vertex per occurrence.
+bool LocalAssembly7::shouldSplit(const vector<KmerOccurrence>& occurrences)
+{
+    // Figure out if the Kmer appears more than once in any of the sequences.
+    vector<bool> appearsInSequence(sequences.size(), false);
+    for(const KmerOccurrence& occurrence: occurrences) {
+        const uint64_t sequenceId = occurrence.sequenceId;
+        if(appearsInSequence[sequenceId]) {
+            // We already saw this sequence, so this Kmer appears
+            // more than one and we should split it into multiple vertices.
+            return true;
+        }
+        appearsInSequence[sequenceId] = true;
+    }
+
+    return false;
 }
 
 

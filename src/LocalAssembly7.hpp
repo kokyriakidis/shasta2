@@ -200,6 +200,10 @@ private:
     vector< pair<Kmer, vector<KmerOccurrence> > > kmers;
     void gatherKmers();
 
+    // Given the KmerOccurrences of a Kmer, decide if we should generate
+    // a single vertex for that Kmer or one separate vertex per occurrence.
+    bool shouldSplit(const vector<KmerOccurrence>&);
+
 
     // A vertex of the De Bruijn graph.
     class Vertex {
