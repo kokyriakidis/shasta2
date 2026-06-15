@@ -65,14 +65,14 @@ void shasta2::theseus(
 
     // Pass to the aligner the sequences fixed on the left only
     for(const auto& [sequence, weight]:  leftFixedSequences) {
-        const bool densityDrop = false;
+        const bool densityDrop = true;
         const bool lagPruning = false;
         aligner.align(toString(sequence), int(weight), false, true, densityDrop, lagPruning);
     }
 
     // Pass to the aligner the sequences fixed on the right only
     for(const auto& [sequence, weight]:  rightFixedSequences) {
-        const bool densityDrop = false;
+        const bool densityDrop = true;
         const bool lagPruning = false;
         aligner.align(toString(sequence), int(weight), true, true, densityDrop, lagPruning);
     }
@@ -202,13 +202,13 @@ void shasta2::theseusWriteFile(
     }
 
     for(const auto& [sequence, weight]: leftFixedSequences) {
-        out << ">0 1 " << weight << " 0 0\n";
+        out << ">0 1 " << weight << " 1 0\n";
         std::ranges::copy(sequence, ostream_iterator<Base>(out));
         out << "\n";
     }
 
     for(const auto& [sequence, weight]: rightFixedSequences) {
-        out << ">1 1 " << weight << " 0 0\n";
+        out << ">1 1 " << weight << " 1 0\n";
         std::ranges::copy(sequence, ostream_iterator<Base>(out));
         out << "\n";
     }
