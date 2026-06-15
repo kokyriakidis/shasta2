@@ -64,14 +64,19 @@ private:
     const double bExtend = 30.;
 
     // The starting and maximum k for De Bruijn graphs.
-    const uint64_t kStart = 256;
-    const uint64_t kMax = 4096;
+    const uint64_t kStart = 32;
+    const uint64_t kMax = 256;
 
     // Coefficient to compute edge weights for the DeBruijn graph.
     // logP = logPCoefficient * coverage, with logPCoefficient in dB.
     // weight = pow(10, -0.1 * logP).
     // Optimal paths are computed using this weight.
     const double logPCoefficient = 10.;
+
+    // These are used to decide if a k-mer should be split
+    // into multiple vertices.
+    const double aDrift = 0.02;
+    const double bDrift = 50.;
 
 
 
@@ -204,6 +209,10 @@ private:
     // a single vertex for that Kmer or one separate vertex per occurrence.
     bool shouldSplit(const vector<KmerOccurrence>&);
 
+    // Estimate the offset of a KmerOccurrence from the left Anchor.
+    // This can be negative.
+    int64_t estimateOffsetFromLeft(const KmerOccurrence&) const;
+
 
     // A vertex of the De Bruijn graph.
     class Vertex {
@@ -285,4 +294,5 @@ private:
     // Use a De Bruijn graph to assemble sequence.
     void assemble(uint64_t k, Graph&);
     void writeSequence() const;
+    void writeAssemblyPath(const Graph&) const;
 };

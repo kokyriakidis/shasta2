@@ -153,6 +153,7 @@ void LocalAssembly7::runDeBruijn(uint64_t k)
 
     if(html) {
         graph.writeVertices(kmers, "DeBruijnGraph-" + to_string(k) + ".csv");
+        writeAssemblyPath(graph);
     }
     writeGraph(k, graph);
 
@@ -583,12 +584,12 @@ void LocalAssembly7::createGraph(uint64_t k, Graph& graph)
 
 // Given the KmerOccurrences of a Kmer, decide if we should generate
 // a single vertex for that Kmer or one separate vertex per occurrence.
-bool LocalAssembly7::shouldSplit(const vector<KmerOccurrence>& occurrences)
+bool LocalAssembly7::shouldSplit(const vector<KmerOccurrence>& kmerOccurrences)
 {
     // Figure out if the Kmer appears more than once in any of the sequences.
     vector<bool> appearsInSequence(sequences.size(), false);
-    for(const KmerOccurrence& occurrence: occurrences) {
-        const uint64_t sequenceId = occurrence.sequenceId;
+    for(const KmerOccurrence& kmerOccurrence: kmerOccurrences) {
+        const uint64_t sequenceId = kmerOccurrence.sequenceId;
         if(appearsInSequence[sequenceId]) {
             // We already saw this sequence, so this Kmer appears
             // more than one and we should split it into multiple vertices.
@@ -597,7 +598,22 @@ bool LocalAssembly7::shouldSplit(const vector<KmerOccurrence>& occurrences)
         appearsInSequence[sequenceId] = true;
     }
 
-    return false;
+
+    // Also check that the minimum and maximum offset from left are not too different.
+    int64_t maxOffsetFromLeft = std::numeric_limits<int64_t>::min();
+    int64_t minOffsetFromLeft = std::numeric_limits<int64_t>::max();
+    for(const KmerOccurrence& kmerOccurrence: kmerOccurrences) {
+        const int64_t offsetFromLeft = estimateOffsetFromLeft(kmerOccurrence);
+        maxOffsetFromLeft = max(maxOffsetFromLeft, offsetFromLeft);
+        minOffsetFromLeft = min(minOffsetFromLeft, offsetFromLeft);
+    }
+    const uint64_t offsetDelta = maxOffsetFromLeft - minOffsetFromLeft;
+    const uint64_t maxAllowedOffsetDelta = uint64_t(std::round(aDrift * double(offset) + bDrift));
+    if(offsetDelta > maxAllowedOffsetDelta) {
+        return true;
+    } else {
+        return false;
+    }
 }
 
 
@@ -613,8 +629,8 @@ void LocalAssembly7::writeGraph(uint64_t k, const Graph& graph)
     graph.writeGraphviz(dotFileName);
 
     // Display it in html in svg format.
-    const double timeout = 3.;
-    const string options = "-Nshape=rectangle";
+    const double timeout = 1.;
+    const string options = "-Nshape=rectangle -Gnslimit=1 -Gnslimit1=1 -Gmclimit=1 -Gsearchsize=10 -Gsplines=line";
     html << "<br>";
     try {
         graphvizToHtml(dotFileName, "dot", timeout, options, html, true);
@@ -713,6 +729,29 @@ void LocalAssembly7::Graph::writeVertices(
 
 
 
+void LocalAssembly7::writeAssemblyPath(const Graph& graph) const
+{
+
+    ofstream csv("AssemblyPath.csv");
+    csv << "Position,VertexId,Coverage,Kmer,\n";
+
+    for(uint64_t position=0; position<graph.assemblyPath.size(); position++) {
+        const vertex_descriptor v = graph.assemblyPath[position];
+        const Vertex& vertex = graph[v];
+        const Kmer& kmer = kmers[vertex.kmerId].first;
+
+        csv << position << ",";
+        csv << vertex.vertexId << ",";
+        csv << vertex.coverage << ",";
+        std::ranges::copy(kmer, ostream_iterator<Base>(csv));
+        csv << ",";
+        csv << "\n";
+
+    }
+}
+
+
+
 void LocalAssembly7::Graph::removeUnreachableVertices()
 {
     Graph& graph = *this;
@@ -805,7 +844,14 @@ void LocalAssembly7::assemble(uint64_t k, Graph& graph)
     if(html) {
         html << "<br>The assembly path contains " << N << " vertices.";
         html << "<br>Assembled sequence is " << n << " bases long.";
+
+        uint64_t minCoverage = std::numeric_limits<uint64_t>::max();
+        for(const vertex_descriptor v: graph.assemblyPath){
+            minCoverage = min(minCoverage, graph[v].coverage);
+        }
+        html << "<br>Minimum coverage on the assembly path is " << minCoverage << ".";
     }
+
 
 
 
@@ -983,6 +1029,7 @@ void LocalAssembly7::writeKmerOccurrences(const Graph& graph, ostream& csv) cons
             } else {
                 const uint64_t sequenceLength = sequence.sequence.size();
                 offsetFromLeft = int64_t(positionInSequence) + (int64_t(offset) - int64_t(sequenceLength));
+                SHASTA2_ASSERT(offsetFromLeft == estimateOffsetFromLeft(kmerOccurrence));
             }
 
             csv << v << ",";
@@ -993,6 +1040,25 @@ void LocalAssembly7::writeKmerOccurrences(const Graph& graph, ostream& csv) cons
             csv << "\n";
         }
     }
+}
+
+
+
+// Estimate the offset of a KmerOccurrence from the left Anchor.
+// This can be negative.
+int64_t LocalAssembly7::estimateOffsetFromLeft(const KmerOccurrence& kmerOccurrence) const
+{
+    const uint64_t positionInSequence = kmerOccurrence.position;
+    const uint64_t sequenceId = kmerOccurrence.sequenceId;
+    const SequenceInfo& sequenceInfo = sequences[sequenceId];
+
+    if(sequenceInfo.isOnAnchorA) {
+        return int64_t(positionInSequence);
+    } else {
+        const uint64_t sequenceLength = sequenceInfo.sequence.size();
+        return int64_t(positionInSequence) + (int64_t(offset) - int64_t(sequenceLength));
+    }
+
 }
 
 
