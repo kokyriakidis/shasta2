@@ -561,9 +561,11 @@ void AssemblyGraph::assemble()
 
 
 
-void AssemblyGraph::assembleThreadFunction(uint64_t /* threadId */)
+void AssemblyGraph::assembleThreadFunction([[maybe_unused]] uint64_t threadId)
 {
     AssemblyGraph& assemblyGraph = *this;
+
+    // ofstream out("assembleThreadFunction-" + to_string(threadId) + ".csv");
 
     // Loop over all batches assigned to this thread.
     uint64_t begin, end;
@@ -586,7 +588,9 @@ void AssemblyGraph::assembleThreadFunction(uint64_t /* threadId */)
 
             try {
                 const auto t0 = steady_clock::now();
+                // out << "Begin segment " << assemblyGraph[e].id << " step " << i << endl;
                 assembleStep(e, i);
+                // out << "End segment " << assemblyGraph[e].id << " step " << i << endl;
                 const auto t1 = steady_clock::now();
                 const double t01 = seconds(t1-t0);
                 if(t01 > 10.) {
