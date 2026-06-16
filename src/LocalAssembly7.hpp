@@ -264,7 +264,13 @@ private:
         void removeUnreachableVertices();
 
         void merge();
+        uint64_t mergeForward();
+        uint64_t mergeBackward();
         void findMergeableChildrenGroups(
+            vertex_descriptor,
+            vector< vector<vertex_descriptor> >&
+            ) const;
+        void findMergeableParentsGroups(
             vertex_descriptor,
             vector< vector<vertex_descriptor> >&
             ) const;
