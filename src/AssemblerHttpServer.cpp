@@ -229,7 +229,7 @@ void Assembler::writeNavigation(ostream& html) const
         {"Segment sequence", "exploreSegmentSequence"},
         {"Segment steps", "exploreSegmentSteps"},
         {"Segment step support", "exploreSegmentStepSupport"},
-        {"Segment step", "exploreSegmentStep"},
+        {"Local assembly", "exploreSegmentStep"},
         {"Tangle matrix", "exploreTangleMatrix"},
         {"Segment pair", "exploreSegmentPair"},
         {"Sequence similarity", "exploreSimilarSequences"},

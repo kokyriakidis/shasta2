@@ -1,5 +1,6 @@
 // Shasta.
 #include "LocalAssembly7.hpp"
+#include "abpoaWrapper.hpp"
 #include "Anchor.hpp"
 #include "deduplicate.hpp"
 #include "findReachableVertices.hpp"
@@ -17,6 +18,7 @@ using namespace shasta2;
 #include <boost/uuid/uuid_io.hpp>
 
 // Standard library.
+#include "chrono.hpp"
 #include <cmath>
 #include "fstream.hpp"
 #include <iomanip>
@@ -27,21 +29,24 @@ using namespace shasta2;
 
 
 LocalAssembly7::LocalAssembly7(
-    Method method,
+    const Options& options,
     const Anchors& anchors,
     AnchorId anchorIdA,
     AnchorId anchorIdB,
     ostream& html,
     const vector<OrientedReadId>& orientedReadIds) :
+    options(options),
     anchors(anchors),
     anchorIdA(anchorIdA),
     anchorIdB(anchorIdB),
     html(html)
 {
     if(html) {
-        html << "<h3>Local assembly between " <<
-            anchorIdToString(anchorIdA) << " and " <<
-            anchorIdToString(anchorIdB) << "</h3>";
+        html <<
+            "<table>" <<
+            "<tr><th class=left>Left anchor (anchor A)<td class=centered>" << anchorIdToString(anchorIdA) <<
+            "<tr><th class=left>Right anchor (anchor B)<td class=centered>" << anchorIdToString(anchorIdB) <<
+            "</table>";
     }
 
     // Fill in the orientedReads and the sequenceInfos.
@@ -52,8 +57,32 @@ LocalAssembly7::LocalAssembly7(
     writeOrientedReads();
     writeSequences();
 
+    // Run the local assembly.
+    run();
 
-    switch(method) {
+    writeSequence();
+}
+
+
+
+void LocalAssembly7::run()
+{
+    // Find total coverage constrained on both anchors.
+    const uint64_t commonCoverage = getTotalCommonCoverage();
+
+
+    // Try the fast path, if allowed and possible.
+    if(commonCoverage >= options.commonCoverageThreshold) {
+        runFastPath();
+        if(success) {
+            return;
+        }
+    }
+
+
+    // If the fast path was not allowed or not possible,
+    // use the requested Method.
+    switch(options.method) {
     case Method::Adaptive:
         runAdaptive();
         break;
@@ -69,7 +98,83 @@ LocalAssembly7::LocalAssembly7(
     case Method::DeBruijn:
         runDeBruijn();
         break;
+    default:
+        throw runtime_error("Invalid LocalAssembly7 Method.");
     }
+}
+
+
+
+// This returns the total coverage in sequences that are on both anchors.
+uint64_t LocalAssembly7::getTotalCommonCoverage() const
+{
+    uint64_t commonCoverage = 0;
+    for(const SequenceInfo& sequenceInfo: sequences) {
+        if(sequenceInfo.isOnAnchorA and sequenceInfo.isOnAnchorB) {
+            commonCoverage += sequenceInfo.coverage();
+        }
+    }
+    return commonCoverage;
+}
+
+
+
+void LocalAssembly7::runFastPath()
+{
+    if(not options.allowFastPath) {
+        return;
+    }
+
+    // Can only use the fast path if the number of oriented reads on both anchors
+    // is at least equal to commonThreshold.
+    uint64_t commonCoverage = getTotalCommonCoverage();
+    if(commonCoverage < options.commonCoverageThreshold) {
+        return;
+    }
+
+    // Can only use fast path if, of those commonCoverage oriented reads,
+    // at least a fraction equal to fastPathFractionThreshold
+    // have the same sequence.
+    // So we find the sequence with the most coverage
+    // among the ones constrained on both sides.
+    uint64_t sequenceIdBest = invalid<uint64_t>;
+    uint64_t coverageBest = 0;
+    for(uint64_t sequenceId=0; sequenceId<sequences.size(); sequenceId++) {
+        const SequenceInfo& sequenceInfo = sequences[sequenceId];
+        if(sequenceInfo.isOnAnchorA and sequenceInfo.isOnAnchorB) {
+            const uint64_t coverage = sequenceInfo.coverage();
+            if(coverage > coverageBest) {
+                coverageBest = coverage;
+                sequenceIdBest = sequenceId;
+            }
+        }
+    }
+    const double fastPathFraction = double(coverageBest) / double(commonCoverage);
+    if(fastPathFraction < options.fastPathFractionThreshold) {
+        return;
+    }
+
+    // All is good. We can just store that best sequence as our consensus.
+    sequence = sequences[sequenceIdBest].sequence;
+    success = true;
+
+    if(html) {
+        html <<
+            "<h3>Fast path </h3>"
+            "<table>"
+            "<tr><td class=left>Number of oriented reads on both anchors<td class=centered>" <<
+            commonCoverage <<
+            "<tr><td class=left>Sequence id of most frequent sequence of oriented "
+            "reads on both anchors<td class=centered>" <<
+            sequenceIdBest <<
+            "<tr><td class=left>Number of oriented reads with that most frequent sequence<td class=centered>" <<
+            coverageBest <<
+            "<tr><td class=left>Fraction of oriented reads on both anchors "
+            "that have that most frequent sequence<td class=centered>" <<
+            fastPathFraction <<
+            "</table>";
+    }
+
 }
 
 
@@ -78,7 +183,7 @@ LocalAssembly7::LocalAssembly7(
 // Loop over DeBruijn graphs with increasing k.
 void LocalAssembly7::runDeBruijn()
 {
-    uint64_t k = kStart;
+    uint64_t k = options.kStart;
     while(true) {
         if(html) {
             html << "<br>Using a De Bruijn graph with k = " << k << ".";
@@ -90,9 +195,9 @@ void LocalAssembly7::runDeBruijn()
             break;
         } else {
             k *= 2;
-            if(k > kMax) {
+            if(k > options.kMax) {
                 if(html) {
-                    html << "<br>Cannot increase k above " << kMax << ".";
+                    html << "<br>Cannot increase k above " << options.kMax << ".";
                 }
                 break;
             }
@@ -172,7 +277,7 @@ void LocalAssembly7::gatherOrientedReads(
     const Anchor anchorB = anchors[anchorIdB];
 
     if(html) {
-        html << "<h4>" << orientedReadIds.size() << " input oriented reads</h4><table>";
+        html << "<h3>" << orientedReadIds.size() << " input oriented reads</h3><table>";
         for(const OrientedReadId orientedReadId: orientedReadIds) {
             html << "<tr><td class=centered>" << orientedReadId;
         }
@@ -248,7 +353,9 @@ void LocalAssembly7::gatherSequences()
 {
     // For reads fixed on one side only, we use a sequence length
     // equal to offset + aDrift * offset + bDrift.
-    const uint32_t length = offset + uint32_t(std::round(aExtend * double(offset) + bExtend));
+    const uint32_t length = offset + uint32_t(std::round(
+        options.aExtend * double(offset) + options.bExtend
+        ));
 
 
     // Fill in the beginPosition and endPosition of each OrientedRead.
@@ -320,7 +427,7 @@ void LocalAssembly7::writeOrientedReads() const
         return;
     }
 
-    html << "<h4>" << orientedReads.size() << " usable oriented reads</h4>";
+    html << "<h3>" << orientedReads.size() << " usable oriented reads</h3>";
 
     html << "<table><tr>"
         "<th>Oriented<br>read id"
@@ -374,7 +481,7 @@ void LocalAssembly7::writeSequences() const
         return;
     }
 
-    html << "<h4>Oriented read sequences used for assembly</h4>"
+    html << "<h3>Oriented read sequences used for assembly</h3>"
         "<table><tr>"
         "<th>Sequence<br>id"
         "<th>On A"
@@ -580,7 +687,7 @@ void LocalAssembly7::createGraph(uint64_t k, Graph& graph)
     // Compute edge weights.
     BGL_FORALL_EDGES(e, graph, Graph) {
         Edge& edge = graph[e];
-        const double logP = logPCoefficient * double(edge.coverage);
+        const double logP = options.logPCoefficient * double(edge.coverage);
         edge.weight = std::pow(10., -0.1 * logP);
     }
 
@@ -614,7 +721,7 @@ bool LocalAssembly7::shouldSplit(const vector<KmerOccurrence>& kmerOccurrences)
         minOffsetFromLeft = min(minOffsetFromLeft, offsetFromLeft);
     }
     const uint64_t offsetDelta = maxOffsetFromLeft - minOffsetFromLeft;
-    const uint64_t maxAllowedOffsetDelta = uint64_t(std::round(aDrift * double(offset) + bDrift));
+    const uint64_t maxAllowedOffsetDelta = uint64_t(std::round(options.aDrift * double(offset) + options.bDrift));
     if(offsetDelta > maxAllowedOffsetDelta) {
         return true;
     } else {
@@ -758,6 +865,74 @@ void LocalAssembly7::writeAssemblyPath(const Graph& graph) const
 
 
 
+LocalAssembly7::Graph::vertex_descriptor
+    LocalAssembly7::Graph::mergeGroup(const vector<vertex_descriptor>& group)
+{
+    Graph& graph = *this;
+
+    // Check that they all have the same kmerId and
+    // their in-degree and out-degree are not greater than 1.
+    uint64_t kmerId = invalid<uint64_t>;
+    vector<Base> kmer;
+    uint64_t coverage = 0;
+    vector<KmerOccurrence> occurrences;
+    std::map<vertex_descriptor, uint64_t> parentsWithEdgeCoverage;
+    std::map<vertex_descriptor, uint64_t> childrenWithEdgeCoverage;
+    for(const vertex_descriptor v: group) {
+        const Vertex& vertex = graph[v];
+        occurrences.push_back(vertex.occurrences.front());
+        if(kmerId == invalid<uint64_t>) {
+            kmerId = vertex.kmerId;
+        } else {
+            SHASTA2_ASSERT(kmerId == vertex.kmerId);
+        }
+        SHASTA2_ASSERT(in_degree(v, graph) < 2);
+        SHASTA2_ASSERT(out_degree(v, graph) < 2);
+        coverage += vertex.coverage;
+        BGL_FORALL_OUTEDGES(v, e, graph, Graph) {
+            const vertex_descriptor child = target(e, graph);
+            const uint64_t coverage = graph[e].coverage;
+            const auto it = childrenWithEdgeCoverage.find(child);
+            if(it == childrenWithEdgeCoverage.end()) {
+                childrenWithEdgeCoverage.insert(make_pair(child, coverage));
+            } else {
+                it->second += coverage;
+            }
+        }
+        BGL_FORALL_INEDGES(v, e, graph, Graph) {
+            const vertex_descriptor parent = source(e, graph);
+            const uint64_t coverage = graph[e].coverage;
+            const auto it = parentsWithEdgeCoverage.find(parent);
+            if(it == parentsWithEdgeCoverage.end()) {
+                parentsWithEdgeCoverage.insert(make_pair(parent, coverage));
+            } else {
+                it->second += coverage;
+            }
+        }
+    }
+
+    const vertex_descriptor vNew = add_vertex(Vertex(graph.nextVertexId++, kmerId, occurrences, coverage), graph);
+    for(const auto& [child, coverage]: childrenWithEdgeCoverage) {
+        auto[e, ignore] = boost::add_edge(vNew, child, graph);
+        graph[e].coverage = coverage;
+    }
+    for(const auto& [parent, coverage]: parentsWithEdgeCoverage) {
+        auto[e, ignore] = boost::add_edge(parent, vNew, graph);
+        graph[e].coverage = coverage;
+    }
+
+
+    // Remove all the vertices in the group we merged.
+    for(const vertex_descriptor v: group) {
+        boost::clear_vertex(v, graph);
+        boost::remove_vertex(v, graph);
+    }
+
+    return vNew;
+}
+
+
+
 void LocalAssembly7::Graph::removeUnreachableVertices()
 {
     Graph& graph = *this;
@@ -885,20 +1060,215 @@ void LocalAssembly7::assemble(uint64_t k, Graph& graph)
 
 
 
+void LocalAssembly7::writeConsensus(
+    const vector< pair<Base, uint64_t> >& consensus,
+    uint64_t hilightCoverageThreshold) const
+{
+    if(not html) {
+        return;
+    }
+
+    html <<
+        "<h3>Assembled sequence with coverage</h3>"
+        "<table>"
+        "<tr><th class=left>Length<td class=left>" << consensus.size();
+
+    // Write a line with the sequence.
+    html <<
+        "<tr><th class=left>Sequence<td class=left style='font-family:monospace;white-space:nowrap'>";
+    for(uint64_t position=0; position<consensus.size(); position++) {
+        const auto& [base, coverage] = consensus[position];
+        html << "<span title='Position " << position <<
+            " coverage " << coverage << "'";
+        if(coverage < hilightCoverageThreshold) {
+            html << " style='background-color:Pink'";
+        }
+        html << ">";
+        html << base;
+        html << "</span>";
+
+    }
+
+    // Write a line with coverage at each position.
+    std::map<char, uint64_t> coverageLegend;
+    uint64_t minCoverage = std::numeric_limits<uint64_t>::max();
+    uint64_t maxCoverage = 0;
+    html <<
+        "<tr><th class=left>Coverage<td class=left style='font-family:monospace;white-space:nowrap'>";
+    for(uint64_t position=0; position<consensus.size(); position++) {
+        const auto& [ignore, coverage] = consensus[position];
+        minCoverage = min(coverage, minCoverage);
+        maxCoverage = max(coverage, maxCoverage);
+        const char coverageCharacter = getCoverageCharacter(coverage);
+        if((coverage > 9) and (coverage < 36)) {
+            coverageLegend.insert(make_pair(coverageCharacter, coverage));
+        }
+        html << "<span title='Position " << position <<
+            " coverage " << coverage << "'";
+        if(coverage < hilightCoverageThreshold) {
+            html << " style='background-color:Pink'";
+        }
+        html << ">";
+        html << coverageCharacter;
+        html << "</span>";
+    }
+    html << "</table>";
+
+    // Write coverage legend.
+    html << "<h3>Coverage legend</h3>"
+        "<table><tr><th>Character<th>Coverage";
+    if(minCoverage < 10) {
+        html << "<tr><td class=centered>1-9<td class=centered>As displayed";
+    }
+    for(const auto& [character, coverage]: coverageLegend) {
+        html << "<tr><td class=centered>" << character <<
+            "<td class=centered>" << coverage;
+    }
+    if(maxCoverage >= 36) {
+        html << "<tr><td class=centered>*<td class=centered>&ge;36";
+    }
+    html << "</table>";
+}
+
+
+
+char LocalAssembly7::getCoverageCharacter(uint64_t coverage)
+{
+    if(coverage < 10) {
+        return char(coverage + '0');
+    } else if(coverage < 36) {
+        return char(coverage - 10 + 'A');
+    } else {
+        return '*';
+    }
+}
+
+
+void LocalAssembly7::writeAlignment(
+    const vector< vector<AlignedBase> >& alignment,
+    const vector<AlignedBase>& alignedConsensus,
+    const vector< pair<Base, uint64_t> >& consensus,
+    const vector< pair<uint64_t, uint64_t> > sequenceIdsWithWeight
+    ) const
+{
+     if(not html) {
+        return;
+    }
+
+    const uint64_t n = alignment.size();
+    SHASTA2_ASSERT(sequenceIdsWithWeight.size() == n);
+
+    html <<
+        "<h3>Alignment</h3>"
+        "<table>"
+        "<tr><th>Sequence<br>id<th>Weight<th>Length<th class=left>Sequence";
+
+    uint64_t totalWeight = 0;
+    for(uint64_t i=0; i<n; i++) {
+        const vector<AlignedBase>& alignmentRow = alignment[i];
+        SHASTA2_ASSERT(alignmentRow.size() == alignedConsensus.size());
+        const auto& [sequenceId, weight] = sequenceIdsWithWeight[i];
+        totalWeight += weight;
+        const SequenceInfo& sequenceInfo = sequences[sequenceId];
+        html <<
+            "<tr>"
+            "<td class=centered>" << sequenceId <<
+            "<td class=centered>" << weight <<
+            "<td class=centered>" << sequenceInfo.sequence.size() <<
+            "<td class=left style='font-family:monospace;white-space:nowrap'>";
+        for(uint64_t position=0; position<alignmentRow.size(); position++) {
+            const AlignedBase b = alignmentRow[position];
+            const AlignedBase bConsensus = alignedConsensus[position];
+            const bool isDiscordant = (b != bConsensus);
+            if(isDiscordant) {
+                html << "<span style='background-color:Pink'>";
+            }
+            html << b;
+            if(isDiscordant) {
+                html << "</span>";
+            }
+        }
+        std::ranges::copy(alignmentRow, ostream_iterator<AlignedBase>(html));
+    }
+
+    // Add a row with aligned consensus.
+    html <<
+        "<tr>"
+        "<th class=left>Consensus" <<
+        "<td class=centered>" << totalWeight <<
+        "<td class=centered>" << consensus.size() <<
+        "<td class=left style='font-family:monospace;white-space:nowrap'>";
+    uint64_t positionInConsensus = 0;
+    for(uint64_t position=0; position<alignedConsensus.size(); position++) {
+        const AlignedBase b = alignedConsensus[position];
+        if(b.isGap()) {
+            html << "<span style='background-color:Pink'>-</span>";
+        } else {
+            const uint64_t coverage = consensus[positionInConsensus].second;
+            const bool hasDiscordances = (coverage < totalWeight);
+            html << "<span title='Position " << positionInConsensus <<
+                ", coverage " << coverage << "'";
+            if(hasDiscordances) {
+                html << " style='background-color:Pink'";
+            }
+            html << ">" << b << "</span>";
+            ++positionInConsensus;
+        }
+    }
+
+    // Add a row with  aligned consensus coverage.
+    html <<
+        "<tr>"
+        "<th class=left>Coverage" <<
+        "<td class=centered>" << totalWeight <<
+        "<td class=centered>" << consensus.size() <<
+        "<td class=left style='font-family:monospace;white-space:nowrap'>";
+    positionInConsensus = 0;
+    for(uint64_t position=0; position<alignedConsensus.size(); position++) {
+        const AlignedBase b = alignedConsensus[position];
+        if(b.isGap()) {
+            html << "<span style='background-color:Pink'>-</span>";
+        } else {
+            const uint64_t coverage = consensus[positionInConsensus].second;
+            const char coverageCharacter = getCoverageCharacter(coverage);
+            const bool hasDiscordances = (coverage < totalWeight);
+            html << "<span title='Position " << positionInConsensus <<
+                ", coverage " << coverage << "'";
+            if(hasDiscordances) {
+                html << " style='background-color:Pink'";
+            }
+            html << ">" << coverageCharacter << "</span>";
+            ++positionInConsensus;
+        }
+    }
+
+    html << "</table>";
+}
+
+
+
+
 void LocalAssembly7::writeSequence() const
 {
     if(not html) {
         return;
     }
 
-    // Write the consensus.
-    html <<
-        "<h4>Assembled sequence</h4>"
-        "<table>"
-        "<tr><th class=left>Length<td class=left>" << sequence.size() <<
-        "<tr><th class=left>Sequence<td class=left style='font-family:monospace;white-space:nowrap'>";
-    std::ranges::copy(sequence, ostream_iterator<Base>(html));
-    html << "</table>";
+    if(success) {
+
+        // Write the consensus.
+        html <<
+            "<h3>Assembled sequence</h3>"
+            "<table>"
+            "<tr><th class=left>Length<td class=left>" << sequence.size() <<
+            "<tr><th class=left>Sequence<td class=left style='font-family:monospace;white-space:nowrap'>";
+        std::ranges::copy(sequence, ostream_iterator<Base>(html));
+        html << "</table>";
+
+    } else {
+
+        html << "<br>The local assembly failed." << endl;
+    }
 
 }
 
@@ -1330,96 +1700,182 @@ void LocalAssembly7::Graph::findMergeableParentsGroups(
 
 
 
-LocalAssembly7::Graph::vertex_descriptor
-    LocalAssembly7::Graph::mergeGroup(const vector<vertex_descriptor>& group)
-{
-    Graph& graph = *this;
-
-    // Check that they all have the same kmerId and
-    // their in-degree and out-degree are not greater than 1.
-    uint64_t kmerId = invalid<uint64_t>;
-    vector<Base> kmer;
-    uint64_t coverage = 0;
-    vector<KmerOccurrence> occurrences;
-    std::map<vertex_descriptor, uint64_t> parentsWithEdgeCoverage;
-    std::map<vertex_descriptor, uint64_t> childrenWithEdgeCoverage;
-    for(const vertex_descriptor v: group) {
-        const Vertex& vertex = graph[v];
-        occurrences.push_back(vertex.occurrences.front());
-        if(kmerId == invalid<uint64_t>) {
-            kmerId = vertex.kmerId;
-        } else {
-            SHASTA2_ASSERT(kmerId == vertex.kmerId);
-        }
-        SHASTA2_ASSERT(in_degree(v, graph) < 2);
-        SHASTA2_ASSERT(out_degree(v, graph) < 2);
-        coverage += vertex.coverage;
-        BGL_FORALL_OUTEDGES(v, e, graph, Graph) {
-            const vertex_descriptor child = target(e, graph);
-            const uint64_t coverage = graph[e].coverage;
-            const auto it = childrenWithEdgeCoverage.find(child);
-            if(it == childrenWithEdgeCoverage.end()) {
-                childrenWithEdgeCoverage.insert(make_pair(child, coverage));
-            } else {
-                it->second += coverage;
-            }
-        }
-        BGL_FORALL_INEDGES(v, e, graph, Graph) {
-            const vertex_descriptor parent = source(e, graph);
-            const uint64_t coverage = graph[e].coverage;
-            const auto it = parentsWithEdgeCoverage.find(parent);
-            if(it == parentsWithEdgeCoverage.end()) {
-                parentsWithEdgeCoverage.insert(make_pair(parent, coverage));
-            } else {
-                it->second += coverage;
-            }
-        }
-    }
-
-    const vertex_descriptor vNew = add_vertex(Vertex(graph.nextVertexId++, kmerId, occurrences, coverage), graph);
-    for(const auto& [child, coverage]: childrenWithEdgeCoverage) {
-        auto[e, ignore] = boost::add_edge(vNew, child, graph);
-        graph[e].coverage = coverage;
-    }
-    for(const auto& [parent, coverage]: parentsWithEdgeCoverage) {
-        auto[e, ignore] = boost::add_edge(parent, vNew, graph);
-        graph[e].coverage = coverage;
-    }
-
-
-    // Remove all the vertices in the group we merged.
-    for(const vertex_descriptor v: group) {
-        boost::clear_vertex(v, graph);
-        boost::remove_vertex(v, graph);
-    }
-
-    return vNew;
-}
-
-
-
 void LocalAssembly7::runAbpoa()
 {
-    throw runtime_error("LocalAssembly7::runAbpoa not implemented.");
+    // Get the sequenceIds to be used, sorted in order of decreasing coverage.
+    vector<uint64_t> sequenceIds;
+    getSequencesOnBothAnchors(sequenceIds);
+
+    if(html) {
+        html <<
+            "<h3>Local assembly with abpoa</h3>"
+            "The local assembly will use the following "
+            "sequences of oriented reads on both anchors, "
+            "presented to abpoa in this order of decreasing coverage."
+            "<br>Each sequence is presented to abpoa a number of times "
+            "equal to its coverage, with (implicit) weight 1."
+            "<br><br><table>"
+            "<tr><th>Sequence<br>id<th>Coverage<th>Length";
+        for(const uint64_t sequenceId: sequenceIds) {
+            const SequenceInfo& sequenceInfo = sequences[sequenceId];
+            html <<
+                "<tr>"
+                "<td class=centered>" << sequenceId <<
+                "<td class=centered>" << sequenceInfo.coverage() <<
+                "<td class=centered>" << sequenceInfo.sequence.size();
+        }
+
+        html << "</table>";
+    }
+
+
+    // Abpoa does not support weights, so we have to enter each sequence
+    // a number of times equal to its coverage.
+    vector< vector<Base> > abpoaSequences;
+    vector< pair<uint64_t, uint64_t> > abpoaSequenceIdsWithWeight;
+    for(const uint64_t sequenceId: sequenceIds) {
+        const SequenceInfo& sequenceInfo = sequences[sequenceId];
+        for(uint64_t i=0; i<sequenceInfo.coverage(); i++) {
+            abpoaSequences.push_back(sequenceInfo.sequence);
+            abpoaSequenceIdsWithWeight.push_back(make_pair(sequenceId, 1));
+        }
+    }
+    if(html) {
+        html << "<br>Total coverage for abpoa is " << abpoaSequences.size() << ".";
+    }
+
+    // Run abpoa.
+    vector< pair<Base, uint64_t> > consensus;
+    vector< vector<AlignedBase> > alignment;
+    vector<AlignedBase> alignedConsensus;
+    const bool computeAlignment = bool(html);
+    const auto t0 = steady_clock::now();
+    abpoa(abpoaSequences, consensus, alignment, alignedConsensus, computeAlignment);
+    const auto t1 = steady_clock::now();
+    SHASTA2_ASSERT(alignment.size() == abpoaSequenceIdsWithWeight.size());
+
+    if(html) {
+        html << "<br>Abpoa completed in " << seconds(t1-t0) << " seconds.";
+        writeAlignment(alignment, alignedConsensus, consensus, abpoaSequenceIdsWithWeight);
+        writeConsensus(consensus, abpoaSequences.size());
+    }
+
+    // Store the sequence.
+    for(const auto& [b, ignore]: consensus) {
+        sequence.push_back(b);
+    }
+    success = true;
 }
 
 
 
 void LocalAssembly7::runPoasta()
 {
-    throw runtime_error("LocalAssembly7::runPoasta not implemented.");
+    html << "<br>Local assembly with poasta not implemented.";
 }
 
 
 
 void LocalAssembly7::runTheseus()
 {
-    throw runtime_error("LocalAssembly7::runTheseus not implemented.");
+    html << "<br>Local assembly with theseus not implemented.";
 }
 
 
 
 void LocalAssembly7::runAdaptive()
 {
-    throw runtime_error("LocalAssembly7::runAdaptive not implemented.");
+    html << "<br>Adaptive local assembly not implemented.";
+}
+
+
+
+void LocalAssembly7::Options::setMethod(const string& s)
+{
+    if(s == "Adaptive") {
+        method = Method::Adaptive;
+    } else if(s == "Adaptive") {
+        method = Method::Adaptive;
+    } else if(s == "Abpoa") {
+        method = Method::Abpoa;
+    } else if(s == "Poasta") {
+        method = Method::Poasta;
+    } else if(s == "DeBruijn") {
+        method = Method::DeBruijn;
+    } else {
+        method = Method::Invalid;
+    }
+}
+
+
+
+// Get  pairs(sequenceId, coverage) for the SequenceInfos on both anchors,
+// sorted by decreasing coverage.
+// These are used for assembly with abpoa, poasta, or theseus.
+// SequenceId is the index in the sequences vector.
+void LocalAssembly7::getSequencesOnBothAnchors(
+    vector<uint64_t>& v) const
+{
+    // Get pairs (sequenceId, coverage) and sort them by decreasing coverage.
+    vector< pair<uint64_t, uint64_t> > x;
+    for(uint64_t sequenceId=0; sequenceId<sequences.size(); sequenceId++) {
+        const SequenceInfo& sequenceInfo = sequences[sequenceId];
+        if(sequenceInfo.isOnAnchorA and sequenceInfo.isOnAnchorB) {
+            x.push_back(make_pair(sequenceId, sequenceInfo.coverage()));
+        }
+    }
+    sort(x.begin(), x.end(), OrderPairsBySecondOnlyGreater<uint64_t, uint64_t>());
+
+    // Costruct the vector with the sequenceIds only.
+    v.clear();
+    for(const auto& [sequenceId, ignore]: x) {
+        v.push_back(sequenceId);
+    }
+}
+
+
+
+// Same, but for SequennceInfos on one anchor only.
+// These are used for local assembly with theseus.
+void LocalAssembly7::getSequencesOnAnchorA(
+    vector<uint64_t>& v) const
+{
+    // Get pairs (sequenceId, coverage) and sort them by decreasing coverage.
+    vector< pair<uint64_t, uint64_t> > x;
+    for(uint64_t sequenceId=0; sequenceId<sequences.size(); sequenceId++) {
+        const SequenceInfo& sequenceInfo = sequences[sequenceId];
+        if(sequenceInfo.isOnAnchorA and (not sequenceInfo.isOnAnchorB)) {
+            x.push_back(make_pair(sequenceId, sequenceInfo.coverage()));
+        }
+    }
+    sort(x.begin(), x.end(), OrderPairsBySecondOnlyGreater<uint64_t, uint64_t>());
+
+    // Costruct the vector with the sequenceIds only.
+    v.clear();
+    for(const auto& [sequenceId, ignore]: x) {
+        v.push_back(sequenceId);
+    }
+}
+
+
+
+void LocalAssembly7::getSequencesOnAnchorB(
+    vector<uint64_t>& v) const
+{
+    // Get pairs (sequenceId, coverage) and sort them by decreasing coverage.
+    vector< pair<uint64_t, uint64_t> > x;
+    for(uint64_t sequenceId=0; sequenceId<sequences.size(); sequenceId++) {
+        const SequenceInfo& sequenceInfo = sequences[sequenceId];
+        if(not(sequenceInfo.isOnAnchorA) and sequenceInfo.isOnAnchorB) {
+            x.push_back(make_pair(sequenceId, sequenceInfo.coverage()));
+        }
+    }
+    sort(x.begin(), x.end(), OrderPairsBySecondOnlyGreater<uint64_t, uint64_t>());
+
+    // Costruct the vector with the sequenceIds only.
+    v.clear();
+    for(const auto& [sequenceId, ignore]: x) {
+        v.push_back(sequenceId);
+    }
+
 }

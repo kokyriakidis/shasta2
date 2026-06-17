@@ -884,8 +884,30 @@ void Assembler::exploreSegmentStep(
     int localAssemblyVersion = 6;
     getParameterValue(request, "localAssemblyVersion", localAssemblyVersion);
 
+
+
+    // LocalAssembly7::Options.
+    LocalAssembly7::Options localAssembly7Options;
+    getParameterValue(request, "aExtend", localAssembly7Options.aExtend);
+    getParameterValue(request, "bExtend", localAssembly7Options.bExtend);
+
+    string methodString = "Adaptive";
+    getParameterValue(request, "method", methodString);
+    localAssembly7Options.setMethod(methodString);
+
+    getParameterValue(request, "commonCoverageThreshold", localAssembly7Options.commonCoverageThreshold);
+
+    string disallowFastPathString;
+    localAssembly7Options.allowFastPath = not HttpServer::getParameterValue(request,
+        "disallowFastPath", disallowFastPathString);
+
+    getParameterValue(request, "fastPathFractionThreshold", localAssembly7Options.fastPathFractionThreshold);
+    getParameterValue(request, "maxAbpoaLength", localAssembly7Options.maxAbpoaLength);
+
+
+
     // Start the form.
-    html << "<h2>Assembly graph segment step</h2><form><table>";
+    html << "<h2>Local assembly</h2><form><table>";
 
     html <<
         "<tr>"
@@ -915,16 +937,62 @@ void Assembler::exploreSegmentStep(
     html << ">";
 
     html <<
-        "<tr><th>Local assembly version<td class=centered>"
+        "<tr><th class=left>Local assembly version<td class=centered>"
         "<input type=radio name=localAssemblyVersion value=6" <<
         (localAssemblyVersion == 6 ? " checked=on" : "") << "> 6"
         "<br><input type=radio name=localAssemblyVersion value=7" <<
         (localAssemblyVersion == 7 ? " checked=on" : "") << "> 7";
 
+    html <<
+        "<tr><th class=left>aExtend<td class=centered>"
+        "<input type=text name=aExtend style='text-align:center' "
+        "value='" << localAssembly7Options.aExtend << "'>";
+
+    html <<
+        "<tr><th class=left>bExtend<td class=centered>"
+        "<input type=text name=bExtend style='text-align:center' "
+        "value='" << localAssembly7Options.bExtend << "'>";
+
+    html <<
+        "<tr><th class=left>Method<td class=left>"
+        "<input type=radio name=method value=Adaptive" <<
+        (localAssembly7Options.method == LocalAssembly7::Method::Adaptive ? " checked=on" : "") << "> Adaptive"
+        "<br><input type=radio name=method value=Abpoa" <<
+        (localAssembly7Options.method == LocalAssembly7::Method::Abpoa ? " checked=on" : "") << "> Abpoa"
+        "<br><input type=radio name=method value=Poasta" <<
+        (localAssembly7Options.method == LocalAssembly7::Method::Poasta ? " checked=on" : "") << "> Poasta"
+        "<br><input type=radio name=method value=DeBruijn" <<
+        (localAssembly7Options.method == LocalAssembly7::Method::DeBruijn ? " checked=on" : "") << "> De Bruijn"
+        ;
+
+    html <<
+        "<tr><th class=left>commonCoverageThreshold<td class=centered>"
+        "<input type=text name=commonCoverageThreshold style='text-align:center' "
+        "value='" << localAssembly7Options.commonCoverageThreshold << "'>";
+
+    html <<
+        "<tr><th class=left>Forbid fast path"
+        "<td class=centered>"
+        "<input type=checkbox name=disallowFastPath" <<
+            (localAssembly7Options.allowFastPath ? "" : " checked") <<
+            ">";
+
+    html <<
+        "<tr><th class=left>fastPathFractionThreshold<td class=centered>"
+        "<input type=text name=fastPathFractionThreshold style='text-align:center' "
+        "value='" << localAssembly7Options.fastPathFractionThreshold << "'>";
+
+    html <<
+        "<tr><th class=left>maxAbpoaLength<td class=centered>"
+        "<input type=text name=maxAbpoaLength style='text-align:center' "
+        "value='" << localAssembly7Options.maxAbpoaLength << "'>";
+
+
+
     // End the form.
     html <<
         "</table>"
-        "<input type=submit value='Get segment step information'>"
+        "<br><input type=submit value='Run the local assembly'>"
         "</form>";
 
     if(segmentName.empty()) {
@@ -1024,7 +1092,7 @@ void Assembler::exploreSegmentStep(
     case 7:
         {
             LocalAssembly7 localAssembly(
-                LocalAssembly7::Method::DeBruijn,
+                localAssembly7Options,
                 anchors(),
                 anchorPair.anchorIdA,
                 anchorPair.anchorIdB,

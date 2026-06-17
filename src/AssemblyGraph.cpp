@@ -496,7 +496,7 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
         } else {
 
             LocalAssembly7 localAssembly(
-                LocalAssembly7::Method::DeBruijn,
+                LocalAssembly7::Options(),
                 anchors,
                 anchorPair.anchorIdA,
                 anchorPair.anchorIdB,

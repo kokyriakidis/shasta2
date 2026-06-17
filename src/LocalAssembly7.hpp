@@ -31,7 +31,79 @@ public:
         Poasta,
         Theseus,
         DeBruijn,
+        Invalid
     };
+
+
+    class Options {
+    public:
+
+        // For reads fixed on one side only, we use a sequence length
+        // equal to aExtend * offset + bExtend.
+        double aExtend = 0.1;
+        double bExtend = 30.;
+
+        // The Method chosen for the local assembly.
+        Method method;
+        void setMethod(const string&);
+
+        // If the number of oriented reads on both anchors is at least
+        // equal to commonThreshold, the adaptive method uses one of:
+        // - Fast path.
+        // - Abpoa.
+        // - Poasta.
+        // Otherwise it uses Theseus.
+        uint64_t commonCoverageThreshold = 6;
+
+        // The Fast path is used if all of the following is true:
+        // - The number of oriented reads on both anchors is at least
+        //   equal to commonThreshold.
+        // - allowFastPath is true.
+        // - Of the oriented reads on both anchors, at least a fraction
+        //   equal to fastPathFractionThreshold have the same sequence.
+        bool allowFastPath = true;
+        double fastPathFractionThreshold = 0.6;
+
+        // If the number of oriented reads on both anchors is at least
+        // equal to commonThreshold and the fast path cannot be used,
+        // we use abpoa if the maximum length of a sequence
+        // fixed on both sides is less than maxAbpoaLength, and
+        // poasta otherwise.
+        uint64_t maxAbpoaLength = 5000;
+
+        Options() {}
+        Options(
+            double aExtend,
+            double bExtend,
+            const string& methodString,
+            uint64_t commonCoverageThreshold,
+            bool allowFastPath,
+            double fastPathFractionThreshold,
+            uint64_t maxAbpoaLength);
+
+
+        // THE REMAINING OPTIONS ARE ONLY USED WHEN USING THE DE BRUIJN GRAPH.
+        // THIS IS EXPERIMENTAL AND SO THESE VALUES ARE HARDWIRED.
+        // EXPOSE WHEN CODE STABILIZES.
+
+        // The starting and maximum k for De Bruijn graphs.
+        const uint64_t kStart = 32;
+        const uint64_t kMax = 256;
+
+        // Coefficient to compute edge weights for the DeBruijn graph.
+        // logP = logPCoefficient * coverage, with logPCoefficient in dB.
+        // weight = pow(10, -0.1 * logP).
+        // Optimal paths are computed using this weight.
+        const double logPCoefficient = 10.;
+
+        // These are used to decide if a k-mer should be split
+        // into multiple vertices.
+        const double aDrift = 0.02;
+        const double bDrift = 50.;
+
+    };
+
+
 
     // This assembles sequence between two anchors using an input vector
     // of oriented reads, which must be sorted.
@@ -42,7 +114,7 @@ public:
     // in the sequence vector below. If an error occurs,
     // this throws a std::runtime_error.
     LocalAssembly7(
-        Method,
+        const Options&,
         const Anchors&,
         AnchorId anchorIdA,
         AnchorId anchorIdB,
@@ -55,32 +127,8 @@ public:
 
 private:
 
-
-    // EXPOSE WHEN CODE STABILIZES.
-
-    // For reads fixed on one side only, we use a sequence length
-    // equal to aExtend * offset + bExtend.
-    const double aExtend = 0.1;
-    const double bExtend = 30.;
-
-    // The starting and maximum k for De Bruijn graphs.
-    const uint64_t kStart = 32;
-    const uint64_t kMax = 256;
-
-    // Coefficient to compute edge weights for the DeBruijn graph.
-    // logP = logPCoefficient * coverage, with logPCoefficient in dB.
-    // weight = pow(10, -0.1 * logP).
-    // Optimal paths are computed using this weight.
-    const double logPCoefficient = 10.;
-
-    // These are used to decide if a k-mer should be split
-    // into multiple vertices.
-    const double aDrift = 0.02;
-    const double bDrift = 50.;
-
-
-
     // Parameters filled in by the constructor.
+    Options options;
     const Anchors& anchors;
     AnchorId anchorIdA;     // Left Anchor.
     AnchorId anchorIdB;     // Right Anchor.
@@ -182,6 +230,26 @@ private:
     void writeOrientedReads() const;
     void writeSequences() const;
 
+
+
+    // Get  sequenceIds for the SequenceInfos on both anchors,
+    // sorted by decreasing coverage.
+    // These are used for assembly with abpoa, poasta, or theseus.
+    // SequenceId is the index in the sequences vector above.
+    void getSequencesOnBothAnchors(vector<uint64_t>&) const;
+
+    // Same, but for SequennceInfos on one anchor only.
+    // These are used for local assembly with theseus.
+    void getSequencesOnAnchorA(vector<uint64_t>&) const;
+    void getSequencesOnAnchorB(vector<uint64_t>&) const;
+
+
+
+    // This returns the total coverage in sequences that are on both anchors.
+    uint64_t getTotalCommonCoverage() const;
+
+    void run();
+    void runFastPath();
     void runAdaptive();
     void runAbpoa();
     void runPoasta();
@@ -299,6 +367,17 @@ private:
 
     // Use a De Bruijn graph to assemble sequence.
     void assemble(uint64_t k, Graph&);
+
+    static char getCoverageCharacter(uint64_t coverage);
+    void writeConsensus(
+        const vector< pair<Base, uint64_t> >&,
+        uint64_t hilightCoverageThreshold) const;
+    void writeAlignment(
+        const vector< vector<AlignedBase> >& alignment,
+        const vector<AlignedBase>& alignedConsensus,
+        const vector< pair<Base, uint64_t> >& consensus,
+        const vector< pair<uint64_t, uint64_t> > sequenceIdsWithWeight
+        ) const;
     void writeSequence() const;
     void writeAssemblyPath(const Graph&) const;
 };
