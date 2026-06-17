@@ -251,6 +251,7 @@ private:
     void run();
     void runFastPath();
     void runAdaptive();
+    void runAbpoaOrPoasta(bool usePoasta);
     void runAbpoa();
     void runPoasta();
     void runTheseus();

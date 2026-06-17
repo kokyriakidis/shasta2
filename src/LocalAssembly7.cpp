@@ -5,6 +5,7 @@
 #include "deduplicate.hpp"
 #include "findReachableVertices.hpp"
 #include "graphvizToHtml.hpp"
+#include "poastaWrapper.hpp"
 #include "Reads.hpp"
 #include "tmpDirectory.hpp"
 using namespace shasta2;
@@ -171,7 +172,7 @@ void LocalAssembly7::runFastPath()
             coverageBest <<
             "<tr><td class=left>Fraction of oriented reads on both anchors "
             "that have that most frequent sequence<td class=centered>" <<
-            fastPathFraction <<
+            std::setprecision(2) << std::fixed << fastPathFraction <<
             "</table>";
     }
 
@@ -1702,17 +1703,33 @@ void LocalAssembly7::Graph::findMergeableParentsGroups(
 
 void LocalAssembly7::runAbpoa()
 {
+    runAbpoaOrPoasta(false);
+}
+
+
+
+void LocalAssembly7::runPoasta()
+{
+    runAbpoaOrPoasta(true);
+}
+
+
+
+void LocalAssembly7::runAbpoaOrPoasta(bool usePoasta)
+{
+    const string name = (usePoasta ? "Poasta" : "Abpoa");
+
     // Get the sequenceIds to be used, sorted in order of decreasing coverage.
     vector<uint64_t> sequenceIds;
     getSequencesOnBothAnchors(sequenceIds);
 
     if(html) {
         html <<
-            "<h3>Local assembly with abpoa</h3>"
+            "<h3>Local assembly with " << name << "</h3>"
             "The local assembly will use the following "
             "sequences of oriented reads on both anchors, "
-            "presented to abpoa in this order of decreasing coverage."
-            "<br>Each sequence is presented to abpoa a number of times "
+            "presented to " << name << " in this order of decreasing coverage."
+            "<br>Each sequence is presented to " << name << " a number of times "
             "equal to its coverage, with (implicit) weight 1."
             "<br><br><table>"
             "<tr><th>Sequence<br>id<th>Coverage<th>Length";
@@ -1729,35 +1746,39 @@ void LocalAssembly7::runAbpoa()
     }
 
 
-    // Abpoa does not support weights, so we have to enter each sequence
+    // Abpoa and poasta don't support weights, so we have to enter each sequence
     // a number of times equal to its coverage.
-    vector< vector<Base> > abpoaSequences;
-    vector< pair<uint64_t, uint64_t> > abpoaSequenceIdsWithWeight;
+    vector< vector<Base> > msaSequences;
+    vector< pair<uint64_t, uint64_t> > msaSequenceIdsWithWeight;
     for(const uint64_t sequenceId: sequenceIds) {
         const SequenceInfo& sequenceInfo = sequences[sequenceId];
         for(uint64_t i=0; i<sequenceInfo.coverage(); i++) {
-            abpoaSequences.push_back(sequenceInfo.sequence);
-            abpoaSequenceIdsWithWeight.push_back(make_pair(sequenceId, 1));
+            msaSequences.push_back(sequenceInfo.sequence);
+            msaSequenceIdsWithWeight.push_back(make_pair(sequenceId, 1));
         }
     }
     if(html) {
-        html << "<br>Total coverage for abpoa is " << abpoaSequences.size() << ".";
+        html << "<br>Total coverage for " << name << " is " << msaSequences.size() << ".";
     }
 
-    // Run abpoa.
+    // Run abpoa or poasta.
     vector< pair<Base, uint64_t> > consensus;
     vector< vector<AlignedBase> > alignment;
     vector<AlignedBase> alignedConsensus;
-    const bool computeAlignment = bool(html);
     const auto t0 = steady_clock::now();
-    abpoa(abpoaSequences, consensus, alignment, alignedConsensus, computeAlignment);
+    if(usePoasta) {
+        poasta(msaSequences, consensus, alignment, alignedConsensus);
+    } else {
+        const bool computeAlignment = bool(html);
+        abpoa(msaSequences, consensus, alignment, alignedConsensus, computeAlignment);
+    }
     const auto t1 = steady_clock::now();
-    SHASTA2_ASSERT(alignment.size() == abpoaSequenceIdsWithWeight.size());
+    SHASTA2_ASSERT(alignment.size() == msaSequenceIdsWithWeight.size());
 
     if(html) {
-        html << "<br>Abpoa completed in " << seconds(t1-t0) << " seconds.";
-        writeAlignment(alignment, alignedConsensus, consensus, abpoaSequenceIdsWithWeight);
-        writeConsensus(consensus, abpoaSequences.size());
+        html << "<br>" << name << " completed in " << seconds(t1-t0) << " seconds.";
+        writeAlignment(alignment, alignedConsensus, consensus, msaSequenceIdsWithWeight);
+        writeConsensus(consensus, msaSequences.size());
     }
 
     // Store the sequence.
@@ -1765,13 +1786,6 @@ void LocalAssembly7::runAbpoa()
         sequence.push_back(b);
     }
     success = true;
-}
-
-
-
-void LocalAssembly7::runPoasta()
-{
-    html << "<br>Local assembly with poasta not implemented.";
 }
 
 
