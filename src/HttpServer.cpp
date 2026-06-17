@@ -49,7 +49,7 @@ void HttpServer::explore(uint16_t port, bool localOnly, bool sameUserOnly)
     tcp::acceptor acceptor(context);
     tcp::endpoint endpoint = (
         localOnly ?
-        tcp::endpoint(ip::address::from_string("::ffff:127.0.0.1"), port) :
+        tcp::endpoint(boost::asio::ip::make_address("::ffff:127.0.0.1"), port) :
         tcp::endpoint(tcp::v6(), port)
     );
     acceptor.open(endpoint.protocol());
