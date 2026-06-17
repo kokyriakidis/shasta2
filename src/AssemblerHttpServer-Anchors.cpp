@@ -606,14 +606,12 @@ void Assembler::exploreLocalAnchorGraph(
         "<input type=text name=minCoverage style='text-align:center' required size=8 value=" <<
         minCoverage << ">";
 
-    if(completeAnchorGraphPointer) {
-        html << "<tr>"
-            "<th class=left>Use the complete AnchorGraph"
-            "<td class=centered>"
-            "<input type=checkbox name=useCompleteAnchorGraph" <<
-            (useCompleteAnchorGraph ? " checked" : "") <<
-            ">";
-    }
+    html << "<tr>"
+        "<th class=left>Use the complete AnchorGraph"
+        "<td class=centered>"
+        "<input type=checkbox name=useCompleteAnchorGraph" <<
+        (useCompleteAnchorGraph ? " checked" : "") <<
+        ">";
 
     html << "<tr>"
         "<th class=left>Include edges not marked for use in assembly"
@@ -633,7 +631,7 @@ void Assembler::exploreLocalAnchorGraph(
 
 
 
-    // If the anchor id are missing, stop here.
+    // If the anchor ids are missing, stop here.
     if(anchorIdsString.empty()) {
         return;
     }
@@ -657,7 +655,24 @@ void Assembler::exploreLocalAnchorGraph(
     deduplicate(anchorIds);
 
     // Access the AnchorGraph we are going to use.
-    const AnchorGraph& anchorGraph = useCompleteAnchorGraph ? *completeAnchorGraphPointer : *anchorGraphPointer;
+    shared_ptr<const AnchorGraph> anchorGraph;
+    if(useCompleteAnchorGraph) {
+        if(not completeAnchorGraphPointer) {
+            accessCompleteAnchorGraph();
+        }
+        if(not completeAnchorGraphPointer) {
+            throw runtime_error("The complete AnchorGraph is not available.");
+        }
+        anchorGraph = completeAnchorGraphPointer;
+    } else {
+        if(not anchorGraphPointer) {
+            accessAnchorGraph();
+        }
+        if(not anchorGraphPointer) {
+            throw runtime_error("The AnchorGraph is not available.");
+        }
+        anchorGraph = anchorGraphPointer;
+    }
 
 
     // If needed, get the AssemblyGraph for this assembly stage.
@@ -675,7 +690,7 @@ void Assembler::exploreLocalAnchorGraph(
     // away up to the specified distance.
     LocalAnchorGraph graph(
         anchors(),
-        anchorGraph,
+        *anchorGraph,
         anchorIds,
         distance,
 		minCoverage,

@@ -388,12 +388,15 @@ void Assembler::accessAllSoft()
         allDataAreAvailable = false;
     }
 
+    // The AnchorGraph is only accessed on demand.
+    /*
     try {
         accessAnchorGraph();
     } catch(const exception& e) {
         cout << "The AnchorGraph is not accessible." << endl;
         allDataAreAvailable = false;
     }
+    */
 
     try {
         accessCompleteAnchorGraph();
