@@ -123,12 +123,12 @@ void HttpServer::explore(uint16_t port, bool localOnly, bool sameUserOnly)
           tcp::iostream s;
           tcp::endpoint remoteEndpoint;
           boost::system::error_code errorCode;
-          acceptor.accept(*s.rdbuf(), remoteEndpoint, errorCode);
+          acceptor.accept(s.socket(), remoteEndpoint, errorCode);
           if(errorCode) {
               // If interrupted with Ctrl-C, we get here.
               cout << "\nError code from accept: " << errorCode.message() << endl;
-              s.close();        // Should not be necessary.
-              acceptor.close(); // Should not be necessary
+              s.close();       // Should not be necessary.
+              acceptor.close();     // Should not be necessary
               return;
           }
 
