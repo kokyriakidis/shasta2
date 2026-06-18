@@ -212,9 +212,8 @@ public:
         uint64_t minCoverage = 0) const;
 
 
-private:
-
     MemoryMapped::Vector<AnchorInfo> anchorInfos;
+private:
 
 
     // Data and functions used when constructing the Anchors.
