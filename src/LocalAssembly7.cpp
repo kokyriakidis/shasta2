@@ -7,6 +7,7 @@
 #include "graphvizToHtml.hpp"
 #include "poastaWrapper.hpp"
 #include "Reads.hpp"
+#include "theseusWrapper.hpp"
 #include "tmpDirectory.hpp"
 using namespace shasta2;
 
@@ -1194,7 +1195,7 @@ void LocalAssembly7::writeAlignment(
 
     // Add a row with aligned consensus.
     html <<
-        "<tr>"
+        "<tr style='background-color:LightCyan'>"
         "<th class=left>Consensus" <<
         "<td class=centered>" << totalWeight <<
         "<td class=centered>" << consensus.size() <<
@@ -1792,7 +1793,106 @@ void LocalAssembly7::runAbpoaOrPoasta(bool usePoasta)
 
 void LocalAssembly7::runTheseus()
 {
-    html << "<br>Local assembly with theseus not implemented.";
+    // Get the sequenceIds to be used, sorted in order of decreasing coverage.
+    vector<uint64_t> bothSidesFixedSequenceIds;
+    getSequencesOnBothAnchors(bothSidesFixedSequenceIds);
+    vector<uint64_t> leftFixedSequenceIds;
+    getSequencesOnAnchorA(leftFixedSequenceIds);
+    vector<uint64_t> rightFixedSequenceIds;
+    getSequencesOnAnchorB(rightFixedSequenceIds);
+
+    if(html) {
+        html <<
+            "<h3>Local assembly with Theseus</h3>"
+            "The local assembly will use the following "
+            "sequences of oriented reads on both anchors, "
+            "presented to Theseus in this order."
+            "<br><br><table>"
+            "<tr><th>Sequence<br>id<th>On<br>A<th>On<br>B<th>Coverage<th>Length";
+        for(const uint64_t sequenceId: bothSidesFixedSequenceIds) {
+            const SequenceInfo& sequenceInfo = sequences[sequenceId];
+            html <<
+                "<tr>"
+                "<td class=centered>" << sequenceId <<
+                "<td class=centered>&check;" <<
+                "<td class=centered>&check;" <<
+                "<td class=centered>" << sequenceInfo.coverage() <<
+                "<td class=centered>" << sequenceInfo.sequence.size();
+        }
+        for(const uint64_t sequenceId: leftFixedSequenceIds) {
+            const SequenceInfo& sequenceInfo = sequences[sequenceId];
+            html <<
+                "<tr>"
+                "<td class=centered>" << sequenceId <<
+                "<td class=centered>&check;" <<
+                "<td class=centered>" <<
+                "<td class=centered>" << sequenceInfo.coverage() <<
+                "<td class=centered>" << sequenceInfo.sequence.size();
+        }
+        for(const uint64_t sequenceId: rightFixedSequenceIds) {
+            const SequenceInfo& sequenceInfo = sequences[sequenceId];
+            html <<
+                "<tr>"
+                "<td class=centered>" << sequenceId <<
+                "<td class=centered>" <<
+                "<td class=centered>&check;" <<
+                "<td class=centered>" << sequenceInfo.coverage() <<
+                "<td class=centered>" << sequenceInfo.sequence.size();
+        }
+
+        html << "</table>";
+    }
+
+
+
+    // Gather the sequences to be passed to theseus.
+    uint64_t totalWeight = 0;
+    vector< pair<uint64_t, uint64_t> > msaSequenceIdsWithWeight;
+    vector< pair<vector<Base>, uint64_t> > bothSidesFixedSequences;
+    for(const uint64_t sequenceId: bothSidesFixedSequenceIds) {
+        const SequenceInfo& sequenceInfo = sequences[sequenceId];
+        const uint64_t coverage = sequenceInfo.coverage();
+        bothSidesFixedSequences.push_back(make_pair(sequenceInfo.sequence, coverage));
+        msaSequenceIdsWithWeight.push_back(make_pair(sequenceId, coverage));
+        totalWeight += coverage;
+    }
+    vector< pair<vector<Base>, uint64_t> > leftFixedSequences;
+    for(const uint64_t sequenceId: leftFixedSequenceIds) {
+        const SequenceInfo& sequenceInfo = sequences[sequenceId];
+        const uint64_t coverage = sequenceInfo.coverage();
+        leftFixedSequences.push_back(make_pair(sequenceInfo.sequence, coverage));
+        msaSequenceIdsWithWeight.push_back(make_pair(sequenceId, coverage));
+        totalWeight += coverage;
+    }
+    vector< pair<vector<Base>, uint64_t> > rightFixedSequences;
+    for(const uint64_t sequenceId: rightFixedSequenceIds) {
+        const SequenceInfo& sequenceInfo = sequences[sequenceId];
+        const uint64_t coverage = sequenceInfo.coverage();
+        rightFixedSequences.push_back(make_pair(sequenceInfo.sequence, coverage));
+        msaSequenceIdsWithWeight.push_back(make_pair(sequenceId, coverage));
+        totalWeight += coverage;
+    }
+    if(html) {
+        html << "<br>Total coverage for Theseus is " << totalWeight << ".";
+    }
+
+    // Run Theseus.
+    vector<Base> consensus;
+    vector<AlignedBase> alignedConsensus;
+    vector<uint64_t> coverage;
+    vector< vector<AlignedBase> > alignment;
+    const bool computeAlignment = bool(html);
+    const auto t0 = steady_clock::now();
+    theseus(
+        bothSidesFixedSequences, leftFixedSequences, rightFixedSequences,
+        consensus, alignedConsensus, coverage,
+        alignment, computeAlignment);
+    const auto t1 = steady_clock::now();
+    SHASTA2_ASSERT(alignment.size() == msaSequenceIdsWithWeight.size());
+
+    if(html) {
+        html << "<br>Theseus completed in " << seconds(t1-t0) << " seconds.";
+    }
 }
 
 
@@ -1814,6 +1914,8 @@ void LocalAssembly7::Options::setMethod(const string& s)
         method = Method::Abpoa;
     } else if(s == "Poasta") {
         method = Method::Poasta;
+    } else if(s == "Theseus") {
+        method = Method::Theseus;
     } else if(s == "DeBruijn") {
         method = Method::DeBruijn;
     } else {
@@ -1849,7 +1951,7 @@ void LocalAssembly7::getSequencesOnBothAnchors(
 
 
 
-// Same, but for SequennceInfos on one anchor only.
+// Same, but for SequenceInfos on one anchor only.
 // These are used for local assembly with theseus.
 void LocalAssembly7::getSequencesOnAnchorA(
     vector<uint64_t>& v) const
