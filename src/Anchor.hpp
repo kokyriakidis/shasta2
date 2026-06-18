@@ -212,9 +212,15 @@ public:
         uint64_t minCoverage = 0) const;
 
 
-private:
+public:
 
+    // Made public for dinara: its populateAnchors* functions build an Anchors
+    // object from external (mode3) anchor data by resizing anchorInfos and
+    // setting kmerIndex directly. Upstream shasta2 made this private when it
+    // stopped storing AnchorInfos; dinara still needs write access here.
     MemoryMapped::Vector<AnchorInfo> anchorInfos;
+
+private:
 
 
     // Data and functions used when constructing the Anchors.
