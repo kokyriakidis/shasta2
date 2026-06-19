@@ -334,9 +334,13 @@ void LocalAssembly6::assemble()
     vector< vector<AlignedBase> > alignment;
     const bool computeAlignment = bool(html);
     vector<AlignedBase> alignedConsensus;
-    vector<uint64_t> coverage;
+    vector< pair<Base, uint64_t> > consensus;
     theseus(fixedSequences, leftFixedSequences, rightFixedSequences,
-        sequence, alignedConsensus, coverage, alignment, computeAlignment);
+        consensus, alignment, alignedConsensus, computeAlignment);
+    sequence.clear();
+    for(const auto& [base, ignore]: consensus) {
+        sequence.push_back(base);
+    }
 
     if(not html) {
         return;
@@ -399,7 +403,7 @@ void LocalAssembly6::assemble()
         if(base.isGap()) {
             html << "-";
         } else {
-            const uint64_t c = coverage[nonAlignedPosition];
+            const uint64_t c = consensus[nonAlignedPosition].second;
             html << "<span title='";
             html << "Position " << nonAlignedPosition << " coverage " << c;
             html << "'";
@@ -426,7 +430,7 @@ void LocalAssembly6::assemble()
         if(alignedConsensus[position].isGap()) {
             html << "-";
         } else {
-            const uint64_t c = coverage[nonAlignedPosition];
+            const uint64_t c = consensus[nonAlignedPosition].second;
             char coverageCharacter = ' ';
             if(c < 10) {
                 coverageCharacter = char(c + '0');
@@ -454,7 +458,7 @@ void LocalAssembly6::assemble()
         "<tr><th class=left>Sequence<td class=left style='font-family:monospace;white-space:nowrap'>";
     for(uint64_t position=0; position<sequence.size(); position++) {
         html << "<span title='Position " << position <<
-            " coverage " << coverage[position] << "'";
+            " coverage " << consensus[position].second << "'";
         html << ">";
         html << sequence[position];
         html << "</span>";
@@ -463,7 +467,7 @@ void LocalAssembly6::assemble()
     html <<
         "<tr><th class=left>Coverage<td class=left style='font-family:monospace;white-space:nowrap'>";
     for(uint64_t position=0; position<sequence.size(); position++) {
-        const uint64_t c = coverage[position];
+        const uint64_t c = consensus[position].second;
         char coverageCharacter = ' ';
         if(c < 10) {
             coverageCharacter = char(c + '0');

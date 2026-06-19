@@ -24,12 +24,19 @@ namespace shasta2 {
         const vector< pair<vector<Base>, uint64_t> >& rightFixedSequences,
 
         // The consensus sequence and its coverage.
-        vector<Base>& consensus,
-        vector<AlignedBase>& alignedConsensus,
-        vector<uint64_t>& coverage,
+        vector< pair<Base, uint64_t> >& consensus,
 
-        // The alignment is only computed if computeAlignment is true.
+        // The computed alignment.
+        // Each element of the vector correspond to one of the input sequences,
+        // in the same order.
+        // These all have the same length, which equals the length of the aligned consensus.
         vector< vector<AlignedBase> >& alignment,
+
+        // The aligned consensus.
+        vector<AlignedBase>& alignedConsensus,
+
+        // Consensus and alignedConsensus are always computed.
+        // Alignment is only computed if this set to true.
         bool computeAlignment
     );
 

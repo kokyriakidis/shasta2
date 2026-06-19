@@ -1877,16 +1877,14 @@ void LocalAssembly7::runTheseus()
     }
 
     // Run Theseus.
-    vector<Base> consensus;
+    vector< pair<Base, uint64_t> > consensus;
     vector<AlignedBase> alignedConsensus;
-    vector<uint64_t> coverage;
     vector< vector<AlignedBase> > alignment;
     const bool computeAlignment = bool(html);
     const auto t0 = steady_clock::now();
     theseus(
         bothSidesFixedSequences, leftFixedSequences, rightFixedSequences,
-        consensus, alignedConsensus, coverage,
-        alignment, computeAlignment);
+        consensus, alignment, alignedConsensus, computeAlignment);
     const auto t1 = steady_clock::now();
     SHASTA2_ASSERT(alignment.size() == msaSequenceIdsWithWeight.size());
 

@@ -19,6 +19,7 @@ using namespace shasta2;
 void shasta2::theseus(
 
     // The input sequences fixed on both sides, with their coverage.
+    // They are passed to theseus in this order.
     const vector< pair<vector<Base>, uint64_t> >& fixedSequences,
 
     // The input sequences fixed on the left only, with their coverage.
@@ -28,12 +29,19 @@ void shasta2::theseus(
     const vector< pair<vector<Base>, uint64_t> >& rightFixedSequences,
 
     // The consensus sequence and its coverage.
-    vector<Base>& consensus,
-    vector<AlignedBase>& alignedConsensus,
-    vector<uint64_t>& coverage,
+    vector< pair<Base, uint64_t> >& consensus,
 
-    // The alignment is only computed if computeAlignment is true.
+    // The computed alignment.
+    // Each element of the vector correspond to one of the input sequences,
+    // in the same order.
+    // These all have the same length, which equals the length of the aligned consensus.
     vector< vector<AlignedBase> >& alignment,
+
+    // The aligned consensus.
+    vector<AlignedBase>& alignedConsensus,
+
+    // Consensus and alignedConsensus are always computed.
+    // Alignment is only computed if this set to true.
     bool computeAlignment
 )
 {
@@ -78,14 +86,16 @@ void shasta2::theseus(
     }
 
     // Get the consensus.
-    vector<int> coverageInt;
+    vector<int> coverage;
     string consensusString;
     string alignedConsensusString;
-    aligner.majority_voting_consensus(coverageInt, consensusString, alignedConsensusString);
-    consensus = vectorOfBasesFromString(consensusString);
+    aligner.majority_voting_consensus(coverage, consensusString, alignedConsensusString);
+    SHASTA2_ASSERT(coverage.size() == consensusString.size());
+    consensus.clear();
+    for(uint64_t i=0; i<consensusString.size(); i++) {
+        consensus.push_back(make_pair(Base::fromCharacter(consensusString[i]), coverage[i]));
+    }
     alignedConsensus = vectorOfAlignedBasesFromString(alignedConsensusString);
-    coverage.clear();
-    std::ranges::copy(coverageInt, back_inserter(coverage));
 
     // Also compute the alignment, if requested.
     if(computeAlignment) {
@@ -139,26 +149,18 @@ void shasta2::testTheseus()
 
 
 
-    vector<Base> consensus;
+    vector< pair<Base, uint64_t> > consensus;
     vector<AlignedBase> alignedConsensus;
-    vector<uint64_t> coverage;
     vector< vector<AlignedBase> > alignment;
     theseus(fixedSequences, leftFixedSequences, rightFixedSequences,
-        consensus, alignedConsensus, coverage, alignment, true);
+        consensus, alignment, alignedConsensus, true);
 
     cout << "Consensus with coverage:" << endl;
-    std::ranges::copy(consensus, ostream_iterator<Base>(cout));
-    cout << endl;
-    for(const uint64_t c: coverage) {
-        if(c < 10) {
-            cout << c;
-        } else if(c < 36) {
-            cout << char(c -10 + 'A');
-        } else {
-            cout << "*";
-        }
+    for(const auto& [base, coverage]: consensus) {
+        cout << base;
     }
     cout << endl;
+
 
 
     cout << "Alignment:" << endl;
