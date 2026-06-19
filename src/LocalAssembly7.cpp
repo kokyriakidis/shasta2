@@ -266,7 +266,6 @@ void LocalAssembly7::runDeBruijn(uint64_t k)
 
     // Assemble sequence.
     assemble(k, graph);
-    writeSequence();
     success = true;
 }
 
