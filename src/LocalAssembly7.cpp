@@ -1890,7 +1890,15 @@ void LocalAssembly7::runTheseus()
 
     if(html) {
         html << "<br>Theseus completed in " << seconds(t1-t0) << " seconds.";
+        writeAlignment(alignment, alignedConsensus, consensus, msaSequenceIdsWithWeight);
+        writeConsensus(consensus, orientedReads.size());
     }
+
+    // Store the sequence.
+    for(const auto& [b, ignore]: consensus) {
+        sequence.push_back(b);
+    }
+    success = true;
 }
 
 
