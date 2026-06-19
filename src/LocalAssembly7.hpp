@@ -370,9 +370,7 @@ private:
     void assemble(uint64_t k, Graph&);
 
     static char getCoverageCharacter(uint64_t coverage);
-    void writeConsensus(
-        const vector< pair<Base, uint64_t> >&,
-        uint64_t hilightCoverageThreshold) const;
+    void writeConsensus(const vector< pair<Base, uint64_t> >&) const;
     void writeAlignment(
         const vector< vector<AlignedBase> >& alignment,
         const vector<AlignedBase>& alignedConsensus,

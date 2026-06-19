@@ -1062,12 +1062,17 @@ void LocalAssembly7::assemble(uint64_t k, Graph& graph)
 
 
 
-void LocalAssembly7::writeConsensus(
-    const vector< pair<Base, uint64_t> >& consensus,
-    uint64_t hilightCoverageThreshold) const
+void LocalAssembly7::writeConsensus(const vector< pair<Base, uint64_t> >& consensus) const
 {
     if(not html) {
         return;
+    }
+
+    uint64_t minCoverage = std::numeric_limits<uint64_t>::max();
+    uint64_t maxCoverage = 0;
+    for(const auto& [ignore, coverage] : consensus) {
+        minCoverage = min(minCoverage, coverage);
+        maxCoverage = max(maxCoverage, coverage);
     }
 
     html <<
@@ -1082,9 +1087,6 @@ void LocalAssembly7::writeConsensus(
         const auto& [base, coverage] = consensus[position];
         html << "<span title='Position " << position <<
             " coverage " << coverage << "'";
-        if(coverage < hilightCoverageThreshold) {
-            html << " style='background-color:Pink'";
-        }
         html << ">";
         html << base;
         html << "</span>";
@@ -1093,23 +1095,16 @@ void LocalAssembly7::writeConsensus(
 
     // Write a line with coverage at each position.
     std::map<char, uint64_t> coverageLegend;
-    uint64_t minCoverage = std::numeric_limits<uint64_t>::max();
-    uint64_t maxCoverage = 0;
     html <<
         "<tr><th class=left>Coverage<td class=left style='font-family:monospace;white-space:nowrap'>";
     for(uint64_t position=0; position<consensus.size(); position++) {
         const auto& [ignore, coverage] = consensus[position];
-        minCoverage = min(coverage, minCoverage);
-        maxCoverage = max(coverage, maxCoverage);
         const char coverageCharacter = getCoverageCharacter(coverage);
         if((coverage > 9) and (coverage < 36)) {
             coverageLegend.insert(make_pair(coverageCharacter, coverage));
         }
         html << "<span title='Position " << position <<
             " coverage " << coverage << "'";
-        if(coverage < hilightCoverageThreshold) {
-            html << " style='background-color:Pink'";
-        }
         html << ">";
         html << coverageCharacter;
         html << "</span>";
@@ -1207,12 +1202,8 @@ void LocalAssembly7::writeAlignment(
             html << "<span style='background-color:Pink'>-</span>";
         } else {
             const uint64_t coverage = consensus[positionInConsensus].second;
-            const bool hasDiscordances = (coverage < totalWeight);
             html << "<span title='Position " << positionInConsensus <<
                 ", coverage " << coverage << "'";
-            if(hasDiscordances) {
-                html << " style='background-color:Pink'";
-            }
             html << ">" << b << "</span>";
             ++positionInConsensus;
         }
@@ -1233,12 +1224,8 @@ void LocalAssembly7::writeAlignment(
         } else {
             const uint64_t coverage = consensus[positionInConsensus].second;
             const char coverageCharacter = getCoverageCharacter(coverage);
-            const bool hasDiscordances = (coverage < totalWeight);
             html << "<span title='Position " << positionInConsensus <<
                 ", coverage " << coverage << "'";
-            if(hasDiscordances) {
-                html << " style='background-color:Pink'";
-            }
             html << ">" << coverageCharacter << "</span>";
             ++positionInConsensus;
         }
@@ -1779,7 +1766,7 @@ void LocalAssembly7::runAbpoaOrPoasta(bool usePoasta)
     if(html) {
         html << "<br>" << name << " completed in " << seconds(t1-t0) << " seconds.";
         writeAlignment(alignment, alignedConsensus, consensus, msaSequenceIdsWithWeight);
-        writeConsensus(consensus, msaSequences.size());
+        writeConsensus(consensus);
     }
 
     // Store the sequence.
@@ -1891,7 +1878,7 @@ void LocalAssembly7::runTheseus()
     if(html) {
         html << "<br>Theseus completed in " << seconds(t1-t0) << " seconds.";
         writeAlignment(alignment, alignedConsensus, consensus, msaSequenceIdsWithWeight);
-        writeConsensus(consensus, orientedReads.size());
+        writeConsensus(consensus);
     }
 
     // Store the sequence.
