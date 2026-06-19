@@ -44,7 +44,7 @@ public:
         double bExtend = 30.;
 
         // The Method chosen for the local assembly.
-        Method method;
+        Method method = Method::Adaptive;
         void setMethod(const string&);
 
         // If the number of oriented reads on both anchors is at least

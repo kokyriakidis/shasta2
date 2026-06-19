@@ -484,7 +484,7 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
         std::ranges::copy(anchorPair.orientedReadIds, back_inserter(orientedReadIds));
         deduplicate(orientedReadIds);
 
-        if(true) {
+        if(false) {
             LocalAssembly6 localAssembly(
                 anchors,
                 anchorPair.anchorIdA,

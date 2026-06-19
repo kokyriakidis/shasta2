@@ -1887,7 +1887,9 @@ void LocalAssembly7::runTheseus()
         bothSidesFixedSequences, leftFixedSequences, rightFixedSequences,
         consensus, alignment, alignedConsensus, computeAlignment);
     const auto t1 = steady_clock::now();
-    SHASTA2_ASSERT(alignment.size() == msaSequenceIdsWithWeight.size());
+    if(computeAlignment) {
+        SHASTA2_ASSERT(alignment.size() == msaSequenceIdsWithWeight.size());
+    }
 
     if(html) {
         html << "<br>Theseus completed in " << seconds(t1-t0) << " seconds.";
@@ -1926,7 +1928,7 @@ void LocalAssembly7::runAdaptive()
         return;
     }
 
-    // In us other cases, run theseus.
+    // In all other cases, run theseus.
     runTheseus();
 }
 
