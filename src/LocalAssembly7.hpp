@@ -248,6 +248,9 @@ private:
     // This returns the total coverage in sequences that are on both anchors.
     uint64_t getTotalCommonCoverage() const;
 
+    // This returns the maximul length of sequences that are on both anchors.
+    uint64_t getMaxLengthCommon() const;
+
     void run();
     void runFastPath();
     void runAdaptive();

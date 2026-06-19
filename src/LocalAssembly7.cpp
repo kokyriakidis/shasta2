@@ -121,6 +121,21 @@ uint64_t LocalAssembly7::getTotalCommonCoverage() const
 
 
 
+// This returns the maximul length of sequences that are on both anchors.
+uint64_t LocalAssembly7::getMaxLengthCommon() const
+{
+    uint64_t maxLength = 0;
+    for(const SequenceInfo& sequenceInfo: sequences) {
+        if(sequenceInfo.isOnAnchorA and sequenceInfo.isOnAnchorB) {
+            maxLength = max(maxLength, sequenceInfo.sequence.size());
+        }
+    }
+    return maxLength;
+
+}
+
+
+
 void LocalAssembly7::runFastPath()
 {
     if(not options.allowFastPath) {
@@ -1891,7 +1906,28 @@ void LocalAssembly7::runTheseus()
 
 void LocalAssembly7::runAdaptive()
 {
-    html << "<br>Adaptive local assembly not implemented.";
+    // Try fast path first, if allowed.
+    if(options.allowFastPath) {
+        runFastPath();
+        if(success) {
+            return;
+        }
+    }
+
+    // If we have enough oriented reads on both anchors,
+    // use abpoa or poasta.
+    if(getTotalCommonCoverage() >= options.commonCoverageThreshold) {
+
+        if(getMaxLengthCommon() <= options.maxAbpoaLength) {
+            runAbpoa();
+        } else {
+            runPoasta();
+        }
+        return;
+    }
+
+    // In us other cases, run theseus.
+    runTheseus();
 }
 
 
