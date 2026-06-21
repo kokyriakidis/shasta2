@@ -1,7 +1,9 @@
 // Shasta.
 #include "ReadFollowing4.hpp"
 #include "Journeys.hpp"
+#include "memoryInformation.hpp"
 #include "Options.hpp"
+#include "performanceLog.hpp"
 #include "RestrictedAnchorGraph.hpp"
 #include "TangleMatrix1.hpp"
 using namespace shasta2;
@@ -25,6 +27,7 @@ ReadFollower::ReadFollower(const AssemblyGraph& assemblyGraph) :
     assemblyGraph(assemblyGraph)
 {
     const bool debug = false;
+    writeMemoryStatistics("ReadFollower::ReadFollower begin");
 
     fillSupportMaps();
     findSegmentPairs();
@@ -46,7 +49,7 @@ ReadFollower::ReadFollower(const AssemblyGraph& assemblyGraph) :
     }
     searchGraphs[0].writeGraphviz(assemblyGraph, "Pruned");
 
-    if(debug) {
+    if(true) {
         for(uint64_t direction=0; direction<2; direction++) {
             cout << "After pruning, the read following search graph for direction " << direction <<
                 " has " << num_vertices(searchGraphs[direction]) <<
@@ -78,6 +81,8 @@ ReadFollower::ReadFollower(const AssemblyGraph& assemblyGraph) :
 
     graph.transitiveReduction();
     graph.writeGraphviz(assemblyGraph, "D");
+
+    writeMemoryStatistics("ReadFollower::ReadFollower end");
 }
 
 
@@ -157,8 +162,12 @@ void ReadFollower::createVertices()
 {
     const uint64_t lengthThreshold = assemblyGraph.options.readFollowingSegmentLengthThreshold;
 
+    uint64_t totalSegmentCount = 0;
+    uint longSegmentCount = 0;
+
     // Loop over all AssemblyGraph Segments.
     BGL_FORALL_EDGES(segment, assemblyGraph, AssemblyGraph) {
+        ++totalSegmentCount;
 
         // Get the length and check if it qualifies as long.
         const uint64_t length = assemblyGraph[segment].length();
@@ -172,8 +181,13 @@ void ReadFollower::createVertices()
         // If isLong, also add a vertex to the Graph.
         if(isLong) {
             graph.createVertex(segment, length);
+            ++longSegmentCount;
         }
     }
+
+    cout << "Read following found " << totalSegmentCount <<
+        " segment of which " << longSegmentCount <<
+        " are at least " << lengthThreshold << " bases long." << endl;
 }
 
 
@@ -954,9 +968,20 @@ void ReadFollower::findShortestPaths()
 {
     const bool debug = false;
 
+    const uint64_t longSegmentCount = graph.vertexMap.size();
+    performanceLog << timestamp << "ReadFollower::findShortestPaths begins with " <<
+        longSegmentCount << " long segments." << endl;
+    SHASTA2_ASSERT(longSegmentCount == num_vertices(graph));
+
     // Add edges.
     vector<Segment> path;
+    uint64_t doneCount = 0;
     BGL_FORALL_VERTICES(v0, graph, Graph) {
+        if((doneCount > 0) and ((doneCount % 1000) == 0)) {
+            performanceLog << timestamp << "Read following: " << doneCount << "/" << longSegmentCount << endl;
+        }
+        ++doneCount;
+
         const Segment segment0 = graph[v0].segment;
 
         // Loop for shortest paths in both directions.
@@ -1004,6 +1029,7 @@ void ReadFollower::findShortestPaths()
         }
     }
 
+    performanceLog << timestamp << "ReadFollower::findShortestPaths ends." << endl;
 }
 
 
@@ -1163,6 +1189,7 @@ vector<Segment> Graph::getAssemblyPath(edge_descriptor e) const
 void ReadFollower::updateAssemblyGraph(AssemblyGraph& assemblyGraph) const
 {
     const bool debug = false;
+    writeMemoryStatistics("ReadFollower::updateAssemblyGraph begin");
 
     // Create a disconnected version of each long Segment.
     std::map<Segment, Segment> longSegmentMap; // (oldSegment, newSegment) (They have the same id).
@@ -1311,6 +1338,8 @@ void ReadFollower::updateAssemblyGraph(AssemblyGraph& assemblyGraph) const
     for(const Segment oldSegment: usedShortSegments) {
         boost::remove_edge(oldSegment, assemblyGraph);
     }
+
+    writeMemoryStatistics("ReadFollower::updateAssemblyGraph end");
 }
 
 
