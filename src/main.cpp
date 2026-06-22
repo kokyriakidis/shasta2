@@ -68,7 +68,7 @@ namespace shasta2 {
             int argumentCount,
             char** arguments,
             uint64_t threadCount);
-        void writeHtmlLogFinalOutput(double elapsedTime, double cpuTime);
+        void writeHtmlLogFinalOutput(double elapsedTime, double cpuTime, uint64_t threadCount);
 
     }
 
@@ -321,7 +321,7 @@ void shasta2::main::assemble(
     const double systemCpuTime = 1.e-9 * double((
         boost::chrono::duration_cast<boost::chrono::nanoseconds>(systemClock1 - systemClock0)).count());
     const double cpuTime = userCpuTime + systemCpuTime;
-    writeHtmlLogFinalOutput(elapsedTime, cpuTime);
+    writeHtmlLogFinalOutput(elapsedTime, cpuTime, options.threadCount);
     writeHtmlEnd(htmlLog);
 
     cout << timestamp << "Assembly ends." << endl;
@@ -686,15 +686,21 @@ void shasta2::main::writeHtmlLogInitialOutput(
 
 
 
-void shasta2::main::writeHtmlLogFinalOutput(double elapsedTime, double cpuTime)
+void shasta2::main::writeHtmlLogFinalOutput(
+    double elapsedTime,
+    double cpuTime,
+    uint64_t threadCount)
 {
+    const uint64_t virtualProcessorCount = std::thread::hardware_concurrency();
+    if(threadCount == 0) {
+        threadCount = virtualProcessorCount;
+    }
+
     const uint64_t memoryBytes = getPeakMemoryUsage();
     const double memoryGiB = double(memoryBytes) / (1024. * 1024. * 1024);
 
     const double averageConcurrency =
         cpuTime / elapsedTime;
-    const double averageCpuUtilization =
-        averageConcurrency / double(std::thread::hardware_concurrency());
 
     const auto oldPrecision = htmlLog.precision(2);
     const auto oldFlags = htmlLog.setf(std::ios_base::fixed, std::ios_base::floatfield);
@@ -703,14 +709,22 @@ void shasta2::main::writeHtmlLogFinalOutput(double elapsedTime, double cpuTime)
         "<h2>Performance summary</h2>\n"
         "<table>\n"
         "<tr><th class=left>End time<td>" << timestamp <<
-        "<tr><th class=left>Elapsed time<td>" << elapsedTime << " s, " <<
-        elapsedTime / 60. << " m, " << elapsedTime / 3600. << " h\n"
-        "<tr><th class=left>CPU time<td>" << cpuTime << " s, " <<
-        cpuTime / 60. << " m, " << cpuTime / 3600. << " h\n"
+        "<tr><th class=left>Elapsed time<td>" << elapsedTime << " s = " <<
+        elapsedTime / 60. << " m = " << elapsedTime / 3600. << " h\n"
+        "<tr><th class=left>CPU time<td>" << cpuTime << " s = " <<
+        cpuTime / 60. << " m = " << cpuTime / 3600. << " h\n"
         "<tr><th class=left>Average concurrency<td>" << averageConcurrency << "\n" <<
-        "<tr><th class=left>Average CPU utilization<td>" << averageCpuUtilization << "\n" <<
-        "<tr><th class=left>Peak virtual memory<td>" << memoryBytes << " bytes, " <<
-        double(memoryBytes) / 1.e9 << " GB, " <<
+
+        "<tr><th class=left>Average CPU utilization<br>(relative to " <<
+        threadCount << " threads)<td>" <<
+        averageConcurrency/double(threadCount) << "\n" <<
+
+        "<tr><th class=left>Average CPU utilization<br>(relative to " <<
+        virtualProcessorCount << " virtual processors)<td>" <<
+        averageConcurrency/double(virtualProcessorCount) << "\n" <<
+
+        "<tr><th class=left>Peak virtual memory<td>" << memoryBytes << " bytes = " <<
+        double(memoryBytes) / 1.e9 << " GB = " <<
         memoryGiB << " GiB\n" <<
         "</table>\n";
 
