@@ -4,7 +4,7 @@
 
 ## Clone and build
 
-* Known to work on Ubuntu 24.04.
+* Known to work on Ubuntu 24.04 and 26.04.
 * Assumes `python3` and `git` are available.
 
 ```
@@ -18,7 +18,7 @@ make install
 ```
 
 * The call to `InstallBuildPrerequisites.py` requires `sudo` access and will ask for a password if needed.
-* It installs a few required packages using `apt_get` and installs the `abpoa` library in `~/.shasta2Build/abpoa`.
+* It installs a few required packages using `apt_get` and installs the `abpoa`, `poasta`, and `theseus` libraries in `~/.shasta2Build`.
 
 This creates:
 * Static executable `shasta2Build/shasta2-install/bin/shasta2`. It is highly portable to other 64-bit `x86_64` Linux systems. It can be moved to other systems and immediately used without requiring installation.
