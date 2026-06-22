@@ -81,11 +81,11 @@ VirtualMemoryInfo shasta2::getVirtualMemoryInfo()
 
 void MallocInfo::write(ostream& s) const
 {
-    s << "Heap size " << heapSize << "\n";
-    s << "Heap used " << heapUsed() << "\n";
-    s << "Heap free " << heapFree << "\n";
-    s << "Maximum heap size " << maxHeapSize << "\n";
-    s << "Mmap size " << mmapSize << "\n";
+    s << "    Heap size " << heapSize << "\n";
+    s << "    Heap used " << heapUsed() << "\n";
+    s << "    Heap free " << heapFree << "\n";
+    s << "    Maximum heap size " << maxHeapSize << "\n";
+    s << "    Mmap size " << mmapSize << "\n";
     s << flush;
 }
 
@@ -185,8 +185,8 @@ void shasta2::writeMemoryStatistics(const string& name)
     performanceLog <<
         timestamp <<
         "At " << name << ":\n" <<
-        "Virtual memory (current) " << virtualMemoryInfo.current << "\n" <<
-        "Virtual memory (peak) " << virtualMemoryInfo.peak << "\n";
+        "    Virtual memory (current) " << virtualMemoryInfo.current << "\n" <<
+        "    Virtual memory (peak) " << virtualMemoryInfo.peak << "\n";
     getMallocInfo().write(performanceLog);
 
 }
