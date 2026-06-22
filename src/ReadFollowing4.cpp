@@ -68,7 +68,8 @@ ReadFollower::ReadFollower(const AssemblyGraph& assemblyGraph) :
 
     // Use the SearchGraphs to find shortest paths between long segments
     // and store them in the Graph.
-    findShortestPaths();
+    // findShortestPaths();
+    findShortestPathsMultithreaded(assemblyGraph.options.threadCount);
 
     if(debug) {
         cout << "After finding shortest paths, the read following graph has " << num_vertices(graph) <<
@@ -1030,6 +1031,95 @@ void ReadFollower::findShortestPaths()
     }
 
     performanceLog << timestamp << "ReadFollower::findShortestPaths ends." << endl;
+}
+
+
+
+// Use the SearchGraphs to find shortest paths between long segments
+// and store them in the Graph.
+// Multithreaded version.
+void ReadFollower::findShortestPathsMultithreaded(uint64_t threadCount)
+{
+    if(threadCount == 0) {
+        threadCount = std::thread::hardware_concurrency();
+    }
+    FindShortestPathsData& data = findShortestPathsData;
+
+    // Store a vector with all the Graph vertices to be processed.
+    data.graphVertices.clear();
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        data.graphVertices.push_back(v);
+    }
+    performanceLog << timestamp << "ReadFollower::findShortestPathsMultithreaded begins with " <<
+        data.graphVertices.size() << " long segments." << endl;
+
+    // Process them in parallel.
+    const uint64_t batchSize = 1;
+    setupLoadBalancing(data.graphVertices.size(), batchSize);
+    runThreads(&ReadFollower::findShortestPathsThreadFunction, threadCount);
+
+    performanceLog << timestamp << "ReadFollower::findShortestPathsMultithreaded ends." << endl;
+}
+
+
+
+void ReadFollower::findShortestPathsThreadFunction(uint64_t)
+{
+    FindShortestPathsData& data = findShortestPathsData;
+    vector<Segment> path;
+
+    // Loop over batches assigned to this thread.
+    uint64_t begin, end;
+    while(getNextBatch(begin, end)) {
+
+        // Loop over vertices in this batch.
+        for(uint64_t i=begin; i!=end; i++) {
+            if((i % 1000) == 0) {
+                std::lock_guard<std::mutex> lock(mutex);
+                performanceLog << timestamp << "Read following: " << i << "/" << data.graphVertices.size() << endl;
+            }
+            const Graph::vertex_descriptor v0 = data.graphVertices[i];
+            const Segment segment0 = graph[v0].segment;
+
+            // Loop for shortest paths in both directions.
+            for(uint64_t direction=0; direction<2; direction++) {
+                findShortestPath(segment0, direction, path);
+
+                // Discard a trivial path.
+                if(path.size() < 2) {
+                    continue;
+                }
+
+                const Segment s0 = path.front();
+                const Segment s1 = path.back();
+                if(direction == 0) {
+                    SHASTA2_ASSERT(s0 == segment0);
+                } else {
+                    SHASTA2_ASSERT(s1 == segment0);
+                }
+
+
+                // For all operations on the Graph we need to acquire the mutex.
+                std::lock_guard<std::mutex> lock(mutex);
+
+                // Now we can update the Graph.
+                const Graph::vertex_descriptor u0 = graph.vertexMap.at(s0);
+                const Graph::vertex_descriptor u1 = graph.vertexMap.at(s1);
+
+                // Look for a Graph edge between the u0 and u1.
+                Graph::edge_descriptor e;
+                bool edgeExists;
+                tie(e, edgeExists) = boost::edge(u0, u1, graph);
+                if(not edgeExists) {
+                    tie(e, edgeExists) = boost::add_edge(u0, u1, graph);
+                }
+                SHASTA2_ASSERT(edgeExists);
+
+                // Store the path.
+                graph[e].assemblyPaths[direction] = path;
+            }
+        }
+    }
 }
 
 

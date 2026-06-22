@@ -273,9 +273,19 @@ public:
     // Information on intervening short segments is stored in the edges.
     Graph graph;
 
+
+
     // Use the SearchGraphs to find shortest paths between long segments
     // and store them in the Graph.
     void findShortestPaths();
+    void findShortestPathsMultithreaded(uint64_t threadCount);
+    void findShortestPathsThreadFunction(uint64_t threadId);
+    class FindShortestPathsData {
+    public:
+        vector<Graph::vertex_descriptor> graphVertices;
+    };
+    FindShortestPathsData findShortestPathsData;
+
 
 
     void createVertices();
