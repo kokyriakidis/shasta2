@@ -307,6 +307,8 @@ void Assembler::createAssemblyGraph(const Options& options, bool removeAnchorGra
         *anchorGraphPointer,
         options);
 
+    writeMemoryStatistics("Before removing AnchorGraph");
+
     if(removeAnchorGraph) {
         anchorGraphPointer = 0;
     }

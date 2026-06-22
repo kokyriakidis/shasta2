@@ -10,6 +10,7 @@
 #include "graphvizToHtml.hpp"
 #include "Journeys.hpp"
 #include "Markers.hpp"
+#include "memoryInformation.hpp"
 #include "orderPairs.hpp"
 #include "partialTransitiveReduction.hpp"
 #include "performanceLog.hpp"
@@ -55,7 +56,7 @@ AnchorGraph::AnchorGraph(
     MappedMemoryOwner(anchors),
     MultithreadedObject<AnchorGraph>(*this)
 {
-    performanceLog << timestamp << "AnchorGraph construction begins." << endl;
+    writeMemoryStatistics("AnchorGraph construction begins");
     AnchorGraph& anchorGraph = *this;
 
     // Create the vertices, one for each AnchorId.
@@ -83,7 +84,8 @@ AnchorGraph::AnchorGraph(
 
     cout << "The anchor graph has " << num_vertices(*this) <<
         " vertices and " << num_edges(*this) << " edges." << endl;
-    performanceLog << timestamp << "AnchorGraph construction ends." << endl;
+
+    writeMemoryStatistics("AnchorGraph construction ends");
 }
 
 
