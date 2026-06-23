@@ -312,6 +312,7 @@ AnchorGraph::vertex_descriptor AnchorGraph::reverseComplement(vertex_descriptor 
     const AnchorId anchorId = v;
     const AnchorId anchorIdRc = reverseComplementAnchorId(anchorId);
     const vertex_descriptor vRc = anchorIdRc;
+    SHASTA2_ASSERT(vRc != v);
     return vRc;
 }
 
@@ -330,6 +331,7 @@ AnchorGraph::edge_descriptor AnchorGraph::reverseComplement(edge_descriptor e) c
 
     auto[eRc, edgeExists] = boost::edge(v1Rc, v0Rc, anchorGraph);
     SHASTA2_ASSERT(edgeExists);
+    SHASTA2_ASSERT(eRc != e);
 
     return eRc;
 }
