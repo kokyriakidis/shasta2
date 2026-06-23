@@ -138,6 +138,11 @@ public:
     void transitiveReduction(
         uint64_t transitiveReductionMaxEdgeCoverage,
         uint64_t maxDistance);
+
+    // Return the reverse complement of a vertex or edge.
+    vertex_descriptor reverseComplement(vertex_descriptor) const;
+    edge_descriptor reverseComplement(edge_descriptor) const;
+
 private:
     bool transitiveReductionCanRemove(edge_descriptor, uint64_t transitiveReductionMaxDistance) const;
 public:

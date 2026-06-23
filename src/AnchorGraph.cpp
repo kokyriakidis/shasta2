@@ -73,7 +73,7 @@ AnchorGraph::AnchorGraph(
         AnchorPair::createChildren(anchors, journeys, anchorIdA, 0, anchorPairs);
         for(const AnchorPair& anchorPair: anchorPairs) {
             if(anchorPair.size() >= minEdgeCoverage) {
-                edge_descriptor e = addEdge(anchorIdA, anchorPair.anchorIdB, anchorPair.orientedReadIds, true);
+                addEdge(anchorIdA, anchorPair.anchorIdB, anchorPair.orientedReadIds, true);
             }
         }
     }
@@ -301,4 +301,35 @@ bool AnchorGraph::transitiveReductionCanRemove(
             " not flagged by transitive reduction." << endl;
     }
     return false;
+}
+
+
+
+// Return the reverse complement of a vertex.
+// In the AnchorGraph, vertex_descriptors are AnchorIds.
+AnchorGraph::vertex_descriptor AnchorGraph::reverseComplement(vertex_descriptor v) const
+{
+    const AnchorId anchorId = v;
+    const AnchorId anchorIdRc = reverseComplementAnchorId(anchorId);
+    const vertex_descriptor vRc = anchorIdRc;
+    return vRc;
+}
+
+
+
+// Return the reverse complement of an edge.
+AnchorGraph::edge_descriptor AnchorGraph::reverseComplement(edge_descriptor e) const
+{
+    const AnchorGraph& anchorGraph = *this;
+
+    const vertex_descriptor v0 = source(e, anchorGraph);
+    const vertex_descriptor v1 = target(e, anchorGraph);
+
+    const vertex_descriptor v0Rc = reverseComplement(v0);
+    const vertex_descriptor v1Rc = reverseComplement(v1);
+
+    auto[eRc, edgeExists] = boost::edge(v1Rc, v0Rc, anchorGraph);
+    SHASTA2_ASSERT(edgeExists);
+
+    return eRc;
 }
