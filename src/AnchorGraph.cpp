@@ -73,10 +73,7 @@ AnchorGraph::AnchorGraph(
         AnchorPair::createChildren(anchors, journeys, anchorIdA, 0, anchorPairs);
         for(const AnchorPair& anchorPair: anchorPairs) {
             if(anchorPair.size() >= minEdgeCoverage) {
-                edge_descriptor e;
-                tie(e, ignore) = add_edge(anchorIdA, anchorPair.anchorIdB,
-                    AnchorGraphEdge(anchorPair, nextEdgeId++), anchorGraph);
-                anchorGraph[e].useForAssembly = true;
+                edge_descriptor e = addEdge(anchorIdA, anchorPair.anchorIdB, anchorPair.orientedReadIds, true);
             }
         }
     }

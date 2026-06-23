@@ -44,33 +44,42 @@ public:
     AnchorId anchorIdA = invalid<AnchorId>;
     AnchorId anchorIdB = invalid<AnchorId>;
 
-private:
-    friend class AnchorGraph;
-    vector<OrientedReadId> orientedReadIds;
-public:
+    // Begin/end indexes in the AnchorGraph::orientedReadIds vector
+    // for the OrientedReadIds that belong to this edge.
+    uint64_t orientedReadIdsBegin;
+    uint64_t orientedReadIdsEnd;
 
     uint64_t id = invalid<uint64_t>;
     bool useForAssembly = false;
 
-    AnchorGraphEdge(const AnchorPair& anchorPair, uint64_t id) :
-        anchorIdA(anchorPair.anchorIdA),
-        anchorIdB(anchorPair.anchorIdB),
-        orientedReadIds(anchorPair.orientedReadIds),
-        id(id)
+    AnchorGraphEdge(
+        AnchorId anchorIdA,
+        AnchorId anchorIdB,
+        uint64_t orientedReadIdsBegin,
+        uint64_t orientedReadIdsEnd,
+        uint64_t id,
+        bool useForAssembly) :
+        anchorIdA(anchorIdA),
+        anchorIdB(anchorIdB),
+        orientedReadIdsBegin(orientedReadIdsBegin),
+        orientedReadIdsEnd(orientedReadIdsEnd),
+        id(id),
+        useForAssembly(useForAssembly)
     {}
 
     AnchorGraphEdge() {}
 
     uint64_t coverage() const
     {
-        return orientedReadIds.size();
+        return orientedReadIdsEnd - orientedReadIdsBegin;
     }
 
     template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
     {
         ar & anchorIdA;
         ar & anchorIdB;
-        ar & orientedReadIds;
+        ar & orientedReadIdsBegin;
+        ar & orientedReadIdsEnd;
         ar & id;
         ar & useForAssembly;
     }
@@ -91,15 +100,39 @@ public:
     // Constructor from binary data.
     AnchorGraph(const MappedMemoryOwner&, const string& name);
 
-    uint64_t nextEdgeId = 0;
-
     AnchorPair getAnchorPair(edge_descriptor e) const
     {
         const AnchorGraphEdge& edge = (*this)[e];
         return AnchorPair(
             edge.anchorIdA,
             edge.anchorIdB,
-            span<const OrientedReadId>(edge.orientedReadIds.begin(), edge.orientedReadIds.end()));
+            span<const OrientedReadId>(
+                orientedReadIds.begin() + edge.orientedReadIdsBegin,
+                orientedReadIds.begin() + edge.orientedReadIdsEnd));
+    }
+
+    // To reduce memory fragmentation, the OrientedReadIds of all edges
+    // are stored together in this vector.
+    // AnchorGraphEdge::orientedReadIdsBegin and AnchorGraphEdge::orientedReadIdsEnd
+    // are indexes that identify the OrientedReadIds that belong to each edge.
+    vector<OrientedReadId> orientedReadIds;
+
+    uint64_t nextEdgeId = 0;
+    edge_descriptor addEdge(
+        AnchorId anchorIdA,
+        AnchorId anchorIdB,
+        const vector<OrientedReadId>& edgeOrientedReadIds,
+        bool useForAssembly
+        )
+    {
+        const uint64_t orientedReadIdsBegin = orientedReadIds.size();
+        std::ranges::copy(edgeOrientedReadIds, back_inserter(orientedReadIds));
+        const uint64_t orientedReadIdsEnd = orientedReadIds.size();
+        auto[e, ignore] = add_edge(
+            anchorIdA, anchorIdB,
+            AnchorGraphEdge(anchorIdA, anchorIdB, orientedReadIdsBegin, orientedReadIdsEnd, nextEdgeId++, useForAssembly),
+            *this);
+        return e;
     }
 
     void transitiveReduction(
@@ -114,6 +147,7 @@ public:
     template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
     {
         ar & boost::serialization::base_object<AnchorGraphBaseClass>(*this);
+        ar & orientedReadIds;
     }
     void save(ostream&) const;
     void load(istream&);
