@@ -120,7 +120,7 @@ AssemblyGraph::AssemblyGraph(
         // Each AnchorGraph edge in the chain contributes a step to this AssemblyGraph edge.
         for(const AnchorGraph::edge_descriptor eA: chain) {
             const AnchorGraphEdge& edgeA = anchorGraph[eA];
-            edge.emplace_back(edgeA.anchorPair, edgeA.offset);
+            edge.emplace_back(edgeA.anchorPair, edgeA.anchorPair.getAverageOffset(anchors));
         }
     }
 

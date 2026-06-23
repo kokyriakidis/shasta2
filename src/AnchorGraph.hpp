@@ -42,13 +42,11 @@ namespace shasta2 {
 class shasta2::AnchorGraphEdge {
 public:
     AnchorPair anchorPair;
-    uint64_t offset = invalid<uint64_t>;
     uint64_t id = invalid<uint64_t>;
     bool useForAssembly = false;
 
-    AnchorGraphEdge(const AnchorPair& anchorPair, uint64_t offset, uint64_t id) :
+    AnchorGraphEdge(const AnchorPair& anchorPair, uint64_t id) :
         anchorPair(anchorPair),
-        offset(offset),
         id(id)
     {}
 
@@ -59,7 +57,6 @@ public:
     template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
     {
         ar & anchorPair;
-        ar & offset;
         ar & id;
         ar & useForAssembly;
     }

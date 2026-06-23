@@ -73,10 +73,9 @@ AnchorGraph::AnchorGraph(
         AnchorPair::createChildren(anchors, journeys, anchorIdA, 0, anchorPairs);
         for(const AnchorPair& anchorPair: anchorPairs) {
             if(anchorPair.size() >= minEdgeCoverage) {
-                const uint64_t offset = anchorPair.getAverageOffset(anchors);
                 edge_descriptor e;
                 tie(e, ignore) = add_edge(anchorIdA, anchorPair.anchorIdB,
-                    AnchorGraphEdge(anchorPair, offset, nextEdgeId++), anchorGraph);
+                    AnchorGraphEdge(anchorPair, nextEdgeId++), anchorGraph);
                 anchorGraph[e].useForAssembly = true;
             }
         }
