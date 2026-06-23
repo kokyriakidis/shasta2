@@ -343,7 +343,7 @@ void LocalAnchorGraph::writeGraphviz(
         const AnchorGraphEdge& edgeG = anchorGraph[eG];
         SHASTA2_ASSERT(edgeG.anchorIdA == anchorId0);
         SHASTA2_ASSERT(edgeG.anchorIdB == anchorId1);
-        const AnchorPair anchorPair = edgeG.getAnchorPair();
+        const AnchorPair anchorPair = anchorGraph.getAnchorPair(eG);
 
         const uint64_t coverage = edgeG.coverage();
         const uint64_t offset = anchorPair.getAverageOffset(anchors);
@@ -755,8 +755,7 @@ void LocalAnchorGraph::computeLayout(const LocalAnchorGraphDisplayOptions& optio
     std::map<edge_descriptor, double> edgeLengthMap;
     BGL_FORALL_EDGES(eL, graph, LocalAnchorGraph) {
         const LocalAnchorGraphEdge& edgeL = graph[eL];
-        const AnchorGraphEdge& edgeG = anchorGraph[edgeL.eG];
-        const uint64_t offset = edgeG.getAnchorPair().getAverageOffset(anchors);
+        const uint64_t offset = anchorGraph.getAnchorPair(edgeL.eG).getAverageOffset(anchors);
 
         const double displayLength =
             options.minimumEdgeLength +
@@ -1007,7 +1006,7 @@ void LocalAnchorGraph::writeEdges(
     BGL_FORALL_EDGES(eL, graph, LocalAnchorGraph) {
         const LocalAnchorGraphEdge& edgeL = graph[eL];
         const AnchorGraphEdge& edgeG = anchorGraph[edgeL.eG];
-        const AnchorPair anchorPair = edgeG.getAnchorPair();
+        const AnchorPair anchorPair = anchorGraph.getAnchorPair(edgeL.eG);
         const uint64_t coverage = anchorPair.orientedReadIds.size();
         const uint64_t offset = anchorPair.getAverageOffset(anchors);
 
@@ -1098,8 +1097,7 @@ void LocalAnchorGraph::writeEdges(
     html << ">";
     BGL_FORALL_EDGES(eL, graph, LocalAnchorGraph) {
         const LocalAnchorGraphEdge& edgeL = graph[eL];
-        const AnchorGraphEdge& edgeG = anchorGraph[edgeL.eG];
-        const AnchorPair& anchorPair = edgeG.getAnchorPair();
+        const AnchorPair anchorPair = anchorGraph.getAnchorPair(edgeL.eG);
         const uint64_t coverage = anchorPair.orientedReadIds.size();
 
         const vertex_descriptor v0 = source(eL, graph);

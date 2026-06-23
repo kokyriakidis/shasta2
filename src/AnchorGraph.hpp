@@ -43,7 +43,11 @@ class shasta2::AnchorGraphEdge {
 public:
     AnchorId anchorIdA = invalid<AnchorId>;
     AnchorId anchorIdB = invalid<AnchorId>;
+
+private:
+    friend class AnchorGraph;
     vector<OrientedReadId> orientedReadIds;
+public:
 
     uint64_t id = invalid<uint64_t>;
     bool useForAssembly = false;
@@ -60,11 +64,6 @@ public:
     uint64_t coverage() const
     {
         return orientedReadIds.size();
-    }
-
-    AnchorPair getAnchorPair() const
-    {
-        return AnchorPair(anchorIdA, anchorIdB, orientedReadIds);
     }
 
     template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
@@ -93,6 +92,15 @@ public:
     AnchorGraph(const MappedMemoryOwner&, const string& name);
 
     uint64_t nextEdgeId = 0;
+
+    AnchorPair getAnchorPair(edge_descriptor e) const
+    {
+        const AnchorGraphEdge& edge = (*this)[e];
+        return AnchorPair(
+            edge.anchorIdA,
+            edge.anchorIdB,
+            span<const OrientedReadId>(edge.orientedReadIds.begin(), edge.orientedReadIds.end()));
+    }
 
     void transitiveReduction(
         uint64_t transitiveReductionMaxEdgeCoverage,

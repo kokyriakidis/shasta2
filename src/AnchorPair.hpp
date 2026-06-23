@@ -6,6 +6,7 @@
 #include "ReadId.hpp"
 
 // Standard library.
+#include "span.hpp"
 #include "utility.hpp"
 #include "vector.hpp"
 
@@ -55,6 +56,15 @@ public:
         anchorIdA(anchorIdA),
         anchorIdB(anchorIdB),
         orientedReadIds(orientedReadIds)
+    {}
+
+    AnchorPair(
+        AnchorId anchorIdA,
+        AnchorId anchorIdB,
+        const span<const OrientedReadId>& orientedReadIds) :
+        anchorIdA(anchorIdA),
+        anchorIdB(anchorIdB),
+        orientedReadIds(orientedReadIds.begin(), orientedReadIds.end())
     {}
 
     // This finds AnchorPairs as follows:
