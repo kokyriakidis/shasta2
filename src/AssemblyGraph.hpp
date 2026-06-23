@@ -14,6 +14,7 @@
 // Boost libraries.
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/adj_list_serialize.hpp>
+#include <boost/serialization/map.hpp>
 #include <boost/serialization/vector.hpp>
 
 // Standard library.
@@ -35,6 +36,8 @@ namespace shasta2 {
         boost::bidirectionalS,
         AssemblyGraphVertex,
         AssemblyGraphEdge>;
+
+    const AssemblyGraphBaseClass::edge_descriptor assemblyGraphNullEdge = {0, 0, 0};
 
     class AnchorGraph;
     class Anchors;
@@ -59,6 +62,9 @@ public:
     AnchorId anchorId = invalid<AnchorId>;
     uint64_t id = invalid<uint64_t>;
 
+    // The reverse complement of this vertex.
+    AssemblyGraphBaseClass::vertex_descriptor vRc = AssemblyGraphBaseClass::null_vertex();
+
     AssemblyGraphVertex(AnchorId anchorId, uint64_t id) :
         anchorId(anchorId), id(id) {}
     AssemblyGraphVertex() {}
@@ -67,6 +73,10 @@ public:
     {
         ar & anchorId;
         ar & id;
+
+        // We can't serialize vRc.
+        // See AssemblyGraph::serialize, which serializes
+        // reverse complement ids instead of vertex descriptors.
     }
 };
 
@@ -93,6 +103,10 @@ public:
         ar & anchorPair;
         ar & offset;
         ar & sequence;
+
+        // We can't serialize eRc.
+        // See AssemblyGraph::serialize, which serializes
+        // reverse complement ids instead of vertex descriptors.
     }
 };
 
@@ -102,6 +116,12 @@ class shasta2::AssemblyGraphEdge : public vector<AssemblyGraphEdgeStep> {
 public:
     uint64_t id = invalid<uint64_t>;
     bool wasAssembled = false;
+
+    // The reverse complement of this edge.
+    AssemblyGraphBaseClass::edge_descriptor eRc = assemblyGraphNullEdge;
+
+    // The reverse complement of this edge.
+    // AssemblyGraphBaseClass::edge_descriptor eRc;
 
     AssemblyGraphEdge(uint64_t id = invalid<uint64_t>) : id(id) {}
 
@@ -128,6 +148,10 @@ public:
         ar & id;
         ar & wasAssembled;
         ar & annotation;
+
+        // We can't serialize eRc.
+        // See AssemblyGraph::serialize, which serializes
+        // reverse complement ids instead of vertex descriptors.
     }
 
     void swapSteps(AssemblyGraphEdge& that)
@@ -421,10 +445,77 @@ private:
     friend class boost::serialization::access;
     template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
     {
+        AssemblyGraph& assemblyGraph = *this;
+
         ar & boost::serialization::base_object<AssemblyGraphBaseClass>(*this);
         ar & nextVertexId;
         ar & nextEdgeId;
+
+        // Serialize reverse complement vertices and edges.
+        // Use ids instead of vertex_descriptors and edge descriptors
+        // because vertex_descriptors and edge_descriptors cannot be serialized.
+        if(Archive::is_saving::value) {
+
+            // Map the id of a vertex to the id of its reverse complement,
+            // then save this map.
+            std::map<uint64_t, uint64_t> rcVertexMap;
+            BGL_FORALL_VERTICES(v, assemblyGraph, AssemblyGraph) {
+                const AssemblyGraphVertex& vertex = assemblyGraph[v];
+                const vertex_descriptor vRc = vertex.vRc;
+                if(vRc != null_vertex()) {
+                    rcVertexMap.insert(make_pair(vertex.id, assemblyGraph[vRc].id));
+                }
+            }
+            ar & rcVertexMap;
+
+            // Map the id of an edge to the id of its reverse complement,
+            // then save this map.
+            std::map<uint64_t, uint64_t> rcEdgeMap;
+            BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+                const AssemblyGraphEdge& edge = assemblyGraph[e];
+                const edge_descriptor eRc = edge.eRc;
+                if(eRc != assemblyGraphNullEdge) {
+                    rcEdgeMap.insert(make_pair(edge.id, assemblyGraph[eRc].id));
+                }
+            }
+            ar & rcEdgeMap;
+
+        } else {
+            std::map<uint64_t, uint64_t> rcVertexMap;
+            ar & rcVertexMap;
+            std::map<uint64_t, vertex_descriptor> vertexMap;
+            BGL_FORALL_VERTICES(v, assemblyGraph, AssemblyGraph) {
+                vertexMap.insert(make_pair(assemblyGraph[v].id, v));
+            }
+            BGL_FORALL_VERTICES(v, assemblyGraph, AssemblyGraph) {
+                AssemblyGraphVertex& vertex = assemblyGraph[v];
+                const auto it = rcVertexMap.find(vertex.id);
+                if(it != rcVertexMap.end()) {
+                    const uint64_t idRc = it->second;
+                    vertex.vRc = vertexMap.at(idRc);
+                }
+            }
+
+
+            std::map<uint64_t, uint64_t> rcEdgeMap;
+            ar & rcEdgeMap;
+            std::map<uint64_t, edge_descriptor> edgeMap;
+            BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+                edgeMap.insert(make_pair(assemblyGraph[e].id, e));
+            }
+            BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+                AssemblyGraphEdge& edge = assemblyGraph[e];
+                const auto it = rcEdgeMap.find(edge.id);
+                if(it != rcEdgeMap.end()) {
+                    const uint64_t idRc = it->second;
+                    edge.eRc = edgeMap.at(idRc);
+                }
+            }
+        }
     }
+
+
+
     void save(ostream&) const;
     void load(istream&);
 
