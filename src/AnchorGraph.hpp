@@ -41,22 +41,37 @@ namespace shasta2 {
 
 class shasta2::AnchorGraphEdge {
 public:
-    AnchorPair anchorPair;
+    AnchorId anchorIdA = invalid<AnchorId>;
+    AnchorId anchorIdB = invalid<AnchorId>;
+    vector<OrientedReadId> orientedReadIds;
+
     uint64_t id = invalid<uint64_t>;
     bool useForAssembly = false;
 
     AnchorGraphEdge(const AnchorPair& anchorPair, uint64_t id) :
-        anchorPair(anchorPair),
+        anchorIdA(anchorPair.anchorIdA),
+        anchorIdB(anchorPair.anchorIdB),
+        orientedReadIds(anchorPair.orientedReadIds),
         id(id)
     {}
 
     AnchorGraphEdge() {}
 
-    uint64_t coverage() const {return anchorPair.size();}
+    uint64_t coverage() const
+    {
+        return orientedReadIds.size();
+    }
+
+    AnchorPair getAnchorPair() const
+    {
+        return AnchorPair(anchorIdA, anchorIdB, orientedReadIds);
+    }
 
     template<class Archive> void serialize(Archive& ar, unsigned int /* version */)
     {
-        ar & anchorPair;
+        ar & anchorIdA;
+        ar & anchorIdB;
+        ar & orientedReadIds;
         ar & id;
         ar & useForAssembly;
     }

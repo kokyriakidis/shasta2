@@ -87,8 +87,8 @@ AssemblyGraph::AssemblyGraph(
     // with a given AnchorId. So the vertexMap is only used in this constructor.
     std::map<AnchorId, vertex_descriptor> vertexMap;
     for(const auto& chain: chains) {
-        const AnchorId anchorId0 = anchorGraph[chain.front()].anchorPair.anchorIdA;
-        const AnchorId anchorId1 = anchorGraph[chain.back()].anchorPair.anchorIdB;
+        const AnchorId anchorId0 = anchorGraph[chain.front()].anchorIdA;
+        const AnchorId anchorId1 = anchorGraph[chain.back()].anchorIdB;
 
         if(not vertexMap.contains(anchorId0)) {
             const vertex_descriptor v0 = add_vertex(AssemblyGraphVertex(anchorId0, nextVertexId++), assemblyGraph);
@@ -106,8 +106,8 @@ AssemblyGraph::AssemblyGraph(
 
     // Generate the edges. There is an edge for each linear chain.
     for(const auto& chain: chains) {
-        const AnchorId anchorId0 = anchorGraph[chain.front()].anchorPair.anchorIdA;
-        const AnchorId anchorId1 = anchorGraph[chain.back()].anchorPair.anchorIdB;
+        const AnchorId anchorId0 = anchorGraph[chain.front()].anchorIdA;
+        const AnchorId anchorId1 = anchorGraph[chain.back()].anchorIdB;
 
         const vertex_descriptor v0 = vertexMap.at(anchorId0);
         const vertex_descriptor v1 = vertexMap.at(anchorId1);
@@ -120,7 +120,8 @@ AssemblyGraph::AssemblyGraph(
         // Each AnchorGraph edge in the chain contributes a step to this AssemblyGraph edge.
         for(const AnchorGraph::edge_descriptor eA: chain) {
             const AnchorGraphEdge& edgeA = anchorGraph[eA];
-            edge.emplace_back(edgeA.anchorPair, edgeA.anchorPair.getAverageOffset(anchors));
+            const AnchorPair anchorPair = edgeA.getAnchorPair();
+            edge.emplace_back(anchorPair, anchorPair.getAverageOffset(anchors));
         }
     }
 

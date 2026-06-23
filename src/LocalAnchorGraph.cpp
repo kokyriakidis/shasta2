@@ -70,7 +70,7 @@ LocalAnchorGraph::LocalAnchorGraph(
             if(edgesMarkedForAssembly and (not anchorGraph[eG].useForAssembly)) {
                 continue;
             }
-            if(anchorGraph[eG].anchorPair.size() < minCoverage) {
+            if(anchorGraph[eG].coverage() < minCoverage) {
             	continue;
             }
             const AnchorGraph::vertex_descriptor v1G = target(eG, anchorGraph);
@@ -93,7 +93,7 @@ LocalAnchorGraph::LocalAnchorGraph(
             if(edgesMarkedForAssembly and (not anchorGraph[eG].useForAssembly)) {
                 continue;
             }
-            if(anchorGraph[eG].anchorPair.size() < minCoverage) {
+            if(anchorGraph[eG].coverage() < minCoverage) {
             	continue;
             }
             const AnchorGraph::vertex_descriptor v1G = source(eG, anchorGraph);
@@ -128,7 +128,7 @@ LocalAnchorGraph::LocalAnchorGraph(
             if(edgesMarkedForAssembly and (not anchorGraph[eG].useForAssembly)) {
                 continue;
             }
-            if(anchorGraph[eG].anchorPair.size() < minCoverage) {
+            if(anchorGraph[eG].coverage() < minCoverage) {
             	continue;
             }
             const AnchorGraph::vertex_descriptor v1G = target(eG, anchorGraph);
@@ -341,11 +341,11 @@ void LocalAnchorGraph::writeGraphviz(
 
         const AnchorGraph::edge_descriptor eG = edge.eG;
         const AnchorGraphEdge& edgeG = anchorGraph[eG];
-        const AnchorPair& anchorPair = edgeG.anchorPair;
-        SHASTA2_ASSERT(anchorPair.anchorIdA == anchorId0);
-        SHASTA2_ASSERT(anchorPair.anchorIdB == anchorId1);
+        SHASTA2_ASSERT(edgeG.anchorIdA == anchorId0);
+        SHASTA2_ASSERT(edgeG.anchorIdB == anchorId1);
+        const AnchorPair anchorPair = edgeG.getAnchorPair();
 
-        const uint64_t coverage = anchorPair.orientedReadIds.size();
+        const uint64_t coverage = edgeG.coverage();
         const uint64_t offset = anchorPair.getAverageOffset(anchors);
 
         string color = "Black";
@@ -756,7 +756,7 @@ void LocalAnchorGraph::computeLayout(const LocalAnchorGraphDisplayOptions& optio
     BGL_FORALL_EDGES(eL, graph, LocalAnchorGraph) {
         const LocalAnchorGraphEdge& edgeL = graph[eL];
         const AnchorGraphEdge& edgeG = anchorGraph[edgeL.eG];
-        const uint64_t offset = edgeG.anchorPair.getAverageOffset(anchors);
+        const uint64_t offset = edgeG.getAnchorPair().getAverageOffset(anchors);
 
         const double displayLength =
             options.minimumEdgeLength +
@@ -1007,7 +1007,7 @@ void LocalAnchorGraph::writeEdges(
     BGL_FORALL_EDGES(eL, graph, LocalAnchorGraph) {
         const LocalAnchorGraphEdge& edgeL = graph[eL];
         const AnchorGraphEdge& edgeG = anchorGraph[edgeL.eG];
-        const AnchorPair& anchorPair = edgeG.anchorPair;
+        const AnchorPair anchorPair = edgeG.getAnchorPair();
         const uint64_t coverage = anchorPair.orientedReadIds.size();
         const uint64_t offset = anchorPair.getAverageOffset(anchors);
 
@@ -1099,7 +1099,7 @@ void LocalAnchorGraph::writeEdges(
     BGL_FORALL_EDGES(eL, graph, LocalAnchorGraph) {
         const LocalAnchorGraphEdge& edgeL = graph[eL];
         const AnchorGraphEdge& edgeG = anchorGraph[edgeL.eG];
-        const AnchorPair& anchorPair = edgeG.anchorPair;
+        const AnchorPair& anchorPair = edgeG.getAnchorPair();
         const uint64_t coverage = anchorPair.orientedReadIds.size();
 
         const vertex_descriptor v0 = source(eL, graph);

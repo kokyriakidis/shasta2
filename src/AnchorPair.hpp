@@ -48,6 +48,15 @@ public:
         orientedReadIds(that.orientedReadIds)
     {}
 
+    AnchorPair(
+        AnchorId anchorIdA,
+        AnchorId anchorIdB,
+        const vector<OrientedReadId>& orientedReadIds) :
+        anchorIdA(anchorIdA),
+        anchorIdB(anchorIdB),
+        orientedReadIds(orientedReadIds)
+    {}
+
     // This finds AnchorPairs as follows:
     // - anchorIdA is as specified.
     // - Coverage is at least minCoverage.
