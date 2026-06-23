@@ -11,20 +11,22 @@
 
 namespace shasta2 {
 
-    // Remove duplicate elements in a vector.
-    template<class T> void deduplicate(vector<T>& v)
+    // Remove duplicate elements in a vector-like container.
+    template<class Vector> void deduplicate(Vector& v)
     {
         sort(v.begin(), v.end());
         v.resize(unique(v.begin(), v.end()) - v.begin());
     }
 
 
-    // Remove duplicate elements in a vector and count occurrences of each
-    template<class T, class Int> void deduplicateAndCount(
-        vector<T>& v,
+    // Remove duplicate elements in a vector-like and count occurrences of each
+    template<class Vector, class Int> void deduplicateAndCount(
+        Vector& v,
         vector<Int>& count,
         bool alreadySorted = false)
     {
+        using iterator = typename Vector::iterator;
+
         // Clear the count vector.
         count.clear();
 
@@ -40,8 +42,8 @@ namespace shasta2 {
 
         // Add elements, keeping track of the number
         // of occurrences of each.
-        typename vector<T>::iterator output = v.begin();
-        typename vector<T>::iterator input = v.begin();
+        iterator output = v.begin();
+        iterator input = v.begin();
         while(input != v.end()) {
 
             // Store this element.
@@ -49,7 +51,7 @@ namespace shasta2 {
             ++output;
 
             // Count how many there are.
-            typename vector<T>::iterator it = input;
+            iterator it = input;
             while(it!=v.end() && *it==*input) {
                 ++it;
             }
@@ -66,14 +68,16 @@ namespace shasta2 {
 
 
 
-    // Remove duplicate elements in a vector and count occurrences of each.
+    // Remove duplicate elements in a vector-like and count occurrences of each.
     // Keep only the ones that occur at least minCount times.
-    template<class T, class Int> void deduplicateAndCountWithThreshold(
-        vector<T>& v,
+    template<class Vector, class Int> void deduplicateAndCountWithThreshold(
+        Vector& v,
         vector<Int>& count,
         Int minCount
         )
     {
+        using iterator = typename Vector::iterator;
+
         // Clear the count vector.
         count.clear();
 
@@ -87,13 +91,13 @@ namespace shasta2 {
 
         // Add elements, keeping track of the number
         // of occurrences of each.
-        typename vector<T>::iterator output = v.begin();
-        typename vector<T>::iterator input = v.begin();
+        iterator output = v.begin();
+        iterator input = v.begin();
         while(input != v.end()) {
 
 
             // Count how many there are.
-            typename vector<T>::iterator it = input;
+            iterator it = input;
             while(it!=v.end() && *it==*input) {
                 ++it;
             }
@@ -118,11 +122,12 @@ namespace shasta2 {
 
 
 
-    // Remove duplicate elements in a vector and count occurrences of each.
+    // Remove duplicate elements in a vector-like and count occurrences of each.
     // Keep only the ones that occur exactly once.
-    template<class T> void deduplicateAndCountAndKeepUnique(
-        vector<T>& v)
+    template<class Vector> void deduplicateAndCountAndKeepUnique(
+        Vector& v)
     {
+        using iterator = typename Vector::iterator;
 
         // If the given vector is empty, return now.
         if(v.empty()) {
@@ -134,13 +139,13 @@ namespace shasta2 {
 
         // Add elements, keeping track of the number
         // of occurrences of each.
-        typename vector<T>::iterator output = v.begin();
-        typename vector<T>::iterator input = v.begin();
+        iterator output = v.begin();
+        iterator input = v.begin();
         while(input != v.end()) {
 
 
             // Count how many there are.
-            typename vector<T>::iterator it = input;
+            iterator it = input;
             while(it!=v.end() && *it==*input) {
                 ++it;
             }
@@ -162,13 +167,14 @@ namespace shasta2 {
 
 
 
-    // Remove duplicate elements in a vector and count occurrences of each.
+    // Remove duplicate elements in a vector-like and count occurrences of each.
     // Keep only the ones that occur exactly once.
     // Version that uses a custom comparator.
-    template<class T, class Comparator> void deduplicateAndCountAndKeepUnique(
-        vector<T>& v,
+    template<class Vector, class Comparator> void deduplicateAndCountAndKeepUnique(
+        Vector& v,
         const Comparator& comparator)
     {
+        using iterator = typename Vector::iterator;
 
         // If the given vector is empty, return now.
         if(v.empty()) {
@@ -180,13 +186,13 @@ namespace shasta2 {
 
         // Add elements, keeping track of the number
         // of occurrences of each.
-        typename vector<T>::iterator output = v.begin();
-        typename vector<T>::iterator input = v.begin();
+        iterator output = v.begin();
+        iterator input = v.begin();
         while(input != v.end()) {
 
 
             // Count how many there are.
-            typename vector<T>::iterator it = input;
+            iterator it = input;
             while(it!=v.end() and (not comparator(*it, *input)) and (not comparator(*input, *it))) {
                 ++it;
             }
