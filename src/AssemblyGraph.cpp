@@ -202,7 +202,7 @@ AssemblyGraph::AssemblyGraph(
     // At this stage there is a vertex for each AnchorGraph vertex
     // that is at the beginning or end of a linear chain,
     // so there is only one vertex for a given AnchorId.
-    // However, after detangling there can be more than one vertex
+    // However, in later stages of the AssemblyGraph there can be more than one vertex
     // with a given AnchorId. So the vertexMap is only used in this constructor.
     std::map<AnchorId, vertex_descriptor> vertexMap;
     for(const auto& chain: chains) {
@@ -220,6 +220,21 @@ AssemblyGraph::AssemblyGraph(
         }
     }
     SHASTA2_ASSERT(vertexMap.size() == num_vertices(assemblyGraph));
+
+
+
+    // Store the reverse complement of each vertex.
+    BGL_FORALL_VERTICES(v, assemblyGraph, AssemblyGraph) {
+        AssemblyGraphVertex& vertex = assemblyGraph[v];
+        const AnchorId anchorId = vertex.anchorId;
+        const AnchorId anchorIdRc = reverseComplementAnchorId(anchorId);
+        if(anchorId < anchorIdRc) {
+            const vertex_descriptor vRc = vertexMap.at(anchorIdRc);
+            AssemblyGraphVertex& vertexRc = assemblyGraph[vRc];
+            vertex.vRc = vRc;
+            vertexRc.vRc = v;
+        }
+    }
 
 
 
@@ -244,7 +259,7 @@ AssemblyGraph::AssemblyGraph(
     }
 
 
-    // check();
+    check();
 }
 
 
@@ -327,13 +342,13 @@ void AssemblyGraph::simplifyAndAssemble()
 
 void AssemblyGraph::check() const
 {
+    cout << "AssemblyGraph::check begins." << endl;
+
     const AssemblyGraph& assemblyGraph = *this;
 
     BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
         const AssemblyGraphEdge& edge = assemblyGraph[e];
         SHASTA2_ASSERT(not edge.empty());
-
-
 
         // Check that the first/last AnchorIds of this edge are consistent
         // with the ones in the source/target vertices.
@@ -346,8 +361,6 @@ void AssemblyGraph::check() const
         SHASTA2_ASSERT(edge.front().anchorPair.anchorIdA == anchorId0);
         SHASTA2_ASSERT(edge.back().anchorPair.anchorIdB == anchorId1);
 
-
-
         // Check that AnchorPairs in this edge are adjacent to each other.
         for(uint64_t i1=1; i1<edge.size(); i1++) {
             const uint64_t i0 = i1 - 1;
@@ -355,6 +368,21 @@ void AssemblyGraph::check() const
         }
     }
 
+
+
+    // Check consistency of the vRc fields in the vertices.
+    BGL_FORALL_VERTICES(v, assemblyGraph, AssemblyGraph) {
+        const AssemblyGraphVertex& vertex = assemblyGraph[v];
+        const vertex_descriptor vRc = vertex.vRc;
+        SHASTA2_ASSERT(vRc != null_vertex());
+        SHASTA2_ASSERT(vRc != v);
+        const AssemblyGraphVertex& vertexRc = assemblyGraph[vRc];
+        SHASTA2_ASSERT(vertexRc.vRc != null_vertex());
+        SHASTA2_ASSERT(vertexRc.vRc != vRc);
+        SHASTA2_ASSERT(vertexRc.vRc == v);
+    }
+
+    cout << "AssemblyGraph::check ends." << endl;
 }
 
 
