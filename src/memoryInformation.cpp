@@ -85,7 +85,7 @@ void MallocInfo::write(ostream& s) const
     s << "    Heap used " << heapUsed() << "\n";
     s << "    Heap free " << heapFree << "\n";
     s << "    Maximum heap size " << maxHeapSize << "\n";
-    s << "    Mmap size " << mmapSize << "\n";
+    s << "    Mmap size (malloc only) " << mmapSize << "\n";
     s << flush;
 }
 
