@@ -79,6 +79,88 @@ AssemblyGraph::AssemblyGraph(
     vector< std::list<AnchorGraph::edge_descriptor> > chains;
     findLinearChains(filteredAnchorGraph, 1, chains);
 
+
+
+    // The AnchorGraph is guaranteed to be exactly strand-symmetric
+    // and we want the AssemblyGraph to also be strand-symmetric.
+    // For each vertex the reverse conplemented vertex will be stored in vRc.
+    // For each edge the reverse complemented edge will be stored in eRc.
+
+
+
+    // Before we look for pairs of reverse complemented chains, we need to
+    // normalize any isolated circular chains so they begin and end at the lowest
+    // numbered AnchorId in the chain. This happens rarely.
+    for(std::list<AnchorGraph::edge_descriptor>& chain: chains)
+    {
+        // In a circular chain, the first and last vertex must coincide.
+        const AnchorGraph::edge_descriptor e0 = chain.front();
+        const AnchorGraph::edge_descriptor e1 = chain.back();
+        const AnchorGraph::vertex_descriptor v0 = source(e0, anchorGraph);
+        const AnchorGraph::vertex_descriptor v1 = target(e1, anchorGraph);
+        if(v0 != v1) {
+            // This is not a circular chain. Do nothing.
+            continue;
+        }
+
+        // In a circular chain, the first vertex, which is also the last,
+        // must have in-degree and out-degree 1.
+        if(in_degree(v0, anchorGraph) != 1) {
+            // This is not an isolated circular chain. Do nothing.
+            // continue;        // PUTH BACK AFTER DEBUGGING
+        }
+        if(out_degree(v0, anchorGraph) != 1) {
+            // This is not an isolated circular chain. Do nothing.
+            // continue;        // PUTH BACK AFTER DEBUGGING
+        }
+
+        // This is an isolated circular chain. Gather its vertices.
+        // In the AnchorGraph, vertex descriptors are AnchorIds.
+        vector<AnchorGraph::vertex_descriptor> chainVertices;
+        for(const AnchorGraph::edge_descriptor e: chain) {
+            chainVertices.push_back(source(e, anchorGraph));
+        }
+
+        // This happens rarely and is pathological, so let's write out the chain.
+        cout << "Found the following isolated circular anchor chain." << endl;
+        cout << "Before normalization:" << endl;
+        for(const AnchorId anchorId: chainVertices) {
+            cout << anchorIdToString(anchorId) << " ";
+        }
+        cout << endl;
+
+        // Find the position of the lowest numbered vertex_descriptor
+        // (which is also an AnchorId).
+        const auto it = std::min_element(chainVertices.begin(), chainVertices.end());
+
+        // Rotate the chain so the lowest numbered vertex_descriptor
+        // (which is also an AnchorId) is at the beginning.
+        std::rotate(chainVertices.begin(), it, chainVertices.end());
+
+        cout << "After normalization:" << endl;
+        for(const AnchorId anchorId: chainVertices) {
+            cout << anchorIdToString(anchorId) << " ";
+        }
+        cout << endl;
+
+        // Use the rotated vertices to created the normalized (rotated) chain.
+        chainVertices.push_back(chainVertices.front());
+        std::list<AnchorGraph::edge_descriptor> rotatedChain;
+        for(uint64_t i1=1; i1<chainVertices.size(); i1++) {
+            const uint64_t i0 = i1 - 1;
+            const AnchorGraph::vertex_descriptor v0 = chainVertices[i0];
+            const AnchorGraph::vertex_descriptor v1 = chainVertices[i1];
+            auto [e, edgeExists] = boost::edge(v0, v1, anchorGraph);
+            SHASTA2_ASSERT(edgeExists);
+            rotatedChain.push_back(e);
+        }
+
+        // Replace the initial chain with the rotated chain.
+        chain.swap(rotatedChain);
+    }
+
+
+
     // Generate vertices.
     // At this stage there is a vertex for each AnchorGraph vertex
     // that is at the beginning or end of a linear chain,
