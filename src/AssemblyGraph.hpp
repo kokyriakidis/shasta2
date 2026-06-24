@@ -206,16 +206,28 @@ private:
 
     void check() const;
 
+
+
     // Bubble cleanup.
     // A bubble is a set of parallel edges in the AssemblyGraph.
-    // The edges are sorted by id.
     class Bubble {
     public:
         vertex_descriptor v0;
         vertex_descriptor v1;
         vector<edge_descriptor> edges;
     };
+
+    // Find Bubbles.
+    // The edges of each Bubble are sorted by id.
     void findBubbles(vector<Bubble>&) const;
+
+    // Find pairs of reverse complemented bubbles.
+    // The edges of the first bubble in each pair are sorted by id.
+    // The edges of the second bubble in each pair are sorted
+    // consistently with the ones in the first pair,
+    // that is, the reverse complement of p.first.edges[i] is p.second.edges[i].
+    void findBubblePairs(vector<pair<Bubble, Bubble> >&) const;
+
 public:
     uint64_t bubbleCleanup();
     uint64_t bubbleCleanupIteration(vector< pair<vertex_descriptor, vertex_descriptor> >& excludeList);

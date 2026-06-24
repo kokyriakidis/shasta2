@@ -896,8 +896,12 @@ uint64_t AssemblyGraphEdge::length() const
 
 
 
+// Find Bubbles.
+// The edges of each Bubble are sorted by id.
 void AssemblyGraph::findBubbles(vector<Bubble>& bubbles) const
 {
+    performanceLog << timestamp << "AssemblyGraph::findBubbles begins." << endl;
+
     const AssemblyGraph& assemblyGraph = *this;
     bubbles.clear();
 
@@ -943,6 +947,81 @@ void AssemblyGraph::findBubbles(vector<Bubble>& bubbles) const
         }
     }
 #endif
+
+    performanceLog << timestamp << "AssemblyGraph::findBubbles ends." << endl;
+}
+
+
+
+// Find pairs of reverse complemented bubbles.
+// The edges of the first bubble in each pair are sorted by id.
+// The edges of the second bubble in each pair are sorted
+// consistently with the ones in the first pair,
+// that is, the reverse complement of p.first.edges[i] is p.second.edges[i].
+void AssemblyGraph::findBubblePairs(vector<pair<Bubble, Bubble> >& bubblePairs) const
+{
+    performanceLog << timestamp << "AssemblyGraph::findBubblePairs begins." << endl;
+
+    const AssemblyGraph& assemblyGraph = *this;
+    bubblePairs.clear();
+
+    // Each iteration of the loop generates a bubble and its reverse
+    // complement. To generate each bubble only once we need to
+    // keep track of the bubbles we already found.
+    std::set< pair<vertex_descriptor, vertex_descriptor> > bubblesFound;
+
+    // Look at bubbles with source v0.
+    std::map<vertex_descriptor, vector<edge_descriptor> > m;
+    BGL_FORALL_VERTICES(v0, assemblyGraph, AssemblyGraph) {
+
+        // Gather edges, grouped by their target vertex.
+        m.clear();
+        BGL_FORALL_OUTEDGES(v0, e, assemblyGraph, AssemblyGraph) {
+            const vertex_descriptor v1 = target(e, assemblyGraph);
+            m[v1].push_back(e);
+        }
+
+
+        // Loop over groups with the same target vertex.
+        // Each group with more than one edge generates
+        // a pair of reverse complemented bubbles.
+        for(auto& p: m) {
+            const vertex_descriptor v1 = p.first;
+            vector<edge_descriptor>& edges = p.second;
+            if(edges.size() > 1) {
+
+                // If we aleady generated this bubble, don't add it again.
+                const vertex_descriptor v0Rc = assemblyGraph[v0].vRc;
+                const vertex_descriptor v1Rc = assemblyGraph[v1].vRc;
+                if(bubblesFound.contains(make_pair(v0, v1))) {
+                    SHASTA2_ASSERT(bubblesFound.contains(make_pair(v1Rc, v0Rc)));
+                    continue;
+                }
+                if(bubblesFound.contains(make_pair(v1Rc, v0Rc))) {
+                    SHASTA2_ASSERT(bubblesFound.contains(make_pair(v0, v1)));
+                    continue;
+                }
+
+                // Ok, if getting here we are going to generate a new pair of bubbles.
+                bubblesFound.insert(make_pair(v0, v1));
+                bubblesFound.insert(make_pair(v1Rc, v0Rc));
+
+                std::ranges::sort(edges, orderById);
+                auto& [bubble, bubbleRc] = bubblePairs.emplace_back();
+                bubble.v0 = v0;
+                bubble.v1 = v1;
+                bubble.edges = edges;
+                bubbleRc.v0 = v1Rc;
+                bubbleRc.v1 = v0Rc;
+                for(const edge_descriptor e: edges) {
+                    bubbleRc.edges.push_back(assemblyGraph[e].eRc);
+                }
+            }
+        }
+    }
+
+    performanceLog << timestamp << "AssemblyGraph::findBubblePairs ends." << endl;
+
 }
 
 
@@ -974,7 +1053,7 @@ uint64_t AssemblyGraph::bubbleCleanupIteration(
     // Find all bubbles.
     vector<Bubble> allBubbles;
     findBubbles(allBubbles);
-    // cout << "Found " << allBubbles.size() << " bubbles." << endl;
+    cout << "Found " << allBubbles.size() << " bubbles." << endl;
 
     // Find candidate bubbles.
     // These are the ones that are not in the exclude list and
@@ -1043,7 +1122,13 @@ uint64_t AssemblyGraph::bubbleCleanupIterationMultithreaded(
     // Find all bubbles.
     vector<Bubble> allBubbles;
     findBubbles(allBubbles);
-    // cout << "Found " << allBubbles.size() << " bubbles." << endl;
+    cout << "Found " << allBubbles.size() << " bubbles." << endl;
+
+    // Find pairs of reverse complemented bubbles.
+    vector<pair<Bubble, Bubble> > allBubblePairs;
+    findBubblePairs(allBubblePairs);
+    cout << "Found " << allBubblePairs.size() << " bubble pairs." << endl;
+    SHASTA2_ASSERT(2 * allBubblePairs.size() == allBubbles.size());
 
     // Find candidate bubbles.
     // These are the ones that are not in the exclude list and
