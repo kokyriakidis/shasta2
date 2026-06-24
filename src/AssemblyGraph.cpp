@@ -107,11 +107,11 @@ AssemblyGraph::AssemblyGraph(
         // must have in-degree and out-degree 1.
         if(in_degree(v0, anchorGraph) != 1) {
             // This is not an isolated circular chain. Do nothing.
-            // continue;        // PUTH BACK AFTER DEBUGGING
+            continue;
         }
         if(out_degree(v0, anchorGraph) != 1) {
             // This is not an isolated circular chain. Do nothing.
-            // continue;        // PUTH BACK AFTER DEBUGGING
+            continue;
         }
 
         // This is an isolated circular chain. Gather its vertices.
@@ -158,6 +158,43 @@ AssemblyGraph::AssemblyGraph(
         // Replace the initial chain with the rotated chain.
         chain.swap(rotatedChain);
     }
+
+
+
+    // Index the chains by their first AnchorGraph::edge_descriptor.
+    std::map<AnchorGraph::edge_descriptor, uint64_t> chainMap;
+    for(uint64_t chainId=0; chainId<chains.size(); chainId++) {
+        const std::list<AnchorGraph::edge_descriptor>& chain = chains[chainId];
+        const AnchorGraph::edge_descriptor eFirst = chain.front();
+        SHASTA2_ASSERT(not chainMap.contains(eFirst));
+        chainMap.insert(make_pair(eFirst, chainId));
+    }
+
+
+
+    // Now we can find pairs of reverse complemented chains.
+    vector< pair<uint64_t, uint64_t> > chainPairs;
+    for(uint64_t chainId=0; chainId<chains.size(); chainId++) {
+        const std::list<AnchorGraph::edge_descriptor>& chain = chains[chainId];
+        const AnchorGraph::edge_descriptor e0 = chain.front();
+        const AnchorGraph::edge_descriptor e1 = chain.back();
+        const AnchorGraph::edge_descriptor e0Rc = anchorGraph.reverseComplement(e0);
+        const AnchorGraph::edge_descriptor e1Rc = anchorGraph.reverseComplement(e1);
+
+        // The reverse complemented chain begins at e1Rc.
+        const uint64_t chainIdRc = chainMap.at(e1Rc);
+        SHASTA2_ASSERT(chainIdRc != chainId);
+        const std::list<AnchorGraph::edge_descriptor>& chainRc = chains[chainIdRc];
+        SHASTA2_ASSERT(chainRc.front() == e1Rc);
+        SHASTA2_ASSERT(chainRc.back() == e0Rc);
+
+        // Only store each pair once.
+        if(chainId < chainIdRc) {
+            chainPairs.push_back(make_pair(chainId, chainIdRc));
+        }
+    }
+    SHASTA2_ASSERT(2 * chainPairs.size() == chains.size());
+
 
 
 
