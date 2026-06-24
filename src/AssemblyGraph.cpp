@@ -238,6 +238,56 @@ AssemblyGraph::AssemblyGraph(
 
 
 
+    // Each pair of reverse complement chains generates a pair
+    // reverse complement of AssembleGraph edges.
+    for(const auto&[chainId, chainIdRc]: chainPairs) {
+        const std::list<AnchorGraph::edge_descriptor>& chain = chains[chainId];
+        const std::list<AnchorGraph::edge_descriptor>& chainRc = chains[chainIdRc];
+
+        // Get the first and last AnchorId of these two chains.
+        const AnchorId anchorId0 = anchorGraph[chain.front()].anchorIdA;
+        const AnchorId anchorId1 = anchorGraph[chain.back()].anchorIdB;
+        const AnchorId anchorId0Rc = anchorGraph[chainRc.front()].anchorIdA;
+        const AnchorId anchorId1Rc = anchorGraph[chainRc.back()].anchorIdB;
+        SHASTA2_ASSERT(anchorId1Rc == reverseComplementAnchorId(anchorId0));
+        SHASTA2_ASSERT(anchorId0Rc == reverseComplementAnchorId(anchorId1));
+
+        // Get the corresponding AssemblyGraph vertices.
+        const vertex_descriptor v0 = vertexMap.at(anchorId0);
+        const vertex_descriptor v1 = vertexMap.at(anchorId1);
+        const vertex_descriptor v0Rc = vertexMap.at(anchorId0Rc);
+        const vertex_descriptor v1Rc = vertexMap.at(anchorId1Rc);
+        SHASTA2_ASSERT(assemblyGraph[v0].vRc == v1Rc);
+        SHASTA2_ASSERT(assemblyGraph[v1].vRc == v0Rc);
+
+        // Now we can generate the two AssemblyGraph edges
+        // corresponding to these chains.
+        // Each AnchorGraph edge in a chain contributes a step to this AssemblyGraph edge.
+
+        auto[e, wasAdded] = add_edge(v0, v1, AssemblyGraphEdge(nextEdgeId++), assemblyGraph);
+        SHASTA2_ASSERT(wasAdded);
+        AssemblyGraphEdge& edge = assemblyGraph[e];
+        for(const AnchorGraph::edge_descriptor eA: chain) {
+            const AnchorPair anchorPair = anchorGraph.getAnchorPair(eA);
+            edge.emplace_back(anchorPair, anchorPair.getAverageOffset(anchors));
+        }
+
+        auto[eRc, wasAddedRc] = add_edge(v0Rc, v1Rc, AssemblyGraphEdge(nextEdgeId++), assemblyGraph);
+        SHASTA2_ASSERT(wasAddedRc);
+        AssemblyGraphEdge& edgeRc = assemblyGraph[eRc];
+        for(const AnchorGraph::edge_descriptor eA: chainRc) {
+            const AnchorPair anchorPair = anchorGraph.getAnchorPair(eA);
+            edgeRc.emplace_back(anchorPair, anchorPair.getAverageOffset(anchors));
+        }
+
+        // Store the eRc fields.
+        edge.eRc = eRc;
+        edgeRc.eRc = e;
+    }
+
+
+#if 0
+    // OLD CODE TO GENERATE EDGES WITHOUT SETTING THE eRc FIELDS.
     // Generate the edges. There is an edge for each linear chain.
     for(const auto& chain: chains) {
         const AnchorId anchorId0 = anchorGraph[chain.front()].anchorIdA;
@@ -257,7 +307,7 @@ AssemblyGraph::AssemblyGraph(
             edge.emplace_back(anchorPair, anchorPair.getAverageOffset(anchors));
         }
     }
-
+#endif
 
     check();
 }
@@ -380,6 +430,42 @@ void AssemblyGraph::check() const
         SHASTA2_ASSERT(vertexRc.vRc != null_vertex());
         SHASTA2_ASSERT(vertexRc.vRc != vRc);
         SHASTA2_ASSERT(vertexRc.vRc == v);
+    }
+
+
+
+    // Check consistency of the eRc fields in the edges.
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        const AssemblyGraphEdge& edge = assemblyGraph[e];
+        const edge_descriptor eRc = edge.eRc;
+        SHASTA2_ASSERT(eRc != assemblyGraphNullEdge);
+        SHASTA2_ASSERT(eRc != e);
+        const AssemblyGraphEdge& edgeRc = assemblyGraph[eRc];
+        SHASTA2_ASSERT(edgeRc.eRc != assemblyGraphNullEdge);
+        SHASTA2_ASSERT(edgeRc.eRc != eRc);
+        SHASTA2_ASSERT(edgeRc.eRc == e);
+
+        // Also check the steps of these two edges.
+        const uint64_t n = edge.size();
+        SHASTA2_ASSERT(edgeRc.size() == n);
+        for(uint64_t i=0; i<edge.size(); i++) {
+            const AssemblyGraphEdgeStep& step = edge[i];
+            const AssemblyGraphEdgeStep& stepRc = edgeRc[n - 1 - i];
+            SHASTA2_ASSERT(step.offset == stepRc.offset);
+            const AnchorPair& anchorPair = step.anchorPair;
+            const AnchorPair& anchorPairRc = stepRc.anchorPair;
+            const vector<OrientedReadId>& orientedReadIds = anchorPair.orientedReadIds;
+            const vector<OrientedReadId>& orientedReadIdsRc = anchorPairRc.orientedReadIds;
+            const uint64_t coverage = orientedReadIds.size();
+            SHASTA2_ASSERT(orientedReadIdsRc.size() == coverage);
+
+            for(uint64_t j=0; j<coverage; j++) {
+                const OrientedReadId orientedReadId = orientedReadIds[j];
+                const OrientedReadId orientedReadIdRc = orientedReadIdsRc[j];
+                SHASTA2_ASSERT(orientedReadId.getReadId() == orientedReadIdRc.getReadId());
+                SHASTA2_ASSERT(orientedReadId.getStrand() == 1 - orientedReadIdRc.getStrand());
+            }
+        }
     }
 
     cout << "AssemblyGraph::check ends." << endl;
