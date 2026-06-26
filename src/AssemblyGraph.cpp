@@ -1124,11 +1124,13 @@ uint64_t AssemblyGraph::bubbleCleanupIterationMultithreaded(
     findBubbles(allBubbles);
     cout << "Found " << allBubbles.size() << " bubbles." << endl;
 
+#if 0
     // Find pairs of reverse complemented bubbles.
     vector<pair<Bubble, Bubble> > allBubblePairs;
     findBubblePairs(allBubblePairs);
     cout << "Found " << allBubblePairs.size() << " bubble pairs." << endl;
     SHASTA2_ASSERT(2 * allBubblePairs.size() == allBubbles.size());
+#endif
 
     // Find candidate bubbles.
     // These are the ones that are not in the exclude list and
