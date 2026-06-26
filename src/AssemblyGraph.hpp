@@ -206,6 +206,11 @@ private:
 
     void check() const;
 
+    // Clear reverse complement information from all vertices and edges.
+    // This needs to be done before operations that don't maintain
+    // the vertices/edges vRc/eRc field.
+    void clearReverseComplementInformation();
+
 
 
     // Bubble cleanup.

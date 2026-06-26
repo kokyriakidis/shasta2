@@ -339,6 +339,7 @@ void AssemblyGraph::simplifyAndAssemble()
 
     // Initial output.
     writeIntermediateStageIfRequested("A");
+    clearReverseComplementInformation();
 
     // Remove or simplify bubbles likely caused by errors.
     bubbleCleanup();
@@ -3480,4 +3481,22 @@ void AssemblyGraph::findOrientedReadIdsForSimpleConnect(
         anchorPair0.orientedReadIds,
         anchorPair1.orientedReadIds,
         back_inserter(orientedReadIds));
+}
+
+
+
+// Clear reverse complement information from all vertices and edges.
+// This needs to be done before operations that don't maintain
+// the vertices/edges vRc/eRc field.
+void AssemblyGraph::clearReverseComplementInformation()
+{
+    AssemblyGraph& assemblyGraph = *this;
+
+    BGL_FORALL_VERTICES(v, assemblyGraph, AssemblyGraph) {
+        assemblyGraph[v].vRc = null_vertex();
+    }
+
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        assemblyGraph[e].eRc = assemblyGraphNullEdge;
+    }
 }
