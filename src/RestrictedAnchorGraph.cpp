@@ -504,11 +504,9 @@ void RestrictedAnchorGraph::fillJourneyPortions(
             (itEntrance->orientedReadId == itExit->orientedReadId)) {
             const OrientedReadId orientedReadId = itEntrance->orientedReadId;
             if(not tangleMatrix1.goesBackward(orientedReadId)) {
-                const Journey journey = journeys[orientedReadId];
                 const uint32_t begin = itEntrance->positionInJourney;
                 const uint32_t end = itExit->positionInJourney + 1;
                 journeyPortions.emplace_back(orientedReadId, begin, end);
-                // cout << "Both " << orientedReadId << endl;
             }
             ++itEntrance;
             ++itExit;
