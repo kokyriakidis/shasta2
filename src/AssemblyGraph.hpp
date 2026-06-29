@@ -271,6 +271,7 @@ public:
     void findBubblePairs(vector<pair<Bubble, Bubble> >&) const;
 
 
+
     // Compress linear chains of edges into a single edge.
     uint64_t compress();
     void compressLinearChain(const std::list<edge_descriptor>&);
