@@ -1045,74 +1045,6 @@ uint64_t AssemblyGraph::bubbleCleanup()
 
 
 
-uint64_t AssemblyGraph::bubbleCleanupIteration(
-    vector< pair<vertex_descriptor, vertex_descriptor> >& excludeList)
-{
-    performanceLog << timestamp << "Bubble cleanup iteration begins." << endl;
-    AssemblyGraph& assemblyGraph = *this;
-
-    // Find all bubbles.
-    vector<Bubble> allBubbles;
-    findBubbles(allBubbles);
-    cout << "Found " << allBubbles.size() << " bubbles." << endl;
-
-    // Find candidate bubbles.
-    // These are the ones that are not in the exclude list and
-    // in which no branch has offset greater than
-    // options.bubbleCleanupMaxBubbleLength.
-    vector<Bubble> candidateBubbles;
-    for(const Bubble& bubble: allBubbles) {
-
-        if(std::ranges::contains(excludeList, make_pair(bubble.v0, bubble.v1))) {
-            continue;
-        }
-
-        bool hasLongBranch = false;
-        for(const edge_descriptor e: bubble.edges) {
-            if(assemblyGraph[e].offset() > options.bubbleCleanupMaxBubbleLength) {
-                hasLongBranch = true;
-                break;
-            }
-        }
-
-        if(not hasLongBranch) {
-            candidateBubbles.push_back(bubble);
-        }
-    }
-    // cout << candidateBubbles.size() << " bubbles are candidate for clean up." << endl;
-
-    // Assemble sequence for all the edges of these bubbles.
-    edgesToBeAssembled.clear();
-    for(const Bubble& bubble: candidateBubbles) {
-        for(const edge_descriptor e: bubble.edges) {
-            if(not assemblyGraph[e].wasAssembled) {
-                edgesToBeAssembled.push_back(e);
-            }
-        }
-    }
-    assemble();
-
-
-    uint64_t modifiedCount = 0;
-    for(const Bubble& bubble: candidateBubbles) {
-        if(bubbleCleanup(bubble)) {
-            ++modifiedCount;
-        }
-    }
-    // cout << "Bubble cleanup modified " << modifiedCount << " bubbles." << endl;
-
-    // Update the excludeList.
-    for(const Bubble& bubble: candidateBubbles) {
-        excludeList.push_back(make_pair(bubble.v0, bubble.v1));
-    }
-    std::ranges::sort(excludeList);
-
-    performanceLog << timestamp << "Bubble cleanup iteration ends." << endl;
-    return modifiedCount;
-}
-
-
-
 uint64_t AssemblyGraph::bubbleCleanupIterationMultithreaded(
     vector< pair<vertex_descriptor, vertex_descriptor> >& excludeList,
     uint64_t threadCount)
@@ -1124,14 +1056,6 @@ uint64_t AssemblyGraph::bubbleCleanupIterationMultithreaded(
     vector<Bubble> allBubbles;
     findBubbles(allBubbles);
     cout << "Found " << allBubbles.size() << " bubbles." << endl;
-
-#if 0
-    // Find pairs of reverse complemented bubbles.
-    vector<pair<Bubble, Bubble> > allBubblePairs;
-    findBubblePairs(allBubblePairs);
-    cout << "Found " << allBubblePairs.size() << " bubble pairs." << endl;
-    SHASTA2_ASSERT(2 * allBubblePairs.size() == allBubbles.size());
-#endif
 
     // Find candidate bubbles.
     // These are the ones that are not in the exclude list and

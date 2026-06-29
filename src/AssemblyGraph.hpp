@@ -213,7 +213,7 @@ private:
 
 
 
-    // Bubble cleanup.
+    // BUBBLE CLEANUP.
     // A bubble is a set of parallel edges in the AssemblyGraph.
     class Bubble {
     public:
@@ -226,16 +226,8 @@ private:
     // The edges of each Bubble are sorted by id.
     void findBubbles(vector<Bubble>&) const;
 
-    // Find pairs of reverse complemented bubbles.
-    // The edges of the first bubble in each pair are sorted by id.
-    // The edges of the second bubble in each pair are sorted
-    // consistently with the ones in the first pair,
-    // that is, the reverse complement of p.first.edges[i] is p.second.edges[i].
-    void findBubblePairs(vector<pair<Bubble, Bubble> >&) const;
-
 public:
     uint64_t bubbleCleanup();
-    uint64_t bubbleCleanupIteration(vector< pair<vertex_descriptor, vertex_descriptor> >& excludeList);
     uint64_t bubbleCleanupIterationMultithreaded(
         vector< pair<vertex_descriptor, vertex_descriptor> >& excludeList,
         uint64_t threadCount);
@@ -259,6 +251,25 @@ private:
         ) const;
 
 public:
+
+
+
+    // BUBBLE PAIRS CLEANUP
+    // The bubble cleanup functions above work on one bubble at a time
+    // and don't guarantee strand symmetry.
+    // The function below work on a pair of reverse complemented bubbles.
+    // They require the AssemblyGraph to be strand-symmetric on input,
+    // with the vertices vRc fields and edges eRc fields describing
+    // the strand symmetry. On output, the AssemblyGraph is again in a
+    // similar strand-symmetric state, as described by the vRc amd eRc field.
+
+    // Find pairs of reverse complemented bubbles.
+    // The edges of the first bubble in each pair are sorted by id.
+    // The edges of the second bubble in each pair are sorted
+    // consistently with the ones in the first pair,
+    // that is, the reverse complement of p.first.edges[i] is p.second.edges[i].
+    void findBubblePairs(vector<pair<Bubble, Bubble> >&) const;
+
 
     // Compress linear chains of edges into a single edge.
     uint64_t compress();

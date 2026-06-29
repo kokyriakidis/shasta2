@@ -162,7 +162,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
     class_<AssemblyGraph> assemblyGraphClass(shasta2Module, "AssemblyGraph");
     assemblyGraphClass
         .def_readwrite("compressDebugLevel", &AssemblyGraph::compressDebugLevel)
-        .def("bubbleCleanupIteration", &AssemblyGraph::bubbleCleanupIteration)
+        .def("bubbleCleanupIterationMultithreaded", &AssemblyGraph::bubbleCleanupIterationMultithreaded)
         .def("setAnnotation", &AssemblyGraph::setAnnotation)
         .def("cleanupLinearChains", &AssemblyGraph::cleanupLinearChains)
         .def("cleanupLinearChain", &AssemblyGraph::cleanupLinearChain)
