@@ -1,5 +1,6 @@
 // Shasta2.
 #include "AssemblyGraph.hpp"
+#include "Anchor.hpp"
 #include "areSimilarSequences.hpp"
 #include "deduplicate.hpp"
 #include "Options.hpp"
@@ -473,7 +474,7 @@ bool AssemblyGraph::analyzeBubble(
 // The edges of the second bubble in each pair are sorted
 // consistently with the ones in the first pair,
 // that is, the reverse complement of p.first.edges[i] is p.second.edges[i].
-void AssemblyGraph::findBubblePairs(vector<pair<Bubble, Bubble> >& bubblePairs) const
+void AssemblyGraph::findBubblePairs(vector<BubblePair>& bubblePairs) const
 {
     performanceLog << timestamp << "AssemblyGraph::findBubblePairs begins." << endl;
 
@@ -537,4 +538,289 @@ void AssemblyGraph::findBubblePairs(vector<pair<Bubble, Bubble> >& bubblePairs) 
 
     performanceLog << timestamp << "AssemblyGraph::findBubblePairs ends." << endl;
 
+}
+
+
+
+uint64_t AssemblyGraph::bubblePairCleanup()
+{
+    uint64_t modifiedCount = 0;
+
+    vector< pair<vertex_descriptor, vertex_descriptor> > excludeList;
+    while(true) {
+        const uint64_t modifiedCountThisIteration = bubblePairCleanupIterationMultithreaded(excludeList);
+        if(modifiedCountThisIteration == 0) {
+            break;
+        }
+        modifiedCount += modifiedCountThisIteration;
+    }
+
+    return modifiedCount;
+}
+
+
+
+uint64_t AssemblyGraph::bubblePairCleanupIterationMultithreaded(
+    vector< pair<vertex_descriptor, vertex_descriptor> >& excludeList)
+{
+
+    performanceLog << timestamp << "Bubble cleanup iteration begins." << endl;
+    AssemblyGraph& assemblyGraph = *this;
+
+    // Find all the bubble pairs.
+    vector<BubblePair> allBubblePairs;
+    findBubblePairs(allBubblePairs);
+    cout << "Found " << 2 * allBubblePairs.size() << " bubbles." << endl;
+
+
+
+    // Find candidate bubble pairss.
+    // These are the ones that are not in the exclude list and
+    // in which no branch has offset greater than
+    // options.bubbleCleanupMaxBubbleLength.
+    vector<BubblePair>& candidateBubblePairs = bubblePairCleanupIterationData.candidateBubblePairs;
+    candidateBubblePairs.clear();
+    for(const auto& [bubbleA, bubbleB]: allBubblePairs) {
+
+
+        if(std::ranges::contains(excludeList, make_pair(bubbleA.v0, bubbleA.v1))) {
+            SHASTA2_ASSERT(std::ranges::contains(excludeList, make_pair(bubbleB.v0, bubbleB.v1)));
+            continue;
+        }
+
+        bool hasLongBranch = false;
+        for(const edge_descriptor e: bubbleA.edges) {
+            if(assemblyGraph[e].offset() > options.bubbleCleanupMaxBubbleLength) {
+                hasLongBranch = true;
+                break;
+            }
+        }
+
+        if(not hasLongBranch) {
+            candidateBubblePairs.push_back(BubblePair(bubbleA, bubbleB));
+        }
+    }
+    cout << 2 * candidateBubblePairs.size() << " bubbles are candidate for clean up." << endl;
+
+
+
+    // Assemble sequence for all the edges of the first bubble of each BubblePair.
+    edgesToBeAssembled.clear();
+    for(const auto& [bubbleA, bubbleB]: allBubblePairs) {
+        for(const edge_descriptor e: bubbleA.edges) {
+            if(not assemblyGraph[e].wasAssembled) {
+                edgesToBeAssembled.push_back(e);
+            }
+        }
+    }
+    assemble();
+
+
+
+    // Process the bubble pairs in multithreaded code.
+    // All changes to the AssemblyGraph are done under mutex.
+    bubblePairCleanupIterationData.modifiedCount = 0;
+    const uint64_t batchSize = 10;
+    setupLoadBalancing(candidateBubblePairs.size(), batchSize);
+    runThreads(&AssemblyGraph::bubblePairCleanupIterationThreadFunction, options.actualThreadCount());
+    cout << "Bubble cleanup modified " << bubblePairCleanupIterationData.modifiedCount << " bubbles." << endl;
+
+    // Update the excludeList.
+    for(const auto&[bubbleA, bubbleB]: candidateBubblePairs) {
+        excludeList.push_back(make_pair(bubbleA.v0, bubbleA.v1));
+        excludeList.push_back(make_pair(bubbleB.v0, bubbleB.v1));
+    }
+    std::ranges::sort(excludeList);
+
+    performanceLog << timestamp << "Bubble cleanup iteration ends." << endl;
+
+
+    return bubblePairCleanupIterationData.modifiedCount;
+}
+
+
+
+void AssemblyGraph::bubblePairCleanupIterationThreadFunction([[maybe_unused]] uint64_t threadId)
+{
+    vector<BubblePair>& candidateBubblePairs = bubblePairCleanupIterationData.candidateBubblePairs;
+
+    // Loop over batches assigned to this thread.
+    uint64_t begin, end;
+    while(getNextBatch(begin, end)) {
+
+        // Loop over candidate bubble pairs in this batch.
+        for(uint64_t i=begin; i!=end; ++i) {
+            if(bubblePairCleanup(candidateBubblePairs[i])) {
+                __sync_fetch_and_add(&bubblePairCleanupIterationData.modifiedCount, 2);
+            }
+        }
+    }
+}
+
+
+
+bool AssemblyGraph::bubblePairCleanup(const BubblePair& bubblePair)
+{
+    AssemblyGraph& assemblyGraph = *this;
+    const bool debug = false;
+
+    const Bubble& bubbleA = bubblePair.first;
+    const Bubble& bubbleB = bubblePair.second;
+
+    if(debug) {
+        cout << "Bubble pair cleanup begins for:" << endl;
+        cout << "Bubble A " <<
+            anchorIdToString(assemblyGraph[bubbleA.v0].anchorId) << " ... " <<
+            anchorIdToString(assemblyGraph[bubbleA.v1].anchorId) << endl;
+        cout << "Bubble A edges before cleanup:";
+        for(const edge_descriptor e: bubbleA.edges) {
+            cout << " " << assemblyGraph[e].id;
+        }
+        cout << endl;
+        cout << "Bubble B " <<
+            anchorIdToString(assemblyGraph[bubbleB.v0].anchorId) << "..." <<
+            anchorIdToString(assemblyGraph[bubbleB.v1].anchorId) << endl;
+        cout << "Bubble B edges before cleanup:";
+        for(const edge_descriptor e: bubbleB.edges) {
+            cout << " " << assemblyGraph[e].id;
+        }
+        cout << endl;
+
+    }
+
+    if(bubbleCleanup(bubbleA)) {
+
+        if(debug) {
+            cout << "Edges of bubble A after cleanup:" << endl;
+            BGL_FORALL_OUTEDGES(bubbleA.v0, eA, assemblyGraph, AssemblyGraph) {
+                if(target(eA, assemblyGraph) != bubbleA.v1) {
+                    continue;
+                }
+                const auto& edgeA = assemblyGraph[eA];
+                cout << "    Edge " << edgeA.id << " " <<
+                    anchorIdToString(assemblyGraph[source(eA, assemblyGraph)].anchorId) << " " <<
+                    anchorIdToString(assemblyGraph[target(eA, assemblyGraph)].anchorId) << " with " <<
+                    edgeA.size() << " steps." << endl;
+                for(const AssemblyGraphEdgeStep& step: edgeA) {
+                    cout << "        Step " << anchorIdToString(step.anchorPair.anchorIdA) << " " <<
+                        anchorIdToString(step.anchorPair.anchorIdB) << endl;
+                }
+            }
+        }
+
+        // bubbleA was changed.
+        // To maintain strand symmetry, we need to make
+        // corresponding changes in bubbleB.
+
+        // Here we are making changes to the AssemblyGraph, so we need to grab the mutex.
+        std::lock_guard<std::mutex> lock(mutex);
+
+        // First, remove the existing edges of bubbleB.
+        for(const edge_descriptor e: bubbleB.edges) {
+            boost::remove_edge(e, assemblyGraph);
+        }
+
+        // Now add edges to bubbleB, copying them one by one
+        // from bubbleA, with reverse complement.
+        // This also updates the eRc fields of eA and the newly aded edges.
+        BGL_FORALL_OUTEDGES(bubbleA.v0, eA, assemblyGraph, AssemblyGraph) {
+            if(target(eA, assemblyGraph) != bubbleA.v1) {
+                continue;
+            }
+            const edge_descriptor eB = addReverseComplementEdge(bubbleB.v0, bubbleB.v1, eA);
+
+            // Sanity checks.
+            const AssemblyGraphEdge& edgeB = assemblyGraph[eB];
+            if(debug) {
+                cout << "Newly created edge " << edgeB.id <<
+                    " is the reverse complement of  edge " << assemblyGraph[eA].id << endl;
+                cout << "Steps of newly created edge:" << endl;
+                for(const AssemblyGraphEdgeStep& step: edgeB) {
+                    cout << anchorIdToString(step.anchorPair.anchorIdA) << " " <<
+                        anchorIdToString(step.anchorPair.anchorIdB) << endl;
+                }
+            }
+            SHASTA2_ASSERT(edgeB.front().anchorPair.anchorIdA == assemblyGraph[bubbleB.v0].anchorId);
+            SHASTA2_ASSERT(edgeB.back().anchorPair.anchorIdB == assemblyGraph[bubbleB.v1].anchorId);
+        }
+
+        return true;
+
+    } else {
+
+        // bubbleA did not change, so we also leave bubbleB unchanged.
+        return false;
+    }
+}
+
+
+
+// This adds an edge vB0->vB1, eB, identical to the reverse complement
+// of edge eA. It also sets the eRc fields in eA and eB.
+AssemblyGraph::edge_descriptor AssemblyGraph::addReverseComplementEdge(
+    vertex_descriptor vB0,
+    vertex_descriptor vB1,
+    edge_descriptor eA)
+{
+    const bool debug = false;
+
+    // Access the eA edge.
+    AssemblyGraph& assemblyGraph = *this;
+    AssemblyGraphEdge& edgeA = assemblyGraph[eA];
+
+    // Create the new edge eB.
+    auto[eB, wasAdded] = add_edge(vB0, vB1, AssemblyGraphEdge(nextEdgeId++), assemblyGraph);
+    SHASTA2_ASSERT(wasAdded);
+    AssemblyGraphEdge& edgeB = assemblyGraph[eB];
+
+    // Update the eRc fields of both edges.
+    edgeA.eRc = eB;
+    edgeB.eRc = eA;
+
+
+
+    // Now add the steps of eA to eB, with reverse complement.
+    for(const AssemblyGraphEdgeStep& stepA: edgeA) {
+        AssemblyGraphEdgeStep& stepB = edgeB.emplace_back();
+        stepB.offset = stepA.offset;
+        stepB.anchorPair = stepA.anchorPair;
+
+        // Swap and reverse complement the AnchorIds.
+        std::swap(stepB.anchorPair.anchorIdA, stepB.anchorPair.anchorIdB);
+        stepB.anchorPair.anchorIdA = reverseComplementAnchorId(stepB.anchorPair.anchorIdA);
+        stepB.anchorPair.anchorIdB = reverseComplementAnchorId(stepB.anchorPair.anchorIdB);
+
+        // Reverse complement the OrientedReadIds.
+        for(OrientedReadId& orientedReadId: stepB.anchorPair.orientedReadIds) {
+            orientedReadId.flipStrand();
+        }
+    }
+    // Finally, reverse the steps of eB.
+    std::ranges::reverse(edgeB);
+
+
+
+    if(debug) {
+        cout << "addReverseComplementEdge details:" << endl;
+
+        cout << "edgeA: " << edgeA.id << " " <<
+            anchorIdToString(assemblyGraph[source(eA, assemblyGraph)].anchorId) << " " <<
+            anchorIdToString(assemblyGraph[target(eA, assemblyGraph)].anchorId) << endl;
+        cout << "edgeA steps:" << endl;
+        for(const auto& step: edgeA) {
+            cout << anchorIdToString(step.anchorPair.anchorIdA) << " " <<
+                anchorIdToString(step.anchorPair.anchorIdB) << endl;
+        }
+
+        cout << "edgeB: " << edgeB.id << " " <<
+            anchorIdToString(assemblyGraph[source(eB, assemblyGraph)].anchorId) << " " <<
+            anchorIdToString(assemblyGraph[target(eB, assemblyGraph)].anchorId) << endl;
+        cout << "edgeB steps:" << endl;
+        for(const auto& step: edgeB) {
+            cout << anchorIdToString(step.anchorPair.anchorIdA) << " " <<
+                anchorIdToString(step.anchorPair.anchorIdB) << endl;
+        }
+    }
+
+    return eB;
 }

@@ -45,6 +45,8 @@ public:
     #undef SHASTA2_VECTOR_OPTION_DEFINE
     #undef SHASTA2_BOOL_OPTION_DEFINE
 
+    // Return the actual number of threads to be used.
+    uint64_t actualThreadCount() const;
 
 private:
     void addOptions();

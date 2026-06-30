@@ -100,3 +100,15 @@ void Options::validate()
         threadCount = std::thread::hardware_concurrency();
     }
 }
+
+
+
+// Return the actual number of threads to be used.
+uint64_t Options::actualThreadCount() const
+{
+    if(threadCount == 0) {
+        return std::thread::hardware_concurrency();
+    } else {
+        return threadCount;
+    }
+}

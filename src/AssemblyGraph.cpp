@@ -333,10 +333,10 @@ void AssemblyGraph::simplifyAndAssemble()
 
     // Initial output.
     writeIntermediateStageIfRequested("A");
-    clearReverseComplementInformation();
 
     // Remove or simplify bubbles likely caused by errors.
-    bubbleCleanup();
+    bubblePairCleanup();
+    clearReverseComplementInformation();
     compress();
     writeIntermediateStageIfRequested("B");
 
@@ -385,7 +385,7 @@ void AssemblyGraph::simplifyAndAssemble()
 
 
 
-void AssemblyGraph::check() const
+void AssemblyGraph::check(bool writeDetails) const
 {
     cout << "AssemblyGraph::check begins." << endl;
 
@@ -395,6 +395,10 @@ void AssemblyGraph::check() const
         const AssemblyGraphEdge& edge = assemblyGraph[e];
         SHASTA2_ASSERT(not edge.empty());
 
+        if(writeDetails) {
+            cout << "Checking edge " << edge.id << " with " << edge.size() << " steps." << endl;
+        }
+
         // Check that the first/last AnchorIds of this edge are consistent
         // with the ones in the source/target vertices.
         const vertex_descriptor v0 = source(e, assemblyGraph);
@@ -402,6 +406,16 @@ void AssemblyGraph::check() const
 
         const AnchorId anchorId0 = assemblyGraph[v0].anchorId;
         const AnchorId anchorId1 = assemblyGraph[v1].anchorId;
+
+        if(writeDetails) {
+            cout << "Source AnchorId for this edge is " << anchorIdToString(anchorId0) << endl;
+            cout << "Target AnchorId for this edge is " << anchorIdToString(anchorId1) << endl;
+            cout << "AnchorIds for each step:" << endl;
+            for(const AssemblyGraphEdgeStep& step: edge) {
+                cout << anchorIdToString(step.anchorPair.anchorIdA) << " " <<
+                    anchorIdToString(step.anchorPair.anchorIdB) << endl;
+            }
+        }
 
         SHASTA2_ASSERT(edge.front().anchorPair.anchorIdA == anchorId0);
         SHASTA2_ASSERT(edge.back().anchorPair.anchorIdB == anchorId1);
@@ -774,7 +788,7 @@ void AssemblyGraph::assemble()
 
     const uint64_t batchCount = 1;
     setupLoadBalancing(stepsToBeAssembled.size(), batchCount);
-    runThreads(&AssemblyGraph::assembleThreadFunction, options.threadCount);
+    runThreads(&AssemblyGraph::assembleThreadFunction, options.actualThreadCount());
 
     // Mark them as assembled.
     for(const edge_descriptor e: edgesToBeAssembled) {

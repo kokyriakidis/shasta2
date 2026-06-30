@@ -204,12 +204,19 @@ public:
 
 private:
 
-    void check() const;
+    void check(bool writeDetails = false) const;
 
     // Clear reverse complement information from all vertices and edges.
     // This needs to be done before operations that don't maintain
     // the vertices/edges vRc/eRc field.
     void clearReverseComplementInformation();
+
+    // This adds an edge vB0->vB1, eB, identical to the reverse complement
+    // of edge eA. It also sets the eRc fields in eA and eB.
+    edge_descriptor addReverseComplementEdge(
+        vertex_descriptor vB0,
+        vertex_descriptor vB1,
+        edge_descriptor eA);
 
 
 
@@ -268,8 +275,22 @@ public:
     // The edges of the second bubble in each pair are sorted
     // consistently with the ones in the first pair,
     // that is, the reverse complement of p.first.edges[i] is p.second.edges[i].
-    void findBubblePairs(vector<pair<Bubble, Bubble> >&) const;
+    using BubblePair = pair<Bubble, Bubble>;
+    void findBubblePairs(vector<BubblePair>&) const;
 
+    uint64_t bubblePairCleanup();
+    uint64_t bubblePairCleanupIterationMultithreaded(
+        vector< pair<vertex_descriptor, vertex_descriptor> >& excludeList);
+    void bubblePairCleanupIterationThreadFunction(uint64_t threadId);
+    class BubblePairCleanupIterationData {
+    public:
+        vector<BubblePair> candidateBubblePairs;
+        uint64_t modifiedCount = 0;
+    };
+    BubblePairCleanupIterationData bubblePairCleanupIterationData;
+private:
+    bool bubblePairCleanup(const BubblePair&);
+public:
 
 
     // Compress linear chains of edges into a single edge.
