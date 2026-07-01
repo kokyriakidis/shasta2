@@ -166,7 +166,101 @@ void AssemblyGraph::findSuperbubbleChains(
 
 uint64_t AssemblyGraph::strandSymmetricPhaseSuperbubbleChains()
 {
-    SHASTA2_ASSERT(0);
+    performanceLog << timestamp << "AssemblyGraph::strandSymmetricPhaseSuperbubbleChains begins." << endl;
+    AssemblyGraph& assemblyGraph = *this;
+
+    PhaseSuperbubbleChainsData& data = phaseSuperbubbleChainsData;
+    data.superbubbleChains = make_shared< vector<SuperbubbleChain> >();
+    vector<SuperbubbleChain>& superbubbleChains = *(data.superbubbleChains);
+    data.totalChangeCount = 0;
+
+    // Find Superbubbles.
+    vector<Superbubble> superbubbles;
+    findSuperbubbles(superbubbles);
+    writeSuperbubbles(superbubbles, "Superbubbles-WithOverlaps.csv");
+    removeContainedSuperbubbles(superbubbles);
+    cout << "Found " << superbubbles.size() << " non-overlapping superbubbles." << endl;
+    writeSuperbubbles(superbubbles, "Superbubbles.csv");
+    writeSuperbubblesForBandage(superbubbles, "Superbubbles-Bandage.csv");
+
+    // Find SuperbubbleChain.
+    findSuperbubbleChains(superbubbles, superbubbleChains);
+    cout << "Found " << superbubbleChains.size() << " superbubble chains." << endl;
+    writeSuperbubbleChains(superbubbleChains, "SuperbubbleChains.csv");
+    writeSuperbubbleChainsForBandage(superbubbleChains, "SuperbubbleChains-Bandage.csv");
+
+
+
+    // To find pairs of reverse complemented SuperbubbleChains, index the edges by superbubble chain.
+    std::map<edge_descriptor, uint64_t> superbubbleChainMap;
+    for(uint64_t superbubbleChainId=0; superbubbleChainId<superbubbleChains.size(); superbubbleChainId++) {
+        const SuperbubbleChain& superbubbleChain = superbubbleChains[superbubbleChainId];
+        for(const Superbubble& superbubble: superbubbleChain) {
+            for(const edge_descriptor e: superbubble.internalEdges) {
+                SHASTA2_ASSERT(not superbubbleChainMap.contains(e));
+                superbubbleChainMap.insert(make_pair(e, superbubbleChainId));
+            }
+        }
+    }
+    cout << "Out of " << num_edges(assemblyGraph) << " assembly graph edges, " <<
+        superbubbleChainMap.size() << " are in superbubble chains." << endl;
+
+
+
+    // Find the reverse complement of each SuperbubbleChain.
+    // This is very strict and can be simplified.
+    vector<uint64_t> v;
+    vector<uint64_t> superchainTable(superbubbleChains.size(), invalid<uint64_t>);
+    for(uint64_t superbubbleChainId=0; superbubbleChainId<superbubbleChains.size(); superbubbleChainId++) {
+        const SuperbubbleChain& superbubbleChain = superbubbleChains[superbubbleChainId];
+        v.clear();
+        for(const Superbubble& superbubble: superbubbleChain) {
+            for(const edge_descriptor e: superbubble.internalEdges) {
+                const edge_descriptor eRc = assemblyGraph[e].eRc;
+                SHASTA2_ASSERT(eRc != assemblyGraphNullEdge);
+                if(not superbubbleChainMap.contains(eRc)) {
+                    cout << "Edge " << assemblyGraph[e].id <<
+                        " is in a superbubble chain but its reverse complement " <<
+                        assemblyGraph[eRc].id << " is not." << endl;
+                }
+                v.push_back(superbubbleChainMap.at(eRc));
+            }
+        }
+        deduplicate(v);
+        SHASTA2_ASSERT(v.size() == 1);
+        superchainTable[superbubbleChainId] = v.front();
+    }
+
+    // Sanity check.
+    for(uint64_t superbubbleChainId=0; superbubbleChainId<superbubbleChains.size(); superbubbleChainId++) {
+        const uint64_t superbubbleChainIdRc = superchainTable[superbubbleChainId];
+        SHASTA2_ASSERT(superbubbleChainIdRc != superbubbleChainId);
+        SHASTA2_ASSERT(superchainTable[superbubbleChainIdRc] == superbubbleChainId);
+    }
+
+
+
+    // Now, for each pair of reverse complement superbubble chains,
+    // phase the first one, then make a reverse complemented copy to replace the second one.
+    // This should be multithreaded.
+    uint64_t changeCount = 0;
+    for(uint64_t superbubbleChainId=0; superbubbleChainId<superbubbleChains.size(); superbubbleChainId++) {
+        const uint64_t superbubbleChainIdRc = superchainTable[superbubbleChainId];
+        if(superbubbleChainId < superbubbleChainIdRc) {
+            const SuperbubbleChain& superbubbleChain = superbubbleChains[superbubbleChainId];
+            const SuperbubbleChain& superbubbleChainRc = superbubbleChains[superbubbleChainIdRc];
+            superbubbleChain.phase1(assemblyGraph, superbubbleChainId);
+
+            // For testing phase superbubbleChainRc separately.
+            superbubbleChainRc.phase1(assemblyGraph, superbubbleChainIdRc);
+        }
+    }
+    data.superbubbleChains = 0;
+
+
+    performanceLog << timestamp << "AssemblyGraph::strandSymmetricPhaseSuperbubbleChains ends." << endl;
+
+    return changeCount;
 }
 
 

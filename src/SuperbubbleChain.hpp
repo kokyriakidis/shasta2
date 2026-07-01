@@ -15,7 +15,7 @@ public:
 
     uint64_t phase1(
         AssemblyGraph&,
-        uint64_t superbubbleChainId);
+        uint64_t superbubbleChainId) const;
 
 private:
 

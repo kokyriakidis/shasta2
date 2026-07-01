@@ -340,6 +340,7 @@ void AssemblyGraph::simplifyAndAssemble()
     // Phase SuperbubbleChains.
     phaseSuperbubbleChains();
     writeIntermediateStageIfRequested("C");
+    clearReverseComplementInformation();
 
     // Read following.
     readFollowing();

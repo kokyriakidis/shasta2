@@ -405,24 +405,17 @@ public:
     // Phasing of SuperbubbleChains.
     uint64_t phaseSuperbubbleChains();
     void phaseSuperbubbleChainsThreadFunction(uint64_t threadId);
+
+    // Strand-symmetric phasing of superbubble chains.
+    uint64_t strandSymmetricPhaseSuperbubbleChains();
+    void strandSymmetricPhaseSuperbubbleChainsThreadFunction(uint64_t threadId);
+
     class PhaseSuperbubbleChainsData {
     public:
         shared_ptr< vector<SuperbubbleChain> > superbubbleChains;
         uint64_t totalChangeCount = 0;
     };
     PhaseSuperbubbleChainsData phaseSuperbubbleChainsData;
-
-
-
-    // Strand-symmetric phasing of superbubble chains.
-    uint64_t strandSymmetricPhaseSuperbubbleChains();
-    void strandSymmetricPhaseSuperbubbleChainsThreadFunction(uint64_t threadId);
-    class StrandSymmetricPhaseSuperbubbleChainsData {
-    public:
-        shared_ptr< vector<SuperbubbleChain> > superbubbleChains;
-        uint64_t totalChangeCount = 0;
-    };
-    StrandSymmetricPhaseSuperbubbleChainsData strandSymmetricPhaseSuperbubbleChainsData;
 
 
 

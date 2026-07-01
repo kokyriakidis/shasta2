@@ -17,10 +17,10 @@ using namespace shasta2;
 
 uint64_t SuperbubbleChain::phase1(
     AssemblyGraph& assemblyGraph,
-    uint64_t superbubbleChainId)
+    uint64_t superbubbleChainId) const
 {
 
-    SuperbubbleChain& superbubbleChain = *this;
+    const SuperbubbleChain& superbubbleChain = *this;
     const bool debug = false;
 
     const uint64_t phasingDistance = assemblyGraph.options.phasingDistance;
