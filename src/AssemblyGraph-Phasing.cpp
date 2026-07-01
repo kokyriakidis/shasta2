@@ -10,13 +10,12 @@ using namespace shasta2;
 
 
 
-uint64_t AssemblyGraph::phaseSuperbubbleChains()
+void AssemblyGraph::phaseSuperbubbleChains()
 {
     performanceLog << timestamp << "AssemblyGraph::phaseSuperbubbleChains begins." << endl;
 
     PhaseSuperbubbleChainsData& data = phaseSuperbubbleChainsData;
     vector<SuperbubbleChain>& superbubbleChains = data.superbubbleChains;
-    data.totalChangeCount = 0;
 
     // Find superbubbles.
     vector<Superbubble> superbubbles;
@@ -38,12 +37,9 @@ uint64_t AssemblyGraph::phaseSuperbubbleChains()
     runThreads(&AssemblyGraph::phaseSuperbubbleChainsThreadFunction, options.threadCount);
     superbubbleChains.clear();
     superbubbleChains.shrink_to_fit();
-    uint64_t changeCount = data.totalChangeCount;
 
-    changeCount += compress();
+    compress();
     performanceLog << timestamp << "AssemblyGraph::phaseSuperbubbleChains ends." << endl;
-
-    return changeCount;
 }
 
 
@@ -60,10 +56,9 @@ void AssemblyGraph::phaseSuperbubbleChainsThreadFunction([[maybe_unused]] uint64
         // Loop over all superbubble chains assigned to this batch.
         for(uint64_t superbubbleChainId=begin; superbubbleChainId<end; superbubbleChainId++) {
             SuperbubbleChain& superbubbleChain = superbubbleChains[superbubbleChainId];
-            const uint64_t changeCount = superbubbleChain.phase1(
+            superbubbleChain.phase1(
                 *this,
                 superbubbleChainId);
-            __sync_fetch_and_add(&data.totalChangeCount, changeCount);
         }
     }
 }
@@ -164,14 +159,13 @@ void AssemblyGraph::findSuperbubbleChains(
 
 
 
-uint64_t AssemblyGraph::strandSymmetricPhaseSuperbubbleChains()
+void AssemblyGraph::strandSymmetricPhaseSuperbubbleChains()
 {
     performanceLog << timestamp << "AssemblyGraph::strandSymmetricPhaseSuperbubbleChains begins." << endl;
     AssemblyGraph& assemblyGraph = *this;
 
     PhaseSuperbubbleChainsData& data = phaseSuperbubbleChainsData;
     vector<SuperbubbleChain>& superbubbleChains = data.superbubbleChains;
-    data.totalChangeCount = 0;
 
     // Find Superbubbles.
     vector<Superbubble> superbubbles;
@@ -242,7 +236,6 @@ uint64_t AssemblyGraph::strandSymmetricPhaseSuperbubbleChains()
     // Now, for each pair of reverse complement superbubble chains,
     // phase the first one, then make a reverse complemented copy to replace the second one.
     // This should be multithreaded.
-    uint64_t changeCount = 0;
     for(uint64_t superbubbleChainId=0; superbubbleChainId<superbubbleChains.size(); superbubbleChainId++) {
         const uint64_t superbubbleChainIdRc = superchainTable[superbubbleChainId];
         if(superbubbleChainId < superbubbleChainIdRc) {
@@ -259,8 +252,6 @@ uint64_t AssemblyGraph::strandSymmetricPhaseSuperbubbleChains()
 
 
     performanceLog << timestamp << "AssemblyGraph::strandSymmetricPhaseSuperbubbleChains ends." << endl;
-
-    return changeCount;
 }
 
 
