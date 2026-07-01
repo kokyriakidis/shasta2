@@ -15,8 +15,7 @@ uint64_t AssemblyGraph::phaseSuperbubbleChains()
     performanceLog << timestamp << "AssemblyGraph::phaseSuperbubbleChains begins." << endl;
 
     PhaseSuperbubbleChainsData& data = phaseSuperbubbleChainsData;
-    data.superbubbleChains = make_shared< vector<SuperbubbleChain> >();
-    vector<SuperbubbleChain>& superbubbleChains = *(data.superbubbleChains);
+    vector<SuperbubbleChain>& superbubbleChains = data.superbubbleChains;
     data.totalChangeCount = 0;
 
     // Find superbubbles.
@@ -37,7 +36,8 @@ uint64_t AssemblyGraph::phaseSuperbubbleChains()
     // Phase them.
     setupLoadBalancing(superbubbleChains.size(), 1);
     runThreads(&AssemblyGraph::phaseSuperbubbleChainsThreadFunction, options.threadCount);
-    data.superbubbleChains = 0;
+    superbubbleChains.clear();
+    superbubbleChains.shrink_to_fit();
     uint64_t changeCount = data.totalChangeCount;
 
     changeCount += compress();
@@ -51,7 +51,7 @@ uint64_t AssemblyGraph::phaseSuperbubbleChains()
 void AssemblyGraph::phaseSuperbubbleChainsThreadFunction([[maybe_unused]] uint64_t threadId)
 {
     PhaseSuperbubbleChainsData& data = phaseSuperbubbleChainsData;
-    vector<SuperbubbleChain>& superbubbleChains = *(data.superbubbleChains);
+    vector<SuperbubbleChain>& superbubbleChains = data.superbubbleChains;
 
     // Loop over all batches assigned to this thread.
     uint64_t begin, end;
@@ -170,8 +170,7 @@ uint64_t AssemblyGraph::strandSymmetricPhaseSuperbubbleChains()
     AssemblyGraph& assemblyGraph = *this;
 
     PhaseSuperbubbleChainsData& data = phaseSuperbubbleChainsData;
-    data.superbubbleChains = make_shared< vector<SuperbubbleChain> >();
-    vector<SuperbubbleChain>& superbubbleChains = *(data.superbubbleChains);
+    vector<SuperbubbleChain>& superbubbleChains = data.superbubbleChains;
     data.totalChangeCount = 0;
 
     // Find Superbubbles.
@@ -255,7 +254,8 @@ uint64_t AssemblyGraph::strandSymmetricPhaseSuperbubbleChains()
             superbubbleChainRc.phase1(assemblyGraph, superbubbleChainIdRc);
         }
     }
-    data.superbubbleChains = 0;
+    superbubbleChains.clear();
+    superbubbleChains.shrink_to_fit();
 
 
     performanceLog << timestamp << "AssemblyGraph::strandSymmetricPhaseSuperbubbleChains ends." << endl;

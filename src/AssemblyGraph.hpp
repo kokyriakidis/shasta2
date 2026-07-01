@@ -11,6 +11,7 @@
 #include "invalid.hpp"
 #include "MappedMemoryOwner.hpp"
 #include "MultithreadedObject.hpp"
+#include "SuperbubbleChain.hpp"
 
 // Boost libraries.
 #include <boost/graph/adjacency_list.hpp>
@@ -403,7 +404,7 @@ public:
 
     class PhaseSuperbubbleChainsData {
     public:
-        shared_ptr< vector<SuperbubbleChain> > superbubbleChains;
+        vector<SuperbubbleChain> superbubbleChains;
         uint64_t totalChangeCount = 0;
     };
     PhaseSuperbubbleChainsData phaseSuperbubbleChainsData;
