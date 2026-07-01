@@ -727,7 +727,7 @@ bool AssemblyGraph::bubblePairCleanup(const BubblePair& bubblePair)
             if(target(eA, assemblyGraph) != bubbleA.v1) {
                 continue;
             }
-            const edge_descriptor eB = addReverseComplementEdge(bubbleB.v0, bubbleB.v1, eA);
+            const edge_descriptor eB = addReverseComplementEdge(eA);
 
             // Sanity checks.
             const AssemblyGraphEdge& edgeB = assemblyGraph[eB];
@@ -755,20 +755,24 @@ bool AssemblyGraph::bubblePairCleanup(const BubblePair& bubblePair)
 
 
 
-// This adds an edge vB0->vB1, eB, identical to the reverse complement
-// of edge eA. It also sets the eRc fields in eA and eB.
-AssemblyGraph::edge_descriptor AssemblyGraph::addReverseComplementEdge(
-    vertex_descriptor vB0,
-    vertex_descriptor vB1,
-    edge_descriptor eA)
+// This adds an edge eB, identical to the reverse complement
+// of edge eA. It sets the eRc fields in eA and eB
+// and returns eB.
+AssemblyGraph::edge_descriptor AssemblyGraph::addReverseComplementEdge(edge_descriptor eA)
 {
+    AssemblyGraph& assemblyGraph = *this;
     const bool debug = false;
 
-    // Access the eA edge.
-    AssemblyGraph& assemblyGraph = *this;
+    // Access the eA edge and its vertices.
     AssemblyGraphEdge& edgeA = assemblyGraph[eA];
+    const vertex_descriptor vA0 = source(eA, assemblyGraph);
+    const vertex_descriptor vA1 = target(eA, assemblyGraph);
+    const AssemblyGraphVertex& vertexA0 = assemblyGraph[vA0];
+    const AssemblyGraphVertex& vertexA1 = assemblyGraph[vA1];
 
     // Create the new edge eB.
+    const vertex_descriptor vB0 = vertexA1.vRc;
+    const vertex_descriptor vB1 = vertexA0.vRc;
     auto[eB, wasAdded] = add_edge(vB0, vB1, AssemblyGraphEdge(nextEdgeId++), assemblyGraph);
     SHASTA2_ASSERT(wasAdded);
     AssemblyGraphEdge& edgeB = assemblyGraph[eB];
@@ -821,6 +825,10 @@ AssemblyGraph::edge_descriptor AssemblyGraph::addReverseComplementEdge(
                 anchorIdToString(step.anchorPair.anchorIdB) << endl;
         }
     }
+
+    // Sanity check.
+    SHASTA2_ASSERT(edgeB.front().anchorPair.anchorIdA == assemblyGraph[vB0].anchorId);
+    SHASTA2_ASSERT(edgeB.back().anchorPair.anchorIdB == assemblyGraph[vB1].anchorId);
 
     return eB;
 }
