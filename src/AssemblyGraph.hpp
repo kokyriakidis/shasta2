@@ -293,8 +293,9 @@ public:
 
     // Compress linear chains of edges into a single edge.
     uint64_t compress();
-    void compressLinearChain(const std::list<edge_descriptor>&);
+    edge_descriptor compressLinearChain(const std::list<edge_descriptor>&);
     uint64_t compressDebugLevel = 0; // 1=minimal, 2=compact, 3=detailed.
+    uint64_t strandSymmetricCompress();
 
     // This cleans up linear chains by removing edges that have low
     // corrected Jaccard similarity with nearby edges and

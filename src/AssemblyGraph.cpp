@@ -334,8 +334,7 @@ void AssemblyGraph::simplifyAndAssemble()
 
     // Remove or simplify bubbles likely caused by errors.
     bubblePairCleanup();
-    clearReverseComplementInformation();
-    compress();
+    strandSymmetricCompress();
     writeIntermediateStageIfRequested("B");
 
     // Phase SuperbubbleChains.
@@ -921,6 +920,79 @@ uint64_t AssemblyGraph::compress()
 
 
 
+uint64_t AssemblyGraph::strandSymmetricCompress()
+{
+    AssemblyGraph& assemblyGraph = *this;
+
+    // Find linear chains of 2 or more edges.
+    vector< std::list<edge_descriptor> > chains;
+    findLinearChains(assemblyGraph, 2, chains);
+
+    // To find pairs of reverse complement chais,
+    // index the edges by the chain they belong to.
+    // This is very strict.
+    std::map<edge_descriptor, uint64_t> chainMap;
+    for(uint64_t chainId=0; chainId<chains.size(); chainId++) {
+        const std::list<edge_descriptor>& chain = chains[chainId];
+        for(const edge_descriptor e: chain) {
+            SHASTA2_ASSERT(not chainMap.contains(e));
+            chainMap.insert(make_pair(e, chainId));
+        }
+    }
+
+    // Now for each chain we can find its reverse complement.
+    vector<uint64_t> chainTable(chains.size(), invalid<uint64_t>);
+    vector<uint64_t> v;
+    for(uint64_t chainId=0; chainId<chains.size(); chainId++) {
+        // cout << "Working on chain " << chainId << endl;
+        const std::list<edge_descriptor>& chain = chains[chainId];
+        v.clear();
+        for(const edge_descriptor e: chain) {
+            const edge_descriptor eRc = assemblyGraph[e].eRc;
+            SHASTA2_ASSERT(eRc != assemblyGraphNullEdge);
+            const uint64_t chainIdRc = chainMap.at(eRc);
+            v.push_back(chainIdRc);
+            // cout << "AAA " << assemblyGraph[e].id << " " << assemblyGraph[eRc].id << " " << chainIdRc << endl;
+        }
+        deduplicate(v);
+        SHASTA2_ASSERT(v.size() == 1);
+        chainTable[chainId] = v.front();
+    }
+
+    // Sanity check.
+    for(uint64_t chainId=0; chainId<chains.size(); chainId++) {
+        const uint64_t chainIdRc = chainTable[chainId];
+        SHASTA2_ASSERT(chainIdRc != chainId);
+        SHASTA2_ASSERT(chainTable[chainIdRc] == chainId);
+    }
+
+    for(uint64_t chainId=0; chainId<chains.size(); chainId++) {
+        const uint64_t chainIdRc = chainTable[chainId];
+        if(chainId < chainIdRc) {
+            const edge_descriptor e = compressLinearChain(chains[chainId]);
+            addReverseComplementEdge(e);
+
+            // The call to compressLinearChain removed the edges and
+            // the internal edges of chainId. Do the same for chainIdRc.
+            // Now we can remove the edges of the chain and its internal vertices.
+            bool isFirst = true;
+            for(const edge_descriptor e: chains[chainIdRc]) {
+                if(isFirst) {
+                    isFirst = false;
+                } else {
+                    const vertex_descriptor v = source(e, assemblyGraph);
+                    boost::clear_vertex(v, assemblyGraph);
+                    boost::remove_vertex(v, assemblyGraph);
+                }
+            }
+        }
+    }
+
+    return chains.size();
+}
+
+
+
 #if 0
 // OLD VERSION
 // Compress linear chains of edges into a single edge.
@@ -1013,7 +1085,7 @@ uint64_t AssemblyGraph::compress()
 
 
 
-void AssemblyGraph::compressLinearChain(const std::list<edge_descriptor>& chain)
+AssemblyGraph::edge_descriptor AssemblyGraph::compressLinearChain(const std::list<edge_descriptor>& chain)
 {
     AssemblyGraph& assemblyGraph = *this;
     SHASTA2_ASSERT(chain.size() > 1);
@@ -1086,6 +1158,7 @@ void AssemblyGraph::compressLinearChain(const std::list<edge_descriptor>& chain)
         }
     }
 
+    return eNew;
 }
 
 
