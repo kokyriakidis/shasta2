@@ -5,6 +5,7 @@
 // Each AssemblyGraphEdge generates a gfa segment.
 
 // Shasta.
+#include "AssemblyGraphBaseClass.hpp"
 #include "AnchorPair.hpp"
 #include "Base.hpp"
 #include "invalid.hpp"
@@ -25,18 +26,8 @@
 
 namespace shasta2 {
 
-    class AssemblyGraph;
-    class AssemblyGraphVertex;
-    class AssemblyGraphEdge;
+
     class AssemblyGraphEdgeStep;
-
-    using AssemblyGraphBaseClass = boost::adjacency_list<
-        boost::listS,
-        boost::listS,
-        boost::bidirectionalS,
-        AssemblyGraphVertex,
-        AssemblyGraphEdge>;
-
     const AssemblyGraphBaseClass::edge_descriptor assemblyGraphNullEdge = {0, 0, 0};
 
     class AnchorGraph;

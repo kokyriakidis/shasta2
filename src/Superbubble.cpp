@@ -1,5 +1,6 @@
 // Shasta.
 #include "Superbubble.hpp"
+#include "AssemblyGraph.hpp"
 using namespace shasta2;
 
 // Boost libraries.

@@ -10,8 +10,8 @@ namespace shasta2 {
 
 class shasta2::SuperbubbleChain: public vector<Superbubble> {
 public:
-    using vertex_descriptor = AssemblyGraph::vertex_descriptor;
-    using edge_descriptor = AssemblyGraph::edge_descriptor;
+    using vertex_descriptor = AssemblyGraphBaseClass::vertex_descriptor;
+    using edge_descriptor = AssemblyGraphBaseClass::edge_descriptor;
 
     uint64_t phase1(
         AssemblyGraph&,

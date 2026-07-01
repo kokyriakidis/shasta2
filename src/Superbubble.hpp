@@ -11,17 +11,23 @@
 // In that case the out-degree of the source must be equal to the
 // in-degree of the target, and defines the ploidy of the bubble.
 
-#include "AssemblyGraph.hpp"
+// Shasta2.
+#include "AssemblyGraphBaseClass.hpp"
+#include "SHASTA2_ASSERT.hpp"
+
+// Standard library.
+#include "vector.hpp"
 
 namespace shasta2 {
     class Superbubble;
+    class AssemblyGraph;
 }
 
 
 class shasta2::Superbubble {
 public:
-    using vertex_descriptor = AssemblyGraph::vertex_descriptor;
-    using edge_descriptor = AssemblyGraph::edge_descriptor;
+    using vertex_descriptor = AssemblyGraphBaseClass::vertex_descriptor;
+    using edge_descriptor = AssemblyGraphBaseClass::edge_descriptor;
 
     const AssemblyGraph& assemblyGraph;
 
