@@ -1676,6 +1676,13 @@ void AssemblyGraph::findSuperbubbleChains(
 
 
 
+uint64_t AssemblyGraph::strandSymmetricPhaseSuperbubbleChains()
+{
+    SHASTA2_ASSERT(0);
+}
+
+
+
 // Find the non-trivial strongly connected components.
 // Each component is stored with vertices sorted to permit binary searches.
 void AssemblyGraph::findStrongComponents(

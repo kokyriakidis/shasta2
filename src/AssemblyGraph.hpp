@@ -413,6 +413,18 @@ public:
 
 
 
+    // Strand-symmetric phasing of superbubble chains.
+    uint64_t strandSymmetricPhaseSuperbubbleChains();
+    void strandSymmetricPhaseSuperbubbleChainsThreadFunction(uint64_t threadId);
+    class StrandSymmetricPhaseSuperbubbleChainsData {
+    public:
+        shared_ptr< vector<SuperbubbleChain> > superbubbleChains;
+        uint64_t totalChangeCount = 0;
+    };
+    StrandSymmetricPhaseSuperbubbleChainsData strandSymmetricPhaseSuperbubbleChainsData;
+
+
+
     // Strongly connected components.
 
     // Find the non-trivial strongly connected components.
