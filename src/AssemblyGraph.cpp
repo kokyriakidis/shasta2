@@ -345,11 +345,11 @@ void AssemblyGraph::simplifyAndAssemble()
     writeIntermediateStageIfRequested("D");
     strandSymmetricCompress();
     removeZeroLengthSegmentsStrandSymmetric();
-    clearReverseComplementInformation();
     writeIntermediateStageIfRequested("E");
 
     // Prune.
     prune();
+    strandSymmetricCompress();
     writeIntermediateStageIfRequested("F");
 
     // Remove isolated vertices and connected components with small N50.
@@ -358,6 +358,8 @@ void AssemblyGraph::simplifyAndAssemble()
     writeIntermediateStageIfRequested("G");
     compress();
     writeIntermediateStageIfRequested("H");
+    check();
+    clearReverseComplementInformation();
 
     // Connect dangling segments.
     connectDanglingSegments();
