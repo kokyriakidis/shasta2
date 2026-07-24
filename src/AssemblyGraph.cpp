@@ -359,7 +359,6 @@ void AssemblyGraph::simplifyAndAssemble()
     compress();
     writeIntermediateStageIfRequested("H");
     check();
-    clearReverseComplementInformation();
 
     // Connect dangling segments.
     connectDanglingSegments();
@@ -367,12 +366,13 @@ void AssemblyGraph::simplifyAndAssemble()
 
     // A final round of phasing.More opportunities for phasing
     // may have emerged.
-    phaseSuperbubbleChains();
+    strandSymmetricPhaseSuperbubbleChains();
     writeIntermediateStageIfRequested("J");
 
 
 
     // Sequence assembly.
+    check();
     assembleAll();
     write("Final");
     writeFasta("Final");
@@ -455,7 +455,16 @@ void AssemblyGraph::check(bool writeDetails) const
     // Check consistency of the eRc fields in the edges.
     BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
         const AssemblyGraphEdge& edge = assemblyGraph[e];
+        if(writeDetails) {
+            cout << "Checking " << edge.id << endl;
+        }
         const edge_descriptor eRc = edge.eRc;
+        if(writeDetails) {
+            if(eRc == assemblyGraphNullEdge) {
+                cout << "Segment " << assemblyGraph[eRc].id <<
+                    " has null reverse complement." << endl;
+            }
+        }
         SHASTA2_ASSERT(eRc != assemblyGraphNullEdge);
         SHASTA2_ASSERT(eRc != e);
         const AssemblyGraphEdge& edgeRc = assemblyGraph[eRc];
@@ -2441,13 +2450,16 @@ void AssemblyGraph::connectDanglingSegments()
     const uint64_t minReadCount = 1;
 
     AssemblyGraph& assemblyGraph = *this;
+    using Segment = edge_descriptor;
     const bool debug = false;
+
+    check();
 
 
     // A graph to store information about dangling segments.
     class Vertex {
     public:
-        edge_descriptor segment;
+        Segment segment;
         bool isSource;
         bool isTarget;
     };
@@ -2461,11 +2473,12 @@ void AssemblyGraph::connectDanglingSegments()
 
 
     // To generate Graph vertices, loop over AssemblyGraph edges (segments).
-    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+    std::map<Segment, Graph::vertex_descriptor> vertexMap;
+    BGL_FORALL_EDGES(segment, assemblyGraph, AssemblyGraph) {
 
         // If not dangling, skip it.
-        const vertex_descriptor v0 = source(e, assemblyGraph);
-        const vertex_descriptor v1 = target(e, assemblyGraph);
+        const vertex_descriptor v0 = source(segment, assemblyGraph);
+        const vertex_descriptor v1 = target(segment, assemblyGraph);
         const bool isSource = (out_degree(v1, assemblyGraph) == 0);
         const bool isTarget = (in_degree(v0, assemblyGraph) == 0);
         if(not (isSource or isTarget)) {
@@ -2473,14 +2486,15 @@ void AssemblyGraph::connectDanglingSegments()
         }
 
         // If too short, skip it.
-        if(assemblyGraph[e].length() < minLength) {
+        if(assemblyGraph[segment].length() < minLength) {
             continue;
         }
 
         // Create a vertex.
-        add_vertex(Vertex({e, isSource, isTarget}), graph);
+        const Graph::vertex_descriptor v = add_vertex(Vertex({segment, isSource, isTarget}), graph);
+        vertexMap.insert(make_pair(segment, v));
         if(false) {
-            cout << "Dangling segment " << assemblyGraph[e].id;
+            cout << "Dangling segment " << assemblyGraph[segment].id;
             if(isSource) {
                 cout << " source";
             }
@@ -2505,8 +2519,12 @@ void AssemblyGraph::connectDanglingSegments()
                 continue;
             }
 
-            const edge_descriptor e0 = graph[v0].segment;
-            const edge_descriptor e1 = graph[v1].segment;
+            const Segment e0 = graph[v0].segment;
+            const Segment e1 = graph[v1].segment;
+
+            if(e0 == e1) {
+                continue;
+            }
 
 
 
@@ -2538,14 +2556,94 @@ void AssemblyGraph::connectDanglingSegments()
 
 
 
+    if(debug) {
+        ofstream dot("ConnectDanglingSegments.dot");
+        dot << "digraph ConnectDanglingSegments {\n";
+
+        BGL_FORALL_VERTICES(v, graph, Graph) {
+            const Vertex& vertex = graph[v];
+            const Segment e = vertex.segment;
+            const Segment eRc = assemblyGraph[e].eRc;
+            SHASTA2_ASSERT(eRc != assemblyGraphNullEdge);
+            const uint64_t id = assemblyGraph[e].id;
+            const uint64_t idRc = assemblyGraph[eRc].id;
+            dot << id << "[label=\"" <<
+                id << "\\n(" << idRc << ")\"";
+            string color = "Black";
+            if(vertex.isSource) {
+                if(vertex.isTarget) {
+                    color = "Blue";
+                } else {
+                    color = "Green";
+                }
+            } if(vertex.isTarget) {
+                if(vertex.isSource) {
+                    color = "Blue";
+                } else {
+                    color = "Red";
+                }
+            }
+            dot << " style=filled fillcolor=" << color << "];\n";
+        }
+
+        BGL_FORALL_EDGES(e, graph, Graph){
+            const Graph::vertex_descriptor v0 = source(e, graph);
+            const Graph::vertex_descriptor v1 = target(e, graph);
+            const Vertex& vertex0 = graph[v0];
+            const Vertex& vertex1 = graph[v1];
+            dot << assemblyGraph[vertex0.segment].id <<
+                "->" << assemblyGraph[vertex1.segment].id << endl;
+        }
+        dot << "}\n";
+    }
+
+
+
+    // Check that the graph is strand-symmetric.
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        const Segment segment = graph[v].segment;
+        const Segment segmentRc = assemblyGraph[segment].eRc;
+        SHASTA2_ASSERT(segmentRc != assemblyGraphNullEdge);
+        SHASTA2_ASSERT(segmentRc != segment);
+        const Graph::vertex_descriptor vRc = vertexMap.at(segmentRc);
+        const Vertex& vertex = graph[v];
+        const Vertex& vertexRc = graph[vRc];
+        SHASTA2_ASSERT(vertex.isSource == vertexRc.isTarget);
+        SHASTA2_ASSERT(vertex.isTarget == vertexRc.isSource);
+    }
+    BGL_FORALL_EDGES(e, graph, Graph) {
+        const vertex_descriptor v0 = source(e, graph);
+        const vertex_descriptor v1 = target(e, graph);
+        const Segment segment0 = graph[v0].segment;
+        const Segment segment1 = graph[v1].segment;
+        const Segment segment0Rc = assemblyGraph[segment0].eRc;
+        const Segment segment1Rc = assemblyGraph[segment1].eRc;
+        SHASTA2_ASSERT(segment0Rc != assemblyGraphNullEdge);
+        SHASTA2_ASSERT(segment1Rc != assemblyGraphNullEdge);
+        const Graph::vertex_descriptor v0Rc = vertexMap.at(segment0Rc);
+        const Graph::vertex_descriptor v1Rc = vertexMap.at(segment1Rc);
+        auto[eRc, edgeExists] = boost::edge(v1Rc, v0Rc, graph);
+        SHASTA2_ASSERT(edgeExists);
+        SHASTA2_ASSERT(eRc != e);
+    }
+
+
+
     // Now we loop over all edges v0->v1 such that out_degree(v0)==1
     // and in_degree(v1)==1 and connected the segments corresponding to v0 and v1.
+    // To keep the AssemblyGraph strand symmetric, when we make a connection
+    // we also make the reverse complement connection.
+    // We keep track of connections already made.
+    std::set< pair<Segment, Segment> > connectionsMade;
     BGL_FORALL_EDGES(e, graph, Graph) {
         const vertex_descriptor v0 = source(e, graph);
         const vertex_descriptor v1 = target(e, graph);
         if((out_degree(v0, graph) == 1) and (in_degree(v1, graph) == 1)) {
             const edge_descriptor e0 = graph[v0].segment;
             const edge_descriptor e1 = graph[v1].segment;
+            if(connectionsMade.contains({e0, e1})) {
+                continue;
+            }
             if(canConnect(e0, e1)) {
                 if(debug) {
                     cout << "Connecting dangling segments " <<
@@ -2558,6 +2656,7 @@ void AssemblyGraph::connectDanglingSegments()
 
                 const AnchorId anchorId0 = assemblyGraph[u0].anchorId;
                 const AnchorId anchorId1 = assemblyGraph[u1].anchorId;
+
 
                 // Create the new edge.
                 // If the two anchors are the same, leave it empty without any steps.
@@ -2593,18 +2692,36 @@ void AssemblyGraph::connectDanglingSegments()
                                 SHASTA2_ASSERT(0);
                             }
                             newEdge.push_back(AssemblyGraphEdgeStep(rEdge.anchorPair, rEdge.offset));
+
                         }
                     } catch(RestrictedAnchorGraph::NoTransitions&) {
                         cout << "Could not connect " << assemblyGraph[e0].id <<
                             " with " << assemblyGraph[e1].id << endl;
                         SHASTA2_ASSERT(0);
                     }
+
                 }
+                connectionsMade.insert({e0, e1});
+                const Segment newSegmentRc = createReverseComplementEdge(newSegment);
+                connectionsMade.insert({assemblyGraph[e1].eRc, assemblyGraph[e0].eRc});
+
+                if(debug) {
+                    cout << "Created " << assemblyGraph[newSegment].id <<
+                        " connecting " << assemblyGraph[e0].id << " with " <<
+                        assemblyGraph[e1].id << endl;
+                    cout << "Reverse complement: created " << assemblyGraph[newSegmentRc].id <<
+                        " connecting " << assemblyGraph[assemblyGraph[e1].eRc].id << " with " <<
+                        assemblyGraph[assemblyGraph[e0].eRc].id << endl;
+
+                }
+
             }
         }
     }
 
-    compress();
+    check();
+    strandSymmetricCompress();
+    check();
 }
 
 
