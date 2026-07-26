@@ -504,9 +504,8 @@ private:
     // Assemble sequence for all edges in the edgesToBeAssembled vector.
     // This fills in the stepsToBeAssembled with all steps of those edges,
     // then assembles each of the steps in parallel.
-    void assemble();
+    void assemble(const vector<edge_descriptor>& edgesToBeAssembled);
     void assembleThreadFunction(uint64_t threadId);
-    vector<edge_descriptor> edgesToBeAssembled;
     vector< pair<edge_descriptor, uint64_t> > stepsToBeAssembled;
 
 

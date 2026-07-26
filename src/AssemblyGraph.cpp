@@ -700,12 +700,11 @@ void AssemblyGraph::assembleAll()
 
     const AssemblyGraph& assemblyGraph = *this;
 
-    edgesToBeAssembled.clear();
+    vector<edge_descriptor> edgesToBeAssembled;
     BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
         edgesToBeAssembled.push_back(e);
     }
-    assemble();
-    edgesToBeAssembled.clear();
+    assemble(edgesToBeAssembled);
 
     writeMemoryStatistics("AssemblyGraph::assembleAll ends");
 }
@@ -715,9 +714,9 @@ void AssemblyGraph::assembleAll()
 // Assemble sequence for the specified edge.
 void AssemblyGraph::assemble(edge_descriptor e)
 {
-    edgesToBeAssembled.clear();
+    vector<edge_descriptor> edgesToBeAssembled;
     edgesToBeAssembled.push_back(e);
-    assemble();
+    assemble(edgesToBeAssembled);
 }
 
 
@@ -807,7 +806,7 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
 // Assemble sequence for all edges in the edgesToBeAssembled vector.
 // This fills in the stepsToBeAssembled with all steps of those edges,
 // then assembles each of the steps in parallel.
-void AssemblyGraph::assemble()
+void AssemblyGraph::assemble(const vector<edge_descriptor>& edgesToBeAssembled)
 {
     performanceLog << timestamp << "Sequence assembly begins for " << edgesToBeAssembled.size() <<
         " assembly graph edges." << endl;
@@ -830,8 +829,8 @@ void AssemblyGraph::assemble()
         assemblyGraph[e].wasAssembled = true;
     }
 
-    edgesToBeAssembled.clear();
     stepsToBeAssembled.clear();
+    stepsToBeAssembled.shrink_to_fit();
 
     performanceLog << timestamp << "Sequence assembly ends." << endl;
 }

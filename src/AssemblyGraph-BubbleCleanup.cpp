@@ -127,7 +127,7 @@ uint64_t AssemblyGraph::bubbleCleanupIterationMultithreaded(
     // cout << candidateBubbles.size() << " bubbles are candidate for clean up." << endl;
 
     // Assemble sequence for all the edges of these bubbles.
-    edgesToBeAssembled.clear();
+    vector<edge_descriptor> edgesToBeAssembled;
     for(const Bubble& bubble: candidateBubbles) {
         for(const edge_descriptor e: bubble.edges) {
             if(not assemblyGraph[e].wasAssembled) {
@@ -135,7 +135,7 @@ uint64_t AssemblyGraph::bubbleCleanupIterationMultithreaded(
             }
         }
     }
-    assemble();
+    assemble(edgesToBeAssembled);
 
 
     // Process the bubbles in multithreaded code.
@@ -607,7 +607,7 @@ uint64_t AssemblyGraph::bubblePairCleanupIterationMultithreaded(
 
 
     // Assemble sequence for all the edges of the first bubble of each BubblePair.
-    edgesToBeAssembled.clear();
+    vector<edge_descriptor> edgesToBeAssembled;
     for(const auto& [bubbleA, bubbleB]: allBubblePairs) {
         for(const edge_descriptor e: bubbleA.edges) {
             if(not assemblyGraph[e].wasAssembled) {
@@ -615,7 +615,7 @@ uint64_t AssemblyGraph::bubblePairCleanupIterationMultithreaded(
             }
         }
     }
-    assemble();
+    assemble(edgesToBeAssembled);
 
 
 
