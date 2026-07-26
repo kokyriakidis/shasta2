@@ -83,6 +83,8 @@ uint64_t AssemblyGraph::bubbleCleanup()
         modifiedCount += modifiedCountThisIteration;
     }
 
+    clearAllSequence();
+
     return modifiedCount;
 }
 

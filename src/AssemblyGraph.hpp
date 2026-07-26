@@ -507,6 +507,7 @@ private:
     void assemble(const vector<edge_descriptor>& edgesToBeAssembled);
     void assembleThreadFunction(uint64_t threadId);
     vector< pair<edge_descriptor, uint64_t> > stepsToBeAssembled;
+    void clearAllSequence();
 
 
 

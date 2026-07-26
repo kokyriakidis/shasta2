@@ -3219,3 +3219,24 @@ void AssemblyGraph::collapseVerticesStrandSymmetric(
         boost::remove_vertex(v, assemblyGraph);
     }
 }
+
+
+
+void AssemblyGraph::clearAllSequence()
+{
+    AssemblyGraph& assemblyGraph = *this;
+
+    // Loop over all edges.
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+
+        // Mark this edge as not assembled.
+        AssemblyGraphEdge& edge = assemblyGraph[e];
+        edge.wasAssembled = false;
+
+        // Clear the sequence in all the steps of this edge.
+        for(AssemblyGraphEdgeStep& step: edge) {
+            step.sequence.clear();
+            step.sequence.shrink_to_fit();
+        }
+    }
+}
