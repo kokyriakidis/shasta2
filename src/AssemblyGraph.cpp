@@ -2522,7 +2522,12 @@ void AssemblyGraph::connectDanglingSegments()
             const Segment e0 = graph[v0].segment;
             const Segment e1 = graph[v1].segment;
 
+            // Skip if the segments are the same
+            // or the reverse complement of each other.
             if(e0 == e1) {
+                continue;
+            }
+            if(assemblyGraph[e0].eRc == e1) {
                 continue;
             }
 
