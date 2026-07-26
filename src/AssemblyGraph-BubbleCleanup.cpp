@@ -585,7 +585,7 @@ uint64_t AssemblyGraph::bubblePairCleanupIterationMultithreaded(
 
 
         if(std::ranges::binary_search(excludeList, make_pair(bubbleA.v0, bubbleA.v1))) {
-            SHASTA2_ASSERT(std::ranges::contains(excludeList, make_pair(bubbleB.v0, bubbleB.v1)));
+            SHASTA2_ASSERT(std::ranges::binary_search(excludeList, make_pair(bubbleB.v0, bubbleB.v1)));
             continue;
         }
 
