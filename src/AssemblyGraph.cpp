@@ -27,6 +27,7 @@ using namespace shasta2;
 // Standard library.
 #include "chrono.hpp"
 #include "fstream.hpp"
+#include <ranges>
 
 
 
@@ -47,7 +48,9 @@ AssemblyGraph::AssemblyGraph(
     anchors(anchors),
     journeys(journeys),
     options(options),
-    orderById(*this)
+    orderById(*this),
+    edgesToBeAssembledA(orderById),
+    edgesToBeAssembledB(orderById)
 {
     AssemblyGraph& assemblyGraph = *this;
 
@@ -316,7 +319,9 @@ AssemblyGraph::AssemblyGraph(
     anchors(anchors),
     journeys(journeys),
     options(options),
-    orderById(*this)
+    orderById(*this),
+    edgesToBeAssembledA(orderById),
+    edgesToBeAssembledB(orderById)
 {
     load(stage);
 }
@@ -373,7 +378,7 @@ void AssemblyGraph::simplifyAndAssemble()
 
     // Sequence assembly.
     check();
-    assembleAll();
+    assembleAllStrandSymmetric();
     write("Final");
     writeFasta("Final");
 
@@ -3239,4 +3244,96 @@ void AssemblyGraph::clearAllSequence()
             step.sequence.shrink_to_fit();
         }
     }
+}
+
+
+
+void AssemblyGraph::addEdgeToBeAssembledStrandSymmetric(edge_descriptor e)
+{
+    const AssemblyGraph& assemblyGraph = *this;
+
+    // Get the reverse complement edge.
+    const edge_descriptor eRc = assemblyGraph[e].eRc;
+
+    // If there is no reverse complement edge,
+    // we will assemble this edge.
+    if(eRc == assemblyGraphNullEdge) {
+        edgesToBeAssembledA.insert(e);
+        return;
+    }
+
+    // If we already have the reverse complement in edgesToBeAssembledA,
+    // store this edge in edgesToBeAssembledB.
+    // Its sequence  will be obtained by reverse complementing
+    // the sequence of its reverse complement.
+    if(edgesToBeAssembledA.contains(eRc)) {
+        edgesToBeAssembledB.insert(e);
+    } else {
+        edgesToBeAssembledA.insert(e);
+    }
+}
+
+
+
+void AssemblyGraph::assembleStrandSymmetric()
+{
+    AssemblyGraph& assemblyGraph = *this;
+    using shasta2::Base;
+
+    cout << "Strand symmetric sequence assembly for " <<
+        edgesToBeAssembledA.size() << " + " <<
+        edgesToBeAssembledB.size() << " edges begins." << endl;
+
+    // Assemble the edges stored in edgesToBeAssembledA.
+    vector<edge_descriptor> edgesToBeAssembled(edgesToBeAssembledA.begin(), edgesToBeAssembledA.end());
+    assemble(edgesToBeAssembled);
+
+
+
+    // For the edges stored in edgesToBeAssembledB, obtain the sequence
+    // by reverse complement.
+    for(const edge_descriptor e: edgesToBeAssembledB) {
+        AssemblyGraphEdge& edge = assemblyGraph[e];
+
+        // Access the reverse complemented edge.
+        const edge_descriptor eRc = edge.eRc;
+        SHASTA2_ASSERT(eRc != assemblyGraphNullEdge);
+        SHASTA2_ASSERT(eRc != e);
+        const AssemblyGraphEdge& edgeRc = assemblyGraph[eRc];
+
+        // Loop over all steps.
+        const uint64_t n = edge.size();
+        SHASTA2_ASSERT(edgeRc.size() == n);
+        for(uint64_t i=0; i<n; i++) {
+            AssemblyGraphEdgeStep& step = edge[i];
+            const AssemblyGraphEdgeStep& stepRc = edgeRc[n - 1 - i];
+            vector<Base>& sequence = step.sequence;
+            const vector<Base>& sequenceRc = stepRc.sequence;
+            for(const Base b: std::views::reverse(sequenceRc)) {
+                sequence.push_back(b.complement());
+            }
+        }
+        edge.wasAssembled = true;
+
+    }
+
+    cout << "Strand symmetric sequence assembly for " <<
+        edgesToBeAssembledA.size() << " + " <<
+        edgesToBeAssembledB.size() << " edges ends." << endl;
+}
+
+
+
+void AssemblyGraph::assembleAllStrandSymmetric()
+{
+    AssemblyGraph& assemblyGraph = *this;
+
+    writeMemoryStatistics("AssemblyGraph::assembleAllStrandSymmetric begins");
+
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        addEdgeToBeAssembledStrandSymmetric(e);
+    }
+    assembleStrandSymmetric();
+
+    writeMemoryStatistics("AssemblyGraph::assembleAllStrandSymmetric ends");
 }

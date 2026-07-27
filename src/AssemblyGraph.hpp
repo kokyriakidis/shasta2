@@ -213,7 +213,39 @@ public:
     // The vertices of eB must already exist.
     edge_descriptor createReverseComplementEdge(edge_descriptor eA);
 
+
+
+    // Class to order vertices or edges by id.
+    class OrderById {
+    public:
+        OrderById(const AssemblyGraph& assemblyGraph): assemblyGraph(assemblyGraph) {}
+        const AssemblyGraph& assemblyGraph;
+        bool operator()(vertex_descriptor x, vertex_descriptor y) const
+        {
+            return assemblyGraph[x].id < assemblyGraph[y].id;
+        }
+        bool operator()(edge_descriptor x, edge_descriptor y) const
+        {
+            return assemblyGraph[x].id < assemblyGraph[y].id;
+        }
+
+        // Also order pairs of edges.
+        using EdgePair = pair<edge_descriptor, edge_descriptor>;
+        bool operator()(const EdgePair& x,const EdgePair& y) const
+        {
+            if(assemblyGraph[x.first].id < assemblyGraph[y.first].id) {
+                return true;
+            }
+            if(assemblyGraph[x.first].id > assemblyGraph[y.first].id) {
+                return false;
+            }
+            return assemblyGraph[x.second].id < assemblyGraph[y.second].id;
+        }
+    };
+    const OrderById orderById;
+
 private:
+
 
 
     // BUBBLE CLEANUP.
@@ -307,37 +339,6 @@ public:
     // the remaining edges.
     void cleanupLinearChains();
     void cleanupLinearChain(const vector<edge_descriptor>&);
-
-
-
-    // Class to order vertices or edges by id.
-    class OrderById {
-    public:
-        OrderById(const AssemblyGraph& assemblyGraph): assemblyGraph(assemblyGraph) {}
-        const AssemblyGraph& assemblyGraph;
-        bool operator()(vertex_descriptor x, vertex_descriptor y) const
-        {
-            return assemblyGraph[x].id < assemblyGraph[y].id;
-        }
-        bool operator()(edge_descriptor x, edge_descriptor y) const
-        {
-            return assemblyGraph[x].id < assemblyGraph[y].id;
-        }
-
-        // Also order pairs of edges.
-        using EdgePair = pair<edge_descriptor, edge_descriptor>;
-        bool operator()(const EdgePair& x,const EdgePair& y) const
-        {
-            if(assemblyGraph[x.first].id < assemblyGraph[y.first].id) {
-                return true;
-            }
-            if(assemblyGraph[x.first].id > assemblyGraph[y.first].id) {
-                return false;
-            }
-            return assemblyGraph[x.second].id < assemblyGraph[y.second].id;
-        }
-    };
-    const OrderById orderById;
 
 
 
@@ -509,6 +510,20 @@ private:
     vector< pair<edge_descriptor, uint64_t> > stepsToBeAssembled;
     void clearAllSequence();
 
+
+
+    // Strand-symmetric sequence assembly.
+    // If an edge has a reverse complement, the sequences
+    // for the two edges will be reverse complements of each other.
+    void addEdgeToBeAssembledStrandSymmetric(edge_descriptor e);
+    void assembleStrandSymmetric();
+    void assembleAllStrandSymmetric();
+
+    // Sequence for these edges will be assembled.
+    std::set<edge_descriptor, OrderById> edgesToBeAssembledA;
+
+    // The sequence of these edges will be obtained from their reverse complements.
+    std::set<edge_descriptor, OrderById> edgesToBeAssembledB;
 
 
 
