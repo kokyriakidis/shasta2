@@ -174,6 +174,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def("prune", &AssemblyGraph::prune)
         .def("removeEmptyEdges", &AssemblyGraph::removeEmptyEdges)
         .def("assembleAll", &AssemblyGraph::assembleAll)
+        .def("assembleAllStrandSymmetric", &AssemblyGraph::assembleAllStrandSymmetric)
         .def("clearSequence", &AssemblyGraph::clearSequence)
         .def("phaseSuperbubbleChains", &AssemblyGraph::phaseSuperbubbleChains)
         .def("strandSymmetricPhaseSuperbubbleChains", &AssemblyGraph::strandSymmetricPhaseSuperbubbleChains)
@@ -187,6 +188,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def("connectDanglingSegments", &AssemblyGraph::connectDanglingSegments)
         .def("removeIsolatedVertices", &AssemblyGraph::removeIsolatedVertices)
         .def("removeLowN50Components", &AssemblyGraph::removeLowN50Components)
+        .def("makeSingleStranded", &AssemblyGraph::makeSingleStranded)
         ;
 
     // Expose AssemblyGraph vertex_descriptor and edge_descriptor.

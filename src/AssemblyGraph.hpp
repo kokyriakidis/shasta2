@@ -517,7 +517,9 @@ private:
     // for the two edges will be reverse complements of each other.
     void addEdgeToBeAssembledStrandSymmetric(edge_descriptor e);
     void assembleStrandSymmetric();
+public:
     void assembleAllStrandSymmetric();
+private:
 
     // Sequence for these edges will be assembled.
     std::set<edge_descriptor, OrderById> edgesToBeAssembledA;
@@ -525,6 +527,19 @@ private:
     // The sequence of these edges will be obtained from their reverse complements.
     std::set<edge_descriptor, OrderById> edgesToBeAssembledB;
 
+
+public:
+    // Make the AssemblyGraph single-stranded.
+    // This requires to AssemblyGraph to be strand-symmetric in input.
+    // It removes half of the edges (segments).
+    // This is done by computing connected components of a graph in which the vertices
+    // are the AssemblyGraph edges (segments).
+    // Most connected component come in reverse complemented pairs,
+    // and only one component for each pair is kept.
+    // For the rare connected components that are self-complementary,
+    // we initially keep the entire component, but we cna do better.
+    void makeSingleStranded();
+private:
 
 
     // Serialization.

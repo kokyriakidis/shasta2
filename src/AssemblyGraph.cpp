@@ -373,10 +373,12 @@ void AssemblyGraph::simplifyAndAssemble()
     strandSymmetricPhaseSuperbubbleChains();
     writeIntermediateStageIfRequested("J");
 
-
+    // Make the AssemblyGraph single-stranded.
+    check();
+    makeSingleStranded();
+    write("Final-NoSequence");
 
     // Sequence assembly.
-    check();
     assembleAllStrandSymmetric();
     write("Final");
     writeFasta("Final");
@@ -3327,4 +3329,139 @@ void AssemblyGraph::assembleAllStrandSymmetric()
     assembleStrandSymmetric();
 
     writeMemoryStatistics("AssemblyGraph::assembleAllStrandSymmetric ends");
+}
+
+
+
+// Make the AssemblyGraph single-stranded.
+// This requires to AssemblyGraph to be strand-symmetric in input.
+// It removes half of the edges (segments).
+// This is done by computing connected components of a graph in which the vertices
+// are the AssemblyGraph edges (segments).
+// Most connected component come in reverse complemented pairs,
+// and only one component for each pair is kept.
+// For the rare connected components that are self-complementary,
+// we initially keep the entire component, but we cna do better.
+void AssemblyGraph::makeSingleStranded()
+{
+    AssemblyGraph& assemblyGraph = *this;
+    const bool debug = false;
+
+    // Map the edges (segments) to integers.
+    std::map<edge_descriptor, uint64_t> segmentMap;
+    vector<edge_descriptor> segmentTable;
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        segmentMap.insert(make_pair(e, segmentTable.size()));
+        segmentTable.push_back(e);
+    }
+
+    // Compute connected component.
+    // Each AssemblyGraph vertex generates connections
+    // between all of its incoming and outgoing edges.
+    DisjointSets disjointSets(segmentTable.size());
+    BGL_FORALL_VERTICES(v, assemblyGraph, AssemblyGraph) {
+        BGL_FORALL_INEDGES(v, e0, assemblyGraph, AssemblyGraph) {
+            const uint64_t i0 = segmentMap.at(e0);
+            BGL_FORALL_OUTEDGES(v, e1, assemblyGraph, AssemblyGraph) {
+                const uint64_t i1 = segmentMap.at(e1);
+                disjointSets.unionSet(i0, i1);
+            }
+        }
+    }
+
+    vector< vector<uint64_t> > components;
+    disjointSets.gatherComponents(1, components);
+    const uint64_t componentCount = components.size();
+
+    // Store the component that each edge belongs to.
+    vector<uint64_t> componentTable(segmentTable.size(), invalid<uint64_t>);
+    for(uint64_t componentId=0; componentId<componentCount; componentId++) {
+        const vector<uint64_t>& component = components[componentId];
+        for(uint64_t i: component) {
+            componentTable[i] = componentId;
+        }
+    }
+    SHASTA2_ASSERT(not std::ranges::contains(componentTable, invalid<uint64_t>));
+
+    if(debug) {
+        cout << "Found " << componentCount << " connected components." << endl;
+        for(uint64_t componentId=0; componentId<componentCount; componentId++) {
+            const vector<uint64_t>& component = components[componentId];
+            cout << "Component " << componentId << " contains the folowing segments:";
+            for(uint64_t i: component) {
+                const edge_descriptor e = segmentTable[i];
+                cout << " " << assemblyGraph[e].id;
+            }
+            cout << endl;
+        }
+    }
+
+
+
+    // Find the reverse complement of each connected component.
+    vector<uint64_t> rcTable(componentCount);
+    for(uint64_t componentId=0; componentId<componentCount; componentId++) {
+        const vector<uint64_t>& component = components[componentId];
+
+        // Find the first segment in this component and its reverse complement.
+        const uint64_t i = component.front();
+        const edge_descriptor e = segmentTable[i];
+        const edge_descriptor eRc = assemblyGraph[e].eRc;
+        SHASTA2_ASSERT(eRc != assemblyGraphNullEdge);
+        SHASTA2_ASSERT(eRc != e);
+        const uint64_t iRc = segmentMap.at(eRc);
+        const uint64_t componentIdRc = componentTable[iRc];
+        const vector<uint64_t>& componentRc = components[componentIdRc];
+
+        if(debug) {
+            cout << "Connected component pair " << componentId << " " << componentIdRc << endl;
+        }
+
+        // Check that these two connected components are indeed the reverse complement
+        // of each other.
+        SHASTA2_ASSERT(component.size() == componentRc.size());
+        for(const uint64_t i: component) {
+            const edge_descriptor e = segmentTable[i];
+            const edge_descriptor eRc = assemblyGraph[e].eRc;
+            SHASTA2_ASSERT(eRc != assemblyGraphNullEdge);
+            SHASTA2_ASSERT(eRc != e);
+            const uint64_t iRc = segmentMap.at(eRc);
+            SHASTA2_ASSERT(componentTable[iRc] == componentIdRc);
+
+        }
+        for(const uint64_t i: componentRc) {
+            const edge_descriptor e = segmentTable[i];
+            const edge_descriptor eRc = assemblyGraph[e].eRc;
+            SHASTA2_ASSERT(eRc != assemblyGraphNullEdge);
+            SHASTA2_ASSERT(eRc != e);
+            const uint64_t iRc = segmentMap.at(eRc);
+            SHASTA2_ASSERT(componentTable[iRc] == componentId);
+        }
+
+        rcTable[componentId] = componentIdRc;
+    }
+
+    // Check that the rcTable is symmetric.
+    for(uint64_t componentId=0; componentId<componentCount; componentId++) {
+        const uint64_t componentIdRc = rcTable[componentId];
+        SHASTA2_ASSERT(rcTable[componentIdRc] == componentId);
+    }
+
+
+    // Loop over all connected component pairs.
+    // Remove all the edges in the highest numbered component of
+    // each pair.
+    for(uint64_t componentId=0; componentId<componentCount; componentId++) {
+        const uint64_t componentIdRc = rcTable[componentId];
+        if(componentId < componentIdRc) {
+            const vector<uint64_t> componentRc = components[componentIdRc];
+            for(uint64_t i: componentRc) {
+                const edge_descriptor eRc = segmentTable[i];
+                const edge_descriptor e = assemblyGraph[eRc].eRc;
+                assemblyGraph[e].eRc = assemblyGraphNullEdge;
+                boost::remove_edge(eRc, assemblyGraph);
+            }
+        }
+    }
+
 }

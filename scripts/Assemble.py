@@ -20,7 +20,7 @@ assembler.accessJourneys()
 
 # Load the specified assembly stage and assemble sequence.
 assemblyGraph = assembler.getAssemblyGraph(arguments.stage, options)
-assemblyGraph.assembleAll()
+assemblyGraph.assembleAllStrandSymmetric()
 
 # Write it out.
 assembledName = arguments.stage + "-Assembled"
