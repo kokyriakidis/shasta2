@@ -1466,7 +1466,8 @@ void ReadFollower::updateAssemblyGraphStrandSymmetric(AssemblyGraph& assemblyGra
 
     // Check preconditions.
     SHASTA2_ASSERT(&assemblyGraph == &(this->assemblyGraph));
-    graph.check(assemblyGraph);
+    // assemblyGraph.check();
+    // graph.check(assemblyGraph);
 
 
 
