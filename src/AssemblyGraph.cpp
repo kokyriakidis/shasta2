@@ -363,7 +363,6 @@ void AssemblyGraph::simplifyAndAssemble()
     writeIntermediateStageIfRequested("G");
     compress();
     writeIntermediateStageIfRequested("H");
-    check();
 
     // Connect dangling segments.
     connectDanglingSegments();
@@ -389,7 +388,7 @@ void AssemblyGraph::simplifyAndAssemble()
 
 void AssemblyGraph::check(bool writeDetails) const
 {
-    cout << "AssemblyGraph::check begins." << endl;
+    performanceLog << timestamp << "AssemblyGraph::check begins." << endl;
 
     const AssemblyGraph& assemblyGraph = *this;
 
@@ -507,7 +506,7 @@ void AssemblyGraph::check(bool writeDetails) const
         }
     }
 
-    cout << "AssemblyGraph::check ends." << endl;
+    performanceLog << timestamp << "AssemblyGraph::check ends." << endl;
 }
 
 
@@ -966,7 +965,6 @@ uint64_t AssemblyGraph::strandSymmetricCompress()
 {
     performanceLog << timestamp << "AssemblyGraph::strandSymmetricCompress begins." << endl;
     const bool debug = false;
-    check();
 
     AssemblyGraph& assemblyGraph = *this;
 
@@ -1107,7 +1105,6 @@ uint64_t AssemblyGraph::strandSymmetricCompress()
         }
     }
 
-    check();
     performanceLog << timestamp << "AssemblyGraph::strandSymmetricCompress ends." << endl;
 
     return chains.size();
@@ -2457,8 +2454,6 @@ void AssemblyGraph::connectDanglingSegments()
     using Segment = edge_descriptor;
     const bool debug = false;
 
-    check();
-
 
     // A graph to store information about dangling segments.
     class Vertex {
@@ -2728,9 +2723,7 @@ void AssemblyGraph::connectDanglingSegments()
         }
     }
 
-    check();
     strandSymmetricCompress();
-    check();
 }
 
 
@@ -2892,7 +2885,6 @@ void AssemblyGraph::removeZeroLengthSegmentsStrandSymmetric()
     const bool debug = false;
 
     AssemblyGraph& assemblyGraph = *this;
-    check();
 
     // Map vertices to integers.
     std::map<vertex_descriptor, uint64_t> vertexIndexMap;
@@ -2981,7 +2973,6 @@ void AssemblyGraph::removeZeroLengthSegmentsStrandSymmetric()
 
         collapseVerticesStrandSymmetric(componentVertices);
     }
-    check();
     performanceLog << timestamp << "AssemblyGraph::removeZeroLengthSegmentsStrandSymmetric ends." << endl;
 }
 

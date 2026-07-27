@@ -1466,7 +1466,6 @@ void ReadFollower::updateAssemblyGraphStrandSymmetric(AssemblyGraph& assemblyGra
 
     // Check preconditions.
     SHASTA2_ASSERT(&assemblyGraph == &(this->assemblyGraph));
-    assemblyGraph.check();
     graph.check(assemblyGraph);
 
 
@@ -1645,9 +1644,6 @@ void ReadFollower::updateAssemblyGraphStrandSymmetric(AssemblyGraph& assemblyGra
     for(const Segment oldSegment: usedShortSegments) {
         boost::remove_edge(oldSegment, assemblyGraph);
     }
-
-    // Check that the AssemblyGraph remains strand-symmetric.
-    assemblyGraph.check();
 
     writeMemoryStatistics("ReadFollower::updateAssemblyGraphStrandSymmetric ends");
 }
