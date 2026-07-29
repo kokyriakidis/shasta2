@@ -199,46 +199,18 @@ void LocalAssembly7::runFastPath()
 
 
 
-
-// Loop over DeBruijn graphs with increasing k.
+// Construct the Dr Bruijn graph
+// and, if successful, use it to assemble sequence.
 void LocalAssembly7::runDeBruijn()
 {
-    uint64_t k = options.kStart;
-    while(true) {
-        if(html) {
-            html << "<br>Using a De Bruijn graph with k = " << k << ".";
-        }
-
-        runDeBruijn(k);
-
-        if(success) {
-            break;
-        } else {
-            k *= 2;
-            if(k > options.kMax) {
-                if(html) {
-                    html << "<br>Cannot increase k above " << options.kMax << ".";
-                }
-                break;
-            }
-        }
-    }
-}
-
-
-
-// Construct the Dr Bruijn graph for a given k
-// and, if successful, use it to assemble sequence.
-void LocalAssembly7::runDeBruijn(uint64_t k)
-{
     for(SequenceInfo& sequenceInfo: sequences) {
-        sequenceInfo.constructDeBruijnSequence(k);
-        sequenceInfo.constructKmers(k);
+        sequenceInfo.constructDeBruijnSequence(options.k);
+        sequenceInfo.constructKmers(options.k);
     }
     gatherKmers();
 
     Graph graph;
-    createGraph(k, graph);
+    createGraph(options.k, graph);
     if(html) {
         html <<
             "<br>After removing unreachable vertices, the De Bruijn graph has " <<
@@ -264,9 +236,9 @@ void LocalAssembly7::runDeBruijn(uint64_t k)
             != num_vertices(graph)) {
             if(html) {
                 html << "<br>The De Bruijn graph contains cycles.";
-                graph.writeVertices(kmers, "DeBruijnGraph-" + to_string(k) + ".csv");
-                writeKmerOccurrences(graph, "DeBruijnGraph-KmerOccurrences-" + to_string(k) + ".csv");
-                writeGraph(k, graph);
+                graph.writeVertices(kmers, "DeBruijnGraph.csv");
+                writeKmerOccurrences(graph, "DeBruijnGraph-KmerOccurrences.csv");
+                writeGraph(options.k, graph);
             }
             return;
         }
@@ -276,14 +248,14 @@ void LocalAssembly7::runDeBruijn(uint64_t k)
     graph.computeAssemblyPath();
 
     if(html) {
-        graph.writeVertices(kmers, "DeBruijnGraph-" + to_string(k) + ".csv");
-        writeKmerOccurrences(graph, "DeBruijnGraph-KmerOccurrences-" + to_string(k) + ".csv");
+        graph.writeVertices(kmers, "DeBruijnGraph.csv");
+        writeKmerOccurrences(graph, "DeBruijnGraph-KmerOccurrences.csv");
         writeAssemblyPath(graph);
     }
-    writeGraph(k, graph);
+    writeGraph(options.k, graph);
 
     // Assemble sequence.
-    assemble(k, graph);
+    assemble(options.k, graph);
     success = true;
 }
 

@@ -87,9 +87,8 @@ public:
         // THIS IS EXPERIMENTAL AND SO THESE VALUES ARE HARDWIRED.
         // EXPOSE WHEN CODE STABILIZES.
 
-        // The starting and maximum k for De Bruijn graphs.
-        const uint64_t kStart = 32;
-        const uint64_t kMax = 256;
+        // The k-mer length for De Bruijn graphs.
+        const uint64_t k = 32;
 
         // Coefficient to compute edge weights for the DeBruijn graph.
         // logP = logPCoefficient * coverage, with logPCoefficient in dB.
@@ -263,7 +262,6 @@ private:
 
     // Functions and data to find the consensus using a De Bruijn graph
     void runDeBruijn();
-    void runDeBruijn(uint64_t k);
 
     // An occurrence of a k-mer in one of our sequences.
     class KmerOccurrence {
