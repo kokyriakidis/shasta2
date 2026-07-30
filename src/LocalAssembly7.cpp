@@ -570,54 +570,18 @@ void LocalAssembly7::createGraph(uint64_t k, Graph& graph)
 
 
 
-    // In a standard De Bruijn graph, each distinct k-mer generates a vertex.
-    // Here we do the same, with one important exception:
-    // if a k-mer appears more than once in one of the sequences,
-    // each occurrence of that k-mer generate a separate vertex.
-    // This helps avoid cycles that are short compared to read length.
-    // However some merging of the vertices generated in this way will be necessary.
-    // vector<bool> appearsInSequence(sequences.size());
+    // Each distinct k-mer generates a vertex.
     for(uint64_t kmerId=0; kmerId<kmers.size(); kmerId++) {
         const auto& [kmer, occurrences] = kmers[kmerId];
 
-        /*
-        // Figure out if it appears more than once in any of the sequences.
-        bool appearsMoreThanOnce = false;
-        std::ranges::fill(appearsInSequence, false);
+        uint64_t coverage = 0;
         for(const KmerOccurrence& occurrence: occurrences) {
-            const uint64_t sequenceId = occurrence.sequenceId;
-            if(appearsInSequence[sequenceId]) {
-                appearsMoreThanOnce = true;
-                break;
-            }
-            appearsInSequence[sequenceId] = true;
+            coverage += sequences[occurrence.sequenceId].coverage();
         }
-        */
-
-         if(shouldSplit(occurrences)) {
-
-             // Generate a separate vertex for each occurrence.
-            vector<KmerOccurrence> occurrenceVector(1);
-            for(const KmerOccurrence& occurrence: occurrences) {
-                occurrenceVector.front() = occurrence;
-                const uint64_t coverage = sequences[occurrence.sequenceId].coverage();
-                const Graph::vertex_descriptor v = boost::add_vertex(
-                    Vertex(graph.nextVertexId++, kmerId, occurrenceVector, coverage), graph);
-                vertexTable[occurrence.sequenceId][occurrence.position] = v;
-            }
-
-        } else {
-
-            // Generate a single vertex.
-            uint64_t coverage = 0;
-            for(const KmerOccurrence& occurrence: occurrences) {
-                coverage += sequences[occurrence.sequenceId].coverage();
-            }
-            const Graph::vertex_descriptor v = boost::add_vertex(
-                Vertex(graph.nextVertexId++, kmerId, occurrences, coverage), graph);
-            for(const KmerOccurrence& occurrence: occurrences) {
-                vertexTable[occurrence.sequenceId][occurrence.position] = v;
-            }
+        const Graph::vertex_descriptor v = boost::add_vertex(
+            Vertex(graph.nextVertexId++, kmerId, occurrences, coverage), graph);
+        for(const KmerOccurrence& occurrence: occurrences) {
+            vertexTable[occurrence.sequenceId][occurrence.position] = v;
         }
     }
 
@@ -669,12 +633,6 @@ void LocalAssembly7::createGraph(uint64_t k, Graph& graph)
             num_vertices(graph) << " vertices and " << num_edges(graph) << " edges.";
     }
 
-    graph.merge();
-    if(html) {
-        html << "<br>After merge, the De Bruijn graph has " <<
-            num_vertices(graph) << " vertices and " << num_edges(graph) << " edges.";
-    }
-
     // Compute edge weights.
     BGL_FORALL_EDGES(e, graph, Graph) {
         Edge& edge = graph[e];
@@ -682,42 +640,6 @@ void LocalAssembly7::createGraph(uint64_t k, Graph& graph)
         edge.weight = std::pow(10., -0.1 * logP);
     }
 
-}
-
-
-
-// Given the KmerOccurrences of a Kmer, decide if we should generate
-// a single vertex for that Kmer or one separate vertex per occurrence.
-bool LocalAssembly7::shouldSplit(const vector<KmerOccurrence>& kmerOccurrences)
-{
-    // Figure out if the Kmer appears more than once in any of the sequences.
-    vector<bool> appearsInSequence(sequences.size(), false);
-    for(const KmerOccurrence& kmerOccurrence: kmerOccurrences) {
-        const uint64_t sequenceId = kmerOccurrence.sequenceId;
-        if(appearsInSequence[sequenceId]) {
-            // We already saw this sequence, so this Kmer appears
-            // more than one and we should split it into multiple vertices.
-            return true;
-        }
-        appearsInSequence[sequenceId] = true;
-    }
-
-
-    // Also check that the minimum and maximum offset from left are not too different.
-    int64_t maxOffsetFromLeft = std::numeric_limits<int64_t>::min();
-    int64_t minOffsetFromLeft = std::numeric_limits<int64_t>::max();
-    for(const KmerOccurrence& kmerOccurrence: kmerOccurrences) {
-        const int64_t offsetFromLeft = estimateOffsetFromLeft(kmerOccurrence);
-        maxOffsetFromLeft = max(maxOffsetFromLeft, offsetFromLeft);
-        minOffsetFromLeft = min(minOffsetFromLeft, offsetFromLeft);
-    }
-    const uint64_t offsetDelta = maxOffsetFromLeft - minOffsetFromLeft;
-    const uint64_t maxAllowedOffsetDelta = uint64_t(std::round(options.aDrift * double(offset) + options.bDrift));
-    if(offsetDelta > maxAllowedOffsetDelta) {
-        return true;
-    } else {
-        return false;
-    }
 }
 
 
@@ -730,7 +652,7 @@ void LocalAssembly7::writeGraph(uint64_t k, const Graph& graph)
 
     // Write it in graphviz format.
     const string dotFileName = "DeBruijnGraph-" + to_string(k) + ".dot";
-    graph.writeGraphviz(dotFileName);
+    graph.writeGraphviz(dotFileName, kmers);
 
     // Display it in html in svg format.
     const double timeout = 10.;
@@ -745,15 +667,15 @@ void LocalAssembly7::writeGraph(uint64_t k, const Graph& graph)
 
 
 
-void LocalAssembly7::Graph::writeGraphviz(const string& fileName) const
+void LocalAssembly7::Graph::writeGraphviz(const string& fileName, const vector< pair<Kmer, vector<KmerOccurrence> > >& kmers) const
 {
     ofstream dot(fileName);
-    writeGraphviz(dot);
+    writeGraphviz(dot, kmers);
 }
 
 
 
-void LocalAssembly7::Graph::writeGraphviz(ostream& dot) const
+void LocalAssembly7::Graph::writeGraphviz(ostream& dot, const vector< pair<Kmer, vector<KmerOccurrence> > >& kmers) const
 {
     const Graph& graph = *this;
 
@@ -762,7 +684,15 @@ void LocalAssembly7::Graph::writeGraphviz(ostream& dot) const
     BGL_FORALL_VERTICES(v, graph, Graph) {
         const Vertex& vertex = graph[v];
         dot << vertex.vertexId << " [";
-        dot << "label=\"v" << vertex.vertexId << "\\nk" << vertex.kmerId << "\\n" << vertex.coverage << "\"";
+        dot << "label=\"v" << vertex.vertexId << "\\nk" << vertex.kmerId << "\\n" << vertex.coverage;
+        const auto&[kmer, ignore] = kmers[vertex.kmerId];
+        for(uint64_t i=0; i<kmer.size(); i++) {
+            if((i%10) == 0) {
+                dot << "\\n";
+            }
+            dot << kmer[i];
+        }
+        dot << "\"";
         if(graph[v].isAVertex) {
             dot << " style=filled fillcolor=Pink";
         } else if(graph[v].isBVertex) {
@@ -852,74 +782,6 @@ void LocalAssembly7::writeAssemblyPath(const Graph& graph) const
         csv << "\n";
 
     }
-}
-
-
-
-LocalAssembly7::Graph::vertex_descriptor
-    LocalAssembly7::Graph::mergeGroup(const vector<vertex_descriptor>& group)
-{
-    Graph& graph = *this;
-
-    // Check that they all have the same kmerId and
-    // their in-degree and out-degree are not greater than 1.
-    uint64_t kmerId = invalid<uint64_t>;
-    vector<Base> kmer;
-    uint64_t coverage = 0;
-    vector<KmerOccurrence> occurrences;
-    std::map<vertex_descriptor, uint64_t> parentsWithEdgeCoverage;
-    std::map<vertex_descriptor, uint64_t> childrenWithEdgeCoverage;
-    for(const vertex_descriptor v: group) {
-        const Vertex& vertex = graph[v];
-        occurrences.push_back(vertex.occurrences.front());
-        if(kmerId == invalid<uint64_t>) {
-            kmerId = vertex.kmerId;
-        } else {
-            SHASTA2_ASSERT(kmerId == vertex.kmerId);
-        }
-        SHASTA2_ASSERT(in_degree(v, graph) < 2);
-        SHASTA2_ASSERT(out_degree(v, graph) < 2);
-        coverage += vertex.coverage;
-        BGL_FORALL_OUTEDGES(v, e, graph, Graph) {
-            const vertex_descriptor child = target(e, graph);
-            const uint64_t coverage = graph[e].coverage;
-            const auto it = childrenWithEdgeCoverage.find(child);
-            if(it == childrenWithEdgeCoverage.end()) {
-                childrenWithEdgeCoverage.insert(make_pair(child, coverage));
-            } else {
-                it->second += coverage;
-            }
-        }
-        BGL_FORALL_INEDGES(v, e, graph, Graph) {
-            const vertex_descriptor parent = source(e, graph);
-            const uint64_t coverage = graph[e].coverage;
-            const auto it = parentsWithEdgeCoverage.find(parent);
-            if(it == parentsWithEdgeCoverage.end()) {
-                parentsWithEdgeCoverage.insert(make_pair(parent, coverage));
-            } else {
-                it->second += coverage;
-            }
-        }
-    }
-
-    const vertex_descriptor vNew = add_vertex(Vertex(graph.nextVertexId++, kmerId, occurrences, coverage), graph);
-    for(const auto& [child, coverage]: childrenWithEdgeCoverage) {
-        auto[e, ignore] = boost::add_edge(vNew, child, graph);
-        graph[e].coverage = coverage;
-    }
-    for(const auto& [parent, coverage]: parentsWithEdgeCoverage) {
-        auto[e, ignore] = boost::add_edge(parent, vNew, graph);
-        graph[e].coverage = coverage;
-    }
-
-
-    // Remove all the vertices in the group we merged.
-    for(const vertex_descriptor v: group) {
-        boost::clear_vertex(v, graph);
-        boost::remove_vertex(v, graph);
-    }
-
-    return vNew;
 }
 
 
@@ -1368,311 +1230,20 @@ void LocalAssembly7::writeKmerOccurrences(const Graph& graph, const string& file
 
 void LocalAssembly7::writeKmerOccurrences(const Graph& graph, ostream& csv) const
 {
-    csv << "VertexId,KmerId,Coverage,SequenceId,Position in sequence,Offset from left,\n";
+    csv << "VertexId,KmerId,Coverage,SequenceId,Position in sequence,\n";
 
     BGL_FORALL_VERTICES(v, graph, Graph) {
         const Vertex& vertex = graph[v];
         for(const KmerOccurrence& kmerOccurrence: vertex.occurrences) {
-            const SequenceInfo& sequence = sequences[kmerOccurrence.sequenceId];
             const uint64_t positionInSequence = kmerOccurrence.position;
-
-            // Estimate the offset relative to the left anchor.
-            int64_t offsetFromLeft;
-            if(sequence.isOnAnchorA) {
-                offsetFromLeft = positionInSequence;
-            } else {
-                const uint64_t sequenceLength = sequence.sequence.size();
-                offsetFromLeft = int64_t(positionInSequence) + (int64_t(offset) - int64_t(sequenceLength));
-                SHASTA2_ASSERT(offsetFromLeft == estimateOffsetFromLeft(kmerOccurrence));
-            }
 
             csv << vertex.vertexId << ",";
             csv << vertex.kmerId << ",";
             csv << vertex.coverage << ",";
             csv << kmerOccurrence.sequenceId << ",";
             csv << positionInSequence << ",";
-            csv << offsetFromLeft << ",";
             csv << "\n";
         }
-    }
-}
-
-
-
-// Estimate the offset of a KmerOccurrence from the left Anchor.
-// This can be negative.
-int64_t LocalAssembly7::estimateOffsetFromLeft(const KmerOccurrence& kmerOccurrence) const
-{
-    const uint64_t positionInSequence = kmerOccurrence.position;
-    const uint64_t sequenceId = kmerOccurrence.sequenceId;
-    const SequenceInfo& sequenceInfo = sequences[sequenceId];
-
-    if(sequenceInfo.isOnAnchorA) {
-        return int64_t(positionInSequence);
-    } else {
-        const uint64_t sequenceLength = sequenceInfo.sequence.size();
-        return int64_t(positionInSequence) + (int64_t(offset) - int64_t(sequenceLength));
-    }
-
-}
-
-
-
-void LocalAssembly7::Graph::merge()
-{
-    while(true) {
-        const uint64_t mergeForwardCount = mergeForward();
-        const uint64_t mergeBackwardCount = mergeBackward();
-        if(mergeForwardCount + mergeBackwardCount == 0) {
-            break;
-        }
-    }
-}
-
-
-
-uint64_t LocalAssembly7::Graph::mergeForward()
-{
-    Graph& graph = *this;
-    const bool debug = false;
-    if(debug) {
-        cout << "mergeForward begins." << endl;
-    }
-
-    // A stack of vertices that have mergeable children groups.
-    std::stack<vertex_descriptor> s;
-    vector< vector<vertex_descriptor> > groups;
-    BGL_FORALL_VERTICES(v, graph, Graph) {
-        findMergeableChildrenGroups(v, groups);
-        if(not groups.empty()) {
-            s.push(v);
-            if(debug) {
-                cout << "Added " << graph[v].vertexId << " to merge stack." << endl;
-            }
-        }
-    }
-
-
-
-    // Merge until the stack is empty.
-    vector< vector<vertex_descriptor> > newGroups;
-    uint64_t mergedCount = 0;
-    while(not s.empty()) {
-        ++mergedCount;
-
-        // Dequeue a vertex that has children to be merged.
-        const vertex_descriptor v = s.top();
-        s.pop();
-        if(debug) {
-            cout << "Dequeued " << v << endl;
-        }
-
-        // Find the groups of children that should be merged.
-        findMergeableChildrenGroups(v, groups);
-        if(debug) {
-            cout << "Found " << groups.size() <<  " groups." << endl;
-        }
-
-        // Merge each group.
-        for(const vector<vertex_descriptor>& group: groups) {
-            SHASTA2_ASSERT(group.size() > 1);
-            const vertex_descriptor vNew = mergeGroup(group);
-            if(debug) {
-                cout << "Merged a group of " << group.size() << " vertices into new vertex " << vNew << endl;
-
-                cout << "In-edges of new vertex:" << endl;
-                BGL_FORALL_INEDGES(vNew, e, graph, Graph) {
-                    cout << "From " << source(e, graph) << ", coverage " << graph[e].coverage << endl;
-                }
-                cout << "Out-edges of new vertex:" << endl;
-                BGL_FORALL_OUTEDGES(vNew, e, graph, Graph) {
-                    cout << "To " << target(e, graph) << ", coverage " << graph[e].coverage << endl;
-                }
-            }
-
-            // See if the new vertex should be added to the stack.
-            findMergeableChildrenGroups(vNew, newGroups);
-            if(not newGroups.empty()) {
-                s.push(vNew);
-                if(debug) {
-                    cout << "Enqueued " << vNew << ", stack size " << s.size() << endl;
-                }
-            }
-        }
-    }
-
-    if(debug) {
-        cout << "mergeForward ends." << endl;
-    }
-    return mergedCount;
-}
-
-
-
-uint64_t LocalAssembly7::Graph::mergeBackward()
-{
-    Graph& graph = *this;
-    const bool debug = false;
-    if(debug) {
-        cout << "mergeBackward begins." << endl;
-    }
-
-    // A stack of vertices that have mergeable parent groups.
-    std::stack<vertex_descriptor> s;
-    vector< vector<vertex_descriptor> > groups;
-    BGL_FORALL_VERTICES(v, graph, Graph) {
-        findMergeableParentsGroups(v, groups);
-        if(not groups.empty()) {
-            s.push(v);
-            if(debug) {
-                cout << "Added " << v << " to merge stack." << endl;
-            }
-        }
-    }
-
-
-
-    // Merge until the stack is empty.
-    vector< vector<vertex_descriptor> > newGroups;
-    uint64_t mergedCount = 0;
-    while(not s.empty()) {
-        ++mergedCount;
-
-        // Dequeue a vertex that has parents to be merged.
-        const vertex_descriptor v = s.top();
-        s.pop();
-        if(debug) {
-            cout << "Dequeued " << graph[v].vertexId << endl;
-        }
-
-        // Find the groups of parents that should be merged.
-        findMergeableParentsGroups(v, groups);
-        if(debug) {
-            cout << "Found " << groups.size() <<  " groups." << endl;
-        }
-
-        // Merge each group.
-        for(const vector<vertex_descriptor>& group: groups) {
-            SHASTA2_ASSERT(group.size() > 1);
-            const vertex_descriptor vNew = mergeGroup(group);
-            if(debug) {
-                cout << "Merged a group of " << group.size() << " vertices into new vertex " << graph[vNew].vertexId << endl;
-
-                cout << "In-edges of new vertex:" << endl;
-                BGL_FORALL_INEDGES(vNew, e, graph, Graph) {
-                    cout << "From " << graph[source(e, graph)].vertexId << ", coverage " << graph[e].coverage << endl;
-                }
-                cout << "Out-edges of new vertex:" << endl;
-                BGL_FORALL_OUTEDGES(vNew, e, graph, Graph) {
-                    cout << "To " << graph[target(e, graph)].vertexId << ", coverage " << graph[e].coverage << endl;
-                }
-            }
-
-            // See if the new vertex should be added to the stack.
-            findMergeableParentsGroups(vNew, newGroups);
-            if(not newGroups.empty()) {
-                s.push(vNew);
-                if(debug) {
-                    cout << "Enqueued " << vNew << ", stack size " << s.size() << endl;
-                }
-            }
-        }
-    }
-
-    if(debug) {
-        cout << "mergeBackward ends." << endl;
-    }
-    return mergedCount;
-}
-
-
-
-// Given a vertex, find groups of its children that have
-// in-degree 1, out-degree 1, and the same kmerId.
-// These children can be merged into a single vertex.
-void LocalAssembly7::Graph::findMergeableChildrenGroups(
-    vertex_descriptor v0,
-    vector< vector<vertex_descriptor> >& groups
-    ) const
-{
-    const Graph& graph = *this;
-    groups.clear();
-
-    if(out_degree(v0, graph) < 2) {
-        return;
-    }
-
-    // Map with key = kmerId, value = children with that kmerId.
-    // This can be made faster.
-    std::map<uint64_t, vector<vertex_descriptor> > m;
-    BGL_FORALL_OUTEDGES(v0, e, graph, Graph) {
-        const vertex_descriptor v1 = target(e, graph);
-        if((in_degree(v1, graph) == 1) and (out_degree(v1, graph) == 1)) {
-            const Vertex& vertex1 = graph[v1];
-            m[vertex1.kmerId].push_back(v1);
-        }
-    }
-
-    for(const auto& [kmerId, v]: m) {
-        if(v.size() > 1) {
-            groups.push_back(v);
-        }
-    }
-}
-
-
-
-// Given a vertex, find groups of its parents that have
-// in-degree 1, out-degree 1, and the same kmerId.
-// These paremts can be merged into a single vertex.
-void LocalAssembly7::Graph::findMergeableParentsGroups(
-    vertex_descriptor v0,
-    vector< vector<vertex_descriptor> >& groups
-    ) const
-{
-
-    const Graph& graph = *this;
-    const bool debug = false;
-    if(debug) {
-        cout << "findMergeableParentsGroups called for " << graph[v0].vertexId << endl;
-    }
-    groups.clear();
-
-    if(in_degree(v0, graph) < 2) {
-        if(debug) {
-            cout << "in-degree is less than 2." << endl;
-        }
-        return;
-    }
-
-    // Map with key = kmerId, value = children with that kmerId.
-    // This can be made faster.
-    std::map<uint64_t, vector<vertex_descriptor> > m;
-    BGL_FORALL_INEDGES(v0, e, graph, Graph) {
-        const vertex_descriptor v1 = source(e, graph);
-        if(debug) {
-            cout << "Parent " << graph[v1].vertexId << " has degrees " <<
-                in_degree(v1, graph) << " " << out_degree(v1, graph) << endl;
-        }
-        if((in_degree(v1, graph) == 1) and (out_degree(v1, graph) == 1)) {
-            const Vertex& vertex1 = graph[v1];
-            m[vertex1.kmerId].push_back(v1);
-            if(debug) {
-                cout << "Stored parent " << vertex1.vertexId << " with kmerId " << vertex1.kmerId << endl;
-            }
-        }
-    }
-
-    for(const auto& [kmerId, v]: m) {
-        if(v.size() > 1) {
-            groups.push_back(v);
-        }
-    }
-    if(debug) {
-        cout << "Found " << groups.size() << " groups." << endl;
-    }
-    if(debug) {
-        cout << "findMergeableParentsGroups ends." << endl;
     }
 }
 

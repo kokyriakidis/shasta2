@@ -276,15 +276,6 @@ private:
     vector< pair<Kmer, vector<KmerOccurrence> > > kmers;
     void gatherKmers();
 
-    // Given the KmerOccurrences of a Kmer, decide if we should generate
-    // a single vertex for that Kmer or one separate vertex per occurrence.
-    bool shouldSplit(const vector<KmerOccurrence>&);
-
-    // Estimate the offset of a KmerOccurrence from the left Anchor.
-    // This can be negative.
-    int64_t estimateOffsetFromLeft(const KmerOccurrence&) const;
-
-
     // A vertex of the De Bruijn graph.
     class Vertex {
     public:
@@ -334,21 +325,8 @@ private:
         uint64_t nextVertexId = 0;
         void removeUnreachableVertices();
 
-        void merge();
-        uint64_t mergeForward();
-        uint64_t mergeBackward();
-        void findMergeableChildrenGroups(
-            vertex_descriptor,
-            vector< vector<vertex_descriptor> >&
-            ) const;
-        void findMergeableParentsGroups(
-            vertex_descriptor,
-            vector< vector<vertex_descriptor> >&
-            ) const;
-        vertex_descriptor mergeGroup(const vector<vertex_descriptor>& group);
-
-        void writeGraphviz(const string& fileName) const;
-        void writeGraphviz(ostream&) const;
+        void writeGraphviz(const string& fileName, const vector< pair<Kmer, vector<KmerOccurrence> > >& kmers) const;
+        void writeGraphviz(ostream&, const vector< pair<Kmer, vector<KmerOccurrence> > >& kmers) const;
         void writeVertices(
             const vector< pair<Kmer, vector<KmerOccurrence> > >& kmers,
             const string& fileName) const;
