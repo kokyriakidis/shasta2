@@ -32,6 +32,7 @@ public:
         TheseusOnly,    // Only use oriented reads that are on both anchors
         TheseusAll,     // Also use oriented reads that are om just one anchor.
         DeBruijn,
+        Msa1,
         Invalid
     };
 
@@ -258,6 +259,7 @@ private:
     void runAbpoa();
     void runPoasta();
     void runTheseus(bool useAll);
+    void runMsa1();
 
 
     // Functions and data to find the consensus using a De Bruijn graph

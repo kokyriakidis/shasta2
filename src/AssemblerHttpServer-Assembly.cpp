@@ -969,6 +969,8 @@ void Assembler::exploreSegmentStep(
         "> Theseus, using all oriented reads on one or both anchors."
         "<br><input type=radio name=method value=DeBruijn" <<
         (localAssembly7Options.method == LocalAssembly7::Method::DeBruijn ? " checked=on" : "") << "> De Bruijn"
+        "<br><input type=radio name=method value=Msa1" <<
+        (localAssembly7Options.method == LocalAssembly7::Method::Msa1 ? " checked=on" : "") << "> Msa1"
         ;
 
     html <<
