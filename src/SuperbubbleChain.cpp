@@ -268,6 +268,8 @@ uint64_t SuperbubbleChain::phase1(
         return 0;
     }
 
+    phasingGraph.removeInconsistentEdges(superbubbleChainId);
+
     // Compute connected components.
     phasingGraph.computeConnectedComponents();
     if(debug) {

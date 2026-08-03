@@ -89,6 +89,9 @@ public:
     // Remove low degree vertices and return the number of such vertices that were removed.
     uint64_t removeLowDegreeVertices(uint64_t minDegree);
 
+    // Remove inconsistent edges.
+    void removeInconsistentEdges(uint64_t superbubbleChainId);
+
     // Compute connected components consisting of at least two vertices.
     // Each connected component is a sorted vector of positions in the SuperbubbleChain.
     // They are returned sorted by decreasing size.

@@ -1,6 +1,8 @@
 // Shasta.
 #include "PhasingGraph.hpp"
 #include "color.hpp"
+#include "DisjointSets.hpp"
+#include "orderPairs.hpp"
 #include "orderVectors.hpp"
 #include "SHASTA2_ASSERT.hpp"
 using namespace shasta2;
@@ -13,6 +15,8 @@ using namespace shasta2;
 #include "algorithm.hpp"
 #include "fstream.hpp"
 #include <iomanip>
+#include "iostream.hpp"
+#include "utility.hpp"
 
 
 
@@ -264,6 +268,126 @@ void PhasingGraph::findLongestPaths()
         std::reverse(path.begin(), path.end());
 
     }
+
+}
+
+
+
+// Remove inconsistent edges using a "double graph".
+// The "double graph" has two vertices for each vertex of the PhasingGraph.
+// The two "double graph" vertices corresponding to the PhasingGraph
+// vertex with index i are numbered 2*i and 2*i + 1.
+// We don't explicitly construct the double graph, only
+// a disjoint sets data structure that represents it.
+// Double graph edges are only added if they don't cause
+// inconsistencies. Edges are added in order of increasing bestG.
+// Edges that cause inconsistencies are removed from the PhasingGraph.
+// The argument is only used for debug output, which is normally turned off.
+void PhasingGraph::removeInconsistentEdges(uint64_t superbubbleChainId)
+{
+    PhasingGraph& phasingGraph = *this;
+    const bool debug = false;
+
+    const vector< vector<bool> > inPhaseConnectivityMatrix =
+        { {true, false}, {false, true} };
+
+    // Map vertices to integers.
+    vector<vertex_descriptor> vertexIndexTable;
+    std::map<vertex_descriptor, uint64_t> vertexIndexMap;
+    BGL_FORALL_VERTICES(v, phasingGraph, PhasingGraph) {
+        vertexIndexMap.insert(make_pair(v, vertexIndexTable.size()));
+        vertexIndexTable.push_back(v);
+    }
+    const uint64_t n = vertexIndexTable.size();
+    SHASTA2_ASSERT(vertexIndexMap.size() == n);
+
+    // Get edges sorted by bestG.
+    vector< pair<edge_descriptor, double> > edgeTable;
+    BGL_FORALL_EDGES(e, phasingGraph, PhasingGraph) {
+        edgeTable.push_back(make_pair(e, phasingGraph[e].bestG));
+    }
+    sort(edgeTable.begin(), edgeTable.end(), OrderPairsBySecondOnly<edge_descriptor, double>());
+
+    // Create the DisjointSets data stucture.
+    DisjointSets disjointSets(2 * n);
+
+
+
+    // Add edges to the "double graph".
+    for(const auto&[e, ignore]: edgeTable) {
+
+        // Get the PhasingGraph vertices of this edge and its indexes.
+        const vertex_descriptor v0 = source(e, phasingGraph);
+        const vertex_descriptor v1 = target(e, phasingGraph);
+        const uint64_t i0 = vertexIndexMap.at(v0);
+        const uint64_t i1 = vertexIndexMap.at(v1);
+
+        // If not a 2 by 2 edge, skip it.
+        const PhasingGraphEdge& edge = phasingGraph[e];
+        if((edge.bestHypothesis.connectivityMatrix.size() != 2) or
+            (edge.bestHypothesis.connectivityMatrix.front().size() != 2)) {
+            if(debug) {
+                cout << "Skipping edge " << phasingGraph[v0].position <<
+                    " " << phasingGraph[v1].position <<
+                    " because it is not a 2 by 2 edge." << endl;
+            }
+            continue;
+        }
+
+        // Figure out if in phase or out of phase.
+        const bool isInPhase = (edge.bestHypothesis.connectivityMatrix == inPhaseConnectivityMatrix);
+
+        // Get the indexes of the corresponding "double graph".
+        const uint64_t i0Plus = 2 * i0;
+        const uint64_t i0Minus = i0Plus + 1;
+        const uint64_t i1Plus = 2 * i1;
+        const uint64_t i1Minus = i1Plus + 1;
+
+        // Figure out the "double graph" edges we want to create,
+        // if they don't case inconsistencies.
+        uint64_t j0A = i0Plus;
+        uint64_t j1A = (isInPhase ? i1Plus : i1Minus);
+        uint64_t j0B = i0Minus;
+        uint64_t j1B = (isInPhase ? i1Minus : i1Plus);
+
+        // Get the corresponding disjoint sets.
+        const uint64_t s0A = disjointSets.findSet(j0A);
+        const uint64_t s1A = disjointSets.findSet(j1A);
+        const uint64_t s0B = disjointSets.findSet(j0B);
+        const uint64_t s1B = disjointSets.findSet(j1B);
+
+        // Check our invariant.
+        SHASTA2_ASSERT(s0A != s0B);
+        SHASTA2_ASSERT(s1A != s1B);
+
+        // We want to connect the pairs (j0A,j1A) and (j0B,j1B)
+        // but we don't want any of this to happen:
+        // - j0A ends up in the same disjoint set at j0B.
+        // - j1A ends up in the same disjoint set at j1B.
+        if((s0A == s1B) or (s0B == s1A)) {
+            if(debug) {
+                cout << "Superbubble chain " << superbubbleChainId << " edge " << phasingGraph[v0].position <<
+                    " " << phasingGraph[v1].position <<
+                    (isInPhase ? " in-phase " : " out-of-phase ") <<
+                    edge.bestG <<
+                    " is inconsistent." << endl;
+                boost::remove_edge(e, phasingGraph);
+            }
+        } else {
+            disjointSets.link(s0A, s1A);
+            disjointSets.link(s0B, s1B);
+            if(debug) {
+                cout << "Edge " << phasingGraph[v0].position <<
+                    " " << phasingGraph[v1].position <<
+                    (isInPhase ? " in-phase " : " out-of-phase ") <<
+                    edge.bestG <<
+                    " is good." << endl;
+            }
+        }
+    }
+
+    vector< vector<uint64_t> > components;
+    disjointSets.gatherComponents(1, components);
 
 }
 
