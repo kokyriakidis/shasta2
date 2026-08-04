@@ -14,6 +14,7 @@
 #include "HashedKmerChecker.hpp"
 #include "LongBaseSequence.hpp"
 #include "mappedCopy.hpp"
+#include "msa1.hpp"
 #include "MultithreadedObject.hpp"
 #include "Options.hpp"
 #include "performanceLog.hpp"
@@ -289,6 +290,12 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         );
     shasta2Module.def("testTheseus",
         testTheseus
+        );
+    shasta2Module.def("testMsa1ExtendedBase",
+        testMsa1ExtendedBase
+        );
+    shasta2Module.def("testMsa1Consensus",
+        testMsa1Consensus
         );
 }
 
