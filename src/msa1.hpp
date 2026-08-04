@@ -45,16 +45,35 @@ namespace shasta2 {
 
     // How the consensus length of a long homopolymer run is chosen from the
     // lengths observed in the reads that cover it.
+    //
+    // Median is the default. On reads simulated from a known sequence, with 1%
+    // substitutions, 0.5% indels and homopolymer length noise, mean edit
+    // distance from the truth over 30 trials at 15x was:
+    //
+    //     threshold   Mode   Median   theseus majority voting
+    //         8       2.23    0.80            1.70
+    //         6       2.23    0.93            1.70
+    //         5       2.23    0.90            1.70
+    //         4       2.23    0.90            1.70
+    //
+    // So the mode is worse than the majority voting it replaces, and the median
+    // is about twice as good as it. The mode is unstable when the observed
+    // lengths are spread thinly over several values, which is what a homopolymer
+    // at ordinary coverage looks like: in one real 19 read case the two
+    // candidate lengths were supported by 7 and 6 reads.
+    //
+    // Note the simulated length noise is symmetric, which favours the median.
+    // Real homopolymer error is biased toward under-calling, so the true gap is
+    // probably smaller than the numbers above. Mode remains available.
     enum class RunLengthEstimator {
 
         // The most frequent length, by total weight. Ties go to the shorter run.
-        // This is the default. Note that column-wise majority voting cannot
-        // produce this: a column of a left justified run block is occupied by a
-        // majority exactly when over half the reads are at least that long,
-        // which is the definition of the median.
+        // Note that column-wise majority voting cannot produce this: a column of
+        // a left justified run block is occupied by a majority exactly when over
+        // half the reads are at least that long, which is the median.
         Mode,
 
-        // The weighted median length.
+        // The weighted median length. The default, see above.
         Median
     };
 
@@ -154,7 +173,7 @@ namespace shasta2 {
         uint64_t threshold = defaultHomopolymerThreshold,
 
         // How the consensus length of a long homopolymer run is chosen.
-        RunLengthEstimator estimator = RunLengthEstimator::Mode
+        RunLengthEstimator estimator = RunLengthEstimator::Median
     );
 }
 
