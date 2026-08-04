@@ -46,34 +46,42 @@ namespace shasta2 {
     // How the consensus length of a long homopolymer run is chosen from the
     // lengths observed in the reads that cover it.
     //
-    // Median is the default. On reads simulated from a known sequence, with 1%
-    // substitutions, 0.5% indels and homopolymer length noise, mean edit
-    // distance from the truth over 30 trials at 15x was:
+    // Mode is the default, on the strength of the one case here where the true
+    // run lengths are known. At a locus whose true lengths are 12 and 11, the 19
+    // reads report the first run as:
     //
-    //     threshold   Mode   Median   theseus majority voting
-    //         8       2.23    0.80            1.70
-    //         6       2.23    0.93            1.70
-    //         5       2.23    0.90            1.70
-    //         4       2.23    0.90            1.70
+    //     length  6   7  10  11  12  14  15
+    //     reads   1   1   2   6   7   1   1
     //
-    // So the mode is worse than the majority voting it replaces, and the median
-    // is about twice as good as it. The mode is unstable when the observed
-    // lengths are spread thinly over several values, which is what a homopolymer
-    // at ordinary coverage looks like: in one real 19 read case the two
-    // candidate lengths were supported by 7 and 6 reads.
+    // The mode is 12 and is correct. The median is 11 and is wrong, because 10
+    // of the 19 reads fall below the truth: rare large deletions (-6, -5) plus
+    // six single base under-calls. That is the shape of homopolymer error in ONT
+    // reads. Usually correct, occasionally a large deletion, so the distribution
+    // is peaked at the truth but has more than half its mass at or below it.
+    // Any median type estimator lands one base low on such a distribution, while
+    // the mode finds the peak.
     //
-    // Note the simulated length noise is symmetric, which favours the median.
-    // Real homopolymer error is biased toward under-calling, so the true gap is
-    // probably smaller than the numbers above. Mode remains available.
+    // Which estimator wins is genuinely sensitive to that shape, and simulation
+    // was not able to settle it. Drawing length noise from the distribution
+    // measured at this run gives mode 1.00 and median 1.15 mean edit distance
+    // from the truth; pooling it with the second run, whose errors are far more
+    // symmetric, reverses that to mode 0.40 and median 0.23. Both beat the
+    // majority voting they replace. Since the simulated answer flips with an
+    // assumption that cannot be pinned down from the data available, the real
+    // measured case decides it, and that case says mode.
+    //
+    // Worth revisiting with more loci of known truth. Median stays available.
     enum class RunLengthEstimator {
 
         // The most frequent length, by total weight. Ties go to the shorter run.
-        // Note that column-wise majority voting cannot produce this: a column of
-        // a left justified run block is occupied by a majority exactly when over
-        // half the reads are at least that long, which is the median.
+        // The default, see above. Note that column-wise majority voting cannot
+        // produce this: a column of a left justified run block is occupied by a
+        // majority exactly when over half the reads are at least that long,
+        // which is the median.
         Mode,
 
-        // The weighted median length. The default, see above.
+        // The weighted median length. Biased low when the reads under-call, as
+        // they do on long homopolymers.
         Median
     };
 
@@ -173,7 +181,7 @@ namespace shasta2 {
         uint64_t threshold = defaultHomopolymerThreshold,
 
         // How the consensus length of a long homopolymer run is chosen.
-        RunLengthEstimator estimator = RunLengthEstimator::Median
+        RunLengthEstimator estimator = RunLengthEstimator::Mode
     );
 }
 
