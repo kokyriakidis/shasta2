@@ -972,7 +972,7 @@ void shasta2::testMsa1Consensus()
     vector<ExtendedBase> alignedExtendedConsensus;
     vector<uint64_t> consensusRunLengths;
     extendedConsensus(extendedAlignment, alignedRunLengthsAllRows, weights,
-        RunLengthEstimator::Median,
+        RunLengthEstimator::Mode,
         consensus, alignedExtendedConsensus, consensusRunLengths);
 
     // Build the consensus string and check it.
@@ -981,22 +981,18 @@ void shasta2::testMsa1Consensus()
         consensusString.push_back(base.character());
     }
 
-    // The expected consensus. The two variable A runs come out at 11 and 11.
+    // The expected consensus. The two variable A runs come out at 12 and 11.
     //
-    // Note this is NOT what abpoa and poa-consensus produce on this data: they
-    // give 12 and 11, which is also what the mode gives, and which this test
-    // asserted while the mode was the default. Agreeing with them is not
-    // evidence of being right. On reads simulated from a known sequence the
-    // median is about twice as accurate as the majority voting those tools use,
-    // and the mode is worse than it. See the comment on RunLengthEstimator.
-    //
-    // This locus is genuinely poised: the first run is 12 bases in 7 reads and
-    // 11 in 6, so the two estimators disagree by one base here and neither
-    // answer is obviously correct from this data alone.
+    // These are the KNOWN TRUE run lengths at this locus, so this is a check
+    // against ground truth and not merely against what some other tool produces.
+    // The median gives 11 and 11 here and is wrong: 10 of the 19 reads report
+    // the first run as shorter than 12, so the median lands one base low even
+    // though 12 is the single most common length. See the comment on
+    // RunLengthEstimator.
     const string expectedConsensus =
-        "TCCAGCCTGGGTGACAGAGCGAGACCCCAACTCAAAAAAAAAAAGAAAAAAAAAAAGTT"
+        "TCCAGCCTGGGTGACAGAGCGAGACCCCAACTCAAAAAAAAAAAAGAAAAAAAAAAAGTT"
         "AAACTATAAAGTAAATTCCTCCCATAGTT"
-        "TCCAGCCTGGGTGACAGAGCGAGACCCCAACTCAAAAAAAAAAAGAAAAAAAAAAAGTT"
+        "TCCAGCCTGGGTGACAGAGCGAGACCCCAACTCAAAAAAAAAAAAGAAAAAAAAAAAGTT"
         "AAACTATAAAGTAAATTCCTCCCATAGTT";
     cout << "Consensus length " << consensusString.size() << "." << endl;
     SHASTA2_ASSERT(consensusString == expectedConsensus);
@@ -1031,23 +1027,28 @@ void shasta2::testMsa1Consensus()
 
 
 
-    // The mode gives a different answer at the first run: 12 rather than 11, in
-    // each of the two tandem copies. The choice of estimator is a real decision
-    // and not a formality, so assert that the two cannot silently converge.
+    // The median gives a different, and here incorrect, answer at the first run:
+    // 11 rather than the true 12, in each of the two tandem copies. Ten of the
+    // nineteen reads report that run as shorter than it is, so the median lands
+    // below the truth even though 12 is the most common single length.
+    //
+    // Asserted so that the two estimators cannot silently converge, and so that
+    // the direction of the difference is recorded: if a future change makes the
+    // median agree with the mode here, something has moved that needs looking at.
     {
-        vector< pair<Base, uint64_t> > modeConsensus;
+        vector< pair<Base, uint64_t> > medianConsensus;
         vector<ExtendedBase> ignore1;
         vector<uint64_t> ignore2;
         extendedConsensus(extendedAlignment, alignedRunLengthsAllRows, weights,
-            RunLengthEstimator::Mode, modeConsensus, ignore1, ignore2);
-        string modeString;
-        for(const auto& [base, coverage]: modeConsensus) {
-            modeString.push_back(base.character());
+            RunLengthEstimator::Median, medianConsensus, ignore1, ignore2);
+        string medianString;
+        for(const auto& [base, coverage]: medianConsensus) {
+            medianString.push_back(base.character());
         }
-        cout << "Median gives length " << consensusString.size() <<
-            ", mode gives length " << modeString.size() << "." << endl;
-        SHASTA2_ASSERT(modeString != consensusString);
-        SHASTA2_ASSERT(modeString.size() == consensusString.size() + 2);
+        cout << "Mode gives length " << consensusString.size() <<
+            " (correct), median gives length " << medianString.size() << "." << endl;
+        SHASTA2_ASSERT(medianString != consensusString);
+        SHASTA2_ASSERT(medianString.size() == consensusString.size() - 2);
     }
 
 
@@ -1178,7 +1179,7 @@ void shasta2::testMsa1Consensus()
         vector<ExtendedBase> snpAlignedConsensus;
         vector<uint64_t> snpConsensusRunLengths;
         extendedConsensus(snpAlignment, snpRunLengths, weights,
-            RunLengthEstimator::Median,
+            RunLengthEstimator::Mode,
             snpConsensus, snpAlignedConsensus, snpConsensusRunLengths);
 
         // The majority allele wins, and the column is not turned into a gap.
@@ -1200,7 +1201,7 @@ void shasta2::testMsa1Consensus()
             snpAlignment[i][column] = mutated;
         }
         extendedConsensus(snpAlignment, snpRunLengths, weights,
-            RunLengthEstimator::Median,
+            RunLengthEstimator::Mode,
             snpConsensus, snpAlignedConsensus, snpConsensusRunLengths);
         SHASTA2_ASSERT(snpAlignedConsensus[column] == mutated);
     }
@@ -1224,7 +1225,7 @@ void shasta2::testMsa1Consensus()
         vector<ExtendedBase> gapAlignedConsensus;
         vector<uint64_t> gapConsensusRunLengths;
         extendedConsensus(gapAlignment, gapRunLengths, weights,
-            RunLengthEstimator::Median,
+            RunLengthEstimator::Mode,
             gapConsensus, gapAlignedConsensus, gapConsensusRunLengths);
         SHASTA2_ASSERT(gapAlignedConsensus[0].isGap());
         SHASTA2_ASSERT(gapConsensusRunLengths[0] == 0);
