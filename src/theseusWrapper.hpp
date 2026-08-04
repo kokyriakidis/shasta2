@@ -9,6 +9,37 @@ namespace shasta2 {
 
     class Base;
     class AlignedBase;
+    class ExtendedBase;
+
+
+    // Align sequences encoded in the extended alphabet (see msa1.hpp).
+    //
+    // Theseus is alphabet agnostic: the only place it looks at the content of a
+    // sequence is the wavefront extension in theseus_aligner_impl.cpp, which
+    // compares two chars with ==. There is no ACGT table and no substitution
+    // matrix, only a scalar match/mismatch penalty. So the extended alphabet can
+    // be passed straight through as the string ACGTacgt, with poly symbols
+    // aligned as symbols in their own right.
+    //
+    // Only the alignment is computed. The consensus is not, because a consensus
+    // over the extended alphabet also needs the run lengths, which theseus knows
+    // nothing about. See msa1() for that.
+    void theseusExtended(
+
+        // The input sequences fixed on both sides, with their coverage.
+        // They are passed to theseus in this order.
+        const vector< pair<vector<ExtendedBase>, uint64_t> >& fixedSequences,
+
+        // The input sequences fixed on the left only, with their coverage.
+        const vector< pair<vector<ExtendedBase>, uint64_t> >& leftFixedSequences,
+
+        // The input sequences fixed on the right only, with their coverage.
+        const vector< pair<vector<ExtendedBase>, uint64_t> >& rightFixedSequences,
+
+        // The computed alignment, one row per input sequence, in the same order:
+        // fixed, then left fixed, then right fixed.
+        // All rows have the same length.
+        vector< vector<ExtendedBase> >& alignment);
 
 
     void theseus(
