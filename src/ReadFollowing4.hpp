@@ -58,9 +58,9 @@ namespace shasta2 {
         using Segment = AssemblyGraphBaseClass::edge_descriptor;
 
         // EXPOSE WHEN CODE STABILIZES.
-        const double logPThreshold = 10.;    // dB
+        const double logPThreshold = 10.;   // dB
         const double a = 3.;                // dB
-        const double b = 10.;               // dB
+        const double b = 15.;               // dB
         const uint64_t transitiveReductionMaxDistance = 4;
     }
 
