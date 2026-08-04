@@ -1556,13 +1556,22 @@ void LocalAssembly7::runMsa1()
     const auto t0 = steady_clock::now();
 
     // Use a homopolymer threshold of 5 rather than the default 6.
-    // A run of exactly 6 is not longer than a threshold of 6, so it stays a run
-    // of plain symbols while longer runs at the same position collapse to a poly
-    // symbol. The sequences then no longer encode to the same symbol string and
-    // the aligner sees a spurious difference. This is not hypothetical: it
-    // happens on real data, and testMsa1ExtendedBase asserts it at 6 and asserts
-    // its absence at 1 through 5. Choosing the threshold adaptively would be
-    // better than hardwiring it here.
+    //
+    // A run of exactly n is not longer than a threshold of n, so it stays a run
+    // of plain symbols while longer runs at the same position collapse to a
+    // single poly symbol. The sequences then no longer encode to the same symbol
+    // string, and a one base difference in run length is presented to the
+    // aligner as a difference of n-1 symbols. This is not hypothetical: it
+    // happens on real data at a threshold of 6, and testMsa1ExtendedBase asserts
+    // it at 6 and asserts its absence at 1 through 5.
+    //
+    // It matters more than it looks. On reads simulated from a sequence whose
+    // longest runs are 11 and 12 bases, mean edit distance from the truth was
+    // 1.5 at thresholds well above every run, 2.2 at thresholds well below all
+    // of them, and 5.9 at a threshold of 12, sitting right on the modal run
+    // length. So the threshold should be kept away from the run lengths actually
+    // present, not merely set to some fixed small number. Choosing it from the
+    // data would be better than hardwiring it here.
     const uint64_t homopolymerThreshold = 5;
 
     msa1(
