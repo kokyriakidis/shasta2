@@ -636,6 +636,13 @@ void shasta2::testMsa1ExtendedBase()
         if(threshold == 6) {
             SHASTA2_ASSERT(not uniform);
         }
+
+        // The default must be one of the values that keeps the encoding uniform
+        // here. This is the property the whole alphabet exists to provide, so a
+        // change to the default that loses it should not pass silently.
+        if(threshold == defaultHomopolymerThreshold) {
+            SHASTA2_ASSERT(uniform);
+        }
     }
 
 

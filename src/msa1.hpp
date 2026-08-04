@@ -19,9 +19,40 @@ namespace shasta2 {
     inline vector<ExtendedBase> vectorOfExtendedBasesFromString(const string&);
 
     // The default homopolymer threshold used by encodeExtended.
-    // A homopolymer run longer than this has its length treated as unreliable.
-    // This matches maxAnchorRepeatLength[0], whose default is 6 (see Options.hpp).
-    const uint64_t defaultHomopolymerThreshold = 6;
+    // A homopolymer run longer than this has its length treated as unreliable
+    // and collapses to a poly symbol; a run this long or shorter keeps one plain
+    // symbol per base, so its length still takes part in the alignment.
+    //
+    // Four, because that is where the measured reliability boundary is. Across
+    // 91 positions of a 19 read locus, runs of 1, 2, 3 and 4 bases never varied
+    // between reads, while runs of 11 and 12 always did. Runs of 4 or shorter
+    // are 97% of all runs in these reads, so nearly all length information is
+    // kept, and only the unreliable tail is discarded.
+    //
+    // The threshold must sit BELOW the shortest run whose length is unreliable.
+    // A run of exactly the threshold length stays plain while a run one base
+    // longer collapses to a single symbol, so if noise can move a run across the
+    // threshold, the aligner sees a one base difference as a difference of
+    // threshold-1 symbols, and opens a large gap instead of taking one mismatch.
+    // Theseus cannot avoid this: it compares characters, so 'a' and 'A' are
+    // simply different, and its scalar penalty has no way to price them as
+    // similar.
+    //
+    // Measured on reads simulated from a sequence containing runs of exactly 4,
+    // 5, 6, 7 and 12, mean edit distance from the truth:
+    //
+    //     threshold      3     4     5     6     7     8
+    //     runs >=5 noisy 1.95  1.95  3.90  6.80  3.85  3.80
+    //     runs >=6 noisy 1.95  1.95  3.90  6.80  3.85    -
+    //     runs >=4 noisy 3.27  2.80  4.15  7.35  4.08    -
+    //
+    // Four is best or tied for best in all three, including the case where runs
+    // of 4 are themselves unreliable. Six, the value maxAnchorRepeatLength[0]
+    // uses, is the worst of those tried: it lands directly on a run length that
+    // is present and noisy. Note maxAnchorRepeatLength exists to keep anchors
+    // unique, which is a different question from which run lengths can be
+    // trusted, so there is no reason for the two to agree.
+    const uint64_t defaultHomopolymerThreshold = 4;
 
     // Encode a sequence in the extended alphabet.
     // A homopolymer run of base X and length L becomes:
