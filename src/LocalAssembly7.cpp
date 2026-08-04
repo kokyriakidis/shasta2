@@ -1554,9 +1554,21 @@ void LocalAssembly7::runMsa1()
     vector< vector<AlignedBase> > alignment;
     const bool computeAlignment = bool(html);
     const auto t0 = steady_clock::now();
+
+    // Use a homopolymer threshold of 5 rather than the default 6.
+    // A run of exactly 6 is not longer than a threshold of 6, so it stays a run
+    // of plain symbols while longer runs at the same position collapse to a poly
+    // symbol. The sequences then no longer encode to the same symbol string and
+    // the aligner sees a spurious difference. This is not hypothetical: it
+    // happens on real data, and testMsa1ExtendedBase asserts it at 6 and asserts
+    // its absence at 1 through 5. Choosing the threshold adaptively would be
+    // better than hardwiring it here.
+    const uint64_t homopolymerThreshold = 5;
+
     msa1(
         bothSidesFixedSequences, leftFixedSequences, rightFixedSequences,
-        consensus, alignment, alignedConsensus, computeAlignment);
+        consensus, alignment, alignedConsensus, computeAlignment,
+        homopolymerThreshold);
     const auto t1 = steady_clock::now();
     if(computeAlignment) {
         SHASTA2_ASSERT(alignment.size() == msaSequenceIdsWithWeight.size());
