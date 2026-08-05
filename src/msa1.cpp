@@ -687,7 +687,7 @@ namespace shasta2 {
         const vector< vector<AlignedBase> >& alignment,
         const Msa1Region& region,
         const vector<uint64_t>& weights,
-        uint64_t threshold,
+        uint64_t encodeThreshold,
         RunLengthEstimator estimator,
         vector< vector<AlignedBase> >& newRows,
         vector<AlignedBase>& newAlignedConsensus,
@@ -707,7 +707,7 @@ namespace shasta2 {
                 }
             }
             ExtendedSequence e;
-            encodeExtended(windowSequence, threshold, e);
+            encodeExtended(windowSequence, encodeThreshold, e);
             encoded.push_back(make_pair(e, weights[i]));
             rowWeights.push_back(weights[i]);
             if(not windowSequence.empty()) {
@@ -815,6 +815,7 @@ uint64_t shasta2::msa1(
     const vector<uint64_t>& weights,
     Msa1Trigger trigger,
     uint64_t threshold,
+    uint64_t encodeThreshold,
     RunLengthEstimator estimator,
     uint64_t flank,
     uint64_t mergeDistance)
@@ -866,7 +867,7 @@ uint64_t shasta2::msa1(
         vector< vector<AlignedBase> > newRows;
         vector<AlignedBase> newAlignedConsensus;
         vector< pair<Base, uint64_t> > newConsensus;
-        if(not msa1RepairRegion(alignment, region, rowWeights, threshold,
+        if(not msa1RepairRegion(alignment, region, rowWeights, encodeThreshold,
             estimator, newRows, newAlignedConsensus, newConsensus)) {
             continue;
         }
