@@ -2,6 +2,7 @@
 #include "msa1.hpp"
 #include "invalid.hpp"
 #include "SHASTA2_ASSERT.hpp"
+#include "theseusWrapper.hpp"
 using namespace shasta2;
 
 // Standard library.
@@ -637,41 +638,62 @@ namespace shasta2 {
             return false;
         }
 
-        // All rows must encode to the same symbol string.
+        // Do all rows encode to the same symbol string?
         //
         // When they do, the homopolymer lengths are the only thing that differs
-        // between the reads in this window, the rows stack without any
-        // alignment at all, and the repair is exact: there is no aligner left to
-        // make a placement decision, so the defect being repaired cannot recur.
-        // This is the case the extended alphabet is designed to produce and it is
-        // what the locus this was developed on does.
+        // between the reads in this window. The rows stack without any alignment
+        // at all, and that stacking is not an approximation: identical symbol
+        // strings have exactly one gap free alignment and it is all matches, so
+        // no alignment can score higher. The repair is then exact, because there
+        // is no aligner left to make a placement decision and the defect being
+        // repaired cannot recur.
         //
-        // When they do not, the window has real variation in it as well as the
-        // homopolymers, and repairing it would need the rows realigned in symbol
-        // space. That is deliberately not done. Theseus is the only aligner here
-        // that could do it, since abpoa is fixed at four letters, and theseus is
-        // the worse aligner of the two; replacing abpoa's alignment of a window
-        // with a worse one to fix a homopolymer would trade one error for
-        // another. Such a window is left exactly as abpoa produced it.
-        //
-        // The cost of that choice is that a bad homopolymer sitting next to a
-        // substitution is not repaired. Widening this is possible later by
-        // clipping every run at the threshold and realigning with abpoa, which
-        // gets the same effect as poly symbols in an alphabet abpoa accepts, but
-        // it needs measuring against real data first.
+        // When they do not, the window holds real variation as well as the
+        // homopolymers, and the rows have to be realigned. Leaving such a window
+        // alone is not an option: a single substitution anywhere in it breaks
+        // the symbol strings, and on reads with a 1% substitution rate that
+        // abandons 97% of the regions found. The repair would almost never fire.
+        bool uniform = true;
         for(uint64_t i=1; i<n; i++) {
             if(toString(encoded[i].first) != toString(encoded[0].first)) {
-                return false;
+                uniform = false;
+                break;
             }
         }
 
         vector<AlignedExtendedSequence> extendedAlignment(n);
-        for(uint64_t i=0; i<n; i++) {
-            extendedAlignment[i].clear();
-            extendedAlignment[i].reserve(encoded[i].first.size());
-            for(const auto& [symbol, runLength]: encoded[i].first) {
-                extendedAlignment[i].push_back(
-                    make_pair(AlignedExtendedBase(symbol), runLength));
+        if(uniform) {
+            for(uint64_t i=0; i<n; i++) {
+                extendedAlignment[i].clear();
+                extendedAlignment[i].reserve(encoded[i].first.size());
+                for(const auto& [symbol, runLength]: encoded[i].first) {
+                    extendedAlignment[i].push_back(
+                        make_pair(AlignedExtendedBase(symbol), runLength));
+                }
+            }
+        } else {
+
+            // Realign the window in symbol space, where a long run is a single
+            // symbol and a run length difference therefore cannot be traded
+            // against a mismatch. This is what abpoa cannot do, being fixed at
+            // four letters, and it is the whole reason the alphabet exists.
+            //
+            // Theseus is used because it compares characters and so accepts the
+            // nine symbol alphabet unchanged. It is the weaker aligner of the
+            // two on whole sequences, but the comparison that matters here is
+            // not theseus against abpoa: it is a window realigned by theseus in
+            // symbol space against the same window left as abpoa placed it, with
+            // the misplaced base still in it. The window is also short and its
+            // rows are nearly identical, which is the regime where the choice of
+            // aligner matters least.
+            vector< vector<AlignedExtendedBase> > alignedSymbols;
+            theseusExtended(encoded, {}, {}, alignedSymbols);
+            SHASTA2_ASSERT(alignedSymbols.size() == n);
+            for(uint64_t i=0; i<n; i++) {
+                // Every row here is fixed on both sides, so theseus returns all
+                // of it and nothing is trimmed.
+                attachRunLengths(alignedSymbols[i], encoded[i].first,
+                    Anchoring::BothSides, extendedAlignment[i]);
             }
         }
 
