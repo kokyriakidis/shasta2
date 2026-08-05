@@ -1464,112 +1464,112 @@ void LocalAssembly7::runTheseus(bool useAll)
 
 
 
+// Local assembly with abpoa, followed by a local repair of the bad homopolymer
+// regions of the alignment it produces.
+//
+// This is the same as runAbpoa, plus one extra step. abpoa runs exactly as it
+// always does, and what it produces is then handed to msa1, which looks for the
+// regions where a base bordering a long homopolymer run has been misplaced and
+// rebuilds only those. In most local assemblies none are found and the result is
+// bit for bit what runAbpoa would have given.
+//
+// Having this as a separate method makes the comparison a one flag change:
+// --local-assembly-method Abpoa is without the repair, Msa1 is with it.
 void LocalAssembly7::runMsa1()
 {
     // Get the sequenceIds to be used, sorted in order of decreasing coverage.
-    vector<uint64_t> bothSidesFixedSequenceIds;
-    getSequencesOnBothAnchors(bothSidesFixedSequenceIds);
-    vector<uint64_t> leftFixedSequenceIds;
-    getSequencesOnAnchorA(leftFixedSequenceIds);
-    vector<uint64_t> rightFixedSequenceIds;
-    getSequencesOnAnchorB(rightFixedSequenceIds);
+    vector<uint64_t> sequenceIds;
+    getSequencesOnBothAnchors(sequenceIds);
 
     if(html) {
         html <<
-            "<h3>Local assembly with msa1</h3>"
+            "<h3>Local assembly with abpoa and homopolymer repair</h3>"
             "The local assembly will use the following "
-            "sequences of oriented reads fixed on one or both anchors."
+            "sequences of oriented reads on both anchors, "
+            "presented to abpoa in this order of decreasing coverage."
+            "<br>Each sequence is presented to abpoa a number of times "
+            "equal to its coverage, with (implicit) weight 1."
             "<br><br><table>"
-            "<tr><th>Sequence<br>id<th>On<br>A<th>On<br>B<th>Coverage<th>Length";
-        for(const uint64_t sequenceId: bothSidesFixedSequenceIds) {
+            "<tr><th>Sequence<br>id<th>Coverage<th>Length";
+        for(const uint64_t sequenceId: sequenceIds) {
             const SequenceInfo& sequenceInfo = sequences[sequenceId];
             html <<
                 "<tr>"
                 "<td class=centered>" << sequenceId <<
-                "<td class=centered>&check;" <<
-                "<td class=centered>&check;" <<
                 "<td class=centered>" << sequenceInfo.coverage() <<
                 "<td class=centered>" << sequenceInfo.sequence.size();
         }
-        for(const uint64_t sequenceId: leftFixedSequenceIds) {
-            const SequenceInfo& sequenceInfo = sequences[sequenceId];
-            html <<
-                "<tr>"
-                "<td class=centered>" << sequenceId <<
-                "<td class=centered>&check;" <<
-                "<td class=centered>" <<
-                "<td class=centered>" << sequenceInfo.coverage() <<
-                "<td class=centered>" << sequenceInfo.sequence.size();
-        }
-        for(const uint64_t sequenceId: rightFixedSequenceIds) {
-            const SequenceInfo& sequenceInfo = sequences[sequenceId];
-            html <<
-                "<tr>"
-                "<td class=centered>" << sequenceId <<
-                "<td class=centered>" <<
-                "<td class=centered>&check;" <<
-                "<td class=centered>" << sequenceInfo.coverage() <<
-                "<td class=centered>" << sequenceInfo.sequence.size();
-        }
-
         html << "</table>";
     }
 
+    // Decide, before running abpoa, whether the repair could have anything to
+    // do here. The test is run on the READS, for two reasons. It needs no
+    // alignment, so it can be answered before abpoa runs and abpoa can then be
+    // asked for an alignment only when one will be used. And the reads have not
+    // been through any vote, so they still show the pattern even in the cases
+    // where the consensus would have lost the misplaced base altogether.
+    //
+    // It is run on the DISTINCT sequences, before they are repeated by coverage
+    // below. Scanning the repeats would answer the same question several times
+    // over.
+    //
+    // In the common case this is false, abpoa runs exactly as it does in
+    // runAbpoa, and nothing else below has any effect. On real reads the pattern
+    // is present in a few percent of bubble arms of the usual size.
+    bool patternPresent = false;
+    for(const uint64_t sequenceId: sequenceIds) {
+        if(msa1PatternPresent(sequences[sequenceId].sequence)) {
+            patternPresent = true;
+            break;
+        }
+    }
 
-
-    // Gather the sequences to be passed to msa1.
-    uint64_t totalWeight = 0;
+    // Abpoa does not support weights, so each sequence is entered a number of
+    // times equal to its coverage. This is what runAbpoa does.
+    vector< vector<Base> > msaSequences;
     vector< pair<uint64_t, uint64_t> > msaSequenceIdsWithWeight;
-    vector< pair<vector<Base>, uint64_t> > bothSidesFixedSequences;
-    for(const uint64_t sequenceId: bothSidesFixedSequenceIds) {
+    for(const uint64_t sequenceId: sequenceIds) {
         const SequenceInfo& sequenceInfo = sequences[sequenceId];
-        const uint64_t coverage = sequenceInfo.coverage();
-        bothSidesFixedSequences.push_back(make_pair(sequenceInfo.sequence, coverage));
-        msaSequenceIdsWithWeight.push_back(make_pair(sequenceId, coverage));
-        totalWeight += coverage;
-    }
-    vector< pair<vector<Base>, uint64_t> > leftFixedSequences;
-    for(const uint64_t sequenceId: leftFixedSequenceIds) {
-        const SequenceInfo& sequenceInfo = sequences[sequenceId];
-        const uint64_t coverage = sequenceInfo.coverage();
-        leftFixedSequences.push_back(make_pair(sequenceInfo.sequence, coverage));
-        msaSequenceIdsWithWeight.push_back(make_pair(sequenceId, coverage));
-        totalWeight += coverage;
-    }
-    vector< pair<vector<Base>, uint64_t> > rightFixedSequences;
-    for(const uint64_t sequenceId: rightFixedSequenceIds) {
-        const SequenceInfo& sequenceInfo = sequences[sequenceId];
-        const uint64_t coverage = sequenceInfo.coverage();
-        rightFixedSequences.push_back(make_pair(sequenceInfo.sequence, coverage));
-        msaSequenceIdsWithWeight.push_back(make_pair(sequenceId, coverage));
-        totalWeight += coverage;
-    }
-    if(html) {
-        html << "<br>Total coverage for msa1 is " << totalWeight << ".";
+        for(uint64_t i=0; i<sequenceInfo.coverage(); i++) {
+            msaSequences.push_back(sequenceInfo.sequence);
+            msaSequenceIdsWithWeight.push_back(make_pair(sequenceId, 1));
+        }
     }
 
-    // Run msa1.
+    // The alignment is normally computed only for the html display. It is also
+    // needed when there is something to repair.
+    const bool computeAlignment = bool(html) or patternPresent;
+
     vector< pair<Base, uint64_t> > consensus;
-    vector<AlignedBase> alignedConsensus;
     vector< vector<AlignedBase> > alignment;
-    const bool computeAlignment = bool(html);
+    vector<AlignedBase> alignedConsensus;
     const auto t0 = steady_clock::now();
-
-    // The homopolymer threshold is left at its default of 4, which is where the
-    // reliability boundary was measured. See defaultHomopolymerThreshold in
-    // msa1.hpp for why, and for why it must not be raised to match
-    // maxAnchorRepeatLength[0]. Choosing it from the data at hand, rather than
-    // fixing it, would be better still.
-    msa1(
-        bothSidesFixedSequences, leftFixedSequences, rightFixedSequences,
-        consensus, alignment, alignedConsensus, computeAlignment);
+    abpoa(msaSequences, consensus, alignment, alignedConsensus, computeAlignment);
     const auto t1 = steady_clock::now();
+
+    // Repair the bad regions, if any. Everything outside them is untouched.
+    uint64_t repairedRegionCount = 0;
+    if(patternPresent) {
+        SHASTA2_ASSERT(alignment.size() == msaSequenceIdsWithWeight.size());
+        const vector<uint64_t> weights(alignment.size(), 1);
+        repairedRegionCount = msa1(alignment, alignedConsensus, consensus, weights);
+    }
+    const auto t2 = steady_clock::now();
+
     if(computeAlignment) {
         SHASTA2_ASSERT(alignment.size() == msaSequenceIdsWithWeight.size());
     }
 
     if(html) {
-        html << "<br>Msa1 completed in " << seconds(t1-t0) << " seconds.";
+        html << "<br>Abpoa completed in " << seconds(t1-t0) << " seconds.";
+        if(patternPresent) {
+            html << "<br>The reads contain a long homopolymer run bordered by a "
+                "single base. Repair completed in " << seconds(t2-t1) <<
+                " seconds and modified " << repairedRegionCount << " region(s).";
+        } else {
+            html << "<br>The reads contain no long homopolymer run bordered by a "
+                "single base, so no repair was attempted.";
+        }
         writeAlignment(alignment, alignedConsensus, consensus, msaSequenceIdsWithWeight);
         writeConsensus(consensus);
     }

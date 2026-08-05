@@ -222,47 +222,115 @@ namespace shasta2 {
         vector<AlignedBase>& expandedAlignedConsensus);
 
 
-    void testMsa1ExtendedBase();
-    void testMsa1Consensus();
+    // Cheap test for the problem pattern, run on the READS.
+    //
+    // Returns true if any of the sequences contains two homopolymer runs longer
+    // than the threshold separated by a single base. That is the pattern an
+    // aligner misplaces, because it can explain the length difference as two
+    // substitutions on the separating base rather than as two indels.
+    //
+    // This is deliberately run on the reads and not on the consensus. The defect
+    // can vote the separating base away: at the locus this was developed on the
+    // two placements were complementary and exactly one G survived, but with the
+    // base split over three or more columns no column need reach a plurality and
+    // the consensus would lose it entirely. The cases most in need of repair are
+    // exactly the ones the consensus would hide. The reads have not been through
+    // any vote, so they still show the pattern.
+    //
+    // Its purpose is to answer, before an alignment exists, whether it is worth
+    // computing one. In production all three local assembly paths set
+    // computeAlignment = bool(html), so with html off there is no alignment to
+    // repair and one has to be asked for.
+    // One sequence. This is the primitive the others are built on. It walks the
+    // runs keeping only the two previous run lengths, so it allocates nothing
+    // and stops at the first hit.
+    bool msa1PatternPresent(
+        const vector<Base>& sequence,
+        uint64_t threshold = defaultHomopolymerThreshold);
+
+    // Any of several sequences. Note these take DISTINCT sequences: a caller
+    // that has repeated each sequence by its coverage, as the abpoa paths do,
+    // should pass the distinct ones instead and save the repeats.
+    bool msa1PatternPresent(
+        const vector< vector<Base> >& sequences,
+        uint64_t threshold = defaultHomopolymerThreshold);
+
+    // Same, for sequences that carry a coverage.
+    bool msa1PatternPresent(
+        const vector< pair<vector<Base>, uint64_t> >& sequences,
+        uint64_t threshold = defaultHomopolymerThreshold);
 
 
-    void msa1(
+    // A range of alignment columns.
+    class Msa1Region {
+    public:
+        uint64_t begin = 0;
+        uint64_t end = 0;      // one past the last column
+        uint64_t size() const { return end - begin; }
+    };
 
-        // The input sequences fixed on both sides, with their coverage.
-        const vector< pair<vector<Base>, uint64_t> >& fixedSequences,
 
-        // The input sequences fixed on the left only, with their coverage.
-        const vector< pair<vector<Base>, uint64_t> >& leftFixedSequences,
+    // Find the regions of an alignment that are worth repairing.
+    //
+    // A column is discordant if any row differs from the aligned consensus
+    // there. That is exactly what LocalAssembly7::writeAlignment paints pink.
+    // Discordant columns are clustered, clusters closer together than
+    // mergeDistance are merged, each is widened by flank, and a cluster is kept
+    // only if the sequences inside it actually show the problem pattern.
+    //
+    // The returned regions are disjoint and in increasing order.
+    void msa1FindBadRegions(
+        const vector< vector<AlignedBase> >& alignment,
+        const vector<AlignedBase>& alignedConsensus,
+        uint64_t threshold,
+        uint64_t flank,
+        uint64_t mergeDistance,
+        vector<Msa1Region>& regions);
 
-        // The input sequences fixed on the right only, with their coverage.
-        const vector< pair<vector<Base>, uint64_t> >& rightFixedSequences,
 
-        // The consensus sequence and its coverage.
-        vector< pair<Base, uint64_t> >& consensus,
+    // Repair the bad regions of an alignment and its consensus, in place.
+    //
+    // This is the entry point. It does NOT replace the alignment: abpoa or
+    // theseus run exactly as before, and what they produce is passed here. Only
+    // the columns inside a bad region are touched, so sequence accuracy
+    // everywhere else is unaffected. On input with no bad region, which is the
+    // common case, all three arguments come back unchanged.
+    //
+    // alignment, alignedConsensus and consensus are all modified in place.
+    // Returns the number of regions repaired, which is usually 0.
+    uint64_t msa1(
 
-        // The computed alignment.
-        // Each element of the vector correspond to one of the input sequences,
-        // in the same order.
-        // These all have the same length, which equals the length of the aligned consensus.
+        // The alignment computed by abpoa or theseus, one row per input
+        // sequence. All rows must have the same length as alignedConsensus.
         vector< vector<AlignedBase> >& alignment,
 
-        // The aligned consensus.
+        // The aligned consensus, one entry per alignment column.
         vector<AlignedBase>& alignedConsensus,
 
-        // Consensus and alignedConsensus are always computed.
-        // Alignment is only computed if this set to true.
-        bool computeAlignment,
+        // The consensus sequence and its coverage. This is alignedConsensus
+        // with the gaps removed, and is kept consistent with it.
+        vector< pair<Base, uint64_t> >& consensus,
 
-        // The homopolymer threshold used to encode the sequences.
-        // See the comment on defaultHomopolymerThreshold. The default of 6
-        // matches maxAnchorRepeatLength[0], but note that on real data a run of
-        // exactly 6 then stays plain while longer runs collapse, which costs a
-        // spurious mismatch. See testMsa1ExtendedBase.
+        // The weight of each row, normally its coverage. May be empty, in which
+        // case every row weighs 1.
+        const vector<uint64_t>& weights,
+
+        // The homopolymer threshold. See defaultHomopolymerThreshold.
         uint64_t threshold = defaultHomopolymerThreshold,
 
         // How the consensus length of a long homopolymer run is chosen.
-        RunLengthEstimator estimator = RunLengthEstimator::Mode
-    );
+        RunLengthEstimator estimator = RunLengthEstimator::Mode,
+
+        // Columns of context included on each side of a bad region.
+        uint64_t flank = 10,
+
+        // Discordant columns closer together than this are treated as one region.
+        uint64_t mergeDistance = 20);
+
+
+    void testMsa1ExtendedBase();
+    void testMsa1Consensus();
+    void testMsa1Repair();
 }
 
 

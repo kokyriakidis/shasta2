@@ -297,6 +297,9 @@ PYBIND11_MODULE(shasta2, shasta2Module)
     shasta2Module.def("testMsa1Consensus",
         testMsa1Consensus
         );
+    shasta2Module.def("testMsa1Repair",
+        testMsa1Repair
+        );
 }
 
 #endif
