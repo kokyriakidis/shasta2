@@ -2,7 +2,6 @@
 #include "msa1.hpp"
 #include "invalid.hpp"
 #include "SHASTA2_ASSERT.hpp"
-#include "theseusWrapper.hpp"
 using namespace shasta2;
 
 // Standard library.
@@ -361,130 +360,359 @@ void shasta2::expandExtendedAlignment(
 }
 
 
-void shasta2::msa1(
 
-    // The input sequences fixed on both sides, with their coverage.
-    const vector< pair<vector<Base>, uint64_t> >& fixedSequences,
-
-    // The input sequences fixed on the left only, with their coverage.
-    const vector< pair<vector<Base>, uint64_t> >& leftFixedSequences,
-
-    // The input sequences fixed on the right only, with their coverage.
-    const vector< pair<vector<Base>, uint64_t> >& rightFixedSequences,
-
-    // The consensus sequence and its coverage.
-    vector< pair<Base, uint64_t> >& consensus,
-
-    // The computed alignment.
-    // Each element of the vector correspond to one of the input sequences,
-    // in the same order.
-    // These all have the same length, which equals the length of the aligned consensus.
-    vector< vector<AlignedBase> >& alignment,
-
-    // The aligned consensus.
-    vector<AlignedBase>& alignedConsensus,
-
-    // Consensus and alignedConsensus are always computed.
-    // Alignment is only computed if this set to true.
-    bool computeAlignment,
-
-    // The homopolymer threshold used to encode the sequences.
-    uint64_t threshold,
-
-    // How the consensus length of a long homopolymer run is chosen.
-    RunLengthEstimator estimator
-)
+// See msa1.hpp for comments.
+bool shasta2::msa1PatternPresent(
+    const vector<Base>& sequence,
+    uint64_t threshold)
 {
-    SHASTA2_ASSERT(not fixedSequences.empty());
+    // Walk the runs, keeping only the two previous run lengths. The pattern is a
+    // run longer than the threshold, then a run of exactly one base, then
+    // another run longer than the threshold. Nothing is allocated and the walk
+    // stops at the first hit, which is what lets this be called on every local
+    // assembly before deciding whether an alignment is even needed.
+    uint64_t lengthBeforeLast = 0;
+    uint64_t lastLength = 0;
 
-    // Encode all the input sequences in the extended alphabet.
-    // A homopolymer run longer than the threshold becomes a single poly symbol
-    // carrying its length, and only the symbols are shown to the aligner. This
-    // is what stops a run length difference from being turned into a mismatch,
-    // which is what misplaces the base bordering a long run.
-    vector< pair<ExtendedSequence, uint64_t> > encodedFixed;
-    vector< pair<ExtendedSequence, uint64_t> > encodedLeftFixed;
-    vector< pair<ExtendedSequence, uint64_t> > encodedRightFixed;
+    const uint64_t n = sequence.size();
+    for(uint64_t runBegin=0; runBegin<n; /* incremented below */) {
+        const Base base = sequence[runBegin];
+        uint64_t runEnd = runBegin + 1;
+        while((runEnd < n) and (sequence[runEnd] == base)) {
+            ++runEnd;
+        }
+        const uint64_t runLength = runEnd - runBegin;
 
-    // How each sequence is anchored and what it weighs, in the same order the
-    // rows will come back from the aligner: fixed, then left fixed, then right
-    // fixed. The anchoring is needed to put the run lengths back, because it
-    // says which end theseus may have trimmed.
+        if( (lengthBeforeLast > threshold) and
+            (lastLength == 1) and
+            (runLength > threshold)) {
+            return true;
+        }
+
+        lengthBeforeLast = lastLength;
+        lastLength = runLength;
+        runBegin = runEnd;
+    }
+    return false;
+}
+
+
+
+// See msa1.hpp for comments.
+bool shasta2::msa1PatternPresent(
+    const vector< vector<Base> >& sequences,
+    uint64_t threshold)
+{
+    for(const vector<Base>& sequence: sequences) {
+        if(msa1PatternPresent(sequence, threshold)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+
+
+// See msa1.hpp for comments.
+bool shasta2::msa1PatternPresent(
+    const vector< pair<vector<Base>, uint64_t> >& sequences,
+    uint64_t threshold)
+{
+    for(const auto& [sequence, weight]: sequences) {
+        if(msa1PatternPresent(sequence, threshold)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+
+
+// See msa1.hpp for comments.
+void shasta2::msa1FindBadRegions(
+    const vector< vector<AlignedBase> >& alignment,
+    const vector<AlignedBase>& alignedConsensus,
+    uint64_t threshold,
+    uint64_t flank,
+    uint64_t mergeDistance,
+    vector<Msa1Region>& regions)
+{
+    regions.clear();
+    if(alignment.empty()) {
+        return;
+    }
+    const uint64_t alignmentLength = alignedConsensus.size();
+    for(const vector<AlignedBase>& row: alignment) {
+        SHASTA2_ASSERT(row.size() == alignmentLength);
+    }
+
+    // A column is discordant if any row differs from the aligned consensus
+    // there. This is what LocalAssembly7::writeAlignment paints pink.
+    vector<bool> isDiscordant(alignmentLength, false);
+    for(uint64_t j=0; j<alignmentLength; j++) {
+        for(const vector<AlignedBase>& row: alignment) {
+            if(row[j] != alignedConsensus[j]) {
+                isDiscordant[j] = true;
+                break;
+            }
+        }
+    }
+
+    // Cluster the discordant columns, merging clusters that are close together,
+    // then widen each cluster by the flank.
+    for(uint64_t j=0; j<alignmentLength; /* incremented below */) {
+        if(not isDiscordant[j]) {
+            ++j;
+            continue;
+        }
+
+        uint64_t begin = j;
+        uint64_t end = j + 1;
+        for(uint64_t k=end; k<alignmentLength; k++) {
+            if(isDiscordant[k]) {
+                end = k + 1;
+            } else if(k >= end + mergeDistance) {
+                break;
+            }
+        }
+        j = end;
+
+        // Widen by the flank, clamped to the alignment.
+        Msa1Region region;
+        region.begin = (begin > flank) ? (begin - flank) : 0;
+        region.end = min(alignmentLength, end + flank);
+
+        // Merge with the previous region if they now touch or overlap.
+        if((not regions.empty()) and (region.begin <= regions.back().end)) {
+            regions.back().end = max(regions.back().end, region.end);
+        } else {
+            regions.push_back(region);
+        }
+    }
+
+    // Keep only the regions whose sequences actually show the problem pattern.
+    // This is the confirmation step: a discordant cluster is common, the pattern
+    // is not.
+    vector<Msa1Region> confirmed;
+    vector<Base> windowSequence;
+    for(const Msa1Region& region: regions) {
+        bool found = false;
+        for(const vector<AlignedBase>& row: alignment) {
+            windowSequence.clear();
+            for(uint64_t j=region.begin; j<region.end; j++) {
+                if(not row[j].isGap()) {
+                    windowSequence.push_back(Base(row[j]));
+                }
+            }
+            if(msa1PatternPresent(windowSequence, threshold)) {
+                found = true;
+                break;
+            }
+        }
+        if(found) {
+            confirmed.push_back(region);
+        }
+    }
+    regions = confirmed;
+}
+
+
+
+namespace shasta2 {
+
+    // Recompute one region of an alignment using the extended alphabet, and
+    // return the replacement columns.
     //
-    // The encodings themselves are not copied here. They stay in the three
-    // group vectors above and are reached through encodingOfRow below, which
-    // maps a row index onto them. At the largest MSA this code sees that saves
-    // a few megabytes of copying for nothing.
-    vector<Anchoring> anchorings;
-    vector<uint64_t> weights;
-
-    const auto encodeGroup = [&](
-        const vector< pair<vector<Base>, uint64_t> >& in,
-        Anchoring anchoring,
-        vector< pair<ExtendedSequence, uint64_t> >& out)
+    // The rows of the region are ungapped and encoded. They are repaired only if
+    // their symbol strings all agree, in which case they stack without any
+    // alignment and the usual two votes run, symbols first and run lengths
+    // second, before expanding back to bases.
+    //
+    // Returns false and leaves the outputs alone if the region cannot be
+    // improved, in which case the caller must leave it as it was.
+    static bool msa1RepairRegion(
+        const vector< vector<AlignedBase> >& alignment,
+        const Msa1Region& region,
+        const vector<uint64_t>& weights,
+        uint64_t threshold,
+        RunLengthEstimator estimator,
+        vector< vector<AlignedBase> >& newRows,
+        vector<AlignedBase>& newAlignedConsensus)
     {
-        out.clear();
-        out.reserve(in.size());
-        for(const auto& [sequence, weight]: in) {
-            ExtendedSequence encoded;
-            encodeExtended(sequence, threshold, encoded);
-            out.push_back(make_pair(std::move(encoded), weight));
-            anchorings.push_back(anchoring);
-            weights.push_back(weight);
-        }
-    };
-    encodeGroup(fixedSequences, Anchoring::BothSides, encodedFixed);
-    encodeGroup(leftFixedSequences, Anchoring::LeftOnly, encodedLeftFixed);
-    encodeGroup(rightFixedSequences, Anchoring::RightOnly, encodedRightFixed);
+        const uint64_t n = alignment.size();
 
-    // Map a row index onto the encoding it came from.
-    const auto encodingOfRow = [&](uint64_t i) -> const ExtendedSequence&
-    {
-        if(i < encodedFixed.size()) {
-            return encodedFixed[i].first;
+        // Ungap each row inside the region and encode it.
+        vector< pair<ExtendedSequence, uint64_t> > encoded;
+        vector<uint64_t> rowWeights;
+        vector<uint64_t> nonEmptyRows;
+        for(uint64_t i=0; i<n; i++) {
+            vector<Base> windowSequence;
+            for(uint64_t j=region.begin; j<region.end; j++) {
+                if(not alignment[i][j].isGap()) {
+                    windowSequence.push_back(Base(alignment[i][j]));
+                }
+            }
+            ExtendedSequence e;
+            encodeExtended(windowSequence, threshold, e);
+            encoded.push_back(make_pair(e, weights[i]));
+            rowWeights.push_back(weights[i]);
+            if(not windowSequence.empty()) {
+                nonEmptyRows.push_back(i);
+            }
         }
-        i -= encodedFixed.size();
-        if(i < encodedLeftFixed.size()) {
-            return encodedLeftFixed[i].first;
+
+        // A region in which some row contributes nothing is left alone. Such a
+        // row cannot be given a symbol string to align, and guessing one would
+        // be a change to a row that has no evidence in this region.
+        if(nonEmptyRows.size() != n) {
+            return false;
         }
-        i -= encodedLeftFixed.size();
-        return encodedRightFixed[i].first;
-    };
 
-    // Align the encoded sequences. Theseus sees symbols only.
-    vector< vector<AlignedExtendedBase> > alignedSymbols;
-    theseusExtended(encodedFixed, encodedLeftFixed, encodedRightFixed,
-        alignedSymbols);
-    SHASTA2_ASSERT(alignedSymbols.size() == anchorings.size());
+        // All rows must encode to the same symbol string.
+        //
+        // When they do, the homopolymer lengths are the only thing that differs
+        // between the reads in this window, the rows stack without any
+        // alignment at all, and the repair is exact: there is no aligner left to
+        // make a placement decision, so the defect being repaired cannot recur.
+        // This is the case the extended alphabet is designed to produce and it is
+        // what the locus this was developed on does.
+        //
+        // When they do not, the window has real variation in it as well as the
+        // homopolymers, and repairing it would need the rows realigned in symbol
+        // space. That is deliberately not done. Theseus is the only aligner here
+        // that could do it, since abpoa is fixed at four letters, and theseus is
+        // the worse aligner of the two; replacing abpoa's alignment of a window
+        // with a worse one to fix a homopolymer would trade one error for
+        // another. Such a window is left exactly as abpoa produced it.
+        //
+        // The cost of that choice is that a bad homopolymer sitting next to a
+        // substitution is not repaired. Widening this is possible later by
+        // clipping every run at the threshold and realigning with abpoa, which
+        // gets the same effect as poly symbols in an alphabet abpoa accepts, but
+        // it needs measuring against real data first.
+        for(uint64_t i=1; i<n; i++) {
+            if(toString(encoded[i].first) != toString(encoded[0].first)) {
+                return false;
+            }
+        }
 
-    // Put the run lengths back, using the encoding that was handed to the
-    // aligner rather than one recovered from the row: for a sequence fixed on
-    // one side only, theseus trims the overhang, so the row covers only part of
-    // the encoding, and the anchoring says which part.
-    vector<AlignedExtendedSequence> extendedAlignment(alignedSymbols.size());
-    for(uint64_t i=0; i<alignedSymbols.size(); i++) {
-        attachRunLengths(alignedSymbols[i], encodingOfRow(i), anchorings[i],
-            extendedAlignment[i]);
+        vector<AlignedExtendedSequence> extendedAlignment(n);
+        for(uint64_t i=0; i<n; i++) {
+            extendedAlignment[i].clear();
+            extendedAlignment[i].reserve(encoded[i].first.size());
+            for(const auto& [symbol, runLength]: encoded[i].first) {
+                extendedAlignment[i].push_back(
+                    make_pair(AlignedExtendedBase(symbol), runLength));
+            }
+        }
+
+        // Vote, then expand.
+        vector< pair<Base, uint64_t> > regionConsensus;
+        AlignedExtendedSequence alignedExtendedConsensus;
+        extendedConsensus(extendedAlignment, rowWeights, estimator,
+            regionConsensus, alignedExtendedConsensus);
+        expandExtendedAlignment(extendedAlignment, alignedExtendedConsensus,
+            newRows, newAlignedConsensus);
+
+        return true;
+    }
+}
+
+
+
+// See msa1.hpp for comments.
+uint64_t shasta2::msa1(
+    vector< vector<AlignedBase> >& alignment,
+    vector<AlignedBase>& alignedConsensus,
+    vector< pair<Base, uint64_t> >& consensus,
+    const vector<uint64_t>& weights,
+    uint64_t threshold,
+    RunLengthEstimator estimator,
+    uint64_t flank,
+    uint64_t mergeDistance)
+{
+    const uint64_t n = alignment.size();
+    if(n == 0) {
+        return 0;
+    }
+    for(const vector<AlignedBase>& row: alignment) {
+        SHASTA2_ASSERT(row.size() == alignedConsensus.size());
     }
 
-    // Vote, column by column, with long run lengths voted separately.
-    AlignedExtendedSequence alignedExtendedConsensus;
-    extendedConsensus(extendedAlignment, weights, estimator,
-        consensus, alignedExtendedConsensus);
-
-    // Expand back to plain bases. This is done even when the alignment is not
-    // requested, because alignedConsensus is always computed and has to have the
-    // same length as the alignment rows. When it is not requested the expanded
-    // rows are discarded, but they still have to be built to know that length.
-    vector< vector<AlignedBase> > expandedAlignment;
-    expandExtendedAlignment(extendedAlignment, alignedExtendedConsensus,
-        expandedAlignment, alignedConsensus);
-
-    if(computeAlignment) {
-        alignment = std::move(expandedAlignment);
-    } else {
-        alignment.clear();
+    // An empty weights argument means every row weighs 1.
+    vector<uint64_t> rowWeights = weights;
+    if(rowWeights.empty()) {
+        rowWeights.assign(n, 1);
     }
+    SHASTA2_ASSERT(rowWeights.size() == n);
+
+    // Find the regions worth repairing. Usually there are none, and then nothing
+    // below runs and nothing is modified.
+    vector<Msa1Region> regions;
+    msa1FindBadRegions(alignment, alignedConsensus, threshold, flank,
+        mergeDistance, regions);
+    if(regions.empty()) {
+        return 0;
+    }
+
+    // Repair the regions from right to left, so that the column indices of the
+    // regions still to be done are not disturbed by the splices already made.
+    uint64_t repairedCount = 0;
+    for(uint64_t k=regions.size(); k>0; k--) {
+        const Msa1Region& region = regions[k - 1];
+
+        vector< vector<AlignedBase> > newRows;
+        vector<AlignedBase> newAlignedConsensus;
+        if(not msa1RepairRegion(alignment, region, rowWeights, threshold,
+            estimator, newRows, newAlignedConsensus)) {
+            continue;
+        }
+        SHASTA2_ASSERT(newRows.size() == n);
+
+        // Splice. Every row and the aligned consensus must be spliced together,
+        // or they stop having the same length.
+        for(uint64_t i=0; i<n; i++) {
+            vector<AlignedBase>& row = alignment[i];
+            row.erase(row.begin() + int64_t(region.begin),
+                row.begin() + int64_t(region.end));
+            row.insert(row.begin() + int64_t(region.begin),
+                newRows[i].begin(), newRows[i].end());
+        }
+        alignedConsensus.erase(
+            alignedConsensus.begin() + int64_t(region.begin),
+            alignedConsensus.begin() + int64_t(region.end));
+        alignedConsensus.insert(
+            alignedConsensus.begin() + int64_t(region.begin),
+            newAlignedConsensus.begin(), newAlignedConsensus.end());
+
+        ++repairedCount;
+    }
+
+    if(repairedCount == 0) {
+        return 0;
+    }
+
+    // Rebuild the consensus from the repaired aligned consensus, so that the two
+    // cannot disagree. The coverage of a column is recomputed from the rows.
+    for(const vector<AlignedBase>& row: alignment) {
+        SHASTA2_ASSERT(row.size() == alignedConsensus.size());
+    }
+    consensus.clear();
+    for(uint64_t j=0; j<alignedConsensus.size(); j++) {
+        const AlignedBase b = alignedConsensus[j];
+        if(b.isGap()) {
+            continue;
+        }
+        uint64_t coverage = 0;
+        for(uint64_t i=0; i<n; i++) {
+            if(alignment[i][j] == b) {
+                coverage += rowWeights[i];
+            }
+        }
+        consensus.push_back(make_pair(Base(b), coverage));
+    }
+
+    return repairedCount;
 }
 
 
@@ -566,6 +794,15 @@ namespace shasta2 {
             }
         }
         return impureColumnCount;
+    }
+
+    static string msa1ToString(const vector<AlignedBase>& v)
+    {
+        string s;
+        for(const AlignedBase b: v) {
+            s.push_back(b.character());
+        }
+        return s;
     }
 
     static string msa1ToString(const vector< pair<Base, uint64_t> >& consensus)
@@ -1318,4 +1555,334 @@ void shasta2::testMsa1Consensus()
     }
 
     cout << "testMsa1Consensus passed." << endl;
+}
+
+
+// Test the local repair.
+//
+// The property that matters most here is the first one: on input with no bad
+// region, nothing is modified at all. The whole point of repairing locally is
+// that sequence accuracy in the rest of the assembly is left alone, so a test
+// that the repair is a no-op where it should be is more important than a test
+// that it works where it should.
+void shasta2::testMsa1Repair()
+{
+    const uint64_t threshold = defaultHomopolymerThreshold;
+
+    // Build the real, defective abpoa alignment.
+    vector< vector<AlignedBase> > alignment;
+    vector<string> reads;
+    for(const string& row: msa1BadAlignmentRows) {
+        alignment.push_back(vectorOfAlignedBasesFromString(row));
+        string ungapped;
+        for(const char c: row) {
+            if(c != '-') {
+                ungapped.push_back(c);
+            }
+        }
+        reads.push_back(ungapped);
+    }
+    const vector<uint64_t> weights(alignment.size(), 1);
+
+    // Its column-wise consensus, which is what abpoa reports.
+    const auto columnConsensus = [&](
+        const vector< vector<AlignedBase> >& a,
+        vector<AlignedBase>& ac,
+        vector< pair<Base, uint64_t> >& c)
+    {
+        ac.clear();
+        c.clear();
+        for(uint64_t j=0; j<a.front().size(); j++) {
+            array<uint64_t, 5> w;
+            fill(w.begin(), w.end(), 0);
+            for(uint64_t i=0; i<a.size(); i++) {
+                w[a[i][j].value] += weights[i];
+            }
+            const auto it = std::ranges::max_element(w);
+            const AlignedBase b = AlignedBase::fromInteger(uint64_t(it - w.begin()));
+            ac.push_back(b);
+            if(not b.isGap()) {
+                c.push_back(make_pair(Base(b), *it));
+            }
+        }
+    };
+    vector<AlignedBase> alignedConsensus;
+    vector< pair<Base, uint64_t> > consensus;
+    columnConsensus(alignment, alignedConsensus, consensus);
+
+
+
+    // The prescreen must fire on these reads, which contain two long A runs
+    // separated by a single G.
+    {
+        vector< vector<Base> > sequences;
+        for(const string& r: reads) {
+            sequences.push_back(vectorOfBasesFromString(r));
+        }
+        SHASTA2_ASSERT(msa1PatternPresent(sequences, threshold));
+
+        // And it must not fire on ordinary sequence with no long runs. This is
+        // the common case in real reads, where 97% of runs are 4 bases or
+        // shorter, and it is what keeps the repair from running at all.
+        const vector< vector<Base> > ordinary = {
+            vectorOfBasesFromString("ACGTACGTAACCGGTTACGTACGT"),
+            vectorOfBasesFromString("ACGTACGTAACCGGTTACGTACGT")};
+        SHASTA2_ASSERT(not msa1PatternPresent(ordinary, threshold));
+
+        // Nor on a single long run with no separating base.
+        const vector< vector<Base> > oneRun = {
+            vectorOfBasesFromString("ACGT" + string(20, 'A') + "CGTA")};
+        SHASTA2_ASSERT(not msa1PatternPresent(oneRun, threshold));
+
+        // Nor when the two long runs are separated by more than one base.
+        const vector< vector<Base> > twoBases = {
+            vectorOfBasesFromString(string(12, 'A') + "GT" + string(11, 'A'))};
+        SHASTA2_ASSERT(not msa1PatternPresent(twoBases, threshold));
+
+        // But yes when they are separated by exactly one.
+        const vector< vector<Base> > oneBase = {
+            vectorOfBasesFromString(string(12, 'A') + "G" + string(11, 'A'))};
+        SHASTA2_ASSERT(msa1PatternPresent(oneBase, threshold));
+
+        // The exact boundaries of the pattern, on the single sequence primitive.
+        // A run must be strictly longer than the threshold on BOTH sides, and
+        // the separator must be exactly one base.
+        const auto pattern = [&](uint64_t left, uint64_t middle, uint64_t right) {
+            return msa1PatternPresent(vectorOfBasesFromString(
+                string(left, 'A') + string(middle, 'G') + string(right, 'A')),
+                threshold);
+        };
+        SHASTA2_ASSERT(pattern(threshold + 1, 1, threshold + 1));
+        SHASTA2_ASSERT(not pattern(threshold, 1, threshold + 1));  // left too short
+        SHASTA2_ASSERT(not pattern(threshold + 1, 1, threshold));  // right too short
+        SHASTA2_ASSERT(not pattern(threshold + 1, 2, threshold + 1)); // separator too long
+        SHASTA2_ASSERT(pattern(100, 1, 100));
+
+        // The pattern is found wherever it sits, including at the very start and
+        // the very end, which a scan that keeps only two previous run lengths
+        // could get wrong.
+        SHASTA2_ASSERT(msa1PatternPresent(vectorOfBasesFromString(
+            string(12, 'A') + "G" + string(11, 'A') + "CGTACGT"), threshold));
+        SHASTA2_ASSERT(msa1PatternPresent(vectorOfBasesFromString(
+            "CGTACGT" + string(12, 'A') + "G" + string(11, 'A')), threshold));
+
+        // Degenerate inputs.
+        SHASTA2_ASSERT(not msa1PatternPresent(vector<Base>(), threshold));
+        SHASTA2_ASSERT(not msa1PatternPresent(
+            vectorOfBasesFromString("A"), threshold));
+        SHASTA2_ASSERT(not msa1PatternPresent(
+            vector<Base>(1000, Base::fromCharacter('A')), threshold));
+    }
+
+
+
+    // THE IMPORTANT TEST. On an alignment with no bad region, nothing changes.
+    {
+        const vector<string> cleanRows = {
+            "ACGTACGTAACCGGTTACGTACGT",
+            "ACGTACGTAACCGGTTACGTACGT",
+            "ACGTACGTAACCTGTTACGTACGT"};
+        vector< vector<AlignedBase> > a;
+        for(const string& r: cleanRows) {
+            a.push_back(vectorOfAlignedBasesFromString(r));
+        }
+        vector<AlignedBase> ac;
+        vector< pair<Base, uint64_t> > c;
+        const vector<uint64_t> w(a.size(), 1);
+        {
+            // Local column consensus for this small case.
+            for(uint64_t j=0; j<a.front().size(); j++) {
+                array<uint64_t, 5> t;
+                fill(t.begin(), t.end(), 0);
+                for(uint64_t i=0; i<a.size(); i++) {
+                    t[a[i][j].value] += w[i];
+                }
+                const auto it = std::ranges::max_element(t);
+                const AlignedBase b = AlignedBase::fromInteger(uint64_t(it - t.begin()));
+                ac.push_back(b);
+                if(not b.isGap()) {
+                    c.push_back(make_pair(Base(b), *it));
+                }
+            }
+        }
+
+        // Note this alignment DOES have a discordant column, at the T for C
+        // substitution, so the region finder has something to cluster. It is the
+        // pattern confirmation that must reject it.
+        const auto aBefore = a;
+        const auto acBefore = ac;
+        const auto cBefore = c;
+
+        const uint64_t repaired = msa1(a, ac, c, w, threshold);
+        SHASTA2_ASSERT(repaired == 0);
+        SHASTA2_ASSERT(a == aBefore);
+        SHASTA2_ASSERT(ac == acBefore);
+        SHASTA2_ASSERT(c == cBefore);
+        cout << "Repair left a clean alignment untouched." << endl;
+    }
+
+
+
+    // On the real defective alignment, the repair fires and fixes it.
+    {
+        vector< vector<AlignedBase> > a = alignment;
+        vector<AlignedBase> ac = alignedConsensus;
+        vector< pair<Base, uint64_t> > c = consensus;
+
+        // Before: 4 columns hold more than one base.
+        {
+            vector<string> rows;
+            for(const auto& row: a) {
+                rows.push_back(msa1ToString(row));
+            }
+            SHASTA2_ASSERT(msa1ImpureColumnCount(rows) == 4);
+        }
+
+        vector<Msa1Region> regions;
+        msa1FindBadRegions(a, ac, threshold, 10, 20, regions);
+        cout << "Found " << regions.size() << " bad region(s) in the real alignment." << endl;
+        SHASTA2_ASSERT(not regions.empty());
+
+        const uint64_t repaired = msa1(a, ac, c, weights, threshold);
+        cout << "Repaired " << repaired << " region(s)." << endl;
+        SHASTA2_ASSERT(repaired > 0);
+
+        // After: no column holds more than one base.
+        {
+            vector<string> rows;
+            for(const auto& row: a) {
+                rows.push_back(msa1ToString(row));
+            }
+            const uint64_t impure = msa1ImpureColumnCount(rows);
+            cout << "After repair the alignment has " << impure <<
+                " columns containing more than one base." << endl;
+            SHASTA2_ASSERT(impure == 0);
+        }
+
+        // Every row still ungaps to its original read: the repair rearranges
+        // columns, it does not alter the reads.
+        for(uint64_t i=0; i<a.size(); i++) {
+            string ungapped;
+            for(const AlignedBase b: a[i]) {
+                if(not b.isGap()) {
+                    ungapped.push_back(b.character());
+                }
+            }
+            SHASTA2_ASSERT(ungapped == reads[i]);
+        }
+
+        // All rows still have the length of the aligned consensus.
+        for(const auto& row: a) {
+            SHASTA2_ASSERT(row.size() == ac.size());
+        }
+
+        // consensus is alignedConsensus with the gaps removed.
+        {
+            string fromAligned;
+            for(const AlignedBase b: ac) {
+                if(not b.isGap()) {
+                    fromAligned.push_back(b.character());
+                }
+            }
+            SHASTA2_ASSERT(fromAligned == msa1ToString(c));
+        }
+
+        // And the consensus is the known true one: the two A runs are 12 and 11.
+        const string s = msa1ToString(c);
+        const string expected =
+            "TCCAGCCTGGGTGACAGAGCGAGACCCCAACTCAAAAAAAAAAAAGAAAAAAAAAAAGTT"
+            "AAACTATAAAGTAAATTCCTCCCATAGTT"
+            "TCCAGCCTGGGTGACAGAGCGAGACCCCAACTCAAAAAAAAAAAAGAAAAAAAAAAAGTT"
+            "AAACTATAAAGTAAATTCCTCCCATAGTT";
+        cout << "Consensus after repair has length " << s.size() << "." << endl;
+        SHASTA2_ASSERT(s == expected);
+    }
+
+
+
+    // Only the bad regions change. Everything outside them is untouched, which
+    // is the whole reason for repairing locally.
+    {
+        vector< vector<AlignedBase> > a = alignment;
+        vector<AlignedBase> ac = alignedConsensus;
+        vector< pair<Base, uint64_t> > c = consensus;
+
+        vector<Msa1Region> regions;
+        msa1FindBadRegions(a, ac, threshold, 10, 20, regions);
+        SHASTA2_ASSERT(not regions.empty());
+
+        // Record the columns before the first region and after the last one.
+        const uint64_t firstBegin = regions.front().begin;
+        const uint64_t lastEnd = regions.back().end;
+        const uint64_t tailLength = ac.size() - lastEnd;
+        vector<string> prefixBefore;
+        vector<string> suffixBefore;
+        for(const auto& row: a) {
+            prefixBefore.push_back(msa1ToString(row).substr(0, firstBegin));
+            suffixBefore.push_back(msa1ToString(row).substr(lastEnd));
+        }
+
+        msa1(a, ac, c, weights, threshold);
+
+        // The prefix is at the same columns and unchanged.
+        for(uint64_t i=0; i<a.size(); i++) {
+            SHASTA2_ASSERT(msa1ToString(a[i]).substr(0, firstBegin) == prefixBefore[i]);
+        }
+        // The suffix is unchanged, though it has moved if the repair changed the
+        // number of columns.
+        for(uint64_t i=0; i<a.size(); i++) {
+            const string row = msa1ToString(a[i]);
+            SHASTA2_ASSERT(row.substr(row.size() - tailLength) == suffixBefore[i]);
+        }
+        cout << "Columns outside the repaired regions are unchanged." << endl;
+    }
+
+
+
+    // A region where some row contributes no bases is left alone rather than
+    // guessed at.
+    {
+        const vector<string> rows = {
+            "AAAAAAAAAAAAGAAAAAAAAAAA",
+            "AAAAAAAAAAAAGAAAAAAAAAAA",
+            "------------------------"};
+        vector< vector<AlignedBase> > a;
+        for(const string& r: rows) {
+            a.push_back(vectorOfAlignedBasesFromString(r));
+        }
+        vector<AlignedBase> ac = vectorOfAlignedBasesFromString(rows[0]);
+        vector< pair<Base, uint64_t> > c;
+        for(const char ch: rows[0]) {
+            c.push_back(make_pair(Base::fromCharacter(ch), 2UL));
+        }
+        const vector<uint64_t> w(3, 1);
+        const auto aBefore = a;
+        const uint64_t repaired = msa1(a, ac, c, w, threshold);
+        SHASTA2_ASSERT(repaired == 0);
+        SHASTA2_ASSERT(a == aBefore);
+    }
+
+
+
+    // Degenerate inputs.
+    {
+        vector< vector<AlignedBase> > a;
+        vector<AlignedBase> ac;
+        vector< pair<Base, uint64_t> > c;
+        SHASTA2_ASSERT(msa1(a, ac, c, {}, threshold) == 0);
+
+        // A single row cannot disagree with the consensus, so nothing is found.
+        a.push_back(vectorOfAlignedBasesFromString(
+            string(12, 'A') + "G" + string(11, 'A')));
+        ac = a.front();
+        c.clear();
+        for(const AlignedBase b: ac) {
+            c.push_back(make_pair(Base(b), 1UL));
+        }
+        const auto aBefore = a;
+        SHASTA2_ASSERT(msa1(a, ac, c, {}, threshold) == 0);
+        SHASTA2_ASSERT(a == aBefore);
+    }
+
+    cout << "testMsa1Repair passed." << endl;
 }
