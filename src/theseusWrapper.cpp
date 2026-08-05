@@ -100,16 +100,16 @@ namespace shasta2 {
 
 // See theseusWrapper.hpp for comments.
 void shasta2::theseusExtended(
-    const vector< pair<vector<ExtendedBase>, uint64_t> >& fixedSequences,
-    const vector< pair<vector<ExtendedBase>, uint64_t> >& leftFixedSequences,
-    const vector< pair<vector<ExtendedBase>, uint64_t> >& rightFixedSequences,
-    vector< vector<ExtendedBase> >& alignment)
+    const vector< pair<ExtendedSequence, uint64_t> >& fixedSequences,
+    const vector< pair<ExtendedSequence, uint64_t> >& leftFixedSequences,
+    const vector< pair<ExtendedSequence, uint64_t> >& rightFixedSequences,
+    vector< vector<AlignedExtendedBase> >& alignment)
 {
     // Convert to the ACGTacgt string form theseus works on.
     // Lower case marks a poly symbol, and theseus compares characters directly,
     // so the distinction survives the round trip.
     const auto toStrings = [](
-        const vector< pair<vector<ExtendedBase>, uint64_t> >& in,
+        const vector< pair<ExtendedSequence, uint64_t> >& in,
         vector< pair<string, uint64_t> >& out)
     {
         out.clear();
@@ -137,15 +137,16 @@ void shasta2::theseusExtended(
         fixedSequences.size() + leftFixedSequences.size() + rightFixedSequences.size(),
         rows);
 
-    // Parse back with ExtendedBase, NOT AlignedBase. AlignedBase::fromCharacter
-    // maps 'a' to A, which would silently discard the poly distinction.
+    // Parse back with AlignedExtendedBase, NOT AlignedBase.
+    // AlignedBase::fromCharacter maps 'a' to A, which would silently discard the
+    // poly distinction and turn every long run back into a plain base.
     alignment.clear();
     for(const string& row: rows) {
-        alignment.push_back(vectorOfExtendedBasesFromString(row));
+        alignment.push_back(vectorOfAlignedExtendedBasesFromString(row));
     }
 
     // All rows must have the same length.
-    for(const vector<ExtendedBase>& row: alignment) {
+    for(const vector<AlignedExtendedBase>& row: alignment) {
         SHASTA2_ASSERT(row.size() == alignment.front().size());
     }
 }

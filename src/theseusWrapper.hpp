@@ -1,5 +1,7 @@
 #pragma once
 
+#include "msa1.hpp"
+
 #include "cstdint.hpp"
 #include "string.hpp"
 #include "utility.hpp"
@@ -10,6 +12,7 @@ namespace shasta2 {
     class Base;
     class AlignedBase;
     class ExtendedBase;
+    class AlignedExtendedBase;
 
 
     // Align sequences encoded in the extended alphabet (see msa1.hpp).
@@ -28,18 +31,19 @@ namespace shasta2 {
 
         // The input sequences fixed on both sides, with their coverage.
         // They are passed to theseus in this order.
-        const vector< pair<vector<ExtendedBase>, uint64_t> >& fixedSequences,
+        const vector< pair<ExtendedSequence, uint64_t> >& fixedSequences,
 
         // The input sequences fixed on the left only, with their coverage.
-        const vector< pair<vector<ExtendedBase>, uint64_t> >& leftFixedSequences,
+        const vector< pair<ExtendedSequence, uint64_t> >& leftFixedSequences,
 
         // The input sequences fixed on the right only, with their coverage.
-        const vector< pair<vector<ExtendedBase>, uint64_t> >& rightFixedSequences,
+        const vector< pair<ExtendedSequence, uint64_t> >& rightFixedSequences,
 
         // The computed alignment, one row per input sequence, in the same order:
         // fixed, then left fixed, then right fixed.
-        // All rows have the same length.
-        vector< vector<ExtendedBase> >& alignment);
+        // All rows have the same length. Only the symbols are returned: theseus
+        // is never told the run lengths, which is the point.
+        vector< vector<AlignedExtendedBase> >& alignment);
 
 
     void theseus(
