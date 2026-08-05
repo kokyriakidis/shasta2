@@ -12,7 +12,6 @@ namespace shasta2 {
     using std::find;
     using std::max;
     using std::min;
-    using std::search;
     using std::sort;
     using std::swap;
     using std::unique;

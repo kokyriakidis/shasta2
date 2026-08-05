@@ -145,18 +145,44 @@ namespace shasta2 {
         vector<uint64_t>& consensusRunLengths);
 
 
+    // Which ends of a sequence are anchored. This determines which end theseus
+    // is allowed to trim, and so which part of the encoding an alignment row
+    // corresponds to.
+    enum class Anchoring {
+
+        // Fixed on both sides. The row covers the whole encoding.
+        BothSides,
+
+        // Fixed on the left only. Theseus trims the overhang off the right, so
+        // the row is a prefix of the encoding.
+        LeftOnly,
+
+        // Fixed on the right only. Theseus trims the overhang off the left, so
+        // the row is a suffix of the encoding.
+        RightOnly
+    };
+
+
     // Spread the run lengths of an unaligned encoding over the columns of an
     // alignment row, so that they line up with the aligned symbols.
     //
     // alignedRow is one row of an alignment of encoded. Dropping its gaps gives a
-    // contiguous window of encoded, and not necessarily all of it: theseus trims
-    // the overhang of a sequence fixed on one side only, so a left fixed sequence
-    // loses symbols off its right end and a right fixed one off its left. The
-    // window is located here, and the columns it does not cover get run length 0.
+    // contiguous window of encoded, and not necessarily all of it, because
+    // theseus trims the overhang of a sequence fixed on one side only.
+    //
+    // The window is derived from `anchoring`, NOT by searching the encoding for
+    // the row's symbols. Searching is wrong on a repeat: if the encoding is
+    // A a C A a C with poly run lengths 10 and 20, and the row is the second
+    // copy A a C because the first was trimmed, a search matches the first copy
+    // and pairs the row with run length 10 instead of 20. Tandem repeats are
+    // exactly what this code is for, so that is not a remote possibility.
+    //
+    // Columns the window does not cover get run length 0.
     void alignedRunLengths(
         const vector<ExtendedBase>& alignedRow,
         const vector<ExtendedBase>& encoded,
         const vector<uint64_t>& encodedRunLengths,
+        Anchoring anchoring,
         vector<uint64_t>& alignedRunLengths);
 
 
