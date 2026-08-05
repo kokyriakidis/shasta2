@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Base.hpp"
+#include "SHASTA2_ASSERT.hpp"
 
 #include "cstdint.hpp"
 #include "string.hpp"
