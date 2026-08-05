@@ -115,6 +115,7 @@ void shasta2::alignedRunLengths(
     const vector<ExtendedBase>& alignedRow,
     const vector<ExtendedBase>& encoded,
     const vector<uint64_t>& encodedRunLengths,
+    Anchoring anchoring,
     vector<uint64_t>& alignedRunLengthsArgument)
 {
     SHASTA2_ASSERT(encoded.size() == encodedRunLengths.size());
@@ -126,21 +127,31 @@ void shasta2::alignedRunLengths(
             rowSymbols.push_back(e);
         }
     }
+    SHASTA2_ASSERT(rowSymbols.size() <= encoded.size());
 
     // Locate the part of the encoding that this row covers.
     //
-    // For a sequence fixed on both sides the row covers all of it, but for a
-    // sequence fixed on one side only theseus trims the overhang: a left fixed
-    // sequence loses symbols off its right end, a right fixed one off its left.
-    // So the row is a contiguous window of the encoding, not necessarily the
-    // whole of it, and the run lengths have to be read from the right offset.
-    // Getting this wrong would silently pair each symbol with the run length of
-    // a different symbol.
-    const auto it = search(
-        encoded.begin(), encoded.end(), rowSymbols.begin(), rowSymbols.end());
-    SHASTA2_ASSERT(it != encoded.end() or rowSymbols.empty());
-    const uint64_t offset = uint64_t(it - encoded.begin());
-    SHASTA2_ASSERT(offset + rowSymbols.size() <= encoded.size());
+    // For a sequence fixed on both sides the row covers all of it. For a
+    // sequence fixed on one side only, theseus trims the overhang off the
+    // unanchored end, so the row is a prefix or a suffix of the encoding.
+    // Which one is known from the anchoring and is not inferred: see the
+    // comment in msa1.hpp for why searching the encoding for the row's symbols
+    // gives the wrong answer on a repeat.
+    uint64_t offset = 0;
+    switch(anchoring) {
+    case Anchoring::BothSides:
+        SHASTA2_ASSERT(rowSymbols.size() == encoded.size());
+        offset = 0;
+        break;
+    case Anchoring::LeftOnly:
+        // Anchored on the left, trimmed on the right: a prefix.
+        offset = 0;
+        break;
+    case Anchoring::RightOnly:
+        // Anchored on the right, trimmed on the left: a suffix.
+        offset = encoded.size() - rowSymbols.size();
+        break;
+    }
 
     alignedRunLengthsArgument.clear();
     alignedRunLengthsArgument.resize(alignedRow.size(), 0);
@@ -388,14 +399,19 @@ void shasta2::msa1(
     vector< pair<vector<ExtendedBase>, uint64_t> > encodedLeftFixed;
     vector< pair<vector<ExtendedBase>, uint64_t> > encodedRightFixed;
 
-    // The encodings and their run lengths, flattened in the same order the rows
-    // will come back from the aligner: fixed, then left fixed, then right fixed.
+    // The encodings, their run lengths, and how each is anchored, flattened in
+    // the same order the rows will come back from the aligner: fixed, then left
+    // fixed, then right fixed. The anchoring is carried along because it says
+    // which end theseus may trim, which is needed to line the run lengths up
+    // with the alignment columns.
     vector< vector<ExtendedBase> > encodings;
     vector< vector<uint64_t> > encodedRunLengths;
+    vector<Anchoring> anchorings;
     vector<uint64_t> weights;
 
     const auto encodeGroup = [&](
         const vector< pair<vector<Base>, uint64_t> >& in,
+        Anchoring anchoring,
         vector< pair<vector<ExtendedBase>, uint64_t> >& out)
     {
         out.clear();
@@ -406,12 +422,13 @@ void shasta2::msa1(
             out.push_back(make_pair(encoded, weight));
             encodings.push_back(encoded);
             encodedRunLengths.push_back(runLengths);
+            anchorings.push_back(anchoring);
             weights.push_back(weight);
         }
     };
-    encodeGroup(fixedSequences, encodedFixed);
-    encodeGroup(leftFixedSequences, encodedLeftFixed);
-    encodeGroup(rightFixedSequences, encodedRightFixed);
+    encodeGroup(fixedSequences, Anchoring::BothSides, encodedFixed);
+    encodeGroup(leftFixedSequences, Anchoring::LeftOnly, encodedLeftFixed);
+    encodeGroup(rightFixedSequences, Anchoring::RightOnly, encodedRightFixed);
 
     // Align the encoded sequences.
     vector< vector<ExtendedBase> > extendedAlignment;
@@ -422,12 +439,12 @@ void shasta2::msa1(
     // Line up each row's run lengths with the columns of the alignment.
     // The encoding passed here is the one we handed to the aligner, not one
     // recovered from the row: for a sequence fixed on one side only, theseus
-    // trims the overhang, so the row covers only part of the encoding and
-    // alignedRunLengths has to find which part.
+    // trims the overhang, so the row covers only part of the encoding, and the
+    // anchoring says which part.
     vector< vector<uint64_t> > alignedRunLengthsAllRows(extendedAlignment.size());
     for(uint64_t i=0; i<extendedAlignment.size(); i++) {
         alignedRunLengths(extendedAlignment[i], encodings[i], encodedRunLengths[i],
-            alignedRunLengthsAllRows[i]);
+            anchorings[i], alignedRunLengthsAllRows[i]);
     }
 
     // Vote, column by column, with long run lengths voted separately.
@@ -1323,7 +1340,7 @@ void shasta2::testMsa1Consensus()
         const vector<uint64_t> runLengths = {1, 1, 1, 12, 1, 11};
         const vector<ExtendedBase> row = vectorOfExtendedBasesFromString("C-TC-aG-a");
         vector<uint64_t> aligned;
-        alignedRunLengths(row, encoded, runLengths, aligned);
+        alignedRunLengths(row, encoded, runLengths, Anchoring::BothSides, aligned);
         const vector<uint64_t> expected = {1, 0, 1, 1, 0, 12, 1, 0, 11};
         SHASTA2_ASSERT(aligned == expected);
     }
@@ -1345,7 +1362,7 @@ void shasta2::testMsa1Consensus()
         const vector<uint64_t> runLengths = {1, 1, 1, 12, 1, 11, 7};
         const vector<ExtendedBase> row = vectorOfExtendedBasesFromString("CTC-aGa");
         vector<uint64_t> aligned;
-        alignedRunLengths(row, encoded, runLengths, aligned);
+        alignedRunLengths(row, encoded, runLengths, Anchoring::LeftOnly, aligned);
         const vector<uint64_t> expected = {1, 1, 1, 0, 12, 1, 11};
         SHASTA2_ASSERT(aligned == expected);
     }
@@ -1356,13 +1373,42 @@ void shasta2::testMsa1Consensus()
         const vector<uint64_t> runLengths = {9, 1, 1, 1, 12, 1, 11};
         const vector<ExtendedBase> row = vectorOfExtendedBasesFromString("CTCaG-a");
         vector<uint64_t> aligned;
-        alignedRunLengths(row, encoded, runLengths, aligned);
+        alignedRunLengths(row, encoded, runLengths, Anchoring::RightOnly, aligned);
         const vector<uint64_t> expected = {1, 1, 1, 12, 1, 0, 11};
         SHASTA2_ASSERT(aligned == expected);
         // The trimmed poly symbol's length of 9 must not appear anywhere.
         for(const uint64_t length: aligned) {
             SHASTA2_ASSERT(length != 9);
         }
+    }
+
+
+
+    // The window must come from the anchoring, not from searching the encoding
+    // for the row's symbols.
+    //
+    // Here the encoding is a tandem repeat, A a C A a C, whose two poly runs
+    // have different lengths, 10 and 20. The sequence is fixed on the right, so
+    // theseus trimmed the first copy and the row is the second one, whose run is
+    // 20. Searching for the row's symbols finds the FIRST copy and would pair the
+    // row with 10 instead. Tandem repeats are exactly what this code is for, and
+    // the 19 read locus it was developed on is itself a 2x tandem duplication, so
+    // this is not a remote case.
+    {
+        const vector<ExtendedBase> encoded = vectorOfExtendedBasesFromString("AaCAaC");
+        const vector<uint64_t> runLengths = {1, 10, 1, 1, 20, 1};
+        const vector<ExtendedBase> row = vectorOfExtendedBasesFromString("AaC");
+
+        vector<uint64_t> aligned;
+        alignedRunLengths(row, encoded, runLengths, Anchoring::RightOnly, aligned);
+        const vector<uint64_t> expected = {1, 20, 1};
+        SHASTA2_ASSERT(aligned == expected);
+
+        // And the mirror image: fixed on the left, so the row is the first copy
+        // and its run is 10.
+        alignedRunLengths(row, encoded, runLengths, Anchoring::LeftOnly, aligned);
+        const vector<uint64_t> expectedLeft = {1, 10, 1};
+        SHASTA2_ASSERT(aligned == expectedLeft);
     }
 
 
