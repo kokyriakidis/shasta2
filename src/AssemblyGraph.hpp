@@ -244,8 +244,8 @@ public:
     };
     const OrderById orderById;
 
+    void detangleVertices();
 private:
-
 
 
     // BUBBLE CLEANUP.

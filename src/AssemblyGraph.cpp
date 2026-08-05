@@ -336,6 +336,10 @@ void AssemblyGraph::simplifyAndAssemble()
     // Initial output.
     writeIntermediateStageIfRequested("A");
 
+    // Vertex detangling.
+    detangleVertices();
+    writeIntermediateStageIfRequested("A-Detangled");
+
     // Remove or simplify bubbles likely caused by errors.
     bubblePairCleanup();
     strandSymmetricCompress();
