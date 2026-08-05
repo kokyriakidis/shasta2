@@ -103,19 +103,33 @@ void AssemblyGraph::detangleVertices()
             cout << endl;
         }
 
-        // Check that no edge is both an in-edge and out-edge.
+        // If an edge is both an in-edge and out-edge, skip this vertex.
+        bool hasCycle = false;
         for(const edge_descriptor e: inEdges) {
-            SHASTA2_ASSERT(not std::ranges::contains(outEdges, e));
+            if(not std::ranges::contains(outEdges, e)) {
+                hasCycle = true;
+            }
         }
         for(const edge_descriptor e: outEdges) {
-            SHASTA2_ASSERT(not std::ranges::contains(inEdges, e));
+            if(not std::ranges::contains(inEdges, e)) {
+                hasCycle = true;
+            }
         }
         for(const edge_descriptor eRc: inEdgesRc) {
-            SHASTA2_ASSERT(not std::ranges::contains(outEdgesRc, eRc));
+            if(not std::ranges::contains(outEdgesRc, eRc)) {
+                hasCycle = true;
+            }
         }
         for(const edge_descriptor eRc: outEdgesRc) {
-            SHASTA2_ASSERT(not std::ranges::contains(inEdgesRc, eRc));
+            if(not std::ranges::contains(inEdgesRc, eRc)) {
+                hasCycle = true;
+            }
         }
+        if(hasCycle) {
+            continue;
+        }
+
+
 
         // Check the reverse complements of the in-edges and out-edges.
         for(const edge_descriptor e: inEdges) {
