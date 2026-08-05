@@ -428,6 +428,55 @@ bool shasta2::msa1PatternPresent(
 
 
 
+namespace shasta2 {
+
+    // Return true if a region boundary at this column falls inside a homopolymer
+    // run of any row, that is, if the last base of some row before the boundary
+    // is the same as its next base at or after it.
+    //
+    // A boundary that cuts a run is a problem for everything downstream: the
+    // pattern test would see a run shorter than it is and might not recognise
+    // the pattern at all, and the encoding would collapse a partial run.
+    static bool msa1BoundaryCutsRun(
+        const vector< vector<AlignedBase> >& alignment,
+        uint64_t column)
+    {
+        for(const vector<AlignedBase>& row: alignment) {
+
+            // The last base before the boundary.
+            AlignedBase before = AlignedBase::gap();
+            for(uint64_t k=column; k>0; k--) {
+                if(not row[k - 1].isGap()) {
+                    before = row[k - 1];
+                    break;
+                }
+            }
+            if(before.isGap()) {
+                continue;
+            }
+
+            // The first base at or after the boundary.
+            AlignedBase after = AlignedBase::gap();
+            for(uint64_t k=column; k<row.size(); k++) {
+                if(not row[k].isGap()) {
+                    after = row[k];
+                    break;
+                }
+            }
+            if(after.isGap()) {
+                continue;
+            }
+
+            if(before == after) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+
+
 // See msa1.hpp for comments.
 void shasta2::msa1FindBadRegions(
     const vector< vector<AlignedBase> >& alignment,
@@ -481,6 +530,25 @@ void shasta2::msa1FindBadRegions(
         Msa1Region region;
         region.begin = (begin > flank) ? (begin - flank) : 0;
         region.end = min(alignmentLength, end + flank);
+
+        // Then widen further, until neither boundary falls inside a homopolymer
+        // run of any row.
+        //
+        // Without this the flank has to be guessed large enough to clear the
+        // runs, and a window that clips one silently does nothing: the pattern
+        // test sees a run shorter than it is and does not recognise the pattern.
+        // On the alignment this was developed against, a flank of 4 found the
+        // regions but repaired neither, and a flank of 0 found none at all,
+        // while 6 and above worked. That is not a property to leave to a
+        // constant, since a locus with longer runs would need a larger one.
+        // Snapping the boundaries to run boundaries removes the dependence: the
+        // flank is now only a minimum amount of context.
+        while((region.begin > 0) and msa1BoundaryCutsRun(alignment, region.begin)) {
+            --region.begin;
+        }
+        while((region.end < alignmentLength) and msa1BoundaryCutsRun(alignment, region.end)) {
+            ++region.end;
+        }
 
         // Merge with the previous region if they now touch or overlap.
         if((not regions.empty()) and (region.begin <= regions.back().end)) {
@@ -2005,6 +2073,211 @@ void shasta2::testMsa1Repair()
         const uint64_t repaired = msa1(a, ac, c, w, threshold);
         SHASTA2_ASSERT(repaired == 0);
         SHASTA2_ASSERT(a == aBefore);
+    }
+
+
+
+    // Adversarial cases, and then many random ones. What is checked in both is
+    // the set of invariants that must hold whatever the input:
+    //  - every row still has the length of the aligned consensus
+    //  - no read was altered, only the columns it occupies
+    //  - the consensus is still the aligned consensus with the gaps removed
+    //  - the alignment was not made worse
+    //  - if nothing was repaired, nothing at all changed
+    {
+        // Build an alignment from rows, give it a column majority consensus with
+        // recognisable coverage, repair it, and check the invariants.
+        const auto checkOne = [&](const vector<string>& rows) -> bool
+        {
+            vector< vector<AlignedBase> > a;
+            for(const string& r: rows) {
+                a.push_back(vectorOfAlignedBasesFromString(r));
+            }
+            const vector<uint64_t> w(a.size(), 1);
+
+            vector<AlignedBase> ac;
+            vector< pair<Base, uint64_t> > c;
+            for(uint64_t j=0; j<a.front().size(); j++) {
+                array<uint64_t, 5> t;
+                fill(t.begin(), t.end(), 0);
+                for(uint64_t i=0; i<a.size(); i++) {
+                    t[a[i][j].value] += w[i];
+                }
+                const auto it = std::ranges::max_element(t);
+                const AlignedBase b = AlignedBase::fromInteger(uint64_t(it - t.begin()));
+                ac.push_back(b);
+                if(not b.isGap()) {
+                    c.push_back(make_pair(Base(b), 500 + c.size()));
+                }
+            }
+
+            const auto aBefore = a;
+            const auto cBefore = c;
+            vector<string> readsBefore;
+            for(const auto& row: a) {
+                string s;
+                for(const AlignedBase b: row) {
+                    if(not b.isGap()) {
+                        s.push_back(b.character());
+                    }
+                }
+                readsBefore.push_back(s);
+            }
+            const uint64_t impureBefore = msa1ImpureColumnCount(
+                [&]{ vector<string> v; for(const auto& r: a) v.push_back(msa1ToString(r)); return v; }());
+
+            const uint64_t repaired = msa1(a, ac, c, w, threshold);
+
+            for(const auto& row: a) {
+                SHASTA2_ASSERT(row.size() == ac.size());
+            }
+            for(uint64_t i=0; i<a.size(); i++) {
+                string s;
+                for(const AlignedBase b: a[i]) {
+                    if(not b.isGap()) {
+                        s.push_back(b.character());
+                    }
+                }
+                SHASTA2_ASSERT(s == readsBefore[i]);
+            }
+            {
+                string fromAligned;
+                for(const AlignedBase b: ac) {
+                    if(not b.isGap()) {
+                        fromAligned.push_back(b.character());
+                    }
+                }
+                SHASTA2_ASSERT(fromAligned == msa1ToString(c));
+            }
+            const uint64_t impureAfter = msa1ImpureColumnCount(
+                [&]{ vector<string> v; for(const auto& r: a) v.push_back(msa1ToString(r)); return v; }());
+            SHASTA2_ASSERT(impureAfter <= impureBefore);
+            if(repaired == 0) {
+                SHASTA2_ASSERT(a == aBefore);
+                SHASTA2_ASSERT(c == cBefore);
+            }
+            return repaired > 0;
+        };
+
+        const string A12(12, 'A'), A11(11, 'A'), A10(10, 'A'), A6(6, 'A');
+        const vector< vector<string> > cases = {
+            // The pattern flush against each end of the alignment, and filling it.
+            {A12 + "G" + A11 + "CGT", A10 + "--G" + A11 + "CGT", A12 + "G" + A11 + "CGT"},
+            {"CGT" + A12 + "G" + A11, "CGT" + A10 + "--G" + A11, "CGT" + A12 + "G" + A11},
+            {A12 + "G" + A11, A10 + "--G" + A11, A12 + "G" + A11},
+            // Two patterns, close enough to merge and far enough to stay apart.
+            {A12 + "G" + A11 + "C" + A12 + "G" + A11,
+             A10 + "--G" + A11 + "C" + A10 + "--G" + A11,
+             A12 + "G" + A11 + "C" + A12 + "G" + A11},
+            {A12 + "G" + A11 + string(40, 'C') + A12 + "G" + A11,
+             A10 + "--G" + A11 + string(40, 'C') + A10 + "--G" + A11,
+             A12 + "G" + A11 + string(40, 'C') + A12 + "G" + A11},
+            // Rows that contribute nothing, or much less than the others.
+            {A12 + "G" + A11, A10 + "--G" + A11, string(24, '-')},
+            {A12 + "G" + A11, A12 + "G" + A11, "-----" + A6 + "G" + A6 + "------"},
+            // Very long runs.
+            {string(100, 'A') + "G" + string(100, 'A'),
+             string(98, 'A') + "--G" + string(100, 'A'),
+             string(100, 'A') + "G" + string(100, 'A')},
+            // A real substitution where the separating base is, which is not a
+            // homopolymer problem and must be left alone.
+            {A12 + "G" + A11, A12 + "T" + A11, A12 + "G" + A11},
+            // Three long runs in a row, and two patterns sharing a run.
+            {A12 + "G" + string(11, 'C') + "T" + string(12, 'G'),
+             A10 + "--G" + string(11, 'C') + "T" + string(12, 'G'),
+             A12 + "G" + string(11, 'C') + "T" + string(12, 'G')},
+            {A12 + "G" + A11 + "G" + A12, A10 + "--G" + A11 + "G" + A12, A12 + "G" + A11 + "G" + A12},
+            // Small and degenerate shapes.
+            {A12 + "G" + A11, A10 + "--G" + A11},
+            {A12 + "G" + A11},
+            {A12 + "G" + A11, A12 + "G" + A11, A12 + "G" + A11},
+            // Runs sitting on the threshold, a gap column inside a run, a long
+            // gap stretch, and every row a different run length.
+            {"CC" + string(4, 'A') + "G" + string(4, 'A') + "CC",
+             "CC" + string(5, 'A') + "G" + string(4, 'A') + "C",
+             "CC" + string(4, 'A') + "G" + string(4, 'A') + "CC"},
+            {A6 + "-" + A6 + "G" + A11, A6 + "-" + A6 + "G" + A11, A6 + "A" + A6 + "G" + A11},
+            {A12 + "G" + string(10, '-') + A11, A10 + "--G" + string(10, '-') + A11,
+             A12 + "G" + string(10, '-') + A11},
+            {string(9, 'A') + "---G" + A11, string(10, 'A') + "--G" + A11,
+             string(11, 'A') + "-G" + A11, string(12, 'A') + "G" + A11}
+        };
+        uint64_t repairedCases = 0;
+        for(const vector<string>& rows: cases) {
+            if(checkOne(rows)) {
+                ++repairedCases;
+            }
+        }
+        cout << "Checked " << cases.size() << " adversarial alignments, " <<
+            repairedCases << " of them repaired." << endl;
+        SHASTA2_ASSERT(repairedCases > 0);
+
+
+
+        // Random alignments. The generator makes rows that differ only in the
+        // lengths of their long runs, which is the case the repair targets, then
+        // sprinkles gaps to make an alignment.
+        uint64_t random = 1;
+        const auto next = [&random]() {
+            random = random * 6364136223846793005ULL + 1442695040888963407ULL;
+            return uint64_t(random >> 33);
+        };
+        uint64_t randomRepaired = 0;
+        const uint64_t trialCount = 3000;
+        for(uint64_t trial=0; trial<trialCount; trial++) {
+            random = 1000003ULL * (trial + 1);
+
+            const uint64_t rowCount = 1 + next() % 6;
+            const uint64_t blockCount = 1 + next() % 5;
+            vector<string> ungapped(rowCount);
+            uint64_t previousBase = 4;
+            for(uint64_t b=0; b<blockCount; b++) {
+                uint64_t baseIndex = next() % 4;
+                if(baseIndex == previousBase) {
+                    baseIndex = (baseIndex + 1) % 4;
+                }
+                previousBase = baseIndex;
+                const char base = "ACGT"[baseIndex];
+                const bool isLong = (next() % 2) == 0;
+                for(uint64_t i=0; i<rowCount; i++) {
+                    const uint64_t runLength = isLong ? (5 + next() % 10) : (1 + next() % 2);
+                    for(uint64_t k=0; k<runLength; k++) {
+                        ungapped[i].push_back(base);
+                    }
+                }
+                if(b + 1 < blockCount) {
+                    uint64_t separatorIndex = next() % 4;
+                    if(separatorIndex == previousBase) {
+                        separatorIndex = (separatorIndex + 1) % 4;
+                    }
+                    for(uint64_t i=0; i<rowCount; i++) {
+                        ungapped[i].push_back("ACGT"[separatorIndex]);
+                    }
+                    previousBase = separatorIndex;
+                }
+            }
+
+            uint64_t width = 0;
+            for(const string& s: ungapped) {
+                width = max(width, uint64_t(s.size()));
+            }
+            width += next() % 5;
+            vector<string> rows;
+            for(uint64_t i=0; i<rowCount; i++) {
+                string padded = ungapped[i];
+                while(padded.size() < width) {
+                    const uint64_t p = next() % (padded.size() + 1);
+                    padded.insert(padded.begin() + int64_t(p), '-');
+                }
+                rows.push_back(padded);
+            }
+            if(checkOne(rows)) {
+                ++randomRepaired;
+            }
+        }
+        cout << "Checked " << trialCount << " random alignments, " <<
+            randomRepaired << " of them repaired." << endl;
+        SHASTA2_ASSERT(randomRepaired > 0);
     }
 
 
