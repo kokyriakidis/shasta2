@@ -8,13 +8,9 @@ using namespace shasta2;
 // Standard library.
 #include "algorithm.hpp"
 #include "iostream.hpp"
-#include "stdexcept.hpp"
 
 
 
-// The look up table used by ExtendedBase::fromCharacter.
-// Note this differs from BaseInitializer and AlignedBaseInitializer, which map
-// lower case characters to the same values as upper case. Here lower case means
 // The look up tables used by the fromCharacter functions.
 // Note these differ from BaseInitializer and AlignedBaseInitializer, which map
 // lower case characters to the same values as upper case. Here lower case means
@@ -65,6 +61,9 @@ void shasta2::encodeExtended(
 
     encoded.clear();
 
+    // The encoding never has more symbols than the sequence has bases.
+    encoded.reserve(sequence.size());
+
     const uint64_t n = sequence.size();
     for(uint64_t runBegin=0; runBegin<n; /* incremented below */) {
         const Base base = sequence[runBegin];
@@ -105,12 +104,20 @@ void shasta2::decodeExtended(
     vector<Base>& sequence)
 {
     sequence.clear();
+
+    uint64_t n = 0;
+    for(const auto& [extendedBase, runLength]: encoded) {
+        n += runLength;
+    }
+    sequence.reserve(n);
+
     for(const auto& [extendedBase, runLength]: encoded) {
         const Base base = extendedBase.base();
         for(uint64_t j=0; j<runLength; j++) {
             sequence.push_back(base);
         }
     }
+    SHASTA2_ASSERT(sequence.size() == n);
 }
 
 
@@ -193,6 +200,9 @@ void shasta2::extendedConsensus(
 
     alignedConsensus.resize(alignmentLength);
 
+    // Scratch, reused by the run length vote at every poly column.
+    vector<uint64_t> lengthWeight;
+
     // Loop over alignment columns.
     for(uint64_t j=0; j<alignmentLength; j++) {
 
@@ -226,22 +236,26 @@ void shasta2::extendedConsensus(
 
             // Gather the observed lengths with their weights.
             // Lengths are bounded by the sequence length, so a vector indexed by
-            // length is both simpler and faster than a map.
+            // length is both simpler and faster than a map. It is reused across
+            // columns rather than reallocated at each one, because a long
+            // sequence has many poly columns and each allocation would be
+            // proportional to a run length.
             uint64_t maxObserved = 0;
-            for(uint64_t i=0; i<n; i++) {
-                if(alignment[i][j].first == consensusSymbol) {
-                    maxObserved = max(maxObserved, alignment[i][j].second);
-                }
-            }
-            vector<uint64_t> lengthWeight(maxObserved + 1, 0);
             uint64_t totalWeight = 0;
             for(uint64_t i=0; i<n; i++) {
                 if(alignment[i][j].first == consensusSymbol) {
-                    lengthWeight[alignment[i][j].second] += weights[i];
+                    maxObserved = max(maxObserved, alignment[i][j].second);
                     totalWeight += weights[i];
                 }
             }
             SHASTA2_ASSERT(totalWeight > 0);
+
+            lengthWeight.assign(maxObserved + 1, 0);
+            for(uint64_t i=0; i<n; i++) {
+                if(alignment[i][j].first == consensusSymbol) {
+                    lengthWeight[alignment[i][j].second] += weights[i];
+                }
+            }
 
             if(estimator == RunLengthEstimator::Mode) {
 
@@ -304,19 +318,24 @@ void shasta2::expandExtendedAlignment(
     // The width of each column after expansion: the longest run seen there,
     // including the consensus, and at least 1.
     vector<uint64_t> width(alignmentLength, 1);
+    uint64_t expandedLength = 0;
     for(uint64_t j=0; j<alignmentLength; j++) {
         for(uint64_t i=0; i<n; i++) {
             width[j] = max(width[j], alignment[i][j].second);
         }
         width[j] = max(width[j], alignedConsensus[j].second);
+        expandedLength += width[j];
     }
 
     // Expand one row, padding on the right with gaps.
-    const auto expand = [&width, alignmentLength](
+    // Every expanded row has the same length, known here, so it is reserved
+    // once instead of being grown a base at a time.
+    const auto expand = [&width, alignmentLength, expandedLength](
         const AlignedExtendedSequence& row,
         vector<AlignedBase>& expanded)
     {
         expanded.clear();
+        expanded.reserve(expandedLength);
         for(uint64_t j=0; j<alignmentLength; j++) {
             const auto& [e, runLength] = row[j];
             for(uint64_t k=0; k<runLength; k++) {
@@ -326,6 +345,7 @@ void shasta2::expandExtendedAlignment(
                 expanded.push_back(AlignedBase::gap());
             }
         }
+        SHASTA2_ASSERT(expanded.size() == expandedLength);
     };
 
     expandedAlignment.resize(n);
@@ -386,11 +406,15 @@ void shasta2::msa1(
     vector< pair<ExtendedSequence, uint64_t> > encodedLeftFixed;
     vector< pair<ExtendedSequence, uint64_t> > encodedRightFixed;
 
-    // The encodings, how each is anchored, and their weights, flattened in the
-    // same order the rows will come back from the aligner: fixed, then left
-    // fixed, then right fixed. The anchoring is carried along because it says
-    // which end theseus may trim, which is needed to put the run lengths back.
-    vector<ExtendedSequence> encodings;
+    // How each sequence is anchored and what it weighs, in the same order the
+    // rows will come back from the aligner: fixed, then left fixed, then right
+    // fixed. The anchoring is needed to put the run lengths back, because it
+    // says which end theseus may have trimmed.
+    //
+    // The encodings themselves are not copied here. They stay in the three
+    // group vectors above and are reached through encodingOfRow below, which
+    // maps a row index onto them. At the largest MSA this code sees that saves
+    // a few megabytes of copying for nothing.
     vector<Anchoring> anchorings;
     vector<uint64_t> weights;
 
@@ -400,11 +424,11 @@ void shasta2::msa1(
         vector< pair<ExtendedSequence, uint64_t> >& out)
     {
         out.clear();
+        out.reserve(in.size());
         for(const auto& [sequence, weight]: in) {
             ExtendedSequence encoded;
             encodeExtended(sequence, threshold, encoded);
-            out.push_back(make_pair(encoded, weight));
-            encodings.push_back(encoded);
+            out.push_back(make_pair(std::move(encoded), weight));
             anchorings.push_back(anchoring);
             weights.push_back(weight);
         }
@@ -413,11 +437,25 @@ void shasta2::msa1(
     encodeGroup(leftFixedSequences, Anchoring::LeftOnly, encodedLeftFixed);
     encodeGroup(rightFixedSequences, Anchoring::RightOnly, encodedRightFixed);
 
+    // Map a row index onto the encoding it came from.
+    const auto encodingOfRow = [&](uint64_t i) -> const ExtendedSequence&
+    {
+        if(i < encodedFixed.size()) {
+            return encodedFixed[i].first;
+        }
+        i -= encodedFixed.size();
+        if(i < encodedLeftFixed.size()) {
+            return encodedLeftFixed[i].first;
+        }
+        i -= encodedLeftFixed.size();
+        return encodedRightFixed[i].first;
+    };
+
     // Align the encoded sequences. Theseus sees symbols only.
     vector< vector<AlignedExtendedBase> > alignedSymbols;
     theseusExtended(encodedFixed, encodedLeftFixed, encodedRightFixed,
         alignedSymbols);
-    SHASTA2_ASSERT(alignedSymbols.size() == encodings.size());
+    SHASTA2_ASSERT(alignedSymbols.size() == anchorings.size());
 
     // Put the run lengths back, using the encoding that was handed to the
     // aligner rather than one recovered from the row: for a sequence fixed on
@@ -425,7 +463,7 @@ void shasta2::msa1(
     // the encoding, and the anchoring says which part.
     vector<AlignedExtendedSequence> extendedAlignment(alignedSymbols.size());
     for(uint64_t i=0; i<alignedSymbols.size(); i++) {
-        attachRunLengths(alignedSymbols[i], encodings[i], anchorings[i],
+        attachRunLengths(alignedSymbols[i], encodingOfRow(i), anchorings[i],
             extendedAlignment[i]);
     }
 
@@ -436,13 +474,14 @@ void shasta2::msa1(
 
     // Expand back to plain bases. This is done even when the alignment is not
     // requested, because alignedConsensus is always computed and has to have the
-    // same length as the alignment rows.
+    // same length as the alignment rows. When it is not requested the expanded
+    // rows are discarded, but they still have to be built to know that length.
     vector< vector<AlignedBase> > expandedAlignment;
     expandExtendedAlignment(extendedAlignment, alignedExtendedConsensus,
         expandedAlignment, alignedConsensus);
 
     if(computeAlignment) {
-        alignment = expandedAlignment;
+        alignment = std::move(expandedAlignment);
     } else {
         alignment.clear();
     }
