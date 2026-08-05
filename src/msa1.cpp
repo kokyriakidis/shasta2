@@ -400,6 +400,42 @@ bool shasta2::msa1PatternPresent(
 
 
 // See msa1.hpp for comments.
+bool shasta2::msa1LongRunPresent(
+    const vector<Base>& sequence,
+    uint64_t threshold)
+{
+    const uint64_t n = sequence.size();
+    for(uint64_t runBegin=0; runBegin<n; /* incremented below */) {
+        const Base base = sequence[runBegin];
+        uint64_t runEnd = runBegin + 1;
+        while((runEnd < n) and (sequence[runEnd] == base)) {
+            ++runEnd;
+        }
+        if(runEnd - runBegin > threshold) {
+            return true;
+        }
+        runBegin = runEnd;
+    }
+    return false;
+}
+
+
+
+// See msa1.hpp for comments.
+bool shasta2::msa1TriggerPresent(
+    const vector<Base>& sequence,
+    Msa1Trigger trigger,
+    uint64_t threshold)
+{
+    if(trigger == Msa1Trigger::PatternOnly) {
+        return msa1PatternPresent(sequence, threshold);
+    }
+    return msa1LongRunPresent(sequence, threshold);
+}
+
+
+
+// See msa1.hpp for comments.
 bool shasta2::msa1PatternPresent(
     const vector< vector<Base> >& sequences,
     uint64_t threshold)
@@ -482,6 +518,7 @@ namespace shasta2 {
 void shasta2::msa1FindBadRegions(
     const vector< vector<AlignedBase> >& alignment,
     const vector<AlignedBase>& alignedConsensus,
+    Msa1Trigger trigger,
     uint64_t threshold,
     uint64_t flank,
     uint64_t mergeDistance,
@@ -496,62 +533,89 @@ void shasta2::msa1FindBadRegions(
         SHASTA2_ASSERT(row.size() == alignmentLength);
     }
 
-    // A column is discordant if any row differs from the aligned consensus
-    // there. This is what LocalAssembly7::writeAlignment paints pink.
-    vector<bool> isDiscordant(alignmentLength, false);
-    for(uint64_t j=0; j<alignmentLength; j++) {
-        for(const vector<AlignedBase>& row: alignment) {
-            if(row[j] != alignedConsensus[j]) {
-                isDiscordant[j] = true;
-                break;
+    // Seed a region on each long homopolymer run of each row.
+    //
+    // The seeds are the runs themselves, not the columns where the rows disagree
+    // with the consensus. Disagreement is not a selective signal here: reads
+    // differ in run length, so their gaps land in different columns, and on real
+    // reads 95% of columns end up with some row differing from the consensus.
+    // Seeding on disagreement and then filtering by the pattern worked only
+    // because the pattern is rare; with the broader trigger it selected almost
+    // the whole alignment. Seeding on the runs keeps a region the size of what
+    // it is repairing whichever trigger is used.
+    //
+    // A run of a row may have gap columns interleaved, where other rows have an
+    // insertion, so the run is tracked by its first and last non-gap column.
+    for(const vector<AlignedBase>& row: alignment) {
+        AlignedBase runBase = AlignedBase::gap();
+        uint64_t runBegin = 0;
+        uint64_t runLast = 0;
+        uint64_t runLength = 0;
+
+        const auto closeRun = [&]() {
+            if((runLength > threshold) and (not runBase.isGap())) {
+                Msa1Region seed;
+                seed.begin = runBegin;
+                seed.end = runLast + 1;
+                regions.push_back(seed);
             }
+        };
+
+        for(uint64_t j=0; j<alignmentLength; j++) {
+            const AlignedBase b = row[j];
+            if(b.isGap()) {
+                continue;
+            }
+            if(b == runBase) {
+                ++runLength;
+                runLast = j;
+            } else {
+                closeRun();
+                runBase = b;
+                runBegin = j;
+                runLast = j;
+                runLength = 1;
+            }
+        }
+        closeRun();
+    }
+    if(regions.empty()) {
+        return;
+    }
+
+    // Sort the seeds and merge those that overlap or are close together. Two
+    // runs separated by a single base merge here, which is what lets the pattern
+    // trigger see both of them in one window.
+    sort(regions.begin(), regions.end(),
+        [](const Msa1Region& x, const Msa1Region& y) {
+            return (x.begin != y.begin) ? (x.begin < y.begin) : (x.end < y.end);
+        });
+    vector<Msa1Region> merged;
+    for(const Msa1Region& seed: regions) {
+        if((not merged.empty()) and (seed.begin <= merged.back().end + mergeDistance)) {
+            merged.back().end = max(merged.back().end, seed.end);
+        } else {
+            merged.push_back(seed);
         }
     }
 
-    // Cluster the discordant columns, merging clusters that are close together,
-    // then widen each cluster by the flank.
-    for(uint64_t j=0; j<alignmentLength; /* incremented below */) {
-        if(not isDiscordant[j]) {
-            ++j;
-            continue;
-        }
-
-        uint64_t begin = j;
-        uint64_t end = j + 1;
-        for(uint64_t k=end; k<alignmentLength; k++) {
-            if(isDiscordant[k]) {
-                end = k + 1;
-            } else if(k >= end + mergeDistance) {
-                break;
-            }
-        }
-        j = end;
-
-        // Widen by the flank, clamped to the alignment.
-        Msa1Region region;
-        region.begin = (begin > flank) ? (begin - flank) : 0;
-        region.end = min(alignmentLength, end + flank);
-
-        // Then widen further, until neither boundary falls inside a homopolymer
-        // run of any row.
-        //
-        // Without this the flank has to be guessed large enough to clear the
-        // runs, and a window that clips one silently does nothing: the pattern
-        // test sees a run shorter than it is and does not recognise the pattern.
-        // On the alignment this was developed against, a flank of 4 found the
-        // regions but repaired neither, and a flank of 0 found none at all,
-        // while 6 and above worked. That is not a property to leave to a
-        // constant, since a locus with longer runs would need a larger one.
-        // Snapping the boundaries to run boundaries removes the dependence: the
-        // flank is now only a minimum amount of context.
+    // Widen by the flank, then widen further until neither boundary falls inside
+    // a homopolymer run of any row. A window that clips a run would show the
+    // pattern test and the encoding a run shorter than it is.
+    for(Msa1Region& region: merged) {
+        region.begin = (region.begin > flank) ? (region.begin - flank) : 0;
+        region.end = min(alignmentLength, region.end + flank);
         while((region.begin > 0) and msa1BoundaryCutsRun(alignment, region.begin)) {
             --region.begin;
         }
         while((region.end < alignmentLength) and msa1BoundaryCutsRun(alignment, region.end)) {
             ++region.end;
         }
+    }
 
-        // Merge with the previous region if they now touch or overlap.
+    // Widening may have made neighbours touch.
+    regions.clear();
+    for(const Msa1Region& region: merged) {
         if((not regions.empty()) and (region.begin <= regions.back().end)) {
             regions.back().end = max(regions.back().end, region.end);
         } else {
@@ -559,12 +623,32 @@ void shasta2::msa1FindBadRegions(
         }
     }
 
-    // Keep only the regions whose sequences actually show the problem pattern.
-    // This is the confirmation step: a discordant cluster is common, the pattern
-    // is not.
+    // Keep only the regions the trigger accepts. For the pattern trigger this is
+    // what does the filtering; for the broader trigger every seed already has a
+    // long run in it, so this keeps them all.
+    //
+    // A region in which no row differs from the consensus is dropped whatever
+    // the trigger says. Every row already agrees there, so every vote would
+    // return what is already in place and the repair could only be a no-op. The
+    // seeds are the runs rather than the disagreements, so unlike before this
+    // has to be checked rather than being true by construction.
     vector<Msa1Region> confirmed;
     vector<Base> windowSequence;
     for(const Msa1Region& region: regions) {
+
+        bool anyDiscordant = false;
+        for(uint64_t j=region.begin; (j<region.end) and (not anyDiscordant); j++) {
+            for(const vector<AlignedBase>& row: alignment) {
+                if(row[j] != alignedConsensus[j]) {
+                    anyDiscordant = true;
+                    break;
+                }
+            }
+        }
+        if(not anyDiscordant) {
+            continue;
+        }
+
         bool found = false;
         for(const vector<AlignedBase>& row: alignment) {
             windowSequence.clear();
@@ -573,7 +657,7 @@ void shasta2::msa1FindBadRegions(
                     windowSequence.push_back(Base(row[j]));
                 }
             }
-            if(msa1PatternPresent(windowSequence, threshold)) {
+            if(msa1TriggerPresent(windowSequence, trigger, threshold)) {
                 found = true;
                 break;
             }
@@ -729,6 +813,7 @@ uint64_t shasta2::msa1(
     vector<AlignedBase>& alignedConsensus,
     vector< pair<Base, uint64_t> >& consensus,
     const vector<uint64_t>& weights,
+    Msa1Trigger trigger,
     uint64_t threshold,
     RunLengthEstimator estimator,
     uint64_t flank,
@@ -752,7 +837,7 @@ uint64_t shasta2::msa1(
     // Find the regions worth repairing. Usually there are none, and then nothing
     // below runs and nothing is modified.
     vector<Msa1Region> regions;
-    msa1FindBadRegions(alignment, alignedConsensus, threshold, flank,
+    msa1FindBadRegions(alignment, alignedConsensus, trigger, threshold, flank,
         mergeDistance, regions);
     if(regions.empty()) {
         return 0;
@@ -786,6 +871,55 @@ uint64_t shasta2::msa1(
             continue;
         }
         SHASTA2_ASSERT(newRows.size() == n);
+
+        // Keep the repair only if it did not make this window worse.
+        //
+        // The repair removes the misplaced base from a long run, but the
+        // realignment that follows can introduce a smaller version of the same
+        // fault elsewhere in the window: theseus prices two mismatches below two
+        // gaps, exactly as abpoa does, and on the short runs that stay as plain
+        // symbols that trade is still available to it. Measured over 20000
+        // random alignments this happened 5 times, always on two row windows
+        // where there is no majority to appeal to.
+        //
+        // Rather than argue about when it is safe, the window is scored before
+        // and after by the thing the repair exists to fix, the number of columns
+        // holding more than one base, and a repair that loses is discarded. That
+        // makes never making the alignment worse a property of the code rather
+        // than something the tests have to keep checking for.
+        {
+            const auto countImpure = [n](
+                const vector< vector<AlignedBase> >& rows,
+                uint64_t begin,
+                uint64_t end)
+            {
+                uint64_t impureCount = 0;
+                for(uint64_t j=begin; j<end; j++) {
+                    array<bool, 4> seen = {false, false, false, false};
+                    for(uint64_t i=0; i<n; i++) {
+                        const AlignedBase b = rows[i][j];
+                        if(not b.isGap()) {
+                            seen[b.value] = true;
+                        }
+                    }
+                    uint64_t distinctCount = 0;
+                    for(const bool b: seen) {
+                        if(b) {
+                            ++distinctCount;
+                        }
+                    }
+                    if(distinctCount > 1) {
+                        ++impureCount;
+                    }
+                }
+                return impureCount;
+            };
+            const uint64_t before = countImpure(alignment, region.begin, region.end);
+            const uint64_t after = countImpure(newRows, 0, newRows.front().size());
+            if(after > before) {
+                continue;
+            }
+        }
 
         // Find the range of consensus BASES this region covers, by counting the
         // non-gap entries of the aligned consensus. This has to be done before
@@ -1717,6 +1851,11 @@ void shasta2::testMsa1Repair()
 {
     const uint64_t threshold = defaultHomopolymerThreshold;
 
+    // These tests were written against the pattern trigger and assert on the
+    // regions it finds, so they pin that trigger explicitly rather than
+    // following the default.
+    const Msa1Trigger trigger = Msa1Trigger::PatternOnly;
+
     // Build the real, defective abpoa alignment.
     vector< vector<AlignedBase> > alignment;
     vector<string> reads;
@@ -1861,7 +2000,7 @@ void shasta2::testMsa1Repair()
         const auto acBefore = ac;
         const auto cBefore = c;
 
-        const uint64_t repaired = msa1(a, ac, c, w, threshold);
+        const uint64_t repaired = msa1(a, ac, c, w, trigger, threshold);
         SHASTA2_ASSERT(repaired == 0);
         SHASTA2_ASSERT(a == aBefore);
         SHASTA2_ASSERT(ac == acBefore);
@@ -1887,11 +2026,11 @@ void shasta2::testMsa1Repair()
         }
 
         vector<Msa1Region> regions;
-        msa1FindBadRegions(a, ac, threshold, 10, 20, regions);
+        msa1FindBadRegions(a, ac, trigger, threshold, 10, 20, regions);
         cout << "Found " << regions.size() << " bad region(s) in the real alignment." << endl;
         SHASTA2_ASSERT(not regions.empty());
 
-        const uint64_t repaired = msa1(a, ac, c, weights, threshold);
+        const uint64_t repaired = msa1(a, ac, c, weights, trigger, threshold);
         cout << "Repaired " << repaired << " region(s)." << endl;
         SHASTA2_ASSERT(repaired > 0);
 
@@ -1956,7 +2095,7 @@ void shasta2::testMsa1Repair()
         vector< pair<Base, uint64_t> > c = consensus;
 
         vector<Msa1Region> regions;
-        msa1FindBadRegions(a, ac, threshold, 10, 20, regions);
+        msa1FindBadRegions(a, ac, trigger, threshold, 10, 20, regions);
         SHASTA2_ASSERT(not regions.empty());
 
         // Record the columns before the first region and after the last one.
@@ -1970,7 +2109,7 @@ void shasta2::testMsa1Repair()
             suffixBefore.push_back(msa1ToString(row).substr(lastEnd));
         }
 
-        msa1(a, ac, c, weights, threshold);
+        msa1(a, ac, c, weights, trigger, threshold);
 
         // The prefix is at the same columns and unchanged.
         for(uint64_t i=0; i<a.size(); i++) {
@@ -2009,7 +2148,7 @@ void shasta2::testMsa1Repair()
         // Which consensus bases lie inside a region, worked out before the
         // repair moves anything.
         vector<Msa1Region> regions;
-        msa1FindBadRegions(a, ac, threshold, 10, 20, regions);
+        msa1FindBadRegions(a, ac, trigger, threshold, 10, 20, regions);
         SHASTA2_ASSERT(not regions.empty());
         vector<bool> isInsideRegion(c.size(), false);
         {
@@ -2035,7 +2174,7 @@ void shasta2::testMsa1Repair()
         SHASTA2_ASSERT(insideCount > 0);
         SHASTA2_ASSERT(insideCount < c.size());
 
-        SHASTA2_ASSERT(msa1(a, ac, c, weights, threshold) > 0);
+        SHASTA2_ASSERT(msa1(a, ac, c, weights, trigger, threshold) > 0);
 
         // The bases before the first repaired region and after the last must be
         // unchanged, coverage and all.
@@ -2092,7 +2231,7 @@ void shasta2::testMsa1Repair()
         }
         const vector<uint64_t> w(3, 1);
         const auto aBefore = a;
-        const uint64_t repaired = msa1(a, ac, c, w, threshold);
+        const uint64_t repaired = msa1(a, ac, c, w, trigger, threshold);
         SHASTA2_ASSERT(repaired == 0);
         SHASTA2_ASSERT(a == aBefore);
     }
@@ -2109,7 +2248,7 @@ void shasta2::testMsa1Repair()
     {
         // Build an alignment from rows, give it a column majority consensus with
         // recognisable coverage, repair it, and check the invariants.
-        const auto checkOne = [&](const vector<string>& rows) -> bool
+        const auto checkOne = [&](const vector<string>& rows, Msa1Trigger t) -> bool
         {
             vector< vector<AlignedBase> > a;
             for(const string& r: rows) {
@@ -2148,7 +2287,7 @@ void shasta2::testMsa1Repair()
             const uint64_t impureBefore = msa1ImpureColumnCount(
                 [&]{ vector<string> v; for(const auto& r: a) v.push_back(msa1ToString(r)); return v; }());
 
-            const uint64_t repaired = msa1(a, ac, c, w, threshold);
+            const uint64_t repaired = msa1(a, ac, c, w, t, threshold);
 
             for(const auto& row: a) {
                 SHASTA2_ASSERT(row.size() == ac.size());
@@ -2224,15 +2363,18 @@ void shasta2::testMsa1Repair()
             {string(9, 'A') + "---G" + A11, string(10, 'A') + "--G" + A11,
              string(11, 'A') + "-G" + A11, string(12, 'A') + "G" + A11}
         };
-        uint64_t repairedCases = 0;
-        for(const vector<string>& rows: cases) {
-            if(checkOne(rows)) {
-                ++repairedCases;
+        for(const Msa1Trigger t: {Msa1Trigger::PatternOnly, Msa1Trigger::AnyLongRun}) {
+            uint64_t repairedCases = 0;
+            for(const vector<string>& rows: cases) {
+                if(checkOne(rows, t)) {
+                    ++repairedCases;
+                }
             }
+            cout << "Checked " << cases.size() << " adversarial alignments with the " <<
+                ((t == Msa1Trigger::PatternOnly) ? "pattern" : "any long run") <<
+                " trigger, " << repairedCases << " of them repaired." << endl;
+            SHASTA2_ASSERT(repairedCases > 0);
         }
-        cout << "Checked " << cases.size() << " adversarial alignments, " <<
-            repairedCases << " of them repaired." << endl;
-        SHASTA2_ASSERT(repairedCases > 0);
 
 
 
@@ -2293,7 +2435,7 @@ void shasta2::testMsa1Repair()
                 }
                 rows.push_back(padded);
             }
-            if(checkOne(rows)) {
+            if(checkOne(rows, (trial % 2) ? Msa1Trigger::AnyLongRun : Msa1Trigger::PatternOnly)) {
                 ++randomRepaired;
             }
         }
@@ -2309,7 +2451,7 @@ void shasta2::testMsa1Repair()
         vector< vector<AlignedBase> > a;
         vector<AlignedBase> ac;
         vector< pair<Base, uint64_t> > c;
-        SHASTA2_ASSERT(msa1(a, ac, c, {}, threshold) == 0);
+        SHASTA2_ASSERT(msa1(a, ac, c, {}, trigger, threshold) == 0);
 
         // A single row cannot disagree with the consensus, so nothing is found.
         a.push_back(vectorOfAlignedBasesFromString(
@@ -2320,7 +2462,7 @@ void shasta2::testMsa1Repair()
             c.push_back(make_pair(Base(b), 1UL));
         }
         const auto aBefore = a;
-        SHASTA2_ASSERT(msa1(a, ac, c, {}, threshold) == 0);
+        SHASTA2_ASSERT(msa1(a, ac, c, {}, trigger, threshold) == 0);
         SHASTA2_ASSERT(a == aBefore);
     }
 

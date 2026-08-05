@@ -1516,9 +1516,13 @@ void LocalAssembly7::runMsa1()
     // In the common case this is false, abpoa runs exactly as it does in
     // runAbpoa, and nothing else below has any effect. On real reads the pattern
     // is present in a few percent of bubble arms of the usual size.
+    // The trigger decides both what the prescreen looks for and what the
+    // repair acts on, so the two must agree or the prescreen would withhold an
+    // alignment the repair would have used.
+    const Msa1Trigger trigger = Msa1Trigger::AnyLongRun;
     bool patternPresent = false;
     for(const uint64_t sequenceId: sequenceIds) {
-        if(msa1PatternPresent(sequences[sequenceId].sequence)) {
+        if(msa1TriggerPresent(sequences[sequenceId].sequence, trigger)) {
             patternPresent = true;
             break;
         }
@@ -1552,7 +1556,7 @@ void LocalAssembly7::runMsa1()
     if(patternPresent) {
         SHASTA2_ASSERT(alignment.size() == msaSequenceIdsWithWeight.size());
         const vector<uint64_t> weights(alignment.size(), 1);
-        repairedRegionCount = msa1(alignment, alignedConsensus, consensus, weights);
+        repairedRegionCount = msa1(alignment, alignedConsensus, consensus, weights, trigger);
     }
     const auto t2 = steady_clock::now();
 
