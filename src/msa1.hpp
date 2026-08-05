@@ -12,11 +12,40 @@ namespace shasta2 {
     class Base;
     class AlignedBase;
 
+    // ExtendedBase is the 8 symbol alphabet itself: A, C, G, T and the four poly
+    // symbols. AlignedExtendedBase is the same plus a gap, for use in an
+    // alignment. This mirrors Base and AlignedBase, and for the same reason: a
+    // sequence cannot contain a gap, so a type that cannot represent one is the
+    // honest type for a sequence.
     class ExtendedBase;
     class ExtendedBaseInitializer;
+    class AlignedExtendedBase;
+    class AlignedExtendedBaseInitializer;
     inline ostream& operator<<(ostream&, ExtendedBase);
+    inline ostream& operator<<(ostream&, AlignedExtendedBase);
+
+    // A sequence encoded in the extended alphabet: each symbol paired with the
+    // number of bases it stands for. That is 1 for a plain symbol and the run
+    // length for a poly symbol.
+    //
+    // The length is carried alongside the symbol rather than inside it, so that
+    // two poly symbols for the same base compare equal however long their runs.
+    // If the length were part of the symbol, the 19 read locus this was
+    // developed on would encode to 11 distinct symbol strings instead of 1, and
+    // the aligner would treat a run length difference as a mismatch. That is the
+    // exact defect the alphabet exists to remove.
+    using ExtendedSequence = vector< pair<ExtendedBase, uint64_t> >;
+
+    // One row of an alignment of ExtendedSequences, or an aligned consensus.
+    // A gap has length 0.
+    using AlignedExtendedSequence = vector< pair<AlignedExtendedBase, uint64_t> >;
+
+    inline string toString(const ExtendedSequence&);
+    inline string toString(const AlignedExtendedSequence&);
     inline string toString(const vector<ExtendedBase>&);
+    inline string toString(const vector<AlignedExtendedBase>&);
     inline vector<ExtendedBase> vectorOfExtendedBasesFromString(const string&);
+    inline vector<AlignedExtendedBase> vectorOfAlignedExtendedBasesFromString(const string&);
 
     // The default homopolymer threshold used by encodeExtended.
     // A homopolymer run longer than this has its length treated as unreliable
@@ -56,22 +85,17 @@ namespace shasta2 {
 
     // Encode a sequence in the extended alphabet.
     // A homopolymer run of base X and length L becomes:
-    // - L copies of plain X, if L <= threshold.
-    // - a single polyX, if L > threshold.
-    // runLengths is parallel to encoded and holds the number of bases each
-    // symbol stands for: always 1 for a plain symbol, and L for a polyX.
-    // So the two vectors together are a lossless representation of the input
-    // sequence, and decodeExtended needs nothing else.
+    // - L copies of plain X, each standing for 1 base, if L <= threshold.
+    // - a single polyX standing for L bases, if L > threshold.
+    // The result is a lossless representation of the input sequence.
     void encodeExtended(
         const vector<Base>& sequence,
         uint64_t threshold,
-        vector<ExtendedBase>& encoded,
-        vector<uint64_t>& runLengths);
+        ExtendedSequence& encoded);
 
-    // The inverse of encodeExtended. Gaps in encoded are skipped.
+    // The inverse of encodeExtended.
     void decodeExtended(
-        const vector<ExtendedBase>& encoded,
-        const vector<uint64_t>& runLengths,
+        const ExtendedSequence& encoded,
         vector<Base>& sequence);
 
     // How the consensus length of a long homopolymer run is chosen from the
@@ -125,24 +149,25 @@ namespace shasta2 {
     // column that resolves to a poly symbol then has its run length chosen
     // separately, by voting on the TRUE run lengths of the reads that occupy it.
     //
-    // runLengths[i] is parallel to alignment[i]: it holds, for each column, the
-    // number of bases that row's symbol stands for at that column, or 0 where
-    // the row has a gap. Build it with alignedRunLengths().
+    // Note the two votes happen in this order, and the expansion back to bases
+    // happens after both. Expanding first and then voting on the resulting
+    // columns cannot give the mode: a column of an expanded run block is
+    // occupied by a majority exactly when over half the reads are at least that
+    // long, which is the median. It would also let a base bordering a run share
+    // a column with the run again, which is the defect being fixed.
+    //
+    // Build the alignment rows with attachRunLengths().
     void extendedConsensus(
-        const vector< vector<ExtendedBase> >& alignment,
-        const vector< vector<uint64_t> >& runLengths,
+        const vector<AlignedExtendedSequence>& alignment,
         const vector<uint64_t>& weights,
         RunLengthEstimator estimator,
 
         // The consensus sequence and its coverage.
         vector< pair<Base, uint64_t> >& consensus,
 
-        // The aligned consensus, in the extended alphabet, one entry per column.
-        vector<ExtendedBase>& alignedExtendedConsensus,
-
-        // The consensus run length at each column. 1 for a plain symbol, the
-        // voted length for a poly symbol, 0 for a gap.
-        vector<uint64_t>& consensusRunLengths);
+        // The aligned consensus: one symbol per column, with its voted run
+        // length. A gap column has a gap with length 0.
+        AlignedExtendedSequence& alignedConsensus);
 
 
     // Which ends of a sequence are anchored. This determines which end theseus
@@ -163,27 +188,26 @@ namespace shasta2 {
     };
 
 
-    // Spread the run lengths of an unaligned encoding over the columns of an
-    // alignment row, so that they line up with the aligned symbols.
+    // Put back the run lengths that were held out of the alignment.
     //
-    // alignedRow is one row of an alignment of encoded. Dropping its gaps gives a
-    // contiguous window of encoded, and not necessarily all of it, because
-    // theseus trims the overhang of a sequence fixed on one side only.
+    // Theseus is given symbols only, so the rows it returns carry no lengths.
+    // This pairs each symbol of a row with the number of bases it stands for,
+    // taken from the encoding that was handed to the aligner. A gap gets 0.
     //
-    // The window is derived from `anchoring`, NOT by searching the encoding for
-    // the row's symbols. Searching is wrong on a repeat: if the encoding is
-    // A a C A a C with poly run lengths 10 and 20, and the row is the second
-    // copy A a C because the first was trimmed, a search matches the first copy
-    // and pairs the row with run length 10 instead of 20. Tandem repeats are
-    // exactly what this code is for, so that is not a remote possibility.
-    //
-    // Columns the window does not cover get run length 0.
-    void alignedRunLengths(
-        const vector<ExtendedBase>& alignedRow,
-        const vector<ExtendedBase>& encoded,
-        const vector<uint64_t>& encodedRunLengths,
+    // Dropping the gaps from alignedRow gives a contiguous window of encoded,
+    // and not necessarily all of it, because theseus trims the overhang of a
+    // sequence fixed on one side only. The window is derived from `anchoring`,
+    // NOT by searching the encoding for the row's symbols. Searching is wrong on
+    // a repeat: if the encoding is A a C A a C with poly run lengths 10 and 20,
+    // and the row is the second copy A a C because the first was trimmed, a
+    // search matches the first copy and pairs the row with 10 instead of 20.
+    // Tandem repeats are exactly what this code is for, so that is not a remote
+    // possibility.
+    void attachRunLengths(
+        const vector<AlignedExtendedBase>& alignedRow,
+        const ExtendedSequence& encoded,
         Anchoring anchoring,
-        vector<uint64_t>& alignedRunLengths);
+        AlignedExtendedSequence& row);
 
 
     // Expand an alignment over the extended alphabet into one over plain bases,
@@ -191,10 +215,8 @@ namespace shasta2 {
     // The consensus is widened the same way, so all rows and the aligned
     // consensus keep the same length, as callers require.
     void expandExtendedAlignment(
-        const vector< vector<ExtendedBase> >& alignment,
-        const vector< vector<uint64_t> >& runLengths,
-        const vector<ExtendedBase>& alignedExtendedConsensus,
-        const vector<uint64_t>& consensusRunLengths,
+        const vector<AlignedExtendedSequence>& alignment,
+        const AlignedExtendedSequence& alignedConsensus,
         vector< vector<AlignedBase> >& expandedAlignment,
         vector<AlignedBase>& expandedAlignedConsensus);
 
@@ -244,14 +266,19 @@ namespace shasta2 {
 
 
 
-// Class used only to store a static look up table
-// used by ExtendedBase::fromCharacter to convert
-// characters to extended bases.
+// Classes used only to store static look up tables used by the fromCharacter
+// functions to convert characters to symbols.
 class shasta2::ExtendedBaseInitializer{
 public:
     ExtendedBaseInitializer();
     static array<uint8_t, 256> table;
     static ExtendedBaseInitializer singleton;
+};
+class shasta2::AlignedExtendedBaseInitializer{
+public:
+    AlignedExtendedBaseInitializer();
+    static array<uint8_t, 256> table;
+    static AlignedExtendedBaseInitializer singleton;
 };
 
 
@@ -276,52 +303,47 @@ public:
 // length still takes part in the alignment. A run longer than the threshold
 // encodes to a single poly symbol, whatever its length, so its length takes no
 // part in the alignment at all. Length differences in long runs are therefore
-// invisible to the aligner and are decided separately, by voting on runLengths.
+// invisible to the aligner and are decided separately, by voting.
 //
-// For example, with a threshold of 5 and CTC A{12} G A{11} GTT:
+// For example, with a threshold of 4 and CTC A{12} G A{11} GTT:
 //     CTCAAAAAAAAAAAAGAAAAAAAAAAAGTT  ->  CTC polyA G polyA GTT
 // and every read over this locus encodes to that same symbol string no matter
 // what its two A run lengths are.
 //
-// A poly symbol also has a length: the number of bases in the run it stands
-// for. That length is deliberately NOT a member of this class. It is returned
-// alongside the symbols, in the runLengths argument of encodeExtended.
-//
-// Keeping it out of the class is what makes the length invisible to alignment.
-// An ExtendedBase holds nothing but its symbol value, so two poly symbols for
-// the same base always compare equal however long their runs, and an aligner
-// working on a vector<ExtendedBase> cannot turn a run length difference into a
-// mismatch. The lengths are used only at the end, to decide the consensus
-// length of each homopolymer run. Adding a length member here, or making
+// The length a poly symbol stands for is deliberately NOT a member of this
+// class. It travels beside the symbol, in an ExtendedSequence. Keeping it out is
+// what makes the length invisible to alignment: an ExtendedBase holds nothing
+// but its symbol value, so two poly symbols for the same base always compare
+// equal however long their runs. Adding a length member here, or making
 // operator== consider one, would silently undo that.
+//
+// There is no gap here, for the same reason class Base has none: a sequence
+// cannot contain a gap. Use AlignedExtendedBase in an alignment.
 //
 // Represented as a 1-byte integer:
 // - 0, 1, 2, 3 are the plain bases A, C, G, T.
 // - 4, 5, 6, 7 are the poly symbols polyA, polyC, polyG, polyT.
-// - 8 is a gap.
 // The low two bits are the base and bit 2 is the poly flag, so base() and
 // isPoly() are cheap and the plain values agree with class Base.
 class shasta2::ExtendedBase {
 public:
 
-    // The byte value is always one of 0 through 8.
+    // The byte value is always one of 0 through 7.
     uint8_t value;
 
     // The default constructor constructs A.
     ExtendedBase() : value(0) {}
 
-    static const uint8_t gapValue = 8;
-
     bool isValid() const
     {
-        return value <= gapValue;
+        return value < 8;
     }
 
     // We use static member functions instead of constructors.
     // This is safer due to the possibility of unwanted
     // conversions between characters and integers,
-    // or confusion between the value stored (0 through 8) and
-    // the representing character (A, C, G, T, a, c, g, t, -).
+    // or confusion between the value stored (0 through 7) and
+    // the representing character (A, C, G, T, a, c, g, t).
 
     // Construct from a character.
     // Throw an exception if the character does not represent a valid symbol.
@@ -340,26 +362,16 @@ public:
         return extendedBase;
     }
 
-    // Construct from an integer.
-    // This does not check validity.
+    // Construct from an integer. This does not check validity.
     static ExtendedBase fromInteger(uint8_t i)
     {
         ExtendedBase extendedBase;
         extendedBase.value = i;
         return extendedBase;
     }
-    static ExtendedBase fromInteger(uint16_t i)
-    {
-        return fromInteger(uint8_t(i));
-    }
-    static ExtendedBase fromInteger(uint32_t i)
-    {
-        return fromInteger(uint8_t(i));
-    }
-    static ExtendedBase fromInteger(uint64_t i)
-    {
-        return fromInteger(uint8_t(i));
-    }
+    static ExtendedBase fromInteger(uint16_t i) { return fromInteger(uint8_t(i)); }
+    static ExtendedBase fromInteger(uint32_t i) { return fromInteger(uint8_t(i)); }
+    static ExtendedBase fromInteger(uint64_t i) { return fromInteger(uint8_t(i)); }
 
     // Construct the plain symbol for a Base.
     static ExtendedBase fromBase(Base base)
@@ -373,35 +385,24 @@ public:
         return fromInteger(uint8_t(base.value + 4));
     }
 
-    // Return a gap.
-    static ExtendedBase gap()
-    {
-        return fromInteger(gapValue);
-    }
-
-    // Return true if this is a poly symbol, that is, if it stands for the tail
-    // of a homopolymer run longer than the threshold used to encode it.
+    // Return true if this is a poly symbol, that is, if it stands for a
+    // homopolymer run longer than the threshold used to encode it.
     bool isPoly() const
     {
-        return (value >= 4) and (value < gapValue);
-    }
-
-    bool isGap() const
-    {
-        return value == gapValue;
+        return value >= 4;
     }
 
     // Return the base this symbol stands for, ignoring the poly flag.
-    // This asserts if the current value is a gap.
     Base base() const
     {
-        SHASTA2_ASSERT(not isGap());
         return Base::fromInteger(uint8_t(value & 3));
     }
 
     // Return the character representing this symbol.
     // Plain symbols use upper case and poly symbols use lower case, so that a
-    // vector<ExtendedBase> can be written out and read back as a string.
+    // sequence of symbols can be written out and read back as a string. This is
+    // how the encoding survives the round trip through theseus, which works on
+    // strings.
     char character() const
     {
         switch(value) {
@@ -413,34 +414,20 @@ public:
         case 5: return 'c';
         case 6: return 'g';
         case 7: return 't';
-        case gapValue: return '-';
         default:
             throw runtime_error("Invalid extended base value " + to_string(value));
         }
     }
 
-    // Return the complement of this symbol, preserving the poly flag,
-    // or the gap if it is already a gap.
+    // Return the complement of this symbol, preserving the poly flag.
     ExtendedBase complement() const
     {
-        if(isGap()) {
-            return gap();
-        }
         return fromInteger(uint8_t((value & 4) | (3 - (value & 3))));
     }
 
-    bool operator==(ExtendedBase that) const
-    {
-        return value == that.value;
-    }
-    bool operator!=(ExtendedBase that) const
-    {
-        return value != that.value;
-    }
-    bool operator<(ExtendedBase that) const
-    {
-        return value < that.value;
-    }
+    bool operator==(ExtendedBase that) const { return value == that.value; }
+    bool operator!=(ExtendedBase that) const { return value != that.value; }
+    bool operator<(ExtendedBase that) const { return value < that.value; }
 
     // The html color used to represent this symbol.
     // A poly symbol uses a lighter shade of the color of its base, so that the
@@ -456,7 +443,6 @@ public:
         case 5: return "#b3b3ff";
         case 6: return "#ffffb3";
         case 7: return "#b3ffb3";
-        case gapValue: return "";
         default:
             throw runtime_error("Invalid extended base value " + to_string(value));
         }
@@ -465,11 +451,117 @@ public:
 
 
 
-inline std::ostream& shasta2::operator<<(
-    std::ostream& s,
-    shasta2::ExtendedBase extendedBase)
+// Class AlignedExtendedBase is ExtendedBase plus a gap, represented as 8.
+// This is to ExtendedBase what AlignedBase is to Base.
+class shasta2::AlignedExtendedBase {
+public:
+
+    // The byte value is always one of 0 through 8.
+    uint8_t value;
+
+    // The default constructor constructs A.
+    AlignedExtendedBase() : value(0) {}
+
+    static const uint8_t gapValue = 8;
+
+    bool isValid() const
+    {
+        return value <= gapValue;
+    }
+
+    static AlignedExtendedBase fromCharacter(char c)
+    {
+        AlignedExtendedBase b;
+        b.value = AlignedExtendedBaseInitializer::table[uint8_t(c)];
+        if(b.value == 255) {
+            string message = "Invalid aligned extended base character: " + to_string(c);
+            if(std::isprint(c)) {
+                message += ' ';
+                message += c;
+            }
+            throw runtime_error(message);
+        }
+        return b;
+    }
+
+    // Construct from an integer. This does not check validity.
+    static AlignedExtendedBase fromInteger(uint8_t i)
+    {
+        AlignedExtendedBase b;
+        b.value = i;
+        return b;
+    }
+    static AlignedExtendedBase fromInteger(uint16_t i) { return fromInteger(uint8_t(i)); }
+    static AlignedExtendedBase fromInteger(uint32_t i) { return fromInteger(uint8_t(i)); }
+    static AlignedExtendedBase fromInteger(uint64_t i) { return fromInteger(uint8_t(i)); }
+
+    // Construct from an ExtendedBase.
+    explicit AlignedExtendedBase(ExtendedBase e) : value(e.value) {}
+
+    // Return a gap.
+    static AlignedExtendedBase gap()
+    {
+        return fromInteger(gapValue);
+    }
+
+    bool isGap() const { return value == gapValue; }
+
+    bool isPoly() const { return (value >= 4) and (value < gapValue); }
+
+    // Convert to an ExtendedBase. This asserts if the current value is a gap.
+    explicit operator ExtendedBase() const
+    {
+        SHASTA2_ASSERT(not isGap());
+        return ExtendedBase::fromInteger(value);
+    }
+
+    // Return the base this symbol stands for. Asserts if this is a gap.
+    Base base() const
+    {
+        SHASTA2_ASSERT(not isGap());
+        return Base::fromInteger(uint8_t(value & 3));
+    }
+
+    char character() const
+    {
+        if(value == gapValue) {
+            return '-';
+        }
+        return ExtendedBase::fromInteger(value).character();
+    }
+
+    AlignedExtendedBase complement() const
+    {
+        if(isGap()) {
+            return gap();
+        }
+        return fromInteger(uint8_t((value & 4) | (3 - (value & 3))));
+    }
+
+    bool operator==(AlignedExtendedBase that) const { return value == that.value; }
+    bool operator!=(AlignedExtendedBase that) const { return value != that.value; }
+    bool operator<(AlignedExtendedBase that) const { return value < that.value; }
+
+    string htmlColor() const
+    {
+        if(value == gapValue) {
+            return "";
+        }
+        return ExtendedBase::fromInteger(value).htmlColor();
+    }
+};
+
+
+
+inline std::ostream& shasta2::operator<<(std::ostream& s, shasta2::ExtendedBase e)
 {
-    s << extendedBase.character();
+    s << e.character();
+    return s;
+}
+
+inline std::ostream& shasta2::operator<<(std::ostream& s, shasta2::AlignedExtendedBase e)
+{
+    s << e.character();
     return s;
 }
 
@@ -479,6 +571,33 @@ inline std::string shasta2::toString(const vector<ExtendedBase>& v)
 {
     string s;
     for(const ExtendedBase e: v) {
+        s.push_back(e.character());
+    }
+    return s;
+}
+
+inline std::string shasta2::toString(const vector<AlignedExtendedBase>& v)
+{
+    string s;
+    for(const AlignedExtendedBase e: v) {
+        s.push_back(e.character());
+    }
+    return s;
+}
+
+inline std::string shasta2::toString(const ExtendedSequence& v)
+{
+    string s;
+    for(const auto& [e, runLength]: v) {
+        s.push_back(e.character());
+    }
+    return s;
+}
+
+inline std::string shasta2::toString(const AlignedExtendedSequence& v)
+{
+    string s;
+    for(const auto& [e, runLength]: v) {
         s.push_back(e.character());
     }
     return s;
@@ -495,5 +614,12 @@ inline std::vector<shasta2::ExtendedBase> shasta2::vectorOfExtendedBasesFromStri
     return v;
 }
 
-
-
+inline std::vector<shasta2::AlignedExtendedBase>
+    shasta2::vectorOfAlignedExtendedBasesFromString(const string& s)
+{
+    vector<AlignedExtendedBase> v;
+    for(const char c: s) {
+        v.push_back(AlignedExtendedBase::fromCharacter(c));
+    }
+    return v;
+}
