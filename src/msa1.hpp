@@ -241,11 +241,41 @@ namespace shasta2 {
     // computing one. In production all three local assembly paths set
     // computeAlignment = bool(html), so with html off there is no alignment to
     // repair and one has to be asked for.
+    // What makes a region worth repairing.
+    enum class Msa1Trigger {
+
+        // Only the problem pattern: two homopolymer runs longer than the
+        // threshold separated by a single base. This is the case where an
+        // aligner demonstrably misplaces the separating base, because it can
+        // explain the run length difference as two substitutions on that base
+        // instead of as two indels.
+        PatternOnly,
+
+        // Any homopolymer run longer than the threshold. This also covers a run
+        // with no bordering base, two runs separated by more than one base, and
+        // two long runs side by side, none of which the pattern test sees. It
+        // fires far more often, so it repairs far more of the assembly.
+        AnyLongRun
+    };
+
+
     // One sequence. This is the primitive the others are built on. It walks the
     // runs keeping only the two previous run lengths, so it allocates nothing
     // and stops at the first hit.
     bool msa1PatternPresent(
         const vector<Base>& sequence,
+        uint64_t threshold = defaultHomopolymerThreshold);
+
+    // True if the sequence contains any homopolymer run longer than the
+    // threshold. This is the test for Msa1Trigger::AnyLongRun.
+    bool msa1LongRunPresent(
+        const vector<Base>& sequence,
+        uint64_t threshold = defaultHomopolymerThreshold);
+
+    // Either test, chosen by the trigger.
+    bool msa1TriggerPresent(
+        const vector<Base>& sequence,
+        Msa1Trigger trigger,
         uint64_t threshold = defaultHomopolymerThreshold);
 
     // Any of several sequences. Note these take DISTINCT sequences: a caller
@@ -282,6 +312,7 @@ namespace shasta2 {
     void msa1FindBadRegions(
         const vector< vector<AlignedBase> >& alignment,
         const vector<AlignedBase>& alignedConsensus,
+        Msa1Trigger trigger,
         uint64_t threshold,
         uint64_t flank,
         uint64_t mergeDistance,
@@ -314,6 +345,9 @@ namespace shasta2 {
         // The weight of each row, normally its coverage. May be empty, in which
         // case every row weighs 1.
         const vector<uint64_t>& weights,
+
+        // What makes a region worth repairing. See Msa1Trigger.
+        Msa1Trigger trigger = Msa1Trigger::AnyLongRun,
 
         // The homopolymer threshold. See defaultHomopolymerThreshold.
         uint64_t threshold = defaultHomopolymerThreshold,
