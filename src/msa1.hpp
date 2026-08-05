@@ -349,8 +349,36 @@ namespace shasta2 {
         // What makes a region worth repairing. See Msa1Trigger.
         Msa1Trigger trigger = Msa1Trigger::AnyLongRun,
 
-        // The homopolymer threshold. See defaultHomopolymerThreshold.
+        // Which runs are long enough to be worth repairing.
+        // This controls how much of the alignment is touched, and nothing else.
+        // See defaultHomopolymerThreshold.
         uint64_t threshold = defaultHomopolymerThreshold,
+
+        // Which runs collapse to a poly symbol once a region is being repaired.
+        // This controls the quality of the repair, and nothing else.
+        //
+        // It is 1, meaning every run of two or more bases collapses, and it is
+        // deliberately not the same as the seeding threshold above. A run that
+        // stays plain inside a repair window keeps its length visible to the
+        // aligner, and the aligner can then trade two mismatches against two
+        // gaps on it, which is the very fault being repaired. Leaving the short
+        // runs plain reintroduced it: over 20000 random alignments the repair
+        // made 5 windows worse, always on short runs. Collapsing everything
+        // removes the trade from the window entirely.
+        //
+        // Measured on simulated reads, mean consensus edit distance from the
+        // truth with the seeding threshold held at 4:
+        //
+        //     encoding threshold        1     2     3     4
+        //     short runs, 4 and 3       1.05  1.04  2.07  3.11
+        //     runs at the boundary, 4/5 1.05  1.05  1.13  3.83
+        //     one long run              0.63  0.63  0.63  0.63
+        //     the target pattern        1.14  1.14  1.14  1.14
+        //
+        // Nothing is lost by collapsing the short runs. Their lengths are not
+        // discarded, they move into the run lengths and are voted on like any
+        // other, which is the same treatment the long runs already get.
+        uint64_t encodeThreshold = 1,
 
         // How the consensus length of a long homopolymer run is chosen.
         RunLengthEstimator estimator = RunLengthEstimator::Mode,
