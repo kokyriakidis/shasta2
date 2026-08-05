@@ -537,7 +537,8 @@ namespace shasta2 {
         uint64_t threshold,
         RunLengthEstimator estimator,
         vector< vector<AlignedBase> >& newRows,
-        vector<AlignedBase>& newAlignedConsensus)
+        vector<AlignedBase>& newAlignedConsensus,
+        vector< pair<Base, uint64_t> >& newConsensus)
     {
         const uint64_t n = alignment.size();
 
@@ -607,12 +608,24 @@ namespace shasta2 {
         }
 
         // Vote, then expand.
-        vector< pair<Base, uint64_t> > regionConsensus;
         AlignedExtendedSequence alignedExtendedConsensus;
         extendedConsensus(extendedAlignment, rowWeights, estimator,
-            regionConsensus, alignedExtendedConsensus);
+            newConsensus, alignedExtendedConsensus);
         expandExtendedAlignment(extendedAlignment, alignedExtendedConsensus,
             newRows, newAlignedConsensus);
+
+        // The bases of the region consensus must be the non-gap entries of the
+        // aligned region consensus, in order. The caller splices both, so if
+        // they disagreed the two would drift apart.
+        uint64_t k = 0;
+        for(const AlignedBase b: newAlignedConsensus) {
+            if(not b.isGap()) {
+                SHASTA2_ASSERT(k < newConsensus.size());
+                SHASTA2_ASSERT(newConsensus[k].first == Base(b));
+                ++k;
+            }
+        }
+        SHASTA2_ASSERT(k == newConsensus.size());
 
         return true;
     }
@@ -655,22 +668,54 @@ uint64_t shasta2::msa1(
         return 0;
     }
 
+    // The consensus must agree with the aligned consensus before anything is
+    // spliced, because the base positions of a region are found by counting
+    // non-gap entries of the aligned consensus.
+    {
+        uint64_t k = 0;
+        for(const AlignedBase b: alignedConsensus) {
+            if(not b.isGap()) {
+                ++k;
+            }
+        }
+        SHASTA2_ASSERT(k == consensus.size());
+    }
+
     // Repair the regions from right to left, so that the column indices of the
-    // regions still to be done are not disturbed by the splices already made.
+    // regions still to be done, and the base positions of the consensus before
+    // them, are not disturbed by the splices already made.
     uint64_t repairedCount = 0;
     for(uint64_t k=regions.size(); k>0; k--) {
         const Msa1Region& region = regions[k - 1];
 
         vector< vector<AlignedBase> > newRows;
         vector<AlignedBase> newAlignedConsensus;
+        vector< pair<Base, uint64_t> > newConsensus;
         if(not msa1RepairRegion(alignment, region, rowWeights, threshold,
-            estimator, newRows, newAlignedConsensus)) {
+            estimator, newRows, newAlignedConsensus, newConsensus)) {
             continue;
         }
         SHASTA2_ASSERT(newRows.size() == n);
 
-        // Splice. Every row and the aligned consensus must be spliced together,
-        // or they stop having the same length.
+        // Find the range of consensus BASES this region covers, by counting the
+        // non-gap entries of the aligned consensus. This has to be done before
+        // the splice below, which changes the aligned consensus.
+        uint64_t baseBegin = 0;
+        for(uint64_t j=0; j<region.begin; j++) {
+            if(not alignedConsensus[j].isGap()) {
+                ++baseBegin;
+            }
+        }
+        uint64_t baseEnd = baseBegin;
+        for(uint64_t j=region.begin; j<region.end; j++) {
+            if(not alignedConsensus[j].isGap()) {
+                ++baseEnd;
+            }
+        }
+        SHASTA2_ASSERT(baseEnd <= consensus.size());
+
+        // Splice the alignment rows and the aligned consensus, in column space.
+        // These must all be spliced together or they stop having equal length.
         for(uint64_t i=0; i<n; i++) {
             vector<AlignedBase>& row = alignment[i];
             row.erase(row.begin() + int64_t(region.begin),
@@ -685,6 +730,23 @@ uint64_t shasta2::msa1(
             alignedConsensus.begin() + int64_t(region.begin),
             newAlignedConsensus.begin(), newAlignedConsensus.end());
 
+        // Splice the consensus, in base space. The same erase and insert, just
+        // indexed by base rather than by column.
+        //
+        // The consensus is spliced rather than recomputed from the repaired
+        // alignment. Recomputing it would rewrite the coverage of every position
+        // in the sequence, including all the positions outside any repaired
+        // region, because the coverage abpoa reports is computed its own way and
+        // is not necessarily what a recount of the rows would give. Rewriting
+        // them would silently discard abpoa's numbers everywhere, which is
+        // exactly what repairing locally is supposed to avoid.
+        consensus.erase(
+            consensus.begin() + int64_t(baseBegin),
+            consensus.begin() + int64_t(baseEnd));
+        consensus.insert(
+            consensus.begin() + int64_t(baseBegin),
+            newConsensus.begin(), newConsensus.end());
+
         ++repairedCount;
     }
 
@@ -692,24 +754,20 @@ uint64_t shasta2::msa1(
         return 0;
     }
 
-    // Rebuild the consensus from the repaired aligned consensus, so that the two
-    // cannot disagree. The coverage of a column is recomputed from the rows.
+    // All rows, the aligned consensus and the consensus must still agree.
     for(const vector<AlignedBase>& row: alignment) {
         SHASTA2_ASSERT(row.size() == alignedConsensus.size());
     }
-    consensus.clear();
-    for(uint64_t j=0; j<alignedConsensus.size(); j++) {
-        const AlignedBase b = alignedConsensus[j];
-        if(b.isGap()) {
-            continue;
-        }
-        uint64_t coverage = 0;
-        for(uint64_t i=0; i<n; i++) {
-            if(alignment[i][j] == b) {
-                coverage += rowWeights[i];
+    {
+        uint64_t k = 0;
+        for(const AlignedBase b: alignedConsensus) {
+            if(not b.isGap()) {
+                SHASTA2_ASSERT(k < consensus.size());
+                SHASTA2_ASSERT(consensus[k].first == Base(b));
+                ++k;
             }
         }
-        consensus.push_back(make_pair(Base(b), coverage));
+        SHASTA2_ASSERT(k == consensus.size());
     }
 
     return repairedCount;
@@ -1835,6 +1893,93 @@ void shasta2::testMsa1Repair()
             SHASTA2_ASSERT(row.substr(row.size() - tailLength) == suffixBefore[i]);
         }
         cout << "Columns outside the repaired regions are unchanged." << endl;
+    }
+
+
+
+    // The consensus outside a repaired region is untouched, coverage included.
+    //
+    // This is the reason the consensus is spliced rather than recomputed from
+    // the repaired alignment. Recomputing it rewrote the coverage of every
+    // position in the sequence, because the coverage abpoa reports is computed
+    // its own way and is not what a recount of the rows gives. That went
+    // unnoticed at first because the test built the consensus with the same
+    // formula the recomputation used, so the two agreed by construction. Here
+    // the coverage is deliberately set to a value no recount could produce.
+    {
+        vector< vector<AlignedBase> > a = alignment;
+        vector<AlignedBase> ac = alignedConsensus;
+        vector< pair<Base, uint64_t> > c = consensus;
+        const uint64_t sentinel = 777;
+        for(auto& [base, coverage]: c) {
+            coverage = sentinel;
+        }
+        const auto before = c;
+
+        // Which consensus bases lie inside a region, worked out before the
+        // repair moves anything.
+        vector<Msa1Region> regions;
+        msa1FindBadRegions(a, ac, threshold, 10, 20, regions);
+        SHASTA2_ASSERT(not regions.empty());
+        vector<bool> isInsideRegion(c.size(), false);
+        {
+            uint64_t base = 0;
+            for(uint64_t j=0; j<ac.size(); j++) {
+                if(ac[j].isGap()) {
+                    continue;
+                }
+                for(const Msa1Region& region: regions) {
+                    if((j >= region.begin) and (j < region.end)) {
+                        isInsideRegion[base] = true;
+                    }
+                }
+                ++base;
+            }
+        }
+        uint64_t insideCount = 0;
+        for(const bool b: isInsideRegion) {
+            if(b) {
+                ++insideCount;
+            }
+        }
+        SHASTA2_ASSERT(insideCount > 0);
+        SHASTA2_ASSERT(insideCount < c.size());
+
+        SHASTA2_ASSERT(msa1(a, ac, c, weights, threshold) > 0);
+
+        // The bases before the first repaired region and after the last must be
+        // unchanged, coverage and all.
+        uint64_t firstInside = 0;
+        while((firstInside < isInsideRegion.size()) and (not isInsideRegion[firstInside])) {
+            ++firstInside;
+        }
+        uint64_t lastInside = 0;
+        for(uint64_t i=0; i<isInsideRegion.size(); i++) {
+            if(isInsideRegion[i]) {
+                lastInside = i;
+            }
+        }
+        const uint64_t tailLength = before.size() - lastInside - 1;
+
+        for(uint64_t i=0; i<firstInside; i++) {
+            SHASTA2_ASSERT(c[i] == before[i]);
+        }
+        for(uint64_t i=0; i<tailLength; i++) {
+            SHASTA2_ASSERT(c[c.size() - 1 - i] == before[before.size() - 1 - i]);
+        }
+
+        // And the coverage inside the regions really was replaced, or the test
+        // above would pass for the wrong reason.
+        uint64_t stillSentinel = 0;
+        for(const auto& [base, coverage]: c) {
+            if(coverage == sentinel) {
+                ++stillSentinel;
+            }
+        }
+        SHASTA2_ASSERT(stillSentinel == c.size() - insideCount);
+        cout << "Consensus outside the repaired regions is unchanged: " <<
+            stillSentinel << " of " << c.size() <<
+            " positions keep their original coverage." << endl;
     }
 
 
