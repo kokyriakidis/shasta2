@@ -153,8 +153,8 @@ void AssemblyGraph::detangleVertices()
             for(const auto& row: tangleMatrix.tangleMatrix) {
                 std::ranges::copy(row, ostream_iterator<uint64_t>(cout, " "));
             }
+            cout << endl;
         }
-        cout << endl;
 
         // Run the G-test on this tangle matrix.
         GTest gTest(tangleMatrix.tangleMatrix, options.detangleEpsilon, false, false);
