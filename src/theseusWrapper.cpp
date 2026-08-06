@@ -19,6 +19,22 @@ using namespace shasta2;
 
 namespace shasta2 {
 
+    // Convert sequences with their weights to the string form theseus works on.
+    //
+    // Both alphabets go through here. toString is already overloaded for each,
+    // and for the extended alphabet lower case marks a poly symbol; theseus
+    // compares characters directly, so that distinction survives the round trip.
+    template<class Sequence> static void theseusToStrings(
+        const vector< pair<Sequence, uint64_t> >& in,
+        vector< pair<string, uint64_t> >& out)
+    {
+        out.clear();
+        out.reserve(in.size());
+        for(const auto& [sequence, weight]: in) {
+            out.push_back(make_pair(toString(sequence), weight));
+        }
+    }
+
     // The penalties and heuristics used for all theseus alignments here.
     // Pericles defaults.
     static theseus::Penalties theseusPenalties()
@@ -78,7 +94,7 @@ namespace shasta2 {
         rows.clear();
         std::ostringstream s;
         aligner.print_as_msa(s);
-        const string alignmentString = s.str();
+        const string alignmentString = std::move(s).str();
 
         boost::tokenizer< boost::char_separator<char> > tokenizer(
             alignmentString, boost::char_separator<char>("\n"));
@@ -105,24 +121,12 @@ void shasta2::theseusExtended(
     const vector< pair<ExtendedSequence, uint64_t> >& rightFixedSequences,
     vector< vector<AlignedExtendedBase> >& alignment)
 {
-    // Convert to the ACGTacgt string form theseus works on.
-    // Lower case marks a poly symbol, and theseus compares characters directly,
-    // so the distinction survives the round trip.
-    const auto toStrings = [](
-        const vector< pair<ExtendedSequence, uint64_t> >& in,
-        vector< pair<string, uint64_t> >& out)
-    {
-        out.clear();
-        for(const auto& [sequence, weight]: in) {
-            out.push_back(make_pair(toString(sequence), weight));
-        }
-    };
     vector< pair<string, uint64_t> > fixedStrings;
     vector< pair<string, uint64_t> > leftFixedStrings;
     vector< pair<string, uint64_t> > rightFixedStrings;
-    toStrings(fixedSequences, fixedStrings);
-    toStrings(leftFixedSequences, leftFixedStrings);
-    toStrings(rightFixedSequences, rightFixedStrings);
+    theseusToStrings(fixedSequences, fixedStrings);
+    theseusToStrings(leftFixedSequences, leftFixedStrings);
+    theseusToStrings(rightFixedSequences, rightFixedStrings);
 
     SHASTA2_ASSERT(not fixedStrings.empty());
     const theseus::Penalties penalties = theseusPenalties();
@@ -184,22 +188,12 @@ void shasta2::theseus(
 {
 
 
-    // Convert to strings.
-    const auto toStrings = [](
-        const vector< pair<vector<Base>, uint64_t> >& in,
-        vector< pair<string, uint64_t> >& out)
-    {
-        out.clear();
-        for(const auto& [sequence, weight]: in) {
-            out.push_back(make_pair(toString(sequence), weight));
-        }
-    };
     vector< pair<string, uint64_t> > fixedStrings;
     vector< pair<string, uint64_t> > leftFixedStrings;
     vector< pair<string, uint64_t> > rightFixedStrings;
-    toStrings(fixedSequences, fixedStrings);
-    toStrings(leftFixedSequences, leftFixedStrings);
-    toStrings(rightFixedSequences, rightFixedStrings);
+    theseusToStrings(fixedSequences, fixedStrings);
+    theseusToStrings(leftFixedSequences, leftFixedStrings);
+    theseusToStrings(rightFixedSequences, rightFixedStrings);
 
     // Create the theseus aligner, passing in the first sequence fixed on both sides.
     SHASTA2_ASSERT(not fixedStrings.empty());
