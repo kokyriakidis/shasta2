@@ -180,11 +180,44 @@ void shasta2::attachRunLengths(
 
 
 
-// See msa1.hpp for comments.
+// See msa1.hpp for comments. This overload infers the spans from the gaps.
 void shasta2::extendedConsensus(
     const vector<AlignedExtendedSequence>& alignment,
     const vector<uint64_t>& weights,
     RunLengthEstimator estimator,
+    vector< pair<Base, uint64_t> >& consensus,
+    AlignedExtendedSequence& alignedConsensus)
+{
+    // The span of each row is the columns between its first and last non-gap
+    // symbol. Everything outside that is read as padding.
+    vector< pair<uint64_t, uint64_t> > spans;
+    spans.reserve(alignment.size());
+    for(const AlignedExtendedSequence& row: alignment) {
+        uint64_t first = row.size();
+        uint64_t last = 0;
+        for(uint64_t j=0; j<row.size(); j++) {
+            if(not row[j].first.isGap()) {
+                if(first == row.size()) {
+                    first = j;
+                }
+                last = j;
+            }
+        }
+        spans.push_back((first == row.size()) ?
+            make_pair(0UL, 0UL) : make_pair(first, last + 1));
+    }
+
+    extendedConsensus(alignment, weights, estimator, spans,
+        consensus, alignedConsensus);
+}
+
+
+
+void shasta2::extendedConsensus(
+    const vector<AlignedExtendedSequence>& alignment,
+    const vector<uint64_t>& weights,
+    RunLengthEstimator estimator,
+    const vector< pair<uint64_t, uint64_t> >& spans,
     vector< pair<Base, uint64_t> >& consensus,
     AlignedExtendedSequence& alignedConsensus)
 {
@@ -196,10 +229,13 @@ void shasta2::extendedConsensus(
         return;
     }
     SHASTA2_ASSERT(weights.size() == n);
+    SHASTA2_ASSERT(spans.size() == n);
 
     const uint64_t alignmentLength = alignment.front().size();
     for(uint64_t i=0; i<n; i++) {
         SHASTA2_ASSERT(alignment[i].size() == alignmentLength);
+        SHASTA2_ASSERT(spans[i].first <= spans[i].second);
+        SHASTA2_ASSERT(spans[i].second <= alignmentLength);
     }
 
     alignedConsensus.resize(alignmentLength);
@@ -210,11 +246,23 @@ void shasta2::extendedConsensus(
     // Loop over alignment columns.
     for(uint64_t j=0; j<alignmentLength; j++) {
 
-        // Total weight for each symbol at this column, including the gap.
+        // Total weight for each symbol at this column, including the gap, over
+        // the rows that cover this column.
         array<uint64_t, AlignedExtendedBase::gapValue + 1> symbolWeight;
         fill(symbolWeight.begin(), symbolWeight.end(), 0);
+        uint64_t coveringWeight = 0;
         for(uint64_t i=0; i<n; i++) {
+            if((j < spans[i].first) or (j >= spans[i].second)) {
+                continue;
+            }
             symbolWeight[alignment[i][j].first.value] += weights[i];
+            coveringWeight += weights[i];
+        }
+
+        // A column no row covers contributes nothing.
+        if(coveringWeight == 0) {
+            alignedConsensus[j] = make_pair(AlignedExtendedBase::gap(), 0UL);
+            continue;
         }
 
         // The consensus symbol is the one with the most weight.
@@ -244,9 +292,14 @@ void shasta2::extendedConsensus(
             // columns rather than reallocated at each one, because a long
             // sequence has many poly columns and each allocation would be
             // proportional to a run length.
+            // Only rows that cover this column may vote on the length, for the
+            // same reason they may not vote on the symbol.
             uint64_t maxObserved = 0;
             uint64_t totalWeight = 0;
             for(uint64_t i=0; i<n; i++) {
+                if((j < spans[i].first) or (j >= spans[i].second)) {
+                    continue;
+                }
                 if(alignment[i][j].first == consensusSymbol) {
                     maxObserved = max(maxObserved, alignment[i][j].second);
                     totalWeight += weights[i];
@@ -256,6 +309,9 @@ void shasta2::extendedConsensus(
 
             lengthWeight.assign(maxObserved + 1, 0);
             for(uint64_t i=0; i<n; i++) {
+                if((j < spans[i].first) or (j >= spans[i].second)) {
+                    continue;
+                }
                 if(alignment[i][j].first == consensusSymbol) {
                     lengthWeight[alignment[i][j].second] += weights[i];
                 }
@@ -471,6 +527,28 @@ bool shasta2::msa1PatternPresent(
 
 namespace shasta2 {
 
+    // The columns of a row that hold its first and last base, as a half open
+    // interval. An all gap row gives an empty interval.
+    static pair<uint64_t, uint64_t> msa1BaseSpan(const vector<AlignedBase>& row)
+    {
+        uint64_t first = row.size();
+        uint64_t last = 0;
+        for(uint64_t j=0; j<row.size(); j++) {
+            if(not row[j].isGap()) {
+                if(first == row.size()) {
+                    first = j;
+                }
+                last = j;
+            }
+        }
+        if(first == row.size()) {
+            return make_pair(0UL, 0UL);
+        }
+        return make_pair(first, last + 1);
+    }
+
+
+
     // Return true if a region boundary at this column falls inside a homopolymer
     // run of any row, that is, if the last base of some row before the boundary
     // is the same as its next base at or after it.
@@ -519,6 +597,46 @@ namespace shasta2 {
 
 
 // See msa1.hpp for comments.
+void shasta2::msa1RowCoverage(
+    const vector< vector<AlignedBase> >& alignment,
+    const vector<Anchoring>& anchoring,
+    vector< pair<uint64_t, uint64_t> >& coverage)
+{
+    coverage.clear();
+    if(alignment.empty()) {
+        return;
+    }
+    const uint64_t alignmentLength = alignment.front().size();
+
+    // An empty anchoring argument means every row is fixed on both sides.
+    SHASTA2_ASSERT(anchoring.empty() or (anchoring.size() == alignment.size()));
+
+    for(uint64_t i=0; i<alignment.size(); i++) {
+
+        // A row with no base at all covers nothing, whatever it is anchored to.
+        // It is not evidence of a deletion across the whole alignment; it is a
+        // row with nothing in it.
+        const pair<uint64_t, uint64_t> baseSpan = msa1BaseSpan(alignment[i]);
+        if(baseSpan.first == baseSpan.second) {
+            coverage.push_back(make_pair(0UL, 0UL));
+            continue;
+        }
+        switch(anchoring.empty() ? Anchoring::BothSides : anchoring[i]) {
+        case Anchoring::BothSides:
+            coverage.push_back(make_pair(0UL, alignmentLength));
+            break;
+        case Anchoring::LeftOnly:
+            coverage.push_back(make_pair(0UL, baseSpan.second));
+            break;
+        case Anchoring::RightOnly:
+            coverage.push_back(make_pair(baseSpan.first, alignmentLength));
+            break;
+        }
+    }
+}
+
+
+
 void shasta2::msa1FindBadRegions(
     const vector< vector<AlignedBase> >& alignment,
     const vector<AlignedBase>& alignedConsensus,
@@ -526,6 +644,7 @@ void shasta2::msa1FindBadRegions(
     uint64_t threshold,
     uint64_t flank,
     uint64_t mergeDistance,
+    const vector< pair<uint64_t, uint64_t> >& coverageArgument,
     vector<Msa1Region>& regions)
 {
     regions.clear();
@@ -536,6 +655,13 @@ void shasta2::msa1FindBadRegions(
     for(const vector<AlignedBase>& row: alignment) {
         SHASTA2_ASSERT(row.size() == alignmentLength);
     }
+
+    // An empty coverage argument means every row covers the whole alignment.
+    vector< pair<uint64_t, uint64_t> > coverage = coverageArgument;
+    if(coverage.empty()) {
+        coverage.assign(alignment.size(), make_pair(0UL, alignmentLength));
+    }
+    SHASTA2_ASSERT(coverage.size() == alignment.size());
 
     // Seed a region on each long homopolymer run of each row.
     //
@@ -640,13 +766,21 @@ void shasta2::msa1FindBadRegions(
     vector<Base> windowSequence;
     for(const Msa1Region& region: regions) {
 
+        // A row that does not reach this column is not disagreeing with the
+        // consensus there, it is simply absent. Counting the padding of a read
+        // constrained on one side only as disagreement would make every region
+        // beyond the end of some read look worth repairing.
         bool anyDiscordant = false;
         for(uint64_t j=region.begin; (j<region.end) and (not anyDiscordant); j++) {
-            for(const vector<AlignedBase>& row: alignment) {
-                if(row[j] != alignedConsensus[j]) {
-                    anyDiscordant = true;
-                    break;
+            for(uint64_t i=0; i<alignment.size(); i++) {
+                if(alignment[i][j] == alignedConsensus[j]) {
+                    continue;
                 }
+                if((j < coverage[i].first) or (j >= coverage[i].second)) {
+                    continue;
+                }
+                anyDiscordant = true;
+                break;
             }
         }
         if(not anyDiscordant) {
@@ -691,6 +825,7 @@ namespace shasta2 {
         const vector< vector<AlignedBase> >& alignment,
         const Msa1Region& region,
         const vector<uint64_t>& weights,
+        const vector< pair<uint64_t, uint64_t> >& coverage,
         uint64_t encodeThreshold,
         RunLengthEstimator estimator,
         vector< vector<AlignedBase> >& newRows,
@@ -699,10 +834,51 @@ namespace shasta2 {
     {
         const uint64_t n = alignment.size();
 
-        // Ungap each row inside the region and encode it.
-        vector< pair<ExtendedSequence, uint64_t> > encoded;
-        vector<uint64_t> rowWeights;
-        vector<uint64_t> nonEmptyRows;
+        // Ungap each row inside the region, encode it, and record how it sits in
+        // the window.
+        //
+        // A read constrained on one side only does not reach across the whole
+        // alignment. A row can therefore reach one edge of the window and not
+        // the other, and that has to be passed on: theseus is told which end a
+        // sequence is anchored at, and telling it a right anchored fragment is
+        // anchored on both sides invites it to place the fragment against the
+        // wrong part of the window. On a window holding A12 G A11, with two
+        // reads covering only the A11, calling them fixed on both sides made
+        // theseus align them to the FIRST run and the vote returned 11 for it
+        // instead of 12.
+        vector< pair<ExtendedSequence, uint64_t> > encodedFixed;
+        vector< pair<ExtendedSequence, uint64_t> > encodedLeftFixed;
+        vector< pair<ExtendedSequence, uint64_t> > encodedRightFixed;
+
+        // Row indices in the order theseus will return them, and the anchoring
+        // each was given, so the run lengths can be put back afterwards.
+        vector<uint64_t> fixedRows;
+        vector<uint64_t> leftFixedRows;
+        vector<uint64_t> rightFixedRows;
+
+        // Rows with no base at all in the window. They have nothing to say here
+        // and nothing to lose, so they are left out of the realignment and come
+        // back as gaps, abstaining from the vote.
+        vector<uint64_t> emptyRows;
+
+        // A row reaching neither edge of the window.
+        //
+        // Coverage as msa1RowCoverage computes it cannot produce one: a row
+        // fixed on the left reaches every left edge, one fixed on the right
+        // reaches every right edge, and one fixed on both reaches both. So this
+        // only arises from a coverage argument that did not come from there, and
+        // the window is left alone rather than guessed at.
+        //
+        // There is no good way to handle it in any case. Theseus has no group
+        // for a sequence free at both ends, and putting one in with the spanning
+        // rows, where a global alignment would at least keep all of its bases,
+        // makes things worse rather than better: the fragment is stretched to
+        // reach both ends of the graph, and the graph it corrupts is then used
+        // to place every row after it. A fragment ATCGTTTTTGTTTTT came back as
+        // AT--CGtGt--, and the next row lost six of its nine symbols.
+        bool unanchoredFragment = false;
+
+        vector<ExtendedSequence> encodings(n);
         for(uint64_t i=0; i<n; i++) {
             vector<Base> windowSequence;
             for(uint64_t j=region.begin; j<region.end; j++) {
@@ -710,19 +886,39 @@ namespace shasta2 {
                     windowSequence.push_back(Base(alignment[i][j]));
                 }
             }
-            ExtendedSequence e;
-            encodeExtended(windowSequence, encodeThreshold, e);
-            encoded.push_back(make_pair(e, weights[i]));
-            rowWeights.push_back(weights[i]);
-            if(not windowSequence.empty()) {
-                nonEmptyRows.push_back(i);
+            encodeExtended(windowSequence, encodeThreshold, encodings[i]);
+
+            if(windowSequence.empty()) {
+                emptyRows.push_back(i);
+                continue;
+            }
+
+            // Does the row reach each edge of the window? A row that stops short
+            // of an edge is padded there and is not anchored at it.
+            const bool reachesLeft = region.begin >= coverage[i].first;
+            const bool reachesRight = region.end <= coverage[i].second;
+
+            if(reachesLeft and reachesRight) {
+                encodedFixed.push_back(make_pair(encodings[i], weights[i]));
+                fixedRows.push_back(i);
+            } else if(reachesLeft) {
+                encodedLeftFixed.push_back(make_pair(encodings[i], weights[i]));
+                leftFixedRows.push_back(i);
+            } else if(reachesRight) {
+                encodedRightFixed.push_back(make_pair(encodings[i], weights[i]));
+                rightFixedRows.push_back(i);
+            } else {
+                unanchoredFragment = true;
+                break;
             }
         }
+        if(unanchoredFragment) {
+            return false;
+        }
 
-        // A region in which some row contributes nothing is left alone. Such a
-        // row cannot be given a symbol string to align, and guessing one would
-        // be a change to a row that has no evidence in this region.
-        if(nonEmptyRows.size() != n) {
+        // Theseus needs at least one sequence anchored on both sides to build
+        // the graph on. Without one there is nothing to align the rest against.
+        if(encodedFixed.empty()) {
             return false;
         }
 
@@ -741,11 +937,16 @@ namespace shasta2 {
         // alone is not an option: a single substitution anywhere in it breaks
         // the symbol strings, and on reads with a 1% substitution rate that
         // abandons 97% of the regions found. The repair would almost never fire.
-        bool uniform = true;
-        for(uint64_t i=1; i<n; i++) {
-            if(toString(encoded[i].first) != toString(encoded[0].first)) {
-                uniform = false;
-                break;
+        // This can only be answered for the rows that span the window; a row
+        // that covers part of it says nothing about the rest.
+        bool uniform = emptyRows.empty() and
+            encodedLeftFixed.empty() and encodedRightFixed.empty();
+        if(uniform) {
+            for(uint64_t i=1; i<n; i++) {
+                if(toString(encodings[i]) != toString(encodings[0])) {
+                    uniform = false;
+                    break;
+                }
             }
         }
 
@@ -753,8 +954,8 @@ namespace shasta2 {
         if(uniform) {
             for(uint64_t i=0; i<n; i++) {
                 extendedAlignment[i].clear();
-                extendedAlignment[i].reserve(encoded[i].first.size());
-                for(const auto& [symbol, runLength]: encoded[i].first) {
+                extendedAlignment[i].reserve(encodings[i].size());
+                for(const auto& [symbol, runLength]: encodings[i]) {
                     extendedAlignment[i].push_back(
                         make_pair(AlignedExtendedBase(symbol), runLength));
                 }
@@ -774,20 +975,135 @@ namespace shasta2 {
             // the misplaced base still in it. The window is also short and its
             // rows are nearly identical, which is the regime where the choice of
             // aligner matters least.
+            //
+            // Each row goes into the group matching how it sits in the window,
+            // so a read that reaches only one edge is aligned as anchored at
+            // that edge rather than as spanning.
             vector< vector<AlignedExtendedBase> > alignedSymbols;
-            theseusExtended(encoded, {}, {}, alignedSymbols);
-            SHASTA2_ASSERT(alignedSymbols.size() == n);
-            for(uint64_t i=0; i<n; i++) {
-                // Every row here is fixed on both sides, so theseus returns all
-                // of it and nothing is trimmed.
-                attachRunLengths(alignedSymbols[i], encoded[i].first,
-                    Anchoring::BothSides, extendedAlignment[i]);
+            theseusExtended(encodedFixed, encodedLeftFixed, encodedRightFixed,
+                alignedSymbols);
+            SHASTA2_ASSERT(alignedSymbols.size() ==
+                fixedRows.size() + leftFixedRows.size() + rightFixedRows.size());
+
+            // Theseus returns the rows in the order the groups were given.
+            //
+            // A sequence anchored on one side only is aligned semi globally, so
+            // theseus is free to leave the far end out of the alignment when it
+            // does not fit. Those symbols are then simply not in the row, and
+            // writing the row back would delete bases from a read. The repair is
+            // an alignment change and must never do that, so a trimmed row
+            // abandons the whole region and the aligner's own placement stands.
+            uint64_t k = 0;
+            bool trimmed = false;
+            const auto take = [&](const vector<uint64_t>& rows, Anchoring anchoring) {
+                for(const uint64_t i: rows) {
+                    uint64_t symbolCount = 0;
+                    for(const AlignedExtendedBase e: alignedSymbols[k]) {
+                        if(not e.isGap()) {
+                            ++symbolCount;
+                        }
+                    }
+                    if(symbolCount != encodings[i].size()) {
+                        trimmed = true;
+                        return;
+                    }
+                    attachRunLengths(alignedSymbols[k], encodings[i], anchoring,
+                        extendedAlignment[i]);
+                    ++k;
+                }
+            };
+            take(fixedRows, Anchoring::BothSides);
+            if(not trimmed) {
+                take(leftFixedRows, Anchoring::LeftOnly);
             }
+            if(not trimmed) {
+                take(rightFixedRows, Anchoring::RightOnly);
+            }
+            if(trimmed) {
+                return false;
+            }
+            SHASTA2_ASSERT(k == alignedSymbols.size());
+
+            // A row left out of the realignment is all gaps here. It had no base
+            // in this window to begin with, so nothing is lost.
+            const uint64_t length = extendedAlignment[fixedRows.front()].size();
+            for(const uint64_t i: emptyRows) {
+                extendedAlignment[i].assign(length,
+                    make_pair(AlignedExtendedBase::gap(), 0UL));
+            }
+        }
+
+        // The columns each row is entitled to vote in.
+        //
+        // This is known here and must not be left to be guessed from the gaps: a
+        // row anchored at both ends covers the whole window even if it starts
+        // with a gap, and that leading gap is a deletion the row is voting for.
+        //
+        // A row that is not anchored at an end stops there because the read
+        // stops, and the read is free to stop in the middle of a homopolymer
+        // run. The symbol it stops on is then a partial observation: its length
+        // is the part of the run that happens to be inside the read, not the
+        // length of the run. Letting it vote drags the consensus run length down
+        // towards the shortest overlap. On a run of 16 with five reads ending
+        // inside it, their 5, 12, 15, 7 and 7 outvoted the two reads that
+        // actually spanned the run and the consensus came out at 7.
+        //
+        // So the boundary symbol of an unanchored end does not vote at all,
+        // neither on the length nor on the symbol. It is still written into the
+        // alignment; it just does not get a say in what the consensus says
+        // there. Occasionally the read really does end exactly at a run boundary
+        // and a good vote is thrown away, but the two cases are indistinguishable
+        // from the alignment and the cost of the wrong guess is not symmetric.
+        const uint64_t windowLength = extendedAlignment.front().size();
+        vector< pair<uint64_t, uint64_t> > spans(n, make_pair(0UL, windowLength));
+        const auto firstBase = [&](uint64_t i) {
+            for(uint64_t j=0; j<windowLength; j++) {
+                if(not extendedAlignment[i][j].first.isGap()) {
+                    return j;
+                }
+            }
+            return windowLength;
+        };
+        const auto endBase = [&](uint64_t i) {
+            for(uint64_t j=windowLength; j>0; j--) {
+                if(not extendedAlignment[i][j - 1].first.isGap()) {
+                    return j;
+                }
+            }
+            return uint64_t(0);
+        };
+        // The half open span [first, end), with the boundary symbol dropped at
+        // each end that is not anchored. An empty result means the row has
+        // nothing left to say and abstains.
+        const auto span = [&](uint64_t i, bool anchoredLeft, bool anchoredRight) {
+            uint64_t first = anchoredLeft ? 0 : (firstBase(i) + 1);
+            uint64_t end = anchoredRight ? windowLength : endBase(i);
+            if(not anchoredRight) {
+                end = (end > 0) ? (end - 1) : 0;
+            }
+            if(first >= end) {
+                return make_pair(0UL, 0UL);
+            }
+            return make_pair(first, end);
+        };
+        for(const uint64_t i: leftFixedRows) {
+            spans[i] = span(i, true, false);
+        }
+        for(const uint64_t i: rightFixedRows) {
+            spans[i] = span(i, false, true);
+        }
+        for(const uint64_t i: emptyRows) {
+            spans[i] = make_pair(0UL, 0UL);
+        }
+
+        // Every row must have come out the same length.
+        for(const AlignedExtendedSequence& row: extendedAlignment) {
+            SHASTA2_ASSERT(row.size() == extendedAlignment.front().size());
         }
 
         // Vote, then expand.
         AlignedExtendedSequence alignedExtendedConsensus;
-        extendedConsensus(extendedAlignment, rowWeights, estimator,
+        extendedConsensus(extendedAlignment, weights, estimator, spans,
             newConsensus, alignedExtendedConsensus);
         expandExtendedAlignment(extendedAlignment, alignedExtendedConsensus,
             newRows, newAlignedConsensus);
@@ -822,7 +1138,8 @@ uint64_t shasta2::msa1(
     uint64_t encodeThreshold,
     RunLengthEstimator estimator,
     uint64_t flank,
-    uint64_t mergeDistance)
+    uint64_t mergeDistance,
+    const vector<Anchoring>& anchoring)
 {
     const uint64_t n = alignment.size();
     if(n == 0) {
@@ -839,11 +1156,17 @@ uint64_t shasta2::msa1(
     }
     SHASTA2_ASSERT(rowWeights.size() == n);
 
+    // The columns each row covers. An empty anchoring argument means every row
+    // is fixed on both sides and so covers the whole alignment, which is what
+    // abpoa always produces.
+    vector< pair<uint64_t, uint64_t> > coverage;
+    msa1RowCoverage(alignment, anchoring, coverage);
+
     // Find the regions worth repairing. Usually there are none, and then nothing
     // below runs and nothing is modified.
     vector<Msa1Region> regions;
     msa1FindBadRegions(alignment, alignedConsensus, trigger, threshold, flank,
-        mergeDistance, regions);
+        mergeDistance, coverage, regions);
     if(regions.empty()) {
         return 0;
     }
@@ -871,7 +1194,7 @@ uint64_t shasta2::msa1(
         vector< vector<AlignedBase> > newRows;
         vector<AlignedBase> newAlignedConsensus;
         vector< pair<Base, uint64_t> > newConsensus;
-        if(not msa1RepairRegion(alignment, region, rowWeights, encodeThreshold,
+        if(not msa1RepairRegion(alignment, region, rowWeights, coverage, encodeThreshold,
             estimator, newRows, newAlignedConsensus, newConsensus)) {
             continue;
         }
@@ -1706,21 +2029,70 @@ void shasta2::testMsa1Consensus()
 
     // A column that is a gap in a majority of rows becomes a gap and contributes
     // nothing to the consensus.
+    //
+    // The extra column goes in the middle, not at either end. At an end it would
+    // instead test the padding rule: a row whose first symbol is the inserted C
+    // is the only one covering that column, and the rows that stop short of it
+    // abstain rather than voting for a gap, so the C would win. That rule is
+    // tested separately below.
     {
         vector<AlignedExtendedSequence> gapAlignment = alignment;
+        const uint64_t column = gapAlignment.front().size() / 2;
         for(AlignedExtendedSequence& row: gapAlignment) {
-            row.insert(row.begin(), make_pair(AlignedExtendedBase::gap(), 0UL));
+            row.insert(row.begin() + int64_t(column),
+                make_pair(AlignedExtendedBase::gap(), 0UL));
         }
-        gapAlignment[0][0] = make_pair(
+        gapAlignment[0][column] = make_pair(
             AlignedExtendedBase::fromCharacter('C'), 1UL);
 
         vector< pair<Base, uint64_t> > gapConsensus;
         AlignedExtendedSequence gapAlignedConsensus;
         extendedConsensus(gapAlignment, weights, RunLengthEstimator::Mode,
             gapConsensus, gapAlignedConsensus);
-        SHASTA2_ASSERT(gapAlignedConsensus[0].first.isGap());
-        SHASTA2_ASSERT(gapAlignedConsensus[0].second == 0);
+        SHASTA2_ASSERT(gapAlignedConsensus[column].first.isGap());
+        SHASTA2_ASSERT(gapAlignedConsensus[column].second == 0);
         SHASTA2_ASSERT(msa1ToString(gapConsensus) == consensusString);
+    }
+
+
+
+    // Padding at the ends of a row is not a vote for a gap.
+    //
+    // Two rows are cut back to the second half of the alignment, as a read
+    // constrained on the right only comes out of theseus. The part they do not
+    // cover is padded with the same gap symbol used for a deletion, and if that
+    // padding voted it would carry the column and delete the first half of the
+    // consensus. Instead those rows abstain there and the consensus is unchanged.
+    {
+        vector<AlignedExtendedSequence> paddedAlignment = alignment;
+        const uint64_t column = paddedAlignment.front().size() / 2;
+        for(uint64_t i=0; i<paddedAlignment.size(); i++) {
+            if(i == 0) {
+                continue;
+            }
+            for(uint64_t j=0; j<column; j++) {
+                paddedAlignment[i][j] = make_pair(AlignedExtendedBase::gap(), 0UL);
+            }
+        }
+
+        vector< pair<Base, uint64_t> > paddedConsensus;
+        AlignedExtendedSequence paddedAlignedConsensus;
+        extendedConsensus(paddedAlignment, weights, RunLengthEstimator::Mode,
+            paddedConsensus, paddedAlignedConsensus);
+        SHASTA2_ASSERT(msa1ToString(paddedConsensus) == consensusString);
+
+        // Told explicitly that every row is anchored on both sides, the same
+        // gaps are deletions and the first half does go away. The two readings
+        // are genuinely different, which is why the caller has to say which one
+        // applies rather than have it guessed.
+        const vector< pair<uint64_t, uint64_t> > spans(
+            paddedAlignment.size(),
+            make_pair(0UL, paddedAlignment.front().size()));
+        extendedConsensus(paddedAlignment, weights, RunLengthEstimator::Mode,
+            spans, paddedConsensus, paddedAlignedConsensus);
+        for(uint64_t j=0; j<column; j++) {
+            SHASTA2_ASSERT(paddedAlignedConsensus[j].first.isGap());
+        }
     }
 
 
@@ -2062,7 +2434,7 @@ void shasta2::testMsa1Repair()
         }
 
         vector<Msa1Region> regions;
-        msa1FindBadRegions(a, ac, trigger, threshold, 10, 20, regions);
+        msa1FindBadRegions(a, ac, trigger, threshold, 10, 20, {}, regions);
         cout << "Found " << regions.size() << " bad region(s) in the real alignment." << endl;
         SHASTA2_ASSERT(not regions.empty());
 
@@ -2131,7 +2503,7 @@ void shasta2::testMsa1Repair()
         vector< pair<Base, uint64_t> > c = consensus;
 
         vector<Msa1Region> regions;
-        msa1FindBadRegions(a, ac, trigger, threshold, 10, 20, regions);
+        msa1FindBadRegions(a, ac, trigger, threshold, 10, 20, {}, regions);
         SHASTA2_ASSERT(not regions.empty());
 
         // Record the columns before the first region and after the last one.
@@ -2184,7 +2556,7 @@ void shasta2::testMsa1Repair()
         // Which consensus bases lie inside a region, worked out before the
         // repair moves anything.
         vector<Msa1Region> regions;
-        msa1FindBadRegions(a, ac, trigger, threshold, 10, 20, regions);
+        msa1FindBadRegions(a, ac, trigger, threshold, 10, 20, {}, regions);
         SHASTA2_ASSERT(not regions.empty());
         vector<bool> isInsideRegion(c.size(), false);
         {
@@ -2397,7 +2769,17 @@ void shasta2::testMsa1Repair()
             {A12 + "G" + string(10, '-') + A11, A10 + "--G" + string(10, '-') + A11,
              A12 + "G" + string(10, '-') + A11},
             {string(9, 'A') + "---G" + A11, string(10, 'A') + "--G" + A11,
-             string(11, 'A') + "-G" + A11, string(12, 'A') + "G" + A11}
+             string(11, 'A') + "-G" + A11, string(12, 'A') + "G" + A11},
+            // Reads constrained on one side only. Theseus pads the part of the
+            // alignment such a read does not cover with the same '-' it uses for
+            // a deletion, so these rows look like rows full of deletions and are
+            // not. They must not vote where they do not reach.
+            {A12 + "G" + A11, A12 + "G" + A11, string(13, '-') + A11},
+            {A12 + "G" + A11, string(13, '-') + A11, string(13, '-') + A11},
+            {A12 + "G" + A11, A12 + string(12, '-'), A12 + string(12, '-')},
+            {A12 + "G" + A11, A12 + string(12, '-'), string(13, '-') + A11},
+            {A12 + "G" + A11, string(14, '-') + string(10, 'A'),
+             string(14, '-') + string(10, 'A')}
         };
         for(const Msa1Trigger t: {Msa1Trigger::PatternOnly, Msa1Trigger::AnyLongRun}) {
             uint64_t repairedCases = 0;
@@ -2410,6 +2792,90 @@ void shasta2::testMsa1Repair()
                 ((t == Msa1Trigger::PatternOnly) ? "pattern" : "any long run") <<
                 " trigger, " << repairedCases << " of them repaired." << endl;
             SHASTA2_ASSERT(repairedCases > 0);
+        }
+
+
+
+        // Reads constrained on one side only, checked on the consensus rather
+        // than only on the invariants.
+        //
+        // Theseus pads the part of the alignment a read does not cover with the
+        // same '-' it uses for a deletion, and nothing in the alignment tells
+        // the two apart. Two padded rows against one that reaches will carry a
+        // column if the padding is allowed to vote, and the consensus then loses
+        // bases that every read covering them agrees on.
+        {
+            const string truth = A12 + "G" + A11;
+            const auto check = [&](
+                const vector<string>& rows,
+                const vector<Anchoring>& anchoring,
+                const string& expected) {
+                vector< vector<AlignedBase> > a;
+                for(const string& row: rows) {
+                    a.push_back(vectorOfAlignedBasesFromString(row));
+                }
+                const vector<uint64_t> w(a.size(), 1);
+
+                // Plain column majority, which is what an aligner that counts
+                // padding as a gap produces.
+                vector<AlignedBase> ac;
+                vector< pair<Base, uint64_t> > c;
+                for(uint64_t j=0; j<a.front().size(); j++) {
+                    array<uint64_t, 5> t;
+                    fill(t.begin(), t.end(), 0);
+                    for(uint64_t i=0; i<a.size(); i++) {
+                        t[a[i][j].value] += w[i];
+                    }
+                    const auto it = std::ranges::max_element(t);
+                    const AlignedBase b = AlignedBase::fromInteger(uint64_t(it - t.begin()));
+                    ac.push_back(b);
+                    if(not b.isGap()) {
+                        c.push_back(make_pair(Base(b), *it));
+                    }
+                }
+
+                msa1(a, ac, c, w, Msa1Trigger::AnyLongRun,
+                    defaultHomopolymerThreshold, 1, RunLengthEstimator::Mode,
+                    10, 20, anchoring);
+                SHASTA2_ASSERT(msa1ToString(c) == expected);
+            };
+            const Anchoring both = Anchoring::BothSides;
+            const Anchoring left = Anchoring::LeftOnly;
+            const Anchoring right = Anchoring::RightOnly;
+
+            // One padded row, then a padded majority, then the mirror image, then
+            // both kinds at once. In every case the answer is the whole sequence.
+            check({truth, truth, string(13, '-') + A11},
+                {both, both, right}, truth);
+            check({truth, string(13, '-') + A11, string(13, '-') + A11},
+                {both, right, right}, truth);
+            check({truth, A12 + string(12, '-'), A12 + string(12, '-')},
+                {both, left, left}, truth);
+            check({truth, A12 + string(12, '-'), string(13, '-') + A11},
+                {both, left, right}, truth);
+
+            // Two reads that start inside the second run, so all they carry of it
+            // is the 10 bases after their own start. That says the run is at
+            // least 10, not that it is 10, so it must not vote: counting it would
+            // give mode{11, 10, 10} = 10 and shorten a run on the strength of
+            // where the reads happen to begin.
+            check({truth, string(14, '-') + string(10, 'A'),
+                string(14, '-') + string(10, 'A')}, {both, right, right}, truth);
+
+            // No read spans the window, so there is nothing to align the rest
+            // against and the aligner's own placement has to stand.
+            check({A12 + string(12, '-'), string(13, '-') + A11},
+                {left, right}, A12 + A11);
+
+            // The same rows, but every read really is fixed on both sides, as
+            // abpoa always reports. Now the gaps are deletions and a majority of
+            // deletions is a deletion. The two readings differ, which is why the
+            // caller has to say which one applies.
+            check({truth, string(13, '-') + A11, string(13, '-') + A11},
+                {both, both, both}, A11);
+
+            cout << "Reads constrained on one side only do not vote outside "
+                "the part of the alignment they cover." << endl;
         }
 
 

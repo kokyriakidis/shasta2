@@ -157,17 +157,51 @@ namespace shasta2 {
     // long, which is the median. It would also let a base bordering a run share
     // a column with the run again, which is the defect being fixed.
     //
+    // A row votes only inside the columns it covers, and abstains outside them.
+    //
+    // A read constrained on one side only does not reach across the whole
+    // alignment, and both abpoa and theseus pad the part it does not reach with
+    // the same '-' they use for a deletion. Nothing in the alignment
+    // distinguishes the two. Counting that padding as a vote for a gap produces
+    // false deletions: with two padded rows against one that reaches, the
+    // padding wins and the consensus loses bases that every read covering them
+    // agrees on.
+    //
+    // Gaps inside a row's span are real deletions and do vote.
+    //
     // Build the alignment rows with attachRunLengths().
     void extendedConsensus(
         const vector<AlignedExtendedSequence>& alignment,
         const vector<uint64_t>& weights,
         RunLengthEstimator estimator,
 
+        // The columns each row covers, as half open intervals, one per row.
+        //
+        // Pass this when the spans are known, which is whenever the rows came
+        // out of an aligner that was told which end each sequence is anchored
+        // at. A row anchored at both ends covers the whole alignment, gaps
+        // included, and saying so is not the same as guessing from its gaps: a
+        // leading gap in such a row is a deletion, and the guess would read it
+        // as padding and silently drop the row's vote.
+        //
+        // An empty interval means the row abstains everywhere.
+        const vector< pair<uint64_t, uint64_t> >& spans,
+
         // The consensus sequence and its coverage.
         vector< pair<Base, uint64_t> >& consensus,
 
         // The aligned consensus: one symbol per column, with its voted run
         // length. A gap column has a gap with length 0.
+        AlignedExtendedSequence& alignedConsensus);
+
+    // As above, but with the span of each row inferred as the columns between
+    // its first and last non-gap symbol. Use this only when the anchoring is not
+    // known; it cannot tell a leading deletion from padding and assumes padding.
+    void extendedConsensus(
+        const vector<AlignedExtendedSequence>& alignment,
+        const vector<uint64_t>& weights,
+        RunLengthEstimator estimator,
+        vector< pair<Base, uint64_t> >& consensus,
         AlignedExtendedSequence& alignedConsensus);
 
 
@@ -316,7 +350,23 @@ namespace shasta2 {
         uint64_t threshold,
         uint64_t flank,
         uint64_t mergeDistance,
+
+        // The columns each row covers, as half open intervals, one per row.
+        // See the anchoring argument of msa1(). May be empty, in which case
+        // every row covers the whole alignment.
+        const vector< pair<uint64_t, uint64_t> >& coverage,
+
         vector<Msa1Region>& regions);
+
+
+    // Turn the anchoring of each row into the columns it covers.
+    // A row anchored on both sides covers every column. One anchored on the left
+    // only covers up to its last base, and one anchored on the right only from
+    // its first base. A row with no base at all covers nothing.
+    void msa1RowCoverage(
+        const vector< vector<AlignedBase> >& alignment,
+        const vector<Anchoring>& anchoring,
+        vector< pair<uint64_t, uint64_t> >& coverage);
 
 
     // Repair the bad regions of an alignment and its consensus, in place.
@@ -413,7 +463,24 @@ namespace shasta2 {
         uint64_t flank = 10,
 
         // Discordant columns closer together than this are treated as one region.
-        uint64_t mergeDistance = 20);
+        uint64_t mergeDistance = 20,
+
+        // How each row is anchored, one entry per row. Empty means every row is
+        // anchored on both sides, which is what abpoa always produces.
+        //
+        // A read constrained on one side only does not reach across the whole
+        // alignment, and theseus pads the part it does not reach with the same
+        // '-' it uses for a deletion. Nothing in the alignment tells the two
+        // apart, so this has to come from the caller, which knows: it is the
+        // caller that put each read in the fixed, left fixed or right fixed
+        // group in the first place. Guessing from the gaps instead reads an
+        // ordinary read that happens to start a column late as a padded one and
+        // then declines to repair the region at all.
+        //
+        // A row's coverage follows from its anchoring: BothSides covers every
+        // column, LeftOnly covers up to its last base, RightOnly from its first.
+        // Outside that a row neither votes nor is realigned.
+        const vector<Anchoring>& anchoring = vector<Anchoring>());
 
 
     void testMsa1ExtendedBase();
