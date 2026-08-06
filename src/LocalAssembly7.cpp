@@ -1563,6 +1563,10 @@ void LocalAssembly7::runMsa1()
     if(triggerPresent) {
         SHASTA2_ASSERT(alignment.size() == msaSequenceIdsWithWeight.size());
         const vector<uint64_t> weights(alignment.size(), 1);
+
+        // The anchoring argument is left empty. Every sequence given to abpoa
+        // spans the whole assembly step, so every row is fixed on both sides and
+        // a gap in it is a deletion, never padding.
         repairedRegionCount = msa1(alignment, alignedConsensus, consensus, weights, trigger);
     }
     const auto t2 = steady_clock::now();
