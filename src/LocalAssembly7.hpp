@@ -280,6 +280,15 @@ private:
         const vector<uint64_t>& weights,
         const vector<Anchoring>& anchoring);
 
+    // Say what the repair did, or why it was not attempted. Shared by every
+    // aligner path so the wording cannot drift between them.
+    void writeRepairSummary(
+        const string& alignerName,
+        bool repair,
+        bool triggerPresent,
+        uint64_t repairedRegionCount,
+        double repairSeconds);
+
     // Gather the sequences for a Theseus run, split into the three groups
     // Theseus takes them in, and write the html table describing them.
     // Shared by runTheseus and runMsa1, which differ only in what they do with
