@@ -1502,28 +1502,35 @@ void LocalAssembly7::runMsa1()
         html << "</table>";
     }
 
+    // What makes a region worth repairing. This decides both what the prescreen
+    // below looks for and what the repair acts on, and the two must agree, or
+    // the prescreen would withhold an alignment the repair would have used.
+    const Msa1Trigger trigger = Msa1Trigger::AnyLongRun;
+    const string triggerDescription = (trigger == Msa1Trigger::PatternOnly) ?
+        "a long homopolymer run bordered by a single base" :
+        "a long homopolymer run";
+
     // Decide, before running abpoa, whether the repair could have anything to
     // do here. The test is run on the READS, for two reasons. It needs no
     // alignment, so it can be answered before abpoa runs and abpoa can then be
     // asked for an alignment only when one will be used. And the reads have not
-    // been through any vote, so they still show the pattern even in the cases
-    // where the consensus would have lost the misplaced base altogether.
+    // been through any vote, so they still show what we are looking for even in
+    // the cases where the consensus would have lost the misplaced base
+    // altogether.
     //
     // It is run on the DISTINCT sequences, before they are repeated by coverage
     // below. Scanning the repeats would answer the same question several times
     // over.
     //
-    // In the common case this is false, abpoa runs exactly as it does in
-    // runAbpoa, and nothing else below has any effect. On real reads the pattern
-    // is present in a few percent of bubble arms of the usual size.
-    // The trigger decides both what the prescreen looks for and what the
-    // repair acts on, so the two must agree or the prescreen would withhold an
-    // alignment the repair would have used.
-    const Msa1Trigger trigger = Msa1Trigger::AnyLongRun;
-    bool patternPresent = false;
+    // How often this is true depends on the trigger. With PatternOnly it is a
+    // few percent of bubble arms of the usual size, and abpoa is then almost
+    // never asked for an alignment it will not use. With AnyLongRun it is most
+    // of them, 67% at 200 bases and 99% at 1000, so the prescreen saves much
+    // less and is mostly deciding nothing.
+    bool triggerPresent = false;
     for(const uint64_t sequenceId: sequenceIds) {
         if(msa1TriggerPresent(sequences[sequenceId].sequence, trigger)) {
-            patternPresent = true;
+            triggerPresent = true;
             break;
         }
     }
@@ -1542,7 +1549,7 @@ void LocalAssembly7::runMsa1()
 
     // The alignment is normally computed only for the html display. It is also
     // needed when there is something to repair.
-    const bool computeAlignment = bool(html) or patternPresent;
+    const bool computeAlignment = bool(html) or triggerPresent;
 
     vector< pair<Base, uint64_t> > consensus;
     vector< vector<AlignedBase> > alignment;
@@ -1553,7 +1560,7 @@ void LocalAssembly7::runMsa1()
 
     // Repair the bad regions, if any. Everything outside them is untouched.
     uint64_t repairedRegionCount = 0;
-    if(patternPresent) {
+    if(triggerPresent) {
         SHASTA2_ASSERT(alignment.size() == msaSequenceIdsWithWeight.size());
         const vector<uint64_t> weights(alignment.size(), 1);
         repairedRegionCount = msa1(alignment, alignedConsensus, consensus, weights, trigger);
@@ -1566,13 +1573,19 @@ void LocalAssembly7::runMsa1()
 
     if(html) {
         html << "<br>Abpoa completed in " << seconds(t1-t0) << " seconds.";
-        if(patternPresent) {
-            html << "<br>The reads contain a long homopolymer run bordered by a "
-                "single base. Repair completed in " << seconds(t2-t1) <<
-                " seconds and modified " << repairedRegionCount << " region(s).";
+        if(triggerPresent) {
+            html << "<br>The reads contain " << triggerDescription <<
+                ". Repair completed in " << seconds(t2-t1) << " seconds and "
+                "rebuilt " << repairedRegionCount << " region(s) of the alignment. "
+                "Everything outside those regions, including the coverage of the "
+                "consensus, is exactly as abpoa left it.";
+            if(repairedRegionCount == 0) {
+                html << " No region was found that could be improved.";
+            }
         } else {
-            html << "<br>The reads contain no long homopolymer run bordered by a "
-                "single base, so no repair was attempted.";
+            html << "<br>The reads contain no " << triggerDescription <<
+                ", so no repair was attempted and the consensus is exactly as "
+                "abpoa computed it.";
         }
         writeAlignment(alignment, alignedConsensus, consensus, msaSequenceIdsWithWeight);
         writeConsensus(consensus);
