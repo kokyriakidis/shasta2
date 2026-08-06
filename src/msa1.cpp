@@ -54,10 +54,14 @@ void shasta2::encodeExtended(
     uint64_t threshold,
     ExtendedSequence& encoded)
 {
-    // A threshold of 0 would make every run, including a run of length 1,
-    // encode to a bare poly symbol. That loses the length of every run and is
-    // exactly the plain RLE behavior this alphabet exists to avoid.
-    SHASTA2_ASSERT(threshold > 0);
+    // A threshold of 0 is allowed and means every run, including a run of one
+    // base, becomes a poly symbol. The symbol string is then the run length
+    // encoding of the sequence and carries no length information at all.
+    //
+    // That is not the same as plain RLE, which is what rle.hpp does and what
+    // this alphabet exists to improve on. Plain RLE throws the lengths away.
+    // Here they move into the second half of the pair and are voted on, so the
+    // representation stays lossless.
 
     encoded.clear();
 
@@ -1352,6 +1356,37 @@ void shasta2::testMsa1ExtendedBase()
         encodeExtended(vector<Base>(threshold, Base::fromCharacter('A')),
             threshold, atThreshold);
         SHASTA2_ASSERT(atThreshold.size() == threshold);
+    }
+
+
+
+    // A threshold of 0 is legal and makes every run a poly symbol, so the
+    // symbol string becomes the run length encoding of the sequence. It stays
+    // lossless: the lengths move into the pairs.
+    {
+        const vector<Base> sequence = vectorOfBasesFromString("AACCCGTTTT");
+        ExtendedSequence encoded;
+        encodeExtended(sequence, 0, encoded);
+        SHASTA2_ASSERT(toString(encoded) == "acgt");
+        for(const auto& [symbol, runLength]: encoded) {
+            SHASTA2_ASSERT(symbol.isPoly());
+        }
+        vector<Base> decoded;
+        decodeExtended(encoded, decoded);
+        SHASTA2_ASSERT(decoded == sequence);
+
+        // Two sequences differing only in run lengths encode identically at 0,
+        // which is what lets them stack with no aligner, but not at 1, where a
+        // run of one stays plain and a run of two does not.
+        ExtendedSequence a0, b0, a1, b1;
+        const vector<Base> x = vectorOfBasesFromString("GGGGGTACAAGT");
+        const vector<Base> y = vectorOfBasesFromString("GGGGGTACAGTT");
+        encodeExtended(x, 0, a0);
+        encodeExtended(y, 0, b0);
+        encodeExtended(x, 1, a1);
+        encodeExtended(y, 1, b1);
+        SHASTA2_ASSERT(toString(a0) == toString(b0));
+        SHASTA2_ASSERT(toString(a1) != toString(b1));
     }
 
 
