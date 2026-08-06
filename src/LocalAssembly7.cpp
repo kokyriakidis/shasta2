@@ -105,7 +105,7 @@ void LocalAssembly7::run()
         runDeBruijn();
         break;
     case Method::Msa1:
-        runMsa1();
+        runMsa1(true);
         break;
     default:
         throw runtime_error("Invalid LocalAssembly7 Method.");
@@ -1344,7 +1344,14 @@ void LocalAssembly7::runAbpoaOrPoasta(bool usePoasta)
 
 // If useAll is true, this uses oriented reads that
 // appear only in the left or right anchor.
-void LocalAssembly7::runTheseus(bool useAll)
+// See LocalAssembly7.hpp for comments.
+void LocalAssembly7::gatherTheseusSequences(
+    bool useAll,
+    const string& htmlTitle,
+    vector< pair<vector<Base>, uint64_t> >& bothSidesFixedSequences,
+    vector< pair<vector<Base>, uint64_t> >& leftFixedSequences,
+    vector< pair<vector<Base>, uint64_t> >& rightFixedSequences,
+    vector< pair<uint64_t, uint64_t> >& msaSequenceIdsWithWeight)
 {
     // Get the sequenceIds to be used, sorted in order of decreasing coverage.
     vector<uint64_t> bothSidesFixedSequenceIds;
@@ -1358,7 +1365,7 @@ void LocalAssembly7::runTheseus(bool useAll)
 
     if(html) {
         html <<
-            "<h3>Local assembly with Theseus</h3>"
+            "<h3>" << htmlTitle << "</h3>"
             "The local assembly will use the following "
             "sequences of oriented reads on both anchors, "
             "presented to Theseus in this order."
@@ -1402,8 +1409,10 @@ void LocalAssembly7::runTheseus(bool useAll)
 
     // Gather the sequences to be passed to theseus.
     uint64_t totalWeight = 0;
-    vector< pair<uint64_t, uint64_t> > msaSequenceIdsWithWeight;
-    vector< pair<vector<Base>, uint64_t> > bothSidesFixedSequences;
+    msaSequenceIdsWithWeight.clear();
+    bothSidesFixedSequences.clear();
+    leftFixedSequences.clear();
+    rightFixedSequences.clear();
     for(const uint64_t sequenceId: bothSidesFixedSequenceIds) {
         const SequenceInfo& sequenceInfo = sequences[sequenceId];
         const uint64_t coverage = sequenceInfo.coverage();
@@ -1411,8 +1420,6 @@ void LocalAssembly7::runTheseus(bool useAll)
         msaSequenceIdsWithWeight.push_back(make_pair(sequenceId, coverage));
         totalWeight += coverage;
     }
-    vector< pair<vector<Base>, uint64_t> > leftFixedSequences;
-    vector< pair<vector<Base>, uint64_t> > rightFixedSequences;
     if(useAll) {
         for(const uint64_t sequenceId: leftFixedSequenceIds) {
             const SequenceInfo& sequenceInfo = sequences[sequenceId];
@@ -1434,6 +1441,19 @@ void LocalAssembly7::runTheseus(bool useAll)
         theseusWriteFile(bothSidesFixedSequences, leftFixedSequences, rightFixedSequences,
             "Pericles.fasta");
     }
+}
+
+
+
+void LocalAssembly7::runTheseus(bool useAll)
+{
+    vector< pair<vector<Base>, uint64_t> > bothSidesFixedSequences;
+    vector< pair<vector<Base>, uint64_t> > leftFixedSequences;
+    vector< pair<vector<Base>, uint64_t> > rightFixedSequences;
+    vector< pair<uint64_t, uint64_t> > msaSequenceIdsWithWeight;
+    gatherTheseusSequences(useAll, "Local assembly with Theseus",
+        bothSidesFixedSequences, leftFixedSequences, rightFixedSequences,
+        msaSequenceIdsWithWeight);
 
     // Run Theseus.
     vector< pair<Base, uint64_t> > consensus;
@@ -1464,43 +1484,34 @@ void LocalAssembly7::runTheseus(bool useAll)
 
 
 
-// Local assembly with abpoa, followed by a local repair of the bad homopolymer
-// regions of the alignment it produces.
+// Local assembly with Theseus, followed by a local repair of the bad
+// homopolymer regions of the alignment it produces.
 //
-// This is the same as runAbpoa, plus one extra step. abpoa runs exactly as it
-// always does, and what it produces is then handed to msa1, which looks for the
-// regions where a base bordering a long homopolymer run has been misplaced and
-// rebuilds only those. In most local assemblies none are found and the result is
-// bit for bit what runAbpoa would have given.
+// This is the same as runTheseus(true), plus one extra step. Theseus runs
+// exactly as it always does, and what it produces is then handed to msa1, which
+// looks for the regions where a base bordering a long homopolymer run has been
+// misplaced and rebuilds only those. Everything outside them, including the
+// coverage of the consensus, is left exactly as Theseus computed it.
+//
+// Theseus rather than abpoa, for two reasons. It is the aligner that takes
+// reads constrained on one side only, so it is the one whose alignment has
+// reads that do not span it, and handling those is most of what the repair has
+// to get right. And it accepts the extended alphabet unchanged, so the repair's
+// own realignment is the same aligner as the one that produced the alignment
+// being repaired, rather than a second opinion from a different one.
 //
 // Having this as a separate method makes the comparison a one flag change:
-// --local-assembly-method Abpoa is without the repair, Msa1 is with it.
-void LocalAssembly7::runMsa1()
+// --local-assembly-method TheseusAll is without the repair, Msa1 is with it.
+void LocalAssembly7::runMsa1(bool useAll)
 {
-    // Get the sequenceIds to be used, sorted in order of decreasing coverage.
-    vector<uint64_t> sequenceIds;
-    getSequencesOnBothAnchors(sequenceIds);
-
-    if(html) {
-        html <<
-            "<h3>Local assembly with abpoa and homopolymer repair</h3>"
-            "The local assembly will use the following "
-            "sequences of oriented reads on both anchors, "
-            "presented to abpoa in this order of decreasing coverage."
-            "<br>Each sequence is presented to abpoa a number of times "
-            "equal to its coverage, with (implicit) weight 1."
-            "<br><br><table>"
-            "<tr><th>Sequence<br>id<th>Coverage<th>Length";
-        for(const uint64_t sequenceId: sequenceIds) {
-            const SequenceInfo& sequenceInfo = sequences[sequenceId];
-            html <<
-                "<tr>"
-                "<td class=centered>" << sequenceId <<
-                "<td class=centered>" << sequenceInfo.coverage() <<
-                "<td class=centered>" << sequenceInfo.sequence.size();
-        }
-        html << "</table>";
-    }
+    vector< pair<vector<Base>, uint64_t> > bothSidesFixedSequences;
+    vector< pair<vector<Base>, uint64_t> > leftFixedSequences;
+    vector< pair<vector<Base>, uint64_t> > rightFixedSequences;
+    vector< pair<uint64_t, uint64_t> > msaSequenceIdsWithWeight;
+    gatherTheseusSequences(useAll,
+        "Local assembly with Theseus and homopolymer repair",
+        bothSidesFixedSequences, leftFixedSequences, rightFixedSequences,
+        msaSequenceIdsWithWeight);
 
     // What makes a region worth repairing. This decides both what the prescreen
     // below looks for and what the repair acts on, and the two must agree, or
@@ -1510,40 +1521,32 @@ void LocalAssembly7::runMsa1()
         "a long homopolymer run bordered by a single base" :
         "a long homopolymer run";
 
-    // Decide, before running abpoa, whether the repair could have anything to
+    // Decide, before running Theseus, whether the repair could have anything to
     // do here. The test is run on the READS, for two reasons. It needs no
-    // alignment, so it can be answered before abpoa runs and abpoa can then be
-    // asked for an alignment only when one will be used. And the reads have not
-    // been through any vote, so they still show what we are looking for even in
-    // the cases where the consensus would have lost the misplaced base
+    // alignment, so it can be answered before Theseus runs and Theseus can then
+    // be asked for an alignment only when one will be used. And the reads have
+    // not been through any vote, so they still show what we are looking for even
+    // in the cases where the consensus would have lost the misplaced base
     // altogether.
     //
-    // It is run on the DISTINCT sequences, before they are repeated by coverage
-    // below. Scanning the repeats would answer the same question several times
-    // over.
-    //
     // How often this is true depends on the trigger. With PatternOnly it is a
-    // few percent of bubble arms of the usual size, and abpoa is then almost
-    // never asked for an alignment it will not use. With AnyLongRun it is most
-    // of them, 67% at 200 bases and 99% at 1000, so the prescreen saves much
-    // less and is mostly deciding nothing.
+    // third of loci of the usual size, and Theseus is then usually not asked for
+    // an alignment it will not use. With AnyLongRun, at the default threshold,
+    // it is essentially all of them, so the prescreen decides nothing and only
+    // the cost of the scan is left. It is kept because it is what makes the
+    // trigger adjustable without also having to think about when the alignment
+    // is available.
     bool triggerPresent = false;
-    for(const uint64_t sequenceId: sequenceIds) {
-        if(msa1TriggerPresent(sequences[sequenceId].sequence, trigger)) {
-            triggerPresent = true;
-            break;
+    for(const auto* group: {&bothSidesFixedSequences, &leftFixedSequences,
+        &rightFixedSequences}) {
+        for(const auto& [sequence, coverage]: *group) {
+            if(msa1TriggerPresent(sequence, trigger)) {
+                triggerPresent = true;
+                break;
+            }
         }
-    }
-
-    // Abpoa does not support weights, so each sequence is entered a number of
-    // times equal to its coverage. This is what runAbpoa does.
-    vector< vector<Base> > msaSequences;
-    vector< pair<uint64_t, uint64_t> > msaSequenceIdsWithWeight;
-    for(const uint64_t sequenceId: sequenceIds) {
-        const SequenceInfo& sequenceInfo = sequences[sequenceId];
-        for(uint64_t i=0; i<sequenceInfo.coverage(); i++) {
-            msaSequences.push_back(sequenceInfo.sequence);
-            msaSequenceIdsWithWeight.push_back(make_pair(sequenceId, 1));
+        if(triggerPresent) {
+            break;
         }
     }
 
@@ -1555,19 +1558,50 @@ void LocalAssembly7::runMsa1()
     vector< vector<AlignedBase> > alignment;
     vector<AlignedBase> alignedConsensus;
     const auto t0 = steady_clock::now();
-    abpoa(msaSequences, consensus, alignment, alignedConsensus, computeAlignment);
+    theseus(
+        bothSidesFixedSequences, leftFixedSequences, rightFixedSequences,
+        consensus, alignment, alignedConsensus, computeAlignment);
     const auto t1 = steady_clock::now();
 
     // Repair the bad regions, if any. Everything outside them is untouched.
     uint64_t repairedRegionCount = 0;
     if(triggerPresent) {
         SHASTA2_ASSERT(alignment.size() == msaSequenceIdsWithWeight.size());
-        const vector<uint64_t> weights(alignment.size(), 1);
 
-        // The anchoring argument is left empty. Every sequence given to abpoa
-        // spans the whole assembly step, so every row is fixed on both sides and
-        // a gap in it is a deletion, never padding.
-        repairedRegionCount = msa1(alignment, alignedConsensus, consensus, weights, trigger);
+        // Theseus returns the rows in the order it was given the groups, so how
+        // each row is anchored is known here and does not have to be guessed
+        // from where its gaps are.
+        //
+        // This matters. A read constrained on one side only does not reach
+        // across the whole alignment, and Theseus pads the part it does not
+        // reach with the same '-' it uses for a deletion. Counting that padding
+        // as a deletion deletes bases every read covering them agrees on;
+        // guessing which gaps are padding instead reads an ordinary read that
+        // starts a column late as a padded one, and then declines to repair.
+        vector<Anchoring> anchoring;
+        anchoring.reserve(alignment.size());
+        for(uint64_t i=0; i<bothSidesFixedSequences.size(); i++) {
+            anchoring.push_back(Anchoring::BothSides);
+        }
+        for(uint64_t i=0; i<leftFixedSequences.size(); i++) {
+            anchoring.push_back(Anchoring::LeftOnly);
+        }
+        for(uint64_t i=0; i<rightFixedSequences.size(); i++) {
+            anchoring.push_back(Anchoring::RightOnly);
+        }
+        SHASTA2_ASSERT(anchoring.size() == alignment.size());
+
+        // Unlike abpoa, Theseus takes a weight per sequence, so each read
+        // appears once and votes with its coverage.
+        vector<uint64_t> weights;
+        weights.reserve(alignment.size());
+        for(const auto& [sequenceId, weight]: msaSequenceIdsWithWeight) {
+            weights.push_back(weight);
+        }
+
+        repairedRegionCount = msa1(alignment, alignedConsensus, consensus, weights,
+            trigger, defaultHomopolymerThreshold, 1, RunLengthEstimator::Mode,
+            10, 20, anchoring);
     }
     const auto t2 = steady_clock::now();
 
@@ -1576,20 +1610,20 @@ void LocalAssembly7::runMsa1()
     }
 
     if(html) {
-        html << "<br>Abpoa completed in " << seconds(t1-t0) << " seconds.";
+        html << "<br>Theseus completed in " << seconds(t1-t0) << " seconds.";
         if(triggerPresent) {
             html << "<br>The reads contain " << triggerDescription <<
                 ". Repair completed in " << seconds(t2-t1) << " seconds and "
                 "rebuilt " << repairedRegionCount << " region(s) of the alignment. "
                 "Everything outside those regions, including the coverage of the "
-                "consensus, is exactly as abpoa left it.";
+                "consensus, is exactly as Theseus left it.";
             if(repairedRegionCount == 0) {
                 html << " No region was found that could be improved.";
             }
         } else {
             html << "<br>The reads contain no " << triggerDescription <<
                 ", so no repair was attempted and the consensus is exactly as "
-                "abpoa computed it.";
+                "Theseus computed it.";
         }
         writeAlignment(alignment, alignedConsensus, consensus, msaSequenceIdsWithWeight);
         writeConsensus(consensus);

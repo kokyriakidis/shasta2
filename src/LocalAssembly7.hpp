@@ -259,7 +259,22 @@ private:
     void runAbpoa();
     void runPoasta();
     void runTheseus(bool useAll);
-    void runMsa1();
+    void runMsa1(bool useAll);
+
+    // Gather the sequences for a Theseus run, split into the three groups
+    // Theseus takes them in, and write the html table describing them.
+    // Shared by runTheseus and runMsa1, which differ only in what they do with
+    // the alignment afterwards.
+    void gatherTheseusSequences(
+        bool useAll,
+        const string& htmlTitle,
+        vector< pair<vector<Base>, uint64_t> >& bothSidesFixedSequences,
+        vector< pair<vector<Base>, uint64_t> >& leftFixedSequences,
+        vector< pair<vector<Base>, uint64_t> >& rightFixedSequences,
+
+        // One entry per sequence, in the order Theseus is given them and
+        // returns them: fixed on both sides, then left fixed, then right fixed.
+        vector< pair<uint64_t, uint64_t> >& msaSequenceIdsWithWeight);
 
 
     // Functions and data to find the consensus using a De Bruijn graph
