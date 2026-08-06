@@ -378,6 +378,32 @@ namespace shasta2 {
         // Nothing is lost by collapsing the short runs. Their lengths are not
         // discarded, they move into the run lengths and are voted on like any
         // other, which is the same treatment the long runs already get.
+        //
+        // A value of 0 is legal and goes one step further: every run becomes a
+        // poly symbol, so the symbol string is the run length encoding of the
+        // sequence and carries no length information whatever. That removes the
+        // last place the aligner can trade a length difference against a
+        // mismatch, which at a threshold of 1 still exists at the boundary
+        // between a run of one base, which stays plain, and a run of two, which
+        // collapses. Two reads differing only in run lengths can still produce
+        // different symbol strings at 1, and identical ones at 0.
+        //
+        // It was tried and is not the better choice. At 0 almost no window needs
+        // an aligner at all, 3182 of 3192 against 1018 of 3192 at a threshold of
+        // 1, which is a real robustness gain since theseus is the weaker
+        // aligner. But it is consistently less accurate, because the length of
+        // every run including the short ones then has to be recovered by a vote
+        // rather than being carried by the alignment:
+        //
+        //     encoding threshold             0     1
+        //     short runs, 4 and 3            1.21  1.06
+        //     runs at the boundary, 4/5      1.19  1.01
+        //     the same with 0.5% mismatches  1.20  1.04
+        //     everything else                identical
+        //
+        // Neither value produces a window made worse in 20000 random alignments
+        // with the protective check turned off, so the trade that motivated 0
+        // does not in fact show up in practice at 1. Accuracy decides it.
         uint64_t encodeThreshold = 1,
 
         // How the consensus length of a long homopolymer run is chosen.
