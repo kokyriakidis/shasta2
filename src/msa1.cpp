@@ -612,24 +612,29 @@ void shasta2::msa1RowCoverage(
     SHASTA2_ASSERT(anchoring.empty() or (anchoring.size() == alignment.size()));
 
     for(uint64_t i=0; i<alignment.size(); i++) {
-
-        // A row with no base at all covers nothing, whatever it is anchored to.
-        // It is not evidence of a deletion across the whole alignment; it is a
-        // row with nothing in it.
         const pair<uint64_t, uint64_t> baseSpan = msa1BaseSpan(alignment[i]);
-        if(baseSpan.first == baseSpan.second) {
-            coverage.push_back(make_pair(0UL, 0UL));
-            continue;
-        }
+        const bool noBases = (baseSpan.first == baseSpan.second);
+
         switch(anchoring.empty() ? Anchoring::BothSides : anchoring[i]) {
+
         case Anchoring::BothSides:
+            // Covers every column, gaps included. A row with no base at all
+            // still covers them: a read that is empty here has the whole thing
+            // deleted, and that is evidence, not absence.
             coverage.push_back(make_pair(0UL, alignmentLength));
             break;
+
         case Anchoring::LeftOnly:
-            coverage.push_back(make_pair(0UL, baseSpan.second));
+            // Covers up to its last base. Where its last base is has no answer
+            // if it has none, and a read with no base is not constrained to
+            // anything, so it covers nothing.
+            coverage.push_back(noBases ?
+                make_pair(0UL, 0UL) : make_pair(0UL, baseSpan.second));
             break;
+
         case Anchoring::RightOnly:
-            coverage.push_back(make_pair(baseSpan.first, alignmentLength));
+            coverage.push_back(noBases ?
+                make_pair(0UL, 0UL) : make_pair(baseSpan.first, alignmentLength));
             break;
         }
     }
@@ -657,10 +662,12 @@ void shasta2::msa1FindBadRegions(
     }
 
     // An empty coverage argument means every row covers the whole alignment.
-    vector< pair<uint64_t, uint64_t> > coverage = coverageArgument;
-    if(coverage.empty()) {
-        coverage.assign(alignment.size(), make_pair(0UL, alignmentLength));
+    vector< pair<uint64_t, uint64_t> > wholeAlignment;
+    if(coverageArgument.empty()) {
+        wholeAlignment.assign(alignment.size(), make_pair(0UL, alignmentLength));
     }
+    const vector< pair<uint64_t, uint64_t> >& coverage =
+        coverageArgument.empty() ? wholeAlignment : coverageArgument;
     SHASTA2_ASSERT(coverage.size() == alignment.size());
 
     // Seed a region on each long homopolymer run of each row.
@@ -856,9 +863,15 @@ namespace shasta2 {
         vector<uint64_t> leftFixedRows;
         vector<uint64_t> rightFixedRows;
 
-        // Rows with no base at all in the window. They have nothing to say here
-        // and nothing to lose, so they are left out of the realignment and come
-        // back as gaps, abstaining from the vote.
+        // Rows with no base at all in the window. There is nothing to align, so
+        // they are left out of the realignment and come back as gaps, which is
+        // what they already were and so loses nothing.
+        //
+        // Whether they vote is a different question, and the answer is not the
+        // same for all of them. A row that covers the window and has no base in
+        // it has the window deleted, and a deletion is a thing to vote for. A
+        // row that does not reach the window is simply not here. Both look
+        // identical in the alignment; the coverage tells them apart.
         vector<uint64_t> emptyRows;
 
         // A row reaching neither edge of the window.
@@ -1093,7 +1106,10 @@ namespace shasta2 {
             spans[i] = span(i, false, true);
         }
         for(const uint64_t i: emptyRows) {
-            spans[i] = make_pair(0UL, 0UL);
+            const bool coversWindow =
+                (region.begin >= coverage[i].first) and (region.end <= coverage[i].second);
+            spans[i] = coversWindow ?
+                make_pair(0UL, windowLength) : make_pair(0UL, 0UL);
         }
 
         // Every row must have come out the same length.
@@ -1411,6 +1427,18 @@ namespace shasta2 {
         string s;
         for(const AlignedBase b: v) {
             s.push_back(b.character());
+        }
+        return s;
+    }
+
+    // The bases of a row, with the gaps left out: the read it came from.
+    static string msa1Ungap(const vector<AlignedBase>& v)
+    {
+        string s;
+        for(const AlignedBase b: v) {
+            if(not b.isGap()) {
+                s.push_back(b.character());
+            }
         }
         return s;
     }
@@ -2621,27 +2649,48 @@ void shasta2::testMsa1Repair()
 
 
 
-    // A region where some row contributes no bases is left alone rather than
-    // guessed at.
+    // A row with no base in a region votes for a deletion there, and is outvoted
+    // when it is in the minority.
+    //
+    // Such a row has nothing to align, so it is left out of the realignment and
+    // comes back as the gaps it already was. That is not the same as leaving it
+    // out of the vote: it is fixed on both sides, so it covers this region and
+    // says the region is deleted. Here two rows say otherwise and the sequence
+    // stays.
     {
-        const vector<string> rows = {
-            "AAAAAAAAAAAAGAAAAAAAAAAA",
-            "AAAAAAAAAAAAGAAAAAAAAAAA",
-            "------------------------"};
+        const string sequence = "AAAAAAAAAAAAGAAAAAAAAAAA";
+        const vector<string> rows = {sequence, sequence, string(24, '-')};
         vector< vector<AlignedBase> > a;
         for(const string& r: rows) {
             a.push_back(vectorOfAlignedBasesFromString(r));
         }
-        vector<AlignedBase> ac = vectorOfAlignedBasesFromString(rows[0]);
+        vector<AlignedBase> ac = vectorOfAlignedBasesFromString(sequence);
         vector< pair<Base, uint64_t> > c;
-        for(const char ch: rows[0]) {
+        for(const char ch: sequence) {
             c.push_back(make_pair(Base::fromCharacter(ch), 2UL));
         }
         const vector<uint64_t> w(3, 1);
-        const auto aBefore = a;
-        const uint64_t repaired = msa1(a, ac, c, w, trigger, threshold);
-        SHASTA2_ASSERT(repaired == 0);
-        SHASTA2_ASSERT(a == aBefore);
+        msa1(a, ac, c, w, trigger, threshold);
+        SHASTA2_ASSERT(msa1ToString(c) == sequence);
+        SHASTA2_ASSERT(msa1Ungap(a[2]).empty());
+    }
+
+
+
+    // The same row in the majority, and now the deletion is the answer.
+    {
+        const string sequence = "AAAAAAAAAAAAGAAAAAAAAAAA";
+        const vector<string> rows = {sequence, string(24, '-'), string(24, '-')};
+        vector< vector<AlignedBase> > a;
+        for(const string& r: rows) {
+            a.push_back(vectorOfAlignedBasesFromString(r));
+        }
+        vector<AlignedBase> ac(24, AlignedBase::gap());
+        vector< pair<Base, uint64_t> > c;
+        const vector<uint64_t> w(3, 1);
+        msa1(a, ac, c, w, trigger, threshold);
+        SHASTA2_ASSERT(c.empty());
+        SHASTA2_ASSERT(msa1Ungap(a[0]) == sequence);
     }
 
 
