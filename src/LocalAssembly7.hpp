@@ -3,6 +3,7 @@
 // Shasta.
 #include "Base.hpp"
 #include "invalid.hpp"
+#include "msa1.hpp"
 #include "orderPairs.hpp"
 #include "ReadId.hpp"
 #include "shastaTypes.hpp"
@@ -254,12 +255,30 @@ private:
 
     void run();
     void runFastPath();
+
+    // Adaptive picks the aligner from the coverage and the length of this
+    // assembly step. Msa1 makes exactly the same choice and additionally repairs
+    // the bad homopolymer regions of whatever alignment comes back, so the two
+    // differ only by the repair and comparing them measures only the repair.
     void runAdaptive();
-    void runAbpoaOrPoasta(bool usePoasta);
+    void runMsa1();
+    void runAdaptiveOrMsa1(bool repair);
+
+    // The repair is available on every aligner, off by default.
+    void runAbpoaOrPoasta(bool usePoasta, bool repair = false);
     void runAbpoa();
     void runPoasta();
-    void runTheseus(bool useAll);
-    void runMsa1(bool useAll);
+    void runTheseus(bool useAll, bool repair = false);
+
+    // Rebuild the bad homopolymer regions of an alignment, in place. Returns the
+    // number of regions rebuilt. Pass an empty anchoring when every row spans the
+    // whole alignment, as it does for abpoa and poasta. See msa1.hpp.
+    uint64_t repairHomopolymerRegions(
+        vector< vector<AlignedBase> >& alignment,
+        vector<AlignedBase>& alignedConsensus,
+        vector< pair<Base, uint64_t> >& consensus,
+        const vector<uint64_t>& weights,
+        const vector<Anchoring>& anchoring);
 
     // Gather the sequences for a Theseus run, split into the three groups
     // Theseus takes them in, and write the html table describing them.

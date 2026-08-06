@@ -12,6 +12,19 @@
 #include "tmpDirectory.hpp"
 using namespace shasta2;
 
+// What makes a homopolymer region worth repairing.
+//
+// This decides both what the prescreen looks for and what the repair acts on,
+// and the two must agree: a prescreen looking for less than the repair acts on
+// would withhold an alignment the repair would have used.
+static const Msa1Trigger localAssembly7Msa1Trigger = Msa1Trigger::AnyLongRun;
+static string localAssembly7Msa1TriggerDescription()
+{
+    return (localAssembly7Msa1Trigger == Msa1Trigger::PatternOnly) ?
+        "a long homopolymer run bordered by a single base" :
+        "a long homopolymer run";
+}
+
 // Boost libraries.
 #include "boost/graph/dijkstra_shortest_paths.hpp"
 #include <boost/graph/iteration_macros.hpp>
@@ -105,7 +118,7 @@ void LocalAssembly7::run()
         runDeBruijn();
         break;
     case Method::Msa1:
-        runMsa1(true);
+        runMsa1();
         break;
     default:
         throw runtime_error("Invalid LocalAssembly7 Method.");
@@ -1267,7 +1280,7 @@ void LocalAssembly7::runPoasta()
 
 
 
-void LocalAssembly7::runAbpoaOrPoasta(bool usePoasta)
+void LocalAssembly7::runAbpoaOrPoasta(bool usePoasta, bool repair)
 {
     const string name = (usePoasta ? "Poasta" : "Abpoa");
 
@@ -1297,6 +1310,25 @@ void LocalAssembly7::runAbpoaOrPoasta(bool usePoasta)
         html << "</table>";
     }
 
+    // Decide, before running the aligner, whether the repair could have anything
+    // to do here. The test is run on the READS: it needs no alignment, so the
+    // aligner can be asked for one only when it will be used, and the reads have
+    // not been through any vote, so they still show what we are looking for even
+    // where the consensus would have lost the misplaced base altogether.
+    //
+    // It is run on the distinct sequences, before they are repeated by coverage
+    // below, since scanning the repeats would answer the same question twice.
+    bool triggerPresent = false;
+    if(repair) {
+        for(const uint64_t sequenceId: sequenceIds) {
+            if(msa1TriggerPresent(sequences[sequenceId].sequence,
+                localAssembly7Msa1Trigger)) {
+                triggerPresent = true;
+                break;
+            }
+        }
+    }
+
 
     // Abpoa and poasta don't support weights, so we have to enter each sequence
     // a number of times equal to its coverage.
@@ -1321,14 +1353,48 @@ void LocalAssembly7::runAbpoaOrPoasta(bool usePoasta)
     if(usePoasta) {
         poasta(msaSequences, consensus, alignment, alignedConsensus);
     } else {
-        const bool computeAlignment = bool(html);
+        // The alignment is normally computed only for the html display. It is
+        // also needed when there is something to repair.
+        const bool computeAlignment = bool(html) or triggerPresent;
         abpoa(msaSequences, consensus, alignment, alignedConsensus, computeAlignment);
     }
     const auto t1 = steady_clock::now();
     SHASTA2_ASSERT(alignment.size() == msaSequenceIdsWithWeight.size());
 
+    // Repair the bad regions, if any. Everything outside them is untouched.
+    uint64_t repairedRegionCount = 0;
+    if(triggerPresent) {
+        // Every sequence given to abpoa or poasta spans the whole assembly step,
+        // so every row is fixed on both sides and a gap in it is a deletion,
+        // never padding. That is what the empty anchoring says. Each sequence was
+        // entered once per unit of coverage, so every row votes with weight 1.
+        const vector<uint64_t> weights(alignment.size(), 1);
+        repairedRegionCount = repairHomopolymerRegions(
+            alignment, alignedConsensus, consensus, weights, {});
+    }
+    const auto t2 = steady_clock::now();
+
     if(html) {
         html << "<br>" << name << " completed in " << seconds(t1-t0) << " seconds.";
+        if(repair) {
+            if(triggerPresent) {
+                html << "<br>The reads contain " <<
+                    localAssembly7Msa1TriggerDescription() <<
+                    ". Repair completed in " << seconds(t2-t1) << " seconds and "
+                    "rebuilt " << repairedRegionCount << " region(s) of the "
+                    "alignment. Everything outside those regions, including the "
+                    "coverage of the consensus, is exactly as " << name <<
+                    " left it.";
+                if(repairedRegionCount == 0) {
+                    html << " No region was found that could be improved.";
+                }
+            } else {
+                html << "<br>The reads contain no " <<
+                    localAssembly7Msa1TriggerDescription() << ", so no repair was "
+                    "attempted and the consensus is exactly as " << name <<
+                    " computed it.";
+            }
+        }
         writeAlignment(alignment, alignedConsensus, consensus, msaSequenceIdsWithWeight);
         writeConsensus(consensus);
     }
@@ -1445,21 +1511,43 @@ void LocalAssembly7::gatherTheseusSequences(
 
 
 
-void LocalAssembly7::runTheseus(bool useAll)
+void LocalAssembly7::runTheseus(bool useAll, bool repair)
 {
     vector< pair<vector<Base>, uint64_t> > bothSidesFixedSequences;
     vector< pair<vector<Base>, uint64_t> > leftFixedSequences;
     vector< pair<vector<Base>, uint64_t> > rightFixedSequences;
     vector< pair<uint64_t, uint64_t> > msaSequenceIdsWithWeight;
-    gatherTheseusSequences(useAll, "Local assembly with Theseus",
+    gatherTheseusSequences(useAll,
+        repair ?
+            "Local assembly with Theseus and homopolymer repair" :
+            "Local assembly with Theseus",
         bothSidesFixedSequences, leftFixedSequences, rightFixedSequences,
         msaSequenceIdsWithWeight);
 
-    // Run Theseus.
+    // Decide, before running Theseus, whether the repair could have anything to
+    // do here. See runAbpoaOrPoasta for why this is asked of the reads.
+    bool triggerPresent = false;
+    if(repair) {
+        for(const auto* group: {&bothSidesFixedSequences, &leftFixedSequences,
+            &rightFixedSequences}) {
+            for(const auto& [sequence, coverage]: *group) {
+                if(msa1TriggerPresent(sequence, localAssembly7Msa1Trigger)) {
+                    triggerPresent = true;
+                    break;
+                }
+            }
+            if(triggerPresent) {
+                break;
+            }
+        }
+    }
+
+    // Run Theseus. The alignment is normally computed only for the html display.
+    // It is also needed when there is something to repair.
     vector< pair<Base, uint64_t> > consensus;
     vector<AlignedBase> alignedConsensus;
     vector< vector<AlignedBase> > alignment;
-    const bool computeAlignment = bool(html);
+    const bool computeAlignment = bool(html) or triggerPresent;
     const auto t0 = steady_clock::now();
     theseus(
         bothSidesFixedSequences, leftFixedSequences, rightFixedSequences,
@@ -1469,104 +1557,9 @@ void LocalAssembly7::runTheseus(bool useAll)
         SHASTA2_ASSERT(alignment.size() == msaSequenceIdsWithWeight.size());
     }
 
-    if(html) {
-        html << "<br>Theseus completed in " << seconds(t1-t0) << " seconds.";
-        writeAlignment(alignment, alignedConsensus, consensus, msaSequenceIdsWithWeight);
-        writeConsensus(consensus);
-    }
-
-    // Store the sequence.
-    for(const auto& [b, ignore]: consensus) {
-        sequence.push_back(b);
-    }
-    success = true;
-}
-
-
-
-// Local assembly with Theseus, followed by a local repair of the bad
-// homopolymer regions of the alignment it produces.
-//
-// This is the same as runTheseus(true), plus one extra step. Theseus runs
-// exactly as it always does, and what it produces is then handed to msa1, which
-// looks for the regions where a base bordering a long homopolymer run has been
-// misplaced and rebuilds only those. Everything outside them, including the
-// coverage of the consensus, is left exactly as Theseus computed it.
-//
-// Theseus rather than abpoa, for two reasons. It is the aligner that takes
-// reads constrained on one side only, so it is the one whose alignment has
-// reads that do not span it, and handling those is most of what the repair has
-// to get right. And it accepts the extended alphabet unchanged, so the repair's
-// own realignment is the same aligner as the one that produced the alignment
-// being repaired, rather than a second opinion from a different one.
-//
-// Having this as a separate method makes the comparison a one flag change:
-// --local-assembly-method TheseusAll is without the repair, Msa1 is with it.
-void LocalAssembly7::runMsa1(bool useAll)
-{
-    vector< pair<vector<Base>, uint64_t> > bothSidesFixedSequences;
-    vector< pair<vector<Base>, uint64_t> > leftFixedSequences;
-    vector< pair<vector<Base>, uint64_t> > rightFixedSequences;
-    vector< pair<uint64_t, uint64_t> > msaSequenceIdsWithWeight;
-    gatherTheseusSequences(useAll,
-        "Local assembly with Theseus and homopolymer repair",
-        bothSidesFixedSequences, leftFixedSequences, rightFixedSequences,
-        msaSequenceIdsWithWeight);
-
-    // What makes a region worth repairing. This decides both what the prescreen
-    // below looks for and what the repair acts on, and the two must agree, or
-    // the prescreen would withhold an alignment the repair would have used.
-    const Msa1Trigger trigger = Msa1Trigger::AnyLongRun;
-    const string triggerDescription = (trigger == Msa1Trigger::PatternOnly) ?
-        "a long homopolymer run bordered by a single base" :
-        "a long homopolymer run";
-
-    // Decide, before running Theseus, whether the repair could have anything to
-    // do here. The test is run on the READS, for two reasons. It needs no
-    // alignment, so it can be answered before Theseus runs and Theseus can then
-    // be asked for an alignment only when one will be used. And the reads have
-    // not been through any vote, so they still show what we are looking for even
-    // in the cases where the consensus would have lost the misplaced base
-    // altogether.
-    //
-    // How often this is true depends on the trigger. With PatternOnly it is a
-    // third of loci of the usual size, and Theseus is then usually not asked for
-    // an alignment it will not use. With AnyLongRun, at the default threshold,
-    // it is essentially all of them, so the prescreen decides nothing and only
-    // the cost of the scan is left. It is kept because it is what makes the
-    // trigger adjustable without also having to think about when the alignment
-    // is available.
-    bool triggerPresent = false;
-    for(const auto* group: {&bothSidesFixedSequences, &leftFixedSequences,
-        &rightFixedSequences}) {
-        for(const auto& [sequence, coverage]: *group) {
-            if(msa1TriggerPresent(sequence, trigger)) {
-                triggerPresent = true;
-                break;
-            }
-        }
-        if(triggerPresent) {
-            break;
-        }
-    }
-
-    // The alignment is normally computed only for the html display. It is also
-    // needed when there is something to repair.
-    const bool computeAlignment = bool(html) or triggerPresent;
-
-    vector< pair<Base, uint64_t> > consensus;
-    vector< vector<AlignedBase> > alignment;
-    vector<AlignedBase> alignedConsensus;
-    const auto t0 = steady_clock::now();
-    theseus(
-        bothSidesFixedSequences, leftFixedSequences, rightFixedSequences,
-        consensus, alignment, alignedConsensus, computeAlignment);
-    const auto t1 = steady_clock::now();
-
     // Repair the bad regions, if any. Everything outside them is untouched.
     uint64_t repairedRegionCount = 0;
     if(triggerPresent) {
-        SHASTA2_ASSERT(alignment.size() == msaSequenceIdsWithWeight.size());
 
         // Theseus returns the rows in the order it was given the groups, so how
         // each row is anchored is known here and does not have to be guessed
@@ -1580,15 +1573,12 @@ void LocalAssembly7::runMsa1(bool useAll)
         // starts a column late as a padded one, and then declines to repair.
         vector<Anchoring> anchoring;
         anchoring.reserve(alignment.size());
-        for(uint64_t i=0; i<bothSidesFixedSequences.size(); i++) {
-            anchoring.push_back(Anchoring::BothSides);
-        }
-        for(uint64_t i=0; i<leftFixedSequences.size(); i++) {
-            anchoring.push_back(Anchoring::LeftOnly);
-        }
-        for(uint64_t i=0; i<rightFixedSequences.size(); i++) {
-            anchoring.push_back(Anchoring::RightOnly);
-        }
+        anchoring.insert(anchoring.end(), bothSidesFixedSequences.size(),
+            Anchoring::BothSides);
+        anchoring.insert(anchoring.end(), leftFixedSequences.size(),
+            Anchoring::LeftOnly);
+        anchoring.insert(anchoring.end(), rightFixedSequences.size(),
+            Anchoring::RightOnly);
         SHASTA2_ASSERT(anchoring.size() == alignment.size());
 
         // Unlike abpoa, Theseus takes a weight per sequence, so each read
@@ -1599,31 +1589,29 @@ void LocalAssembly7::runMsa1(bool useAll)
             weights.push_back(weight);
         }
 
-        repairedRegionCount = msa1(alignment, alignedConsensus, consensus, weights,
-            trigger, defaultHomopolymerThreshold, 1, RunLengthEstimator::Mode,
-            10, 20, anchoring);
+        repairedRegionCount = repairHomopolymerRegions(
+            alignment, alignedConsensus, consensus, weights, anchoring);
     }
     const auto t2 = steady_clock::now();
 
-    if(computeAlignment) {
-        SHASTA2_ASSERT(alignment.size() == msaSequenceIdsWithWeight.size());
-    }
-
     if(html) {
         html << "<br>Theseus completed in " << seconds(t1-t0) << " seconds.";
-        if(triggerPresent) {
-            html << "<br>The reads contain " << triggerDescription <<
-                ". Repair completed in " << seconds(t2-t1) << " seconds and "
-                "rebuilt " << repairedRegionCount << " region(s) of the alignment. "
-                "Everything outside those regions, including the coverage of the "
-                "consensus, is exactly as Theseus left it.";
-            if(repairedRegionCount == 0) {
-                html << " No region was found that could be improved.";
+        if(repair) {
+            if(triggerPresent) {
+                html << "<br>The reads contain " <<
+                    localAssembly7Msa1TriggerDescription() <<
+                    ". Repair completed in " << seconds(t2-t1) << " seconds and "
+                    "rebuilt " << repairedRegionCount << " region(s) of the "
+                    "alignment. Everything outside those regions, including the "
+                    "coverage of the consensus, is exactly as Theseus left it.";
+                if(repairedRegionCount == 0) {
+                    html << " No region was found that could be improved.";
+                }
+            } else {
+                html << "<br>The reads contain no " <<
+                    localAssembly7Msa1TriggerDescription() << ", so no repair was "
+                    "attempted and the consensus is exactly as Theseus computed it.";
             }
-        } else {
-            html << "<br>The reads contain no " << triggerDescription <<
-                ", so no repair was attempted and the consensus is exactly as "
-                "Theseus computed it.";
         }
         writeAlignment(alignment, alignedConsensus, consensus, msaSequenceIdsWithWeight);
         writeConsensus(consensus);
@@ -1638,7 +1626,53 @@ void LocalAssembly7::runMsa1(bool useAll)
 
 
 
+// See LocalAssembly7.hpp for comments.
+uint64_t LocalAssembly7::repairHomopolymerRegions(
+    vector< vector<AlignedBase> >& alignment,
+    vector<AlignedBase>& alignedConsensus,
+    vector< pair<Base, uint64_t> >& consensus,
+    const vector<uint64_t>& weights,
+    const vector<Anchoring>& anchoring)
+{
+    return msa1(alignment, alignedConsensus, consensus, weights,
+        localAssembly7Msa1Trigger, defaultHomopolymerThreshold, 1,
+        RunLengthEstimator::Mode, 10, 20, anchoring);
+}
+
+
+
+// Local assembly using the same aligner Adaptive would have chosen, followed by
+// a local repair of the bad homopolymer regions of the alignment it produces.
+//
+// The aligner runs exactly as it always does, and what it produces is then
+// handed to msa1, which looks for the regions where a base bordering a long
+// homopolymer run has been misplaced and rebuilds only those. Everything outside
+// them, including the coverage of the consensus, is left exactly as the aligner
+// computed it, and in a local assembly with no such region the result is bit for
+// bit what Adaptive would have given.
+//
+// Sharing the dispatch with runAdaptive is the point. If Msa1 chose its own
+// aligner it would differ from Adaptive in two ways at once, and comparing them
+// would measure the aligner as much as the repair. This way the only difference
+// is the repair.
+void LocalAssembly7::runMsa1()
+{
+    runAdaptiveOrMsa1(true);
+}
+
+
+
 void LocalAssembly7::runAdaptive()
+{
+    runAdaptiveOrMsa1(false);
+}
+
+
+
+// The aligner is chosen from the coverage and the length of this assembly step.
+// Msa1 makes the same choice and passes repair = true, so the two paths differ
+// only by the repair.
+void LocalAssembly7::runAdaptiveOrMsa1(bool repair)
 {
     // Try fast path first, if allowed.
     if(options.allowFastPath) {
@@ -1657,18 +1691,18 @@ void LocalAssembly7::runAdaptive()
 
         if(getMaxLengthCommon() <= options.maxAbpoaLength) {
             // The MSA is not too long, use abpoa.
-            runAbpoa();
+            runAbpoaOrPoasta(false, repair);
         } else {
             // The MSA is long, use theseus,
             // using only oriented reads on both anchors.
-            runTheseus(false);
+            runTheseus(false, repair);
         }
 
     } else {
 
         // We don'thave enough oriented reads on both anchors,
         // so we also use oriented reads that are on just one anchor.
-        runTheseus(true);
+        runTheseus(true, repair);
 
     }
 }
