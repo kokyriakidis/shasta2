@@ -315,13 +315,18 @@ namespace shasta2 {
     // Any of several sequences. Note these take DISTINCT sequences: a caller
     // that has repeated each sequence by its coverage, as the abpoa paths do,
     // should pass the distinct ones instead and save the repeats.
-    bool msa1PatternPresent(
+    //
+    // Both forms stop at the first sequence that fires, so the common case of a
+    // long run early in the first read costs one short walk.
+    bool msa1TriggerPresent(
         const vector< vector<Base> >& sequences,
+        Msa1Trigger trigger,
         uint64_t threshold = defaultHomopolymerThreshold);
 
     // Same, for sequences that carry a coverage.
-    bool msa1PatternPresent(
+    bool msa1TriggerPresent(
         const vector< pair<vector<Base>, uint64_t> >& sequences,
+        Msa1Trigger trigger,
         uint64_t threshold = defaultHomopolymerThreshold);
 
 
@@ -330,7 +335,11 @@ namespace shasta2 {
     public:
         uint64_t begin = 0;
         uint64_t end = 0;      // one past the last column
-        uint64_t size() const { return end - begin; }
+
+        // Sorting regions by where they start, then by where they end, is what
+        // the merge in msa1FindBadRegions needs and is what the member order
+        // already says.
+        auto operator<=>(const Msa1Region&) const = default;
     };
 
 
@@ -369,40 +378,23 @@ namespace shasta2 {
         vector< pair<uint64_t, uint64_t> >& coverage);
 
 
-    // Repair the bad regions of an alignment and its consensus, in place.
+    // How a repair is tuned.
     //
-    // This is the entry point. It does NOT replace the alignment: abpoa or
-    // theseus run exactly as before, and what they produce is passed here. Only
-    // the columns inside a bad region are touched, so sequence accuracy
-    // everywhere else is unaffected. On input with no bad region, which is the
-    // common case, all three arguments come back unchanged.
-    //
-    // alignment, alignedConsensus and consensus are all modified in place.
-    // Returns the number of regions repaired, which is usually 0.
-    uint64_t msa1(
-
-        // The alignment computed by abpoa or theseus, one row per input
-        // sequence. All rows must have the same length as alignedConsensus.
-        vector< vector<AlignedBase> >& alignment,
-
-        // The aligned consensus, one entry per alignment column.
-        vector<AlignedBase>& alignedConsensus,
-
-        // The consensus sequence and its coverage. This is alignedConsensus
-        // with the gaps removed, and is kept consistent with it.
-        vector< pair<Base, uint64_t> >& consensus,
-
-        // The weight of each row, normally its coverage. May be empty, in which
-        // case every row weighs 1.
-        const vector<uint64_t>& weights,
+    // Every value here is the measured default and the comments are why. They
+    // are grouped so that a caller wanting to change one does not have to
+    // restate the others positionally, and so that a default changed here
+    // reaches every caller instead of being re-typed at the call site and
+    // silently left behind.
+    class Msa1Options {
+    public:
 
         // What makes a region worth repairing. See Msa1Trigger.
-        Msa1Trigger trigger = Msa1Trigger::AnyLongRun,
+        Msa1Trigger trigger = Msa1Trigger::AnyLongRun;
 
         // Which runs are long enough to be worth repairing.
         // This controls how much of the alignment is touched, and nothing else.
         // See defaultHomopolymerThreshold.
-        uint64_t threshold = defaultHomopolymerThreshold,
+        uint64_t threshold = defaultHomopolymerThreshold;
 
         // Which runs collapse to a poly symbol once a region is being repaired.
         // This controls the quality of the repair, and nothing else.
@@ -454,16 +446,46 @@ namespace shasta2 {
         // Neither value produces a window made worse in 20000 random alignments
         // with the protective check turned off, so the trade that motivated 0
         // does not in fact show up in practice at 1. Accuracy decides it.
-        uint64_t encodeThreshold = 1,
+        uint64_t encodeThreshold = 1;
 
         // How the consensus length of a long homopolymer run is chosen.
-        RunLengthEstimator estimator = RunLengthEstimator::Mode,
+        RunLengthEstimator estimator = RunLengthEstimator::Mode;
 
         // Columns of context included on each side of a bad region.
-        uint64_t flank = 10,
+        uint64_t flank = 10;
 
         // Discordant columns closer together than this are treated as one region.
-        uint64_t mergeDistance = 20,
+        uint64_t mergeDistance = 20;
+    };
+
+
+    // Repair the bad regions of an alignment and its consensus, in place.
+    //
+    // This is the entry point. It does NOT replace the alignment: abpoa or
+    // theseus run exactly as before, and what they produce is passed here. Only
+    // the columns inside a bad region are touched, so sequence accuracy
+    // everywhere else is unaffected. On input with no bad region, which is the
+    // common case, all three arguments come back unchanged.
+    //
+    // alignment, alignedConsensus and consensus are all modified in place.
+    // Returns the number of regions repaired, which is usually 0.
+    uint64_t msa1(
+
+        // The alignment computed by abpoa or theseus, one row per input
+        // sequence. All rows must have the same length as alignedConsensus.
+        vector< vector<AlignedBase> >& alignment,
+
+        // The aligned consensus, one entry per alignment column.
+        vector<AlignedBase>& alignedConsensus,
+
+        // The consensus sequence and its coverage. This is alignedConsensus
+        // with the gaps removed, and is kept consistent with it.
+        vector< pair<Base, uint64_t> >& consensus,
+
+        // The weight of each row, normally its coverage. May be empty, in which
+        // case every row weighs 1.
+        const vector<uint64_t>& weights,
+
 
         // How each row is anchored, one entry per row. Empty means every row is
         // anchored on both sides, which is what abpoa always produces.
@@ -480,7 +502,10 @@ namespace shasta2 {
         // A row's coverage follows from its anchoring: BothSides covers every
         // column, LeftOnly covers up to its last base, RightOnly from its first.
         // Outside that a row neither votes nor is realigned.
-        const vector<Anchoring>& anchoring = vector<Anchoring>());
+        const vector<Anchoring>& anchoring = vector<Anchoring>(),
+
+        // How the repair is tuned. The defaults are the measured values.
+        const Msa1Options& options = Msa1Options());
 
 
     void testMsa1ExtendedBase();
@@ -627,47 +652,56 @@ public:
     // sequence of symbols can be written out and read back as a string. This is
     // how the encoding survives the round trip through theseus, which works on
     // strings.
+    //
+    // Derived from the base rather than tabulated, so that "lower case means
+    // poly" is one expression the reader can check, instead of a table they have
+    // to check against the one in msa1.cpp.
     char character() const
     {
-        switch(value) {
-        case 0: return 'A';
-        case 1: return 'C';
-        case 2: return 'G';
-        case 3: return 'T';
-        case 4: return 'a';
-        case 5: return 'c';
-        case 6: return 'g';
-        case 7: return 't';
-        default:
-            throw runtime_error("Invalid extended base value " + to_string(value));
-        }
+        checkValid();
+        const char c = base().character();
+        return isPoly() ? char(c - 'A' + 'a') : c;
     }
 
     // Return the complement of this symbol, preserving the poly flag.
     ExtendedBase complement() const
     {
-        return fromInteger(uint8_t((value & 4) | (3 - (value & 3))));
+        return fromInteger(uint8_t(polyFlag() | base().complement().value));
     }
 
-    bool operator==(ExtendedBase that) const { return value == that.value; }
-    bool operator!=(ExtendedBase that) const { return value != that.value; }
-    bool operator<(ExtendedBase that) const { return value < that.value; }
+    auto operator<=>(const ExtendedBase&) const = default;
+    bool operator==(const ExtendedBase&) const = default;
 
     // The html color used to represent this symbol.
     // A poly symbol uses a lighter shade of the color of its base, so that the
     // two are recognizably related in an alignment display.
+    //
+    // The plain shades come from AlignedBase so that an msa1 display and every
+    // other alignment display in the assembler cannot drift apart if the palette
+    // is ever retuned. Only the light shades are ours.
     string htmlColor() const
     {
+        checkValid();
+        if(not isPoly()) {
+            return AlignedBase(base()).htmlColor();
+        }
         switch(value) {
-        case 0: return "#ff6666";
-        case 1: return "#6666ff";
-        case 2: return "#ffff66";
-        case 3: return "#66ff66";
         case 4: return "#ffb3b3";
         case 5: return "#b3b3ff";
         case 6: return "#ffffb3";
         case 7: return "#b3ffb3";
-        default:
+        default: return "";
+        }
+    }
+
+private:
+
+    // The poly bit on its own, for the arithmetic that has to preserve it.
+    uint8_t polyFlag() const { return uint8_t(value & 4); }
+
+    void checkValid() const
+    {
+        if(value > 7) {
             throw runtime_error("Invalid extended base value " + to_string(value));
         }
     }
@@ -740,18 +774,22 @@ public:
     }
 
     // Return the base this symbol stands for. Asserts if this is a gap.
+    //
+    // This and complement() delegate to ExtendedBase, the way character() and
+    // htmlColor() already do. The poly flag arithmetic then lives in exactly one
+    // place, so a change to the encoding cannot be made in one class and
+    // forgotten in the other.
     Base base() const
     {
-        SHASTA2_ASSERT(not isGap());
-        return Base::fromInteger(uint8_t(value & 3));
+        return ExtendedBase(*this).base();
     }
 
     char character() const
     {
-        if(value == gapValue) {
+        if(isGap()) {
             return '-';
         }
-        return ExtendedBase::fromInteger(value).character();
+        return ExtendedBase(*this).character();
     }
 
     AlignedExtendedBase complement() const
@@ -759,19 +797,18 @@ public:
         if(isGap()) {
             return gap();
         }
-        return fromInteger(uint8_t((value & 4) | (3 - (value & 3))));
+        return fromInteger(ExtendedBase(*this).complement().value);
     }
 
-    bool operator==(AlignedExtendedBase that) const { return value == that.value; }
-    bool operator!=(AlignedExtendedBase that) const { return value != that.value; }
-    bool operator<(AlignedExtendedBase that) const { return value < that.value; }
+    auto operator<=>(const AlignedExtendedBase&) const = default;
+    bool operator==(const AlignedExtendedBase&) const = default;
 
     string htmlColor() const
     {
-        if(value == gapValue) {
+        if(isGap()) {
             return "";
         }
-        return ExtendedBase::fromInteger(value).htmlColor();
+        return ExtendedBase(*this).htmlColor();
     }
 };
 
