@@ -81,6 +81,7 @@ void Assembler::assemble(
         options.minReadLength,
         options.threadCount);
     createReadSummaries();
+    writeReadSummaries(true);
 
 
 
@@ -141,7 +142,7 @@ void Assembler::assemble(
     // Create the AssemblyGraph.
     createAssemblyGraph(options, true);
 
-    writeReadSummaries();
+    writeReadSummaries(false);
 }
 
 
@@ -373,38 +374,46 @@ void Assembler::accessReadSummaries()
 
 
 
-void Assembler::writeReadSummaries() const
+void Assembler::writeReadSummaries(bool partial) const
 {
     ofstream csv("ReadSummary.csv");
     csv <<
         "ReadId,"
-        "Length,"
-        "Use for assembly,"
-        "Is palindromic,"
-        "Has high error rare,"
-        "Palindromic rate,"
-        "Initial marker error rate,"
-        "Marker error rate,"
-        "Initial anchor gap,"
-        "Middle anchor gap,"
-        "Final anchor gap,"
-        "\n";
+        "Name,"
+        "Length,";
+    if(not partial) {
+        csv <<
+            "Use for assembly,"
+            "Is palindromic,"
+            "Has high error rare,"
+            "Palindromic rate,"
+            "Initial marker error rate,"
+            "Marker error rate,"
+            "Initial anchor gap,"
+            "Middle anchor gap,"
+            "Final anchor gap,";
+        }
+    csv << "\n";
 
     for(ReadId readId=0; readId<readSummaries.size(); readId++) {
         const ReadSummary& readSummary = readSummaries[readId];
 
         csv <<
             readId << "," <<
-            reads().getReadSequenceLength(readId) << "," <<
-            (readSummary.isInUse() ? "Yes" : "No") << "," <<
-            (readSummary.isPalindromic ? "Yes" : "No") << "," <<
-            (readSummary.hasHighErrorRate ? "Yes" : "No") << "," <<
-            readSummary.palindromicRate << "," <<
-            readSummary.initialMarkerErrorRate << "," <<
-            readSummary.markerErrorRate << "," <<
-            readSummary.initialAnchorGap << "," <<
-            readSummary.middleAnchorGap << "," <<
-            readSummary.finalAnchorGap << "," <<
-            "\n";
+            reads().getReadName(readId) << "," <<
+            reads().getReadSequenceLength(readId) << ",";
+        if(not partial) {
+            csv <<
+                (readSummary.isInUse() ? "Yes" : "No") << "," <<
+                (readSummary.isPalindromic ? "Yes" : "No") << "," <<
+                (readSummary.hasHighErrorRate ? "Yes" : "No") << "," <<
+                readSummary.palindromicRate << "," <<
+                readSummary.initialMarkerErrorRate << "," <<
+                readSummary.markerErrorRate << "," <<
+                readSummary.initialAnchorGap << "," <<
+                readSummary.middleAnchorGap << "," <<
+                readSummary.finalAnchorGap << ",";
+        }
+        csv << "\n";
     }
 }

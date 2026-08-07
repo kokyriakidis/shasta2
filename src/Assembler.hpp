@@ -138,7 +138,7 @@ public:
     MemoryMapped::Vector<ReadSummary> readSummaries;
     void createReadSummaries();
     void accessReadSummaries();
-    void writeReadSummaries() const;
+    void writeReadSummaries(bool partial) const;
 
 
 
