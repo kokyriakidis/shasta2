@@ -336,10 +336,6 @@ void AssemblyGraph::simplifyAndAssemble()
     // Initial output.
     writeIntermediateStageIfRequested("A");
 
-    // Vertex detangling.
-    detangleVertices();
-    writeIntermediateStageIfRequested("A-Detangled");
-
     // Remove or simplify bubbles likely caused by errors.
     bubblePairCleanup();
     strandSymmetricCompress();
@@ -349,33 +345,37 @@ void AssemblyGraph::simplifyAndAssemble()
     strandSymmetricPhaseSuperbubbleChains();
     writeIntermediateStageIfRequested("C");
 
+    // Vertex detangling.
+    detangleVertices();
+    writeIntermediateStageIfRequested("D");
+
     // Read following.
     readFollowing();
-    writeIntermediateStageIfRequested("D");
+    writeIntermediateStageIfRequested("E");
     strandSymmetricCompress();
     removeZeroLengthSegmentsStrandSymmetric();
-    writeIntermediateStageIfRequested("E");
+    writeIntermediateStageIfRequested("F");
 
     // Prune.
     prune();
     strandSymmetricCompress();
-    writeIntermediateStageIfRequested("F");
+    writeIntermediateStageIfRequested("G");
 
     // Remove isolated vertices and connected components with small N50.
     removeIsolatedVertices();
     removeLowN50Components();
-    writeIntermediateStageIfRequested("G");
-    compress();
     writeIntermediateStageIfRequested("H");
+    compress();
+    writeIntermediateStageIfRequested("I");
 
     // Connect dangling segments.
     connectDanglingSegments();
-    writeIntermediateStageIfRequested("I");
+    writeIntermediateStageIfRequested("J");
 
     // A final round of phasing.More opportunities for phasing
     // may have emerged.
     strandSymmetricPhaseSuperbubbleChains();
-    writeIntermediateStageIfRequested("J");
+    writeIntermediateStageIfRequested("K");
 
     // Make the AssemblyGraph single-stranded.
     check();
