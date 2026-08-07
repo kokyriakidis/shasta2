@@ -106,26 +106,29 @@ void AssemblyGraph::detangleVertices()
         // If an edge is both an in-edge and out-edge, skip this vertex.
         bool hasCycle = false;
         for(const edge_descriptor e: inEdges) {
-            if(not std::ranges::contains(outEdges, e)) {
+            if(std::ranges::contains(outEdges, e)) {
                 hasCycle = true;
             }
         }
         for(const edge_descriptor e: outEdges) {
-            if(not std::ranges::contains(inEdges, e)) {
+            if(std::ranges::contains(inEdges, e)) {
                 hasCycle = true;
             }
         }
         for(const edge_descriptor eRc: inEdgesRc) {
-            if(not std::ranges::contains(outEdgesRc, eRc)) {
+            if(std::ranges::contains(outEdgesRc, eRc)) {
                 hasCycle = true;
             }
         }
         for(const edge_descriptor eRc: outEdgesRc) {
-            if(not std::ranges::contains(inEdgesRc, eRc)) {
+            if(std::ranges::contains(inEdgesRc, eRc)) {
                 hasCycle = true;
             }
         }
         if(hasCycle) {
+            if(debug) {
+                cout << "Skipped due to cycle." << endl;
+            }
             continue;
         }
 
