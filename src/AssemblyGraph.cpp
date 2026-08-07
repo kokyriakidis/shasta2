@@ -1367,12 +1367,16 @@ void AssemblyGraph::writeCsv(ostream& csv) const
 {
     const AssemblyGraph& assemblyGraph = *this;
 
-    csv << "Segment,Number of steps,Average coverage,Estimated length,Actual length,Annotation,\n";
+    csv << "Segment,Reverse complement segment,Number of steps,Average coverage,Estimated length,Actual length,Annotation,\n";
     BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
         const AssemblyGraphEdge& edge = assemblyGraph[e];
         const uint64_t coverage = uint64_t(std::round(edge.averageCoverage()));
+        csv << edge.id << ",";
+        if(edge.eRc != assemblyGraphNullEdge) {
+            csv << assemblyGraph[edge.eRc].id;
+        }
         csv <<
-            edge.id << "," <<
+            "," <<
             edge.size() << "," <<
             coverage << "," <<
             edge.offset() << ",";
