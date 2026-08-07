@@ -72,9 +72,8 @@ void AssemblyGraph::findSuperbubbleChains(
     ) const
 {
     // Index the superbubbles by their source and target vertex.
-    // FOR REPRODUCIBILITY WE SHOULD CHANGE THIS TO INDEX BY VERTEX ID INSTEAD.
-    std::map<vertex_descriptor, vector<uint64_t> > mapBySource;
-    std::map<vertex_descriptor, vector<uint64_t> > mapByTarget;
+    std::map<vertex_descriptor, vector<uint64_t>, OrderById> mapBySource(orderById);
+    std::map<vertex_descriptor, vector<uint64_t>, OrderById> mapByTarget(orderById);
     for(uint64_t superbubbleId=0; superbubbleId<superbubbles.size(); superbubbleId++) {
         const Superbubble& superbubble = superbubbles[superbubbleId];
         mapBySource[superbubble.sourceVertex].push_back(superbubbleId);
