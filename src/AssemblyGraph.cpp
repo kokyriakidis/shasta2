@@ -336,46 +336,51 @@ void AssemblyGraph::simplifyAndAssemble()
     // Initial output.
     writeIntermediateStageIfRequested("A");
 
-    // Remove or simplify bubbles likely caused by errors.
-    bubblePairCleanup();
+    // Strict pruning.
+    strictPrune();
     strandSymmetricCompress();
     writeIntermediateStageIfRequested("B");
 
+    // Remove or simplify bubbles likely caused by errors.
+    bubblePairCleanup();
+    strandSymmetricCompress();
+    writeIntermediateStageIfRequested("C");
+
     // Phase SuperbubbleChains.
     strandSymmetricPhaseSuperbubbleChains();
-    writeIntermediateStageIfRequested("C");
+    writeIntermediateStageIfRequested("D");
 
     // Vertex detangling.
     detangleVertices();
-    writeIntermediateStageIfRequested("D");
+    writeIntermediateStageIfRequested("E");
 
     // Read following.
     readFollowing();
-    writeIntermediateStageIfRequested("E");
+    writeIntermediateStageIfRequested("F");
     strandSymmetricCompress();
     removeZeroLengthSegmentsStrandSymmetric();
-    writeIntermediateStageIfRequested("F");
+    writeIntermediateStageIfRequested("G");
 
     // Prune.
     prune();
     strandSymmetricCompress();
-    writeIntermediateStageIfRequested("G");
+    writeIntermediateStageIfRequested("H");
 
     // Remove isolated vertices and connected components with small N50.
     removeIsolatedVertices();
     removeLowN50Components();
-    writeIntermediateStageIfRequested("H");
-    compress();
     writeIntermediateStageIfRequested("I");
+    compress();
+    writeIntermediateStageIfRequested("J");
 
     // Connect dangling segments.
     connectDanglingSegments();
-    writeIntermediateStageIfRequested("J");
+    writeIntermediateStageIfRequested("K");
 
     // A final round of phasing.More opportunities for phasing
     // may have emerged.
     strandSymmetricPhaseSuperbubbleChains();
-    writeIntermediateStageIfRequested("K");
+    writeIntermediateStageIfRequested("L");
 
     // Make the AssemblyGraph single-stranded.
     check();
@@ -2115,6 +2120,78 @@ uint64_t AssemblyGraph::pruneIteration()
     }
 
     return chainsToBeRemoved.size();
+}
+
+
+
+void AssemblyGraph::strictPrune()
+{
+    AssemblyGraph& assemblyGraph = *this;
+
+    vector<edge_descriptor> edgesToBeRemoved;
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        const vertex_descriptor v0 = source(e, assemblyGraph);
+        const vertex_descriptor v1 = target(e, assemblyGraph);
+
+        // If out-degree(v1)=0, check for
+        // an edge v0->v2 such that out_degree(v2)>0.
+        if(out_degree(v1, assemblyGraph) == 0) {
+            bool found = false;
+            BGL_FORALL_OUTEDGES(v0, e, assemblyGraph, AssemblyGraph) {
+                const vertex_descriptor v2 = target(e, assemblyGraph);
+                if(out_degree(v2, assemblyGraph) > 0) {
+                    found = true;
+                    break;
+                }
+            }
+            if(found) {
+                if(assemblyGraph[e].length() <= options.strictPruneLength) {
+                    edgesToBeRemoved.push_back(e);
+                }
+                continue;
+            }
+        }
+
+        // If in-degree(v0)=0, check for
+        // an edge v2->v0 such that in_degree(v2)>0.
+        if(in_degree(v0, assemblyGraph) == 0) {
+            bool found = false;
+            BGL_FORALL_INEDGES(v1, e, assemblyGraph, AssemblyGraph) {
+                const vertex_descriptor v2 = source(e, assemblyGraph);
+                if(in_degree(v2, assemblyGraph) > 0) {
+                    found = true;
+                    break;
+                }
+            }
+            if(found) {
+                if(assemblyGraph[e].length() <= options.strictPruneLength) {
+                    edgesToBeRemoved.push_back(e);
+                }
+                continue;
+            }
+        }
+
+    }
+
+
+#if 0
+    // EXPENSIVE CHECK.
+    for(const edge_descriptor e: edgesToBeRemoved) {
+        if(not std::ranges::contains(edgesToBeRemoved, assemblyGraph[e].eRc)) {
+            cout << assemblyGraph[e].id << " will be removed but " <<
+                assemblyGraph[assemblyGraph[e].eRc].id << " will not." << endl;
+        }
+        SHASTA2_ASSERT(std::ranges::contains(edgesToBeRemoved, assemblyGraph[e].eRc));
+    }
+#endif
+
+
+    for(const edge_descriptor e: edgesToBeRemoved) {
+        boost::remove_edge(e, assemblyGraph);
+    }
+    removeIsolatedVertices();
+
+    check();
 }
 
 

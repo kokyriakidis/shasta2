@@ -173,6 +173,10 @@ SHASTA2_OPTION_DEFINE(
     uint64_t, pruneLength, "--prune-length", 50000,
     "Maximum leaf length for pruning.")
 
+SHASTA2_OPTION_DEFINE(
+    uint64_t, strictPruneLength, "--strict-prune-length", 10000,
+    "Maximum leaf length for strict pruning.")
+
 
 // Read following.
 SHASTA2_OPTION_DEFINE(

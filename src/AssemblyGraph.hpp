@@ -448,6 +448,7 @@ public:
     // Pruning.
     void prune();
     uint64_t pruneIteration();
+    void strictPrune();
 
 
 
