@@ -1,5 +1,7 @@
 // Shasta2.
 #include "AssemblyGraph.hpp"
+#include "color.hpp"
+#include "DisjointSets.hpp"
 #include "GTest.hpp"
 #include "Options.hpp"
 #include "performanceLog.hpp"
@@ -287,12 +289,83 @@ void AssemblyGraph::detangleVertices()
 
 void AssemblyGraph::detangle()
 {
-    performanceLog << timestamp << "AssemblyGraph::detangle begins." << endl;
+    // EXPOSE WHEN CODE STABILIZES.
+    const uint64_t lengthThreshold = 30000;
 
+    performanceLog << timestamp << "AssemblyGraph::detangle begins." << endl;
+    AssemblyGraph& assemblyGraph = *this;
+
+    // Find the BubbleChains.
     vector<BubbleChain> bubbleChains;
     findBubbleChains(bubbleChains);
     writeBubbleChains("BubbleChains.csv", bubbleChains);
     writeBubbleChainsForBandage("BubbleChains-Bandage.csv", bubbleChains);
+
+    // Map the vertices to integers.
+    // This is needed below to compute connected components.
+    std::map<vertex_descriptor, uint64_t> vertexIndexMap;
+    std::vector<vertex_descriptor> vertexTable;
+    BGL_FORALL_VERTICES(v, assemblyGraph, AssemblyGraph) {
+        vertexIndexMap.insert(make_pair(v, vertexTable.size()));
+        vertexTable.push_back(v);
+    }
+
+
+
+    // Compute connected components using only edges that belong to short BubbleChains.
+    // Each non-trivial connected component will become a tangle.
+    DisjointSets disjointSets(vertexTable.size());
+    for(const BubbleChain& bubbleChain: bubbleChains) {
+
+        // If this is a long BubbleChain, skip it.
+        if(bubbleChain.maxLength(assemblyGraph) > lengthThreshold) {
+            continue;
+        }
+
+        for(const Bubble& bubble: bubbleChain) {
+            disjointSets.unionSet(vertexIndexMap.at(bubble.v0), vertexIndexMap.at(bubble.v1));
+        }
+    }
+
+
+    // Get the connected components with two or more vertices.
+    vector< vector<uint64_t> > componentsVertexIndexes;
+    disjointSets.gatherComponents(2, componentsVertexIndexes);
+
+    // Convert vertex indexes to vertex descriptors.
+    // Sort each component so we can do binary searches.
+    vector< vector<vertex_descriptor> > tangles;
+    for(const auto& componentVertexIndexes: componentsVertexIndexes) {
+        vector<vertex_descriptor>& tangle = tangles.emplace_back();
+        for(const uint64_t vertexIndex: componentVertexIndexes) {
+            tangle.push_back(vertexTable[vertexIndex]);
+        }
+        sort(tangle.begin(), tangle.end(), orderById);
+    }
+
+
+    // Write a csv file that can be imported into Bandage to see
+    // the tangles.
+    {
+        ofstream csv("Tangles-Bandage.csv");
+        csv << "Segment,Tangle,Color\n";
+        for(uint64_t tangleId=0; tangleId<tangles.size(); tangleId++) {
+            const string color = randomHslColor(tangleId, 0.75, 0.5);
+            const vector<vertex_descriptor>& tangle = tangles[tangleId];
+            for(const vertex_descriptor v0: tangle) {
+                BGL_FORALL_OUTEDGES(v0, e, assemblyGraph, AssemblyGraph) {
+                    const vertex_descriptor v1 = target(e, assemblyGraph);
+                    if(binary_search(tangle.begin(), tangle.end(), v1, orderById)) {
+                        csv << assemblyGraph[e].id << ",";
+                        csv << tangleId << ",";
+                        csv << color << "\n";
+                    }
+                }
+            }
+        }
+    }
+
+
 
     performanceLog << timestamp << "AssemblyGraph::detangle ends." << endl;
 }
