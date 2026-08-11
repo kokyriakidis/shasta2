@@ -3550,3 +3550,126 @@ void AssemblyGraph::makeSingleStranded()
     }
 
 }
+
+
+
+// This creates an edge eB, identical to the reverse complement
+// of edge eA. It sets the eRc fields in eA and eB
+// and returns eB.
+// The vertices of eB must already exist.
+AssemblyGraph::edge_descriptor AssemblyGraph::createReverseComplementEdge(edge_descriptor eA)
+{
+    AssemblyGraph& assemblyGraph = *this;
+    const bool debug = false;
+
+    // Access the eA edge and its vertices.
+    AssemblyGraphEdge& edgeA = assemblyGraph[eA];
+    const vertex_descriptor vA0 = source(eA, assemblyGraph);
+    const vertex_descriptor vA1 = target(eA, assemblyGraph);
+    const AssemblyGraphVertex& vertexA0 = assemblyGraph[vA0];
+    const AssemblyGraphVertex& vertexA1 = assemblyGraph[vA1];
+    // cout << "MMM " << vertexA0.id << " " << vertexA1.id << endl;
+
+    // Create the new edge eB.
+    const vertex_descriptor vB0 = vertexA1.vRc;
+    const vertex_descriptor vB1 = vertexA0.vRc;
+    // cout << "NNN " << assemblyGraph[vB0].id << " " << assemblyGraph[vB1].id << endl;
+    auto[eB, wasAdded] = add_edge(vB0, vB1, AssemblyGraphEdge(nextEdgeId++), assemblyGraph);
+    // cout << "OOO" << endl;
+    SHASTA2_ASSERT(wasAdded);
+    AssemblyGraphEdge& edgeB = assemblyGraph[eB];
+
+    // Update the eRc fields of both edges.
+    edgeA.eRc = eB;
+    edgeB.eRc = eA;
+
+    // cout << "PPP " << edgeA.id << " " << edgeB.id << endl;
+    // cout << "QQQ " << edgeA.size() << " " << edgeB.size() << endl;
+
+
+
+    // Now add the steps of eA to eB, with reverse complement.
+    for(const AssemblyGraphEdgeStep& stepA: edgeA) {
+        AssemblyGraphEdgeStep& stepB = edgeB.emplace_back();
+        stepB.offset = stepA.offset;
+        stepB.anchorPair = stepA.anchorPair;
+
+        // Swap and reverse complement the AnchorIds.
+        std::swap(stepB.anchorPair.anchorIdA, stepB.anchorPair.anchorIdB);
+        stepB.anchorPair.anchorIdA = reverseComplementAnchorId(stepB.anchorPair.anchorIdA);
+        stepB.anchorPair.anchorIdB = reverseComplementAnchorId(stepB.anchorPair.anchorIdB);
+
+        // Reverse complement the OrientedReadIds.
+        for(OrientedReadId& orientedReadId: stepB.anchorPair.orientedReadIds) {
+            orientedReadId.flipStrand();
+        }
+    }
+    // Finally, reverse the steps of eB.
+    std::ranges::reverse(edgeB);
+
+
+
+    if(debug) {
+        cout << "addReverseComplementEdge details:" << endl;
+
+        cout << "edgeA: " << edgeA.id << " " <<
+            anchorIdToString(assemblyGraph[source(eA, assemblyGraph)].anchorId) << " " <<
+            anchorIdToString(assemblyGraph[target(eA, assemblyGraph)].anchorId) << endl;
+        cout << "edgeA steps:" << endl;
+        for(const auto& step: edgeA) {
+            cout << anchorIdToString(step.anchorPair.anchorIdA) << " " <<
+                anchorIdToString(step.anchorPair.anchorIdB) << endl;
+        }
+
+        cout << "edgeB: " << edgeB.id << " " <<
+            anchorIdToString(assemblyGraph[source(eB, assemblyGraph)].anchorId) << " " <<
+            anchorIdToString(assemblyGraph[target(eB, assemblyGraph)].anchorId) << endl;
+        cout << "edgeB steps:" << endl;
+        for(const auto& step: edgeB) {
+            cout << anchorIdToString(step.anchorPair.anchorIdA) << " " <<
+                anchorIdToString(step.anchorPair.anchorIdB) << endl;
+        }
+    }
+
+    // Sanity check.
+    if(not edgeB.empty()) {
+        SHASTA2_ASSERT(edgeB.front().anchorPair.anchorIdA == assemblyGraph[vB0].anchorId);
+        SHASTA2_ASSERT(edgeB.back().anchorPair.anchorIdB == assemblyGraph[vB1].anchorId);
+    }
+
+    return eB;
+}
+
+
+
+// This creates a vertex vB, identical to the reverse complement
+// of vertex vA. It sets the vRc fields in vA and vB
+// and returns vB.
+AssemblyGraph::vertex_descriptor AssemblyGraph::createReverseComplementVertex(vertex_descriptor vA)
+{
+    const bool debug = false;
+
+    AssemblyGraph& assemblyGraph = *this;
+    AssemblyGraphVertex& vertexA = assemblyGraph[vA];
+
+    // Get the AnchorIds.
+    const AnchorId anchorIdA = vertexA.anchorId;
+    const AnchorId anchorIdB = reverseComplementAnchorId(anchorIdA);
+
+    // Create the new vertex.
+    const vertex_descriptor vB = add_vertex(AssemblyGraphVertex(anchorIdB, nextVertexId++), assemblyGraph);
+    AssemblyGraphVertex& vertexB = assemblyGraph[vB];
+
+    // Set the vRc fields.
+    vertexA.vRc = vB;
+    vertexB.vRc = vA;
+
+    if(debug) {
+        cout << "Created a reverse complemented copy of a vertex: " <<
+            vertexA.id << " " << anchorIdToString(vertexA.anchorId) <<
+            vertexB.id << " " << anchorIdToString(vertexB.anchorId) << endl;
+
+    }
+
+    return vB;
+}

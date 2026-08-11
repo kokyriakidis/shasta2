@@ -8,6 +8,7 @@
 #include "AssemblyGraphBaseClass.hpp"
 #include "AnchorPair.hpp"
 #include "Base.hpp"
+#include "Bubble.hpp"
 #include "invalid.hpp"
 #include "MappedMemoryOwner.hpp"
 #include "MultithreadedObject.hpp"
@@ -34,8 +35,9 @@ namespace shasta2 {
     class AnchorGraph;
     class Anchors;
     class Assembler;
+
+    class Bubble;
     class Options;
-    class Detangler;
     class Superbubble;
     class SuperbubbleChain;
 
@@ -247,16 +249,6 @@ public:
     void detangleVertices();
     void detangle();
 private:
-
-
-    // BUBBLE CLEANUP.
-    // A bubble is a set of parallel edges in the AssemblyGraph.
-    class Bubble {
-    public:
-        vertex_descriptor v0;
-        vertex_descriptor v1;
-        vector<edge_descriptor> edges;
-    };
 
     // Find Bubbles.
     // The edges of each Bubble are sorted by id.
