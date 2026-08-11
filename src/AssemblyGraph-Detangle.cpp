@@ -289,9 +289,10 @@ void AssemblyGraph::detangle()
 {
     performanceLog << timestamp << "AssemblyGraph::detangle begins." << endl;
 
-    // Find the bubbles, including "haploid" bubbles.
-    vector<Bubble> bubbles;
-    findBubbles(bubbles, true);
+    vector<BubbleChain> bubbleChains;
+    findBubbleChains(bubbleChains);
+    writeBubbleChains("BubbleChains.csv", bubbleChains);
+    writeBubbleChainsForBandage("BubbleChains-Bandage.csv", bubbleChains);
 
     performanceLog << timestamp << "AssemblyGraph::detangle ends." << endl;
 }

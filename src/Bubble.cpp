@@ -1,6 +1,8 @@
 #include "Bubble.hpp"
 #include "AssemblyGraph.hpp"
+#include "color.hpp"
 #include "findConvergingVertex.hpp"
+#include "findLinearChains.hpp"
 #include "Options.hpp"
 #include "performanceLog.hpp"
 #include "timestamp.hpp"
@@ -196,6 +198,147 @@ void AssemblyGraph::findSuperbubbles(
 
 
 
+void AssemblyGraph::findBubbleChains(vector<BubbleChain>& bubbleChains) const
+{
+    const AssemblyGraph& assemblyGraph = *this;
+
+    // Create a copy of the AssemblyGraph, with parallel edges
+    // contracted into a single edge.
+    using Graph = boost::adjacency_list<
+        boost::setS,    // This makes sure there are no parallel edges.
+        boost::vecS,
+        boost::bidirectionalS,
+        AssemblyGraph::vertex_descriptor>;
+    std::map<AssemblyGraph::vertex_descriptor, Graph::vertex_descriptor> vertexMap;
+    Graph graph;
+    BGL_FORALL_VERTICES(v, assemblyGraph, AssemblyGraph) {
+        const Graph::vertex_descriptor u = boost::add_vertex(v, graph);
+        vertexMap.insert(make_pair(v, u));
+    }
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        const AssemblyGraph::vertex_descriptor v0 = source(e, assemblyGraph);
+        const AssemblyGraph::vertex_descriptor v1 = target(e, assemblyGraph);
+        const Graph::vertex_descriptor u0 = vertexMap.at(v0);
+        const Graph::vertex_descriptor u1 = vertexMap.at(v1);
+        boost::add_edge(u0, u1, graph);
+    }
+
+
+
+    // Each linear chain in the Graph generates a bubble chain.
+    vector< vector<Graph::edge_descriptor> > chains;
+    findLinearChains(graph, 1, chains);
+
+
+
+    // Create the BubbleChains.
+    bubbleChains.clear();
+    vector<AssemblyGraph::vertex_descriptor> chainVertices;
+    for(const vector<Graph::edge_descriptor>& chain: chains) {
+
+        chainVertices.clear();
+        const Graph::vertex_descriptor u0 = source(chain.front(), graph);
+        chainVertices.push_back(graph[u0]);
+        for(const Graph::edge_descriptor e: chain) {
+            const Graph::vertex_descriptor u1 = target(e, graph);
+            chainVertices.push_back(graph[u1]);
+        }
+
+        bubbleChains.emplace_back(assemblyGraph, chainVertices);
+    }
+
+}
+
+
+
+// Generate a BubbleChain given a vector of AssemblyGraph vertices.
+BubbleChain::BubbleChain(
+    const AssemblyGraph& assemblyGraph,
+    const vector<vertex_descriptor>& bubbleChainVertices)
+{
+    for(uint64_t i1=1; i1<bubbleChainVertices.size(); i1++) {
+        const uint64_t i0 = i1 - 1;
+        const vertex_descriptor v0 = bubbleChainVertices[i0];
+        const vertex_descriptor v1 = bubbleChainVertices[i1];
+        push_back(Bubble(assemblyGraph, v0, v1));
+    }
+}
+
+
+
+// Generate a Bubble given its source and target vertices.
+Bubble::Bubble(
+    const AssemblyGraph& assemblyGraph,
+    vertex_descriptor v0,
+    vertex_descriptor v1) :
+    v0(v0),
+    v1(v1)
+{
+    BGL_FORALL_OUTEDGES(v0, e, assemblyGraph, AssemblyGraph) {
+        if(target(e, assemblyGraph) == v1) {
+            edges.push_back(e);
+        }
+    }
+
+    SHASTA2_ASSERT(not edges.empty());
+}
+
+
+
+void AssemblyGraph::writeBubbleChains(
+    const string& fileName,
+    vector<BubbleChain>& bubbleChains) const
+{
+    const AssemblyGraph& assemblyGraph = *this;
+
+    ofstream csv(fileName);
+    csv << "BubbleChainId,Position,\n";
+
+    for(uint64_t bubbleChainId=0; bubbleChainId<bubbleChains.size(); bubbleChainId++) {
+        const BubbleChain& bubbleChain = bubbleChains[bubbleChainId];
+        for(uint64_t position=0; position<bubbleChain.size(); position++) {
+            const Bubble& bubble = bubbleChain[position];
+            csv << bubbleChainId << ",";
+            csv << position << ",";
+            for(const edge_descriptor e: bubble.edges){
+                csv << assemblyGraph[e].id << ",";
+            }
+            csv << "\n";
+        }
+
+    }
+}
+
+
+
+void AssemblyGraph::writeBubbleChainsForBandage(
+    const string& fileName,
+    vector<BubbleChain>& bubbleChains) const
+{
+    const AssemblyGraph& assemblyGraph = *this;
+
+    ofstream csv(fileName);
+    csv << "Segment,BubbleChainId,Position,Color\n";
+
+    for(uint64_t bubbleChainId=0; bubbleChainId<bubbleChains.size(); bubbleChainId++) {
+        const string color = randomHslColor(bubbleChainId, 0.75, 0.5);
+        const BubbleChain& bubbleChain = bubbleChains[bubbleChainId];
+        for(uint64_t position=0; position<bubbleChain.size(); position++) {
+            const Bubble& bubble = bubbleChain[position];
+            for(const edge_descriptor e: bubble.edges){
+                csv << assemblyGraph[e].id << ",";
+                csv << bubbleChainId << ",";
+                csv << position << ",";
+                csv << color << "\n";
+            }
+        }
+
+    }
+
+}
+
+
+
 void AssemblyGraph::findSuperbubbleChains(
     const vector<Superbubble>& superbubbles,
     vector<SuperbubbleChain>& superbubbleChains
@@ -285,5 +428,29 @@ void AssemblyGraph::findSuperbubbleChains(
             superbubbleChain.push_back(superbubbles[id]);
         }
     }
+}
+
+
+
+// This returns the maximum of the edge lengths.
+uint64_t Bubble::maxLength(const AssemblyGraph& assemblyGraph) const
+{
+    uint64_t l = 0;
+    for(const edge_descriptor e: edges) {
+        l = max(l, assemblyGraph[e].length());
+    }
+    return l;
+}
+
+
+
+// This returns the sum of the maxLengths of all the bubbles.
+uint64_t BubbleChain::maxLength(const AssemblyGraph& assemblyGraph) const
+{
+    uint64_t l = 0;
+    for(const Bubble& bubble: *this) {
+        l += bubble.maxLength(assemblyGraph);
+    }
+    return l;
 }
 

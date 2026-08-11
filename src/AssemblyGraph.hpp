@@ -254,6 +254,10 @@ private:
     // The edges of each Bubble are sorted by id.
     void findBubbles(vector<Bubble>&, bool allowHaploid) const;
 
+    void findBubbleChains(vector<BubbleChain>&) const;
+    void writeBubbleChains(const string& fileName, vector<BubbleChain>&) const;
+    void writeBubbleChainsForBandage(const string& fileName, vector<BubbleChain>&) const;
+
 public:
     uint64_t bubbleCleanup();
     uint64_t bubbleCleanupIterationMultithreaded(
