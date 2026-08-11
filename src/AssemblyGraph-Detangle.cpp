@@ -2,7 +2,9 @@
 #include "AssemblyGraph.hpp"
 #include "GTest.hpp"
 #include "Options.hpp"
+#include "performanceLog.hpp"
 #include "TangleMatrix1.hpp"
+#include "timestamp.hpp"
 using namespace shasta2;
 
 // Boost libraries.
@@ -10,6 +12,7 @@ using namespace shasta2;
 
 
 
+// This only handles simple vertex tangles with a 2 by 2 tangle matrix.
 void AssemblyGraph::detangleVertices()
 {
     AssemblyGraph& assemblyGraph = *this;
@@ -278,4 +281,17 @@ void AssemblyGraph::detangleVertices()
 
     }
 
+}
+
+
+
+void AssemblyGraph::detangle()
+{
+    performanceLog << timestamp << "AssemblyGraph::detangle begins." << endl;
+
+    // Find the bubbles, including "haploid" bubbles.
+    vector<Bubble> bubbles;
+    findBubbles(bubbles, true);
+
+    performanceLog << timestamp << "AssemblyGraph::detangle ends." << endl;
 }

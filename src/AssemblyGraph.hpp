@@ -245,6 +245,7 @@ public:
     const OrderById orderById;
 
     void detangleVertices();
+    void detangle();
 private:
 
 
@@ -259,7 +260,7 @@ private:
 
     // Find Bubbles.
     // The edges of each Bubble are sorted by id.
-    void findBubbles(vector<Bubble>&) const;
+    void findBubbles(vector<Bubble>&, bool allowHaploid) const;
 
 public:
     uint64_t bubbleCleanup();

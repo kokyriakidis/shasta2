@@ -15,7 +15,7 @@ using namespace shasta2;
 
 // Find Bubbles.
 // The edges of each Bubble are sorted by id.
-void AssemblyGraph::findBubbles(vector<Bubble>& bubbles) const
+void AssemblyGraph::findBubbles(vector<Bubble>& bubbles, bool allowHaploid) const
 {
     performanceLog << timestamp << "AssemblyGraph::findBubbles begins." << endl;
 
@@ -34,7 +34,7 @@ void AssemblyGraph::findBubbles(vector<Bubble>& bubbles) const
         for(const auto& p: m) {
             const vertex_descriptor v1 = p.first;
             const vector<edge_descriptor>& edges = p.second;
-            if(edges.size() > 1) {
+            if(allowHaploid or (edges.size() > 1)) {
                 Bubble bubble;
                 bubble.v0 = v0;
                 bubble.v1 = v1;
@@ -99,7 +99,7 @@ uint64_t AssemblyGraph::bubbleCleanupIterationMultithreaded(
 
     // Find all bubbles.
     vector<Bubble> allBubbles;
-    findBubbles(allBubbles);
+    findBubbles(allBubbles, false);
     cout << "Found " << allBubbles.size() << " bubbles." << endl;
 
     // Find candidate bubbles.
