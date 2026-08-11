@@ -346,12 +346,12 @@ void AssemblyGraph::simplifyAndAssemble()
     strandSymmetricCompress();
     writeIntermediateStageIfRequested("C");
 
-    // Phase SuperbubbleChains.
-    strandSymmetricPhaseSuperbubbleChains();
-    writeIntermediateStageIfRequested("D");
-
     // Vertex detangling.
     detangleVertices();
+    writeIntermediateStageIfRequested("D");
+
+    // Phase SuperbubbleChains.
+    strandSymmetricPhaseSuperbubbleChains();
     writeIntermediateStageIfRequested("E");
 
     // Read following.
