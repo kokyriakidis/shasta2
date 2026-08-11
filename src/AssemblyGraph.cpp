@@ -336,7 +336,8 @@ void AssemblyGraph::simplifyAndAssemble()
     // Initial output.
     writeIntermediateStageIfRequested("A");
 
-    // Strict pruning.
+    // Remove small connected components and strict pruning.
+    removeSmallComponents();
     strictPrune();
     strandSymmetricCompress();
     writeIntermediateStageIfRequested("B");
@@ -2041,6 +2042,77 @@ void AssemblyGraph::removeLowN50Components()
                 " segments, total length " << totalLength <<
                 ", N50 " << n50 << endl;
         }
+
+        // If not keeping this component, remove its vertices and edges.
+        if(not keep) {
+            for(uint64_t vIndex: component) {
+                const vertex_descriptor v = vertexTable[vIndex];
+                boost::clear_vertex(v, assemblyGraph);
+                boost::remove_vertex(v, assemblyGraph);
+            }
+
+        }
+
+    }
+
+}
+
+
+
+// Remove connected components with small total length.
+void AssemblyGraph::removeSmallComponents()
+{
+    // EXPOSE WHEN CODE STABILIZES.
+    const uint64_t minComponentTotalLength = 10000;
+
+    AssemblyGraph& assemblyGraph = *this;
+    const bool debug = false;
+
+    // Map the vertices to integers.
+    uint64_t vertexIndex = 0;
+    vector<vertex_descriptor> vertexTable;                  // Map integers to vertices
+    std::map<vertex_descriptor, uint64_t> vertexIndexMap;   // Map vertices to integers
+    BGL_FORALL_VERTICES(v, assemblyGraph, AssemblyGraph) {
+        vertexTable.push_back(v);
+        vertexIndexMap.insert({v, vertexIndex++});
+    }
+
+
+
+    // Compute connected components.
+    // We can't use boost::connected_components because that only
+    // supports undirected graphs.
+    DisjointSets disjointSets(vertexIndexMap.size());
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        const vertex_descriptor v0 = source(e, assemblyGraph);
+        const vertex_descriptor v1 = target(e, assemblyGraph);
+        disjointSets.unionSet(vertexIndexMap[v0], vertexIndexMap[v1]);
+    }
+    vector< vector<uint64_t> > components;
+    disjointSets.gatherComponents(1, components);
+    if(debug) {
+        cout << "Found " << components.size() << " connected components of the AssemblyGraph." << endl;
+    }
+
+
+
+    // Loop over connected components.
+    for(const vector<uint64_t>& component: components) {
+
+        // Compute the total length of all edges in this component.
+        uint64_t totalLength = 0;
+        for(uint64_t vIndex0: component) {
+            const vertex_descriptor v0 = vertexTable[vIndex0];
+            BGL_FORALL_OUTEDGES(v0, e, assemblyGraph, AssemblyGraph) {
+                const vertex_descriptor v1 = target(e, assemblyGraph);
+                const uint64_t vIndex1 = vertexIndexMap[v1];
+                SHASTA2_ASSERT(disjointSets.findSet(vIndex0) == disjointSets.findSet(vIndex1));
+                totalLength += assemblyGraph[e].length();
+            }
+        }
+
+        // Decide if we keep this component.
+        const bool keep = (totalLength >= minComponentTotalLength);
 
         // If not keeping this component, remove its vertices and edges.
         if(not keep) {

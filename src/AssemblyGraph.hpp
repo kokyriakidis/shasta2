@@ -363,6 +363,9 @@ public:
     // Remove connected components with a low N50.
     void removeLowN50Components();
 
+    // Remove connected components with small total length.
+    void removeSmallComponents();
+
 
     void connectDanglingSegments();
 
