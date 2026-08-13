@@ -78,6 +78,12 @@ public:
     void writeVertices(ostream&) const;
     void writeEdges(const string& fileName) const;
     void writeEdges(ostream&) const;
+    void writeTangleMatrices(const string& fileName) const;
+    void writeTangleMatrices(ostream&) const;
     void writeGraphviz(const string& fileName) const;
     void writeGraphviz(ostream&) const;
+
+private:
+    void getEntrances(vertex_descriptor, vector<AssemblyGraphBaseClass::edge_descriptor>&) const;
+    void getExits(vertex_descriptor, vector<AssemblyGraphBaseClass::edge_descriptor>&) const;
 };

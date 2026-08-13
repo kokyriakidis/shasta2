@@ -1,6 +1,8 @@
 // Shasta2.
 #include "TangleGraph.hpp"
 #include "AssemblyGraph.hpp"
+#include "html.hpp"
+#include "TangleMatrix.hpp"
 using namespace shasta2;
 
 // Standard library.
@@ -58,6 +60,7 @@ TangleGraph::TangleGraph(
 
     writeVertices("TangleGraphVertices.csv");
     writeEdges("TangleGraphEdges.csv");
+    writeTangleMatrices("TangleMatrices.html");
     writeGraphviz("TangleGraph.dot");
     cout << "The TangleGraph has " << num_vertices(tangleGraph) <<
         " vertices and " << num_edges(tangleGraph) << " edges." << endl;
@@ -111,13 +114,37 @@ void TangleGraph::writeVertices(ostream& csv) const
 {
     const TangleGraph& tangleGraph = *this;
 
-    csv << "Id,VertexCount,\n";
+    csv << "Id,VertexCount,Entrances,Exits,\n";
 
     BGL_FORALL_VERTICES(tv, tangleGraph, TangleGraph) {
         const TangleGraphVertex& vertex = tangleGraph[tv];
+        vector<AssemblyGraph::edge_descriptor> entrances;
+        vector<AssemblyGraph::edge_descriptor> exits;
+        getEntrances(tv, entrances);
+        getExits(tv, exits);
+
         csv <<
             vertex.id << "," <<
             vertex.assemblyGraphVertices.size() << ",";
+
+        for(uint64_t i=0; i<entrances.size(); i++) {
+            const AssemblyGraph::edge_descriptor entrance = entrances[i];
+            if(i != 0) {
+                csv << " ";
+            }
+            csv << assemblyGraph[entrance].id;
+        }
+        csv << ",";
+
+        for(uint64_t i=0; i<exits.size(); i++) {
+            const AssemblyGraph::edge_descriptor exit = exits[i];
+            if(i != 0) {
+                csv << " ";
+            }
+            csv << assemblyGraph[exit].id;
+        }
+        csv << ",";
+
         for(const AssemblyGraph::vertex_descriptor av: vertex.assemblyGraphVertices) {
             csv << assemblyGraph[av].id << ",";
         }
@@ -160,4 +187,83 @@ void TangleGraph::writeEdges(ostream& csv) const
         }
         csv << "\n";
     }
+}
+
+
+void TangleGraph::getEntrances(
+    vertex_descriptor v,
+    vector<AssemblyGraph::edge_descriptor>& entrances) const
+{
+    const TangleGraph& tangleGraph = *this;
+
+    entrances.clear();
+    BGL_FORALL_INEDGES(v, e, tangleGraph, TangleGraph) {
+        const BubbleChain& bubbleChain = tangleGraph[e].bubbleChain;
+        const Bubble& bubble = bubbleChain.back();
+        std::ranges::copy(bubble.edges, back_inserter(entrances));
+    }
+
+    sort(entrances.begin(), entrances.end(), assemblyGraph.orderById);
+}
+
+
+
+void TangleGraph::getExits(
+    vertex_descriptor v,
+    vector<AssemblyGraph::edge_descriptor>& exits) const
+{
+    const TangleGraph& tangleGraph = *this;
+
+    exits.clear();
+    BGL_FORALL_OUTEDGES(v, e, tangleGraph, TangleGraph) {
+        const BubbleChain& bubbleChain = tangleGraph[e].bubbleChain;
+        const Bubble& bubble = bubbleChain.front();
+        std::ranges::copy(bubble.edges, back_inserter(exits));
+    }
+
+    sort(exits.begin(), exits.end(), assemblyGraph.orderById);
+}
+
+
+
+void TangleGraph::writeTangleMatrices(const string& fileName) const
+{
+    ofstream html(fileName);
+    writeTangleMatrices(html);
+}
+
+
+
+void TangleGraph::writeTangleMatrices(ostream& html) const
+{
+    const TangleGraph& tangleGraph = *this;
+    ostream noOutput(0);
+    writeHtmlBegin(html, "Tangle matrices");
+
+    BGL_FORALL_VERTICES(v, tangleGraph, TangleGraph) {
+        vector<AssemblyGraph::edge_descriptor> entrances;
+        vector<AssemblyGraph::edge_descriptor> exits;
+        getEntrances(v, entrances);
+        getExits(v, exits);
+        const TangleMatrix tangleMatrix(assemblyGraph, entrances, exits, noOutput);
+
+        html << "<h2>Tangle graph vertex " << tangleGraph[v].id << "</h2>" << endl;
+
+        html << "<table><tr><th>";
+        for(uint64_t j=0; j<exits.size(); j++) {
+            html << "<th>" << assemblyGraph[exits[j]].id;
+        }
+
+        for(uint64_t i=0; i<entrances.size(); i++) {
+            html << "<tr><th>" << assemblyGraph[entrances[i]].id;
+            for(uint64_t j=0; j<exits.size(); j++) {
+                html << "<td class=centered>" << tangleMatrix.tangleMatrix[i][j];
+            }
+        }
+
+        html << "</table>";
+    }
+
+    writeHtmlEnd(html);
+
 }
