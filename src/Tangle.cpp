@@ -1,5 +1,5 @@
 // Shasta.
-#include "Tangle1.hpp"
+#include "Tangle.hpp"
 #include "Anchor.hpp"
 #include "RestrictedAnchorGraph.hpp"
 #include "TangleMatrix1.hpp"
@@ -11,7 +11,7 @@ using namespace shasta2;
 
 
 // Constructor from a set of AssemblyGraph vertices.
-Tangle1::Tangle1(
+Tangle::Tangle(
     AssemblyGraph& assemblyGraph,
     const vector<vertex_descriptor>& tangleVerticesArgument) :
     assemblyGraph(assemblyGraph),
@@ -33,10 +33,10 @@ Tangle1::Tangle1(
 
 
 // Constructor from a single vertex.
-Tangle1::Tangle1(
+Tangle::Tangle(
     AssemblyGraph& assemblyGraph,
     vertex_descriptor v) :
-    Tangle1(
+    Tangle(
         assemblyGraph,
         vector<vertex_descriptor>(1, v))
 {}
@@ -44,17 +44,17 @@ Tangle1::Tangle1(
 
 
 // Constructor from an edge.
-Tangle1::Tangle1(
+Tangle::Tangle(
     AssemblyGraph& assemblyGraph,
     edge_descriptor e) :
-    Tangle1(
+    Tangle(
         assemblyGraph,
         vector<vertex_descriptor>({source(e, assemblyGraph), target(e, assemblyGraph)}))
 {}
 
 
 
-void Tangle1::findEntrances()
+void Tangle::findEntrances()
 {
     entrances.clear();
     for(const vertex_descriptor v1: tangleVertices) {
@@ -70,7 +70,7 @@ void Tangle1::findEntrances()
 
 
 
-void Tangle1::findExits()
+void Tangle::findExits()
 {
     exits.clear();
     for(const vertex_descriptor v0: tangleVertices) {
@@ -86,7 +86,7 @@ void Tangle1::findExits()
 
 
 
-void Tangle1::findTangleEdges()
+void Tangle::findTangleEdges()
 {
     tangleEdges.clear();
     for(const vertex_descriptor v0: tangleVertices) {
@@ -101,14 +101,14 @@ void Tangle1::findTangleEdges()
 
 
 
-bool Tangle1::isTangleVertex(vertex_descriptor v) const
+bool Tangle::isTangleVertex(vertex_descriptor v) const
 {
     return std::ranges::binary_search(tangleVertices, v, assemblyGraph.orderById);
 }
 
 
 
-bool Tangle1::addConnectPair(uint64_t entranceIndex, uint64_t exitIndex) {
+bool Tangle::addConnectPair(uint64_t entranceIndex, uint64_t exitIndex) {
     SHASTA2_ASSERT(entranceIndex < entrances.size());
     SHASTA2_ASSERT(exitIndex < exits.size());
     connectPairs.emplace_back(entranceIndex, exitIndex);
@@ -163,7 +163,7 @@ bool Tangle1::addConnectPair(uint64_t entranceIndex, uint64_t exitIndex) {
 
 
 
-void Tangle1::detangle()
+void Tangle::detangle()
 {
     // Reroute the entrances to new vertices, so all
     // entrances and exits become temporarily dangling.
@@ -206,7 +206,7 @@ void Tangle1::detangle()
 
 // Make a copy of each entrance edge, with the target vertex replaced by a new vertex
 // with the same AnchorId.
-void Tangle1::rerouteEntrances(vector<vertex_descriptor>& newEntranceVertices) const
+void Tangle::rerouteEntrances(vector<vertex_descriptor>& newEntranceVertices) const
 {
     newEntranceVertices.clear();
 
@@ -233,7 +233,7 @@ void Tangle1::rerouteEntrances(vector<vertex_descriptor>& newEntranceVertices) c
 
 // Make a copy of each exit edge, with the source vertex replaced by a new vertex
 // with the same AnchorId.
-void Tangle1::rerouteExits(vector<vertex_descriptor>& newExitVertices) const
+void Tangle::rerouteExits(vector<vertex_descriptor>& newExitVertices) const
 {
     newExitVertices.clear();
     for(const edge_descriptor& eOld: exits) {
@@ -257,7 +257,7 @@ void Tangle1::rerouteExits(vector<vertex_descriptor>& newExitVertices) const
 
 
 
-void Tangle1::reconnect(
+void Tangle::reconnect(
     ConnectPair& connectPair,
     vertex_descriptor v0,
     vertex_descriptor v1

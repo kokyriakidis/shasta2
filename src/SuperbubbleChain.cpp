@@ -5,7 +5,7 @@
 #include "PhasingGraph.hpp"
 #include "performanceLog.hpp"
 #include "RestrictedAnchorGraph.hpp"
-#include "Tangle1.hpp"
+#include "Tangle.hpp"
 #include "TangleMatrix1.hpp"
 #include "timestamp.hpp"
 using namespace shasta2;
@@ -378,7 +378,7 @@ uint64_t SuperbubbleChain::phase1(
             }
 
             // Create the tangle from these vertices.
-            Tangle1 tangle(assemblyGraph, tangleVertices);
+            Tangle tangle(assemblyGraph, tangleVertices);
             SHASTA2_ASSERT(tangle.tangleMatrix().entrances.size());
 
             if(debug) {

@@ -8,25 +8,25 @@
 #include "vector.hpp"
 
 namespace shasta2 {
-    class Tangle1;
+    class Tangle;
     class TangleMatrix1;
 }
 
 
 
-class shasta2::Tangle1 {
+class shasta2::Tangle {
 public:
     using vertex_descriptor = AssemblyGraph::vertex_descriptor;
     using edge_descriptor = AssemblyGraph::edge_descriptor;
 
     // Constructor from a set of AssemblyGraph vertices.
-    Tangle1(AssemblyGraph&, const vector<vertex_descriptor>&);
+    Tangle(AssemblyGraph&, const vector<vertex_descriptor>&);
 
     // Constructor from a single AssemblyGraph vertex.
-    Tangle1(AssemblyGraph&, vertex_descriptor);
+    Tangle(AssemblyGraph&, vertex_descriptor);
 
     // Constructor from a single AssemblyGraph edge.
-    Tangle1(AssemblyGraph&, edge_descriptor);
+    Tangle(AssemblyGraph&, edge_descriptor);
 
     AssemblyGraph& assemblyGraph;
 
