@@ -2,7 +2,7 @@
 #include "Tangle.hpp"
 #include "Anchor.hpp"
 #include "RestrictedAnchorGraph.hpp"
-#include "TangleMatrix1.hpp"
+#include "TangleMatrix.hpp"
 using namespace shasta2;
 
 // Boost libraries.
@@ -27,7 +27,7 @@ Tangle::Tangle(
 
     // Compute the tangle matrix.
     ostream html(0);
-    tangleMatrixPointer = make_shared<TangleMatrix1>(assemblyGraph, entrances, exits, html);
+    tangleMatrixPointer = make_shared<TangleMatrix>(assemblyGraph, entrances, exits, html);
 }
 
 

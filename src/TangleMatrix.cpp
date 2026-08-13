@@ -1,4 +1,4 @@
-#include "TangleMatrix1.hpp"
+#include "TangleMatrix.hpp"
 #include "Anchor.hpp"
 #include "deduplicate.hpp"
 #include "Options.hpp"
@@ -9,7 +9,7 @@ using namespace shasta2;
 
 
 
-TangleMatrix1::TangleMatrix1(
+TangleMatrix::TangleMatrix(
     const AssemblyGraph& assemblyGraph,
     vector<edge_descriptor> entrances,
     vector<edge_descriptor> exits,
@@ -30,7 +30,7 @@ TangleMatrix1::TangleMatrix1(
         writeOrientedReads(html);
     }
 
-    // Gather the oriented reads that contribute to this TangleMatrix1.
+    // Gather the oriented reads that contribute to this TangleMatrix.
     // These are the oriented reads that appear in at least one entrance
     // and one exit.
     gatherCommonOrientedReads();
@@ -46,7 +46,7 @@ TangleMatrix1::TangleMatrix1(
 
 
 
-void TangleMatrix1::gatherOrientedReads(uint64_t representativeRegionLength)
+void TangleMatrix::gatherOrientedReads(uint64_t representativeRegionLength)
 {
     const uint64_t entranceCount = entrances.size();
     const uint64_t exitCount = exits.size();
@@ -64,7 +64,7 @@ void TangleMatrix1::gatherOrientedReads(uint64_t representativeRegionLength)
 
 
 
-void TangleMatrix1::gatherEntranceOrientedReads(
+void TangleMatrix::gatherEntranceOrientedReads(
     uint64_t iEntrance,
     uint64_t representativeRegionLength)
 {
@@ -155,7 +155,7 @@ void TangleMatrix1::gatherEntranceOrientedReads(
 
 
 
-void TangleMatrix1::gatherExitOrientedReads(
+void TangleMatrix::gatherExitOrientedReads(
     uint64_t iExit,
     uint64_t representativeRegionLength)
 {
@@ -241,7 +241,7 @@ void TangleMatrix1::gatherExitOrientedReads(
 }
 
 
-void TangleMatrix1::writeOrientedReads(ostream& html) const
+void TangleMatrix::writeOrientedReads(ostream& html) const
 {
     const uint64_t entranceCount = entrances.size();
     const uint64_t exitCount = exits.size();
@@ -288,7 +288,7 @@ void TangleMatrix1::writeOrientedReads(ostream& html) const
 
 
 
-void TangleMatrix1::gatherCommonOrientedReads()
+void TangleMatrix::gatherCommonOrientedReads()
 {
     const uint64_t entranceCount = entrances.size();
     const uint64_t exitCount = exits.size();
@@ -378,7 +378,7 @@ void TangleMatrix1::gatherCommonOrientedReads()
 
 
 
-TangleMatrix1::CommonOrientedReadInfo::CommonOrientedReadInfo(
+TangleMatrix::CommonOrientedReadInfo::CommonOrientedReadInfo(
     OrientedReadId orientedReadId,
     uint64_t entranceCount,
     uint64_t exitCount) :
@@ -389,14 +389,14 @@ TangleMatrix1::CommonOrientedReadInfo::CommonOrientedReadInfo(
 
 
 
-bool TangleMatrix1::CommonOrientedReadInfo::operator<(const CommonOrientedReadInfo& that) const
+bool TangleMatrix::CommonOrientedReadInfo::operator<(const CommonOrientedReadInfo& that) const
 {
     return orientedReadId < that.orientedReadId;
 }
 
 
 
-void TangleMatrix1::CommonOrientedReadInfo::computeTangleMatrix()
+void TangleMatrix::CommonOrientedReadInfo::computeTangleMatrix()
 {
     const double entranceSum = double(std::accumulate(entranceStepCount.begin(), entranceStepCount.end(), 0UL));
     const double exitSum = double(std::accumulate(exitStepCount.begin(), exitStepCount.end(), 0UL));
@@ -419,7 +419,7 @@ void TangleMatrix1::CommonOrientedReadInfo::computeTangleMatrix()
 
 // Return the index of a given OrientedReadId in the commonOrientedReadInfos vector,
 // or invalid<uint64_t> if not present.
-uint64_t TangleMatrix1::getCommonOrientedReadIdIndex(OrientedReadId orientedReadId) const
+uint64_t TangleMatrix::getCommonOrientedReadIdIndex(OrientedReadId orientedReadId) const
 {
     const CommonOrientedReadInfo target(orientedReadId);
     const auto it = std::lower_bound(commonOrientedReadInfos.begin(), commonOrientedReadInfos.end(), target);
@@ -433,7 +433,7 @@ uint64_t TangleMatrix1::getCommonOrientedReadIdIndex(OrientedReadId orientedRead
 
 
 
-void TangleMatrix1::writeCommonOrientedReads(ostream& html) const
+void TangleMatrix::writeCommonOrientedReads(ostream& html) const
 {
     html << std::setprecision(2) << std::defaultfloat <<
         "<h4>Common oriented reads</h4>"
@@ -489,7 +489,7 @@ void TangleMatrix1::writeCommonOrientedReads(ostream& html) const
 
 
 
-void TangleMatrix1::computeTotalTangleMatrix()
+void TangleMatrix::computeTotalTangleMatrix()
 {
     const uint64_t entranceCount = entrances.size();
     const uint64_t exitCount = exits.size();
@@ -509,7 +509,7 @@ void TangleMatrix1::computeTotalTangleMatrix()
 
 
 
-void TangleMatrix1::writeTotalTangleMatrix(ostream& html) const
+void TangleMatrix::writeTotalTangleMatrix(ostream& html) const
 {
     html << "<h4>Total tangle matrix</h4><table><tr><th>";
     for(uint64_t j=0; j<exits.size(); j++) {

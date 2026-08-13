@@ -6,7 +6,7 @@
 #include "performanceLog.hpp"
 #include "RestrictedAnchorGraph.hpp"
 #include "Tangle.hpp"
-#include "TangleMatrix1.hpp"
+#include "TangleMatrix.hpp"
 #include "timestamp.hpp"
 using namespace shasta2;
 
@@ -66,7 +66,7 @@ uint64_t SuperbubbleChain::phase1(
 
             // Create a TangleMatrix between these two bubbles.
             ostream html(0);
-            TangleMatrix1 tangleMatrix(
+            TangleMatrix tangleMatrix(
                 assemblyGraph,
                 bubble0.internalEdges,
                 bubble1.internalEdges,

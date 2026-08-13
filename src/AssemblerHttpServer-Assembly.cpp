@@ -12,7 +12,7 @@
 #include "RestrictedAnchorGraph.hpp"
 #include "SegmentStepSupport.hpp"
 #include "Superbubble.hpp"
-#include "TangleMatrix1.hpp"
+#include "TangleMatrix.hpp"
 using namespace shasta2;
 
 // Boost libraries.
@@ -1265,7 +1265,7 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
     std::ranges::sort(exits, assemblyGraph.orderById);
 
     // Compute the tangle matrix.
-    const TangleMatrix1 tangleMatrix(assemblyGraph, entrances, exits, html);
+    const TangleMatrix tangleMatrix(assemblyGraph, entrances, exits, html);
     GTest gTest(tangleMatrix.tangleMatrix, epsilon, false, false);
     gTest.writeHtml(html);
 

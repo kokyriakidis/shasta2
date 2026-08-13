@@ -6,7 +6,7 @@
 #include "Options.hpp"
 #include "performanceLog.hpp"
 #include "TangleGraph.hpp"
-#include "TangleMatrix1.hpp"
+#include "TangleMatrix.hpp"
 #include "timestamp.hpp"
 using namespace shasta2;
 
@@ -170,7 +170,7 @@ void AssemblyGraph::detangleVertices()
         }
 
         // Create the tangle matrix.
-        TangleMatrix1 tangleMatrix(assemblyGraph, inEdges, outEdges, html);
+        TangleMatrix tangleMatrix(assemblyGraph, inEdges, outEdges, html);
         if(debug) {
             cout << "Tangle  matrix: ";
             for(const auto& row: tangleMatrix.tangleMatrix) {

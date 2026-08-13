@@ -6,7 +6,7 @@
 #include "performanceLog.hpp"
 #include "RestrictedAnchorGraph.hpp"
 #include "SegmentStepSupport.hpp"
-#include "TangleMatrix1.hpp"
+#include "TangleMatrix.hpp"
 using namespace shasta2;
 using namespace ReadFollowing4;
 
@@ -1413,7 +1413,7 @@ void ReadFollower::updateAssemblyGraph(AssemblyGraph& assemblyGraph) const
                 // - Add one step for each edge of the longest path of the RestrictedAnchorGraph.
 
                 ostream html(0);
-                const TangleMatrix1 tangleMatrix(
+                const TangleMatrix tangleMatrix(
                     assemblyGraph,
                     vector<Segment>(1, newSegment0),
                     vector<Segment>(1, newSegment1),
@@ -1605,7 +1605,7 @@ void ReadFollower::updateAssemblyGraphStrandSymmetric(AssemblyGraph& assemblyGra
                 // - Add one step for each edge of the longest path of the RestrictedAnchorGraph.
 
                 ostream html(0);
-                const TangleMatrix1 tangleMatrix(
+                const TangleMatrix tangleMatrix(
                     assemblyGraph,
                     vector<Segment>(1, newSegment0),
                     vector<Segment>(1, newSegment1),

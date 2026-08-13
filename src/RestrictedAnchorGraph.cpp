@@ -7,7 +7,7 @@
 #include "graphvizToHtml.hpp"
 #include "Journeys.hpp"
 #include "longestPath.hpp"
-#include "TangleMatrix1.hpp"
+#include "TangleMatrix.hpp"
 #include "tmpDirectory.hpp"
 using namespace shasta2;
 
@@ -27,20 +27,20 @@ using namespace shasta2;
 RestrictedAnchorGraph::RestrictedAnchorGraph(
     const Anchors& anchors,
     const Journeys& journeys,
-    const TangleMatrix1& tangleMatrix1,
+    const TangleMatrix& tangleMatrix,
     uint64_t iEntrance,
     uint64_t iExit,
     ostream& html)
 {
-    constructFromTangleMatrix1(anchors, journeys, tangleMatrix1, iEntrance, iExit, html);
+    constructFromTangleMatrix(anchors, journeys, tangleMatrix, iEntrance, iExit, html);
 }
 
 
 
-void RestrictedAnchorGraph::constructFromTangleMatrix1(
+void RestrictedAnchorGraph::constructFromTangleMatrix(
     const Anchors& anchors,
     const Journeys& journeys,
-    const TangleMatrix1& tangleMatrix1,
+    const TangleMatrix& tangleMatrix,
     uint64_t iEntrance,
     uint64_t iExit,
     ostream& html)
@@ -48,7 +48,7 @@ void RestrictedAnchorGraph::constructFromTangleMatrix1(
     using Graph = RestrictedAnchorGraph;
     Graph& graph = *this;
 
-    fillJourneyPortions(journeys, tangleMatrix1, iEntrance, iExit, html);
+    fillJourneyPortions(journeys, tangleMatrix, iEntrance, iExit, html);
     gatherAllAnchorIds(journeys);
     fillJourneyPortionsAnchorIndexes(journeys);
     gatherTransitions(html);
@@ -62,10 +62,10 @@ void RestrictedAnchorGraph::constructFromTangleMatrix1(
     vector<bool> verticesAdded(anchorMap.size(), false);
 
     // Add the entrance and exit vertices.
-    const AssemblyGraph::edge_descriptor entrance = tangleMatrix1.entrances[iEntrance];
-    const AssemblyGraph::edge_descriptor exit = tangleMatrix1.exits[iExit];
-    const AnchorId anchorId0 = tangleMatrix1.assemblyGraph[entrance].back().anchorPair.anchorIdB;
-    const AnchorId anchorId1 = tangleMatrix1.assemblyGraph[exit].front().anchorPair.anchorIdA;
+    const AssemblyGraph::edge_descriptor entrance = tangleMatrix.entrances[iEntrance];
+    const AssemblyGraph::edge_descriptor exit = tangleMatrix.exits[iExit];
+    const AnchorId anchorId0 = tangleMatrix.assemblyGraph[entrance].back().anchorPair.anchorIdB;
+    const AnchorId anchorId1 = tangleMatrix.assemblyGraph[exit].front().anchorPair.anchorIdA;
     SHASTA2_ASSERT(anchorId0 != anchorId1);
     const vertex_descriptor v0 = addVertex(anchorId0);
     const vertex_descriptor v1 = addVertex(anchorId1);
@@ -343,10 +343,10 @@ void RestrictedAnchorGraph::gatherTransitions(ostream& html)
 
 
 
-// Fill the journey portions using a TangleMatrix1.
+// Fill the journey portions using a TangleMatrix.
 void RestrictedAnchorGraph::fillJourneyPortions(
     const Journeys& journeys,
-    const TangleMatrix1& tangleMatrix1,
+    const TangleMatrix& tangleMatrix,
     uint64_t iEntrance,
     uint64_t iExit,
     ostream& html)
@@ -354,12 +354,12 @@ void RestrictedAnchorGraph::fillJourneyPortions(
     // EXPOSE WHEN CODE STABILIZES.
     const double drift = 0.2;
 
-    using OrientedReadInfo = TangleMatrix1::OrientedReadInfo;
+    using OrientedReadInfo = TangleMatrix::OrientedReadInfo;
 
-    const Anchors& anchors = tangleMatrix1.assemblyGraph.anchors;
+    const Anchors& anchors = tangleMatrix.assemblyGraph.anchors;
 
-    const vector<OrientedReadInfo>& entranceOrientedReadInfos = tangleMatrix1.entranceOrientedReadInfos[iEntrance];
-    const vector<OrientedReadInfo>& exitOrientedReadInfos = tangleMatrix1.exitOrientedReadInfos[iExit];
+    const vector<OrientedReadInfo>& entranceOrientedReadInfos = tangleMatrix.entranceOrientedReadInfos[iEntrance];
+    const vector<OrientedReadInfo>& exitOrientedReadInfos = tangleMatrix.exitOrientedReadInfos[iExit];
 
 
 
@@ -382,7 +382,7 @@ void RestrictedAnchorGraph::fillJourneyPortions(
         const OrientedReadId orientedReadId = itEntrance->orientedReadId;
         SHASTA2_ASSERT(orientedReadId == itExit->orientedReadId);
 
-        if(not tangleMatrix1.goesBackward(orientedReadId)) {
+        if(not tangleMatrix.goesBackward(orientedReadId)) {
             const Journey journey = journeys[orientedReadId];
             const uint32_t entrancePositionInJourney = itEntrance->positionInJourney;
             const uint32_t exitPositionInJourney = itExit->positionInJourney;
@@ -424,7 +424,7 @@ void RestrictedAnchorGraph::fillJourneyPortions(
             (itEntrance != itEntranceEnd) and
             (itExit==itExitEnd or (itEntrance->orientedReadId < itExit->orientedReadId))) {
             const OrientedReadId orientedReadId = itEntrance->orientedReadId;
-            if(not tangleMatrix1.goesBackward(orientedReadId)) {
+            if(not tangleMatrix.goesBackward(orientedReadId)) {
                 const Journey journey = journeys[orientedReadId];
                 const uint32_t begin = itEntrance->positionInJourney;
                 uint32_t end = uint32_t(journey.size());
@@ -461,7 +461,7 @@ void RestrictedAnchorGraph::fillJourneyPortions(
             (itExit != itExitEnd) and
             (itEntrance==itEntranceEnd or (itExit->orientedReadId < itEntrance->orientedReadId))) {
             const OrientedReadId orientedReadId = itExit->orientedReadId;
-            if(not tangleMatrix1.goesBackward(orientedReadId)) {
+            if(not tangleMatrix.goesBackward(orientedReadId)) {
                 const Journey journey = journeys[orientedReadId];
                 uint32_t begin = 0;
                 const uint32_t end = itExit->positionInJourney + 1;
@@ -503,7 +503,7 @@ void RestrictedAnchorGraph::fillJourneyPortions(
             (itExit!=itExitEnd) and
             (itEntrance->orientedReadId == itExit->orientedReadId)) {
             const OrientedReadId orientedReadId = itEntrance->orientedReadId;
-            if(not tangleMatrix1.goesBackward(orientedReadId)) {
+            if(not tangleMatrix.goesBackward(orientedReadId)) {
                 const uint32_t begin = itEntrance->positionInJourney;
                 const uint32_t end = itExit->positionInJourney + 1;
                 journeyPortions.emplace_back(orientedReadId, begin, end);

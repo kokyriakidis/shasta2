@@ -9,7 +9,7 @@
 
 namespace shasta2 {
     class Tangle;
-    class TangleMatrix1;
+    class TangleMatrix;
 }
 
 
@@ -51,8 +51,8 @@ public:
     void findTangleEdges();
 
     // The tangle matrix constructed using the entrances and exits.
-    shared_ptr<TangleMatrix1> tangleMatrixPointer;
-    const TangleMatrix1& tangleMatrix() const
+    shared_ptr<TangleMatrix> tangleMatrixPointer;
+    const TangleMatrix& tangleMatrix() const
     {
         return *tangleMatrixPointer;
     }

@@ -2,7 +2,7 @@
 
 /*******************************************************************************
 
-A TangleMatrix1 is defined by two sets of AssemblyGraphe edges (segments):
+A TangleMatrix is defined by two sets of AssemblyGraphe edges (segments):
 - The entrances.
 - The exits.
 
@@ -15,15 +15,15 @@ A TangleMatrix1 is defined by two sets of AssemblyGraphe edges (segments):
 #include "vector.hpp"
 
 namespace shasta2 {
-    class TangleMatrix1;
+    class TangleMatrix;
 }
 
 
-class shasta2::TangleMatrix1 {
+class shasta2::TangleMatrix {
 public:
     using edge_descriptor = AssemblyGraph::edge_descriptor;
 
-    TangleMatrix1(
+    TangleMatrix(
         const AssemblyGraph&,
         vector<edge_descriptor> entrances,
         vector<edge_descriptor> exits,

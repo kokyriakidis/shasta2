@@ -36,7 +36,7 @@ namespace shasta2 {
 
     class JourneyPortion;
 
-    class TangleMatrix1;
+    class TangleMatrix;
 }
 
 
@@ -80,18 +80,18 @@ public:
 class shasta2::RestrictedAnchorGraph : public RestrictedAnchorGraphBaseClass {
 public:
 
-    // Constructor using a TangleMatrix1.
+    // Constructor using a TangleMatrix.
     RestrictedAnchorGraph(
         const Anchors&,
         const Journeys&,
-        const TangleMatrix1&,
+        const TangleMatrix&,
         uint64_t iEntrance,
         uint64_t iExit,
         ostream& html);
-    void constructFromTangleMatrix1(
+    void constructFromTangleMatrix(
         const Anchors&,
         const Journeys&,
-        const TangleMatrix1&,
+        const TangleMatrix&,
         uint64_t iEntrance,
         uint64_t iExit,
         ostream& html);
@@ -99,10 +99,10 @@ public:
     // The journey portions that define this RestrictedAnchorGraph.
     vector<JourneyPortion> journeyPortions;
 
-    // Fill the journey portions using a TangleMatrix1.
+    // Fill the journey portions using a TangleMatrix.
     void fillJourneyPortions(
         const Journeys&,
-        const TangleMatrix1&,
+        const TangleMatrix&,
         uint64_t iEntrance,
         uint64_t iExit,
         ostream& html);

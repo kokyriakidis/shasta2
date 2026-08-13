@@ -13,7 +13,7 @@
 #include "ReadFollowing4.hpp"
 #include "RestrictedAnchorGraph.hpp"
 #include "SegmentStepSupport.hpp"
-#include "TangleMatrix1.hpp"
+#include "TangleMatrix.hpp"
 using namespace shasta2;
 
 // Boost libraries.
@@ -1908,7 +1908,7 @@ bool AssemblyGraph::canConnect(edge_descriptor e0, edge_descriptor e1) const
     // between e0 and e1. The RestrictedAnchorGraph requires a TangleMatrix,
     // so we create a 1x1 tangle matrix with e0 as the entrance and e1 as the exit.
     ostream html(0);
-    TangleMatrix1 tangleMatrix(assemblyGraph, {e0}, {e1}, html);
+    TangleMatrix tangleMatrix(assemblyGraph, {e0}, {e1}, html);
 
 
 
@@ -2553,7 +2553,7 @@ void AssemblyGraph::cleanupLinearChain(const vector<edge_descriptor>& chain)
                 // - Add one step for each edge of the longest path of the RestrictedAnchorGraph.
 
                 ostream html(0);
-                const TangleMatrix1 tangleMatrix(
+                const TangleMatrix tangleMatrix(
                     assemblyGraph,
                     vector<edge_descriptor>(1, e0),
                     vector<edge_descriptor>(1, e1),
@@ -2693,7 +2693,7 @@ void AssemblyGraph::connectDanglingSegments()
 
             // Create the tangle matrix.
             std::ostream html(0);
-            const TangleMatrix1 tangleMatrix(
+            const TangleMatrix tangleMatrix(
                 assemblyGraph,
                 vector<edge_descriptor>(1, e0),
                 vector<edge_descriptor>(1, e1),
@@ -2836,7 +2836,7 @@ void AssemblyGraph::connectDanglingSegments()
                     // - Add one step for each edge of the longest path of the RestrictedAnchorGraph.
 
                     ostream html(0);
-                    const TangleMatrix1 tangleMatrix(
+                    const TangleMatrix tangleMatrix(
                         assemblyGraph,
                         vector<edge_descriptor>(1, e0),
                         vector<edge_descriptor>(1, e1),
