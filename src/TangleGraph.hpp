@@ -1,5 +1,8 @@
 #pragma once
 
+// In the TangleGraph, each vertex represents a tangle
+// and each edge represents a BubbleChain.
+
 // Shasta2.
 #include "AssemblyGraphBaseClass.hpp"
 #include "Bubble.hpp"
@@ -71,6 +74,10 @@ public:
 
     const AssemblyGraph& assemblyGraph;
 
+    void writeVertices(const string& fileName) const;
+    void writeVertices(ostream&) const;
+    void writeEdges(const string& fileName) const;
+    void writeEdges(ostream&) const;
     void writeGraphviz(const string& fileName) const;
     void writeGraphviz(ostream&) const;
 };

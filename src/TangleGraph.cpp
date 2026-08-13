@@ -56,6 +56,8 @@ TangleGraph::TangleGraph(
        boost::add_edge(tv0, tv1, TangleGraphEdge(bubbleChainId, bubbleChain), tangleGraph);
     }
 
+    writeVertices("TangleGraphVertices.csv");
+    writeEdges("TangleGraphEdges.csv");
     writeGraphviz("TangleGraph.dot");
     cout << "The TangleGraph has " << num_vertices(tangleGraph) <<
         " vertices and " << num_edges(tangleGraph) << " edges." << endl;
@@ -95,3 +97,67 @@ void TangleGraph::writeGraphviz(ostream& dot) const
     dot << "}\n";
 }
 
+
+
+void TangleGraph::writeVertices(const string& fileName) const
+{
+    ofstream csv(fileName);
+    writeVertices(csv);
+}
+
+
+
+void TangleGraph::writeVertices(ostream& csv) const
+{
+    const TangleGraph& tangleGraph = *this;
+
+    csv << "Id,VertexCount,\n";
+
+    BGL_FORALL_VERTICES(tv, tangleGraph, TangleGraph) {
+        const TangleGraphVertex& vertex = tangleGraph[tv];
+        csv <<
+            vertex.id << "," <<
+            vertex.assemblyGraphVertices.size() << ",";
+        for(const AssemblyGraph::vertex_descriptor av: vertex.assemblyGraphVertices) {
+            csv << assemblyGraph[av].id << ",";
+        }
+        csv << "\n";
+    }
+
+}
+
+
+
+void TangleGraph::writeEdges(const string& fileName) const
+{
+    ofstream csv(fileName);
+    writeEdges(csv);
+}
+
+
+
+void TangleGraph::writeEdges(ostream& csv) const
+{
+    const TangleGraph& tangleGraph = *this;
+
+    csv << "Id,Length,\n";
+
+    BGL_FORALL_EDGES(ev, tangleGraph, TangleGraph) {
+        const TangleGraphEdge& edge = tangleGraph[ev];
+        const BubbleChain& bubbleChain = edge.bubbleChain;
+        csv <<
+            edge.id << "," <<
+            bubbleChain.maxLength(assemblyGraph) << ",";
+        for(const Bubble& bubble: bubbleChain) {
+            for(uint64_t i=0; i<bubble.edges.size(); i++) {
+                const AssemblyGraph::edge_descriptor e = bubble.edges[i];
+                if(i != 0) {
+                    csv << " ";
+                }
+                csv << assemblyGraph[e].id;
+            }
+            csv << ",";
+        }
+        csv << "\n";
+    }
+}
