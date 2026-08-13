@@ -1,7 +1,9 @@
 // Shasta2.
 #include "TangleGraph.hpp"
 #include "AssemblyGraph.hpp"
+#include "GTest.hpp"
 #include "html.hpp"
+#include "Options.hpp"
 #include "TangleMatrix.hpp"
 using namespace shasta2;
 
@@ -286,4 +288,154 @@ void TangleGraph::writeTangleMatrices(ostream& html) const
 
     writeHtmlEnd(html);
 
+}
+
+
+
+void TangleGraph::detangle()
+{
+    TangleGraph& tangleGraph = *this;
+
+    // Loop over pairs of reverse complement vertices.
+    BGL_FORALL_VERTICES(v, tangleGraph, TangleGraph) {
+
+        // Skip it if trivial.
+        if((in_degree(v, tangleGraph) < 2) or (out_degree(v, tangleGraph) < 2)) {
+            continue;
+        }
+
+        const TangleGraphVertex& vertex = tangleGraph[v];
+        const vertex_descriptor vRc = vertex.vRc;
+        const TangleGraphVertex& vertexRc = tangleGraph[vRc];
+
+        // Handle each pair once.
+        if(vertex.id <= vertexRc.id) {
+            detangleVertexPair(v);
+        }
+
+    }
+}
+
+
+
+bool TangleGraph::detangleVertexPair(vertex_descriptor v)
+{
+    TangleGraph& tangleGraph = *this;
+    const bool debug = true;
+    ostream noOutput(0);
+    if(debug) {
+        cout << "Detangling TangleGraph vertex " << tangleGraph[v].id <<
+            " and its reverse complement." << endl;
+    }
+
+    // Get the entrances and exits.
+    vector<AssemblyGraph::edge_descriptor> entrances;
+    vector<AssemblyGraph::edge_descriptor> exits;
+    getEntrances(v, entrances);
+    getExits(v, exits);
+    if(debug) {
+        cout << "Entrances:";
+        for(const AssemblyGraph::edge_descriptor entrance: entrances) {
+            cout << " " << assemblyGraph[entrance].id;
+        }
+        cout << endl;
+        cout << "Exits:";
+        for(const AssemblyGraph::edge_descriptor exit: exits) {
+            cout << " " << assemblyGraph[exit].id;
+        }
+        cout << endl;
+    }
+
+    // Compute the TangleMatrix.
+    const TangleMatrix tangleMatrix(assemblyGraph, entrances, exits, noOutput);
+    if(debug) {
+        cout << "Tangle matrix:" << endl;
+        cout << ",";
+        for(const AssemblyGraph::edge_descriptor exit: exits) {
+            cout << assemblyGraph[exit].id << ",";
+        }
+        cout << endl;
+    }
+    for(uint64_t i=0; i<entrances.size(); i++) {
+        cout << assemblyGraph[entrances[i]].id << ",";
+        for(uint64_t j=0; j<exits.size(); j++) {
+            cout << tangleMatrix.tangleMatrix[i][j] << ",";
+        }
+        cout << endl;
+    }
+
+    // Run the G-test on this tangle matrix.
+    GTest gTest(tangleMatrix.tangleMatrix, assemblyGraph.options.detangleEpsilon, false, false);
+
+    // If the G-test failed, don't detangle.
+    if(not gTest.success) {
+        if(debug) {
+            cout << "Likelihood ratio test was not successful." << endl;
+        }
+        return false;
+    }
+    const auto& bestHypothesis = gTest.hypotheses.front();
+    const double bestG = bestHypothesis.G;
+    if(debug) {
+        cout << "Best hypothesis:" << endl;
+        cout << ",";
+        for(const AssemblyGraph::edge_descriptor exit: exits) {
+            cout << assemblyGraph[exit].id << ",";
+        }
+        cout << endl;
+        for(uint64_t i=0; i<entrances.size(); i++) {
+            cout << assemblyGraph[entrances[i]].id << ",";
+            for(uint64_t j=0; j<exits.size(); j++) {
+                cout << int(bestHypothesis.connectivityMatrix[i][j]) << ",";
+            }
+            cout << endl;
+        }
+        cout << "G = " << bestG;
+        if(gTest.hypotheses.size() > 1) {
+            const double secondBestG = gTest.hypotheses[1].G;
+            cout << ", second best G = " << secondBestG;
+        }
+        cout << endl;
+    }
+
+    // Check if the best hypothesis satisfies our options.
+    if(bestG > assemblyGraph.options.detangleMaxLogP) {
+        if(debug) {
+            cout << "Best hypothesis G is too high." << endl;
+        }
+        return false;
+    }
+    if(gTest.hypotheses.size() > 1) {
+        const double secondBestG = gTest.hypotheses[1].G;
+        if(secondBestG - bestG < assemblyGraph.options.detangleMinLogPDelta) {
+            if(debug) {
+                cout << "Second best hypothesis G is too low." << endl;
+            }
+            return false;
+        }
+    }
+
+    // Check if  we can connect the entrance/exit pairs
+    // described by the connectivity matrix for the best hypothesis.
+    for(uint64_t i=0; i<entrances.size(); i++) {
+        const AssemblyGraph::edge_descriptor entrance = entrances[i];
+        for(uint64_t j=0; j<exits.size(); j++) {
+            if(bestHypothesis.connectivityMatrix[i][j]) {
+                const AssemblyGraph::edge_descriptor exit = exits[j];
+                if(not assemblyGraph.canConnect(entrance, exit)) {
+                    if(debug) {
+                        cout << "Can't connect " << assemblyGraph[entrance].id <<
+                            " with " << assemblyGraph[exit].id << endl;
+                    }
+                    return false;
+                }
+            }
+        }
+    }
+
+    if(debug) {
+        cout << "This vertex pair will be detangled." << endl;
+    }
+
+    return true;
 }

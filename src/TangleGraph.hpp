@@ -77,6 +77,8 @@ public:
 
     const AssemblyGraph& assemblyGraph;
 
+    void detangle();
+
     void writeVertices(const string& fileName) const;
     void writeVertices(ostream&) const;
     void writeEdges(const string& fileName) const;
@@ -89,4 +91,6 @@ public:
 private:
     void getEntrances(vertex_descriptor, vector<AssemblyGraphBaseClass::edge_descriptor>&) const;
     void getExits(vertex_descriptor, vector<AssemblyGraphBaseClass::edge_descriptor>&) const;
+
+    bool detangleVertexPair(vertex_descriptor);
 };

@@ -375,8 +375,9 @@ void AssemblyGraph::detangle()
     }
 
 
-    // Create the TangleGraph.
+    // Create the TangleGraph and use it to detangle.
     TangleGraph tangleGraph(assemblyGraph, longBubbleChains, tangles);
+    tangleGraph.detangle();
 
     performanceLog << timestamp << "AssemblyGraph::detangle ends." << endl;
 }
