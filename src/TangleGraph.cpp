@@ -31,6 +31,7 @@ TangleGraph::TangleGraph(
     }
 
 
+
     // Now generate an edge for each BubbleChain.
     for(uint64_t bubbleChainId=0; bubbleChainId<bubbleChains.size(); bubbleChainId++) {
         const BubbleChain& bubbleChain = bubbleChains[bubbleChainId];
@@ -57,6 +58,24 @@ TangleGraph::TangleGraph(
 
        boost::add_edge(tv0, tv1, TangleGraphEdge(bubbleChainId, bubbleChain), tangleGraph);
     }
+
+
+
+    // Fill in the reverse complement of each vertex.
+    BGL_FORALL_VERTICES(tv, tangleGraph, TangleGraph) {
+        const AssemblyGraph::vertex_descriptor av = tangleGraph[tv].assemblyGraphVertices.front();
+        const AssemblyGraph::vertex_descriptor avRc = assemblyGraph[av].vRc;
+        tangleGraph[tv].vRc = vertexMap.at(avRc);
+    }
+
+    // Sanity check of the reverse complement of each vertex.
+    BGL_FORALL_VERTICES(v, tangleGraph, TangleGraph) {
+        const TangleGraphVertex& vertex = tangleGraph[v];
+        const vertex_descriptor vRc = vertex.vRc;
+        const TangleGraphVertex& vertexRc = tangleGraph[vRc];
+        SHASTA2_ASSERT(vertexRc.vRc == v);
+    }
+
 
     writeVertices("TangleGraphVertices.csv");
     writeEdges("TangleGraphEdges.csv");
@@ -114,7 +133,7 @@ void TangleGraph::writeVertices(ostream& csv) const
 {
     const TangleGraph& tangleGraph = *this;
 
-    csv << "Id,VertexCount,Entrances,Exits,\n";
+    csv << "Id,IdRc,VertexCount,Entrances,Exits,\n";
 
     BGL_FORALL_VERTICES(tv, tangleGraph, TangleGraph) {
         const TangleGraphVertex& vertex = tangleGraph[tv];
@@ -125,6 +144,7 @@ void TangleGraph::writeVertices(ostream& csv) const
 
         csv <<
             vertex.id << "," <<
+            tangleGraph[vertex.vRc].id << "," <<
             vertex.assemblyGraphVertices.size() << ",";
 
         for(uint64_t i=0; i<entrances.size(); i++) {

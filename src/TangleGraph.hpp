@@ -35,6 +35,9 @@ public:
     uint64_t id;
     vector<AssemblyGraphBaseClass::vertex_descriptor> assemblyGraphVertices;
 
+    // The reverse complement of this vertex.
+    TangleGraphBaseClass::vertex_descriptor vRc = TangleGraphBaseClass::null_vertex();
+
     TangleGraphVertex(
         uint64_t id,
         const vector<AssemblyGraphBaseClass::vertex_descriptor>& assemblyGraphVertices) :
