@@ -5,6 +5,7 @@
 #include "GTest.hpp"
 #include "Options.hpp"
 #include "performanceLog.hpp"
+#include "TangleGraph.hpp"
 #include "TangleMatrix1.hpp"
 #include "timestamp.hpp"
 using namespace shasta2;
@@ -301,6 +302,20 @@ void AssemblyGraph::detangle()
     writeBubbleChains("BubbleChains.csv", bubbleChains);
     writeBubbleChainsForBandage("BubbleChains-Bandage.csv", bubbleChains);
 
+    // Store separately short and long BubbleChains.
+    vector<BubbleChain> shortBubbleChains;
+    vector<BubbleChain> longBubbleChains;
+    for(const BubbleChain& bubbleChain: bubbleChains) {
+        if(bubbleChain.maxLength(assemblyGraph) >= lengthThreshold) {
+            longBubbleChains.emplace_back(bubbleChain);
+        } else {
+            shortBubbleChains.emplace_back(bubbleChain);
+        }
+    }
+    writeBubbleChains("LongBubbleChains.csv", longBubbleChains);
+    writeBubbleChainsForBandage("LongBubbleChains-Bandage.csv", longBubbleChains);
+    cout << "Found " << longBubbleChains.size() << " long bubble chains." << endl;
+
     // Map the vertices to integers.
     // This is needed below to compute connected components.
     std::map<vertex_descriptor, uint64_t> vertexIndexMap;
@@ -315,18 +330,12 @@ void AssemblyGraph::detangle()
     // Compute connected components using only edges that belong to short BubbleChains.
     // Each non-trivial connected component will become a tangle.
     DisjointSets disjointSets(vertexTable.size());
-    for(const BubbleChain& bubbleChain: bubbleChains) {
-
-        // If this is a long BubbleChain, skip it.
-        if(bubbleChain.maxLength(assemblyGraph) > lengthThreshold) {
-            continue;
-        }
+    for(const BubbleChain& bubbleChain: shortBubbleChains) {
 
         for(const Bubble& bubble: bubbleChain) {
             disjointSets.unionSet(vertexIndexMap.at(bubble.v0), vertexIndexMap.at(bubble.v1));
         }
     }
-
 
     // Get the connected components with two or more vertices.
     vector< vector<uint64_t> > componentsVertexIndexes;
@@ -366,6 +375,8 @@ void AssemblyGraph::detangle()
     }
 
 
+    // Create the TangleGraph.
+    TangleGraph tangleGraph(assemblyGraph, longBubbleChains, tangles);
 
     performanceLog << timestamp << "AssemblyGraph::detangle ends." << endl;
 }
