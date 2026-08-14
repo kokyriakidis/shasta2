@@ -1,11 +1,11 @@
 // Shasta2.
 #include "AssemblyGraph.hpp"
 #include "color.hpp"
+#include "deduplicate.hpp"
 #include "DisjointSets.hpp"
 #include "GTest.hpp"
 #include "Options.hpp"
 #include "performanceLog.hpp"
-#include "TangleGraph.hpp"
 #include "TangleMatrix.hpp"
 #include "timestamp.hpp"
 using namespace shasta2;
@@ -290,10 +290,20 @@ void AssemblyGraph::detangleVertices()
 
 void AssemblyGraph::detangle()
 {
+    while(detangleIteration()) {
+        strandSymmetricCompress();
+    }
+    check();
+}
+
+
+
+bool AssemblyGraph::detangleIteration()
+{
     // EXPOSE WHEN CODE STABILIZES.
     const uint64_t lengthThreshold = 30000;
 
-    performanceLog << timestamp << "AssemblyGraph::detangle begins." << endl;
+    performanceLog << timestamp << "AssemblyGraph::detangleIteration begins." << endl;
     AssemblyGraph& assemblyGraph = *this;
 
     // Find the BubbleChains.
@@ -302,19 +312,17 @@ void AssemblyGraph::detangle()
     writeBubbleChains("BubbleChains.csv", bubbleChains);
     writeBubbleChainsForBandage("BubbleChains-Bandage.csv", bubbleChains);
 
-    // Store separately short and long BubbleChains.
+    // Ony keep the short BubbleChains.
+    // These will be used to define our tangles.
     vector<BubbleChain> shortBubbleChains;
-    vector<BubbleChain> longBubbleChains;
     for(const BubbleChain& bubbleChain: bubbleChains) {
-        if(bubbleChain.maxLength(assemblyGraph) >= lengthThreshold) {
-            longBubbleChains.emplace_back(bubbleChain);
-        } else {
+        if(bubbleChain.maxLength(assemblyGraph) < lengthThreshold) {
             shortBubbleChains.emplace_back(bubbleChain);
         }
     }
-    writeBubbleChains("LongBubbleChains.csv", longBubbleChains);
-    writeBubbleChainsForBandage("LongBubbleChains-Bandage.csv", longBubbleChains);
-    cout << "Found " << longBubbleChains.size() << " long bubble chains." << endl;
+    writeBubbleChains("ShortBubbleChains.csv", shortBubbleChains);
+    writeBubbleChainsForBandage("ShortBubbleChains-Bandage.csv", shortBubbleChains);
+    cout << "Found " << shortBubbleChains.size() << " short bubble chains." << endl;
 
     // Map the vertices to integers.
     // This is needed below to compute connected components.
@@ -338,6 +346,7 @@ void AssemblyGraph::detangle()
     }
 
     // Get the connected components with two or more vertices.
+    // These will be our tangles.
     vector< vector<uint64_t> > componentsVertexIndexes;
     disjointSets.gatherComponents(2, componentsVertexIndexes);
 
@@ -349,15 +358,33 @@ void AssemblyGraph::detangle()
         for(const uint64_t vertexIndex: componentVertexIndexes) {
             tangle.push_back(vertexTable[vertexIndex]);
         }
-        sort(tangle.begin(), tangle.end(), orderById);
+        std::ranges::sort(tangle, orderById);
+    }
+    cout << "Found " << tangles.size() << " tangles." << endl;
+
+    // Create a map that gives the tangle each vertex belongs to, if any.
+    std::map<vertex_descriptor, uint64_t> tangleMap;
+    for(uint64_t tangleId=0; tangleId<tangles.size(); tangleId++) {
+        const vector<vertex_descriptor>& tangle = tangles[tangleId];
+        for(const vertex_descriptor v: tangle) {
+            tangleMap.insert(make_pair(v, tangleId));
+        }
     }
 
+    // Find the reverse complement of each tangle.
+    vector<uint64_t> tangleRc(tangles.size(), invalid<uint64_t>);
+    for(uint64_t tangleId=0; tangleId<tangles.size(); tangleId++) {
+        const vector<vertex_descriptor>& tangle = tangles[tangleId];
+        const vertex_descriptor v = tangle.front();
+        const vertex_descriptor vRc = assemblyGraph[v].vRc;
+        tangleRc[tangleId] = tangleMap.at(vRc);
+    }
 
     // Write a csv file that can be imported into Bandage to see
     // the tangles.
     {
         ofstream csv("Tangles-Bandage.csv");
-        csv << "Segment,Tangle,Color\n";
+        csv << "Segment,Tangle,TangleRc,Color\n";
         for(uint64_t tangleId=0; tangleId<tangles.size(); tangleId++) {
             const string color = randomHslColor(tangleId, 0.75, 0.5);
             const vector<vertex_descriptor>& tangle = tangles[tangleId];
@@ -365,8 +392,9 @@ void AssemblyGraph::detangle()
                 BGL_FORALL_OUTEDGES(v0, e, assemblyGraph, AssemblyGraph) {
                     const vertex_descriptor v1 = target(e, assemblyGraph);
                     if(binary_search(tangle.begin(), tangle.end(), v1, orderById)) {
-                        csv << assemblyGraph[e].id << ",";
+                        csv << id(e) << ",";
                         csv << tangleId << ",";
+                        csv << tangleRc[tangleId] << ",";
                         csv << color << "\n";
                     }
                 }
@@ -374,10 +402,253 @@ void AssemblyGraph::detangle()
         }
     }
 
+    // Detangle each pair of reverse complemented tangles.
+    bool somethingWasDone = false;
+    for(uint64_t tangleId=0; tangleId<tangles.size(); tangleId++) {
+        if(tangleId <= tangleRc[tangleId]) {
+            const vector<vertex_descriptor>& tangle = tangles[tangleId];
+            somethingWasDone = somethingWasDone or detangleStrandSymmetric(tangleId, tangle);
+        }
+    }
 
-    // Create the TangleGraph and use it to detangle.
-    TangleGraph tangleGraph(assemblyGraph, longBubbleChains, tangles);
-    tangleGraph.detangle();
-
-    performanceLog << timestamp << "AssemblyGraph::detangle ends." << endl;
+    performanceLog << timestamp << "AssemblyGraph::detangleIteration ends." << endl;
+    return somethingWasDone;
 }
+
+
+
+bool AssemblyGraph::detangleStrandSymmetric(
+    uint64_t tangleId,
+    const vector<vertex_descriptor>& tangleVertices)
+{
+    AssemblyGraph& assemblyGraph = *this;
+
+    const bool debug = true;
+    if(debug) {
+        cout << "Working on tangle " << tangleId <<
+            " with " << tangleVertices.size() << " vertices." <<endl;
+    }
+    SHASTA2_ASSERT(std::ranges::is_sorted(tangleVertices, orderById));
+
+    // Figure out if this tangle is self-complementary.
+    const vertex_descriptor v = tangleVertices.front();
+    const vertex_descriptor vRc = assemblyGraph[v].vRc;
+    const bool isSelfComplementary = (std::ranges::binary_search(tangleVertices, vRc, orderById));
+    cout << "This tangle is " << (isSelfComplementary ? "" : "not") <<
+        " self-complementary." << endl;
+
+    // For now we don't handle the self-complementary case.
+    if(isSelfComplementary) {
+        if(debug) {
+            cout << "Detangling for self-complementary tangles is not implemented." << endl;
+        }
+        return false;
+    }
+
+    // Get the entrances.
+    vector<Segment> entrances;
+    for(const vertex_descriptor v0: tangleVertices) {
+        BGL_FORALL_INEDGES(v0, e, assemblyGraph, AssemblyGraph) {
+            const vertex_descriptor v1 = source(e, assemblyGraph);
+            if(not std::ranges::binary_search(tangleVertices, v1, orderById)) {
+                entrances.push_back(e);
+            }
+        }
+    }
+    std::ranges::sort(entrances, orderById);
+
+    // Get the exits.
+    vector<Segment> exits;
+    for(const vertex_descriptor v0: tangleVertices) {
+        BGL_FORALL_OUTEDGES(v0, e, assemblyGraph, AssemblyGraph) {
+            const vertex_descriptor v1 = target(e, assemblyGraph);
+            if(not std::ranges::binary_search(tangleVertices, v1, orderById)) {
+                exits.push_back(e);
+            }
+        }
+    }
+    std::ranges::sort(exits, orderById);
+
+    if(debug) {
+        cout << "This tangle has " << entrances.size() << " entrances:";
+        for(const Segment entrance: entrances) {
+            cout << " " << id(entrance);
+        }
+        cout << endl;
+        cout << "This tangle has " << exits.size() << " exits:";
+        for(const Segment exit: exits) {
+            cout << " " << id(exit);
+        }
+        cout << endl;
+    }
+
+    if(entrances.empty() or exits.empty()) {
+        if(debug) {
+            cout << "Not detangling because there are no entrances or no exits." << endl;
+        }
+        return false;
+    }
+
+    // If any entrances are also exit, don't detangle for now.
+    bool hasEntranceExit = false;
+    for(const Segment entrance: entrances) {
+        if(std::ranges::contains(exits, entrance)) {
+            hasEntranceExit = true;
+        }
+    }
+    if(hasEntranceExit) {
+        if(debug) {
+            cout << "Not detangling because an entrance is also an exit."<< endl;
+        }
+        return false;
+    }
+
+
+    // Create the TangleMatrix.
+    ostream noOutput(0);
+    const TangleMatrix tangleMatrix(assemblyGraph, entrances, exits, noOutput);
+    if(debug) {
+        cout << "Tangle matrix:" << endl;
+        cout << ",";
+        for(const Segment exit: exits) {
+            cout << id(exit) << ",";
+        }
+        cout << endl;
+        for(uint64_t i=0; i<entrances.size(); i++) {
+            cout << id(entrances[i]) << ",";
+            for(uint64_t j=0; j<exits.size(); j++) {
+                cout << tangleMatrix.tangleMatrix[i][j] << ",";
+            }
+            cout << endl;
+        }
+    }
+
+    // Run the G-test on this tangle matrix.
+    GTest gTest(tangleMatrix.tangleMatrix, assemblyGraph.options.detangleEpsilon, false, false);
+
+    // If the G-test failed, don't detangle.
+    if(not gTest.success) {
+        if(debug) {
+            cout << "Likelihood ratio test was not successful." << endl;
+        }
+        return false;
+    }
+
+    const auto& bestHypothesis = gTest.hypotheses.front();
+    const double bestG = bestHypothesis.G;
+    if(debug) {
+        cout << "Best hypothesis:" << endl;
+        cout << ",";
+        for(const AssemblyGraph::edge_descriptor exit: exits) {
+            cout << assemblyGraph[exit].id << ",";
+        }
+        cout << endl;
+        for(uint64_t i=0; i<entrances.size(); i++) {
+            cout << assemblyGraph[entrances[i]].id << ",";
+            for(uint64_t j=0; j<exits.size(); j++) {
+                cout << int(bestHypothesis.connectivityMatrix[i][j]) << ",";
+            }
+            cout << endl;
+        }
+        cout << "G = " << bestG;
+        if(gTest.hypotheses.size() > 1) {
+            const double secondBestG = gTest.hypotheses[1].G;
+            cout << ", second best G = " << secondBestG;
+        }
+        cout << endl;
+    }
+
+    // Check if the best hypothesis satisfies our options.
+    if(bestG > assemblyGraph.options.detangleMaxLogP) {
+        if(debug) {
+            cout << "Best hypothesis G is too high." << endl;
+        }
+        return false;
+    }
+    if(gTest.hypotheses.size() > 1) {
+        const double secondBestG = gTest.hypotheses[1].G;
+        if(secondBestG - bestG < assemblyGraph.options.detangleMinLogPDelta) {
+            if(debug) {
+                cout << "Second best hypothesis G is too low." << endl;
+            }
+            return false;
+        }
+    }
+
+    // Check if  we can connect the entrance/exit pairs
+    // described by the connectivity matrix for the best hypothesis.
+    for(uint64_t i=0; i<entrances.size(); i++) {
+        const Segment entrance = entrances[i];
+        for(uint64_t j=0; j<exits.size(); j++) {
+            if(bestHypothesis.connectivityMatrix[i][j]) {
+                const Segment exit = exits[j];
+                if(not assemblyGraph.canConnect(entrance, exit)) {
+                    if(debug) {
+                        cout << "Not detangling because can't connect " << id(entrance) <<
+                            " with " << id(exit) << endl;
+                    }
+                    return false;
+                }
+            }
+        }
+    }
+
+    if(debug) {
+        if(isSelfComplementary) {
+            cout << "This tangle will be detangled." << endl;
+        } else {
+            cout << "This tangle and its reverse complement will be detangled." << endl;
+        }
+    }
+
+    // The code below relies on these two assumptions, checked above.
+    SHASTA2_ASSERT(not isSelfComplementary);
+    SHASTA2_ASSERT(not hasEntranceExit);
+
+
+
+    // Remove all the Segments internal to this tangle.
+    vector<Segment> edgesToBeRemoved;
+    for(const vertex_descriptor v0: tangleVertices) {
+        BGL_FORALL_OUTEDGES(v0, e, assemblyGraph, AssemblyGraph) {
+            const AssemblyGraph::vertex_descriptor v1 = target(e, assemblyGraph);
+            if(std::ranges::binary_search(tangleVertices, v1)) {
+                edgesToBeRemoved.push_back(e);
+                edgesToBeRemoved.push_back(assemblyGraph[e].eRc);
+            }
+        }
+    }
+    deduplicate(edgesToBeRemoved);
+    for(const Segment e: edgesToBeRemoved) {
+        boost::remove_edge(e, assemblyGraph);
+    }
+
+
+
+    // Create copies of the entrances disconnected at the end
+    // and of the exits disconnected at the beginning.
+    vector<Segment> newEntrances;
+    for(const Segment entranceOld: entrances) {
+        newEntrances.push_back(disconnectAtEnd(entranceOld));
+    }
+    vector<Segment> newExits;
+    for(const Segment exitOld: exits) {
+        newExits.push_back(disconnectAtBeginning(exitOld));
+    }
+
+    // Make the connections described by the connectivity matrix
+    // of the best hypothesis.
+    for(uint64_t i=0; i<newEntrances.size(); i++) {
+        const AssemblyGraph::edge_descriptor newEntrance = newEntrances[i];
+        for(uint64_t j=0; j<newExits.size(); j++) {
+            if(bestHypothesis.connectivityMatrix[i][j]) {
+                const AssemblyGraph::edge_descriptor newExit = newExits[j];
+                const edge_descriptor eNew = connect(newEntrance, newExit);
+                createReverseComplementEdge(eNew);
+            }
+        }
+    }
+
+    return true;
+}
+

@@ -355,33 +355,37 @@ void AssemblyGraph::simplifyAndAssemble()
     strandSymmetricPhaseSuperbubbleChains();
     writeIntermediateStageIfRequested("E");
 
-    // Read following.
-    readFollowing();
+    // Detangling and new read following (incomplete).
+    detangle();
     writeIntermediateStageIfRequested("F");
+
+    // Old read following (to be phased out).
+    readFollowing();
+    writeIntermediateStageIfRequested("G");
     strandSymmetricCompress();
     removeZeroLengthSegmentsStrandSymmetric();
-    writeIntermediateStageIfRequested("G");
+    writeIntermediateStageIfRequested("H");
 
     // Prune.
     prune();
     strandSymmetricCompress();
-    writeIntermediateStageIfRequested("H");
+    writeIntermediateStageIfRequested("I");
 
     // Remove isolated vertices and connected components with small N50.
     removeIsolatedVertices();
     removeLowN50Components();
-    writeIntermediateStageIfRequested("I");
-    compress();
     writeIntermediateStageIfRequested("J");
+    compress();
+    writeIntermediateStageIfRequested("K");
 
     // Connect dangling segments.
     connectDanglingSegments();
-    writeIntermediateStageIfRequested("K");
+    writeIntermediateStageIfRequested("L");
 
     // A final round of phasing.More opportunities for phasing
     // may have emerged.
     strandSymmetricPhaseSuperbubbleChains();
-    writeIntermediateStageIfRequested("L");
+    writeIntermediateStageIfRequested("M");
 
     // Make the AssemblyGraph single-stranded.
     check();
@@ -2887,6 +2891,68 @@ void AssemblyGraph::connectDanglingSegments()
 
 
 
+// Connect two segments (edges) using the RestrictedAnchorGraph.
+// Return the newly created edge.
+AssemblyGraph::edge_descriptor AssemblyGraph::connect(edge_descriptor e0, edge_descriptor e1)
+{
+    AssemblyGraph& assemblyGraph = *this;
+
+    const AssemblyGraph::vertex_descriptor v0 = target(e0, assemblyGraph);
+    const AssemblyGraph::vertex_descriptor v1 = source(e1, assemblyGraph);
+
+    const AnchorId anchorId0 = assemblyGraph[v0].anchorId;
+    const AnchorId anchorId1 = assemblyGraph[v1].anchorId;
+
+
+    // Create the new edge.
+    // If the two anchors are the same, leave it empty without any steps.
+    // Otherwise use the RestrictedAnchorGraph.
+    edge_descriptor newSegment;
+    tie(newSegment, ignore) = add_edge(v0, v1, AssemblyGraphEdge(assemblyGraph.nextEdgeId++), assemblyGraph);
+    AssemblyGraphEdge& newEdge = assemblyGraph[newSegment];
+    if(anchorId0 != anchorId1) {
+
+        // Create the RestrictedAnchorGraph, then:
+        // - Remove vertices not accessible from anchorId0 and anchorId1.
+        // - Remove cycles.
+        // - Find the longest path.
+        // - Add one step for each edge of the longest path of the RestrictedAnchorGraph.
+
+        ostream html(0);
+        const TangleMatrix tangleMatrix(
+            assemblyGraph,
+            vector<edge_descriptor>(1, e0),
+            vector<edge_descriptor>(1, e1),
+            html);
+
+        try {
+            RestrictedAnchorGraph restrictedAnchorGraph(assemblyGraph.anchors, assemblyGraph.journeys, tangleMatrix, 0, 0, html);
+            vector<RestrictedAnchorGraph::edge_descriptor> longestPath;
+            // restrictedAnchorGraph.findLongestPath(longestPath);
+            restrictedAnchorGraph.findOptimalPath(anchorId0, anchorId1, longestPath);
+
+            for(const RestrictedAnchorGraph::edge_descriptor re: longestPath) {
+                const auto& rEdge = restrictedAnchorGraph[re];
+                if(rEdge.anchorPair.size() == 0) {
+                    newEdge.clear();
+                    SHASTA2_ASSERT(0);
+                }
+                newEdge.push_back(AssemblyGraphEdgeStep(rEdge.anchorPair, rEdge.offset));
+
+            }
+        } catch(RestrictedAnchorGraph::NoTransitions&) {
+            cout << "Could not connect " << assemblyGraph[e0].id <<
+                " with " << assemblyGraph[e1].id << endl;
+            SHASTA2_ASSERT(0);
+        }
+
+    }
+
+    return newSegment;
+}
+
+
+
 // Simple connection of two segments (edges) without using
 // the RestrictedAnchorGraph.
 void AssemblyGraph::simpleConnect(edge_descriptor e0, edge_descriptor e1)
@@ -3744,4 +3810,76 @@ AssemblyGraph::vertex_descriptor AssemblyGraph::createReverseComplementVertex(ve
     }
 
     return vB;
+}
+
+
+
+// This makes a copy of a Segment, disconnected at its end,
+// then removes the original Segment.
+// It also performs the same operation on the reverse complement of the segment,
+// to keep the AssemblyGraph strand symmetric, and sets the eRc and vRc
+// fields of the newly created edges and vertices.
+// It returns the edge_descriptor for the newly created copy.
+AssemblyGraph::edge_descriptor AssemblyGraph::disconnectAtEnd(edge_descriptor eOld)
+{
+    AssemblyGraph& assemblyGraph = *this;
+
+    // Get some information we need below.
+    const AssemblyGraphEdge& edgeOld = assemblyGraph[eOld];
+    const edge_descriptor eOldRc = edgeOld.eRc;
+    const vertex_descriptor v0 = source(eOld, assemblyGraph);
+    const vertex_descriptor v1Old = target(eOld, assemblyGraph);
+    const AnchorId anchorId1 = assemblyGraph[v1Old].anchorId;
+
+    // Create the new target vertex of eOld and the new source vertex of
+    // its reverse complement.
+    const vertex_descriptor v1New = add_vertex(AssemblyGraphVertex(anchorId1, nextVertexId++), assemblyGraph);
+    createReverseComplementVertex(v1New);
+
+    // Create the edge for the new Segment, keeping the same id.
+    edge_descriptor eNew;
+    tie(eNew, ignore)= add_edge(v0, v1New, edgeOld, assemblyGraph);
+
+    // Also create the new reverse complement segment.
+    createReverseComplementEdge(eNew);
+
+    // Remove eOld and its reverse complement.
+    boost::remove_edge(eOld, assemblyGraph);
+    boost::remove_edge(eOldRc, assemblyGraph);
+
+    return eNew;
+}
+
+
+
+
+// Same as above, but disconnect at the beginning.
+AssemblyGraph::edge_descriptor AssemblyGraph::disconnectAtBeginning(edge_descriptor eOld)
+{
+    AssemblyGraph& assemblyGraph = *this;
+
+    // Get some information we need below.
+    const AssemblyGraphEdge& edgeOld = assemblyGraph[eOld];
+    const edge_descriptor eOldRc = edgeOld.eRc;
+    const vertex_descriptor v0Old = source(eOld, assemblyGraph);
+    const vertex_descriptor v1 = target(eOld, assemblyGraph);
+    const AnchorId anchorId0 = assemblyGraph[v0Old].anchorId;
+
+    // Create the new source vertex of eOld and the new target vertex of
+    // its reverse complement.
+    const vertex_descriptor v0New = add_vertex(AssemblyGraphVertex(anchorId0, nextVertexId++), assemblyGraph);
+    createReverseComplementVertex(v0New);
+
+    // Create the edge for the new Segment, keeping the same id.
+    edge_descriptor eNew;
+    tie(eNew, ignore)= add_edge(v0New, v1, edgeOld, assemblyGraph);
+
+    // Also create the new reverse complement segment.
+    createReverseComplementEdge(eNew);
+
+    // Remove eOld and its reverse complement.
+    boost::remove_edge(eOld, assemblyGraph);
+    boost::remove_edge(eOldRc, assemblyGraph);
+
+    return eNew;
 }

@@ -15,4 +15,7 @@ namespace shasta2 {
         boost::bidirectionalS,
         AssemblyGraphVertex,
         AssemblyGraphEdge>;
+
+    // A Segment (using gfa terminology) is an AssemblyGraph edge.
+    using Segment = AssemblyGraphBaseClass::edge_descriptor;
 }

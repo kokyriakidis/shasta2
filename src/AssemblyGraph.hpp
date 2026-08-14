@@ -215,7 +215,25 @@ public:
     // The vertices of eB must already exist.
     edge_descriptor createReverseComplementEdge(edge_descriptor eA);
 
+    // This makes a copy of a Segment, disconnected at its end,
+    // then removes the original Segment.
+    // It also performs the same operation on the reverse complement of the segment,
+    // to keep the AssemblyGraph strand symmetric, and sets the eRc and vRc
+    // fields of the newly created edges and vertices.
+    // It returns the edge_descriptor for the newly created copy.
+    edge_descriptor disconnectAtEnd(edge_descriptor);
 
+    // Same as above, but disconnect at the beginning.
+    edge_descriptor disconnectAtBeginning(edge_descriptor);
+
+    uint64_t id(vertex_descriptor v) const
+    {
+        return (*this)[v].id;
+    }
+    uint64_t id(edge_descriptor e) const
+    {
+        return (*this)[e].id;
+    }
 
     // Class to order vertices or edges by id.
     class OrderById {
@@ -248,6 +266,8 @@ public:
 
     void detangleVertices();
     void detangle();
+    bool detangleIteration();
+    bool detangleStrandSymmetric(uint64_t tangleId, const vector<vertex_descriptor>&);
 private:
 
     // Find Bubbles.
@@ -465,6 +485,10 @@ public:
     void simpleConnect(edge_descriptor, edge_descriptor);
     bool canSimpleConnect(edge_descriptor, edge_descriptor);
     void findOrientedReadIdsForSimpleConnect(edge_descriptor, edge_descriptor, vector<OrientedReadId>&) const;
+
+    // Connect two segments (edges) using the RestrictedAnchorGraph.
+    // Return the newly created edge.
+    edge_descriptor connect(edge_descriptor, edge_descriptor);
 
 
     // Output.
