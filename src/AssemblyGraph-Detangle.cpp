@@ -423,7 +423,7 @@ bool AssemblyGraph::detangleStrandSymmetric(
 {
     AssemblyGraph& assemblyGraph = *this;
 
-    const bool debug = true;
+    const bool debug = false;
     if(debug) {
         cout << "Working on tangle " << tangleId <<
             " with " << tangleVertices.size() << " vertices." <<endl;
