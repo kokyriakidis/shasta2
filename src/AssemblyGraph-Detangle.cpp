@@ -290,9 +290,16 @@ void AssemblyGraph::detangleVertices()
 
 void AssemblyGraph::detangle()
 {
-    while(detangleIteration()) {
+    for(uint64_t iteration=0; ; ++iteration) {
+        cout << "Detangle iteration " << iteration << " begins." << endl;
+        // write("Iteration-" + to_string(iteration));
+        const bool somethingWasDone = detangleIteration();
         strandSymmetricCompress();
+        if(somethingWasDone) {
+            break;
+        }
     }
+
     check();
 }
 
@@ -434,8 +441,10 @@ bool AssemblyGraph::detangleStrandSymmetric(
     const vertex_descriptor v = tangleVertices.front();
     const vertex_descriptor vRc = assemblyGraph[v].vRc;
     const bool isSelfComplementary = (std::ranges::binary_search(tangleVertices, vRc, orderById));
-    cout << "This tangle is " << (isSelfComplementary ? "" : "not") <<
-        " self-complementary." << endl;
+    if(debug) {
+        cout << "This tangle is " << (isSelfComplementary ? "" : "not") <<
+            " self-complementary." << endl;
+    }
 
     // For now we don't handle the self-complementary case.
     if(isSelfComplementary) {
