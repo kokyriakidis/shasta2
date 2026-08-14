@@ -442,7 +442,7 @@ bool AssemblyGraph::detangleStrandSymmetric(
     const vertex_descriptor vRc = assemblyGraph[v].vRc;
     const bool isSelfComplementary = (std::ranges::binary_search(tangleVertices, vRc, orderById));
     if(debug) {
-        cout << "This tangle is " << (isSelfComplementary ? "" : "not") <<
+        cout << "This tangle is" << (isSelfComplementary ? "" : " not") <<
             " self-complementary." << endl;
     }
 
