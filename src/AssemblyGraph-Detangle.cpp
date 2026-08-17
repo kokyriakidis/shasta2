@@ -295,7 +295,8 @@ void AssemblyGraph::detangle()
         // write("Iteration-" + to_string(iteration));
         const bool somethingWasDone = detangleIteration();
         strandSymmetricCompress();
-        if(somethingWasDone) {
+
+        if(not somethingWasDone) {
             break;
         }
     }
@@ -310,7 +311,7 @@ bool AssemblyGraph::detangleIteration()
     // EXPOSE WHEN CODE STABILIZES.
     const uint64_t lengthThreshold = 30000;
 
-    performanceLog << timestamp << "AssemblyGraph::detangleIteration begins." << endl;
+    // cout << timestamp << "AssemblyGraph::detangleIteration begins." << endl;
     AssemblyGraph& assemblyGraph = *this;
 
     // Find the BubbleChains.
@@ -414,11 +415,16 @@ bool AssemblyGraph::detangleIteration()
     for(uint64_t tangleId=0; tangleId<tangles.size(); tangleId++) {
         if(tangleId <= tangleRc[tangleId]) {
             const vector<vertex_descriptor>& tangle = tangles[tangleId];
-            somethingWasDone = somethingWasDone or detangleStrandSymmetric(tangleId, tangle);
+            const bool success = detangleStrandSymmetric(tangleId, tangle);
+            somethingWasDone = somethingWasDone or success;
         }
     }
 
-    performanceLog << timestamp << "AssemblyGraph::detangleIteration ends." << endl;
+    /*
+    cout << timestamp << "AssemblyGraph::detangleIteration ends. " <<
+        (somethingWasDone ? "Something" : "Nothing") << " was done." << endl;
+    */
+
     return somethingWasDone;
 }
 
