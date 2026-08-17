@@ -295,6 +295,9 @@ PYBIND11_MODULE(shasta2, shasta2Module)
     shasta2Module.def("countExactRepeatCopies",
         countExactRepeatCopies
         );
+    shasta2Module.def("countDistinctSubkmers",
+        countDistinctSubkmers
+        );
 }
 
 #endif

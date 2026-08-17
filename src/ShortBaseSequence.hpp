@@ -33,8 +33,13 @@ namespace shasta2 {
 
     void testShortBaseSequence();
 
+    // Python-callable.
     uint64_t countExactRepeatCopies(
         uint64_t period,
+        const string& sequence);
+
+    uint64_t countDistinctSubkmers(
+        uint64_t n,
         const string& sequence);
 }
 
