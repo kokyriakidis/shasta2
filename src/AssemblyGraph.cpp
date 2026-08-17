@@ -404,7 +404,7 @@ void AssemblyGraph::simplifyAndAssemble()
 
 void AssemblyGraph::check(bool writeDetails) const
 {
-    performanceLog << timestamp << "AssemblyGraph::check begins." << endl;
+    cout << timestamp << "AssemblyGraph::check begins." << endl;
 
     const AssemblyGraph& assemblyGraph = *this;
 
@@ -522,7 +522,7 @@ void AssemblyGraph::check(bool writeDetails) const
         }
     }
 
-    performanceLog << timestamp << "AssemblyGraph::check ends." << endl;
+    cout << timestamp << "AssemblyGraph::check ends." << endl;
 }
 
 
