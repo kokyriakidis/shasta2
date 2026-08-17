@@ -69,3 +69,17 @@ void shasta2::testShortBaseSequence()
 
 
 
+uint64_t shasta2::countExactRepeatCopies(
+    uint64_t period,
+    const string& sequence)
+{
+    using Kmer = ShortBaseSequence128;
+    const uint64_t k = sequence.size();
+    SHASTA2_ASSERT(k <= Kmer::capacity);
+    Kmer kmer;
+    for(uint64_t i=0; i<sequence.size(); i++) {
+        kmer.set(i, Base::fromCharacter(sequence[i]));
+    }
+
+    return kmer.countExactRepeatCopies(period, k);
+}

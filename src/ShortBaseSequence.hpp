@@ -32,6 +32,10 @@ namespace shasta2 {
     template<class Int> inline ostream& operator<<(ostream&, const ShortBaseSequence<Int>&);
 
     void testShortBaseSequence();
+
+    uint64_t countExactRepeatCopies(
+        uint64_t period,
+        const string& sequence);
 }
 
 

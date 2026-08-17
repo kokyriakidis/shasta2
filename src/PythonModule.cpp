@@ -292,6 +292,9 @@ PYBIND11_MODULE(shasta2, shasta2Module)
     shasta2Module.def("testTheseus",
         testTheseus
         );
+    shasta2Module.def("countExactRepeatCopies",
+        countExactRepeatCopies
+        );
 }
 
 #endif
