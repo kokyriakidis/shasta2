@@ -4,7 +4,7 @@ import shasta2
 
 # Get the arguments.
 import argparse
-parser = argparse.ArgumentParser(description = "Run all detangling iterations.")
+parser = argparse.ArgumentParser(description = "Run a single one detangling iteration.")
 parser.add_argument("inputStage", type=str, help="Input assembly stage.")
 parser.add_argument("outputStage", type=str, help="Output assembly stage.")
 arguments = parser.parse_args()
@@ -18,7 +18,8 @@ assembler.accessAnchors()
 assembler.accessJourneys()
 
 assemblyGraph = assembler.getAssemblyGraph(arguments.inputStage, options)
-assemblyGraph.detangle()
+assemblyGraph.detangleIteration()
+assemblyGraph.strandSymmetricCompress()
 assemblyGraph.write(arguments.outputStage)
 
 

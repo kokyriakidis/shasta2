@@ -292,13 +292,15 @@ void AssemblyGraph::detangle()
 {
     for(uint64_t iteration=0; ; ++iteration) {
         cout << "Detangle iteration " << iteration << " begins." << endl;
-        // write("Iteration-" + to_string(iteration));
-        const bool somethingWasDone = detangleIteration();
-        strandSymmetricCompress();
+        write("Before-Iteration-" + to_string(iteration));
 
+        const bool somethingWasDone = detangleIteration();
         if(not somethingWasDone) {
             break;
         }
+        write("After-Iteration-" + to_string(iteration));
+
+        strandSymmetricCompress();
     }
 
     check();
