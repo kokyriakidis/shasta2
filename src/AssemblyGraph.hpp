@@ -266,8 +266,8 @@ public:
 
     void detangleVertices();
     void detangle();
-    bool detangleIteration();
-    bool detangleStrandSymmetric(uint64_t tangleId, const vector<vertex_descriptor>&);
+    bool detangleIteration(const string& debugOutputBaseName);
+    bool detangleStrandSymmetric(const vector<vertex_descriptor>&);
 private:
 
     // Find Bubbles.

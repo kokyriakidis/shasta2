@@ -290,29 +290,55 @@ void AssemblyGraph::detangleVertices()
 
 void AssemblyGraph::detangle()
 {
-    for(uint64_t iteration=0; ; ++iteration) {
-        cout << "Detangle iteration " << iteration << " begins." << endl;
-        write("Before-Iteration-" + to_string(iteration));
+    const bool debug = false;
+    performanceLog << timestamp << "AssemblyGraph::detangle begins." << endl;
 
-        const bool somethingWasDone = detangleIteration();
+    // Iterate until nothing changes.
+    for(uint64_t iteration=0; ; ++iteration) {
+
+        // Messages and debug output for this iteration.
+        performanceLog << timestamp << "Detangle iteration " << iteration << " begins." << endl;
+        if(debug) {
+            cout << "Detangle iteration " << iteration << " begins." << endl;
+            write("Before-Iteration-" + to_string(iteration));
+        }
+
+        // Run a detangle iteration.
+        const bool somethingWasDone = detangleIteration("Detangle-Iteration-" + to_string(iteration));
+
+        // If nothing changes, stop here.
         if(not somethingWasDone) {
-            cout << "No detangling at this iteration. Ending detangling iteration." << endl;
+            if(debug) {
+                cout << "No detangling at this iteration. Ending detangling iteration." << endl;
+            }
             break;
         }
-        write("After-Iteration-" + to_string(iteration));
 
+        // Write an assembly stage after this iteration but before compress.
+        if(debug) {
+            write("After-Iteration-" + to_string(iteration));
+        }
+
+        // Compress.
         strandSymmetricCompress();
+
+        // Final message for this iteration.
+        performanceLog << timestamp << "Detangle iteration " << iteration << " ends." << endl;
     }
+
+    performanceLog << timestamp << "AssemblyGraph::detangle ends." << endl;
 
     check();
 }
 
 
 
-bool AssemblyGraph::detangleIteration()
+bool AssemblyGraph::detangleIteration(const string& debugOutputBaseName)
 {
     // EXPOSE WHEN CODE STABILIZES.
     const uint64_t lengthThreshold = 30000;
+
+    const bool debug = false;
 
     // cout << timestamp << "AssemblyGraph::detangleIteration begins." << endl;
     AssemblyGraph& assemblyGraph = *this;
@@ -320,8 +346,10 @@ bool AssemblyGraph::detangleIteration()
     // Find the BubbleChains.
     vector<BubbleChain> bubbleChains;
     findBubbleChains(bubbleChains);
-    writeBubbleChains("BubbleChains.csv", bubbleChains);
-    writeBubbleChainsForBandage("BubbleChains-Bandage.csv", bubbleChains);
+    if(debug) {
+        writeBubbleChains(debugOutputBaseName + "-BubbleChains.csv", bubbleChains);
+        writeBubbleChainsForBandage(debugOutputBaseName + "-BubbleChains-Bandage.csv", bubbleChains);
+    }
 
     // Ony keep the short BubbleChains.
     // These will be used to define our tangles.
@@ -331,9 +359,11 @@ bool AssemblyGraph::detangleIteration()
             shortBubbleChains.emplace_back(bubbleChain);
         }
     }
-    writeBubbleChains("ShortBubbleChains.csv", shortBubbleChains);
-    writeBubbleChainsForBandage("ShortBubbleChains-Bandage.csv", shortBubbleChains);
-    cout << "Found " << shortBubbleChains.size() << " short bubble chains." << endl;
+    if(debug) {
+        writeBubbleChains(debugOutputBaseName + "-ShortBubbleChains.csv", shortBubbleChains);
+        writeBubbleChainsForBandage(debugOutputBaseName + "-ShortBubbleChains-Bandage.csv", shortBubbleChains);
+        cout << "Found " << shortBubbleChains.size() << " short bubble chains." << endl;
+    }
 
     // Map the vertices to integers.
     // This is needed below to compute connected components.
@@ -371,7 +401,9 @@ bool AssemblyGraph::detangleIteration()
         }
         std::ranges::sort(tangle, orderById);
     }
-    cout << "Found " << tangles.size() << " tangles." << endl;
+    if(debug) {
+        cout << "Found " << tangles.size() << " tangles." << endl;
+    }
 
     // Create a map that gives the tangle each vertex belongs to, if any.
     std::map<vertex_descriptor, uint64_t> tangleMap;
@@ -393,8 +425,8 @@ bool AssemblyGraph::detangleIteration()
 
     // Write a csv file that can be imported into Bandage to see
     // the tangles.
-    {
-        ofstream csv("Tangles-Bandage.csv");
+    if(debug) {
+        ofstream csv(debugOutputBaseName + "-Tangles-Bandage.csv");
         csv << "Segment,Tangle,TangleRc,Color\n";
         for(uint64_t tangleId=0; tangleId<tangles.size(); tangleId++) {
             const string color = randomHslColor(tangleId, 0.75, 0.5);
@@ -417,16 +449,15 @@ bool AssemblyGraph::detangleIteration()
     bool somethingWasDone = false;
     for(uint64_t tangleId=0; tangleId<tangles.size(); tangleId++) {
         if(tangleId <= tangleRc[tangleId]) {
+            if(debug) {
+                cout << "Working on tangle " << tangleId <<
+                    " and its reverse complement tangle " << tangleRc[tangleId] << endl;
+            }
             const vector<vertex_descriptor>& tangle = tangles[tangleId];
-            const bool success = detangleStrandSymmetric(tangleId, tangle);
+            const bool success = detangleStrandSymmetric(tangle);
             somethingWasDone = somethingWasDone or success;
         }
     }
-
-    /*
-    cout << timestamp << "AssemblyGraph::detangleIteration ends. " <<
-        (somethingWasDone ? "Something" : "Nothing") << " was done." << endl;
-    */
 
     return somethingWasDone;
 }
@@ -434,15 +465,13 @@ bool AssemblyGraph::detangleIteration()
 
 
 bool AssemblyGraph::detangleStrandSymmetric(
-    uint64_t tangleId,
     const vector<vertex_descriptor>& tangleVertices)
 {
     AssemblyGraph& assemblyGraph = *this;
 
     const bool debug = false;
     if(debug) {
-        cout << "Working on tangle " << tangleId <<
-            " with " << tangleVertices.size() << " vertices." <<endl;
+        cout << "This tangle has " << tangleVertices.size() << " vertices." <<endl;
     }
     SHASTA2_ASSERT(std::ranges::is_sorted(tangleVertices, orderById));
 
