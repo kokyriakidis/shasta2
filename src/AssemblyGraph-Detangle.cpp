@@ -296,6 +296,7 @@ void AssemblyGraph::detangle()
 
         const bool somethingWasDone = detangleIteration();
         if(not somethingWasDone) {
+            cout << "No detangling at this iteration. Ending detangling iteration." << endl;
             break;
         }
         write("After-Iteration-" + to_string(iteration));
