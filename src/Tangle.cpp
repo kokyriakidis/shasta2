@@ -97,6 +97,7 @@ void Tangle::findTangleEdges()
             }
         }
     }
+    sort(tangleEdges.begin(), tangleEdges.end(), assemblyGraph.orderById);
 }
 
 

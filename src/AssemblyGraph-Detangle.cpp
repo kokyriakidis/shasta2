@@ -6,6 +6,7 @@
 #include "GTest.hpp"
 #include "Options.hpp"
 #include "performanceLog.hpp"
+#include "Tangle.hpp"
 #include "TangleMatrix.hpp"
 #include "timestamp.hpp"
 using namespace shasta2;
@@ -445,6 +446,8 @@ bool AssemblyGraph::detangleIteration(const string& debugOutputBaseName)
         }
     }
 
+
+
     // Detangle each pair of reverse complemented tangles.
     bool somethingWasDone = false;
     for(uint64_t tangleId=0; tangleId<tangles.size(); tangleId++) {
@@ -453,9 +456,12 @@ bool AssemblyGraph::detangleIteration(const string& debugOutputBaseName)
                 cout << "Working on tangle " << tangleId <<
                     " and its reverse complement tangle " << tangleRc[tangleId] << endl;
             }
-            const vector<vertex_descriptor>& tangle = tangles[tangleId];
+            const vector<vertex_descriptor>& tangleVertices = tangles[tangleId];
+            const Tangle tangle(assemblyGraph, tangleVertices);
             const bool success = detangleStrandSymmetric(tangle);
-            somethingWasDone = somethingWasDone or success;
+            if(success) {
+                somethingWasDone = true;
+            }
         }
     }
 
@@ -464,16 +470,24 @@ bool AssemblyGraph::detangleIteration(const string& debugOutputBaseName)
 
 
 
+// Thsi detangles the tangle passed in as an argument and,
+// if the tangle is not self-complementary, its reverse complement tangle.
 bool AssemblyGraph::detangleStrandSymmetric(
-    const vector<vertex_descriptor>& tangleVertices)
+    const Tangle& tangle)
 {
     AssemblyGraph& assemblyGraph = *this;
-
     const bool debug = false;
-    if(debug) {
-        cout << "This tangle has " << tangleVertices.size() << " vertices." <<endl;
-    }
+
+    const vector<vertex_descriptor>& tangleVertices = tangle.tangleVertices;
     SHASTA2_ASSERT(std::ranges::is_sorted(tangleVertices, orderById));
+    if(debug) {
+        cout << "This tangle has " << tangleVertices.size() << " vertices:";
+        for(const vertex_descriptor v: tangleVertices) {
+            cout << " " << id(v);
+        }
+        cout << endl;
+    }
+
 
     // Figure out if this tangle is self-complementary.
     const vertex_descriptor v = tangleVertices.front();
@@ -492,29 +506,8 @@ bool AssemblyGraph::detangleStrandSymmetric(
         return false;
     }
 
-    // Get the entrances.
-    vector<Segment> entrances;
-    for(const vertex_descriptor v0: tangleVertices) {
-        BGL_FORALL_INEDGES(v0, e, assemblyGraph, AssemblyGraph) {
-            const vertex_descriptor v1 = source(e, assemblyGraph);
-            if(not std::ranges::binary_search(tangleVertices, v1, orderById)) {
-                entrances.push_back(e);
-            }
-        }
-    }
-    std::ranges::sort(entrances, orderById);
-
-    // Get the exits.
-    vector<Segment> exits;
-    for(const vertex_descriptor v0: tangleVertices) {
-        BGL_FORALL_OUTEDGES(v0, e, assemblyGraph, AssemblyGraph) {
-            const vertex_descriptor v1 = target(e, assemblyGraph);
-            if(not std::ranges::binary_search(tangleVertices, v1, orderById)) {
-                exits.push_back(e);
-            }
-        }
-    }
-    std::ranges::sort(exits, orderById);
+    const vector<Segment>& entrances = tangle.entrances;
+    const vector<Segment>& exits = tangle.exits;
 
     if(debug) {
         cout << "This tangle has " << entrances.size() << " entrances:";
@@ -550,28 +543,8 @@ bool AssemblyGraph::detangleStrandSymmetric(
         return false;
     }
 
-
-    // Create the TangleMatrix.
-    ostream noOutput(0);
-    const TangleMatrix tangleMatrix(assemblyGraph, entrances, exits, noOutput);
-    if(debug) {
-        cout << "Tangle matrix:" << endl;
-        cout << ",";
-        for(const Segment exit: exits) {
-            cout << id(exit) << ",";
-        }
-        cout << endl;
-        for(uint64_t i=0; i<entrances.size(); i++) {
-            cout << id(entrances[i]) << ",";
-            for(uint64_t j=0; j<exits.size(); j++) {
-                cout << tangleMatrix.tangleMatrix[i][j] << ",";
-            }
-            cout << endl;
-        }
-    }
-
-    // Run the G-test on this tangle matrix.
-    GTest gTest(tangleMatrix.tangleMatrix, assemblyGraph.options.detangleEpsilon, false, false);
+    // Run the G-test on the tangle matrix of this Tangle.
+    GTest gTest(tangle.tangleMatrix().tangleMatrix, assemblyGraph.options.detangleEpsilon, false, false);
 
     // If the G-test failed, don't detangle.
     if(not gTest.success) {
@@ -654,19 +627,10 @@ bool AssemblyGraph::detangleStrandSymmetric(
 
 
 
-    // Remove all the Segments internal to this tangle.
-    vector<Segment> edgesToBeRemoved;
-    for(const vertex_descriptor v0: tangleVertices) {
-        BGL_FORALL_OUTEDGES(v0, e, assemblyGraph, AssemblyGraph) {
-            const AssemblyGraph::vertex_descriptor v1 = target(e, assemblyGraph);
-            if(std::ranges::binary_search(tangleVertices, v1)) {
-                edgesToBeRemoved.push_back(e);
-                edgesToBeRemoved.push_back(assemblyGraph[e].eRc);
-            }
-        }
-    }
-    deduplicate(edgesToBeRemoved);
-    for(const Segment e: edgesToBeRemoved) {
+    // Remove all the Segments internal to this tangle
+    // and their reverse complements.
+    for(const Segment e: tangle.tangleEdges) {
+        boost::remove_edge(assemblyGraph[e].eRc, assemblyGraph);
         boost::remove_edge(e, assemblyGraph);
     }
 
@@ -674,6 +638,8 @@ bool AssemblyGraph::detangleStrandSymmetric(
 
     // Create copies of the entrances disconnected at the end
     // and of the exits disconnected at the beginning.
+    // This also does the same for the reverse complement of
+    // this Tangle.
     vector<Segment> newEntrances;
     for(const Segment entranceOld: entrances) {
         newEntrances.push_back(disconnectAtEnd(entranceOld));
@@ -685,6 +651,8 @@ bool AssemblyGraph::detangleStrandSymmetric(
 
     // Make the connections described by the connectivity matrix
     // of the best hypothesis.
+    // This also does the same for the reverse complement of
+    // this Tangle.
     for(uint64_t i=0; i<newEntrances.size(); i++) {
         const AssemblyGraph::edge_descriptor newEntrance = newEntrances[i];
         for(uint64_t j=0; j<newExits.size(); j++) {

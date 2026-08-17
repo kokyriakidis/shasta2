@@ -40,6 +40,7 @@ namespace shasta2 {
     class Options;
     class Superbubble;
     class SuperbubbleChain;
+    class Tangle;
 
 }
 
@@ -267,7 +268,7 @@ public:
     void detangleVertices();
     void detangle();
     bool detangleIteration(const string& debugOutputBaseName);
-    bool detangleStrandSymmetric(const vector<vertex_descriptor>&);
+    bool detangleStrandSymmetric(const Tangle&);
 private:
 
     // Find Bubbles.
