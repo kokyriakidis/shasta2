@@ -337,7 +337,7 @@ void AssemblyGraph::detangle()
 bool AssemblyGraph::detangleIteration(const string& debugOutputBaseName)
 {
     // EXPOSE WHEN CODE STABILIZES.
-    const uint64_t lengthThreshold = 30000;
+    const uint64_t lengthThreshold = 100000;
 
     const bool debug = false;
 
@@ -426,7 +426,7 @@ bool AssemblyGraph::detangleIteration(const string& debugOutputBaseName)
 
     // Write a csv file that can be imported into Bandage to see
     // the tangles.
-    if(debug) {
+    if(true) {
         ofstream csv(debugOutputBaseName + "-Tangles-Bandage.csv");
         csv << "Segment,Tangle,TangleRc,Color\n";
         for(uint64_t tangleId=0; tangleId<tangles.size(); tangleId++) {
