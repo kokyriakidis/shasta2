@@ -305,7 +305,7 @@ void AssemblyGraph::detangle()
         }
 
         // Run a detangle iteration.
-        const bool somethingWasDone = detangleIteration("Detangle-Iteration-" + to_string(iteration));
+        const bool somethingWasDone = detangleAndReadFollowingIteration("Detangle-Iteration-" + to_string(iteration));
 
         // If nothing changes, stop here.
         if(not somethingWasDone) {
@@ -334,12 +334,12 @@ void AssemblyGraph::detangle()
 
 
 
-bool AssemblyGraph::detangleIteration(const string& debugOutputBaseName)
+bool AssemblyGraph::detangleAndReadFollowingIteration(const string& debugOutputBaseName)
 {
     // EXPOSE WHEN CODE STABILIZES.
     const uint64_t lengthThreshold = 100000;
 
-    const bool debug = false;
+    const bool debug = true;
 
     // cout << timestamp << "AssemblyGraph::detangleIteration begins." << endl;
     AssemblyGraph& assemblyGraph = *this;
@@ -474,7 +474,28 @@ bool AssemblyGraph::detangleIteration(const string& debugOutputBaseName)
                 cout << endl;
             }
 
-            const bool success = detangleStrandSymmetric(tangle);
+            // Try detangling.
+            bool success = detangleStrandSymmetric(tangle);
+
+            // If detangling did not work, try read following.
+            if(success) {
+                if(debug) {
+                    cout << "Detangling was successful on this tangle." << endl;
+                }
+            } else {
+                if(debug) {
+                    cout << "Detangling was not successful on this tangle. Trying read following." << endl;
+                }
+                success = readFollowingStrandSymmetric(tangle);
+                if(debug) {
+                    if(success) {
+                        cout << "Read following was successful on this tangle." << endl;
+                    } else {
+                        cout << "Read following was not successful on this tangle." << endl;
+                    }
+                }
+            }
+
             if(success) {
                 somethingWasDone = true;
             }
@@ -762,3 +783,5 @@ bool AssemblyGraph::detangleSelfComplementaryTangle2By2(const Tangle& tangle)
 
     return true;
 }
+
+

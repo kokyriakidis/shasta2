@@ -18,7 +18,7 @@ assembler.accessAnchors()
 assembler.accessJourneys()
 
 assemblyGraph = assembler.getAssemblyGraph(arguments.inputStage, options)
-assemblyGraph.detangleIteration("Detangle-Python")
+assemblyGraph.detangleAndReadFollowingIteration("DetangleAndReadFollowing-Python")
 assemblyGraph.strandSymmetricCompress()
 assemblyGraph.write(arguments.outputStage)
 

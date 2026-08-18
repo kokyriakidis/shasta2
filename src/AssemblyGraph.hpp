@@ -270,12 +270,13 @@ public:
     // Detangling.
     void detangleVertices();
     void detangle();
-    bool detangleIteration(const string& debugOutputBaseName);
+    bool detangleAndReadFollowingIteration(const string& debugOutputBaseName);
 private:
     bool detangleStrandSymmetric(const Tangle&);
     bool detangleTanglePair(const Tangle&);
     bool detangleSelfComplementaryTangle(const Tangle&);
     bool detangleSelfComplementaryTangle2By2(const Tangle&);
+    bool readFollowingStrandSymmetric(const Tangle&);
 
 
 
