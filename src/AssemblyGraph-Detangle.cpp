@@ -454,6 +454,19 @@ bool AssemblyGraph::detangleAndReadFollowingIteration(const string& debugOutputB
         if(tangleId <= tangleRc[tangleId]) {
             const Tangle tangle(assemblyGraph, tangles[tangleId]);
 
+            if(
+                tangle.entrances.empty() and
+                tangle.exits.empty() and
+                (tangle.tangleVertices.size() == 2) and
+                (tangle.tangleEdges.size() == 1)) {
+
+                if(debug) {
+                    cout << "Skipping trivial tangle consisting of isolated segment " <<
+                        id(tangle.tangleEdges.front()) << endl;
+                }
+                continue;
+            }
+
             if(debug) {
                 cout << "Working on tangle " << tangleId <<
                     " and its reverse complement tangle " << tangleRc[tangleId] << endl;
@@ -470,6 +483,11 @@ bool AssemblyGraph::detangleAndReadFollowingIteration(const string& debugOutputB
                 cout << "This tangle has " << tangle.exits.size() << " exits:";
                 for(const Segment exit: tangle.exits) {
                     cout << " " << id(exit);
+                }
+                cout << endl;
+                cout << "This tangle has " << tangle.tangleEdges.size() << " edges:";
+                for(const Segment segment: tangle.tangleEdges) {
+                    cout << " " << id(segment);
                 }
                 cout << endl;
             }
