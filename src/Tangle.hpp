@@ -57,6 +57,10 @@ public:
         return *tangleMatrixPointer;
     }
 
+    // Figure out if the tangle is self-complementary
+    // (that is, it coincides with its reverse complement).
+    // This assumes that the AssemblyGraph is strand-symmetric.
+    bool isSelfComplementary() const;
 
 
     // Detangling instructions.

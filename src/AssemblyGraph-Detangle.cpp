@@ -452,12 +452,28 @@ bool AssemblyGraph::detangleIteration(const string& debugOutputBaseName)
     bool somethingWasDone = false;
     for(uint64_t tangleId=0; tangleId<tangles.size(); tangleId++) {
         if(tangleId <= tangleRc[tangleId]) {
+            const Tangle tangle(assemblyGraph, tangles[tangleId]);
+
             if(debug) {
                 cout << "Working on tangle " << tangleId <<
                     " and its reverse complement tangle " << tangleRc[tangleId] << endl;
+                cout << "This tangle has " << tangle.tangleVertices.size() << " vertices:";
+                for(const vertex_descriptor v: tangle.tangleVertices) {
+                    cout << " " << id(v);
+                }
+                cout << endl;
+                cout << "This tangle has " << tangle.entrances.size() << " entrances:";
+                for(const Segment entrance: tangle.entrances) {
+                    cout << " " << id(entrance);
+                }
+                cout << endl;
+                cout << "This tangle has " << tangle.exits.size() << " exits:";
+                for(const Segment exit: tangle.exits) {
+                    cout << " " << id(exit);
+                }
+                cout << endl;
             }
-            const vector<vertex_descriptor>& tangleVertices = tangles[tangleId];
-            const Tangle tangle(assemblyGraph, tangleVertices);
+
             const bool success = detangleStrandSymmetric(tangle);
             if(success) {
                 somethingWasDone = true;
@@ -470,57 +486,32 @@ bool AssemblyGraph::detangleIteration(const string& debugOutputBaseName)
 
 
 
-// Thsi detangles the tangle passed in as an argument and,
-// if the tangle is not self-complementary, its reverse complement tangle.
-bool AssemblyGraph::detangleStrandSymmetric(
+bool AssemblyGraph::detangleStrandSymmetric(const Tangle& tangle)
+{
+    if(tangle.isSelfComplementary()) {
+        if((tangle.entrances.size() == 2) and (tangle.exits.size() == 2)) {
+            return detangleSelfComplementaryTangle2By2(tangle);
+        } else {
+            return detangleSelfComplementaryTangle(tangle);
+        }
+    } else {
+        return detangleTanglePair(tangle);
+    }
+}
+
+
+
+// This detangles the tangle passed in as an argument and its reverse complement.
+// The tangle must no be not self-complementary,
+bool AssemblyGraph::detangleTanglePair(
     const Tangle& tangle)
 {
     AssemblyGraph& assemblyGraph = *this;
+    SHASTA2_ASSERT(not tangle.isSelfComplementary());
     const bool debug = false;
-
-    const vector<vertex_descriptor>& tangleVertices = tangle.tangleVertices;
-    SHASTA2_ASSERT(std::ranges::is_sorted(tangleVertices, orderById));
-    if(debug) {
-        cout << "This tangle has " << tangleVertices.size() << " vertices:";
-        for(const vertex_descriptor v: tangleVertices) {
-            cout << " " << id(v);
-        }
-        cout << endl;
-    }
-
-
-    // Figure out if this tangle is self-complementary.
-    const vertex_descriptor v = tangleVertices.front();
-    const vertex_descriptor vRc = assemblyGraph[v].vRc;
-    const bool isSelfComplementary = (std::ranges::binary_search(tangleVertices, vRc, orderById));
-    if(debug) {
-        cout << "This tangle is" << (isSelfComplementary ? "" : " not") <<
-            " self-complementary." << endl;
-    }
-
-    // For now we don't handle the self-complementary case.
-    if(isSelfComplementary) {
-        if(debug) {
-            cout << "Detangling for self-complementary tangles is not implemented." << endl;
-        }
-        return false;
-    }
 
     const vector<Segment>& entrances = tangle.entrances;
     const vector<Segment>& exits = tangle.exits;
-
-    if(debug) {
-        cout << "This tangle has " << entrances.size() << " entrances:";
-        for(const Segment entrance: entrances) {
-            cout << " " << id(entrance);
-        }
-        cout << endl;
-        cout << "This tangle has " << exits.size() << " exits:";
-        for(const Segment exit: exits) {
-            cout << " " << id(exit);
-        }
-        cout << endl;
-    }
 
     if(entrances.empty() or exits.empty()) {
         if(debug) {
@@ -614,18 +605,8 @@ bool AssemblyGraph::detangleStrandSymmetric(
     }
 
     if(debug) {
-        if(isSelfComplementary) {
-            cout << "This tangle will be detangled." << endl;
-        } else {
-            cout << "This tangle and its reverse complement will be detangled." << endl;
-        }
+        cout << "This tangle and its reverse complement will be detangled." << endl;
     }
-
-    // The code below relies on these two assumptions, checked above.
-    SHASTA2_ASSERT(not isSelfComplementary);
-    SHASTA2_ASSERT(not hasEntranceExit);
-
-
 
     // Remove all the Segments internal to this tangle
     // and their reverse complements.
@@ -664,6 +645,37 @@ bool AssemblyGraph::detangleStrandSymmetric(
         }
     }
 
+    // Remove all the Tangle vertices and their reverse complements.
+    // These vertices are now isolated.
+    for(const vertex_descriptor v: tangle.tangleVertices) {
+        const vertex_descriptor vRc = assemblyGraph[v].vRc;
+
+        SHASTA2_ASSERT(in_degree(v, assemblyGraph) == 0);
+        SHASTA2_ASSERT(out_degree(v, assemblyGraph) == 0);
+        boost::remove_vertex(v, assemblyGraph);
+
+        SHASTA2_ASSERT(in_degree(vRc, assemblyGraph) == 0);
+        SHASTA2_ASSERT(out_degree(vRc, assemblyGraph) == 0);
+        boost::remove_vertex(vRc, assemblyGraph);
+    }
+
     return true;
 }
 
+
+
+bool AssemblyGraph::detangleSelfComplementaryTangle(const Tangle& tangle)
+{
+    SHASTA2_ASSERT(tangle.isSelfComplementary());
+    return false;
+}
+
+
+
+bool AssemblyGraph::detangleSelfComplementaryTangle2By2(const Tangle& tangle)
+{
+    SHASTA2_ASSERT(tangle.isSelfComplementary());
+    SHASTA2_ASSERT(tangle.entrances.size() == 2);
+    SHASTA2_ASSERT(tangle.exits.size() == 2);
+    return false;
+}

@@ -265,11 +265,19 @@ public:
     };
     const OrderById orderById;
 
+
+
+    // Detangling.
     void detangleVertices();
     void detangle();
     bool detangleIteration(const string& debugOutputBaseName);
-    bool detangleStrandSymmetric(const Tangle&);
 private:
+    bool detangleStrandSymmetric(const Tangle&);
+    bool detangleTanglePair(const Tangle&);
+    bool detangleSelfComplementaryTangle(const Tangle&);
+    bool detangleSelfComplementaryTangle2By2(const Tangle&);
+
+
 
     // Find Bubbles.
     // The edges of each Bubble are sorted by id.

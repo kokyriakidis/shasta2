@@ -289,3 +289,12 @@ void Tangle::reconnect(
 }
 
 
+// Figure out if the tangle is self-complementary
+// (that is, it coincides with its reverse complement).
+// This assumes that the AssemblyGraph is strand-symmetric.
+bool Tangle::isSelfComplementary() const
+{
+    const AssemblyGraph::vertex_descriptor v = tangleVertices.front();
+    const AssemblyGraph::vertex_descriptor vRc = assemblyGraph[v].vRc;
+    return std::ranges::binary_search(tangleVertices, vRc, assemblyGraph.orderById);
+}
