@@ -347,17 +347,20 @@ void AssemblyGraph::simplifyAndAssemble()
     strandSymmetricCompress();
     writeIntermediateStageIfRequested("C");
 
-    // Vertex detangling.
-    detangleVertices();
+    // Iterate detangling, read following, phasing.
+    for(uint64_t iteration=0; ; ++iteration) {
+        cout << "Detangle/read following/phasing iteration " << iteration << " begins." << endl;
+        const uint64_t oldNextEdgeId = nextEdgeId;
+        detangleVertices();
+        detangleIteration("Detangle-Iteration-" + to_string(iteration));
+        strandSymmetricPhaseSuperbubbleChains();
+        cout << "After iteration " << iteration << " there are " << num_edges(*this) << " segments." << endl;
+        if(nextEdgeId == oldNextEdgeId) {
+            cout << "No changes, stop iterating." << endl;
+            break;
+        }
+    }
     writeIntermediateStageIfRequested("D");
-
-    // Phase SuperbubbleChains.
-    strandSymmetricPhaseSuperbubbleChains();
-    writeIntermediateStageIfRequested("E");
-
-    // Detangling and new read following (incomplete).
-    detangle();
-    writeIntermediateStageIfRequested("F");
 
     // Old read following (to be phased out).
     readFollowing();
