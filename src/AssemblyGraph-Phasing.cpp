@@ -224,76 +224,82 @@ void AssemblyGraph::strandSymmetricPhase(
 
 
     // Phase the first bubble.
-    superbubbleChain.phase1(assemblyGraph, superbubbleChainId);
+    const uint64_t changeCount = superbubbleChain.phase1(assemblyGraph, superbubbleChainId);
 
-    // The code below makes changes to the AssemblyGraph, so we have to acquire the mutex.
-    std::lock_guard<std::mutex> lock(assemblyGraph.mutex);
 
-    // Remove all internal vertices and edges of the second bubble.
-    // Loop over all of its Superbubbles.
-    if(debug) {
-        cout << "Removing internal vertices and edges of superbubble chain " <<
-            superbubbleChainIdRc << endl;
-    }
-    for(uint64_t i=0; i<superbubbleChainRc.size(); i++) {
-        const Superbubble& superbubbleRc = superbubbleChainRc[i];
+    // Make the same changes in the reverse complement of this superbubble chain.
+    if(changeCount > 0) {
 
-        // Remove the internal edges of this Superbubble.
-        for(const edge_descriptor e: superbubbleRc.internalEdges) {
-            boost::remove_edge(e, assemblyGraph);
+        // The code below makes changes to the AssemblyGraph, so we have to acquire the mutex.
+        std::lock_guard<std::mutex> lock(assemblyGraph.mutex);
+
+        // Remove all internal vertices and edges of the second bubble.
+        // Loop over all of its Superbubbles.
+        if(debug) {
+            cout << "Removing internal vertices and edges of superbubble chain " <<
+                superbubbleChainIdRc << endl;
+        }
+        for(uint64_t i=0; i<superbubbleChainRc.size(); i++) {
+            const Superbubble& superbubbleRc = superbubbleChainRc[i];
+
+            // Remove the internal edges of this Superbubble.
+            for(const edge_descriptor e: superbubbleRc.internalEdges) {
+                boost::remove_edge(e, assemblyGraph);
+            }
+
+            // Remove the internal vertices of this Superbubble.
+            for(const vertex_descriptor v: superbubbleRc.internalVertices) {
+                SHASTA2_ASSERT(in_degree(v, assemblyGraph) == 0);
+                SHASTA2_ASSERT(out_degree(v, assemblyGraph) == 0);
+                boost::remove_vertex(v, assemblyGraph);
+            }
         }
 
-        // Remove the internal vertices of this Superbubble.
-        for(const vertex_descriptor v: superbubbleRc.internalVertices) {
+        // We still have to remove the sourceVertex of each Superbubble,
+        // except the first one.
+        for(uint64_t i=1; i<superbubbleChainRc.size(); i++) {
+            const Superbubble& superbubble = superbubbleChainRc[i];
+            const vertex_descriptor v = superbubble.sourceVertex;
             SHASTA2_ASSERT(in_degree(v, assemblyGraph) == 0);
             SHASTA2_ASSERT(out_degree(v, assemblyGraph) == 0);
             boost::remove_vertex(v, assemblyGraph);
         }
-    }
-
-    // We still have to remove the sourceVertex of each Superbubble,
-    // except the first one.
-    for(uint64_t i=1; i<superbubbleChainRc.size(); i++) {
-        const Superbubble& superbubble = superbubbleChainRc[i];
-        const vertex_descriptor v = superbubble.sourceVertex;
-        SHASTA2_ASSERT(in_degree(v, assemblyGraph) == 0);
-        SHASTA2_ASSERT(out_degree(v, assemblyGraph) == 0);
-        boost::remove_vertex(v, assemblyGraph);
-    }
 
 
 
-    // We need to replace the second bubble with a reverse complemented copy
-    // of the first bubble, after phasing.
-    // For this we need all the vertices and edges of the
-    // phased version of the first bubble.
-    if(debug) {
-        cout << "Finding internal vertices and edges of superbubble chain " <<
-            superbubbleChainId << endl;
-    }
-    std::set<vertex_descriptor> reachableVertices;
-    std::set<edge_descriptor> reachableEdges;
-    const vertex_descriptor v0 = superbubbleChain.front().sourceVertex;
-    const vertex_descriptor v1 = superbubbleChain.back().targetVertex;
-    findReachableWithStop(assemblyGraph, v0, v1, reachableVertices, reachableEdges);
-
-    // Make reverse complemented copies of the vertices.
-    if(debug) {
-        cout << "Making reverse complemented copies of the vertices." << endl;
-    }
-    for(const vertex_descriptor v: reachableVertices) {
-        createReverseComplementVertex(v);
-    }
-
-    if(debug) {
-        cout << "Making reverse complemented copies of the edges." << endl;
-    }
-    // Make reverse complemented copies of the edges.
-    for(const edge_descriptor e: reachableEdges) {
+        // We need to replace the second bubble with a reverse complemented copy
+        // of the first bubble, after phasing.
+        // For this we need all the vertices and edges of the
+        // phased version of the first bubble.
         if(debug) {
-            cout << "Making a reverse complemented copy of " << assemblyGraph[e].id << endl;
+            cout << "Finding internal vertices and edges of superbubble chain " <<
+                superbubbleChainId << endl;
         }
-        createReverseComplementEdge(e);
+        std::set<vertex_descriptor> reachableVertices;
+        std::set<edge_descriptor> reachableEdges;
+        const vertex_descriptor v0 = superbubbleChain.front().sourceVertex;
+        const vertex_descriptor v1 = superbubbleChain.back().targetVertex;
+        findReachableWithStop(assemblyGraph, v0, v1, reachableVertices, reachableEdges);
+
+        // Make reverse complemented copies of the vertices.
+        if(debug) {
+            cout << "Making reverse complemented copies of the vertices." << endl;
+        }
+        for(const vertex_descriptor v: reachableVertices) {
+            createReverseComplementVertex(v);
+        }
+
+        if(debug) {
+            cout << "Making reverse complemented copies of the edges." << endl;
+        }
+        // Make reverse complemented copies of the edges.
+        for(const edge_descriptor e: reachableEdges) {
+            if(debug) {
+                cout << "Making a reverse complemented copy of " << assemblyGraph[e].id << endl;
+            }
+            createReverseComplementEdge(e);
+        }
+
     }
 
     if(debug) {
