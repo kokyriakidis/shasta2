@@ -1971,6 +1971,21 @@ void AssemblyGraph::removeIsolatedVertices()
 }
 
 
+
+uint64_t AssemblyGraph::countIsolatedVertices() const
+{
+    const AssemblyGraph& assemblyGraph = *this;
+
+    uint64_t n = 0;
+    BGL_FORALL_VERTICES(v, assemblyGraph, AssemblyGraph) {
+        if((out_degree(v, assemblyGraph) == 0) and (in_degree(v, assemblyGraph) == 0)) {
+            ++n;
+        }
+    }
+    return n;
+}
+
+
 // Remove connected components with a low N50.
 void AssemblyGraph::removeLowN50Components()
 {

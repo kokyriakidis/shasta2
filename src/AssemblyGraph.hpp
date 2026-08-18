@@ -389,6 +389,7 @@ public:
 
     // Remove isolated vertices.
     void removeIsolatedVertices();
+    uint64_t countIsolatedVertices() const;
 
     // Remove connected components with a low N50.
     void removeLowN50Components();
