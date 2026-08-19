@@ -19,6 +19,8 @@ using namespace shasta2;
 // This only handles simple vertex tangles with a 2 by 2 tangle matrix.
 void AssemblyGraph::detangleVertices()
 {
+    performanceLog << timestamp << "AssemblyGraph::detangleVertices begins." << endl;
+
     AssemblyGraph& assemblyGraph = *this;
     const bool debug = false;
     ostream html(0);
@@ -285,6 +287,7 @@ void AssemblyGraph::detangleVertices()
 
     }
 
+    performanceLog << timestamp << "AssemblyGraph::detangleVertices ends." << endl;
 }
 
 
@@ -336,14 +339,21 @@ void AssemblyGraph::detangle()
 
 bool AssemblyGraph::detangleAndReadFollowingIteration(const string& debugOutputBaseName)
 {
+    performanceLog << timestamp << "AssemblyGraph::detangleAndReadFollowingIteration begins: " <<
+        debugOutputBaseName << endl;
+
     // EXPOSE WHEN CODE STABILIZES.
     const uint64_t lengthThreshold = 100000;
 
     const bool debug = false;
+    if(debug) {
+        write(debugOutputBaseName + "-Before");
+    }
 
     // cout << timestamp << "AssemblyGraph::detangleIteration begins." << endl;
     AssemblyGraph& assemblyGraph = *this;
 
+#if 0
     // Find the BubbleChains.
     vector<BubbleChain> bubbleChains;
     findBubbleChains(bubbleChains);
@@ -365,6 +375,7 @@ bool AssemblyGraph::detangleAndReadFollowingIteration(const string& debugOutputB
         writeBubbleChainsForBandage(debugOutputBaseName + "-ShortBubbleChains-Bandage.csv", shortBubbleChains);
         cout << "Found " << shortBubbleChains.size() << " short bubble chains." << endl;
     }
+#endif
 
     // Map the vertices to integers.
     // This is needed below to compute connected components.
@@ -376,7 +387,7 @@ bool AssemblyGraph::detangleAndReadFollowingIteration(const string& debugOutputB
     }
 
 
-
+#if 0
     // Compute connected components using only edges that belong to short BubbleChains.
     // Each non-trivial connected component will become a tangle.
     DisjointSets disjointSets(vertexTable.size());
@@ -386,6 +397,19 @@ bool AssemblyGraph::detangleAndReadFollowingIteration(const string& debugOutputB
             disjointSets.unionSet(vertexIndexMap.at(bubble.v0), vertexIndexMap.at(bubble.v1));
         }
     }
+#endif
+
+    // Compute connected components using only short edges.
+    // Each non-trivial connected component will become a tangle.
+    DisjointSets disjointSets(vertexTable.size());
+    BGL_FORALL_EDGES(segment, assemblyGraph, AssemblyGraph) {
+        if(assemblyGraph[segment].length() < lengthThreshold) {
+            const vertex_descriptor v0 = source(segment, assemblyGraph);
+            const vertex_descriptor v1 = target(segment, assemblyGraph);
+            disjointSets.unionSet(vertexIndexMap.at(v0), vertexIndexMap.at(v1));
+        }
+    }
+
 
     // Get the connected components with two or more vertices.
     // These will be our tangles.
@@ -527,6 +551,12 @@ bool AssemblyGraph::detangleAndReadFollowingIteration(const string& debugOutputB
         }
     }
 
+    if(debug) {
+        write(debugOutputBaseName + "-After");
+    }
+
+    performanceLog << timestamp << "AssemblyGraph::detangleAndReadFollowingIteration ends: " <<
+        debugOutputBaseName << endl;
     return somethingWasDone;
 }
 
@@ -562,20 +592,6 @@ bool AssemblyGraph::detangleTanglePair(
     if(entrances.empty() or exits.empty()) {
         if(debug) {
             cout << "Not detangling because there are no entrances or no exits." << endl;
-        }
-        return false;
-    }
-
-    // If any entrances are also exit, don't detangle for now.
-    bool hasEntranceExit = false;
-    for(const Segment entrance: entrances) {
-        if(std::ranges::contains(exits, entrance)) {
-            hasEntranceExit = true;
-        }
-    }
-    if(hasEntranceExit) {
-        if(debug) {
-            cout << "Not detangling because an entrance is also an exit."<< endl;
         }
         return false;
     }
@@ -663,46 +679,36 @@ bool AssemblyGraph::detangleTanglePair(
 
 
 
-    // Create copies of the entrances disconnected at the end
-    // and of the exits disconnected at the beginning.
-    // This also does the same for the reverse complement of
-    // this Tangle.
-    vector<Segment> newEntrances;
-    for(const Segment entranceOld: entrances) {
-        newEntrances.push_back(disconnectAtEnd(entranceOld));
-    }
-    vector<Segment> newExits;
-    for(const Segment exitOld: exits) {
-        newExits.push_back(disconnectAtBeginning(exitOld));
-    }
-
     // Make the connections described by the connectivity matrix
     // of the best hypothesis.
     // This also does the same for the reverse complement of
     // this Tangle.
-    for(uint64_t i=0; i<newEntrances.size(); i++) {
-        const AssemblyGraph::edge_descriptor newEntrance = newEntrances[i];
-        for(uint64_t j=0; j<newExits.size(); j++) {
+    for(uint64_t i=0; i<entrances.size(); i++) {
+        const AssemblyGraph::edge_descriptor entrance = entrances[i];
+        for(uint64_t j=0; j<exits.size(); j++) {
             if(bestHypothesis.connectivityMatrix[i][j]) {
-                const AssemblyGraph::edge_descriptor newExit = newExits[j];
-                const edge_descriptor eNew = connect(newEntrance, newExit);
+                const AssemblyGraph::edge_descriptor exit = exits[j];
+                const edge_descriptor eNew = connect(entrance, exit);
                 createReverseComplementEdge(eNew);
             }
         }
     }
 
-    // Remove all the Tangle vertices and their reverse complements.
-    // These vertices are now isolated.
+
+
+    // Remove all the Tangle vertices and their reverse complements
+    // that are now isolated. These are the ones that were
+    // not connected to any entrance or exit.
     for(const vertex_descriptor v: tangle.tangleVertices) {
         const vertex_descriptor vRc = assemblyGraph[v].vRc;
 
-        SHASTA2_ASSERT(in_degree(v, assemblyGraph) == 0);
-        SHASTA2_ASSERT(out_degree(v, assemblyGraph) == 0);
-        boost::remove_vertex(v, assemblyGraph);
+        if((in_degree(v, assemblyGraph) == 0) and (out_degree(v, assemblyGraph) == 0)) {
+            boost::remove_vertex(v, assemblyGraph);
+        }
 
-        SHASTA2_ASSERT(in_degree(vRc, assemblyGraph) == 0);
-        SHASTA2_ASSERT(out_degree(vRc, assemblyGraph) == 0);
-        boost::remove_vertex(vRc, assemblyGraph);
+        if((in_degree(vRc, assemblyGraph) == 0) and (out_degree(vRc, assemblyGraph) == 0)) {
+            boost::remove_vertex(vRc, assemblyGraph);
+        }
     }
 
     return true;
@@ -729,6 +735,9 @@ bool AssemblyGraph::detangleSelfComplementaryTangle2By2(const Tangle& tangle)
 {
     AssemblyGraph& assemblyGraph = *this;
     const bool debug = false;
+    if(debug) {
+        cout << "AssemblyGraph::detangleSelfComplementaryTangle2By2 begins" << endl;
+    }
 
     const vector<Segment>& entrances = tangle.entrances;
     const vector<Segment>& exits = tangle.exits;
@@ -768,14 +777,17 @@ bool AssemblyGraph::detangleSelfComplementaryTangle2By2(const Tangle& tangle)
     // Define the entrance/exit pair that we will explictly connect.
     // The remaining entrance/exit pair will be connected
     // automatically.
-    const Segment oldEntrance = entrances[0];
-    const Segment oldExit = entrancesRc[1];
+    const Segment entrance = entrances[0];
+    const Segment exit = entrancesRc[1];
+    if(debug) {
+        cout << "Will attempt to connect " << id(entrance) << " with " << id(exit) << endl;
+    }
 
     // Check if  we can connect this entrance/exit pair.
-    if(not assemblyGraph.canConnect(oldEntrance, oldExit)) {
+    if(not assemblyGraph.canConnect(entrance, exit)) {
         if(debug) {
-            cout << "Not detangling because can't connect " << id(oldEntrance) <<
-                " with " << id(oldExit) << endl;
+            cout << "Not detangling because can't connect " << id(entrance) <<
+                " with " << id(exit) << endl;
         }
         return false;
     }
@@ -789,21 +801,16 @@ bool AssemblyGraph::detangleSelfComplementaryTangle2By2(const Tangle& tangle)
         boost::remove_edge(e, assemblyGraph);
     }
 
-    // Create copies of the entrances disconnected at the end
-    // and of the exits disconnected at the beginning.
-    const Segment newEntrance = disconnectAtEnd(oldEntrance);
-    const Segment newExit = disconnectAtBeginning(oldExit);
-
     // Make the connection and its reverse complement.
-    const edge_descriptor eNew = connect(newEntrance, newExit);
+    const edge_descriptor eNew = connect(entrance, exit);
     createReverseComplementEdge(eNew);
 
-    // Remove all the Tangle vertices.
-    // These vertices are now isolated.
+    // Remove all the Tangle vertices that are now isolated.
+    // These are the ones that were not connected to any entrance or exit.
     for(const vertex_descriptor v: tangle.tangleVertices) {
-        SHASTA2_ASSERT(in_degree(v, assemblyGraph) == 0);
-        SHASTA2_ASSERT(out_degree(v, assemblyGraph) == 0);
-        boost::remove_vertex(v, assemblyGraph);
+        if((in_degree(v, assemblyGraph) == 0) and (out_degree(v, assemblyGraph) == 0)) {
+            boost::remove_vertex(v, assemblyGraph);
+        }
     }
 
     return true;
