@@ -48,6 +48,12 @@ void RestrictedAnchorGraph::constructFromTangleMatrix(
     using Graph = RestrictedAnchorGraph;
     Graph& graph = *this;
 
+    /*
+    cout << "RestrictedAnchorGraph for " <<
+        tangleMatrix.assemblyGraph.id(tangleMatrix.entrances[iEntrance]) << " " <<
+        tangleMatrix.assemblyGraph.id(tangleMatrix.exits[iExit]) << endl;
+    */
+
     fillJourneyPortions(journeys, tangleMatrix, iEntrance, iExit, html);
     gatherAllAnchorIds(journeys);
     fillJourneyPortionsAnchorIndexes(journeys);
@@ -398,6 +404,9 @@ void RestrictedAnchorGraph::fillJourneyPortions(
 
         ++itEntrance;
         ++itExit;
+    }
+    if(offsetCount == 0) {
+        throw NoCommonOrientedReads();
     }
     const double averageOffset = double(offsetSum) / double(offsetCount);
     const uint32_t maxOffset = uint32_t(std::round(averageOffset * (1. + drift)));

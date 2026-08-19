@@ -220,6 +220,12 @@ public:
     void gatherTransitions(ostream& html);
 
     // Failure modes.
+    class NoCommonOrientedReads : public std::exception {
+        const char* what() const noexcept
+        {
+            return "RestrictedAnchorGraph: NoCommonOrientedReads";
+        }
+    };
     class NoTransitions : public std::exception {
         const char* what() const noexcept
         {
