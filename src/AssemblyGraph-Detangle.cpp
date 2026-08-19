@@ -339,7 +339,7 @@ bool AssemblyGraph::detangleAndReadFollowingIteration(const string& debugOutputB
     // EXPOSE WHEN CODE STABILIZES.
     const uint64_t lengthThreshold = 100000;
 
-    const bool debug = true;
+    const bool debug = false;
 
     // cout << timestamp << "AssemblyGraph::detangleIteration begins." << endl;
     AssemblyGraph& assemblyGraph = *this;
@@ -492,6 +492,13 @@ bool AssemblyGraph::detangleAndReadFollowingIteration(const string& debugOutputB
                 cout << endl;
             }
 
+            if(tangle.entrances.empty() or tangle.exits.empty()) {
+                if(debug) {
+                    cout << "Skipping this trivial tangle with no entrances anr/or no exits." << endl;
+                }
+                continue;
+            }
+
             // Try detangling.
             bool success = detangleStrandSymmetric(tangle);
 
@@ -504,7 +511,7 @@ bool AssemblyGraph::detangleAndReadFollowingIteration(const string& debugOutputB
                 if(debug) {
                     cout << "Detangling was not successful on this tangle. Trying read following." << endl;
                 }
-                success = readFollowingStrandSymmetric(tangle);
+                success = readFollowingStrandSymmetric(tangleId, tangle);
                 if(debug) {
                     if(success) {
                         cout << "Read following was successful on this tangle." << endl;

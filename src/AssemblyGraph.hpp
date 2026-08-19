@@ -276,7 +276,7 @@ private:
     bool detangleTanglePair(const Tangle&);
     bool detangleSelfComplementaryTangle(const Tangle&);
     bool detangleSelfComplementaryTangle2By2(const Tangle&);
-    bool readFollowingStrandSymmetric(const Tangle&);
+    bool readFollowingStrandSymmetric(uint64_t tangleId, const Tangle&);
 
 
 
