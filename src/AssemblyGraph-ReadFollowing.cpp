@@ -6,7 +6,9 @@ using namespace ReadFollowing5;
 
 
 
-bool AssemblyGraph::readFollowingStrandSymmetric(uint64_t, const Tangle&)
+bool AssemblyGraph::readFollowingStrandSymmetric(
+    [[maybe_unused]] uint64_t tangleId,
+    [[maybe_unused]] const Tangle& tangle)
 {
     /*
     if(not tangle.isSelfComplementary()) {

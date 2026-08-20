@@ -7,6 +7,9 @@
 using namespace shasta2;
 using namespace ReadFollowing5;
 
+// Boost libraries.
+#include "boost/graph/dijkstra_shortest_paths.hpp"
+
 // Standard library.
 #include "fstream.hpp"
 
@@ -33,6 +36,8 @@ Graph::Graph(
             num_edges(graph) << " edges." << endl;
         writeGraphviz("ReadFollowingGraph-Tangle-" + to_string(tangleId) + ".dot");
     }
+
+    findShortestPaths();
 }
 
 
@@ -45,10 +50,10 @@ void Graph::createVertices()
         add_vertex(Vertex(assemblyGraph, segment, false, false), graph);
     }
     for(const Segment segment: tangle.entrances) {
-        add_vertex(Vertex(assemblyGraph, segment, true, false), graph);
+        entranceVertices.push_back(add_vertex(Vertex(assemblyGraph, segment, true, false), graph));
     }
     for(const Segment segment: tangle.exits) {
-        add_vertex(Vertex(assemblyGraph, segment, false, true), graph);
+        exitVertices.push_back(add_vertex(Vertex(assemblyGraph, segment, false, true), graph));
     }
 }
 
@@ -115,7 +120,7 @@ void Graph::createEdges()
     const uint32_t representativeRegionStepCount =  uint32_t(assemblyGraph.options.representativeRegionStepCount);
     const double a = 3.;                // dB
     const double b = 15.;               // dB
-    const double logPThreshold = 10.;   // dB
+    // const double logPThreshold = 10.;   // dB
 
     // No html output from analyzeSegmentPair.
     ostream html(0);
@@ -212,12 +217,14 @@ void Graph::createEdges()
             continue;
         }
         const double logP = a * double(segmentPairInformation.commonCount) - b * double(segmentPairInformation.missing());
+        /*
         if(logP < logPThreshold) {
             if(debug) {
                 cout << "Discarded due low logP." << endl;
             }
             continue;
         }
+        */
         if(not assemblyGraph.canConnect(segment0, segment1)) {
             if(debug) {
                 cout << "Discarded because cannot connect." << endl;
@@ -229,7 +236,7 @@ void Graph::createEdges()
         if(debug) {
             cout << "Keeping " << assemblyGraph.id(segment0) << " " << assemblyGraph.id(segment1) << " " << logP << endl;
         }
-        add_edge(v0, v1, Edge(segmentPairInformation.commonCount), graph);
+        add_edge(v0, v1, Edge(segmentPairInformation.commonCount, logP), graph);
         if(isSelfComplementaryTangle) {
             const Segment segment0Rc = assemblyGraph[segment0].eRc;
             const Segment segment1Rc = assemblyGraph[segment1].eRc;
@@ -272,10 +279,46 @@ void Graph::writeGraphviz(ostream& dot) const
         const vertex_descriptor v0 = source(e, graph);
         const vertex_descriptor v1 = target(e, graph);
         dot << assemblyGraph.id(graph[v0].segment) << "->" <<
-            assemblyGraph.id(graph[v1].segment) << "\n";
+            assemblyGraph.id(graph[v1].segment) <<
+            "[ label=\"" << int64_t(std::round(graph[e].logP)) << "\"]"
+            "\n";
     }
 
     dot << "}\n";
 }
 
 
+void Graph::findShortestPaths() const
+{
+    const Graph& graph = *this;
+    using boost::make_assoc_property_map;
+
+    // Create a vertex index map, needed below.
+    std::map<vertex_descriptor, uint64_t> vertexIndexMap;
+    uint64_t vertexIndex = 0;
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        vertexIndexMap.insert(make_pair(v, vertexIndex++));
+    }
+
+    // Loop over entrances.
+    for(uint64_t iEntrance=0; iEntrance<entranceVertices.size(); iEntrance++) {
+        const vertex_descriptor vEntrance = entranceVertices[iEntrance];
+
+        // Create a shortest path tree rooted at this entrance.
+        std::map<vertex_descriptor, double> distanceMap;
+        std::map<vertex_descriptor, vertex_descriptor> predecessorMap;
+        dijkstra_shortest_paths(graph, vEntrance,
+           weight_map(boost::get(&Edge::weight, graph)).
+           vertex_index_map(make_assoc_property_map(vertexIndexMap)).
+           distance_map(make_assoc_property_map(distanceMap)).
+           predecessor_map(make_assoc_property_map(predecessorMap)));
+
+        // Write out the distances of the exits from this entrance.
+        for(uint64_t iExit=0; iExit<exitVertices.size(); iExit++) {
+            const vertex_descriptor vExit = exitVertices[iExit];
+            const double distance = distanceMap.at(vExit);
+            cout << iEntrance << " " << iExit << " " << distance << endl;
+        }
+
+    }
+}

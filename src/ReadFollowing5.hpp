@@ -57,8 +57,14 @@ public:
 class shasta2::ReadFollowing5::Edge {
 public:
     uint64_t commonCount;
+    double logP;
+    double weight;
 
-    Edge(uint64_t commonCount) : commonCount(commonCount) {}
+    Edge(uint64_t commonCount, double logP) :
+        commonCount(commonCount),
+        logP(logP),
+        weight(std::pow(10., -0.1 * logP))
+    {}
 
 };
 
@@ -74,8 +80,13 @@ private:
     uint64_t tangleId;
     bool isSelfComplementaryTangle;
 
+    vector<vertex_descriptor> entranceVertices;
+    vector<vertex_descriptor> exitVertices;
+
     void createVertices();
     void createEdges();
+
+    void findShortestPaths() const;
 
     void writeGraphviz(const string& fileName) const;
     void writeGraphviz(ostream&) const;

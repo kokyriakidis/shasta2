@@ -352,8 +352,8 @@ void AssemblyGraph::simplifyAndAssemble()
         cout << "Detangle/read following/phasing iteration " << iteration << " begins." << endl;
         const uint64_t oldNextEdgeId = nextEdgeId;
         detangleVertices();
-        detangleAndReadFollowingIteration("Iteration-" + to_string(iteration));
         strandSymmetricPhaseSuperbubbleChains();
+        detangleAndReadFollowingIteration("Iteration-" + to_string(iteration));
         cout << "After iteration " << iteration << " there are " << num_edges(*this) << " segments." << endl;
         if(nextEdgeId == oldNextEdgeId) {
             cout << "No changes, stop iterating." << endl;
