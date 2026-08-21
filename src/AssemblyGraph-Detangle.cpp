@@ -22,7 +22,7 @@ void AssemblyGraph::detangleVertices()
     performanceLog << timestamp << "AssemblyGraph::detangleVertices begins." << endl;
 
     AssemblyGraph& assemblyGraph = *this;
-    const bool debug = true;
+    const bool debug = false;
     check();
     ostream html(0);
 
