@@ -298,3 +298,59 @@ bool Tangle::isSelfComplementary() const
     const AssemblyGraph::vertex_descriptor vRc = assemblyGraph[v].vRc;
     return std::ranges::binary_search(tangleVertices, vRc, assemblyGraph.orderById);
 }
+
+
+
+void Tangle::writeHtml(ostream& html) const
+{
+    html << "<h2>Tangle entrances</h2>";
+    for(uint64_t i=0; i<entrances.size(); i++) {
+        if(i != 0) {
+            html << ",";
+        }
+        html << assemblyGraph.id(entrances[i]);
+    }
+
+    html << "<h2>Tangle exits</h2>";
+    for(uint64_t i=0; i<exits.size(); i++) {
+        if(i != 0) {
+            html << ",";
+        }
+        html << assemblyGraph.id(exits[i]);
+    }
+
+    html << "<h2>Tangle internal segments</h2>";
+    for(uint64_t i=0; i<tangleEdges.size(); i++) {
+        if(i != 0) {
+            html << ",";
+        }
+        html << assemblyGraph.id(tangleEdges[i]);
+    }
+
+    html << "<h2>Tangle vertices</h2>";
+    for(uint64_t i=0; i<tangleVertices.size(); i++) {
+        if(i != 0) {
+            html << ",";
+        }
+        html << assemblyGraph.id(tangleVertices[i]);
+    }
+
+    html << "<h2>Tangle matrix</h2>"
+        "Zero values are omitted."
+        "<br><br><table><tr><th>";
+    html << std::fixed << std::setprecision(1);
+    for(uint64_t i=0; i<exits.size(); i++) {
+        html << "<th>" << assemblyGraph.id(exits[i]);
+    }
+    for(uint64_t i=0; i<entrances.size(); i++) {
+        html << "<tr><th>" << assemblyGraph.id(entrances[i]);
+        for(uint64_t j=0; j<exits.size(); j++) {
+            html << "<td class=centered>";
+            const double t = tangleMatrix().tangleMatrix[i][j];
+            if(t != 0.) {
+                html << t;
+            }
+        }
+    }
+
+}

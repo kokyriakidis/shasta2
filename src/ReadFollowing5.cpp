@@ -1,6 +1,7 @@
 // Shasta2.
 #include "ReadFollowing5.hpp"
 #include "deduplicate.hpp"
+#include "html.hpp"
 #include "Options.hpp"
 #include "SegmentStepSupport.hpp"
 #include "Tangle.hpp"
@@ -25,19 +26,31 @@ Graph::Graph(
     isSelfComplementaryTangle(tangle.isSelfComplementary())
 {
     Graph& graph = *this;
-    const bool debug = true;
+
+    // Comment this out to turn off debug output.
+    html.open("ReadFollowing-Tangle-" + to_string(tangleId) + ".html");
+    if(html) {
+        writeHtmlBegin(html, "Read following on Tangle " + to_string(tangleId));
+        html << "<h1>Read following on tangle " << tangleId << "</h1>";
+        tangle.writeHtml(html);
+    }
 
     createVertices();
     createEdges();
 
-    if(debug) {
-        cout << "The read following graph for this tangle has " <<
+    if(html) {
+        html << "<h2>Read following graph</h2>"
+            "The read following graph for this tangle has " <<
             num_vertices(graph) << " vertices and " <<
             num_edges(graph) << " edges." << endl;
         writeGraphviz("ReadFollowingGraph-Tangle-" + to_string(tangleId) + ".dot");
     }
 
     findShortestPaths();
+
+    if(html) {
+        writeHtmlEnd(html);
+    }
 }
 
 
@@ -288,10 +301,12 @@ void Graph::writeGraphviz(ostream& dot) const
 }
 
 
-void Graph::findShortestPaths() const
+void Graph::findShortestPaths()
 {
     const Graph& graph = *this;
     using boost::make_assoc_property_map;
+
+    shortestPaths.resize(entranceVertices.size(), vector<ShortestPath>(exitVertices.size()));
 
     // Create a vertex index map, needed below.
     std::map<vertex_descriptor, uint64_t> vertexIndexMap;
@@ -316,9 +331,52 @@ void Graph::findShortestPaths() const
         // Write out the distances of the exits from this entrance.
         for(uint64_t iExit=0; iExit<exitVertices.size(); iExit++) {
             const vertex_descriptor vExit = exitVertices[iExit];
-            const double distance = distanceMap.at(vExit);
-            cout << iEntrance << " " << iExit << " " << distance << endl;
-        }
 
+            // Store this ShortestPath.
+            ShortestPath& shortestPath = shortestPaths[iEntrance][iExit];
+            shortestPath.distance = 10. * log10(distanceMap.at(vExit));
+
+            // Walk back the shortest path tree to find the path Segments.
+        }
+    }
+
+
+    if(html) {
+        writeShortestPaths();
     }
 }
+
+
+
+void Graph::writeShortestPaths()
+{
+    html <<
+        "<h2>Distance matrix</h2>"
+        "Distance on the read following graph "
+        "between between each pair of entrances and exits. "
+        "A small value indicates that the entrance and exit are likely to "
+        " follow each other in genomic sequence. Large values (above 1000) "
+        "are omitted."
+        "<br><br><table>";
+
+    // Write a header line listing the exits.
+    html << "<tr><th>";
+    for(const Segment& segment: tangle.exits) {
+        html << "<th>" << assemblyGraph.id(segment);
+    }
+
+    // Write one row for each entrance.
+    for(uint64_t iEntrance=0; iEntrance<entranceVertices.size(); iEntrance++) {
+        html << "<tr><th>" << assemblyGraph.id(tangle.entrances[iEntrance]);
+        for(uint64_t iExit=0; iExit<exitVertices.size(); iExit++) {
+            html << "<td class=centered>";
+            const int64_t distance = int64_t(std::round(shortestPaths[iEntrance][iExit].distance));
+            if(distance < 1000) {
+                html << distance;
+            }
+        }
+    }
+
+    html << "</table>";
+}
+

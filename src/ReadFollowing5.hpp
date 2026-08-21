@@ -6,6 +6,7 @@
 #include "AssemblyGraphBaseClass.hpp"
 
 // Standard library.
+#include "fstream.hpp"
 #include "iosfwd.hpp"
 #include "string.hpp"
 #include "vector.hpp"
@@ -86,9 +87,29 @@ private:
     void createVertices();
     void createEdges();
 
-    void findShortestPaths() const;
-
     void writeGraphviz(const string& fileName) const;
     void writeGraphviz(ostream&) const;
+
+    // Debug output in html format.
+    ofstream html;
+
+
+
+    // Shortest paths on the graph between each entrance/exit pair.
+    class ShortestPath {
+    public:
+        Segment entrance;
+        Segment exit;
+        double distance;
+
+        // The path Segments, excluding the entrance and the exit.
+        vector<Segment> segments;
+    };
+    vector< vector<ShortestPath> > shortestPaths;
+    void findShortestPaths();
+    void writeShortestPaths();
+
+
+
 };
 

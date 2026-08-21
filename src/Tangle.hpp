@@ -62,6 +62,7 @@ public:
     // This assumes that the AssemblyGraph is strand-symmetric.
     bool isSelfComplementary() const;
 
+    void writeHtml(ostream& html) const;
 
     // Detangling instructions.
     // Each entry describes an entrance/exit pair to be connected.
