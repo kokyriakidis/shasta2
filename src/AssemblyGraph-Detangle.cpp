@@ -22,7 +22,8 @@ void AssemblyGraph::detangleVertices()
     performanceLog << timestamp << "AssemblyGraph::detangleVertices begins." << endl;
 
     AssemblyGraph& assemblyGraph = *this;
-    const bool debug = false;
+    const bool debug = true;
+    check();
     ostream html(0);
 
     const vector< vector<bool> > inPhaseConnectivityMatrix    = { {true , false}, {false, true } };
@@ -162,14 +163,23 @@ void AssemblyGraph::detangleVertices()
         }
 
         // Check that the two reverse complemented tangles are entirely disjoint
-        // (they don't share any edges).
+        // (they don't share any edges). If this is not the case, skip this vertex pair.
+        bool skipDueToReverseComplement = false;
         for(const edge_descriptor e: inEdges) {
-            SHASTA2_ASSERT(not std::ranges::contains(inEdgesRc, e));
-            SHASTA2_ASSERT(not std::ranges::contains(outEdgesRc, e));
+            if((std::ranges::contains(inEdgesRc, e)) or (std::ranges::contains(outEdgesRc, e))) {
+                skipDueToReverseComplement = true;
+            }
         }
         for(const edge_descriptor e: outEdges) {
-            SHASTA2_ASSERT(not std::ranges::contains(inEdgesRc, e));
-            SHASTA2_ASSERT(not std::ranges::contains(outEdgesRc, e));
+            if((std::ranges::contains(inEdgesRc, e)) or (std::ranges::contains(outEdgesRc, e))) {
+                skipDueToReverseComplement = true;
+            }
+        }
+        if(skipDueToReverseComplement) {
+            if(debug) {
+                cout << "Skipping this vertex pair due to reverse complements." << endl;
+            }
+            continue;
         }
 
         // Create the tangle matrix.
