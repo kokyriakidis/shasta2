@@ -331,6 +331,9 @@ AssemblyGraph::AssemblyGraph(
 // Top level assembly function.
 void AssemblyGraph::simplifyAndAssemble()
 {
+    // EXPOSE WHEN CODE STABILIZES.
+    const uint64_t maxIterationCount = 1;
+
     writeMemoryStatistics("AssemblyGraph::simplifyAndAssemble begins");
 
     // Initial output.
@@ -348,17 +351,19 @@ void AssemblyGraph::simplifyAndAssemble()
     writeIntermediateStageIfRequested("C");
 
     // Iterate detangling, read following, phasing.
-    for(uint64_t iteration=0; ; ++iteration) {
-        cout << "Detangle/read following/phasing iteration " << iteration << " begins." << endl;
-        const uint64_t oldNextEdgeId = nextEdgeId;
-        detangleVertices();
+    // For now activate just a single iteration of phasing.
+    for(uint64_t iteration=0; iteration<maxIterationCount; ++iteration) {
+        // const uint64_t oldNextEdgeId = nextEdgeId;
+        // detangleVertices();
         strandSymmetricPhaseSuperbubbleChains();
+        /*
         detangleAndReadFollowingIteration("Iteration-" + to_string(iteration));
         cout << "After iteration " << iteration << " there are " << num_edges(*this) << " segments." << endl;
         if(nextEdgeId == oldNextEdgeId) {
             cout << "No changes, stop iterating." << endl;
             break;
         }
+        */
     }
     writeIntermediateStageIfRequested("D");
 
