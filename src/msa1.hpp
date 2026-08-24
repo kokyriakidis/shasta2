@@ -138,7 +138,12 @@ namespace shasta2 {
 
         // The weighted median length. Biased low when the reads under-call, as
         // they do on long homopolymers.
-        Median
+        Median,
+
+        // The weighted mean length, rounded to the nearest integer (ties round
+        // up). Unlike mode and median it uses every observed length, so a few
+        // large deletions pull it down while occasional over-calls pull it up.
+        Average
     };
 
 
@@ -449,7 +454,7 @@ namespace shasta2 {
         uint64_t encodeThreshold = 1;
 
         // How the consensus length of a long homopolymer run is chosen.
-        RunLengthEstimator estimator = RunLengthEstimator::Mode;
+        RunLengthEstimator estimator = RunLengthEstimator::Average;
 
         // Columns of context included on each side of a bad region.
         uint64_t flank = 10;

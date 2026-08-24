@@ -413,7 +413,7 @@ void shasta2::extendedConsensus(
                 }
                 coverage = bestWeight;
 
-            } else {
+            } else if(estimator == RunLengthEstimator::Median) {
 
                 // The weighted median.
                 uint64_t cumulative = 0;
@@ -425,6 +425,21 @@ void shasta2::extendedConsensus(
                         break;
                     }
                 }
+
+            } else {
+
+                // The weighted mean, rounded to the nearest integer with ties
+                // rounding up. Every observed length contributes, so this uses
+                // the whole distribution rather than a single order statistic.
+                uint64_t weightedSum = 0;
+                for(uint64_t length=1; length<=maxObserved; length++) {
+                    weightedSum += length * lengthWeight[length];
+                }
+                consensusRunLength = (weightedSum + (totalWeight / 2)) / totalWeight;
+                if(consensusRunLength == 0) {
+                    consensusRunLength = 1;
+                }
+                coverage = totalWeight;
             }
             SHASTA2_ASSERT(consensusRunLength > 0);
         }
