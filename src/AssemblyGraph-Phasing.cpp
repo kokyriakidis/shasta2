@@ -154,6 +154,63 @@ void AssemblyGraph::strandSymmetricPhaseSuperbubbleChains(const string& debugOut
         }
     }
 
+
+
+    // If a SuperbubbleChain is self-complementary, split it in
+    // a pair of reverse complemented SuperbubbleChains.
+    bool foundSelfComplementaryPair = false;
+    for(uint64_t superbubbleChainId=0; superbubbleChainId<superbubbleChains.size(); superbubbleChainId++) {
+        if(superchainTable[superbubbleChainId] == superbubbleChainId) {
+
+            foundSelfComplementaryPair = true;
+            if(debug) {
+                cout << "Self-complementary SuperbubbleChain " << superbubbleChainId <<
+                    " will be split in a reverse complemented pair." << endl;
+            }
+
+            SuperbubbleChain& superbubbleChain = superbubbleChains[superbubbleChainId];
+            const uint64_t n = superbubbleChain.size();
+            SHASTA2_ASSERT((n % 2) == 1);
+            const uint64_t nHalf = n / 2;
+
+            // The second half (minus the middle superbubble) becomes
+            // the second superbubble in the new pair.
+            SuperbubbleChain& superbubbleChainRc = superbubbleChains.emplace_back();
+            copy(superbubbleChain.begin() + nHalf + 1, superbubbleChain.end(), back_inserter(superbubbleChainRc));
+
+            // The first half (minus the middle superbubble) becomes
+            // the first superbubble in the new pair.
+            for(uint64_t i=nHalf; i<n; i++) {
+                superbubbleChain.pop_back();
+            }
+
+            SHASTA2_ASSERT(superbubbleChain.size() == nHalf);
+            SHASTA2_ASSERT(superbubbleChainRc.size() == nHalf);
+
+            // Update the superbubble chain table.
+            superchainTable[superbubbleChainId] = superchainTable.size();
+            superchainTable.push_back(superbubbleChainId);
+
+        }
+    }
+    if(foundSelfComplementaryPair) {
+        // Sanity check.
+        for(uint64_t superbubbleChainId=0; superbubbleChainId<superbubbleChains.size(); superbubbleChainId++) {
+            const uint64_t superbubbleChainIdRc = superchainTable[superbubbleChainId];
+            SHASTA2_ASSERT(superchainTable[superbubbleChainIdRc] == superbubbleChainId);
+        }
+
+        if(debug) {
+            cout << "Updated superbubble chains table:" << endl;
+            for(uint64_t superbubbleChainId=0; superbubbleChainId<superbubbleChains.size(); superbubbleChainId++) {
+                const uint64_t superbubbleChainIdRc = superchainTable[superbubbleChainId];
+                cout << superbubbleChainId << " " << superbubbleChainIdRc << endl;
+            }
+        }
+    }
+
+
+
     // Fill in the pairs of SuperbubbleChains to be phased.
     data.superbubbleChainPairs.clear();
     for(uint64_t superbubbleChainId=0; superbubbleChainId<superbubbleChains.size(); superbubbleChainId++) {
@@ -220,23 +277,7 @@ void AssemblyGraph::strandSymmetricPhase(
         cout << "AssemblyGraph::strandSymmetricPhase begins for superbubble chains " <<
             superbubbleChainId << " " << superbubbleChainIdRc << endl;
     }
-
-
-
-    // If this is a self-complementary superbubble chain, don't phase it.
-    // This could be fixed by splitting it in half, generating a self complementary pair.
-    // For now just skip it.
-    if(superbubbleChainId == superbubbleChainIdRc) {
-        cout << "A self-complementary bubble chain was found and will not be phased." << endl;
-        cout << "It contains the following segments:" << endl;
-        for(const Superbubble& superbubble: superbubbleChain) {
-            for(const edge_descriptor e: superbubble.internalEdges) {
-                cout << assemblyGraph[e].id << ",";
-            }
-        }
-        cout << endl;
-        return;
-    }
+    SHASTA2_ASSERT(superbubbleChainId != superbubbleChainIdRc) ;
 
 
 
