@@ -66,10 +66,11 @@ void AssemblyGraph::phaseSuperbubbleChainsThreadFunction([[maybe_unused]] uint64
 
 
 
-void AssemblyGraph::strandSymmetricPhaseSuperbubbleChains()
+void AssemblyGraph::strandSymmetricPhaseSuperbubbleChains(const string& debugOutputBaseName)
 {
     performanceLog << timestamp << "AssemblyGraph::strandSymmetricPhaseSuperbubbleChains begins." << endl;
     AssemblyGraph& assemblyGraph = *this;
+    const bool debug = (not debugOutputBaseName.empty());
 
     PhaseSuperbubbleChainsData& data = phaseSuperbubbleChainsData;
     vector<SuperbubbleChain>& superbubbleChains = data.superbubbleChains;
@@ -77,17 +78,23 @@ void AssemblyGraph::strandSymmetricPhaseSuperbubbleChains()
     // Find Superbubbles.
     vector<Superbubble> superbubbles;
     findSuperbubbles(superbubbles);
-    writeSuperbubbles(superbubbles, "Superbubbles-WithOverlaps.csv");
+    if(debug) {
+        writeSuperbubbles(superbubbles, "Phasing-Superbubbles-WithOverlaps-" + debugOutputBaseName + ".csv");
+    }
     removeContainedSuperbubbles(superbubbles);
-    cout << "Found " << superbubbles.size() << " non-overlapping superbubbles." << endl;
-    writeSuperbubbles(superbubbles, "Superbubbles.csv");
-    writeSuperbubblesForBandage(superbubbles, "Superbubbles-Bandage.csv");
+    if(debug) {
+        cout << "Found " << superbubbles.size() << " non-overlapping superbubbles." << endl;
+        writeSuperbubbles(superbubbles, "Phasing-Superbubbles-" + debugOutputBaseName + ".csv");
+        writeSuperbubblesForBandage(superbubbles, "Phasing-Superbubbles-Bandage-" + debugOutputBaseName + ".csv");
+    }
 
     // Find SuperbubbleChain.
     findSuperbubbleChains(superbubbles, superbubbleChains);
-    cout << "Found " << superbubbleChains.size() << " superbubble chains." << endl;
-    writeSuperbubbleChains(superbubbleChains, "SuperbubbleChains.csv");
-    writeSuperbubbleChainsForBandage(superbubbleChains, "SuperbubbleChains-Bandage.csv");
+    if(debug) {
+        cout << "Found " << superbubbleChains.size() << " superbubble chains." << endl;
+        writeSuperbubbleChains(superbubbleChains, "Phasing-SuperbubbleChains-" + debugOutputBaseName + ".csv");
+        writeSuperbubbleChainsForBandage(superbubbleChains, "Phasing-SuperbubbleChains-Bandage-" + debugOutputBaseName + ".csv");
+    }
 
 
 
@@ -102,9 +109,10 @@ void AssemblyGraph::strandSymmetricPhaseSuperbubbleChains()
             }
         }
     }
-    cout << "Out of " << num_edges(assemblyGraph) << " assembly graph edges, " <<
-        superbubbleChainMap.size() << " are in superbubble chains." << endl;
-
+    if(debug) {
+        cout << "Out of " << num_edges(assemblyGraph) << " assembly graph edges, " <<
+            superbubbleChainMap.size() << " are in superbubble chains." << endl;
+    }
 
 
     // Find the reverse complement of each SuperbubbleChain.
@@ -122,6 +130,7 @@ void AssemblyGraph::strandSymmetricPhaseSuperbubbleChains()
                     cout << "Edge " << assemblyGraph[e].id <<
                         " is in a superbubble chain but its reverse complement " <<
                         assemblyGraph[eRc].id << " is not." << endl;
+                    SHASTA2_ASSERT(0);
                 }
                 v.push_back(superbubbleChainMap.at(eRc));
             }
@@ -135,6 +144,14 @@ void AssemblyGraph::strandSymmetricPhaseSuperbubbleChains()
     for(uint64_t superbubbleChainId=0; superbubbleChainId<superbubbleChains.size(); superbubbleChainId++) {
         const uint64_t superbubbleChainIdRc = superchainTable[superbubbleChainId];
         SHASTA2_ASSERT(superchainTable[superbubbleChainIdRc] == superbubbleChainId);
+    }
+
+    if(debug) {
+        cout << "Superbubble chains table:" << endl;
+        for(uint64_t superbubbleChainId=0; superbubbleChainId<superbubbleChains.size(); superbubbleChainId++) {
+            const uint64_t superbubbleChainIdRc = superchainTable[superbubbleChainId];
+            cout << superbubbleChainId << " " << superbubbleChainIdRc << endl;
+        }
     }
 
     // Fill in the pairs of SuperbubbleChains to be phased.

@@ -405,6 +405,9 @@ void AssemblyGraph::simplifyAndAssemble()
 // It returns true if any changes in the AssemblyGraph were made.
 bool AssemblyGraph::simplifyIteration([[maybe_unused]] uint64_t iteration)
 {
+    // This can be passed as an argument below to turn on debug output.
+    [[maybe_unused]] const string iterationString = to_string(iteration);
+
     const uint64_t oldNextEdgeId = nextEdgeId;
 
     strandSymmetricPhaseSuperbubbleChains();

@@ -2,10 +2,11 @@
 
 import shasta2
 
-# Get the argument.
+# Get the arguments.
 import argparse
-parser = argparse.ArgumentParser(description = "Do a round oh phasing on a given assembly stage.")
-parser.add_argument("stage", type=str, help="Assembly stage.")
+parser = argparse.ArgumentParser(description = "Run all detangling iterations.")
+parser.add_argument("inputStage", type=str, help="Input assembly stage.")
+parser.add_argument("outputStage", type=str, help="Output assembly stage.")
 arguments = parser.parse_args()
 
 shasta2.openPerformanceLog("Python-performance.log")
@@ -19,13 +20,11 @@ assembler.accessAnchors()
 assembler.accessJourneys()
 
 # Load the specified assembly stage and assemble sequence.
-assemblyGraph = assembler.getAssemblyGraph(arguments.stage, options)
-# assemblyGraph.phaseSuperbubbleChains()
-assemblyGraph.strandSymmetricPhaseSuperbubbleChains()
+assemblyGraph = assembler.getAssemblyGraph(arguments.inputStage, options)
+assemblyGraph.strandSymmetricPhaseSuperbubbleChains("Python")
 
 # Write it out.
-assembledName = arguments.stage + "-Phased"
-assemblyGraph.write(assembledName)
+assemblyGraph.write(arguments.outputStage)
 
 
 

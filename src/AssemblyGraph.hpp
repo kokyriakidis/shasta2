@@ -444,7 +444,7 @@ public:
     void phaseSuperbubbleChainsThreadFunction(uint64_t threadId);
 
     // Strand-symmetric phasing of superbubble chains.
-    void strandSymmetricPhaseSuperbubbleChains();
+    void strandSymmetricPhaseSuperbubbleChains(const string& debugOutputBaseName = "");
     void strandSymmetricPhaseSuperbubbleChainsThreadFunction(uint64_t threadId);
 
     // This phases the first SuperbubbleChain of a reverse complemented pair,
