@@ -384,6 +384,7 @@ void AssemblyGraph::simplifyAndAssemble()
     // A final round of phasing.More opportunities for phasing
     // may have emerged.
     strandSymmetricPhaseSuperbubbleChains();
+    strandSymmetricCompress();
     writeIntermediateStageIfRequested("M");
 
     // Make the AssemblyGraph single-stranded.
@@ -405,16 +406,26 @@ void AssemblyGraph::simplifyAndAssemble()
 // It returns true if any changes in the AssemblyGraph were made.
 bool AssemblyGraph::simplifyIteration([[maybe_unused]] uint64_t iteration)
 {
-    // This can be passed as an argument below to turn on debug output.
-    [[maybe_unused]] const string iterationString = to_string(iteration);
+    const string iterationString = to_string(iteration);
+    const bool debug = false;
 
     const uint64_t oldNextEdgeId = nextEdgeId;
 
-    strandSymmetricPhaseSuperbubbleChains();
+    if(debug) write(iterationString + "A");
 
-    // For now don't activate detangling.
-    // detangleVertices();
-    // detangleAndReadFollowingIteration("Iteration-" + to_string(iteration));
+    strandSymmetricPhaseSuperbubbleChains();
+    if(debug) write(iterationString + "B");
+
+    strandSymmetricCompress();
+    if(debug) write(iterationString + "C");
+
+    /*
+    detangleVertices();
+    if(debug) write(iterationString + "D");
+
+    detangleAndReadFollowingIteration("Iteration-" + iterationString);
+    if(debug) write(iterationString + "E");
+    */
 
     const bool changesWereMade = (nextEdgeId > oldNextEdgeId);
     return changesWereMade;

@@ -232,7 +232,6 @@ void AssemblyGraph::strandSymmetricPhaseSuperbubbleChains(const string& debugOut
     data.superbubbleChainPairs.shrink_to_fit();
 
 
-    strandSymmetricCompress();
     performanceLog << timestamp << "AssemblyGraph::strandSymmetricPhaseSuperbubbleChains ends." << endl;
 }
 
