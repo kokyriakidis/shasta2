@@ -351,19 +351,10 @@ void AssemblyGraph::simplifyAndAssemble()
     writeIntermediateStageIfRequested("C");
 
     // Iterate detangling, read following, phasing.
-    // For now activate just a single iteration of phasing.
     for(uint64_t iteration=0; iteration<maxIterationCount; ++iteration) {
-        // const uint64_t oldNextEdgeId = nextEdgeId;
-        // detangleVertices();
-        strandSymmetricPhaseSuperbubbleChains();
-        /*
-        detangleAndReadFollowingIteration("Iteration-" + to_string(iteration));
-        cout << "After iteration " << iteration << " there are " << num_edges(*this) << " segments." << endl;
-        if(nextEdgeId == oldNextEdgeId) {
-            cout << "No changes, stop iterating." << endl;
+        if(not simplifyIteration(iteration)) {
             break;
         }
-        */
     }
     writeIntermediateStageIfRequested("D");
 
@@ -406,6 +397,24 @@ void AssemblyGraph::simplifyAndAssemble()
     writeFasta("Final");
 
     writeMemoryStatistics("AssemblyGraph::simplifyAndAssemble ends");
+}
+
+
+
+// This runs one iteration of phasing, detangling, read following.
+// It returns true if any changes in the AssemblyGraph were made.
+bool AssemblyGraph::simplifyIteration([[maybe_unused]] uint64_t iteration)
+{
+    const uint64_t oldNextEdgeId = nextEdgeId;
+
+    strandSymmetricPhaseSuperbubbleChains();
+
+    // For now don't activate detangling.
+    // detangleVertices();
+    // detangleAndReadFollowingIteration("Iteration-" + to_string(iteration));
+
+    const bool changesWereMade = (nextEdgeId > oldNextEdgeId);
+    return changesWereMade;
 }
 
 

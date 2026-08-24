@@ -188,6 +188,7 @@ public:
 
     // Detangle, phase, assemble sequence, output.
     void simplifyAndAssemble();
+    bool simplifyIteration(uint64_t iteration);
 
     void setAnnotation(edge_descriptor, const string&);
 
