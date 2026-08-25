@@ -352,5 +352,6 @@ void Tangle::writeHtml(ostream& html) const
             }
         }
     }
+    html << "</table>";
 
 }
