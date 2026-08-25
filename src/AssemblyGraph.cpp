@@ -332,7 +332,7 @@ AssemblyGraph::AssemblyGraph(
 void AssemblyGraph::simplifyAndAssemble()
 {
     // EXPOSE WHEN CODE STABILIZES.
-    const uint64_t maxIterationCount = 3;
+    const uint64_t maxIterationCount = 6;
 
     writeMemoryStatistics("AssemblyGraph::simplifyAndAssemble begins");
 
@@ -353,6 +353,7 @@ void AssemblyGraph::simplifyAndAssemble()
     // Iterate detangling, read following, phasing.
     for(uint64_t iteration=0; iteration<maxIterationCount; ++iteration) {
         if(not simplifyIteration(iteration)) {
+            cout << "No assembly graph changes at simplify iteration " << iteration << "." << endl;
             break;
         }
     }
@@ -2319,7 +2320,6 @@ void AssemblyGraph::strictPrune()
     }
     removeIsolatedVertices();
 
-    check();
 }
 
 

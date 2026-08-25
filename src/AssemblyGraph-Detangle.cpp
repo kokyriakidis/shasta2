@@ -23,7 +23,6 @@ void AssemblyGraph::detangleVertices()
 
     AssemblyGraph& assemblyGraph = *this;
     const bool debug = false;
-    check();
     ostream html(0);
 
     const vector< vector<bool> > inPhaseConnectivityMatrix    = { {true , false}, {false, true } };
@@ -257,7 +256,6 @@ void AssemblyGraph::detangleVertices()
         boost::remove_vertex(vRc, assemblyGraph);
     }
 
-    check();
 }
 
 
@@ -270,7 +268,6 @@ void AssemblyGraph::detangleVertices()
 
     AssemblyGraph& assemblyGraph = *this;
     const bool debug = false;
-    check();
     ostream html(0);
 
     const vector< vector<bool> > inPhaseConnectivityMatrix    = { {true , false}, {false, true } };
@@ -559,9 +556,6 @@ bool AssemblyGraph::detangleAndReadFollowingIteration(const string& debugOutputB
     const uint64_t lengthThreshold = 100000;
 
     const bool debug = false;
-    if(debug) {
-        write(debugOutputBaseName + "-Before");
-    }
 
     // cout << timestamp << "AssemblyGraph::detangleIteration begins." << endl;
     AssemblyGraph& assemblyGraph = *this;
@@ -764,10 +758,6 @@ bool AssemblyGraph::detangleAndReadFollowingIteration(const string& debugOutputB
         }
     }
 
-    if(debug) {
-        write(debugOutputBaseName + "-After");
-    }
-
     performanceLog << timestamp << "AssemblyGraph::detangleAndReadFollowingIteration ends: " <<
         debugOutputBaseName << endl;
     return somethingWasDone;
@@ -810,7 +800,10 @@ bool AssemblyGraph::detangleTanglePair(
     }
 
     // Run the G-test on the tangle matrix of this Tangle.
-    GTest gTest(tangle.tangleMatrix().tangleMatrix, assemblyGraph.options.detangleEpsilon, false, false);
+    const bool onlyConsiderPermutation = (entrances.size() == exits.size());
+    const bool onlyConsiderInjective = onlyConsiderPermutation;
+    GTest gTest(tangle.tangleMatrix().tangleMatrix, assemblyGraph.options.detangleEpsilon,
+        onlyConsiderInjective, onlyConsiderPermutation);
 
     // If the G-test failed, don't detangle.
     if(not gTest.success) {
@@ -892,15 +885,56 @@ bool AssemblyGraph::detangleTanglePair(
 
 
 
+    // If getting here, this tangle and its reverse complement will be detangled.
+    // To do this, we need to disconnect (at the beginning or end) the Segments involved.
+    // To do this we use disconnectAtBeginning and disconnectAtEnd, which change
+    // edge_descriptors but leave the ids unchanged.
+    // Some Segments can at the same time be an entrance and/or exit
+    // of this tangle or its reverse complement. To avoid working with invalidated
+    // edge_descriptors, we work with Segment ids instead.
+    std::map<uint64_t, Segment> segmentMap;
+    vector<uint64_t> entranceIds;
+    for(const Segment e: tangle.entrances) {
+        entranceIds.push_back(id(e));
+        segmentMap.insert(make_pair(id(e), e));
+        const Segment eRc = assemblyGraph[e].eRc;
+        segmentMap.insert(make_pair(id(eRc), eRc));
+    }
+    vector<uint64_t> exitIds;
+    for(const Segment e: tangle.exits) {
+        exitIds.push_back(id(e));
+        segmentMap.insert(make_pair(id(e), e));
+        const Segment eRc = assemblyGraph[e].eRc;
+        segmentMap.insert(make_pair(id(eRc), eRc));
+    }
+    for(const uint64_t entranceId: entranceIds) {
+        const Segment eNew = disconnectAtEnd(segmentMap.at(entranceId));
+        segmentMap[id(eNew)] = eNew;
+        const Segment eNewRc = assemblyGraph[eNew].eRc;
+        segmentMap[id(eNewRc)] = eNewRc;
+    }
+    for(const uint64_t exitId: exitIds) {
+        const Segment eNew = disconnectAtBeginning(segmentMap.at(exitId));
+        segmentMap[id(eNew)] = eNew;
+        const Segment eNewRc = assemblyGraph[eNew].eRc;
+        segmentMap[id(eNewRc)] = eNewRc;
+    }
+
+    // Check that all is good.
+    for(const auto&[segmentId, e]: segmentMap) {
+        SHASTA2_ASSERT(segmentId == id(e));
+    }
+
+
     // Make the connections described by the connectivity matrix
     // of the best hypothesis.
     // This also does the same for the reverse complement of
     // this Tangle.
-    for(uint64_t i=0; i<entrances.size(); i++) {
-        const AssemblyGraph::edge_descriptor entrance = entrances[i];
-        for(uint64_t j=0; j<exits.size(); j++) {
+    for(uint64_t i=0; i<entranceIds.size(); i++) {
+        const AssemblyGraph::edge_descriptor entrance = segmentMap.at(entranceIds[i]);
+        for(uint64_t j=0; j<exitIds.size(); j++) {
             if(bestHypothesis.connectivityMatrix[i][j]) {
-                const AssemblyGraph::edge_descriptor exit = exits[j];
+                const AssemblyGraph::edge_descriptor exit = segmentMap.at(exitIds[j]);
                 const edge_descriptor eNew = connect(entrance, exit);
                 createReverseComplementEdge(eNew);
             }
