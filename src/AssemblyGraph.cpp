@@ -426,13 +426,11 @@ bool AssemblyGraph::simplifyIteration([[maybe_unused]] uint64_t iteration)
     strandSymmetricCompress();
     if(debug) write(iterationString + "E");
 
-    /*
-    detangleAndReadFollowingIteration("Iteration-" + iterationString);
+    detangleAndReadFollowingIteration(iterationString);
     if(debug) write(iterationString + "F");
 
     strandSymmetricCompress();
     if(debug) write(iterationString + "G");
-    */
 
     const bool changesWereMade = (nextEdgeId > oldNextEdgeId);
     return changesWereMade;
