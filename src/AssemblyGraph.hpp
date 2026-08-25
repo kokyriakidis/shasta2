@@ -273,7 +273,6 @@ public:
 
     // Detangling.
     void detangleVertices();
-    void detangle();
     bool detangleAndReadFollowingIteration(const string& debugOutputBaseName);
 private:
     bool detangleStrandSymmetric(const Tangle&);

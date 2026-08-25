@@ -549,50 +549,6 @@ void AssemblyGraph::detangleVertices()
 #endif
 
 
-void AssemblyGraph::detangle()
-{
-    const bool debug = false;
-    performanceLog << timestamp << "AssemblyGraph::detangle begins." << endl;
-
-    // Iterate until nothing changes.
-    for(uint64_t iteration=0; ; ++iteration) {
-
-        // Messages and debug output for this iteration.
-        performanceLog << timestamp << "Detangle iteration " << iteration << " begins." << endl;
-        if(debug) {
-            cout << "Detangle iteration " << iteration << " begins." << endl;
-            write("Before-Iteration-" + to_string(iteration));
-        }
-
-        // Run a detangle iteration.
-        const bool somethingWasDone = detangleAndReadFollowingIteration("Detangle-Iteration-" + to_string(iteration));
-
-        // If nothing changes, stop here.
-        if(not somethingWasDone) {
-            if(debug) {
-                cout << "No detangling at this iteration. Ending detangling iteration." << endl;
-            }
-            break;
-        }
-
-        // Write an assembly stage after this iteration but before compress.
-        if(debug) {
-            write("After-Iteration-" + to_string(iteration));
-        }
-
-        // Compress.
-        strandSymmetricCompress();
-
-        // Final message for this iteration.
-        performanceLog << timestamp << "Detangle iteration " << iteration << " ends." << endl;
-    }
-
-    performanceLog << timestamp << "AssemblyGraph::detangle ends." << endl;
-
-    check();
-}
-
-
 
 bool AssemblyGraph::detangleAndReadFollowingIteration(const string& debugOutputBaseName)
 {
