@@ -22,6 +22,7 @@ assembler.accessJourneys()
 # Load the specified assembly stage and assemble sequence.
 assemblyGraph = assembler.getAssemblyGraph(arguments.inputStage, options)
 assemblyGraph.detangleVertices()
+assemblyGraph.strandSymmetricCompress()
 assemblyGraph.write(arguments.outputStage)
 
 

@@ -215,7 +215,10 @@ public:
     // of edge eA. It sets the eRc fields in eA and eB
     // and returns eB.
     // The vertices of eB must already exist.
-    edge_descriptor createReverseComplementEdge(edge_descriptor eA);
+    edge_descriptor createReverseComplementEdge(
+        edge_descriptor eA,
+        uint64_t id=invalid<uint64_t>   // If invalid, generate a new edge id.
+    );
 
     // This makes a copy of a Segment, disconnected at its end,
     // then removes the original Segment.

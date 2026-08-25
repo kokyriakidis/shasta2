@@ -332,7 +332,7 @@ AssemblyGraph::AssemblyGraph(
 void AssemblyGraph::simplifyAndAssemble()
 {
     // EXPOSE WHEN CODE STABILIZES.
-    const uint64_t maxIterationCount = 1;
+    const uint64_t maxIterationCount = 3;
 
     writeMemoryStatistics("AssemblyGraph::simplifyAndAssemble begins");
 
@@ -419,12 +419,18 @@ bool AssemblyGraph::simplifyIteration([[maybe_unused]] uint64_t iteration)
     strandSymmetricCompress();
     if(debug) write(iterationString + "C");
 
-    /*
     detangleVertices();
     if(debug) write(iterationString + "D");
 
-    detangleAndReadFollowingIteration("Iteration-" + iterationString);
+    strandSymmetricCompress();
     if(debug) write(iterationString + "E");
+
+    /*
+    detangleAndReadFollowingIteration("Iteration-" + iterationString);
+    if(debug) write(iterationString + "F");
+
+    strandSymmetricCompress();
+    if(debug) write(iterationString + "G");
     */
 
     const bool changesWereMade = (nextEdgeId > oldNextEdgeId);
@@ -3741,7 +3747,9 @@ void AssemblyGraph::makeSingleStranded()
 // of edge eA. It sets the eRc fields in eA and eB
 // and returns eB.
 // The vertices of eB must already exist.
-AssemblyGraph::edge_descriptor AssemblyGraph::createReverseComplementEdge(edge_descriptor eA)
+AssemblyGraph::edge_descriptor AssemblyGraph::createReverseComplementEdge(
+    edge_descriptor eA,
+    uint64_t id)
 {
     AssemblyGraph& assemblyGraph = *this;
     const bool debug = false;
@@ -3758,7 +3766,10 @@ AssemblyGraph::edge_descriptor AssemblyGraph::createReverseComplementEdge(edge_d
     const vertex_descriptor vB0 = vertexA1.vRc;
     const vertex_descriptor vB1 = vertexA0.vRc;
     // cout << "NNN " << assemblyGraph[vB0].id << " " << assemblyGraph[vB1].id << endl;
-    auto[eB, wasAdded] = add_edge(vB0, vB1, AssemblyGraphEdge(nextEdgeId++), assemblyGraph);
+    if(id == invalid<uint64_t>) {
+        id = nextEdgeId++;
+    }
+    auto[eB, wasAdded] = add_edge(vB0, vB1, AssemblyGraphEdge(id), assemblyGraph);
     // cout << "OOO" << endl;
     SHASTA2_ASSERT(wasAdded);
     AssemblyGraphEdge& edgeB = assemblyGraph[eB];
@@ -3887,7 +3898,7 @@ AssemblyGraph::edge_descriptor AssemblyGraph::disconnectAtEnd(edge_descriptor eO
     tie(eNew, ignore)= add_edge(v0, v1New, edgeOld, assemblyGraph);
 
     // Also create the new reverse complement segment.
-    createReverseComplementEdge(eNew);
+    createReverseComplementEdge(eNew, id(eOldRc));
 
     // Remove eOld and its reverse complement.
     boost::remove_edge(eOld, assemblyGraph);
@@ -3920,8 +3931,8 @@ AssemblyGraph::edge_descriptor AssemblyGraph::disconnectAtBeginning(edge_descrip
     edge_descriptor eNew;
     tie(eNew, ignore)= add_edge(v0New, v1, edgeOld, assemblyGraph);
 
-    // Also create the new reverse complement segment.
-    createReverseComplementEdge(eNew);
+    // Also create the new reverse complement segment. Keep the same id.
+    createReverseComplementEdge(eNew, id(eOldRc));
 
     // Remove eOld and its reverse complement.
     boost::remove_edge(eOld, assemblyGraph);
