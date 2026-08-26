@@ -4,6 +4,7 @@
 #include "deduplicate.hpp"
 #include "DisjointSets.hpp"
 #include "GTest.hpp"
+#include "html.hpp"
 #include "Options.hpp"
 #include "performanceLog.hpp"
 #include "Tangle.hpp"
@@ -266,7 +267,7 @@ bool AssemblyGraph::detangleAndReadFollowingIteration(const string& debugOutputB
 
     performanceLog << timestamp << "AssemblyGraph::detangleAndReadFollowingIteration begins: " <<
         debugOutputBaseName << endl;
-    const bool debug = false;
+    const bool debug = true;
     if(debug) {
         cout << timestamp << "AssemblyGraph::detangleIteration begins." << endl;
     }
@@ -355,59 +356,39 @@ bool AssemblyGraph::detangleAndReadFollowingIteration(const string& debugOutputB
 
 
 
-    // Detangle each pair of reverse complemented tangles.
+    // Detangle or read following on each pair of reverse complemented tangles.
     bool somethingWasDone = false;
     for(uint64_t tangleId=0; tangleId<tangles.size(); tangleId++) {
         if(tangleId <= tangleRc[tangleId]) {
             const Tangle tangle(assemblyGraph, tangles[tangleId]);
 
-            if(
-                tangle.entrances.empty() and
-                tangle.exits.empty() and
-                (tangle.tangleVertices.size() == 2) and
-                (tangle.tangleEdges.size() == 1)) {
-
-                if(debug) {
-                    cout << "Skipping trivial tangle consisting of isolated segment " <<
-                        id(tangle.tangleEdges.front()) << endl;
-                }
-                continue;
-            }
-
+            ofstream html;
             if(debug) {
+
                 cout << "Working on tangle " << tangleId <<
                     " and its reverse complement tangle " << tangleRc[tangleId] << endl;
-                cout << "This tangle has " << tangle.tangleVertices.size() << " vertices:";
-                for(const vertex_descriptor v: tangle.tangleVertices) {
-                    cout << " " << id(v);
-                }
-                cout << endl;
-                cout << "This tangle has " << tangle.entrances.size() << " entrances:";
-                for(const Segment entrance: tangle.entrances) {
-                    cout << " " << id(entrance);
-                }
-                cout << endl;
-                cout << "This tangle has " << tangle.exits.size() << " exits:";
-                for(const Segment exit: tangle.exits) {
-                    cout << " " << id(exit);
-                }
-                cout << endl;
-                cout << "This tangle has " << tangle.tangleEdges.size() << " edges:";
-                for(const Segment segment: tangle.tangleEdges) {
-                    cout << " " << id(segment);
-                }
-                cout << endl;
+                cout << "This tangle has " <<
+                    tangle.entrances.size() << " entrances, " <<
+                    tangle.exits.size() << " exits, " <<
+                    tangle.tangleEdges.size() << " segments, " <<
+                    tangle.entrances.size() << " vertices." << endl;
+
+                // Tangle details go to the html file.
+                html.open(debugOutputBaseName + "-Tangle-" + to_string(tangleId) + ".html");
+                writeHtmlBegin(html, "Tangle " + to_string(tangleId));
+                html << "<h1>Tangle " << tangleId << "</h1>";
+                tangle.writeHtml(html);
             }
 
             if(tangle.entrances.empty() or tangle.exits.empty()) {
                 if(debug) {
-                    cout << "Skipping this trivial tangle with no entrances anr/or no exits." << endl;
+                    cout << "Skipping tangle " << tangleId << " with no entrances and/or no exits." << endl;
                 }
                 continue;
             }
 
             // Try detangling.
-            bool success = detangleStrandSymmetric(tangle);
+            bool success = detangleStrandSymmetric(tangle, html);
 
             // If detangling did not work, try read following.
             if(success) {
@@ -418,7 +399,7 @@ bool AssemblyGraph::detangleAndReadFollowingIteration(const string& debugOutputB
                 if(debug) {
                     cout << "Detangling was not successful on this tangle. Trying read following." << endl;
                 }
-                success = readFollowingStrandSymmetric(tangleId, tangle);
+                success = readFollowingStrandSymmetric(tangleId, tangle, html);
                 if(debug) {
                     if(success) {
                         cout << "Read following was successful on this tangle." << endl;
@@ -442,16 +423,16 @@ bool AssemblyGraph::detangleAndReadFollowingIteration(const string& debugOutputB
 
 
 
-bool AssemblyGraph::detangleStrandSymmetric(const Tangle& tangle)
+bool AssemblyGraph::detangleStrandSymmetric(const Tangle& tangle, ostream& html)
 {
     if(tangle.isSelfComplementary()) {
         if((tangle.entrances.size() == 2) and (tangle.exits.size() == 2)) {
-            return detangleSelfComplementaryTangle2By2(tangle);
+            return detangleSelfComplementaryTangle2By2(tangle, html);
         } else {
-            return detangleSelfComplementaryTangle(tangle);
+            return detangleSelfComplementaryTangle(tangle, html);
         }
     } else {
-        return detangleTanglePair(tangle);
+        return detangleTanglePair(tangle, html);
     }
 }
 
@@ -460,21 +441,20 @@ bool AssemblyGraph::detangleStrandSymmetric(const Tangle& tangle)
 // This detangles the tangle passed in as an argument and its reverse complement.
 // The tangle must no be not self-complementary,
 bool AssemblyGraph::detangleTanglePair(
-    const Tangle& tangle)
+    const Tangle& tangle, ostream& html)
 {
     AssemblyGraph& assemblyGraph = *this;
     SHASTA2_ASSERT(not tangle.isSelfComplementary());
-    const bool debug = false;
+    SHASTA2_ASSERT(not tangle.entrances.empty());
+    SHASTA2_ASSERT(not tangle.exits.empty());
+
+    if(html) {
+        html << "<h2>Detangling</h2>";
+    }
 
     const vector<Segment>& entrances = tangle.entrances;
     const vector<Segment>& exits = tangle.exits;
 
-    if(entrances.empty() or exits.empty()) {
-        if(debug) {
-            cout << "Not detangling because there are no entrances or no exits." << endl;
-        }
-        return false;
-    }
 
     // Run the G-test on the tangle matrix of this Tangle.
     const bool onlyConsiderPermutation = (entrances.size() == exits.size());
@@ -484,48 +464,47 @@ bool AssemblyGraph::detangleTanglePair(
 
     // If the G-test failed, don't detangle.
     if(not gTest.success) {
-        if(debug) {
-            cout << "Likelihood ratio test was not successful." << endl;
+        if(html) {
+            html << "<br>Likelihood ratio test was not successful." << endl;
         }
         return false;
     }
 
     const auto& bestHypothesis = gTest.hypotheses.front();
     const double bestG = bestHypothesis.G;
-    if(debug) {
-        cout << "Best hypothesis:" << endl;
-        cout << ",";
+    if(html) {
+        html <<
+            "G-test best hypothesis:"
+            "<table><tr><th>";
         for(const AssemblyGraph::edge_descriptor exit: exits) {
-            cout << assemblyGraph[exit].id << ",";
+            html << "<th>" << id(exit);
         }
-        cout << endl;
         for(uint64_t i=0; i<entrances.size(); i++) {
-            cout << assemblyGraph[entrances[i]].id << ",";
+            html << "<tr><th>" << id(entrances[i]);
             for(uint64_t j=0; j<exits.size(); j++) {
-                cout << int(bestHypothesis.connectivityMatrix[i][j]) << ",";
+                html << "<td class=centered>" << int(bestHypothesis.connectivityMatrix[i][j]);
             }
-            cout << endl;
         }
-        cout << "G = " << bestG;
+        html << "</table><br>G = " << bestG;
         if(gTest.hypotheses.size() > 1) {
             const double secondBestG = gTest.hypotheses[1].G;
-            cout << ", second best G = " << secondBestG;
+            html << "<br>Second best G = " << secondBestG;
+            html << "<br>&Delta;G = " << secondBestG - bestG;
         }
-        cout << endl;
     }
 
     // Check if the best hypothesis satisfies our options.
     if(bestG > assemblyGraph.options.detangleMaxLogP) {
-        if(debug) {
-            cout << "Best hypothesis G is too high." << endl;
+        if(html) {
+            html << "<br>Best hypothesis G is too high." << endl;
         }
         return false;
     }
     if(gTest.hypotheses.size() > 1) {
         const double secondBestG = gTest.hypotheses[1].G;
         if(secondBestG - bestG < assemblyGraph.options.detangleMinLogPDelta) {
-            if(debug) {
-                cout << "Second best hypothesis G is too low." << endl;
+            if(html) {
+                html << "<br>Second best hypothesis G is too low." << endl;
             }
             return false;
         }
@@ -539,8 +518,8 @@ bool AssemblyGraph::detangleTanglePair(
             if(bestHypothesis.connectivityMatrix[i][j]) {
                 const Segment exit = exits[j];
                 if(not assemblyGraph.canConnect(entrance, exit)) {
-                    if(debug) {
-                        cout << "Not detangling because can't connect " << id(entrance) <<
+                    if(html) {
+                        html << "Not detangling because can't connect " << id(entrance) <<
                             " with " << id(exit) << endl;
                     }
                     return false;
@@ -549,8 +528,8 @@ bool AssemblyGraph::detangleTanglePair(
         }
     }
 
-    if(debug) {
-        cout << "This tangle and its reverse complement will be detangled." << endl;
+    if(html) {
+        html << "<br>This tangle and its reverse complement will be detangled." << endl;
     }
 
     // Remove all the Segments internal to this tangle
@@ -640,13 +619,14 @@ bool AssemblyGraph::detangleTanglePair(
 
 
 
-bool AssemblyGraph::detangleSelfComplementaryTangle(const Tangle& tangle)
+bool AssemblyGraph::detangleSelfComplementaryTangle(
+    const Tangle& tangle,
+    ostream& html)
 {
     SHASTA2_ASSERT(tangle.isSelfComplementary());
 
-    const bool debug = false;
-    if(debug) {
-        cout << "This tangle will not be detangled because "
+    if(html) {
+        html << "<br>This tangle will not be detangled because "
             "detangleSelfComplementaryTangle is not implemented." << endl;
     }
 
@@ -655,12 +635,13 @@ bool AssemblyGraph::detangleSelfComplementaryTangle(const Tangle& tangle)
 
 
 
-bool AssemblyGraph::detangleSelfComplementaryTangle2By2(const Tangle& tangle)
+bool AssemblyGraph::detangleSelfComplementaryTangle2By2(
+    const Tangle& tangle,
+    ostream& html)
 {
     AssemblyGraph& assemblyGraph = *this;
-    const bool debug = false;
-    if(debug) {
-        cout << "AssemblyGraph::detangleSelfComplementaryTangle2By2 begins" << endl;
+    if(html) {
+        html << "<br>AssemblyGraph::detangleSelfComplementaryTangle2By2 begins" << endl;
     }
 
     const vector<Segment>& entrances = tangle.entrances;
@@ -691,21 +672,21 @@ bool AssemblyGraph::detangleSelfComplementaryTangle2By2(const Tangle& tangle)
     const Segment exit = entrancesRc[1];
     const uint64_t entranceId = id(entrance);
     const uint64_t exitId = id(exit);
-    if(debug) {
-        cout << "Will attempt to connect " << entranceId << " with " << exitId << endl;
+    if(html) {
+        html << "<br>Will attempt to connect " << entranceId << " with " << exitId << endl;
     }
 
     // Check if  we can connect this entrance/exit pair.
     if(not assemblyGraph.canConnect(entrance, exit)) {
-        if(debug) {
-            cout << "Not detangling because can't connect " << entranceId <<
+        if(html) {
+            html << "<br>Not detangling because can't connect " << entranceId <<
                 " with " << exitId << endl;
         }
         return false;
     }
 
-    if(debug) {
-        cout << "This tangle will be detangled." << endl;
+    if(html) {
+        html << "<br>This tangle will be detangled." << endl;
     }
 
     // Remove all the Segments internal to this tangle.

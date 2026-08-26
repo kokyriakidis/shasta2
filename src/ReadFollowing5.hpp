@@ -73,7 +73,7 @@ public:
 
 class shasta2::ReadFollowing5::Graph: public GraphBaseClass {
 public:
-    Graph(const AssemblyGraph&, uint64_t tangleId, const Tangle&);
+    Graph(const AssemblyGraph&, uint64_t tangleId, const Tangle&, ostream& html);
 
 private:
     const AssemblyGraph& assemblyGraph;
@@ -90,9 +90,6 @@ private:
     void writeGraphviz(const string& fileName) const;
     void writeGraphviz(ostream&) const;
 
-    // Debug output in html format.
-    ofstream html;
-
 
 
     // Shortest paths on the graph between each entrance/exit pair.
@@ -107,7 +104,7 @@ private:
     };
     vector< vector<ShortestPath> > shortestPaths;
     void findShortestPaths();
-    void writeShortestPaths();
+    void writeShortestPaths(ostream& html);
 
 
 

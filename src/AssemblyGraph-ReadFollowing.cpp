@@ -8,12 +8,13 @@ using namespace ReadFollowing5;
 
 bool AssemblyGraph::readFollowingStrandSymmetric(
     [[maybe_unused]] uint64_t tangleId,
-    [[maybe_unused]] const Tangle& tangle)
+    [[maybe_unused]] const Tangle& tangle,
+    [[maybe_unused]] ostream& html)
 {
 
 #if 0
     if(not tangle.isSelfComplementary()) {
-        const Graph graph(*this, tangleId, tangle);
+        const Graph graph(*this, tangleId, tangle, html);
     }
 #endif
 

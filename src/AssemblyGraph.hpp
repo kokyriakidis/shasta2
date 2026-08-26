@@ -271,15 +271,15 @@ public:
 
 
 
-    // Detangling.
+    // Detangling and read following.
     void detangleVertices();
     bool detangleAndReadFollowingIteration(const string& debugOutputBaseName);
 private:
-    bool detangleStrandSymmetric(const Tangle&);
-    bool detangleTanglePair(const Tangle&);
-    bool detangleSelfComplementaryTangle(const Tangle&);
-    bool detangleSelfComplementaryTangle2By2(const Tangle&);
-    bool readFollowingStrandSymmetric(uint64_t tangleId, const Tangle&);
+    bool detangleStrandSymmetric(const Tangle&, ostream& html);
+    bool detangleTanglePair(const Tangle&, ostream& html);
+    bool detangleSelfComplementaryTangle(const Tangle&, ostream& html);
+    bool detangleSelfComplementaryTangle2By2(const Tangle&, ostream& html);
+    bool readFollowingStrandSymmetric(uint64_t tangleId, const Tangle&, ostream& html);
 
 
 

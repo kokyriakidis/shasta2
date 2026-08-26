@@ -303,7 +303,8 @@ bool Tangle::isSelfComplementary() const
 
 void Tangle::writeHtml(ostream& html) const
 {
-    html << "<h2>Tangle entrances</h2>";
+    html << "<h2>Tangle entrances</h2>"
+        "This tangle has " << entrances.size() << " entrances:<br>";
     for(uint64_t i=0; i<entrances.size(); i++) {
         if(i != 0) {
             html << ",";
@@ -311,7 +312,8 @@ void Tangle::writeHtml(ostream& html) const
         html << assemblyGraph.id(entrances[i]);
     }
 
-    html << "<h2>Tangle exits</h2>";
+    html << "<h2>Tangle exits</h2>"
+        "This tangle has " << exits.size() << " exits:<br>";
     for(uint64_t i=0; i<exits.size(); i++) {
         if(i != 0) {
             html << ",";
@@ -319,21 +321,27 @@ void Tangle::writeHtml(ostream& html) const
         html << assemblyGraph.id(exits[i]);
     }
 
-    html << "<h2>Tangle internal segments</h2>";
+    html << "<h2>Tangle internal segments</h2>"
+        "This tangle has " << tangleEdges.size() << " internal segments:<br>"
+        "<span style='word-break:break-word'>";
     for(uint64_t i=0; i<tangleEdges.size(); i++) {
         if(i != 0) {
             html << ",";
         }
         html << assemblyGraph.id(tangleEdges[i]);
     }
+    html << "</span>";
 
-    html << "<h2>Tangle vertices</h2>";
+    html << "<h2>Tangle vertices</h2>"
+        "This tangle has " << tangleVertices.size() << " vertices:<br>"
+        "<span style='word-break:break-word'>";
     for(uint64_t i=0; i<tangleVertices.size(); i++) {
         if(i != 0) {
             html << ",";
         }
         html << assemblyGraph.id(tangleVertices[i]);
     }
+    html << "</span>";
 
     html << "<h2>Tangle matrix</h2>"
         "Zero values are omitted."

@@ -19,7 +19,8 @@ using namespace ReadFollowing5;
 Graph::Graph(
     const AssemblyGraph& assemblyGraph,
     uint64_t tangleId,
-    const Tangle& tangle) :
+    const Tangle& tangle,
+    ostream& html) :
     assemblyGraph(assemblyGraph),
     tangle(tangle),
     tangleId(tangleId),
@@ -27,30 +28,25 @@ Graph::Graph(
 {
     Graph& graph = *this;
 
-    // Comment this out to turn off debug output.
-    html.open("ReadFollowing-Tangle-" + to_string(tangleId) + ".html");
     if(html) {
-        writeHtmlBegin(html, "Read following on Tangle " + to_string(tangleId));
-        html << "<h1>Read following on tangle " << tangleId << "</h1>";
-        tangle.writeHtml(html);
+        html << "<h2>Read following</h2>";
     }
 
     createVertices();
     createEdges();
 
     if(html) {
-        html << "<h2>Read following graph</h2>"
-            "The read following graph for this tangle has " <<
+        html << "<br>The read following graph for this tangle has " <<
             num_vertices(graph) << " vertices and " <<
             num_edges(graph) << " edges." << endl;
         writeGraphviz("ReadFollowingGraph-Tangle-" + to_string(tangleId) + ".dot");
     }
 
     findShortestPaths();
-
     if(html) {
-        writeHtmlEnd(html);
+        writeShortestPaths(html);
     }
+
 }
 
 
@@ -339,19 +335,14 @@ void Graph::findShortestPaths()
             // Walk back the shortest path tree to find the path Segments.
         }
     }
-
-
-    if(html) {
-        writeShortestPaths();
-    }
 }
 
 
 
-void Graph::writeShortestPaths()
+void Graph::writeShortestPaths(ostream& html)
 {
     html <<
-        "<h2>Distance matrix</h2>"
+        "<h3>Distance matrix</h3>"
         "Distance on the read following graph "
         "between between each pair of entrances and exits. "
         "A small value indicates that the entrance and exit are likely to "
