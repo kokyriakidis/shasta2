@@ -267,7 +267,7 @@ bool AssemblyGraph::detangleAndReadFollowingIteration(const string& debugOutputB
 
     performanceLog << timestamp << "AssemblyGraph::detangleAndReadFollowingIteration begins: " <<
         debugOutputBaseName << endl;
-    const bool debug = true;
+    const bool debug = false;
     if(debug) {
         cout << timestamp << "AssemblyGraph::detangleIteration begins." << endl;
     }
@@ -452,80 +452,147 @@ bool AssemblyGraph::detangleTanglePair(
         html << "<h2>Detangling</h2>";
     }
 
-    const vector<Segment>& entrances = tangle.entrances;
-    const vector<Segment>& exits = tangle.exits;
+    // Compute the block structure of the TangleMatrix.
+    vector<TangleMatrix> blocks;
+    tangle.tangleMatrix().findBlockStructure(blocks);
 
 
-    // Run the G-test on the tangle matrix of this Tangle.
-    const bool onlyConsiderPermutation = (entrances.size() == exits.size());
-    const bool onlyConsiderInjective = onlyConsiderPermutation;
-    GTest gTest(tangle.tangleMatrix().tangleMatrix, assemblyGraph.options.detangleEpsilon,
+
+    // Run a G-test for each block.
+    // Gather entrance/exit pairs to be connected.
+    vector< pair<uint64_t, uint64_t> > connectPairs;
+    vector<GTest> gTests;
+    uint64_t failedGTestCount = 0;
+    uint64_t reliableGTestCount = 0;
+    bool connectionFailure = false;
+    for(const TangleMatrix& block: blocks) {
+        const bool onlyConsiderPermutation = (block.entrances.size() == block.exits.size());
+        const bool onlyConsiderInjective = onlyConsiderPermutation;
+        const GTest& gTest = gTests.emplace_back(block.tangleMatrix, assemblyGraph.options.detangleEpsilon,
         onlyConsiderInjective, onlyConsiderPermutation);
+        if(not gTest.success) {
+            ++failedGTestCount;
+        } else {
 
-    // If the G-test failed, don't detangle.
-    if(not gTest.success) {
-        if(html) {
-            html << "<br>Likelihood ratio test was not successful." << endl;
-        }
-        return false;
-    }
-
-    const auto& bestHypothesis = gTest.hypotheses.front();
-    const double bestG = bestHypothesis.G;
-    if(html) {
-        html <<
-            "G-test best hypothesis:"
-            "<table><tr><th>";
-        for(const AssemblyGraph::edge_descriptor exit: exits) {
-            html << "<th>" << id(exit);
-        }
-        for(uint64_t i=0; i<entrances.size(); i++) {
-            html << "<tr><th>" << id(entrances[i]);
-            for(uint64_t j=0; j<exits.size(); j++) {
-                html << "<td class=centered>" << int(bestHypothesis.connectivityMatrix[i][j]);
-            }
-        }
-        html << "</table><br>G = " << bestG;
-        if(gTest.hypotheses.size() > 1) {
-            const double secondBestG = gTest.hypotheses[1].G;
-            html << "<br>Second best G = " << secondBestG;
-            html << "<br>&Delta;G = " << secondBestG - bestG;
-        }
-    }
-
-    // Check if the best hypothesis satisfies our options.
-    if(bestG > assemblyGraph.options.detangleMaxLogP) {
-        if(html) {
-            html << "<br>Best hypothesis G is too high." << endl;
-        }
-        return false;
-    }
-    if(gTest.hypotheses.size() > 1) {
-        const double secondBestG = gTest.hypotheses[1].G;
-        if(secondBestG - bestG < assemblyGraph.options.detangleMinLogPDelta) {
-            if(html) {
-                html << "<br>Second best hypothesis G is too low." << endl;
-            }
-            return false;
-        }
-    }
-
-    // Check if  we can connect the entrance/exit pairs
-    // described by the connectivity matrix for the best hypothesis.
-    for(uint64_t i=0; i<entrances.size(); i++) {
-        const Segment entrance = entrances[i];
-        for(uint64_t j=0; j<exits.size(); j++) {
-            if(bestHypothesis.connectivityMatrix[i][j]) {
-                const Segment exit = exits[j];
-                if(not assemblyGraph.canConnect(entrance, exit)) {
-                    if(html) {
-                        html << "Not detangling because can't connect " << id(entrance) <<
-                            " with " << id(exit) << endl;
+            // This G-test was successful.
+            // Find out if it the best hypothesis is sufficiently reliable
+            // accordign to our current options.
+            bool isReliable = true;
+            const auto& bestHypothesis = gTest.hypotheses[0];
+            const double bestG = bestHypothesis.G;
+            if(bestG > assemblyGraph.options.detangleMaxLogP) {
+                isReliable = false;
+            } else {
+                if(gTest.hypotheses.size() > 1) {
+                    if(gTest.hypotheses[1].G - bestG < assemblyGraph.options.detangleMinLogPDelta) {
+                        // There is a second hypothesis, and it is not sufficiently well separated
+                        // from the best hypothesis.
+                        isReliable = false;
                     }
-                    return false;
+                }
+            }
+            if(isReliable) {
+                ++reliableGTestCount;
+
+                // This test is reliable. Find the pairs to be connected.
+                for(uint64_t i=0; i<block.entrances.size(); i++) {
+                    const Segment entrance = block.entrances[i];
+                    for(uint64_t j=0; j<block.exits.size(); j++) {
+                        const Segment exit = block.exits[j];
+                        if(bestHypothesis.connectivityMatrix[i][j]) {
+                            if(not canConnect(entrance, exit)) {
+                                connectionFailure = true;
+                                if(html) {
+                                    html << "<br>Cannot connect " << id(entrance) <<
+                                        " " << id(exit);
+                                }
+                            }
+                            connectPairs.push_back(make_pair(id(entrance), id(exit)));
+                        }
+                    }
                 }
             }
         }
+    }
+
+
+
+    if(html) {
+        for(uint64_t iBlock=0; iBlock<blocks.size(); iBlock++) {
+            const TangleMatrix& block = blocks[iBlock];
+            const GTest gTest = gTests[iBlock];
+
+            html << "<h3>Tangle matrix block " << iBlock << "</h3>";
+            block.writeTotalTangleMatrix(html);
+
+            if(gTest.success) {
+                const auto& bestHypothesis = gTest.hypotheses.front();
+                const double bestG = bestHypothesis.G;
+                html <<
+                    "<br>G-test best hypothesis:"
+                    "<table><tr><th>";
+                for(const AssemblyGraph::edge_descriptor exit: block.exits) {
+                    html << "<th>" << id(exit);
+                }
+                for(uint64_t i=0; i<block.entrances.size(); i++) {
+                    html << "<tr><th>" << id(block.entrances[i]);
+                    for(uint64_t j=0; j<block.exits.size(); j++) {
+                        html << "<td class=centered>" << int(bestHypothesis.connectivityMatrix[i][j]);
+                    }
+                }
+                html << "</table><br>G = " << bestG;
+                if(gTest.hypotheses.size() > 1) {
+                    const double secondBestG = gTest.hypotheses[1].G;
+                    html << "<br>Second best G = " << secondBestG;
+                    html << "<br>&Delta;G = " << secondBestG - bestG;
+                }
+
+                bool isReliable = true;
+                if(bestG > assemblyGraph.options.detangleMaxLogP) {
+                    isReliable = false;
+                } else {
+                    if(gTest.hypotheses.size() > 1) {
+                        if(gTest.hypotheses[1].G - bestG < assemblyGraph.options.detangleMinLogPDelta) {
+                            // There is a second hypothesis, and it is not sufficiently well separated
+                            // from the best hypothesis.
+                            isReliable = false;
+                        }
+                    }
+                }
+
+                if(isReliable) {
+                    html << "<br>The G-test indicates that the best hypothesis for this block is reliable.";
+                } else {
+                    html << "<br>The G-test indicates that the best hypothesis for this block is not reliable.";
+               }
+
+            } else {
+                html << "<br>The G-test for this block failed.";
+            }
+        }
+    }
+
+
+    if(failedGTestCount > 0) {
+        if(html) {
+            html << "<br>Not detangling because the G-test for " << failedGTestCount <<
+                " blocks failed.";
+        }
+        return false;
+    }
+    if(reliableGTestCount < blocks.size()) {
+        if(html) {
+            html << "<br>Not detangling because only " << reliableGTestCount <<
+                " blocks out of " << blocks.size() <<
+                " gave a sufficiently reliable result.";
+        }
+        return false;
+    }
+    if(connectionFailure) {
+        if(html) {
+            html << "<br>Not detangling because of connection failures.";
+        }
+        return false;
     }
 
     if(html) {
@@ -582,19 +649,13 @@ bool AssemblyGraph::detangleTanglePair(
     }
 
 
-    // Make the connections described by the connectivity matrix
-    // of the best hypothesis.
-    // This also does the same for the reverse complement of
-    // this Tangle.
-    for(uint64_t i=0; i<entranceIds.size(); i++) {
-        const AssemblyGraph::edge_descriptor entrance = segmentMap.at(entranceIds[i]);
-        for(uint64_t j=0; j<exitIds.size(); j++) {
-            if(bestHypothesis.connectivityMatrix[i][j]) {
-                const AssemblyGraph::edge_descriptor exit = segmentMap.at(exitIds[j]);
-                const edge_descriptor eNew = connect(entrance, exit);
-                createReverseComplementEdge(eNew);
-            }
-        }
+    // Make the connections.
+    // This also does the same for the reverse complement of this Tangle.
+    for(const auto&[entranceId, exitId]: connectPairs) {
+        const AssemblyGraph::edge_descriptor entrance = segmentMap.at(entranceId);
+        const AssemblyGraph::edge_descriptor exit = segmentMap.at(exitId);
+        const edge_descriptor eNew = connect(entrance, exit);
+        createReverseComplementEdge(eNew);
     }
 
 

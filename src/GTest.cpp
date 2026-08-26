@@ -56,12 +56,16 @@ void GTest::run(
     // Get the number of entrances.
     // This is the number of rows in the tangle matrix.
     const uint64_t entranceCount = tangleMatrix.size();
-    SHASTA2_ASSERT(entranceCount > 0);
+    if(entranceCount == 0) {
+        return;
+    }
 
     // Get the number of exits.
     // This is the number of columns in the tangle matrix.
     const uint64_t exitCount = tangleMatrix.front().size();
-    SHASTA2_ASSERT(exitCount > 0);
+    if(exitCount == 0) {
+        return;
+    }
     for(uint64_t i=0; i<entranceCount;i++) {
         SHASTA2_ASSERT(tangleMatrix[i].size() == exitCount);
     }

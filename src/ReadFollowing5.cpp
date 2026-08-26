@@ -36,7 +36,7 @@ Graph::Graph(
     createEdges();
 
     if(html) {
-        html << "<br>The read following graph for this tangle has " <<
+        html << "The read following graph for this tangle has " <<
             num_vertices(graph) << " vertices and " <<
             num_edges(graph) << " edges." << endl;
         writeGraphviz("ReadFollowingGraph-Tangle-" + to_string(tangleId) + ".dot");

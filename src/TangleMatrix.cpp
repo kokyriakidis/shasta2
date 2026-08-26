@@ -41,6 +41,7 @@ TangleMatrix::TangleMatrix(
 
     computeTotalTangleMatrix();
     if(html) {
+        html << "<h4>Total tangle matrix</h4>";
         writeTotalTangleMatrix(html);
     }
 }
@@ -512,7 +513,7 @@ void TangleMatrix::computeTotalTangleMatrix()
 
 void TangleMatrix::writeTotalTangleMatrix(ostream& html) const
 {
-    html << "<h4>Total tangle matrix</h4><table><tr><th>";
+    html << "<table><tr><th>";
     for(uint64_t j=0; j<exits.size(); j++) {
         html << "<th>" << assemblyGraph[exits[j]].id;
     }
