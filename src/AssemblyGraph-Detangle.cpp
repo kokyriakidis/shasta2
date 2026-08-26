@@ -993,20 +993,6 @@ bool AssemblyGraph::detangleSelfComplementaryTangle2By2(const Tangle& tangle)
     SHASTA2_ASSERT(entrances.size() == 2);
     SHASTA2_ASSERT(exits.size() == 2);
 
-    // If any entrances are also exit, don't detangle for now.
-    bool hasEntranceExit = false;
-    for(const Segment entrance: entrances) {
-        if(std::ranges::contains(exits, entrance)) {
-            hasEntranceExit = true;
-        }
-    }
-    if(hasEntranceExit) {
-        if(debug) {
-            cout << "Not detangling because an entrance is also an exit."<< endl;
-        }
-        return false;
-    }
-
     // In a self-complementary tangle, each exit is the reverse complement
     // of an entrance. We can't connect an entrance with its own reverse
     // complement, so each entrance can only possibly be connected to
@@ -1026,15 +1012,17 @@ bool AssemblyGraph::detangleSelfComplementaryTangle2By2(const Tangle& tangle)
     // automatically.
     const Segment entrance = entrances[0];
     const Segment exit = entrancesRc[1];
+    const uint64_t entranceId = id(entrance);
+    const uint64_t exitId = id(exit);
     if(debug) {
-        cout << "Will attempt to connect " << id(entrance) << " with " << id(exit) << endl;
+        cout << "Will attempt to connect " << entranceId << " with " << exitId << endl;
     }
 
     // Check if  we can connect this entrance/exit pair.
     if(not assemblyGraph.canConnect(entrance, exit)) {
         if(debug) {
-            cout << "Not detangling because can't connect " << id(entrance) <<
-                " with " << id(exit) << endl;
+            cout << "Not detangling because can't connect " << entranceId <<
+                " with " << exitId << endl;
         }
         return false;
     }
@@ -1048,8 +1036,50 @@ bool AssemblyGraph::detangleSelfComplementaryTangle2By2(const Tangle& tangle)
         boost::remove_edge(e, assemblyGraph);
     }
 
-    // Make the connection and its reverse complement.
-    const edge_descriptor eNew = connect(entrance, exit);
+
+
+    // If getting here, this tangle will be detangled.
+    // To do this, we need to disconnect (at the beginning or end) the Segments involved.
+    // To do this we use disconnectAtBeginning and disconnectAtEnd, which change
+    // edge_descriptors but leave the ids unchanged.
+    // Some Segments can at the same time be an entrance and/or exit
+    // of this tangle or its reverse complement. To avoid working with invalidated
+    // edge_descriptors, we work with Segment ids instead.
+    std::map<uint64_t, Segment> segmentMap;
+    vector<uint64_t> entranceIds;
+    for(const Segment e: tangle.entrances) {
+        entranceIds.push_back(id(e));
+        segmentMap.insert(make_pair(id(e), e));
+        const Segment eRc = assemblyGraph[e].eRc;
+        segmentMap.insert(make_pair(id(eRc), eRc));
+    }
+    vector<uint64_t> exitIds;
+    for(const Segment e: tangle.exits) {
+        exitIds.push_back(id(e));
+        segmentMap.insert(make_pair(id(e), e));
+        const Segment eRc = assemblyGraph[e].eRc;
+        segmentMap.insert(make_pair(id(eRc), eRc));
+    }
+    for(const uint64_t entranceId: entranceIds) {
+        const Segment eNew = disconnectAtEnd(segmentMap.at(entranceId));
+        segmentMap[id(eNew)] = eNew;
+        const Segment eNewRc = assemblyGraph[eNew].eRc;
+        segmentMap[id(eNewRc)] = eNewRc;
+    }
+    for(const uint64_t exitId: exitIds) {
+        const Segment eNew = disconnectAtBeginning(segmentMap.at(exitId));
+        segmentMap[id(eNew)] = eNew;
+        const Segment eNewRc = assemblyGraph[eNew].eRc;
+        segmentMap[id(eNewRc)] = eNewRc;
+    }
+
+    // Check that all is good.
+    for(const auto&[segmentId, e]: segmentMap) {
+        SHASTA2_ASSERT(segmentId == id(e));
+    }
+
+    // Make the connection and its reverse complement..
+    const edge_descriptor eNew = connect(segmentMap.at(entranceId), segmentMap.at(exitId));
     createReverseComplementEdge(eNew);
 
     // Remove all the Tangle vertices that are now isolated.
