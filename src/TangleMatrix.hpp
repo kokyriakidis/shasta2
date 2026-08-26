@@ -141,4 +141,6 @@ public:
     vector< vector<double> > tangleMatrix;
     void computeTotalTangleMatrix();
     void writeTotalTangleMatrix(ostream& html) const;
+
+    void findBlockStructure(vector<TangleMatrix>&) const;
 };

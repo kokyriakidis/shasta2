@@ -1270,6 +1270,31 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
     gTest.writeHtml(html);
 
 
+    // Find the block structure of the tangle matrix.
+    vector<TangleMatrix> blocks;
+    tangleMatrix.findBlockStructure(blocks);
+    if(blocks.size() > 1) {
+        html << "<h2>Block structure of this tangle matrix<h2>";
+        for(const TangleMatrix& block: blocks) {
+            block.writeTotalTangleMatrix(html);
+            string url = "exploreTangleMatrix?assemblyStage=D&entrances=";
+            for(uint64_t i=0; i<block.entrances.size(); i++) {
+                if(i != 0) {
+                    url += "+";
+                }
+                url += to_string(assemblyGraph.id(block.entrances[i]));
+            }
+            url += "&exits=";
+            for(uint64_t i=0; i<block.exits.size(); i++) {
+                if(i != 0) {
+                    url += "+";
+                }
+                url += to_string(assemblyGraph.id(block.exits[i]));
+            }
+            html << "<a href='" << url << "'>See details</a>";
+        }
+    }
+
 
     // Create a RestrictedAnchorGraph for each element of the top hypothesis
     // that is set to 1.

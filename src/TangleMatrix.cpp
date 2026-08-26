@@ -1,5 +1,6 @@
 #include "TangleMatrix.hpp"
 #include "Anchor.hpp"
+#include "findBlockStructure.hpp"
 #include "deduplicate.hpp"
 #include "Options.hpp"
 using namespace shasta2;
@@ -525,4 +526,33 @@ void TangleMatrix::writeTotalTangleMatrix(ostream& html) const
 
     html << "</table>";
 
+}
+
+
+
+// Find the block structure of this TangleMatrix.
+// Each block is a new TangleMatrix.
+void TangleMatrix::findBlockStructure(vector<TangleMatrix>& blockTangleMatrices) const
+{
+    ostream html(0);
+
+    vector< pair< vector<uint64_t>, vector<uint64_t> > > blocks;
+    shasta2::findBlockStructure(tangleMatrix, blocks);
+
+    blockTangleMatrices.clear();
+    vector<Segment> blockEntrances;
+    vector<Segment> blockExits;
+    for(const auto& block: blocks) {
+        const vector<uint64_t>& blockEntranceIndexes = block.first;
+        const vector<uint64_t>& blockExitIndexes = block.second;
+        blockEntrances.clear();
+        blockExits.clear();
+        for(uint64_t i: blockEntranceIndexes) {
+            blockEntrances.push_back(entrances[i]);
+        }
+        for(uint64_t j: blockExitIndexes) {
+            blockExits.push_back(exits[j]);
+        }
+        blockTangleMatrices.emplace_back(assemblyGraph, blockEntrances, blockExits, html);
+    }
 }
