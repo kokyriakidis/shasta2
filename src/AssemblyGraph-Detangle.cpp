@@ -373,11 +373,6 @@ bool AssemblyGraph::detangleAndReadFollowingIteration(const string& debugOutputB
                     tangle.tangleEdges.size() << " segments, " <<
                     tangle.entrances.size() << " vertices." << endl;
 
-                // Tangle details go to the html file.
-                html.open(debugOutputBaseName + "-Tangle-" + to_string(tangleId) + ".html");
-                writeHtmlBegin(html, "Tangle " + to_string(tangleId));
-                html << "<h1>Tangle " << tangleId << "</h1>";
-                tangle.writeHtml(html);
             }
 
             if(tangle.entrances.empty() or tangle.exits.empty()) {
@@ -385,6 +380,14 @@ bool AssemblyGraph::detangleAndReadFollowingIteration(const string& debugOutputB
                     cout << "Skipping tangle " << tangleId << " with no entrances and/or no exits." << endl;
                 }
                 continue;
+            }
+
+            if(debug) {
+                // Tangle details go to the html file.
+                html.open(debugOutputBaseName + "-Tangle-" + to_string(tangleId) + ".html");
+                writeHtmlBegin(html, "Tangle " + to_string(tangleId));
+                html << "<h1>Tangle " << tangleId << "</h1>";
+                tangle.writeHtml(html);
             }
 
             // Try detangling.
