@@ -64,6 +64,51 @@ void Graph::createVertices()
     for(const Segment segment: tangle.exits) {
         exitVertices.push_back(add_vertex(Vertex(assemblyGraph, segment, false, true), graph));
     }
+
+
+
+    // If this is a self-complementary tangle, fill in the vRc fields in the vertices.
+    if(tangle.isSelfComplementary()) {
+
+        // Fill in the vRc fields of the entrances and the exits.
+        // Each exit is the reverse complements of an entrance.
+        std::map<Segment, vertex_descriptor> entranceMap;
+        for(const vertex_descriptor entrance: entranceVertices) {
+            entranceMap.insert({graph[entrance].segment, entrance});
+        }
+        for(const vertex_descriptor exit: exitVertices) {
+            const Segment exitSegment = graph[exit].segment;
+            const Segment entranceSegment = assemblyGraph[exitSegment].eRc;
+            const vertex_descriptor entrance = entranceMap.at(entranceSegment);
+            graph[exit].vRc = entrance;
+            graph[entrance].vRc = exit;
+        }
+
+        // Fill in the vRc fields of the internal vertices.
+        std::map<Segment, vertex_descriptor> internalMap;
+        BGL_FORALL_VERTICES(v, graph, Graph) {
+            const Vertex& vertex = graph[v];
+            if(not (vertex.isEntrance or vertex.isExit)) {
+                internalMap.insert({vertex.segment, v});
+            }
+        }
+        BGL_FORALL_VERTICES(v, graph, Graph) {
+            const Vertex& vertex = graph[v];
+            if(not (vertex.isEntrance or vertex.isExit)) {
+                const Segment segment = vertex.segment;
+                const Segment segmentRc = assemblyGraph[segment].eRc;
+                const vertex_descriptor vRc = internalMap.at(segmentRc);
+                graph[v].vRc = vRc;
+            }
+        }
+        BGL_FORALL_VERTICES(v, graph, Graph) {
+            const Vertex& vertex = graph[v];
+            if(not (vertex.isEntrance or vertex.isExit)) {
+                const vertex_descriptor vRc = vertex.vRc;
+                SHASTA2_ASSERT(graph[vRc].vRc == v);
+            }
+        }
+    }
 }
 
 
@@ -129,7 +174,7 @@ void Graph::createEdges()
     const uint32_t representativeRegionStepCount =  uint32_t(assemblyGraph.options.representativeRegionStepCount);
     const double a = 3.;                // dB
     const double b = 15.;               // dB
-    // const double logPThreshold = 10.;   // dB
+    const double logPThreshold = 10.;   // dB
 
     // No html output from analyzeSegmentPair.
     ostream html(0);
@@ -226,14 +271,12 @@ void Graph::createEdges()
             continue;
         }
         const double logP = a * double(segmentPairInformation.commonCount) - b * double(segmentPairInformation.missing());
-        /*
         if(logP < logPThreshold) {
             if(debug) {
                 cout << "Discarded due low logP." << endl;
             }
             continue;
         }
-        */
         if(not assemblyGraph.canConnect(segment0, segment1)) {
             if(debug) {
                 cout << "Discarded because cannot connect." << endl;
@@ -245,15 +288,16 @@ void Graph::createEdges()
         if(debug) {
             cout << "Keeping " << assemblyGraph.id(segment0) << " " << assemblyGraph.id(segment1) << " " << logP << endl;
         }
-        add_edge(v0, v1, Edge(segmentPairInformation.commonCount, logP), graph);
+        const Edge edge(segmentPairInformation.commonCount, logP);
+        add_edge(v0, v1, edge, graph);
         if(isSelfComplementaryTangle) {
-            const Segment segment0Rc = assemblyGraph[segment0].eRc;
-            const Segment segment1Rc = assemblyGraph[segment1].eRc;
+            const vertex_descriptor v0Rc = graph[v0].vRc;
+            const vertex_descriptor v1Rc = graph[v1].vRc;
+            add_edge(v1Rc, v0Rc, edge, graph);
             if(debug) {
-                cout << "Keeping " << assemblyGraph.id(segment1Rc) << " " << assemblyGraph.id(segment0Rc) << " " << logP << endl;
+                cout << "Keeping " << assemblyGraph.id(graph[v1Rc].segment) << " " <<
+                    assemblyGraph.id(graph[v0Rc].segment) << " " << logP << endl;
             }
-            SHASTA2_ASSERT(0);
-            // Must add the reverse complement edge.
         }
     }
 }
@@ -346,8 +390,7 @@ void Graph::writeShortestPaths(ostream& html)
         "Distance on the read following graph "
         "between between each pair of entrances and exits. "
         "A small value indicates that the entrance and exit are likely to "
-        " follow each other in genomic sequence. Large values (above 1000) "
-        "are omitted."
+        " follow each other in genomic sequence."
         "<br><br><table>";
 
     // Write a header line listing the exits.
@@ -362,9 +405,7 @@ void Graph::writeShortestPaths(ostream& html)
         for(uint64_t iExit=0; iExit<exitVertices.size(); iExit++) {
             html << "<td class=centered>";
             const int64_t distance = int64_t(std::round(shortestPaths[iEntrance][iExit].distance));
-            if(distance < 1000) {
-                html << distance;
-            }
+            html << distance;
         }
     }
 

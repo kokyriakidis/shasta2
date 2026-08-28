@@ -13,9 +13,7 @@ bool AssemblyGraph::readFollowingStrandSymmetric(
 {
 
 #if 0
-    if(not tangle.isSelfComplementary()) {
-        const Graph graph(*this, tangleId, tangle, html);
-    }
+    const Graph graph(*this, tangleId, tangle, html);
 #endif
 
     return false;

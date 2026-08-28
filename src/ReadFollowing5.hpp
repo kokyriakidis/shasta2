@@ -43,6 +43,10 @@ public:
     bool isEntrance;
     bool isExit;
 
+    // The reverse complement of this vertex.
+    // This is only filled in for a self-complementary tangle.
+    GraphBaseClass::vertex_descriptor vRc = GraphBaseClass::null_vertex();
+
     vector<OrientedReadId> initialSupport;
     vector<OrientedReadId> finalSupport;
 
