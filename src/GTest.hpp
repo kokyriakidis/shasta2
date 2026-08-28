@@ -62,6 +62,20 @@ public:
     // Return true if there is a single entrance for exit entrance.
     static bool isBackwardInjective(const vector< vector<bool> >& connectivityMatrix);
 
+    // The GTest is considered positive if the following is true:
+    // - The GTest ran successfully (that is, success is set to true).
+    // - The G value of the first hypothesis is no more than maxLogP.
+    // - If a second hypothesis is present, the G difference between
+    //   the second hypothesis and the first is at least minLogP.
+    // In this case, the hypotheses vector is guaranteed to not be empty,
+    // and the first hypothesis in the vector is likely to be reliable.
+    bool isPositive(
+        double maxLogP,
+        double minLogPDelta) const;
+
+    // Summarize the GTest results.
+    void summarize(ostream&) const;
+
 private:
     void run(
         const vector< vector<double> >& tangleMatrix,

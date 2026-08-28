@@ -477,32 +477,16 @@ bool AssemblyGraph::detangleTanglePair(
             ++failedGTestCount;
         } else {
 
-            // This G-test was successful.
-            // Find out if it the best hypothesis is sufficiently reliable
-            // accordign to our current options.
-            bool isReliable = true;
-            const auto& bestHypothesis = gTest.hypotheses[0];
-            const double bestG = bestHypothesis.G;
-            if(bestG > assemblyGraph.options.detangleMaxLogP) {
-                isReliable = false;
-            } else {
-                if(gTest.hypotheses.size() > 1) {
-                    if(gTest.hypotheses[1].G - bestG < assemblyGraph.options.detangleMinLogPDelta) {
-                        // There is a second hypothesis, and it is not sufficiently well separated
-                        // from the best hypothesis.
-                        isReliable = false;
-                    }
-                }
-            }
-            if(isReliable) {
-                ++reliableGTestCount;
+            if(gTest.isPositive(assemblyGraph.options.detangleMaxLogP, assemblyGraph.options.detangleMinLogPDelta)) {
 
-                // This test is reliable. Find the pairs to be connected.
+                // The likelihood ratio test gave a reliable result.
+                // Find the pairs to be connected.
+                ++reliableGTestCount;
                 for(uint64_t i=0; i<block.entrances.size(); i++) {
                     const Segment entrance = block.entrances[i];
                     for(uint64_t j=0; j<block.exits.size(); j++) {
                         const Segment exit = block.exits[j];
-                        if(bestHypothesis.connectivityMatrix[i][j]) {
+                        if(gTest.hypotheses[0].connectivityMatrix[i][j]) {
                             if(not canConnect(entrance, exit)) {
                                 connectionFailure = true;
                                 if(html) {
@@ -550,20 +534,7 @@ bool AssemblyGraph::detangleTanglePair(
                     html << "<br>&Delta;G = " << secondBestG - bestG;
                 }
 
-                bool isReliable = true;
-                if(bestG > assemblyGraph.options.detangleMaxLogP) {
-                    isReliable = false;
-                } else {
-                    if(gTest.hypotheses.size() > 1) {
-                        if(gTest.hypotheses[1].G - bestG < assemblyGraph.options.detangleMinLogPDelta) {
-                            // There is a second hypothesis, and it is not sufficiently well separated
-                            // from the best hypothesis.
-                            isReliable = false;
-                        }
-                    }
-                }
-
-                if(isReliable) {
+                if(gTest.isPositive(assemblyGraph.options.detangleMaxLogP, assemblyGraph.options.detangleMinLogPDelta)) {
                     html << "<br>The G-test indicates that the best hypothesis for this block is reliable.";
                 } else {
                     html << "<br>The G-test indicates that the best hypothesis for this block is not reliable.";

@@ -335,3 +335,73 @@ bool GTest::isBackwardInjective(const vector< vector<bool> >& connectivityMatrix
     return true;
 
 }
+
+
+
+// The GTest is considered positive if the following is true:
+// - The GTest ran successfully (that is, success is set to true).
+// - The G value of the first hypothesis is no more than maxLogP.
+// - If a second hypothesis is present, the G difference between
+//   the second hypothesis and the first is at least minLogP.
+// In this case, the hypotheses vector is guaranteed to not be empty,
+// and the first hypothesis in the vector is likely to be reliable.
+bool GTest::isPositive(
+    double maxLogP,
+    double minLogPDelta) const
+{
+    // Check that the GTest ran successfully.
+    if(not success) {
+        return false;
+    }
+    SHASTA2_ASSERT(not hypotheses.empty());
+
+    // Check the G value of the top hypothesis.
+    const double bestG = hypotheses[0].G;
+    if(bestG > maxLogP) {
+        return false;
+    }
+
+    // If a second hypothesis is present, also check its G value.
+    if(hypotheses.size() > 1) {
+        const double secondBestG = hypotheses[1].G;
+        const double deltaG = secondBestG - bestG;
+        if(deltaG < minLogPDelta) {
+            return false;
+        }
+    }
+
+    // All good.
+    return true;
+}
+
+
+
+// Summarize the GTest results.
+void GTest::summarize(ostream& s) const
+{
+    if(not success) {
+        s << "The likelihood ratio test failed." << endl;
+    } else {
+
+        SHASTA2_ASSERT(not hypotheses.empty());
+        s << "Best hypothesis:";
+        for(const auto& row: hypotheses[0].connectivityMatrix) {
+            for(const bool b: row) {
+                s << (b ? " 1" : " 0");
+            }
+        }
+        s << endl;
+
+        const double bestG = hypotheses[0].G;
+        s << "Best hypothesis G = " << bestG << endl;
+        if(hypotheses.size() > 1) {
+            const double secondBestG = hypotheses[1].G;
+            s << "Second best hypothesis G = " << secondBestG;
+            s << "Delta G " << secondBestG - bestG << endl;
+        } else {
+            s << "A second hypothesis is not present." << endl;
+        }
+        cout << endl;
+    }
+}
+
