@@ -64,6 +64,12 @@ public:
 
     void writeHtml(ostream& html) const;
 
+    // Create a map that maps ids to edge_descriptors (Segments)
+    // for all the entrances and exits plus their reverse complements.
+    // This is used in detangling.
+    void createSegmentMap(std::map<uint64_t, Segment>&) const;
+    void checkSegmentMap(const std::map<uint64_t, Segment>&) const;
+
     // Detangling instructions.
     // Each entry describes an entrance/exit pair to be connected.
     // Detangling decisions are not made in Tangle. They are made by the

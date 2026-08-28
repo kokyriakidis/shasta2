@@ -363,3 +363,40 @@ void Tangle::writeHtml(ostream& html) const
     html << "</table>";
 
 }
+
+
+
+// Create a map that maps ids to edge_descriptors (Segments)
+// for all the entrances and exits plus their reverse complements.
+// This is used in detangling.
+void Tangle::createSegmentMap(std::map<uint64_t, Segment>& segmentMap) const
+{
+    segmentMap.clear();
+    const bool selfComplementary = isSelfComplementary();
+
+    for(const Segment e: entrances) {
+        segmentMap.insert({assemblyGraph.id(e), e});
+        if(not selfComplementary) {
+            const Segment eRc = assemblyGraph[e].eRc;
+            segmentMap.insert({assemblyGraph.id(eRc), eRc});
+        }
+    }
+
+    for(const Segment e: exits) {
+        segmentMap.insert({assemblyGraph.id(e), e});
+        if(not selfComplementary) {
+            const Segment eRc = assemblyGraph[e].eRc;
+            segmentMap.insert({assemblyGraph.id(eRc), eRc});
+        }
+    }
+}
+
+
+
+void Tangle::checkSegmentMap(const std::map<uint64_t, Segment>& segmentMap) const
+{
+    for(const auto&[segmentId, e]: segmentMap) {
+        SHASTA2_ASSERT(segmentId == assemblyGraph.id(e));
+    }
+
+}

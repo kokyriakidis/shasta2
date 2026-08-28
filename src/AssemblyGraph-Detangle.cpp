@@ -590,20 +590,18 @@ bool AssemblyGraph::detangleTanglePair(
     // of this tangle or its reverse complement. To avoid working with invalidated
     // edge_descriptors, we work with Segment ids instead.
     std::map<uint64_t, Segment> segmentMap;
+    tangle.createSegmentMap(segmentMap);
     vector<uint64_t> entranceIds;
     for(const Segment e: tangle.entrances) {
         entranceIds.push_back(id(e));
-        segmentMap.insert(make_pair(id(e), e));
-        const Segment eRc = assemblyGraph[e].eRc;
-        segmentMap.insert(make_pair(id(eRc), eRc));
     }
     vector<uint64_t> exitIds;
     for(const Segment e: tangle.exits) {
         exitIds.push_back(id(e));
-        segmentMap.insert(make_pair(id(e), e));
-        const Segment eRc = assemblyGraph[e].eRc;
-        segmentMap.insert(make_pair(id(eRc), eRc));
     }
+
+    // Create disconnected versions of the entrances and exits,
+    // whilekeeping the segmentMap up to date.
     for(const uint64_t entranceId: entranceIds) {
         const Segment eNew = disconnectAtEnd(segmentMap.at(entranceId));
         segmentMap[id(eNew)] = eNew;
@@ -616,11 +614,8 @@ bool AssemblyGraph::detangleTanglePair(
         const Segment eNewRc = assemblyGraph[eNew].eRc;
         segmentMap[id(eNewRc)] = eNewRc;
     }
+    tangle.checkSegmentMap(segmentMap);
 
-    // Check that all is good.
-    for(const auto&[segmentId, e]: segmentMap) {
-        SHASTA2_ASSERT(segmentId == id(e));
-    }
 
 
     // Make the connections.
@@ -739,20 +734,18 @@ bool AssemblyGraph::detangleSelfComplementaryTangle2By2(
     // of this tangle or its reverse complement. To avoid working with invalidated
     // edge_descriptors, we work with Segment ids instead.
     std::map<uint64_t, Segment> segmentMap;
+    tangle.createSegmentMap(segmentMap);
     vector<uint64_t> entranceIds;
     for(const Segment e: tangle.entrances) {
         entranceIds.push_back(id(e));
-        segmentMap.insert(make_pair(id(e), e));
-        const Segment eRc = assemblyGraph[e].eRc;
-        segmentMap.insert(make_pair(id(eRc), eRc));
     }
     vector<uint64_t> exitIds;
     for(const Segment e: tangle.exits) {
         exitIds.push_back(id(e));
-        segmentMap.insert(make_pair(id(e), e));
-        const Segment eRc = assemblyGraph[e].eRc;
-        segmentMap.insert(make_pair(id(eRc), eRc));
     }
+
+    // Disconnect the entrances and exits,
+    // while keeping the segmentMap up to date.
     for(const uint64_t entranceId: entranceIds) {
         const Segment eNew = disconnectAtEnd(segmentMap.at(entranceId));
         segmentMap[id(eNew)] = eNew;
@@ -765,13 +758,11 @@ bool AssemblyGraph::detangleSelfComplementaryTangle2By2(
         const Segment eNewRc = assemblyGraph[eNew].eRc;
         segmentMap[id(eNewRc)] = eNewRc;
     }
+    tangle.checkSegmentMap(segmentMap);
 
-    // Check that all is good.
-    for(const auto&[segmentId, e]: segmentMap) {
-        SHASTA2_ASSERT(segmentId == id(e));
-    }
 
-    // Make the connection and its reverse complement..
+
+    // Make the connection and its reverse complement.
     const edge_descriptor eNew = connect(segmentMap.at(entranceId), segmentMap.at(exitId));
     createReverseComplementEdge(eNew);
 
