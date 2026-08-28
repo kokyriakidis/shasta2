@@ -384,7 +384,7 @@ public:
     // Return true if the two specified edges can be connected for assembly.
     // If necessary, this construct the RestrictedAnchorGraph between the two edges
     // and checks that all is good.
-    bool canConnect(edge_descriptor, edge_descriptor) const;
+    bool canConnect(edge_descriptor, edge_descriptor, bool deep = false) const;
 
     // The detangling process can generate empty edges (edges without steps).
     // This removes them by collapsing the vertices they join.
@@ -502,7 +502,7 @@ public:
 
     // Connect two segments (edges) using the RestrictedAnchorGraph.
     // Return the newly created edge.
-    edge_descriptor connect(edge_descriptor, edge_descriptor);
+    edge_descriptor connect(edge_descriptor, edge_descriptor, bool deep=false);
 
 
     // Output.

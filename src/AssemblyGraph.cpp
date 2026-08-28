@@ -1925,7 +1925,7 @@ void AssemblyGraph::removeEmptyEdges()
 // Return true if the two specified edges can be connected for assembly.
 // If necessary, this constructs the RestrictedAnchorGraph between the two edges
 // and checks that all is good.
-bool AssemblyGraph::canConnect(edge_descriptor e0, edge_descriptor e1) const
+bool AssemblyGraph::canConnect(edge_descriptor e0, edge_descriptor e1, bool deep) const
 {
     const AssemblyGraph& assemblyGraph = *this;
 
@@ -1957,7 +1957,7 @@ bool AssemblyGraph::canConnect(edge_descriptor e0, edge_descriptor e1) const
         ostream html(0);
 
         // Create the RestrictedAnchorGraph.
-        RestrictedAnchorGraph restrictedAnchorGraph(anchors, journeys, tangleMatrix, 0, 0, html);
+        RestrictedAnchorGraph restrictedAnchorGraph(anchors, journeys, tangleMatrix, 0, 0, html, deep);
         vector<RestrictedAnchorGraph::edge_descriptor> longestPath;
 
         // Check that we have a path.
@@ -2943,7 +2943,7 @@ void AssemblyGraph::connectDanglingSegments()
 
 // Connect two segments (edges) using the RestrictedAnchorGraph.
 // Return the newly created edge.
-AssemblyGraph::edge_descriptor AssemblyGraph::connect(edge_descriptor e0, edge_descriptor e1)
+AssemblyGraph::edge_descriptor AssemblyGraph::connect(edge_descriptor e0, edge_descriptor e1, bool deep)
 {
     AssemblyGraph& assemblyGraph = *this;
 
@@ -2976,7 +2976,7 @@ AssemblyGraph::edge_descriptor AssemblyGraph::connect(edge_descriptor e0, edge_d
             html);
 
         try {
-            RestrictedAnchorGraph restrictedAnchorGraph(assemblyGraph.anchors, assemblyGraph.journeys, tangleMatrix, 0, 0, html);
+            RestrictedAnchorGraph restrictedAnchorGraph(assemblyGraph.anchors, assemblyGraph.journeys, tangleMatrix, 0, 0, html, deep);
             vector<RestrictedAnchorGraph::edge_descriptor> longestPath;
             // restrictedAnchorGraph.findLongestPath(longestPath);
             restrictedAnchorGraph.findOptimalPath(anchorId0, anchorId1, longestPath);

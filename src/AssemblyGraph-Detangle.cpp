@@ -465,40 +465,38 @@ bool AssemblyGraph::detangleTanglePair(
     // Gather entrance/exit pairs to be connected.
     vector< pair<uint64_t, uint64_t> > connectPairs;
     vector<GTest> gTests;
-    uint64_t failedGTestCount = 0;
-    uint64_t reliableGTestCount = 0;
     bool connectionFailure = false;
-    for(const TangleMatrix& block: blocks) {
+    vector<uint64_t> failedBlocks;
+    for(uint64_t iBlock=0; iBlock<blocks.size(); iBlock++) {
+        const TangleMatrix& block = blocks[iBlock];
+
         const bool onlyConsiderPermutation = (block.entrances.size() == block.exits.size());
         const bool onlyConsiderInjective = onlyConsiderPermutation;
         const GTest& gTest = gTests.emplace_back(block.tangleMatrix, assemblyGraph.options.detangleEpsilon,
         onlyConsiderInjective, onlyConsiderPermutation);
-        if(not gTest.success) {
-            ++failedGTestCount;
-        } else {
 
-            if(gTest.isPositive(assemblyGraph.options.detangleMaxLogP, assemblyGraph.options.detangleMinLogPDelta)) {
+        if(gTest.isPositive(assemblyGraph.options.detangleMaxLogP, assemblyGraph.options.detangleMinLogPDelta)) {
 
-                // The likelihood ratio test gave a reliable result.
-                // Find the pairs to be connected.
-                ++reliableGTestCount;
-                for(uint64_t i=0; i<block.entrances.size(); i++) {
-                    const Segment entrance = block.entrances[i];
-                    for(uint64_t j=0; j<block.exits.size(); j++) {
-                        const Segment exit = block.exits[j];
-                        if(gTest.hypotheses[0].connectivityMatrix[i][j]) {
-                            if(not canConnect(entrance, exit)) {
-                                connectionFailure = true;
-                                if(html) {
-                                    html << "<br>Cannot connect " << id(entrance) <<
-                                        " " << id(exit);
-                                }
+            // The likelihood ratio test gave a reliable result.
+            // Find the pairs to be connected.
+             for(uint64_t i=0; i<block.entrances.size(); i++) {
+                const Segment entrance = block.entrances[i];
+                for(uint64_t j=0; j<block.exits.size(); j++) {
+                    const Segment exit = block.exits[j];
+                    if(gTest.hypotheses[0].connectivityMatrix[i][j]) {
+                        if(not canConnect(entrance, exit)) {
+                            connectionFailure = true;
+                            if(html) {
+                                html << "<br>Cannot connect " << id(entrance) <<
+                                    " " << id(exit);
                             }
-                            connectPairs.push_back(make_pair(id(entrance), id(exit)));
                         }
+                        connectPairs.push_back(make_pair(id(entrance), id(exit)));
                     }
                 }
             }
+        } else {
+            failedBlocks.push_back(iBlock);
         }
     }
 
@@ -546,22 +544,7 @@ bool AssemblyGraph::detangleTanglePair(
         }
     }
 
-
-    if(failedGTestCount > 0) {
-        if(html) {
-            html << "<br>Not detangling because the G-test for " << failedGTestCount <<
-                " blocks failed.";
-        }
-        return false;
-    }
-    if(reliableGTestCount < blocks.size()) {
-        if(html) {
-            html << "<br>Not detangling because only " << reliableGTestCount <<
-                " blocks out of " << blocks.size() <<
-                " gave a sufficiently reliable result.";
-        }
-        return false;
-    }
+    // Don't tolerate any connection failures.
     if(connectionFailure) {
         if(html) {
             html << "<br>Not detangling because of connection failures.";
@@ -569,9 +552,89 @@ bool AssemblyGraph::detangleTanglePair(
         return false;
     }
 
+
+
+    // In general, we don't want any failed blocks.
+    // But we make an exception to handle an important special case:
+    // - Only two block failed.
+    // - One of the two failed blocks consists of just one entrance.
+    // - One of the two failed blocks consists of just one exit.
+    // - That entrance/exit pair can be connected using a "deep"
+    //   RestrictedAnchorGraph.
+    // In that case, we will also connect this entrance/exit pair,
+    // making sure to use a deep RestrictedAnchorGraph.
+    bool isSpecialCase = false;
+    Segment specialCaseEntrance = assemblyGraphNullEdge;
+    Segment specialCaseExit = assemblyGraphNullEdge;
+    if(failedBlocks.size() == 2) {
+        const TangleMatrix& block0 = blocks[failedBlocks[0]];
+        const TangleMatrix& block1 = blocks[failedBlocks[1]];
+
+        if(
+            (block0.entrances.size() == 1) and
+            (block0.exits.empty()) and
+            (block1.entrances.empty()) and
+            (block1.exits.size() == 1))
+        {
+            specialCaseEntrance = block0.entrances.front();
+            specialCaseExit = block1.exits.front();
+        }
+
+        else if(
+            (block1.entrances.size() == 1) and
+            (block1.exits.empty()) and
+            (block0.entrances.empty()) and
+            (block0.exits.size() == 1))
+        {
+            specialCaseEntrance = block1.entrances.front();
+            specialCaseExit = block0.exits.front();
+        }
+
+        // We still need to check if this entrance/exit pair
+        // can be connected using a deep RestrictedAnchorGraph.
+        if(specialCaseEntrance != assemblyGraphNullEdge) {
+            if(canConnect(specialCaseEntrance, specialCaseExit, true)) {
+                isSpecialCase = true;
+                if(html) {
+                    html << "<br>Special case: " <<
+                        id(specialCaseEntrance) << " and " << id(specialCaseExit) <<
+                        " can be connected using a deep RestrictedAnchorGraph." << endl;
+                }
+            } else {
+                if(html) {
+                    html << "<br>Special case: " <<
+                        id(specialCaseEntrance) << " and " << id(specialCaseExit) <<
+                        " cannot be connected using a deep RestrictedAnchorGraph." << endl;
+                }
+            }
+        }
+    }
+    uint64_t specialCaseEntranceId = invalid<uint64_t>;
+    uint64_t specialCaseExitId = invalid<uint64_t>;
+    if(isSpecialCase) {
+        specialCaseEntranceId = id(specialCaseEntrance);
+        specialCaseExitId = id(specialCaseExit);
+    }
+
+
+
+
+    // If there are failed blocks and we are not in that special case, don't detangle.
+    if((not failedBlocks.empty()) and (not isSpecialCase)) {
+        if(html) {
+            html << "<br>Not detangling because " << failedBlocks.size() <<
+                " blocks out of " << blocks.size() <<
+                " did not give a sufficiently reliable result.";
+        }
+        return false;
+    }
+
+    // If getting here, we will detangle.
     if(html) {
         html << "<br>This tangle and its reverse complement will be detangled." << endl;
     }
+
+
 
     // Remove all the Segments internal to this tangle
     // and their reverse complements.
@@ -601,7 +664,7 @@ bool AssemblyGraph::detangleTanglePair(
     }
 
     // Create disconnected versions of the entrances and exits,
-    // whilekeeping the segmentMap up to date.
+    // while keeping the segmentMap up to date.
     for(const uint64_t entranceId: entranceIds) {
         const Segment eNew = disconnectAtEnd(segmentMap.at(entranceId));
         segmentMap[id(eNew)] = eNew;
@@ -624,6 +687,12 @@ bool AssemblyGraph::detangleTanglePair(
         const AssemblyGraph::edge_descriptor entrance = segmentMap.at(entranceId);
         const AssemblyGraph::edge_descriptor exit = segmentMap.at(exitId);
         const edge_descriptor eNew = connect(entrance, exit);
+        createReverseComplementEdge(eNew);
+    }
+    if(isSpecialCase) {
+        const AssemblyGraph::edge_descriptor entrance = segmentMap.at(specialCaseEntranceId);
+        const AssemblyGraph::edge_descriptor exit = segmentMap.at(specialCaseExitId);
+        const edge_descriptor eNew = connect(entrance, exit, true);
         createReverseComplementEdge(eNew);
     }
 
