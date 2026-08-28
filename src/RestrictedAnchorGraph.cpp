@@ -24,15 +24,25 @@ using namespace shasta2;
 
 
 
+// If deep is set, instead of using the common oriented reads
+// to estimate an offset we use an infinite offsets.
+// This means that for reads on the entrance we use the entire
+// journey to the right of the entrance, and for
+// reads on the exit we use the entire journey portion to the
+// left of the exit.
+// This can be expensive but also remove the requirement that
+// there must be at least one common oriented read
+// between the entrance and the exit.
 RestrictedAnchorGraph::RestrictedAnchorGraph(
     const Anchors& anchors,
     const Journeys& journeys,
     const TangleMatrix& tangleMatrix,
     uint64_t iEntrance,
     uint64_t iExit,
-    ostream& html)
+    ostream& html,
+    bool deep)
 {
-    constructFromTangleMatrix(anchors, journeys, tangleMatrix, iEntrance, iExit, html);
+    constructFromTangleMatrix(anchors, journeys, tangleMatrix, iEntrance, iExit, html, deep);
 }
 
 
@@ -43,7 +53,8 @@ void RestrictedAnchorGraph::constructFromTangleMatrix(
     const TangleMatrix& tangleMatrix,
     uint64_t iEntrance,
     uint64_t iExit,
-    ostream& html)
+    ostream& html,
+    bool deep)
 {
     using Graph = RestrictedAnchorGraph;
     Graph& graph = *this;
@@ -54,7 +65,7 @@ void RestrictedAnchorGraph::constructFromTangleMatrix(
         tangleMatrix.assemblyGraph.id(tangleMatrix.exits[iExit]) << endl;
     */
 
-    fillJourneyPortions(journeys, tangleMatrix, iEntrance, iExit, html);
+    fillJourneyPortions(journeys, tangleMatrix, iEntrance, iExit, html, deep);
     gatherAllAnchorIds(journeys);
     fillJourneyPortionsAnchorIndexes(journeys);
     gatherTransitions(html);
@@ -355,7 +366,8 @@ void RestrictedAnchorGraph::fillJourneyPortions(
     const TangleMatrix& tangleMatrix,
     uint64_t iEntrance,
     uint64_t iExit,
-    ostream& html)
+    ostream& html,
+    bool deep)
 {
     // EXPOSE WHEN CODE STABILIZES.
     const double drift = 0.2;
@@ -369,53 +381,62 @@ void RestrictedAnchorGraph::fillJourneyPortions(
 
 
 
-    // Loop over the common oriented reads to estimate an offset.
-    auto itEntrance = entranceOrientedReadInfos.begin();
-    auto itExit = exitOrientedReadInfos.begin();
-    const auto itEntranceEnd = entranceOrientedReadInfos.end();
-    const auto itExitEnd = exitOrientedReadInfos.end();
-    uint64_t offsetSum = 0;
-    uint64_t offsetCount = 0;
-    while((itEntrance!=itEntranceEnd) and (itExit!=itExitEnd)) {
-        if(itEntrance->orientedReadId < itExit->orientedReadId) {
+    // Decide the maximum offset to use when creating the journey portions.
+    uint32_t maxOffset = invalid<uint32_t>;
+    if(deep) {
+        maxOffset = std::numeric_limits<uint32_t>::max() - 1;
+    } else {
+
+        // Loop over the common oriented reads to estimate an offset.
+        auto itEntrance = entranceOrientedReadInfos.begin();
+        auto itExit = exitOrientedReadInfos.begin();
+        const auto itEntranceEnd = entranceOrientedReadInfos.end();
+        const auto itExitEnd = exitOrientedReadInfos.end();
+        uint64_t offsetSum = 0;
+        uint64_t offsetCount = 0;
+        while((itEntrance!=itEntranceEnd) and (itExit!=itExitEnd)) {
+            if(itEntrance->orientedReadId < itExit->orientedReadId) {
+                ++itEntrance;
+                continue;
+            }
+            if(itExit->orientedReadId < itEntrance->orientedReadId) {
+                ++itExit;
+                continue;
+            }
+            const OrientedReadId orientedReadId = itEntrance->orientedReadId;
+            SHASTA2_ASSERT(orientedReadId == itExit->orientedReadId);
+
+            if(not tangleMatrix.goesBackward(orientedReadId)) {
+                const Journey journey = journeys[orientedReadId];
+                const uint32_t entrancePositionInJourney = itEntrance->positionInJourney;
+                const uint32_t exitPositionInJourney = itExit->positionInJourney;
+                const AnchorId entranceAnchorId = journey[entrancePositionInJourney];
+                const AnchorId exitAnchorId = journey[exitPositionInJourney];
+                const uint32_t entrancePosition = anchors.getPosition(entranceAnchorId, orientedReadId);
+                const uint32_t exitPosition = anchors.getPosition(exitAnchorId, orientedReadId);
+                SHASTA2_ASSERT(exitPosition > entrancePosition);
+                const uint32_t offset = exitPosition - entrancePosition;
+                offsetSum += offset;
+                ++offsetCount;
+            }
+
             ++itEntrance;
-            continue;
-        }
-        if(itExit->orientedReadId < itEntrance->orientedReadId) {
             ++itExit;
-            continue;
         }
-        const OrientedReadId orientedReadId = itEntrance->orientedReadId;
-        SHASTA2_ASSERT(orientedReadId == itExit->orientedReadId);
-
-        if(not tangleMatrix.goesBackward(orientedReadId)) {
-            const Journey journey = journeys[orientedReadId];
-            const uint32_t entrancePositionInJourney = itEntrance->positionInJourney;
-            const uint32_t exitPositionInJourney = itExit->positionInJourney;
-            const AnchorId entranceAnchorId = journey[entrancePositionInJourney];
-            const AnchorId exitAnchorId = journey[exitPositionInJourney];
-            const uint32_t entrancePosition = anchors.getPosition(entranceAnchorId, orientedReadId);
-            const uint32_t exitPosition = anchors.getPosition(exitAnchorId, orientedReadId);
-            SHASTA2_ASSERT(exitPosition > entrancePosition);
-            const uint32_t offset = exitPosition - entrancePosition;
-            offsetSum += offset;
-            ++offsetCount;
+        if(offsetCount == 0) {
+            throw NoCommonOrientedReads();
         }
-
-        ++itEntrance;
-        ++itExit;
+        const double averageOffset = double(offsetSum) / double(offsetCount);
+        maxOffset = uint32_t(std::round(averageOffset * (1. + drift)));
     }
-    if(offsetCount == 0) {
-        throw NoCommonOrientedReads();
-    }
-    const double averageOffset = double(offsetSum) / double(offsetCount);
-    const uint32_t maxOffset = uint32_t(std::round(averageOffset * (1. + drift)));
 
 
 
     // Joint loop over the oriented reads of the entrance and exit.
-    itEntrance = entranceOrientedReadInfos.begin();
-    itExit = exitOrientedReadInfos.begin();
+    auto itEntrance = entranceOrientedReadInfos.begin();
+    auto itExit = exitOrientedReadInfos.begin();
+    const auto itEntranceEnd = entranceOrientedReadInfos.end();
+    const auto itExitEnd = exitOrientedReadInfos.end();
     while(true) {
 
         // If both iterators are at their end, we are done.

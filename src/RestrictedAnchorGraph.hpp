@@ -81,20 +81,23 @@ class shasta2::RestrictedAnchorGraph : public RestrictedAnchorGraphBaseClass {
 public:
 
     // Constructor using a TangleMatrix.
+    // See the cpp file for the meaning of the deep argument.
     RestrictedAnchorGraph(
         const Anchors&,
         const Journeys&,
         const TangleMatrix&,
         uint64_t iEntrance,
         uint64_t iExit,
-        ostream& html);
+        ostream& html,
+        bool deep = false);
     void constructFromTangleMatrix(
         const Anchors&,
         const Journeys&,
         const TangleMatrix&,
         uint64_t iEntrance,
         uint64_t iExit,
-        ostream& html);
+        ostream& html,
+        bool deep);
 
     // The journey portions that define this RestrictedAnchorGraph.
     vector<JourneyPortion> journeyPortions;
@@ -105,7 +108,8 @@ public:
         const TangleMatrix&,
         uint64_t iEntrance,
         uint64_t iExit,
-        ostream& html);
+        ostream& html,
+        bool deep);
 
     // A SimpleMap containing information about all the N distinct AnchorIds
     // used in this RestrictedAnchorGraph.

@@ -1155,6 +1155,9 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
     string onlyConsiderPermutationString;
     const bool onlyConsiderPermutation = getParameterValue(request, "onlyConsiderPermutation", onlyConsiderPermutationString);
 
+    string deepString;
+    const bool deep = getParameterValue(request, "deep", deepString);
+
 
 
 
@@ -1203,6 +1206,11 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
         "<tr><th class=left>Only consider permutation hypotheses"
         "<td class=centered>"
         "<input type=checkbox name=onlyConsiderPermutation" << (onlyConsiderPermutation ? " checked" : "") <<
+        ">"
+
+        "<tr><th class=left>Use a deep RestrictedAnchorGraph"
+        "<td class=centered>"
+        "<input type=checkbox name=deep" << (deep ? " checked" : "") <<
         ">";
 
     // End the form.
@@ -1344,7 +1352,7 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
 
 
                     RestrictedAnchorGraph restrictedAnchorGraph(
-                        anchors(), journeys(), tangleMatrix, iEntrance, iExit, html);
+                        anchors(), journeys(), tangleMatrix, iEntrance, iExit, html, deep);
 
                     html << "<br>The final RestrictedAnchorGraph has " << num_vertices(restrictedAnchorGraph) <<
                         " vertices and " << num_edges(restrictedAnchorGraph) << " edges ";
