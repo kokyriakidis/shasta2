@@ -1149,6 +1149,13 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
     double epsilon = httpServerData.options->detangleEpsilon;
     HttpServer::getParameterValue(request, "epsilon", epsilon);
 
+    string onlyConsiderInjectiveString;
+    const bool onlyConsiderInjective = getParameterValue(request, "onlyConsiderInjective", onlyConsiderInjectiveString);
+
+    string onlyConsiderPermutationString;
+    const bool onlyConsiderPermutation = getParameterValue(request, "onlyConsiderPermutation", onlyConsiderPermutationString);
+
+
 
 
     // Start the form.
@@ -1186,7 +1193,17 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
 
     html << "<tr><th class=left>Epsilon for G-test evaluation"
         "<td class=centered>"
-        "<input type=text name=epsilon style='text-align:center' value='" << epsilon << "'>";
+        "<input type=text name=epsilon style='text-align:center' value='" << epsilon << "'>"
+
+        "<tr><th class=left>Only consider injective hypotheses"
+        "<td class=centered>"
+        "<input type=checkbox name=onlyConsiderInjective" << (onlyConsiderInjective ? " checked" : "") <<
+        ">"
+
+        "<tr><th class=left>Only consider permutation hypotheses"
+        "<td class=centered>"
+        "<input type=checkbox name=onlyConsiderPermutation" << (onlyConsiderPermutation ? " checked" : "") <<
+        ">";
 
     // End the form.
     html <<
@@ -1266,7 +1283,7 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
 
     // Compute the tangle matrix.
     const TangleMatrix tangleMatrix(assemblyGraph, entrances, exits, html);
-    GTest gTest(tangleMatrix.tangleMatrix, epsilon, false, false);
+    GTest gTest(tangleMatrix.tangleMatrix, epsilon, onlyConsiderInjective, onlyConsiderPermutation);
     gTest.writeHtml(html);
 
 
@@ -1274,7 +1291,7 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
     vector<TangleMatrix> blocks;
     tangleMatrix.findBlockStructure(blocks);
     if(blocks.size() > 1) {
-        html << "<h2>Block structure of this tangle matrix<h2>";
+        html << "<h2>Block structure of this tangle matrix</h2>";
         for(const TangleMatrix& block: blocks) {
             block.writeTotalTangleMatrix(html);
             string url = "exploreTangleMatrix?assemblyStage=D&entrances=";
@@ -1291,7 +1308,7 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
                 }
                 url += to_string(assemblyGraph.id(block.exits[i]));
             }
-            html << "<a href='" << url << "'>See details</a>";
+            html << "<a href='" << url << "'>See details</a><br><br>";
         }
     }
 
@@ -1319,9 +1336,9 @@ void Assembler::exploreTangleMatrix(const vector<string>& request, ostream& html
                     html << "<br>The two anchors are coincident.";
                 } else {
 
-                    html << "<h4>RestrictedAnchorGraph to connect entrance " <<
+                    html << "<h2>RestrictedAnchorGraph to connect entrance " <<
                         entranceEdge.id <<
-                        " with exit " << exitEdge.id << "</h4>"
+                        " with exit " << exitEdge.id << "</h2>"
                         "Last AnchorId on entrance is " << anchorIdToString(entranceAnchorId) <<
                         "<br>First AnchorId on exit is " << anchorIdToString(exitAnchorId);
 
