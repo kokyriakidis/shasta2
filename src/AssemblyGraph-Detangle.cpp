@@ -271,6 +271,7 @@ bool AssemblyGraph::detangleAndReadFollowingIteration(const string& debugOutputB
     if(debug) {
         cout << timestamp << "AssemblyGraph::detangleIteration begins." << endl;
     }
+    check();
 
     AssemblyGraph& assemblyGraph = *this;
 
@@ -418,6 +419,8 @@ bool AssemblyGraph::detangleAndReadFollowingIteration(const string& debugOutputB
         }
     }
 
+    check();
+
     performanceLog << timestamp << "AssemblyGraph::detangleAndReadFollowingIteration ends: " <<
         debugOutputBaseName << endl;
 
@@ -428,12 +431,11 @@ bool AssemblyGraph::detangleAndReadFollowingIteration(const string& debugOutputB
 
 bool AssemblyGraph::detangleStrandSymmetric(const Tangle& tangle, ostream& html)
 {
-    if(tangle.isSelfComplementary()) {
-        if((tangle.entrances.size() == 2) and (tangle.exits.size() == 2)) {
-            return detangleSelfComplementaryTangle2By2(tangle, html);
-        } else {
-            return detangleSelfComplementaryTangle(tangle, html);
-        }
+    if(
+        (tangle.isSelfComplementary()) and
+        (tangle.entrances.size() == 2) and
+        (tangle.exits.size() == 2)) {
+        return detangleSelfComplementaryTangle2By2(tangle, html);
     } else {
         return detangleTanglePair(tangle, html);
     }
@@ -441,15 +443,17 @@ bool AssemblyGraph::detangleStrandSymmetric(const Tangle& tangle, ostream& html)
 
 
 
-// This detangles the tangle passed in as an argument and its reverse complement.
-// The tangle must no be not self-complementary,
+// This detangles the tangle passed in as an argument.
+// If the tangle is not self-complementary,
+// it also detangles its reverse complement.
 bool AssemblyGraph::detangleTanglePair(
     const Tangle& tangle, ostream& html)
 {
     AssemblyGraph& assemblyGraph = *this;
-    SHASTA2_ASSERT(not tangle.isSelfComplementary());
     SHASTA2_ASSERT(not tangle.entrances.empty());
     SHASTA2_ASSERT(not tangle.exits.empty());
+
+    const bool isSelfComplementary =  tangle.isSelfComplementary();
 
     if(html) {
         html << "<h2>Detangling</h2>";
@@ -639,7 +643,9 @@ bool AssemblyGraph::detangleTanglePair(
     // Remove all the Segments internal to this tangle
     // and their reverse complements.
     for(const Segment e: tangle.tangleEdges) {
-        boost::remove_edge(assemblyGraph[e].eRc, assemblyGraph);
+        if(not isSelfComplementary) {
+            boost::remove_edge(assemblyGraph[e].eRc, assemblyGraph);
+        }
         boost::remove_edge(e, assemblyGraph);
     }
 
@@ -671,11 +677,13 @@ bool AssemblyGraph::detangleTanglePair(
         const Segment eNewRc = assemblyGraph[eNew].eRc;
         segmentMap[id(eNewRc)] = eNewRc;
     }
-    for(const uint64_t exitId: exitIds) {
-        const Segment eNew = disconnectAtBeginning(segmentMap.at(exitId));
-        segmentMap[id(eNew)] = eNew;
-        const Segment eNewRc = assemblyGraph[eNew].eRc;
-        segmentMap[id(eNewRc)] = eNewRc;
+    if(not isSelfComplementary) {
+        for(const uint64_t exitId: exitIds) {
+            const Segment eNew = disconnectAtBeginning(segmentMap.at(exitId));
+            segmentMap[id(eNew)] = eNew;
+            const Segment eNewRc = assemblyGraph[eNew].eRc;
+            segmentMap[id(eNewRc)] = eNewRc;
+        }
     }
     tangle.checkSegmentMap(segmentMap);
 
@@ -683,11 +691,19 @@ bool AssemblyGraph::detangleTanglePair(
 
     // Make the connections.
     // This also does the same for the reverse complement of this Tangle.
+    std::set<uint64_t> connectedEntrances;
     for(const auto&[entranceId, exitId]: connectPairs) {
+        if(isSelfComplementary and (connectedEntrances.contains(entranceId))) {
+            continue;
+        }
         const AssemblyGraph::edge_descriptor entrance = segmentMap.at(entranceId);
         const AssemblyGraph::edge_descriptor exit = segmentMap.at(exitId);
         const edge_descriptor eNew = connect(entrance, exit);
         createReverseComplementEdge(eNew);
+        if(isSelfComplementary) {
+            connectedEntrances.insert(entranceId);
+            connectedEntrances.insert(id(assemblyGraph[exit].eRc));
+        }
     }
     if(isSpecialCase) {
         const AssemblyGraph::edge_descriptor entrance = segmentMap.at(specialCaseEntranceId);
@@ -708,28 +724,14 @@ bool AssemblyGraph::detangleTanglePair(
             boost::remove_vertex(v, assemblyGraph);
         }
 
-        if((in_degree(vRc, assemblyGraph) == 0) and (out_degree(vRc, assemblyGraph) == 0)) {
-            boost::remove_vertex(vRc, assemblyGraph);
+        if(not isSelfComplementary) {
+            if((in_degree(vRc, assemblyGraph) == 0) and (out_degree(vRc, assemblyGraph) == 0)) {
+                boost::remove_vertex(vRc, assemblyGraph);
+            }
         }
     }
 
     return true;
-}
-
-
-
-bool AssemblyGraph::detangleSelfComplementaryTangle(
-    const Tangle& tangle,
-    ostream& html)
-{
-    SHASTA2_ASSERT(tangle.isSelfComplementary());
-
-    if(html) {
-        html << "<br>This tangle will not be detangled because "
-            "detangleSelfComplementaryTangle is not implemented." << endl;
-    }
-
-    return false;
 }
 
 

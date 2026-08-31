@@ -277,7 +277,6 @@ public:
 private:
     bool detangleStrandSymmetric(const Tangle&, ostream& html);
     bool detangleTanglePair(const Tangle&, ostream& html);
-    bool detangleSelfComplementaryTangle(const Tangle&, ostream& html);
     bool detangleSelfComplementaryTangle2By2(const Tangle&, ostream& html);
     bool readFollowingStrandSymmetric(uint64_t tangleId, const Tangle&, ostream& html);
 
