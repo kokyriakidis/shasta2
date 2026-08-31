@@ -372,11 +372,31 @@ void Graph::findShortestPaths()
         for(uint64_t iExit=0; iExit<exitVertices.size(); iExit++) {
             const vertex_descriptor vExit = exitVertices[iExit];
 
-            // Store this ShortestPath.
             ShortestPath& shortestPath = shortestPaths[iEntrance][iExit];
-            shortestPath.distance = 10. * log10(distanceMap.at(vExit));
+            shortestPath.entrance = graph[vEntrance].segment;
+            shortestPath.exit = graph[vExit].segment;
+
+            // If this exit is not reachable from this entrance,
+            // leave the distance set to invalid<double> and the path empty.
+            const double distance = distanceMap.at(vExit);
+            if(distance == std::numeric_limits<double>::max()) {
+                continue;
+            }
+            shortestPath.distance = 10. * log10(distance);
 
             // Walk back the shortest path tree to find the path Segments.
+            vertex_descriptor v = vExit;
+            while(true) {
+                const vertex_descriptor vPrevious = predecessorMap[v];
+                if(vPrevious == vEntrance) {
+                    break;
+                }
+                SHASTA2_ASSERT(vPrevious != v);
+                v = vPrevious;
+                shortestPath.segments.push_back(graph[v].segment);
+            }
+            std::ranges::reverse(shortestPath.segments);
+
         }
     }
 }
@@ -385,12 +405,14 @@ void Graph::findShortestPaths()
 
 void Graph::writeShortestPaths(ostream& html)
 {
+    // Write the distance matrix.
     html <<
         "<h3>Distance matrix</h3>"
         "Distance on the read following graph "
         "between between each pair of entrances and exits. "
         "A small value indicates that the entrance and exit are likely to "
-        " follow each other in genomic sequence."
+        " follow each other in genomic sequence. "
+        "Blank values indicate that the exit is unreachable from that entrance."
         "<br><br><table>";
 
     // Write a header line listing the exits.
@@ -404,9 +426,51 @@ void Graph::writeShortestPaths(ostream& html)
         html << "<tr><th>" << assemblyGraph.id(tangle.entrances[iEntrance]);
         for(uint64_t iExit=0; iExit<exitVertices.size(); iExit++) {
             html << "<td class=centered>";
-            const int64_t distance = int64_t(std::round(shortestPaths[iEntrance][iExit].distance));
-            html << distance;
+            const double distance = shortestPaths[iEntrance][iExit].distance;
+            if(distance != invalid<double>) {
+                html << int64_t(std::round(shortestPaths[iEntrance][iExit].distance));
+            }
         }
+    }
+    html << "</table>";
+
+
+
+    // Write the details of the shortest paths.
+    html <<
+        "<h3>Shortest paths</h3>"
+        "<table>"
+        "<tr><th>Entrance<th>Exit<th>Distance<th>Path";
+    for(uint64_t iEntrance=0; iEntrance<entranceVertices.size(); iEntrance++) {
+        const Segment entrance = tangle.entrances[iEntrance];
+        for(uint64_t iExit=0; iExit<exitVertices.size(); iExit++) {
+            const Segment exit = tangle.exits[iExit];
+            const ShortestPath& shortestPath = shortestPaths[iEntrance][iExit];
+            SHASTA2_ASSERT(shortestPath.entrance == entrance);
+            SHASTA2_ASSERT(shortestPath.exit == exit);
+            if(shortestPath.isUnreachable()) {
+                continue;
+            }
+
+            // Entrance and exit.
+            html <<
+                "<tr>"
+                "<td class=centered>" << assemblyGraph.id(entrance) <<
+                "<td class=centered>" << assemblyGraph.id(exit);
+
+            // Distance.
+            html << "<td class=centered>";
+            html << int64_t(std::round(shortestPath.distance));
+
+            // Path.
+            html << "<td class=left>";
+            for(uint64_t i=0; i<shortestPath.segments.size(); i++) {
+                if(i != 0) {
+                    html << ",";
+                }
+                html << assemblyGraph.id(shortestPath.segments[i]);
+            }
+         }
     }
 
     html << "</table>";

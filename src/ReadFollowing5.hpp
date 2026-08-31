@@ -4,6 +4,7 @@
 
 // Shasta2.
 #include "AssemblyGraphBaseClass.hpp"
+#include "invalid.hpp"
 
 // Standard library.
 #include "fstream.hpp"
@@ -101,7 +102,15 @@ private:
     public:
         Segment entrance;
         Segment exit;
-        double distance;
+
+        // The distance on the Graph between this entrance and this exit
+        // (sum of weights). If the exit is not reachable from this entrance,
+        // this is left to its initial invalid value.
+        double distance = invalid<double>;
+        bool isUnreachable() const
+        {
+            return distance == invalid<double>;
+        }
 
         // The path Segments, excluding the entrance and the exit.
         vector<Segment> segments;
