@@ -2990,9 +2990,11 @@ AssemblyGraph::edge_descriptor AssemblyGraph::connect(edge_descriptor e0, edge_d
                 newEdge.push_back(AssemblyGraphEdgeStep(rEdge.anchorPair, rEdge.offset));
 
             }
-        } catch(RestrictedAnchorGraph::NoTransitions&) {
+        } catch(std::exception& e) {
             cout << "Could not connect " << assemblyGraph[e0].id <<
                 " with " << assemblyGraph[e1].id << endl;
+            cout << e.what() << endl;
+            assemblyGraph.write("AtAssertion");
             SHASTA2_ASSERT(0);
         }
 
@@ -3937,4 +3939,34 @@ AssemblyGraph::edge_descriptor AssemblyGraph::disconnectAtBeginning(edge_descrip
     boost::remove_edge(eOldRc, assemblyGraph);
 
     return eNew;
+}
+
+
+
+AssemblyGraph::edge_descriptor AssemblyGraph::createDisconnectedCopy(edge_descriptor oldSegment)
+{
+    AssemblyGraph& assemblyGraph = *this;
+
+    // Get the assembly graph edge and vertices of the oldSegment.
+    const AssemblyGraphEdge& oldEdge = assemblyGraph[oldSegment];
+    const AssemblyGraph::vertex_descriptor oldV0 = source(oldSegment, assemblyGraph);
+    const AssemblyGraph::vertex_descriptor oldV1 = target(oldSegment, assemblyGraph);
+    const AssemblyGraphVertex& oldVertex0 = assemblyGraph[oldV0];
+    const AssemblyGraphVertex& oldVertex1 = assemblyGraph[oldV1];
+
+    // Create the new vertices.
+    AssemblyGraphVertex newVertex0 = oldVertex0;
+    AssemblyGraphVertex newVertex1 = oldVertex1;
+    newVertex0.id = assemblyGraph.nextVertexId++;
+    newVertex1.id = assemblyGraph.nextVertexId++;
+    const AssemblyGraph::vertex_descriptor newV0 = add_vertex(newVertex0, assemblyGraph);
+    const AssemblyGraph::vertex_descriptor newV1 = add_vertex(newVertex1, assemblyGraph);
+
+    // Create the new Segment.
+    Segment newSegment;
+    tie(newSegment, ignore)= add_edge(newV0, newV1, oldEdge, assemblyGraph);
+    assemblyGraph[newSegment].id = nextEdgeId++;
+
+    return newSegment;
+
 }

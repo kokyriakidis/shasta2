@@ -231,6 +231,8 @@ public:
     // Same as above, but disconnect at the beginning.
     edge_descriptor disconnectAtBeginning(edge_descriptor);
 
+    edge_descriptor createDisconnectedCopy(edge_descriptor);
+
     uint64_t id(vertex_descriptor v) const
     {
         return (*this)[v].id;

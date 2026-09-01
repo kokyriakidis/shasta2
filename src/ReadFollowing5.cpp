@@ -476,3 +476,31 @@ void Graph::writeShortestPaths(ostream& html)
     html << "</table>";
 }
 
+
+
+// Return the number of exits reachable from an entrance.
+uint64_t Graph::countReachableExits(uint64_t iEntrance) const
+{
+    uint64_t n = 0;
+    for(uint64_t iExit=0; iExit<tangle.exits.size(); iExit++) {
+        if(shortestPaths[iEntrance][iExit].isReachable()) {
+            ++n;
+        }
+    }
+    return n;
+}
+
+
+
+// Return the number of entrances from which an exit is reachable.
+uint64_t Graph::countReachableEntrances(uint64_t iExit) const
+{
+    uint64_t n = 0;
+    for(uint64_t iEntrance=0; iEntrance<tangle.entrances.size(); iEntrance++) {
+        if(shortestPaths[iEntrance][iExit].isReachable()) {
+            ++n;
+        }
+    }
+    return n;
+}
+

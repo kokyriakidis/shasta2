@@ -95,7 +95,7 @@ private:
     void writeGraphviz(const string& fileName) const;
     void writeGraphviz(ostream&) const;
 
-
+public:
 
     // Shortest paths on the graph between each entrance/exit pair.
     class ShortestPath {
@@ -111,6 +111,10 @@ private:
         {
             return distance == invalid<double>;
         }
+        bool isReachable() const
+        {
+            return not isUnreachable();
+        }
 
         // The path Segments, excluding the entrance and the exit.
         vector<Segment> segments;
@@ -119,7 +123,11 @@ private:
     void findShortestPaths();
     void writeShortestPaths(ostream& html);
 
+    // Return the number of exits reachable from an entrance.
+    uint64_t countReachableExits(uint64_t iEntrance) const;
 
+    // Return the number of entrances from which an exit is reachable.
+    uint64_t countReachableEntrances(uint64_t iExit) const;
 
 };
 
