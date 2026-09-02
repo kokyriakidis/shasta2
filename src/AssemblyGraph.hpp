@@ -276,6 +276,7 @@ public:
     // Detangling and read following.
     void detangleVertices();
     bool detangleAndReadFollowingIteration(const string& debugOutputBaseName);
+    void localReadFollowing();
 private:
     bool detangleStrandSymmetric(const Tangle&, ostream& html);
     bool detangleTanglePair(const Tangle&, ostream& html);
