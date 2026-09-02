@@ -275,63 +275,10 @@ bool AssemblyGraph::detangleAndReadFollowingIteration(const string& debugOutputB
 
     AssemblyGraph& assemblyGraph = *this;
 
-    // Map the vertices to integers.
-    // This is needed below to compute connected components.
-    std::map<vertex_descriptor, uint64_t> vertexIndexMap;
-    std::vector<vertex_descriptor> vertexTable;
-    BGL_FORALL_VERTICES(v, assemblyGraph, AssemblyGraph) {
-        vertexIndexMap.insert(make_pair(v, vertexTable.size()));
-        vertexTable.push_back(v);
-    }
-
-    // Compute connected components using only short edges.
-    // Each non-trivial connected component will become a tangle.
-    DisjointSets disjointSets(vertexTable.size());
-    BGL_FORALL_EDGES(segment, assemblyGraph, AssemblyGraph) {
-        if(assemblyGraph[segment].length() < lengthThreshold) {
-            const vertex_descriptor v0 = source(segment, assemblyGraph);
-            const vertex_descriptor v1 = target(segment, assemblyGraph);
-            disjointSets.unionSet(vertexIndexMap.at(v0), vertexIndexMap.at(v1));
-        }
-    }
-
-
-    // Get the connected components with two or more vertices.
-    // These will be our tangles.
-    vector< vector<uint64_t> > componentsVertexIndexes;
-    disjointSets.gatherComponents(2, componentsVertexIndexes);
-
-    // Convert vertex indexes to vertex descriptors.
-    // Sort each component so we can do binary searches.
+    // Create the tangles.
     vector< vector<vertex_descriptor> > tangles;
-    for(const auto& componentVertexIndexes: componentsVertexIndexes) {
-        vector<vertex_descriptor>& tangle = tangles.emplace_back();
-        for(const uint64_t vertexIndex: componentVertexIndexes) {
-            tangle.push_back(vertexTable[vertexIndex]);
-        }
-        std::ranges::sort(tangle, orderById);
-    }
-    if(debug) {
-        cout << "Found " << tangles.size() << " tangles." << endl;
-    }
-
-    // Create a map that gives the tangle each vertex belongs to, if any.
-    std::map<vertex_descriptor, uint64_t> tangleMap;
-    for(uint64_t tangleId=0; tangleId<tangles.size(); tangleId++) {
-        const vector<vertex_descriptor>& tangle = tangles[tangleId];
-        for(const vertex_descriptor v: tangle) {
-            tangleMap.insert(make_pair(v, tangleId));
-        }
-    }
-
-    // Find the reverse complement of each tangle.
-    vector<uint64_t> tangleRc(tangles.size(), invalid<uint64_t>);
-    for(uint64_t tangleId=0; tangleId<tangles.size(); tangleId++) {
-        const vector<vertex_descriptor>& tangle = tangles[tangleId];
-        const vertex_descriptor v = tangle.front();
-        const vertex_descriptor vRc = assemblyGraph[v].vRc;
-        tangleRc[tangleId] = tangleMap.at(vRc);
-    }
+    vector<uint64_t> tangleRc;
+    createTanglesBySegmentLength(lengthThreshold, tangles, tangleRc);
 
     // Write a csv file that can be imported into Bandage to see
     // the tangles.
@@ -849,3 +796,72 @@ bool AssemblyGraph::detangleSelfComplementaryTangle2By2(
 }
 
 
+
+// Create tangles as connected components when only short Segments are considered.
+// If i the index of a tangle (in the tangles vector), tangleRc[i] gives the
+// index of its reverse complement.
+// If tangleRc[i] == i, the tangle with index i is self-complementary.
+void AssemblyGraph::createTanglesBySegmentLength(
+    uint64_t maxLength,
+    vector< vector<vertex_descriptor> >& tangles,
+    vector<uint64_t>& tangleRc
+    ) const
+{
+    const AssemblyGraph& assemblyGraph = *this;
+
+    // Map the vertices to integers.
+    // This is needed below to compute connected components.
+    std::map<vertex_descriptor, uint64_t> vertexIndexMap;
+    std::vector<vertex_descriptor> vertexTable;
+    BGL_FORALL_VERTICES(v, assemblyGraph, AssemblyGraph) {
+        vertexIndexMap.insert(make_pair(v, vertexTable.size()));
+        vertexTable.push_back(v);
+    }
+
+    // Compute connected components using only short edges.
+    // Each non-trivial connected component will become a tangle.
+    DisjointSets disjointSets(vertexTable.size());
+    BGL_FORALL_EDGES(segment, assemblyGraph, AssemblyGraph) {
+        if(assemblyGraph[segment].length() <= maxLength) {
+            const vertex_descriptor v0 = source(segment, assemblyGraph);
+            const vertex_descriptor v1 = target(segment, assemblyGraph);
+            disjointSets.unionSet(vertexIndexMap.at(v0), vertexIndexMap.at(v1));
+        }
+    }
+
+
+    // Get the connected components with two or more vertices.
+    // These will be our tangles.
+    vector< vector<uint64_t> > componentsVertexIndexes;
+    disjointSets.gatherComponents(2, componentsVertexIndexes);
+
+    // Convert vertex indexes to vertex descriptors.
+    // Sort each component so we can do binary searches.
+    tangles.clear();
+    for(const auto& componentVertexIndexes: componentsVertexIndexes) {
+        vector<vertex_descriptor>& tangle = tangles.emplace_back();
+        for(const uint64_t vertexIndex: componentVertexIndexes) {
+            tangle.push_back(vertexTable[vertexIndex]);
+        }
+        std::ranges::sort(tangle, orderById);
+    }
+
+    // Create a map that gives the tangle each vertex belongs to, if any.
+    std::map<vertex_descriptor, uint64_t> tangleMap;
+    for(uint64_t tangleId=0; tangleId<tangles.size(); tangleId++) {
+        const vector<vertex_descriptor>& tangle = tangles[tangleId];
+        for(const vertex_descriptor v: tangle) {
+            tangleMap.insert(make_pair(v, tangleId));
+        }
+    }
+
+    // Find the reverse complement of each tangle.
+    tangleRc.resize(tangles.size());
+    for(uint64_t tangleId=0; tangleId<tangles.size(); tangleId++) {
+        const vector<vertex_descriptor>& tangle = tangles[tangleId];
+        const vertex_descriptor v = tangle.front();
+        const vertex_descriptor vRc = assemblyGraph[v].vRc;
+        tangleRc[tangleId] = tangleMap.at(vRc);
+    }
+
+}

@@ -285,6 +285,18 @@ private:
 
 
 
+    // Create tangles as connected components when only short Segments are considered.
+    // If i the index of a tangle (in the tangles vector), tangleRc[i] gives the
+    // index of its reverse complement.
+    // If tangleRc[i] == i, the tangle with index i is self-complementary.
+    void createTanglesBySegmentLength(
+        uint64_t maxLength,
+        vector< vector<vertex_descriptor> >& tangles,
+        vector<uint64_t>& tangleRc
+        ) const;
+
+
+
     // Find Bubbles.
     // The edges of each Bubble are sorted by id.
     void findBubbles(vector<Bubble>&, bool allowHaploid) const;
@@ -573,12 +585,6 @@ public:
     // Make the AssemblyGraph single-stranded.
     // This requires to AssemblyGraph to be strand-symmetric in input.
     // It removes half of the edges (segments).
-    // This is done by computing connected components of a graph in which the vertices
-    // are the AssemblyGraph edges (segments).
-    // Most connected component come in reverse complemented pairs,
-    // and only one component for each pair is kept.
-    // For the rare connected components that are self-complementary,
-    // we initially keep the entire component, but we cna do better.
     void makeSingleStranded();
 private:
 

@@ -13,6 +13,7 @@
 #include "ReadFollowing4.hpp"
 #include "RestrictedAnchorGraph.hpp"
 #include "SegmentStepSupport.hpp"
+#include "Tangle.hpp"
 #include "TangleMatrix.hpp"
 using namespace shasta2;
 
@@ -3611,134 +3612,95 @@ void AssemblyGraph::assembleAllStrandSymmetric()
 // Make the AssemblyGraph single-stranded.
 // This requires to AssemblyGraph to be strand-symmetric in input.
 // It removes half of the edges (segments).
-// This is done by computing connected components of a graph in which the vertices
-// are the AssemblyGraph edges (segments).
-// Most connected component come in reverse complemented pairs,
-// and only one component for each pair is kept.
-// For the rare connected components that are self-complementary,
-// we initially keep the entire component, but we cna do better.
+// We iterate over increasing values of the maxLength parameter
+// used to compute tangles.
+// If we find a self-complementary tangle, we disconnect
+// all of its segments.
+// After doing that, if maxLength is greater than
+// the longest segment length we terminate the loop.
+// We then recompute the tangles (which are now connected components),
+// and we are guaranteed that no
+// more self-complementary tangles (connected component) are present.
+// We then remove one tangle in each reverse complemented pair.
 void AssemblyGraph::makeSingleStranded()
 {
     AssemblyGraph& assemblyGraph = *this;
-    const bool debug = false;
+    check();
 
-    // Map the edges (segments) to integers.
-    std::map<edge_descriptor, uint64_t> segmentMap;
-    vector<edge_descriptor> segmentTable;
-    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
-        segmentMap.insert(make_pair(e, segmentTable.size()));
-        segmentTable.push_back(e);
+    // Find the maximum segment length.
+    uint64_t maxSegmentLength = 0;
+    BGL_FORALL_EDGES(segment, assemblyGraph, AssemblyGraph) {
+        maxSegmentLength = max(maxSegmentLength, assemblyGraph[segment].length());
     }
 
-    // Compute connected component.
-    // Each AssemblyGraph vertex generates connections
-    // between all of its incoming and outgoing edges.
-    DisjointSets disjointSets(segmentTable.size());
-    BGL_FORALL_VERTICES(v, assemblyGraph, AssemblyGraph) {
-        BGL_FORALL_INEDGES(v, e0, assemblyGraph, AssemblyGraph) {
-            const uint64_t i0 = segmentMap.at(e0);
-            BGL_FORALL_OUTEDGES(v, e1, assemblyGraph, AssemblyGraph) {
-                const uint64_t i1 = segmentMap.at(e1);
-                disjointSets.unionSet(i0, i1);
+
+
+    // The main loop. At each iteration we disconnect all of the
+    // self-complementary tangles.
+    uint64_t maxLength = 1000;
+    vector< vector<vertex_descriptor> > tangles;
+    vector<uint64_t> tanglesRc;
+    while(true) {
+        createTanglesBySegmentLength(maxLength, tangles, tanglesRc);
+
+        // Disconnect all the segments in self-complementary tangles.
+        // Make sure to do it keeping the AssemblyGraph strand symmetric.
+        for(uint64_t tangleId=0; tangleId<tangles.size(); tangleId++) {
+            if(tanglesRc[tangleId] == tangleId) {
+                const Tangle tangle(assemblyGraph, tangles[tangleId]);
+                for(const Segment oldSegment: tangle.tangleEdges) {
+                    const Segment oldSegmentRc = assemblyGraph[oldSegment].eRc;
+                    SHASTA2_ASSERT(oldSegmentRc != oldSegment);
+                    if(id(oldSegment) < id(oldSegmentRc)) {
+                        const Segment newSegment = createDisconnectedCopy(oldSegment);
+                        createReverseComplementVertex(source(newSegment, assemblyGraph));
+                        createReverseComplementVertex(target(newSegment, assemblyGraph));
+                        createReverseComplementEdge(newSegment);
+                    }
+                }
+            }
+        }
+        // Only now we can remove the old Segments.
+        for(uint64_t tangleId=0; tangleId<tangles.size(); tangleId++) {
+            if(tanglesRc[tangleId] == tangleId) {
+                const Tangle tangle(assemblyGraph, tangles[tangleId]);
+                for(const Segment oldSegment: tangle.tangleEdges) {
+                    const Segment oldSegmentRc = assemblyGraph[oldSegment].eRc;
+                    SHASTA2_ASSERT(oldSegmentRc != oldSegment);
+                    if(id(oldSegment) < id(oldSegmentRc)) {
+                        boost::remove_edge(oldSegment, assemblyGraph);
+                        boost::remove_edge(oldSegmentRc, assemblyGraph);
+                    }
+                }
+            }
+        }
+
+        if(maxLength >= maxSegmentLength) {
+            break;
+        }
+        maxLength *= 2;
+    }
+    check();
+
+
+
+    // Now recompute the tangles at maxLength.
+    // These are now connected components, and none of them
+    // is self-complementary. Remove all the segments
+    // in one tangle of each pair.
+    createTanglesBySegmentLength(maxLength, tangles, tanglesRc);
+    for(uint64_t tangleId=0; tangleId<tangles.size(); tangleId++) {
+        const uint64_t tangleIdRc = tanglesRc[tangleId];
+        SHASTA2_ASSERT(tangleIdRc != tangleId);
+        if(tangleId > tangleIdRc) {
+            const Tangle tangle(assemblyGraph, tangles[tangleId]);
+            for(const Segment segment: tangle.tangleEdges) {
+                boost::remove_edge(segment, assemblyGraph);
             }
         }
     }
 
-    vector< vector<uint64_t> > components;
-    disjointSets.gatherComponents(1, components);
-    const uint64_t componentCount = components.size();
-
-    // Store the component that each edge belongs to.
-    vector<uint64_t> componentTable(segmentTable.size(), invalid<uint64_t>);
-    for(uint64_t componentId=0; componentId<componentCount; componentId++) {
-        const vector<uint64_t>& component = components[componentId];
-        for(uint64_t i: component) {
-            componentTable[i] = componentId;
-        }
-    }
-    SHASTA2_ASSERT(not std::ranges::contains(componentTable, invalid<uint64_t>));
-
-    if(debug) {
-        cout << "Found " << componentCount << " connected components." << endl;
-        for(uint64_t componentId=0; componentId<componentCount; componentId++) {
-            const vector<uint64_t>& component = components[componentId];
-            cout << "Component " << componentId << " contains the folowing segments:";
-            for(uint64_t i: component) {
-                const edge_descriptor e = segmentTable[i];
-                cout << " " << assemblyGraph[e].id;
-            }
-            cout << endl;
-        }
-    }
-
-
-
-    // Find the reverse complement of each connected component.
-    vector<uint64_t> rcTable(componentCount);
-    for(uint64_t componentId=0; componentId<componentCount; componentId++) {
-        const vector<uint64_t>& component = components[componentId];
-
-        // Find the first segment in this component and its reverse complement.
-        const uint64_t i = component.front();
-        const edge_descriptor e = segmentTable[i];
-        const edge_descriptor eRc = assemblyGraph[e].eRc;
-        SHASTA2_ASSERT(eRc != assemblyGraphNullEdge);
-        SHASTA2_ASSERT(eRc != e);
-        const uint64_t iRc = segmentMap.at(eRc);
-        const uint64_t componentIdRc = componentTable[iRc];
-        const vector<uint64_t>& componentRc = components[componentIdRc];
-
-        if(debug) {
-            cout << "Connected component pair " << componentId << " " << componentIdRc << endl;
-        }
-
-        // Check that these two connected components are indeed the reverse complement
-        // of each other.
-        SHASTA2_ASSERT(component.size() == componentRc.size());
-        for(const uint64_t i: component) {
-            const edge_descriptor e = segmentTable[i];
-            const edge_descriptor eRc = assemblyGraph[e].eRc;
-            SHASTA2_ASSERT(eRc != assemblyGraphNullEdge);
-            SHASTA2_ASSERT(eRc != e);
-            const uint64_t iRc = segmentMap.at(eRc);
-            SHASTA2_ASSERT(componentTable[iRc] == componentIdRc);
-
-        }
-        for(const uint64_t i: componentRc) {
-            const edge_descriptor e = segmentTable[i];
-            const edge_descriptor eRc = assemblyGraph[e].eRc;
-            SHASTA2_ASSERT(eRc != assemblyGraphNullEdge);
-            SHASTA2_ASSERT(eRc != e);
-            const uint64_t iRc = segmentMap.at(eRc);
-            SHASTA2_ASSERT(componentTable[iRc] == componentId);
-        }
-
-        rcTable[componentId] = componentIdRc;
-    }
-
-    // Check that the rcTable is symmetric.
-    for(uint64_t componentId=0; componentId<componentCount; componentId++) {
-        const uint64_t componentIdRc = rcTable[componentId];
-        SHASTA2_ASSERT(rcTable[componentIdRc] == componentId);
-    }
-
-
-    // Loop over all connected component pairs.
-    // Remove all the edges in the highest numbered component of
-    // each pair.
-    for(uint64_t componentId=0; componentId<componentCount; componentId++) {
-        const uint64_t componentIdRc = rcTable[componentId];
-        if(componentId < componentIdRc) {
-            const vector<uint64_t> componentRc = components[componentIdRc];
-            for(uint64_t i: componentRc) {
-                const edge_descriptor eRc = segmentTable[i];
-                const edge_descriptor e = assemblyGraph[eRc].eRc;
-                assemblyGraph[e].eRc = assemblyGraphNullEdge;
-                boost::remove_edge(eRc, assemblyGraph);
-            }
-        }
-    }
-
+    removeIsolatedVertices();
 }
 
 
@@ -3828,6 +3790,18 @@ AssemblyGraph::edge_descriptor AssemblyGraph::createReverseComplementEdge(
 
     // Sanity check.
     if(not edgeB.empty()) {
+        if(
+            (edgeB.front().anchorPair.anchorIdA != assemblyGraph[vB0].anchorId) or
+            (edgeB.back() .anchorPair.anchorIdB != assemblyGraph[vB1].anchorId)) {
+            write("AtAssertion");
+            cout << "Assertion failing with:" << endl;
+            cout << "edgeB " << edgeB.id << endl;
+            cout << "edgeB.front().anchorPair.anchorIdA " << edgeB.front().anchorPair.anchorIdA << endl;
+            cout << "edgeB.back().anchorPair.anchorIdB "  << edgeB.back() .anchorPair.anchorIdB << endl;
+            cout << " assemblyGraph[vB0].anchorId " << assemblyGraph[vB0].anchorId << endl;
+            cout << " assemblyGraph[vB1].anchorId " << assemblyGraph[vB1].anchorId << endl;
+            cout << "See AssemblyGraph stage AtAssertion." << endl;
+        }
         SHASTA2_ASSERT(edgeB.front().anchorPair.anchorIdA == assemblyGraph[vB0].anchorId);
         SHASTA2_ASSERT(edgeB.back().anchorPair.anchorIdB == assemblyGraph[vB1].anchorId);
     }
