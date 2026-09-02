@@ -693,6 +693,30 @@ void AssemblyGraph::writeGfa(ostream& gfa) const
     }
 
 
+
+    // If two or more segments end at a vertex with out-degree 0,
+    // add a dummy segment so the two segments are joined at the end.
+    // Similarly in the opposite direction.
+    BGL_FORALL_VERTICES(v, assemblyGraph, AssemblyGraph) {
+        if((out_degree(v, assemblyGraph) == 0) and (in_degree(v, assemblyGraph) > 1)) {
+            const string dummyEdgeName = "Vertex" + to_string(id(v));
+            gfa << dummyEdgeName << "\t*\tLN:i:0\n";
+            BGL_FORALL_INEDGES(v, segment, assemblyGraph, AssemblyGraph) {
+                gfa <<
+                    "L\t" << id(segment) << "\t+\t" <<
+                    dummyEdgeName << "\t+\t*\n";
+            }
+        }
+        if((in_degree(v, assemblyGraph) == 0) and (out_degree(v, assemblyGraph) > 1)) {
+            const string dummyEdgeName = "Vertex" + to_string(id(v));
+            gfa << dummyEdgeName << "\t*\tLN:i:0\n";
+            BGL_FORALL_OUTEDGES(v, segment, assemblyGraph, AssemblyGraph) {
+                gfa <<
+                    "L\t" << dummyEdgeName << "\t+\t" <<
+                    id(segment) << "\t+\t*\n";
+            }
+        }
+    }
 }
 
 
