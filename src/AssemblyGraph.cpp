@@ -360,37 +360,7 @@ void AssemblyGraph::simplifyAndAssemble()
     }
     writeIntermediateStageIfRequested("D");
 
-    // Old read following (to be phased out).
-    readFollowing();
-    writeIntermediateStageIfRequested("G");
-    strandSymmetricCompress();
-    removeZeroLengthSegmentsStrandSymmetric();
-    writeIntermediateStageIfRequested("H");
-
-    // Prune.
-    prune();
-    strandSymmetricCompress();
-    writeIntermediateStageIfRequested("I");
-
-    // Remove isolated vertices and connected components with small N50.
-    removeIsolatedVertices();
-    removeLowN50Components();
-    writeIntermediateStageIfRequested("J");
-    compress();
-    writeIntermediateStageIfRequested("K");
-
-    // Connect dangling segments.
-    connectDanglingSegments();
-    writeIntermediateStageIfRequested("L");
-
-    // A final round of phasing.More opportunities for phasing
-    // may have emerged.
-    strandSymmetricPhaseSuperbubbleChains();
-    strandSymmetricCompress();
-    writeIntermediateStageIfRequested("M");
-
     // Make the AssemblyGraph single-stranded.
-    check();
     makeSingleStranded();
     write("Final-NoSequence");
 
@@ -3669,6 +3639,7 @@ void AssemblyGraph::makeSingleStranded()
 
         // Disconnect all the segments in self-complementary tangles.
         // Make sure to do it keeping the AssemblyGraph strand symmetric.
+        vector<Segment> segmentsToBeRemoved;
         for(uint64_t tangleId=0; tangleId<tangles.size(); tangleId++) {
             if(tanglesRc[tangleId] == tangleId) {
                 const Tangle tangle(assemblyGraph, tangles[tangleId]);
@@ -3680,23 +3651,15 @@ void AssemblyGraph::makeSingleStranded()
                         createReverseComplementVertex(source(newSegment, assemblyGraph));
                         createReverseComplementVertex(target(newSegment, assemblyGraph));
                         createReverseComplementEdge(newSegment);
+                        segmentsToBeRemoved.push_back(oldSegment);
+                        segmentsToBeRemoved.push_back(oldSegmentRc);
                     }
                 }
             }
         }
         // Only now we can remove the old Segments.
-        for(uint64_t tangleId=0; tangleId<tangles.size(); tangleId++) {
-            if(tanglesRc[tangleId] == tangleId) {
-                const Tangle tangle(assemblyGraph, tangles[tangleId]);
-                for(const Segment oldSegment: tangle.tangleEdges) {
-                    const Segment oldSegmentRc = assemblyGraph[oldSegment].eRc;
-                    SHASTA2_ASSERT(oldSegmentRc != oldSegment);
-                    if(id(oldSegment) < id(oldSegmentRc)) {
-                        boost::remove_edge(oldSegment, assemblyGraph);
-                        boost::remove_edge(oldSegmentRc, assemblyGraph);
-                    }
-                }
-            }
+        for(const Segment segment: segmentsToBeRemoved) {
+            boost::remove_edge(segment, assemblyGraph);
         }
 
         if(maxLength >= maxSegmentLength) {
@@ -3724,6 +3687,16 @@ void AssemblyGraph::makeSingleStranded()
         }
     }
 
+    // Now we clear the vRc and eRc fields from all vertices and edges, because
+    // the AssemblyGraph is no longer strand-symmetric.
+    BGL_FORALL_VERTICES(v, assemblyGraph, AssemblyGraph) {
+        assemblyGraph[v].vRc = null_vertex();
+    }
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        assemblyGraph[e].eRc = assemblyGraphNullEdge;
+    }
+
+    // Finally, remove any vertices that are left isolated.
     removeIsolatedVertices();
 }
 
