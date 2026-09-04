@@ -260,6 +260,55 @@ void AssemblyGraph::detangleVertices()
 
 
 
+void AssemblyGraph::detangleEdges(const string& debugOutputBaseName)
+{
+    AssemblyGraph& assemblyGraph = *this;
+
+    // Edges that are candidates for detangling define the tangles.
+    vector< vector<vertex_descriptor> > tangles;
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        const vertex_descriptor v0 = source(e, assemblyGraph);
+        const vertex_descriptor v1 = target(e, assemblyGraph);
+        if(out_degree(v0, assemblyGraph) != 1) {
+            continue;
+        }
+        if(in_degree(v1, assemblyGraph) != 1) {
+            continue;
+        }
+        if(in_degree(v0, assemblyGraph) != 2) {
+            continue;
+        }
+        if(out_degree(v1, assemblyGraph) != 2) {
+            continue;
+        }
+        tangles.push_back({v0, v1});
+    }
+
+    // Create a map that gives the tangle each vertex belongs to, if any.
+    std::map<vertex_descriptor, uint64_t> tangleMap;
+    for(uint64_t tangleId=0; tangleId<tangles.size(); tangleId++) {
+        const vector<vertex_descriptor>& tangle = tangles[tangleId];
+        for(const vertex_descriptor v: tangle) {
+            tangleMap.insert(make_pair(v, tangleId));
+        }
+    }
+
+    // Find the reverse complement of each tangle.
+    vector<uint64_t> tangleRc(tangles.size());
+    for(uint64_t tangleId=0; tangleId<tangles.size(); tangleId++) {
+        const vector<vertex_descriptor>& tangle = tangles[tangleId];
+        const vertex_descriptor v = tangle.front();
+        const vertex_descriptor vRc = assemblyGraph[v].vRc;
+        tangleRc[tangleId] = tangleMap.at(vRc);
+    }
+
+    // Detangling, no read following.
+    const bool attemptReadFollowing = false;
+    detangleAndReadFollowing(tangles, tangleRc, attemptReadFollowing, debugOutputBaseName);
+}
+
+
+
 bool AssemblyGraph::detangleAndReadFollowingSuperbubbles(const string& debugOutputBaseName)
 {
     // EXPOSE WHEN CODE STABILIZES.
@@ -277,8 +326,9 @@ bool AssemblyGraph::detangleAndReadFollowingSuperbubbles(const string& debugOutp
     // the tangles.
     writeTangles(tangles, tangleRc, debugOutputBaseName + "-Tangles-Bandage.csv");
 
-    // Do the detangling.
-    return detangle(tangles, tangleRc, debugOutputBaseName);
+    // Detangling and read following.
+    const bool attemptReadFollowing = true;
+    return detangleAndReadFollowing(tangles, tangleRc, attemptReadFollowing, debugOutputBaseName);
 
     performanceLog << timestamp << "AssemblyGraph::detangleAndReadFollowingSuperbubbles ends: " <<
         debugOutputBaseName << endl;
@@ -286,9 +336,10 @@ bool AssemblyGraph::detangleAndReadFollowingSuperbubbles(const string& debugOutp
 
 
 
-bool AssemblyGraph::detangle(
+bool AssemblyGraph::detangleAndReadFollowing(
     const vector< vector<vertex_descriptor> >& tangles,
     const vector<uint64_t>& tangleRc,
+    bool attemptReadFollowing,
     const string& debugOutputBaseName)
 {
     AssemblyGraph& assemblyGraph = *this;
@@ -329,29 +380,34 @@ bool AssemblyGraph::detangle(
             }
 
             // Try detangling.
-            bool success = detangleStrandSymmetric(tangle, html);
-
-            // If detangling did not work, try read following.
-            if(success) {
+            // If detangling was successful, we are done with this tangle.
+            if(detangleStrandSymmetric(tangle, html)) {
                 if(debug) {
                     cout << "Detangling was successful on this tangle." << endl;
                 }
-            } else {
+                somethingWasDone = true;
+                continue;
+            }
+
+            // Detangling was not successful for this tangle.
+            // Try read following, if requested.
+            if(debug) {
+                cout << "Detangling was not successful on this tangle." << endl;
+            }
+            if(attemptReadFollowing) {
                 if(debug) {
-                    cout << "Detangling was not successful on this tangle. Trying read following." << endl;
+                    cout << "Attempting read following." << endl;
                 }
-                success = readFollowingStrandSymmetric(tangleId, tangle, html);
-                if(debug) {
-                    if(success) {
+                if(readFollowingStrandSymmetric(tangleId, tangle, html)) {
+                    if(debug) {
                         cout << "Read following was successful on this tangle." << endl;
-                    } else {
+                    }
+                    somethingWasDone = true;
+                } else {
+                    if(debug) {
                         cout << "Read following was not successful on this tangle." << endl;
                     }
                 }
-            }
-
-            if(success) {
-                somethingWasDone = true;
             }
         }
     }

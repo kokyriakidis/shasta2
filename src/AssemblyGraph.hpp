@@ -275,10 +275,12 @@ public:
 
     // Detangling and read following.
     void detangleVertices();
+    void detangleEdges(const string& debugOutputBaseName);
     bool detangleAndReadFollowingSuperbubbles(const string& debugOutputBaseName);
-    bool detangle(
+    bool detangleAndReadFollowing(
         const vector< vector<vertex_descriptor> >& tangles,
         const vector<uint64_t>& tangleRc,
+        bool attemptReadFollowing,
         const string& debugOutputBaseName);
     void localReadFollowing();
 private:
