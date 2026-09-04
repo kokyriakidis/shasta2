@@ -276,6 +276,10 @@ public:
     // Detangling and read following.
     void detangleVertices();
     bool detangleAndReadFollowingSuperbubbles(const string& debugOutputBaseName);
+    bool detangle(
+        const vector< vector<vertex_descriptor> >& tangles,
+        const vector<uint64_t>& tangleRc,
+        const string& debugOutputBaseName);
     void localReadFollowing();
 private:
     bool detangleStrandSymmetric(const Tangle&, ostream& html);

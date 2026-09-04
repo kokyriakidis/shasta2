@@ -265,15 +265,8 @@ bool AssemblyGraph::detangleAndReadFollowingSuperbubbles(const string& debugOutp
     // EXPOSE WHEN CODE STABILIZES.
     const uint64_t lengthThreshold = 100000;
 
-    performanceLog << timestamp << "AssemblyGraph::detangleAndReadFollowingIteration begins: " <<
+    performanceLog << timestamp << "AssemblyGraph::detangleAndReadFollowingSuperbubbles begins: " <<
         debugOutputBaseName << endl;
-    const bool debug = false;
-    if(debug) {
-        cout << timestamp << "AssemblyGraph::detangleIteration begins." << endl;
-    }
-    check();
-
-    AssemblyGraph& assemblyGraph = *this;
 
     // Create the superbubbles as tangles consisting of short Segments.
     vector< vector<vertex_descriptor> > tangles;
@@ -284,7 +277,22 @@ bool AssemblyGraph::detangleAndReadFollowingSuperbubbles(const string& debugOutp
     // the tangles.
     writeTangles(tangles, tangleRc, debugOutputBaseName + "-Tangles-Bandage.csv");
 
+    // Do the detangling.
+    return detangle(tangles, tangleRc, debugOutputBaseName);
 
+    performanceLog << timestamp << "AssemblyGraph::detangleAndReadFollowingSuperbubbles ends: " <<
+        debugOutputBaseName << endl;
+}
+
+
+
+bool AssemblyGraph::detangle(
+    const vector< vector<vertex_descriptor> >& tangles,
+    const vector<uint64_t>& tangleRc,
+    const string& debugOutputBaseName)
+{
+    AssemblyGraph& assemblyGraph = *this;
+    const bool debug = false;
 
     // Detangle or read following on each pair of reverse complemented tangles.
     bool somethingWasDone = false;
@@ -347,11 +355,6 @@ bool AssemblyGraph::detangleAndReadFollowingSuperbubbles(const string& debugOutp
             }
         }
     }
-
-    check();
-
-    performanceLog << timestamp << "AssemblyGraph::detangleAndReadFollowingIteration ends: " <<
-        debugOutputBaseName << endl;
 
     return somethingWasDone;
 }
