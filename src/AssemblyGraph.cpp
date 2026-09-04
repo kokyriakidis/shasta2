@@ -385,26 +385,29 @@ bool AssemblyGraph::simplifyIteration([[maybe_unused]] uint64_t iteration)
 
     if(debug) write(iterationString + "A");
 
+    // Phasing.
     strandSymmetricPhaseSuperbubbleChains();
     if(debug) write(iterationString + "B");
-
     strandSymmetricCompress();
-    if(debug) write(iterationString + "C");
+    if(debug) write(iterationString + "B-Compressed");
 
+    // Vertex detangling.
     detangleVertices();
-    if(debug) write(iterationString + "D");
-
+    if(debug) write(iterationString + "C");
     strandSymmetricCompress();
-    if(debug) write(iterationString + "E");
+    if(debug) write(iterationString + "C-Compressed");
 
+    // Superbubble detangling and read following.
     detangleAndReadFollowingSuperbubbles(iterationString);
-    if(debug) write(iterationString + "F");
-
-    detangleEdges(iterationString);
-    if(debug) write(iterationString + "H");
-
+    if(debug) write(iterationString + "D");
     strandSymmetricCompress();
-    if(debug) write(iterationString + "I");
+    if(debug) write(iterationString + "D-Compressed");
+
+    // Edge detangling.
+    detangleEdges(iterationString);
+    if(debug) write(iterationString + "E");
+    strandSymmetricCompress();
+    if(debug) write(iterationString + "E-Compressed");
 
     const bool changesWereMade = (nextEdgeId > oldNextEdgeId);
     return changesWereMade;
