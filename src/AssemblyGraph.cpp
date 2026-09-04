@@ -397,7 +397,7 @@ bool AssemblyGraph::simplifyIteration([[maybe_unused]] uint64_t iteration)
     strandSymmetricCompress();
     if(debug) write(iterationString + "E");
 
-    detangleAndReadFollowingIteration(iterationString);
+    detangleAndReadFollowingSuperbubbles(iterationString);
     if(debug) write(iterationString + "F");
 
     strandSymmetricCompress();

@@ -260,7 +260,7 @@ void AssemblyGraph::detangleVertices()
 
 
 
-bool AssemblyGraph::detangleAndReadFollowingIteration(const string& debugOutputBaseName)
+bool AssemblyGraph::detangleAndReadFollowingSuperbubbles(const string& debugOutputBaseName)
 {
     // EXPOSE WHEN CODE STABILIZES.
     const uint64_t lengthThreshold = 100000;
@@ -275,32 +275,14 @@ bool AssemblyGraph::detangleAndReadFollowingIteration(const string& debugOutputB
 
     AssemblyGraph& assemblyGraph = *this;
 
-    // Create the tangles.
+    // Create the superbubbles as tangles consisting of short Segments.
     vector< vector<vertex_descriptor> > tangles;
     vector<uint64_t> tangleRc;
     createTanglesBySegmentLength(lengthThreshold, tangles, tangleRc);
 
     // Write a csv file that can be imported into Bandage to see
     // the tangles.
-    if(true) {
-        ofstream csv(debugOutputBaseName + "-Tangles-Bandage.csv");
-        csv << "Segment,Tangle,TangleRc,Color\n";
-        for(uint64_t tangleId=0; tangleId<tangles.size(); tangleId++) {
-            const string color = randomHslColor(tangleId, 0.75, 0.5);
-            const vector<vertex_descriptor>& tangle = tangles[tangleId];
-            for(const vertex_descriptor v0: tangle) {
-                BGL_FORALL_OUTEDGES(v0, e, assemblyGraph, AssemblyGraph) {
-                    const vertex_descriptor v1 = target(e, assemblyGraph);
-                    if(binary_search(tangle.begin(), tangle.end(), v1, orderById)) {
-                        csv << id(e) << ",";
-                        csv << tangleId << ",";
-                        csv << tangleRc[tangleId] << ",";
-                        csv << color << "\n";
-                    }
-                }
-            }
-        }
-    }
+    writeTangles(tangles, tangleRc, debugOutputBaseName + "-Tangles-Bandage.csv");
 
 
 
@@ -372,6 +354,39 @@ bool AssemblyGraph::detangleAndReadFollowingIteration(const string& debugOutputB
         debugOutputBaseName << endl;
 
     return somethingWasDone;
+}
+
+
+
+// Write a csv file that can be imported into Bandage to see
+// the tangles.
+void AssemblyGraph::writeTangles(
+    const vector< vector<vertex_descriptor> >& tangles,
+    const vector<uint64_t>& tangleRc,
+    const string& fileName) const
+{
+    const AssemblyGraph& assemblyGraph = *this;
+
+    ofstream csv(fileName);
+    csv << "Segment,Tangle,TangleRc,Color\n";
+
+    for(uint64_t tangleId=0; tangleId<tangles.size(); tangleId++) {
+        const string color = randomHslColor(tangleId, 0.75, 0.5);
+        const vector<vertex_descriptor>& tangle = tangles[tangleId];
+
+        for(const vertex_descriptor v0: tangle) {
+
+            BGL_FORALL_OUTEDGES(v0, e, assemblyGraph, AssemblyGraph) {
+                const vertex_descriptor v1 = target(e, assemblyGraph);
+                if(binary_search(tangle.begin(), tangle.end(), v1, orderById)) {
+                    csv << id(e) << ",";
+                    csv << tangleId << ",";
+                    csv << tangleRc[tangleId] << ",";
+                    csv << color << "\n";
+                }
+            }
+        }
+    }
 }
 
 
