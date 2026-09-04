@@ -260,9 +260,10 @@ void AssemblyGraph::detangleVertices()
 
 
 
-void AssemblyGraph::detangleEdges(const string& debugOutputBaseName)
+void AssemblyGraph::detangleEdges([[maybe_unused]] const string& debugOutputBaseName)
 {
     AssemblyGraph& assemblyGraph = *this;
+    ostream html(0);
 
     // Edges that are candidates for detangling define the tangles.
     vector< vector<vertex_descriptor> > tangles;
@@ -302,9 +303,21 @@ void AssemblyGraph::detangleEdges(const string& debugOutputBaseName)
         tangleRc[tangleId] = tangleMap.at(vRc);
     }
 
+#if 0
     // Detangling, no read following.
     const bool attemptReadFollowing = false;
     detangleAndReadFollowing(tangles, tangleRc, attemptReadFollowing, debugOutputBaseName);
+#endif
+
+
+    // Detangle each pair.
+    for(uint64_t tangleId=0; tangleId<tangles.size(); tangleId++) {
+        if(tangleId < tangleRc[tangleId]) {
+            const Tangle tangle(assemblyGraph, tangles[tangleId]);
+            detangleTanglePairStrict(tangle, html);
+        }
+    }
+
 }
 
 
@@ -474,8 +487,6 @@ bool AssemblyGraph::detangleTanglePair(
     SHASTA2_ASSERT(not tangle.entrances.empty());
     SHASTA2_ASSERT(not tangle.exits.empty());
 
-    const bool isSelfComplementary =  tangle.isSelfComplementary();
-
     if(html) {
         html << "<h2>Detangling</h2>";
     }
@@ -488,7 +499,9 @@ bool AssemblyGraph::detangleTanglePair(
 
     // Run a G-test for each block.
     // Gather entrance/exit pairs to be connected.
-    vector< pair<uint64_t, uint64_t> > connectPairs;
+    // The bool of each pair says whether that pair should be
+    // connected using a "deep" call to connect.
+    vector< pair< pair<uint64_t, uint64_t>, bool> > connectPairs;
     vector<GTest> gTests;
     bool connectionFailure = false;
     vector<uint64_t> failedBlocks;
@@ -516,7 +529,7 @@ bool AssemblyGraph::detangleTanglePair(
                                     " " << id(exit);
                             }
                         }
-                        connectPairs.push_back(make_pair(id(entrance), id(exit)));
+                        connectPairs.push_back({{id(entrance), id(exit)}, false});
                     }
                 }
             }
@@ -659,7 +672,117 @@ bool AssemblyGraph::detangleTanglePair(
         html << "<br>This tangle and its reverse complement will be detangled." << endl;
     }
 
+    // For the special case we have to use a "deep" connect.
+    if(isSpecialCase) {
+        connectPairs.push_back({{specialCaseEntranceId, specialCaseExitId}, true});
+    }
 
+    // Make the connections.
+    detangleMakeConnections(tangle, connectPairs);
+
+#if 0
+    // Remove all the Segments internal to this tangle
+    // and their reverse complements.
+    for(const Segment e: tangle.tangleEdges) {
+        if(not isSelfComplementary) {
+            boost::remove_edge(assemblyGraph[e].eRc, assemblyGraph);
+        }
+        boost::remove_edge(e, assemblyGraph);
+    }
+
+
+
+    // If getting here, this tangle and its reverse complement will be detangled.
+    // To do this, we need to disconnect (at the beginning or end) the Segments involved.
+    // To do this we use disconnectAtBeginning and disconnectAtEnd, which change
+    // edge_descriptors but leave the ids unchanged.
+    // Some Segments can at the same time be an entrance and/or exit
+    // of this tangle or its reverse complement. To avoid working with invalidated
+    // edge_descriptors, we work with Segment ids instead.
+    std::map<uint64_t, Segment> segmentMap;
+    tangle.createSegmentMap(segmentMap);
+    vector<uint64_t> entranceIds;
+    for(const Segment e: tangle.entrances) {
+        entranceIds.push_back(id(e));
+    }
+    vector<uint64_t> exitIds;
+    for(const Segment e: tangle.exits) {
+        exitIds.push_back(id(e));
+    }
+
+    // Create disconnected versions of the entrances and exits,
+    // while keeping the segmentMap up to date.
+    for(const uint64_t entranceId: entranceIds) {
+        const Segment eNew = disconnectAtEnd(segmentMap.at(entranceId));
+        segmentMap[id(eNew)] = eNew;
+        const Segment eNewRc = assemblyGraph[eNew].eRc;
+        segmentMap[id(eNewRc)] = eNewRc;
+    }
+    if(not isSelfComplementary) {
+        for(const uint64_t exitId: exitIds) {
+            const Segment eNew = disconnectAtBeginning(segmentMap.at(exitId));
+            segmentMap[id(eNew)] = eNew;
+            const Segment eNewRc = assemblyGraph[eNew].eRc;
+            segmentMap[id(eNewRc)] = eNewRc;
+        }
+    }
+    tangle.checkSegmentMap(segmentMap);
+
+
+
+    // Make the connections.
+    // This also does the same for the reverse complement of this Tangle.
+    std::set<uint64_t> connectedEntrances;
+    for(const auto&[connectPair, deep]: connectPairs) {
+        const uint64_t entranceId = connectPair.first;
+        const uint64_t exitId = connectPair.second;
+        if(isSelfComplementary and (connectedEntrances.contains(entranceId))) {
+            continue;
+        }
+        const AssemblyGraph::edge_descriptor entrance = segmentMap.at(entranceId);
+        const AssemblyGraph::edge_descriptor exit = segmentMap.at(exitId);
+        const edge_descriptor eNew = connect(entrance, exit, deep);
+        createReverseComplementEdge(eNew);
+        if(isSelfComplementary) {
+            connectedEntrances.insert(entranceId);
+            connectedEntrances.insert(id(assemblyGraph[exit].eRc));
+        }
+    }
+
+
+
+    // Remove all the Tangle vertices and their reverse complements
+    // that are now isolated. These are the ones that were
+    // not connected to any entrance or exit.
+    for(const vertex_descriptor v: tangle.tangleVertices) {
+        const vertex_descriptor vRc = assemblyGraph[v].vRc;
+
+        if((in_degree(v, assemblyGraph) == 0) and (out_degree(v, assemblyGraph) == 0)) {
+            boost::remove_vertex(v, assemblyGraph);
+        }
+
+        if(not isSelfComplementary) {
+            if((in_degree(vRc, assemblyGraph) == 0) and (out_degree(vRc, assemblyGraph) == 0)) {
+                boost::remove_vertex(vRc, assemblyGraph);
+            }
+        }
+    }
+#endif
+
+    return true;
+}
+
+
+// Make connections for detangling a detangle.
+// The connectPairs contain pairs of entrance/exit segmentIds,
+// and the bool parameter says whether a "deep" connect should be used for that pair.
+void AssemblyGraph::detangleMakeConnections(
+    const Tangle& tangle,
+    const vector< pair< pair<uint64_t, uint64_t>, bool> >& connectPairs
+    )
+{
+    AssemblyGraph& assemblyGraph = *this;
+    const bool isSelfComplementary = tangle.isSelfComplementary();
 
     // Remove all the Segments internal to this tangle
     // and their reverse complements.
@@ -713,24 +836,20 @@ bool AssemblyGraph::detangleTanglePair(
     // Make the connections.
     // This also does the same for the reverse complement of this Tangle.
     std::set<uint64_t> connectedEntrances;
-    for(const auto&[entranceId, exitId]: connectPairs) {
+    for(const auto&[connectPair, deep]: connectPairs) {
+        const uint64_t entranceId = connectPair.first;
+        const uint64_t exitId = connectPair.second;
         if(isSelfComplementary and (connectedEntrances.contains(entranceId))) {
             continue;
         }
         const AssemblyGraph::edge_descriptor entrance = segmentMap.at(entranceId);
         const AssemblyGraph::edge_descriptor exit = segmentMap.at(exitId);
-        const edge_descriptor eNew = connect(entrance, exit);
+        const edge_descriptor eNew = connect(entrance, exit, deep);
         createReverseComplementEdge(eNew);
         if(isSelfComplementary) {
             connectedEntrances.insert(entranceId);
             connectedEntrances.insert(id(assemblyGraph[exit].eRc));
         }
-    }
-    if(isSpecialCase) {
-        const AssemblyGraph::edge_descriptor entrance = segmentMap.at(specialCaseEntranceId);
-        const AssemblyGraph::edge_descriptor exit = segmentMap.at(specialCaseExitId);
-        const edge_descriptor eNew = connect(entrance, exit, true);
-        createReverseComplementEdge(eNew);
     }
 
 
@@ -752,6 +871,79 @@ bool AssemblyGraph::detangleTanglePair(
         }
     }
 
+}
+
+
+
+// This detangles the tangle passed in as an argument.
+// If the tangle is not self-complementary,
+// it also detangles its reverse complement.
+// This "strict" version:
+// - Does not use the block structure of the tangle matrix.
+// - It allows all hypotheses to be considered in the
+//   likelihood ratio test, but requires the top hypothesis
+//   to be a permutation.
+// - It requires the tangle not to be self-complementary.
+bool AssemblyGraph::detangleTanglePairStrict(
+    const Tangle& tangle, ostream& html)
+{
+    AssemblyGraph& assemblyGraph = *this;
+    SHASTA2_ASSERT(not tangle.entrances.empty());
+    SHASTA2_ASSERT(not tangle.exits.empty());
+
+    if(tangle.entrances.size() != tangle.exits.size()) {
+        return false;
+    }
+
+    if(tangle.isSelfComplementary()) {
+        return false;
+    }
+
+    if(html) {
+        html << "<h2>Detangling</h2>";
+    }
+
+    // Run the likelihood ratio test on the entire matrix,
+    // without using its block structure. Allow all hypotheses.
+    const bool onlyConsiderPermutation = false;
+    const bool onlyConsiderInjective = false;
+    const GTest gTest(tangle.tangleMatrix().tangleMatrix, assemblyGraph.options.detangleEpsilon,
+        onlyConsiderInjective, onlyConsiderPermutation);
+
+    // If the likelihood ratio test failed, don't do anything.
+    if(not gTest.success) {
+        return false;
+    }
+
+    // If the top hypothesis is not a permutation, don't do anything.
+    SHASTA2_ASSERT(not gTest.hypotheses.empty());
+    const GTest::Hypothesis& topHypothesis = gTest.hypotheses.front();
+    if(not GTest::isForwardInjective(topHypothesis.connectivityMatrix)) {
+        return false;
+    }
+    if(not GTest::isBackwardInjective(topHypothesis.connectivityMatrix)) {
+        return false;
+    }
+
+    // If the likelihood ratio test is not sufficiently reliable,
+    // don't do anything.
+    if(not gTest.isPositive(
+        assemblyGraph.options.detangleMaxLogP,
+        assemblyGraph.options.detangleMinLogPDelta)) {
+        return false;
+    }
+
+    // Create the connect pairs and make the connections.
+    vector< pair<pair<uint64_t, uint64_t>, bool> > connectPairs;
+    for(uint64_t i=0; i<tangle.entrances.size(); i++) {
+        for(uint64_t j=0; j<tangle.exits.size(); j++) {
+            if(topHypothesis.connectivityMatrix[i][j]) {
+                connectPairs.push_back(
+                    {{id(tangle.entrances[i]), id(tangle.exits[j])}, false});
+            }
+        }
+    }
+    detangleMakeConnections(tangle, connectPairs);
     return true;
 }
 

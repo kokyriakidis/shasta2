@@ -400,8 +400,11 @@ bool AssemblyGraph::simplifyIteration([[maybe_unused]] uint64_t iteration)
     detangleAndReadFollowingSuperbubbles(iterationString);
     if(debug) write(iterationString + "F");
 
+    detangleEdges(iterationString);
+    if(debug) write(iterationString + "H");
+
     strandSymmetricCompress();
-    if(debug) write(iterationString + "G");
+    if(debug) write(iterationString + "I");
 
     const bool changesWereMade = (nextEdgeId > oldNextEdgeId);
     return changesWereMade;

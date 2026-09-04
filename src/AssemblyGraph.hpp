@@ -286,8 +286,17 @@ public:
 private:
     bool detangleStrandSymmetric(const Tangle&, ostream& html);
     bool detangleTanglePair(const Tangle&, ostream& html);
+    bool detangleTanglePairStrict(const Tangle&, ostream& html);
     bool detangleSelfComplementaryTangle2By2(const Tangle&, ostream& html);
     bool readFollowingStrandSymmetric(uint64_t tangleId, const Tangle&, ostream& html);
+
+    // Make connections for detangling a detangle.
+    // The connectPairs contain pairs of entrance/exit segmentIds,
+    // and the bool parameter says whether a "deep" connect should be used for that pair.
+    void detangleMakeConnections(
+        const Tangle&,
+        const vector< pair< pair<uint64_t, uint64_t>, bool> >& connectPairs
+        );
 
 
 
