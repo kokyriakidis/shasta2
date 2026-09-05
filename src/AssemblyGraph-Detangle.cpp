@@ -1096,10 +1096,10 @@ void AssemblyGraph::createTanglesBySegmentLength(
     }
 
 
-    // Get the connected components with two or more vertices.
+    // Get the connected components.
     // These will be our tangles.
     vector< vector<uint64_t> > componentsVertexIndexes;
-    disjointSets.gatherComponents(2, componentsVertexIndexes);
+    disjointSets.gatherComponents(1, componentsVertexIndexes);
 
     // Convert vertex indexes to vertex descriptors.
     // Sort each component so we can do binary searches.
@@ -1112,7 +1112,7 @@ void AssemblyGraph::createTanglesBySegmentLength(
         std::ranges::sort(tangle, orderById);
     }
 
-    // Create a map that gives the tangle each vertex belongs to, if any.
+    // Create a map that gives the tangle each vertex belongs to.
     std::map<vertex_descriptor, uint64_t> tangleMap;
     for(uint64_t tangleId=0; tangleId<tangles.size(); tangleId++) {
         const vector<vertex_descriptor>& tangle = tangles[tangleId];
