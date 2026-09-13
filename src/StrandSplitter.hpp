@@ -2,6 +2,7 @@
 
 // Shasta2.
 #include "AssemblyGraphBaseClass.hpp"
+#include "SegmentStepSupport.hpp"
 #include "Tangle.hpp"
 
 // Standard library.
@@ -49,6 +50,8 @@ private:
 
     Tangle tangle;
 
+    bool isEntrance(Segment) const;
+    bool isExit(Segment) const;
 
 
     // The Tangle Segments.
@@ -146,5 +149,43 @@ private:
     Graph graph;
     void createGraph();
 
-    void separateStrands();
+    // Use the Graph to separate strands.
+    // if successful, this stores the segments attribute to each thread.
+    // They are stored sorted by id.
+    bool separateStrands();
+    array< vector<Segment>, 2> strandSegments;
+    bool isStrand0Segment(Segment) const;
+    bool isStrand1Segment(Segment) const;
+
+    // A forward hanging segment is a strand 0 segment or an entrance that is not
+    // immediately followed by at least another strand0 segment
+    // or an exit.
+    // A backward orphan segment is a strand 0 segment or an exit that is not
+    // immediately preceded by at least another strand0 segment
+    // or an entrance.
+    array< vector<Segment>, 2> hangingSegments;  // 0 = forward, 1 = backward.
+    void findHangingSegments();
+
+    // Candidate connections between strand 0 segments are found using
+    // forward BFS from the forward hanging segments
+    // and backward BFS from the backward hanging segments.
+    // The BFSs are not allowed to use strand 1 segments that are not
+    // entrances or exits,
+    // and stop when a strand0 segment or an entrance or an exit is found.
+    // In addition, there are direct connections, which are
+    // connections segment0->segment1 where the target vertex
+    // of segment0 is the same as the source vertex of segment1.
+    class CandidateConnection : public pair<Segment, Segment> {
+    public:
+        bool isDirectConnection;
+
+        // The remaining fields are only filled in if directConnection is false;
+        SegmentPairInformation segmentPairInformation;
+        bool canConnect = false;
+        bool canConnectDeep = false;
+        CandidateConnection(Segment segment0, Segment segment1, bool isDirectConnection) :
+            pair<Segment, Segment>(segment0, segment1), isDirectConnection(isDirectConnection) {}
+    };
+    vector<CandidateConnection> candidateConnections;
+    void findCandidateConnections();
 };

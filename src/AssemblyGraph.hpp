@@ -200,6 +200,27 @@ public:
 
     void check(bool writeDetails = false) const;
 
+    // BFS starting at a given vertex, in the specified direction
+    // (0=forward, 1=backward). The BFS cannot use the forbiddenSegments,
+    // and stops when a stopSegment is reached.
+    // It records the stopSegments that are reached.
+    void bfs(
+        vertex_descriptor,
+        uint64_t direction,
+        const vector<Segment>& forbiddenSegments,
+        const vector<Segment>& stopSegments,
+        vector<Segment>& reachableStopSegments) const;
+    void forwardBfs(
+        vertex_descriptor,
+        const vector<Segment>& forbiddenSegments,
+        const vector<Segment>& stopSegments,
+        vector<Segment>& reachableStopSegments) const;
+    void backwardBfs(
+        vertex_descriptor,
+        const vector<Segment>& forbiddenSegments,
+        const vector<Segment>& stopSegments,
+        vector<Segment>& reachableStopSegments) const;
+
 
     // Clear reverse complement information from all vertices and edges.
     // This needs to be done before operations that don't maintain

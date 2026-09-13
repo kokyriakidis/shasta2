@@ -3947,3 +3947,111 @@ AssemblyGraph::edge_descriptor AssemblyGraph::createDisconnectedCopy(edge_descri
     return newSegment;
 
 }
+
+
+
+// BFS starting at a given vertex, in the specified direction
+// (0=forward, 1=backward). The BFS cannot use the forbiddenSegments,
+// and stops when a stopSegment is reached.
+// It records the stopSegments that are reached.
+void AssemblyGraph::bfs(
+    vertex_descriptor v,
+    uint64_t direction,
+    const vector<Segment>& forbiddenSegments,
+    const vector<Segment>& stopSegments,
+    vector<Segment>& reachableStopSegments) const
+{
+    if(direction == 0) {
+        forwardBfs(v, forbiddenSegments, stopSegments, reachableStopSegments);
+    } else {
+        backwardBfs(v, forbiddenSegments, stopSegments, reachableStopSegments);
+    }
+}
+
+
+
+void AssemblyGraph::forwardBfs(
+    vertex_descriptor vStart,
+    const vector<Segment>& forbiddenSegments,
+    const vector<Segment>& stopSegments,
+    vector<Segment>& reachableStopSegments) const
+{
+    const AssemblyGraph& assemblyGraph = *this;
+    SHASTA2_ASSERT(std::is_sorted(forbiddenSegments.begin(), forbiddenSegments.end(), orderById));
+    SHASTA2_ASSERT(std::is_sorted(stopSegments.begin(), stopSegments.end(), orderById));
+
+    reachableStopSegments.clear();
+
+    // Initialize the BFS.
+    std::queue<vertex_descriptor> q;
+    q.push(vStart);
+    std::set<vertex_descriptor> visited;
+    visited.insert(vStart);
+
+    // BFS loop.
+    while(not q.empty()) {
+        const vertex_descriptor v0 = q.front();
+        q.pop();
+
+        BGL_FORALL_OUTEDGES(v0, e, assemblyGraph, AssemblyGraph) {
+            if(std::binary_search(stopSegments.begin(), stopSegments.end(), e, orderById)){
+                reachableStopSegments.push_back(e);
+                continue;
+            }
+            if(std::binary_search(forbiddenSegments.begin(), forbiddenSegments.end(), e, orderById)){
+                continue;
+            }
+            const vertex_descriptor v1 = target(e, assemblyGraph);
+            if(not visited.contains(v1)) {
+                q.push(v1);
+                visited.insert(v1);
+            }
+        }
+    }
+
+    sort(reachableStopSegments.begin(), reachableStopSegments.end(), orderById);
+}
+
+
+
+void AssemblyGraph::backwardBfs(
+    vertex_descriptor vStart,
+    const vector<Segment>& forbiddenSegments,
+    const vector<Segment>& stopSegments,
+    vector<Segment>& reachableStopSegments) const
+{
+    const AssemblyGraph& assemblyGraph = *this;
+    SHASTA2_ASSERT(std::is_sorted(forbiddenSegments.begin(), forbiddenSegments.end(), orderById));
+    SHASTA2_ASSERT(std::is_sorted(stopSegments.begin(), stopSegments.end(), orderById));
+
+    reachableStopSegments.clear();
+
+    // Initialize the BFS.
+    std::queue<vertex_descriptor> q;
+    q.push(vStart);
+    std::set<vertex_descriptor> visited;
+    visited.insert(vStart);
+
+    // BFS loop.
+    while(not q.empty()) {
+        const vertex_descriptor v0 = q.front();
+        q.pop();
+
+        BGL_FORALL_INEDGES(v0, e, assemblyGraph, AssemblyGraph) {
+            if(std::binary_search(stopSegments.begin(), stopSegments.end(), e, orderById)){
+                reachableStopSegments.push_back(e);
+                continue;
+            }
+            if(std::binary_search(forbiddenSegments.begin(), forbiddenSegments.end(), e, orderById)){
+                continue;
+            }
+            const vertex_descriptor v1 = source(e, assemblyGraph);
+            if(not visited.contains(v1)) {
+                q.push(v1);
+                visited.insert(v1);
+            }
+        }
+    }
+
+    sort(reachableStopSegments.begin(), reachableStopSegments.end(), orderById);
+}

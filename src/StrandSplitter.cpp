@@ -5,6 +5,7 @@
 #include "deduplicate.hpp"
 #include "DisjointSets.hpp"
 #include "html.hpp"
+#include "Options.hpp"
 using namespace shasta2;
 
 // Standard library.
@@ -30,7 +31,12 @@ StrandSplitter::StrandSplitter(
     writeSegmentPairs();
     findReadOccurrences();
     createGraph();
-    separateStrands();
+
+    if(not separateStrands()) {
+        return;
+    }
+    findHangingSegments();
+    findCandidateConnections();
 }
 
 
@@ -231,7 +237,7 @@ void StrandSplitter::Graph::findEdgePairs()
 
 
 
-void StrandSplitter::separateStrands()
+bool StrandSplitter::separateStrands()
 {
     // Do strand separation by adding edges in order of decreasing frequency.
     DisjointSets disjointSets(segments.size());
@@ -313,5 +319,280 @@ void StrandSplitter::separateStrands()
         }
     }
 
+    // If we don't have exactly two components, do nothing.
+    if(components.size() != 2) {
+        if(debug) {
+            html << "<br>Strand separation is not successful. "
+                "Expected exactly 2 components.";
+        }
+        return false;
+    }
+    SHASTA2_ASSERT(components[0].size() == components[1].size());
+
+    // Each component corresponds to a strand.
+    // Store their Segments.
+    for(uint64_t strand=0; strand<2; strand++) {
+        const vector<uint64_t>& component = components[strand];
+        for(uint64_t segmentIndex: component) {
+            strandSegments[strand].push_back(graph[segmentIndex].segment);
+        }
+        sort(strandSegments[strand].begin(), strandSegments[strand].end(),
+            assemblyGraph.orderById);
+    }
+
+    if(debug) {
+        for(uint64_t strand=0; strand<2; strand++) {
+            html << "<h2>Strand " << strand << " segments</h2>";
+            for(uint64_t i=0; i<strandSegments[strand].size(); i++) {
+                if(i != 0) {
+                    html << ",<wbr>";
+                }
+                html << id(strandSegments[strand][i]);
+            }
+        }
+
+    }
+
+    return true;
+}
+
+
+
+
+void StrandSplitter::findHangingSegments()
+{
+    const vector<Segment>& strand0Segments = strandSegments[0];
+    const vector<Segment>& entrances = tangle.entrances;
+    const vector<Segment>& exits = tangle.exits;
+
+    // A forward hanging segment is a strand 0 segment or an entrance that is not
+    // immediately followed by at least another strand0 segment
+    // or an exit.
+    // A backward orphan segment is a strand 0 segment or an exit that is not
+    // immediately preceded by at least another strand0 segment
+    // or an entrance.
+
+    hangingSegments[0] = entrances;
+    hangingSegments[1] = exits;
+
+    for(const Segment segment: strand0Segments) {
+        const AssemblyGraph::vertex_descriptor v0 = source(segment, assemblyGraph);
+        const AssemblyGraph::vertex_descriptor v1 = target(segment, assemblyGraph);
+
+        if(not isExit(segment)) {
+            bool isForwardHangingSegment = true;
+            BGL_FORALL_OUTEDGES(v1, e, assemblyGraph, AssemblyGraph) {
+                if(isStrand0Segment(e)) {
+                    isForwardHangingSegment = false;
+                    break;
+                }
+                if(isExit(e)) {
+                    isForwardHangingSegment = false;
+                    break;
+                }
+            }
+            if(isForwardHangingSegment) {
+                hangingSegments[0].push_back(segment);
+            }
+        }
+
+        if(not isEntrance(segment)) {
+            bool isBackwardHangingSegment = true;
+            BGL_FORALL_INEDGES(v0, e, assemblyGraph, AssemblyGraph) {
+                if(isStrand0Segment(e)) {
+                    isBackwardHangingSegment = false;
+                    break;
+                }
+                if(isEntrance(e)) {
+                    isBackwardHangingSegment = false;
+                    break;
+                }
+            }
+            if(isBackwardHangingSegment) {
+                hangingSegments[1].push_back(segment);
+            }
+        }
+    }
+    for(uint64_t direction=0; direction<2; direction++) {
+        vector<Segment>& v = hangingSegments[direction];
+        deduplicate(v);
+        sort(v.begin(), v.end(), assemblyGraph.orderById);
+    }
+
+
+    if(debug) {
+        for(uint64_t direction=0; direction<2; direction++) {
+            if(direction == 0) {
+                html << "<h2>Forward hanging segments</h2>"
+                    "A forward hanging segment is a strand 0 segment or an entrance that is not "
+                    "immediately followed by at least another strand 0 segment "
+                    "or an exit.<br><br>";
+            } else {
+                html << "<h2>Backward hanging segments</h2>"
+                    "A backward hanging segment is a strand 0 segment or an exit that is not "
+                    "immediately preceded by at least another strand 0 segment "
+                    "or an entrance.<br><br>";
+            }
+            for(uint64_t i=0; i<hangingSegments[direction].size(); i++) {
+                const Segment segment = hangingSegments[direction][i];
+                if(i!=0) {
+                    html << ",<wbr>";
+                }
+                html << id(segment);
+            }
+        }
+    }
+}
+
+
+// Candidate connections between strand 0 segments are found using
+// forward BFS from the forward hanging segments
+// and backward BFS from the backward hanging segments.
+// The BFSs are not allowed to use strand 1 segments that are not
+// entrances or exits,
+// and stop when a strand0 segment or an entrance or an exit is found.
+void StrandSplitter::findCandidateConnections()
+{
+    // The BFSs are not allowed to use strand 1 segments that are not
+    // entrances or exits.
+    vector<Segment> forbiddenSegments;
+    for(const Segment segment: strandSegments[1]) {
+        if(isEntrance(segment)) {
+            continue;
+        }
+        if(isExit(segment)) {
+            continue;
+        }
+        forbiddenSegments.push_back(segment);
+    }
+
+    vector<Segment> stopSegments = strandSegments[0];
+    std::ranges::copy(tangle.entrances, back_inserter(stopSegments));
+    std::ranges::copy(tangle.exits, back_inserter(stopSegments));
+    deduplicate(stopSegments);
+    sort(stopSegments.begin(), stopSegments.end(), assemblyGraph.orderById);
+
+    vector<Segment> reachableStopSegments;
+    vector< pair<Segment, Segment> > segmentPairs;
+    for(uint64_t direction=0; direction<2; direction++) {
+        const vector<Segment>& startSegments = hangingSegments[direction];
+        for(const Segment startSegment: startSegments) {
+            const AssemblyGraph::vertex_descriptor vStart =
+                ((direction == 0) ? target(startSegment, assemblyGraph) : source(startSegment, assemblyGraph));
+            assemblyGraph.bfs(vStart, direction, forbiddenSegments, stopSegments, reachableStopSegments);
+
+            for(const Segment segment: reachableStopSegments) {
+                if(direction == 0) {
+                    segmentPairs.push_back({startSegment, segment});
+                } else {
+                    segmentPairs.push_back({segment, startSegment});
+                }
+            }
+        }
+    }
+    deduplicate(segmentPairs);
+
+    ostream noOutput(0);
+    for(const auto&[segment0, segment1]: segmentPairs) {
+        CandidateConnection& candidateConnection = candidateConnections.emplace_back(segment0, segment1, false);
+        candidateConnection.segmentPairInformation =
+            SegmentStepSupport::analyzeSegmentPair(noOutput,
+            assemblyGraph, segment0, segment1, uint32_t(assemblyGraph.options.representativeRegionStepCount));
+        candidateConnection.canConnect = assemblyGraph.canConnect(segment0, segment1, false);
+        candidateConnection.canConnectDeep = assemblyGraph.canConnect(segment0, segment1, true);
+    }
+
+
+
+    // Add direct connections to the candidateConnections.
+    // These are connections segment0->segment1 where the target vertex
+    // of segment0 is the same as the source vertex of segment1.
+    for(const Segment segment0: strandSegments[0]) {
+        const AssemblyGraph::vertex_descriptor v1 = target(segment0, assemblyGraph);
+        BGL_FORALL_OUTEDGES(v1, segment1, assemblyGraph, AssemblyGraph) {
+            if(isStrand0Segment(segment1)) {
+                candidateConnections.emplace_back(segment0, segment1, true);
+            }
+        }
+    }
+
+
+
+    // Sort the candidate connections.
+    sort(candidateConnections.begin(), candidateConnections.end(), assemblyGraph.orderById);
+
+    if(debug) {
+        html << "<h2>Candidate connections</h2><table>"
+            "<tr><th>Segment0<th>Segment1"
+            "<th>Direct<br>connection"
+            "<th>Common<br>count<th>Missing<br>count"
+            "<th>Can<br>connect?<th>Can<br>connect?<br>(deep)";
+        for(const CandidateConnection& candidateConnection: candidateConnections) {
+            html << "<tr><td class=centered>" << id(candidateConnection.first) <<
+                "<td class=centered>" << id(candidateConnection.second) <<
+                "<td class=centered>" << (candidateConnection.isDirectConnection ? "&check;" : "");
+            if(not candidateConnection.isDirectConnection) {
+                html <<
+                    "<td class=centered>" << candidateConnection.segmentPairInformation.commonCount <<
+                    "<td class=centered>" << candidateConnection.segmentPairInformation.missing() <<
+                    "<td class=centered>" << (candidateConnection.canConnect ? "&check;" : "") <<
+                    "<td class=centered>" << (candidateConnection.canConnectDeep ? "&check;" : "");
+            }
+        }
+        html << "</table>";
+    }
+
+#if 1
+    ofstream dot("StrandSplitter.dot");
+    dot << "digraph G{\n";
+    for(const CandidateConnection& candidateConnection: candidateConnections) {
+        if(candidateConnection.isDirectConnection or candidateConnection.canConnect) {
+            dot << id(candidateConnection.first) << "->" <<
+                id(candidateConnection.second);
+            if(candidateConnection.isDirectConnection) {
+                dot << "[color=green]";
+            } else {
+                dot << "[label=\"" << candidateConnection.segmentPairInformation.commonCount <<
+                    "/" << candidateConnection.segmentPairInformation.missing() << "\"]";
+            }
+            dot << ";\n";
+        }
+    }
+    dot << "}\n";
+#endif
+}
+
+
+
+bool StrandSplitter::isEntrance(Segment segment) const
+{
+    return std::binary_search(tangle.entrances.begin(), tangle.entrances.end(),
+        segment, assemblyGraph.orderById);
+}
+
+
+
+bool StrandSplitter::isExit(Segment segment) const
+{
+    return std::binary_search(tangle.exits.begin(), tangle.exits.end(),
+        segment, assemblyGraph.orderById);
+}
+
+
+
+
+bool StrandSplitter::isStrand0Segment(Segment segment) const
+{
+    return std::binary_search(strandSegments[0].begin(), strandSegments[0].end(),
+        segment, assemblyGraph.orderById);
+
+}
+
+
+
+bool StrandSplitter::isStrand1Segment(Segment segment) const
+{
+    return std::binary_search(strandSegments[1].begin(), strandSegments[1].end(),
+        segment, assemblyGraph.orderById);
 }
 
