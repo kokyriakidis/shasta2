@@ -7,7 +7,6 @@
 #include "dominatorTree.hpp"
 #include "findLinearChains.hpp"
 #include "findReachableVertices.hpp"
-#include "graphvizToHtml.hpp"
 #include "Journeys.hpp"
 #include "Markers.hpp"
 #include "memoryInformation.hpp"

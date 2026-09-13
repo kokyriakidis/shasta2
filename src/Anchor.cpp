@@ -3,8 +3,6 @@
 #include "color.hpp"
 #include "deduplicate.hpp"
 #include "ExternalAnchors.hpp"
-#include "graphvizToHtml.hpp"
-#include "hcsClustering.hpp"
 #include "html.hpp"
 #include "invalid.hpp"
 #include "Journeys.hpp"
