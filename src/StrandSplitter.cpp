@@ -30,7 +30,7 @@ StrandSplitter::StrandSplitter(
     gatherSegments();
     writeLowCoverageSegmentPairs();
     findReadOccurrences();
-    createGraph();
+    createStrandSeparationGraph();
 
     if(not separateStrands()) {
         return;
@@ -167,7 +167,7 @@ void StrandSplitter::findReadOccurrences()
 
 
 
-void StrandSplitter::Graph::addToEdge(
+void StrandSplitter::StrandSeparationGraph::addToEdge(
     uint64_t segmentIndex0,
     uint64_t segmentIndex1,
     uint64_t frequency
@@ -177,16 +177,16 @@ void StrandSplitter::Graph::addToEdge(
     if(edgeExists) {
         (*this)[e].frequency += frequency;
     } else {
-        boost::add_edge(segmentIndex0, segmentIndex1, Edge(frequency), *this);
+        boost::add_edge(segmentIndex0, segmentIndex1, StrandSeparationEdge(frequency), *this);
     }
 }
 
 
 
-void StrandSplitter::createGraph()
+void StrandSplitter::createStrandSeparationGraph()
 {
     for(const Segment segment: lowCoverageSegments) {
-        boost::add_vertex(segment, graph);
+        boost::add_vertex(segment, strandSeparationGraph);
     }
     for(const auto&[ignore, occurrences]: readOccurrenceMap) {
         for(uint64_t i0=0; i0<occurrences.size(); i0++) {
@@ -201,49 +201,49 @@ void StrandSplitter::createGraph()
                 if(strand0 == strand1) {
                     uint64_t segmentIndex0 = 2 * segmentPairIndex0;
                     uint64_t segmentIndex1 = 2 * segmentPairIndex1;
-                    graph.addToEdge(segmentIndex0, segmentIndex1, frequency);
+                    strandSeparationGraph.addToEdge(segmentIndex0, segmentIndex1, frequency);
                     ++segmentIndex0;
                     ++segmentIndex1;
-                    graph.addToEdge(segmentIndex0, segmentIndex1, frequency);
+                    strandSeparationGraph.addToEdge(segmentIndex0, segmentIndex1, frequency);
                 } else {
                     uint64_t segmentIndex0 = 2 * segmentPairIndex0;
                     uint64_t segmentIndex1 = 2 * segmentPairIndex1 + 1;
-                    graph.addToEdge(segmentIndex0, segmentIndex1, frequency);
+                    strandSeparationGraph.addToEdge(segmentIndex0, segmentIndex1, frequency);
                     ++segmentIndex0;
                     --segmentIndex1;
-                    graph.addToEdge(segmentIndex0, segmentIndex1, frequency);
+                    strandSeparationGraph.addToEdge(segmentIndex0, segmentIndex1, frequency);
                 }
             }
         }
     }
 
-    graph.findEdgePairs();
+    strandSeparationGraph.findEdgePairs();
 
 }
 
 
 
-void StrandSplitter::Graph::findEdgePairs()
+void StrandSplitter::StrandSeparationGraph::findEdgePairs()
 {
-    Graph& graph = *this;
+    StrandSeparationGraph& strandSeparationGraph = *this;
 
     std::set<edge_descriptor> edgesFound;
-    BGL_FORALL_EDGES(e, graph, Graph) {
+    BGL_FORALL_EDGES(e, strandSeparationGraph, StrandSeparationGraph) {
         if(edgesFound.contains(e)) {
             continue;
         }
-        const vertex_descriptor v0 = source(e, graph);
-        const vertex_descriptor v1 = target(e, graph);
+        const vertex_descriptor v0 = source(e, strandSeparationGraph);
+        const vertex_descriptor v1 = target(e, strandSeparationGraph);
         const vertex_descriptor v0Rc = v0 ^ 1;
         const vertex_descriptor v1Rc = v1 ^ 1;
-        auto[eRc, edgeExists] = boost::edge(v0Rc, v1Rc, graph);
+        auto[eRc, edgeExists] = boost::edge(v0Rc, v1Rc, strandSeparationGraph);
         SHASTA2_ASSERT(edgeExists);
-        SHASTA2_ASSERT(graph[eRc].frequency == graph[e].frequency);
+        SHASTA2_ASSERT(strandSeparationGraph[eRc].frequency == strandSeparationGraph[e].frequency);
 
         edgesFound.insert(e);
         edgesFound.insert(eRc);
 
-        edgePairs.emplace_back(EdgePair({e, eRc, graph[e].frequency}));
+        edgePairs.emplace_back(EdgePair({e, eRc, strandSeparationGraph[e].frequency}));
     }
     sort(edgePairs.begin(), edgePairs.end());
 
@@ -256,13 +256,13 @@ bool StrandSplitter::separateStrands()
     // Do strand separation by adding edges in order of decreasing frequency.
     DisjointSets disjointSets(lowCoverageSegments.size());
     uint64_t crossStrandEdgeCount = 0;
-    for(const auto& edgePair: graph.edgePairs) {
-        const Graph::edge_descriptor eA = edgePair.e;
-        const Graph::edge_descriptor eB = edgePair.eRc;
-        const uint64_t v0A = source(eA, graph);
-        const uint64_t v1A = target(eA, graph);
-        const uint64_t v0B = source(eB, graph);
-        const uint64_t v1B = target(eB, graph);
+    for(const auto& edgePair: strandSeparationGraph.edgePairs) {
+        const StrandSeparationGraph::edge_descriptor eA = edgePair.e;
+        const StrandSeparationGraph::edge_descriptor eB = edgePair.eRc;
+        const uint64_t v0A = source(eA, strandSeparationGraph);
+        const uint64_t v1A = target(eA, strandSeparationGraph);
+        const uint64_t v0B = source(eB, strandSeparationGraph);
+        const uint64_t v1B = target(eB, strandSeparationGraph);
         const uint64_t v0ARc = v0A ^ 1;
         const uint64_t v1ARc = v1A ^ 1;
         const uint64_t v0BRc = v0B ^ 1;
@@ -277,8 +277,8 @@ bool StrandSplitter::separateStrands()
         SHASTA2_ASSERT(strandViolationBRc == strandViolation);
         if(strandViolation) {
             crossStrandEdgeCount += 2;
-            graph[eA].isCrossStrandEdge = true;
-            graph[eB].isCrossStrandEdge = true;
+            strandSeparationGraph[eA].isCrossStrandEdge = true;
+            strandSeparationGraph[eB].isCrossStrandEdge = true;
         } else {
             disjointSets.unionSet(v0A, v1A);
             disjointSets.unionSet(v0B, v1B);
@@ -292,7 +292,7 @@ bool StrandSplitter::separateStrands()
     for(uint64_t componentId=0; componentId<components.size(); componentId++) {
         const vector<uint64_t>& component = components[componentId];
         for(const uint64_t v: component) {
-            graph[v].component = componentId;
+            strandSeparationGraph[v].component = componentId;
         }
     }
 
@@ -300,23 +300,21 @@ bool StrandSplitter::separateStrands()
     if(debug) {
         ofstream dot(debugOutputBaseName + "-StrandSplitter-Tangle-" + to_string(tangleId) + ".dot");
         dot << "graph splitSelfComplementaryTangle {\n";
-        BGL_FORALL_VERTICES(segmentIndex, graph, Graph) {
-            const string color = randomHslColor(graph[segmentIndex].component, 0.75, 0.5);
-            dot << id(graph[segmentIndex].segment) <<
+        BGL_FORALL_VERTICES(segmentIndex, strandSeparationGraph, StrandSeparationGraph) {
+            const string color = randomHslColor(strandSeparationGraph[segmentIndex].component, 0.75, 0.5);
+            dot << id(strandSeparationGraph[segmentIndex].segment) <<
                 " [style=filled fillcolor=\"" << color << "\"]"
                 "\n";
         }
-        BGL_FORALL_EDGES(e, graph, Graph) {
-            const uint64_t segmentIndex0 = source(e, graph);
-            const uint64_t segmentIndex1 = target(e, graph);
-            dot << id(graph[segmentIndex0].segment) << "--";
-            dot << id(graph[segmentIndex1].segment) <<
-                "[tooltip=\"" << graph[e].frequency << "\""
-                " penwidth=\"" << std::log10(double(graph[e].frequency)) << "\"";
-            if(graph[e].isCrossStrandEdge) {
-                dot << " color=red";
+        BGL_FORALL_EDGES(e, strandSeparationGraph, StrandSeparationGraph) {
+            const uint64_t segmentIndex0 = source(e, strandSeparationGraph);
+            const uint64_t segmentIndex1 = target(e, strandSeparationGraph);
+            dot << id(strandSeparationGraph[segmentIndex0].segment) << "--";
+            dot << id(strandSeparationGraph[segmentIndex1].segment);
+            if(strandSeparationGraph[e].isCrossStrandEdge) {
+                dot << "[color=red]";
             }
-            dot << "];\n";
+            dot << ";\n";
         }
         dot << "}\n";
 
@@ -328,7 +326,7 @@ bool StrandSplitter::separateStrands()
                 if(i != 0) {
                     html << ",<wbr>";
                 }
-                html << id(graph[component[i]].segment);
+                html << id(strandSeparationGraph[component[i]].segment);
             }
         }
     }
@@ -348,7 +346,7 @@ bool StrandSplitter::separateStrands()
     for(uint64_t strand=0; strand<2; strand++) {
         const vector<uint64_t>& component = components[strand];
         for(uint64_t segmentIndex: component) {
-            strandSegments[strand].push_back(graph[segmentIndex].segment);
+            strandSegments[strand].push_back(strandSeparationGraph[segmentIndex].segment);
         }
         sort(strandSegments[strand].begin(), strandSegments[strand].end(),
             assemblyGraph.orderById);

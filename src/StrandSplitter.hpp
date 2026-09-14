@@ -106,30 +106,30 @@ private:
 
 
     // For strand separation we construct an undirected graph
-    // with a vertex for each of the segments in the segmentsVector.
+    // with a vertex for each of the segments in the lowCoverageSegments.
     // The vertex_descriptor of this graph is the index of the Segment
     // in the segments vector.
-    // An edge s0-s1 is created if there are reads that appear in the
-    // same strand on s0 and s1.
-    class Vertex {
+    // An edge segment0 to segment1 is created if there are reads that appear in the
+    // same strand on segment0 and segment1.
+    class StrandSeparationVertex {
     public:
         Segment segment;
         uint64_t component = invalid<uint64_t>;
-        Vertex(Segment segment = assemblyGraphNullEdge) : segment(segment) {}
+        StrandSeparationVertex(Segment segment = assemblyGraphNullEdge) : segment(segment) {}
     };
-    class Edge {
+    class StrandSeparationEdge {
     public:
         uint64_t frequency;
         bool isCrossStrandEdge = false;
-        Edge(uint64_t frequency) : frequency(frequency) {}
+        StrandSeparationEdge(uint64_t frequency) : frequency(frequency) {}
     };
-    using GraphBaseClass = boost::adjacency_list<
+    using StrandSeparationGraphBaseClass = boost::adjacency_list<
         boost::setS,
         boost::vecS,
         boost::undirectedS,
-        Vertex,
-        Edge>;
-    class Graph: public GraphBaseClass {
+        StrandSeparationVertex,
+        StrandSeparationEdge>;
+    class StrandSeparationGraph: public StrandSeparationGraphBaseClass {
     public:
         void addToEdge(
             uint64_t segmentIndex0,
@@ -140,8 +140,8 @@ private:
         // sorted by decreasing frequency.
         class EdgePair {
         public:
-            Graph::edge_descriptor e;
-            Graph::edge_descriptor eRc;
+            StrandSeparationGraph::edge_descriptor e;
+            StrandSeparationGraph::edge_descriptor eRc;
             uint64_t frequency;
             bool operator<(const EdgePair& that) const
             {
@@ -151,11 +151,13 @@ private:
         vector<EdgePair> edgePairs;
         void findEdgePairs();
     };
-    Graph graph;
-    void createGraph();
+    StrandSeparationGraph strandSeparationGraph;
+    void createStrandSeparationGraph();
 
-    // Use the Graph to separate strands.
-    // if successful, this stores the segments attribute to each thread.
+    // Use the StrandSeparationGraph to separate strands.
+    // If successful, this stores the strandSegments vectors.
+    // strandSegments[0] are the segment in the first strand
+    // which are used in the rest of the process.
     // They are stored sorted by id.
     bool separateStrands();
     array< vector<Segment>, 2> strandSegments;
