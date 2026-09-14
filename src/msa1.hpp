@@ -249,15 +249,39 @@ namespace shasta2 {
     // correction is evidently not concentrated at length+1 alone; where it
     // actually is remains open.
     //
+    // A more direct hifiasm translation was tried next: instead of gating a
+    // median, walk the length upward one base at a time and stop where a
+    // strict majority of the REMAINING (already-narrowed) reads stops
+    // agreeing (SequentialMajorityWalk, see its comment above). It nails the
+    // one known-truth locus this file has always cited, but loses badly on
+    // the chr12 assembly: 278 regions touched (vs MedianMarginGated's 184),
+    // 106 right against 119 wrong, total edit distance 551 vs
+    // MedianMarginGated's 284 over the same 302-region union, and fewer
+    // exact matches (92 vs 114). Concretely, one region where adaptive was
+    // already exactly right (length 91, edit distance 0) got walked out to
+    // length 99 - an 8-base overshoot (edge 6, step 14 in the chr12
+    // harness). The failure mode is a thin tail of a handful of
+    // over-calling reads that keep out-voting each other once the crowd
+    // that would have stopped the walk has already been left behind -
+    // hifiasm does not have this problem because its real acceptance check
+    // (CORRECT_THRESHOLD) compares the winning candidate's weight against
+    // the ORIGINAL total count, not against whatever is left of the
+    // population by the time the walk gets there. A hybrid - walk
+    // sequentially, but require the survival to also stay above an absolute
+    // fraction of totalWeight, not just a majority of itself - was not
+    // tried.
+    //
     // Worth revisiting again with more assemblies of known truth (chr21 in
     // particular - see the harness scripts), worth tuning the threshold more
     // finely than the three points above, worth trying a homopolymer context
     // aware relaxed threshold the way hifiasm does (0.515 instead of 0.60
-    // specifically inside a run), and worth instrumenting the actual per-
-    // region vote (lengthWeight distribution, not just the margin at the
-    // chosen length) since none of the harness's own output columns explain
-    // the remaining split. Average, mode, medianPlusOne,
-    // medianConfidenceGated and medianNeighborGated stay available.
+    // specifically inside a run), worth the sequential-walk-with-an-
+    // absolute-floor hybrid described above, and worth instrumenting the
+    // actual per-region vote (lengthWeight distribution, not just the
+    // margin at the chosen length) since none of the harness's own output
+    // columns explain the remaining split. Average, mode, medianPlusOne,
+    // medianConfidenceGated, medianNeighborGated and sequentialMajorityWalk
+    // stay available.
     enum class RunLengthEstimator {
 
         // The most frequent length, by total weight. Ties go to the shorter run.
@@ -316,6 +340,30 @@ namespace shasta2 {
         // bad ones, so genuine support for +1 is evidently not concentrated
         // at length+1 alone.
         MedianNeighborGated,
+
+        // hifiasm's error correction (Correct.cpp) never computes a
+        // mean/median/mode of raw integer lengths: it merges whole candidate
+        // insertion strings that share a prefix/suffix into one small graph
+        // (Merge_DAGCon, Correct.cpp:5031) and greedily walks the
+        // highest-weight edge from the start (generate_best_seq_from_nodes,
+        // Correct.cpp:5292), so the walk naturally stops extending once the
+        // reads that agree "at least this far" no longer hold a majority of
+        // the reads that agreed one base back. This is that idea translated
+        // into a length distribution directly: walk the length upward one
+        // base at a time, continuing past L only while a strict majority of
+        // the reads that reached L also reach L+1, and stop at the first L
+        // where that majority breaks. On the docstring's own 19-read
+        // example (lengths 6,7,10,11,12,14,15, counts 1,1,2,6,7,1,1, true
+        // length 12) this lands on 12 directly, unlike plain median (11).
+        // Tried and rejected: see the harness measurement below. It gets led
+        // astray by a thin tail of over-calling reads, because it only
+        // requires a majority of an ever-shrinking REMAINING population at
+        // each step, with no floor on absolute support - unlike hifiasm's
+        // actual mechanism, which applies a final confidence check against
+        // the ORIGINAL total (CORRECT_THRESHOLD), not just the survivors so
+        // far. A handful of reads that keep agreeing with each other past
+        // where the truth ends is enough to carry the walk arbitrarily far.
+        SequentialMajorityWalk,
 
         // The weighted mean length, rounded to the nearest integer (ties round
         // up). Unlike mode and median it uses every observed length, so a few
