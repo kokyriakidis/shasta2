@@ -441,6 +441,23 @@ void shasta2::extendedConsensus(
                     }
                 }
 
+            } else if(estimator == RunLengthEstimator::MedianConfidenceGated) {
+
+                // The weighted median, nudged up by one only when the median
+                // length itself is not a clear (>=60%) majority of the vote -
+                // see the comment on this estimator in the header.
+                uint64_t cumulative = 0;
+                for(uint64_t length=1; length<=maxObserved; length++) {
+                    cumulative += lengthWeight[length];
+                    if(2 * cumulative >= totalWeight) {
+                        const uint64_t medianWeight = lengthWeight[length];
+                        consensusRunLength = (10 * medianWeight >= 6 * totalWeight) ?
+                            length : min(length + 1, maxObserved);
+                        coverage = medianWeight;
+                        break;
+                    }
+                }
+
             } else {
 
                 // The weighted mean, rounded to the nearest integer with ties
