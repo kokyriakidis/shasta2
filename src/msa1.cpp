@@ -426,6 +426,21 @@ void shasta2::extendedConsensus(
                     }
                 }
 
+            } else if(estimator == RunLengthEstimator::MedianPlusOne) {
+
+                // The weighted median, nudged up by one to correct the low bias
+                // documented above, capped at maxObserved: never invent a length
+                // longer than what some row actually reports.
+                uint64_t cumulative = 0;
+                for(uint64_t length=1; length<=maxObserved; length++) {
+                    cumulative += lengthWeight[length];
+                    if(2 * cumulative >= totalWeight) {
+                        consensusRunLength = min(length + 1, maxObserved);
+                        coverage = lengthWeight[length];
+                        break;
+                    }
+                }
+
             } else {
 
                 // The weighted mean, rounded to the nearest integer with ties
