@@ -61,19 +61,24 @@ private:
     // Sorted by id.
     vector<Segment> allTangleSegments;
 
-    // The segmentPairs and segments vector only include Tangle Segments
-    // with coverage no greater than maxCoverage. These are the ones
+    // Low coverage segments are the ones with coverage
+    // no greater than maxCoverage. These are the ones
     // that are considered reliably single-copy and are used
     // for strand separation.
+    // They don't necesserily include entrances and exits,
+    // but they can.
 
-    // Pairs of reverse complemented segments
-    // with coverage no greater than maxCoverage.
-    vector< pair<Segment, Segment> > segmentPairs;
-    void writeSegmentPairs();
+    // Reverse complemented pairs of low coverage segments.
+    // In each pair, the id of thefirst segment is less
+    // than the id of the second segment.
+    // Sorted by id of the first segment in the pair.
+    vector< pair<Segment, Segment> > lowCoverageSegmentPairs;
+    void writeLowCoverageSegmentPairs();
 
-    // Segments with coverage no greater than maxCoverage,
-    // ordered by their appearance in segmentPairs.
-    vector<Segment> segments;
+    // Low coverage segments, ordered by their appearance in segmentPairs.
+    // This way, if a segment has index i in this vector, its
+    // reverse complement has index i^1.
+    vector<Segment> lowCoverageSegments;
 
 
 

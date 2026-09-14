@@ -28,7 +28,7 @@ StrandSplitter::StrandSplitter(
     writeInitialDebugOutput();
     SHASTA2_ASSERT(tangle.isSelfComplementary());
     gatherSegments();
-    writeSegmentPairs();
+    writeLowCoverageSegmentPairs();
     findReadOccurrences();
     createGraph();
 
@@ -72,7 +72,7 @@ void StrandSplitter::gatherSegments()
     std::ranges::copy(tangle.exits, inserter);
     sort(allTangleSegments.begin(), allTangleSegments.end(), assemblyGraph.orderById);
 
-    // Fill in segmentPairs.
+    // Fill in lowCoverageSegmentPairs.
     for(const Segment segment: allTangleSegments) {
         if(assemblyGraph[segment].lengthWeightedAverageCoverage() > maxCoverage) {
             continue;
@@ -80,14 +80,14 @@ void StrandSplitter::gatherSegments()
         const Segment segmentRc = assemblyGraph[segment].eRc;
         SHASTA2_ASSERT(segmentRc != segment);
         if(id(segment) < id(segmentRc)) {
-            segmentPairs.push_back({segment, segmentRc});
+            lowCoverageSegmentPairs.push_back({segment, segmentRc});
         }
     }
 
-    // Fill in the segments vector.
-    for(const auto&[segment, segmentRc]: segmentPairs) {
-        segments.push_back(segment);
-        segments.push_back(segmentRc);
+    // Fill in the lowCoverageSegments vector.
+    for(const auto&[segment, segmentRc]: lowCoverageSegmentPairs) {
+        lowCoverageSegments.push_back(segment);
+        lowCoverageSegments.push_back(segmentRc);
     }
 
 }
@@ -101,24 +101,38 @@ uint64_t StrandSplitter::id(Segment segment) const
 
 
 
-void StrandSplitter::writeSegmentPairs()
+void StrandSplitter::writeLowCoverageSegmentPairs()
 {
     if(debug) {
-        html << "<h2>Pairs of reverse complemented segments</h2>"
-            "This includes entrances, exits, and internal tangle segments "
-            " with coverage up to " << maxCoverage <<
-            ". These are considered reliable single copy segments "
-            "that can be used for strand separation."
-            "<br><table>"
-            "<tr><th>Pair index<th>Index0<th>Index1<th>Segment0<th>Segment1";
-        for(uint64_t segmentPairIndex=0; segmentPairIndex<segmentPairs.size(); segmentPairIndex++) {
-            const auto&[segment, segmentRc] = segmentPairs[segmentPairIndex];
+        html << "<h2>Reverse complemented pairs of low coverage segments</h2>"
+            "Low coverage segments are tangle segments "
+            " (internal, entrances, exits) with coverage "
+            "no greater than " << maxCoverage << ". These are the ones "
+            "that are considered reliably single-copy and are used "
+            "for strand separation. "
+            "They don't necessarily include entrances and exits, "
+            "but they can."
+            "<br><br><table><tr><th>Pair index<th>Index0<th>Index1<th>Segment0<th>Segment1"
+            "<th>Length<th>Coverage<th>Entrance<br>or<br>Exit";
+        for(uint64_t segmentPairIndex=0; segmentPairIndex<lowCoverageSegmentPairs.size(); segmentPairIndex++) {
+            const auto&[segment, segmentRc] = lowCoverageSegmentPairs[segmentPairIndex];
+            const uint64_t length = assemblyGraph[segment].length();
+            SHASTA2_ASSERT(length == assemblyGraph[segmentRc].length());
+            const double coverage = assemblyGraph[segment].lengthWeightedAverageCoverage();
+            SHASTA2_ASSERT(coverage == assemblyGraph[segmentRc].lengthWeightedAverageCoverage());
             html << "<tr>"
                 "<td class=centered>" << segmentPairIndex <<
                 "<td class=centered>" << 2*segmentPairIndex <<
                 "<td class=centered>" << 2*segmentPairIndex+1 <<
                 "<td class=centered>" << id(segment) <<
-                "<td class=centered>" << id(segmentRc);
+                "<td class=centered>" << id(segmentRc) <<
+                "<td class=centered>" << length <<
+                "<td class=centered>" << coverage <<
+                "<td class=centered>";
+            if(isEntrance(segment) or isExit(segment)) {
+                html << "&check;";
+            }
+
         }
         html << "</table>";
     }
@@ -129,8 +143,8 @@ void StrandSplitter::writeSegmentPairs()
 
 void StrandSplitter::findReadOccurrences()
 {
-    for(uint64_t segmentPairIndex=0; segmentPairIndex<segmentPairs.size(); segmentPairIndex++) {
-        const auto&[segment, ignore] = segmentPairs[segmentPairIndex];
+    for(uint64_t segmentPairIndex=0; segmentPairIndex<lowCoverageSegmentPairs.size(); segmentPairIndex++) {
+        const auto&[segment, ignore] = lowCoverageSegmentPairs[segmentPairIndex];
         for(const AssemblyGraphEdgeStep& step: assemblyGraph[segment]) {
             for(const OrientedReadId orientedReadId: step.anchorPair.orientedReadIds) {
                 const ReadId readId = orientedReadId.getReadId();
@@ -171,7 +185,7 @@ void StrandSplitter::Graph::addToEdge(
 
 void StrandSplitter::createGraph()
 {
-    for(const Segment segment: segments) {
+    for(const Segment segment: lowCoverageSegments) {
         boost::add_vertex(segment, graph);
     }
     for(const auto&[ignore, occurrences]: readOccurrenceMap) {
@@ -240,7 +254,7 @@ void StrandSplitter::Graph::findEdgePairs()
 bool StrandSplitter::separateStrands()
 {
     // Do strand separation by adding edges in order of decreasing frequency.
-    DisjointSets disjointSets(segments.size());
+    DisjointSets disjointSets(lowCoverageSegments.size());
     uint64_t crossStrandEdgeCount = 0;
     for(const auto& edgePair: graph.edgePairs) {
         const Graph::edge_descriptor eA = edgePair.e;
@@ -531,7 +545,9 @@ void StrandSplitter::findCandidateConnections()
             html << "<tr><td class=centered>" << id(candidateConnection.first) <<
                 "<td class=centered>" << id(candidateConnection.second) <<
                 "<td class=centered>" << (candidateConnection.isDirectConnection ? "&check;" : "");
-            if(not candidateConnection.isDirectConnection) {
+            if(candidateConnection.isDirectConnection) {
+                html << "<td><td><td><td>";
+            } else {
                 html <<
                     "<td class=centered>" << candidateConnection.segmentPairInformation.commonCount <<
                     "<td class=centered>" << candidateConnection.segmentPairInformation.missing() <<
