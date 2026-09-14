@@ -150,6 +150,7 @@ private:
         };
         vector<EdgePair> edgePairs;
         void findEdgePairs();
+        void writeGraphviz(const string& fileName, const AssemblyGraph&) const;
     };
     StrandSeparationGraph strandSeparationGraph;
     void createStrandSeparationGraph();

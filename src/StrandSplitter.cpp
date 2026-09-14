@@ -4,6 +4,7 @@
 #include "color.hpp"
 #include "deduplicate.hpp"
 #include "DisjointSets.hpp"
+#include "graphvizToHtml.hpp"
 #include "html.hpp"
 #include "Options.hpp"
 using namespace shasta2;
@@ -297,39 +298,22 @@ bool StrandSplitter::separateStrands()
     }
 
 
+    // Write out the StrandSeparationGraph.
     if(debug) {
-        ofstream dot(debugOutputBaseName + "-StrandSplitter-Tangle-" + to_string(tangleId) + ".dot");
-        dot << "graph splitSelfComplementaryTangle {\n";
-        BGL_FORALL_VERTICES(segmentIndex, strandSeparationGraph, StrandSeparationGraph) {
-            const string color = randomHslColor(strandSeparationGraph[segmentIndex].component, 0.75, 0.5);
-            dot << id(strandSeparationGraph[segmentIndex].segment) <<
-                " [style=filled fillcolor=\"" << color << "\"]"
-                "\n";
-        }
-        BGL_FORALL_EDGES(e, strandSeparationGraph, StrandSeparationGraph) {
-            const uint64_t segmentIndex0 = source(e, strandSeparationGraph);
-            const uint64_t segmentIndex1 = target(e, strandSeparationGraph);
-            dot << id(strandSeparationGraph[segmentIndex0].segment) << "--";
-            dot << id(strandSeparationGraph[segmentIndex1].segment);
-            if(strandSeparationGraph[e].isCrossStrandEdge) {
-                dot << "[color=red]";
-            }
-            dot << ";\n";
-        }
-        dot << "}\n";
-
-
-        for(uint64_t componentId=0; componentId<components.size(); componentId++) {
-            html << "<h2>Component " << componentId << " segments</h2>";
-            const vector<uint64_t>& component = components[componentId];
-            for(uint64_t i=0; i<component.size(); i++) {
-                if(i != 0) {
-                    html << ",<wbr>";
-                }
-                html << id(strandSeparationGraph[component[i]].segment);
-            }
+        const string dotFileName = debugOutputBaseName + "-StrandSplitter-Tangle-" +
+            to_string(tangleId) + ".dot";
+        strandSeparationGraph.writeGraphviz(dotFileName, assemblyGraph);
+        const double timeout = 30.;
+        const string options = "-Nshape=point -Nwidth=0.2 -Gratio=expand -Gsize=10";
+        html << "<h2>Strand separation graph</h2>" << dotFileName;
+        try {
+            graphvizToHtml(dotFileName, "sfdp", timeout, options, html, true);
+        } catch (std::exception&) {
+            html << "The strand separation graph took too long to display.";
         }
     }
+
+
 
     // If we don't have exactly two components, do nothing.
     if(components.size() != 2) {
@@ -366,6 +350,38 @@ bool StrandSplitter::separateStrands()
     }
 
     return true;
+}
+
+
+
+void StrandSplitter::StrandSeparationGraph::writeGraphviz(
+    const string& fileName,
+    const AssemblyGraph& assemblyGraph) const
+{
+    const StrandSeparationGraph& strandSeparationGraph = *this;
+
+    ofstream dot(fileName);
+
+    dot << "graph StrandSeparationGaph {\n";
+    BGL_FORALL_VERTICES(segmentIndex, strandSeparationGraph, StrandSeparationGraph) {
+        const string color = randomHslColor(strandSeparationGraph[segmentIndex].component, 0.75, 0.5);
+        dot << assemblyGraph.id(strandSeparationGraph[segmentIndex].segment) <<
+            " [style=filled fillcolor=\"" << color << "\"]"
+            "\n";
+    }
+
+    BGL_FORALL_EDGES(e, strandSeparationGraph, StrandSeparationGraph) {
+        const uint64_t segmentIndex0 = source(e, strandSeparationGraph);
+        const uint64_t segmentIndex1 = target(e, strandSeparationGraph);
+        dot << assemblyGraph.id(strandSeparationGraph[segmentIndex0].segment) << "--";
+        dot << assemblyGraph.id(strandSeparationGraph[segmentIndex1].segment);
+        if(strandSeparationGraph[e].isCrossStrandEdge) {
+            dot << "[color=red]";
+        }
+        dot << ";\n";
+    }
+
+    dot << "}\n";
 }
 
 
