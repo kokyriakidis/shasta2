@@ -592,6 +592,14 @@ public:
 
     // Clear sequence from all steps of all edges.
     void clearSequence();
+
+    // For the msa1 hard-region evaluation harness (scripts/FindMsa1HardRegions.py).
+    // Return, for every step of every edge, exactly the (anchorIdA, anchorIdB,
+    // orientedReadIds) that assembleStep would pass to LocalAssembly7 - including
+    // the additional oriented reads borrowed from the previous/next step - as
+    // (edgeId, stepIndex, anchorIdA, anchorIdB, orientedReadIdStrings).
+    vector< tuple<uint64_t, uint64_t, AnchorId, AnchorId, vector<string> > >
+        getAssemblyGraphSteps() const;
 private:
 
     // Assemble sequence for the specified edge.
