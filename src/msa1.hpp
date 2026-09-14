@@ -161,10 +161,30 @@ namespace shasta2 {
     // is warranted, not unconditionally; nothing here yet identifies those
     // regions, so median (uncorrected) stays the default.
     //
+    // A gated version was tried next, on the theory that hifiasm's error
+    // correction (Correct.h) has the same idea: it accepts a correction
+    // outright only above a vote-share confidence bar (CORRECT_THRESHOLD =
+    // 0.60), relaxed to 0.515 specifically near a homopolymer run, rather
+    // than computing a different length statistic there. Translated
+    // directly - nudge the median up by one only when the median length's
+    // own share of the vote is below 0.60 (MedianConfidenceGated) - it is
+    // also worse than plain median: 528 regions touched (vs median's 78),
+    // total edit distance 1211 (vs median's 1119), between plain median and
+    // the unconditional MedianPlusOne's 1977. The threshold does move the
+    // result in the right direction relative to unconditional correction,
+    // but a single length's vote share is evidently too noisy a confidence
+    // signal on its own: most poly runs in real ONT data never reach a 60%
+    // single-length majority regardless of whether the median is actually
+    // right, unlike hifiasm's setting where the vote is over whole
+    // (prefix/suffix-merged) candidate strings rather than raw integer
+    // lengths. A closer translation would gate on the combined share of the
+    // median and its neighbor, not the median alone - not yet tried.
+    //
     // Worth revisiting again with more assemblies of known truth (chr21 in
     // particular - see the harness scripts), and worth finding a signal that
     // picks out which regions median undershoots on before trying a
-    // correction again. Average, mode and medianPlusOne stay available.
+    // correction again. Average, mode, medianPlusOne and
+    // medianConfidenceGated stay available.
     enum class RunLengthEstimator {
 
         // The most frequent length, by total weight. Ties go to the shorter run.
@@ -184,6 +204,22 @@ namespace shasta2 {
         // below. Kept available in case a more selective version, applied only
         // where the bias actually shows up, is worth trying later.
         MedianPlusOne,
+
+        // The weighted median, nudged up by one only when the median length
+        // itself is not a clear majority of the vote - i.e. the same
+        // confidence-gating idea hifiasm's error correction uses (see
+        // Correct.h in hifiasm: CORRECT_THRESHOLD = 0.60 normally, relaxed to
+        // CORRECT_THRESHOLD_HOMOPOLYMER = 0.515 near a homopolymer run - a
+        // weaker vote is trusted, rather than a different length statistic
+        // being computed). Here the same idea is turned around: when the
+        // median length's own share of the vote is BELOW 0.60, the vote is
+        // split enough that the low-bias documented above is likely biting,
+        // so add one; a confident (>= 0.60) median is trusted as-is. Tried
+        // and rejected: see the harness measurement below. A single length's
+        // vote share turns out to be a much noisier confidence signal here
+        // than it is for hifiasm's whole-string vote, so this triggers on
+        // most poly runs regardless of whether the median is right.
+        MedianConfidenceGated,
 
         // The weighted mean length, rounded to the nearest integer (ties round
         // up). Unlike mode and median it uses every observed length, so a few
