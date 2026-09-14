@@ -593,6 +593,13 @@ public:
     // Clear sequence from all steps of all edges.
     void clearSequence();
 
+    // For whole-assembly evaluation (comparing msa1 against production
+    // Adaptive over a full assembly rather than one step at a time). Selects
+    // the LocalAssembly7::Method assembleStep uses, as a string accepted by
+    // LocalAssembly7::Options::setMethod ("Adaptive", "Msa1", etc). Default
+    // "Adaptive" reproduces the production assembly path exactly.
+    string assembleMethodName = "Adaptive";
+
     // For the msa1 hard-region evaluation harness (scripts/FindMsa1HardRegions.py).
     // Return, for every step of every edge, exactly the (anchorIdA, anchorIdB,
     // orientedReadIds) that assembleStep would pass to LocalAssembly7 - including
