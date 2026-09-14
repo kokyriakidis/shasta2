@@ -244,8 +244,25 @@ with open(arguments.output, "w", newline="") as outputFile:
             if referencePositionA is None or referencePositionB is None:
                 continue
 
-            begin = min(referencePositionA, referencePositionB)
-            end = max(referencePositionA, referencePositionB) + 1
+            # LocalAssembly7 assembles a core read's window as
+            # [positionA, positionB) - inclusive of anchorIdA's position,
+            # EXCLUSIVE of anchorIdB's (LocalAssembly7.cpp:377-378,408: the
+            # loop is `for(position=positionBegin; position!=positionEnd; ...)`
+            # with positionBegin=positionA, positionEnd=positionB). Reproduce
+            # that exactly, strand-aware: forward, referencePositionA <
+            # referencePositionB and we want [refA, refB); reverse, the read's
+            # own increasing direction runs backward in reference coordinates,
+            # so referencePositionB < referencePositionA and the equivalent
+            # forward-strand slice (before its later reverse-complementing) is
+            # [refB + 1, refA + 1) - inclusive of refA, exclusive of refB.
+            if isReverse:
+                begin = min(referencePositionA, referencePositionB) + 1
+                end = max(referencePositionA, referencePositionB) + 1
+            else:
+                begin = min(referencePositionA, referencePositionB)
+                end = max(referencePositionA, referencePositionB)
+            if begin >= end:
+                continue
             intervals.append((referenceName, begin, end, isReverse))
 
         if not intervals:
