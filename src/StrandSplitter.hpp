@@ -165,35 +165,49 @@ private:
     bool isStrand0Segment(Segment) const;
     bool isStrand1Segment(Segment) const;
 
-    // A forward hanging segment is a strand 0 segment or an entrance that is not
-    // immediately followed by at least another strand0 segment
-    // or an exit.
-    // A backward orphan segment is a strand 0 segment or an exit that is not
-    // immediately preceded by at least another strand0 segment
-    // or an entrance.
-    array< vector<Segment>, 2> hangingSegments;  // 0 = forward, 1 = backward.
-    void findHangingSegments();
 
-    // Candidate connections between strand 0 segments are found using
-    // forward BFS from the forward hanging segments
-    // and backward BFS from the backward hanging segments.
-    // The BFSs are not allowed to use strand 1 segments that are not
-    // entrances or exits,
-    // and stop when a strand0 segment or an entrance or an exit is found.
-    // In addition, there are direct connections, which are
-    // connections segment0->segment1 where the target vertex
-    // of segment0 is the same as the source vertex of segment1.
-    class CandidateConnection : public pair<Segment, Segment> {
+
+    // In the ConnectionGraph, each vertex represents a Segment.
+    // There is a vertex for each strand 0 Segment plus
+    // a vertex for each entrance or exit that is not also a
+    // strand0 segment.
+    // Edges correspond to connections already present in the
+    // AssemblyGraph or additional connections that can be
+    // made to split our Tangle.
+
+    class ConnectionVertex {
     public:
+        Segment segment;
+        ConnectionVertex(Segment segment) : segment(segment) {}
+    };
+
+    class ConnectionEdge {
+    public:
+
+        // If this is true, a connection between these two segments
+        // is already present in the AssemblyGraph.
         bool isDirectConnection;
 
         // The remaining fields are only filled in if directConnection is false;
         SegmentPairInformation segmentPairInformation;
-        bool canConnect = false;
-        bool canConnectDeep = false;
-        CandidateConnection(Segment segment0, Segment segment1, bool isDirectConnection) :
-            pair<Segment, Segment>(segment0, segment1), isDirectConnection(isDirectConnection) {}
+        ConnectionEdge() : isDirectConnection(true) {}
+        ConnectionEdge(const SegmentPairInformation& segmentPairInformation) :
+            isDirectConnection(false),
+            segmentPairInformation(segmentPairInformation) {}
     };
-    vector<CandidateConnection> candidateConnections;
-    void findCandidateConnections();
+
+    using ConnectionGraphBaseClass = boost::adjacency_list<
+        boost::listS,
+        boost::listS,
+        boost::bidirectionalS,
+        ConnectionVertex,
+        ConnectionEdge>;
+    class ConnectionGraph: public ConnectionGraphBaseClass {
+    public:
+        void addVertex(Segment);
+        std::map<Segment, vertex_descriptor> vertexMap;
+        void writeGraphviz(const string& fileName, const AssemblyGraph&) const;
+    };
+    ConnectionGraph connectionGraph;
+    void createConnectionGraph();
 };

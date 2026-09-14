@@ -36,8 +36,13 @@ StrandSplitter::StrandSplitter(
     if(not separateStrands()) {
         return;
     }
+
+    createConnectionGraph();
+
+#if 0
     findHangingSegments();
     findCandidateConnections();
+#endif
 }
 
 
@@ -300,7 +305,7 @@ bool StrandSplitter::separateStrands()
 
     // Write out the StrandSeparationGraph.
     if(debug) {
-        const string dotFileName = debugOutputBaseName + "-StrandSplitter-Tangle-" +
+        const string dotFileName = debugOutputBaseName + "-StrandSplitter-StrandSeparationGraph-Tangle-" +
             to_string(tangleId) + ".dot";
         strandSeparationGraph.writeGraphviz(dotFileName, assemblyGraph);
         const double timeout = 30.;
@@ -386,212 +391,155 @@ void StrandSplitter::StrandSeparationGraph::writeGraphviz(
 
 
 
-
-void StrandSplitter::findHangingSegments()
+void StrandSplitter::createConnectionGraph()
 {
-    const vector<Segment>& strand0Segments = strandSegments[0];
-    const vector<Segment>& entrances = tangle.entrances;
-    const vector<Segment>& exits = tangle.exits;
-
-    // A forward hanging segment is a strand 0 segment or an entrance that is not
-    // immediately followed by at least another strand0 segment
-    // or an exit.
-    // A backward orphan segment is a strand 0 segment or an exit that is not
-    // immediately preceded by at least another strand0 segment
-    // or an entrance.
-
-    hangingSegments[0] = entrances;
-    hangingSegments[1] = exits;
-
-    for(const Segment segment: strand0Segments) {
-        const AssemblyGraph::vertex_descriptor v0 = source(segment, assemblyGraph);
-        const AssemblyGraph::vertex_descriptor v1 = target(segment, assemblyGraph);
-
-        if(not isExit(segment)) {
-            bool isForwardHangingSegment = true;
-            BGL_FORALL_OUTEDGES(v1, e, assemblyGraph, AssemblyGraph) {
-                if(isStrand0Segment(e)) {
-                    isForwardHangingSegment = false;
-                    break;
-                }
-                if(isExit(e)) {
-                    isForwardHangingSegment = false;
-                    break;
-                }
-            }
-            if(isForwardHangingSegment) {
-                hangingSegments[0].push_back(segment);
-            }
-        }
-
-        if(not isEntrance(segment)) {
-            bool isBackwardHangingSegment = true;
-            BGL_FORALL_INEDGES(v0, e, assemblyGraph, AssemblyGraph) {
-                if(isStrand0Segment(e)) {
-                    isBackwardHangingSegment = false;
-                    break;
-                }
-                if(isEntrance(e)) {
-                    isBackwardHangingSegment = false;
-                    break;
-                }
-            }
-            if(isBackwardHangingSegment) {
-                hangingSegments[1].push_back(segment);
-            }
-        }
+    // Create vertices of the ConnectionGraph.
+    // There is a vertex for each strand 0 Segment plus
+    // a vertex for each entrance or exit that is not also a
+    // strand0 segment.
+    for(const Segment segment: strandSegments[0]) {
+        connectionGraph.addVertex(segment);
     }
-    for(uint64_t direction=0; direction<2; direction++) {
-        vector<Segment>& v = hangingSegments[direction];
-        deduplicate(v);
-        sort(v.begin(), v.end(), assemblyGraph.orderById);
+    for(const Segment segment: tangle.entrances) {
+        connectionGraph.addVertex(segment);
+    }
+    for(const Segment segment: tangle.exits) {
+        connectionGraph.addVertex(segment);
     }
 
 
-    if(debug) {
-        for(uint64_t direction=0; direction<2; direction++) {
-            if(direction == 0) {
-                html << "<h2>Forward hanging segments</h2>"
-                    "A forward hanging segment is a strand 0 segment or an entrance that is not "
-                    "immediately followed by at least another strand 0 segment "
-                    "or an exit.<br><br>";
-            } else {
-                html << "<h2>Backward hanging segments</h2>"
-                    "A backward hanging segment is a strand 0 segment or an exit that is not "
-                    "immediately preceded by at least another strand 0 segment "
-                    "or an entrance.<br><br>";
+
+    // Add the edges that correspond to connections already present
+    // in the AssemblyGraph.
+    BGL_FORALL_VERTICES(v0, connectionGraph, ConnectionGraph) {
+        const Segment segment0 = connectionGraph[v0].segment;
+        const ConnectionGraph::vertex_descriptor v1 = target(segment0, assemblyGraph);
+        BGL_FORALL_OUTEDGES(v1, segment1, assemblyGraph,AssemblyGraph) {
+            const auto it1 = connectionGraph.vertexMap.find(segment1);
+            if(it1== connectionGraph.vertexMap.end()) {
+                continue;
             }
-            for(uint64_t i=0; i<hangingSegments[direction].size(); i++) {
-                const Segment segment = hangingSegments[direction][i];
-                if(i!=0) {
-                    html << ",<wbr>";
-                }
-                html << id(segment);
-            }
+            const ConnectionGraph::vertex_descriptor v1 = it1->second;
+            boost::add_edge(v0, v1, ConnectionEdge(), connectionGraph);
         }
     }
-}
 
 
-// Candidate connections between strand 0 segments are found using
-// forward BFS from the forward hanging segments
-// and backward BFS from the backward hanging segments.
-// The BFSs are not allowed to use strand 1 segments that are not
-// entrances or exits,
-// and stop when a strand0 segment or an entrance or an exit is found.
-void StrandSplitter::findCandidateConnections()
-{
-    // The BFSs are not allowed to use strand 1 segments that are not
-    // entrances or exits.
-    vector<Segment> forbiddenSegments;
-    for(const Segment segment: strandSegments[1]) {
-        if(isEntrance(segment)) {
-            continue;
-        }
-        if(isExit(segment)) {
-            continue;
-        }
-        forbiddenSegments.push_back(segment);
+    // Now walk at the AssemblyGraph to find additional connections.
+    // When walking the AssemblyGraph, we avoid  strand 1 Segments.
+    const vector<Segment>& forbiddenSegments = strandSegments[1];
+    vector<Segment> stopSegments;
+    BGL_FORALL_VERTICES(v, connectionGraph, ConnectionGraph) {
+        stopSegments.push_back(connectionGraph[v].segment);
     }
-
-    vector<Segment> stopSegments = strandSegments[0];
-    std::ranges::copy(tangle.entrances, back_inserter(stopSegments));
-    std::ranges::copy(tangle.exits, back_inserter(stopSegments));
-    deduplicate(stopSegments);
     sort(stopSegments.begin(), stopSegments.end(), assemblyGraph.orderById);
 
-    vector<Segment> reachableStopSegments;
-    vector< pair<Segment, Segment> > segmentPairs;
-    for(uint64_t direction=0; direction<2; direction++) {
-        const vector<Segment>& startSegments = hangingSegments[direction];
-        for(const Segment startSegment: startSegments) {
-            const AssemblyGraph::vertex_descriptor vStart =
-                ((direction == 0) ? target(startSegment, assemblyGraph) : source(startSegment, assemblyGraph));
-            assemblyGraph.bfs(vStart, direction, forbiddenSegments, stopSegments, reachableStopSegments);
-
-            for(const Segment segment: reachableStopSegments) {
-                if(direction == 0) {
-                    segmentPairs.push_back({startSegment, segment});
-                } else {
-                    segmentPairs.push_back({segment, startSegment});
-                }
-            }
-        }
-    }
-    deduplicate(segmentPairs);
-
+    const uint32_t representativeRegionStepCount = uint32_t(assemblyGraph.options.representativeRegionStepCount);
     ostream noOutput(0);
-    for(const auto&[segment0, segment1]: segmentPairs) {
-        CandidateConnection& candidateConnection = candidateConnections.emplace_back(segment0, segment1, false);
-        candidateConnection.segmentPairInformation =
-            SegmentStepSupport::analyzeSegmentPair(noOutput,
-            assemblyGraph, segment0, segment1, uint32_t(assemblyGraph.options.representativeRegionStepCount));
-        candidateConnection.canConnect = assemblyGraph.canConnect(segment0, segment1, false);
-        candidateConnection.canConnectDeep = assemblyGraph.canConnect(segment0, segment1, true);
-    }
+    vector<Segment> reachableStopSegments;
+    BGL_FORALL_VERTICES(vA, connectionGraph, ConnectionGraph) {
+        const Segment segmentA = connectionGraph[vA].segment;
+        const AssemblyGraph::vertex_descriptor vA0 = source(segmentA, assemblyGraph);
+        const AssemblyGraph::vertex_descriptor vA1 = target(segmentA, assemblyGraph);
 
+        // Look forward.
+        assemblyGraph.bfs(vA1, 0, forbiddenSegments, stopSegments, reachableStopSegments);
+        for(const Segment segmentB: reachableStopSegments) {
+            const auto itB = connectionGraph.vertexMap.find(segmentB);
+            SHASTA2_ASSERT(itB != connectionGraph.vertexMap.end());
+            const ConnectionGraph::vertex_descriptor vB = itB->second;
+            const auto[ignore, edgeExists] = boost::edge(vA, vB, connectionGraph);
+            if((not edgeExists) and assemblyGraph.canConnect(segmentA, segmentB, false)) {
+                boost::add_edge(vA, vB, ConnectionEdge(
+                    SegmentStepSupport::analyzeSegmentPair(noOutput, assemblyGraph, segmentA, segmentB,
+                    representativeRegionStepCount)),
+                    connectionGraph);
+            }
+        }
 
-
-    // Add direct connections to the candidateConnections.
-    // These are connections segment0->segment1 where the target vertex
-    // of segment0 is the same as the source vertex of segment1.
-    for(const Segment segment0: strandSegments[0]) {
-        const AssemblyGraph::vertex_descriptor v1 = target(segment0, assemblyGraph);
-        BGL_FORALL_OUTEDGES(v1, segment1, assemblyGraph, AssemblyGraph) {
-            if(isStrand0Segment(segment1)) {
-                candidateConnections.emplace_back(segment0, segment1, true);
+        // Look backward.
+        assemblyGraph.bfs(vA0, 1, forbiddenSegments, stopSegments, reachableStopSegments);
+        for(const Segment segmentB: reachableStopSegments) {
+            const auto itB = connectionGraph.vertexMap.find(segmentB);
+            SHASTA2_ASSERT(itB != connectionGraph.vertexMap.end());
+            const ConnectionGraph::vertex_descriptor vB = itB->second;
+            const auto[ignore, edgeExists] = boost::edge(vB, vA, connectionGraph);
+            if((not edgeExists) and assemblyGraph.canConnect(segmentB, segmentA, false)) {
+                boost::add_edge(vB, vA, ConnectionEdge(
+                    SegmentStepSupport::analyzeSegmentPair(noOutput, assemblyGraph, segmentB, segmentA,
+                    representativeRegionStepCount)),
+                    connectionGraph);
             }
         }
     }
 
 
-
-    // Sort the candidate connections.
-    sort(candidateConnections.begin(), candidateConnections.end(), assemblyGraph.orderById);
 
     if(debug) {
-        html << "<h2>Candidate connections</h2><table>"
-            "<tr><th>Segment0<th>Segment1"
-            "<th>Direct<br>connection"
-            "<th>Common<br>count<th>Missing<br>count"
-            "<th>Can<br>connect?<th>Can<br>connect?<br>(deep)";
-        for(const CandidateConnection& candidateConnection: candidateConnections) {
-            html << "<tr><td class=centered>" << id(candidateConnection.first) <<
-                "<td class=centered>" << id(candidateConnection.second) <<
-                "<td class=centered>" << (candidateConnection.isDirectConnection ? "&check;" : "");
-            if(candidateConnection.isDirectConnection) {
-                html << "<td><td><td><td>";
-            } else {
-                html <<
-                    "<td class=centered>" << candidateConnection.segmentPairInformation.commonCount <<
-                    "<td class=centered>" << candidateConnection.segmentPairInformation.missing() <<
-                    "<td class=centered>" << (candidateConnection.canConnect ? "&check;" : "") <<
-                    "<td class=centered>" << (candidateConnection.canConnectDeep ? "&check;" : "");
-            }
-        }
-        html << "</table>";
-    }
-
-#if 1
-    ofstream dot("StrandSplitter.dot");
-    dot << "digraph G{\n";
-    for(const CandidateConnection& candidateConnection: candidateConnections) {
-        if(candidateConnection.isDirectConnection or candidateConnection.canConnect) {
-            dot << id(candidateConnection.first) << "->" <<
-                id(candidateConnection.second);
-            if(candidateConnection.isDirectConnection) {
-                dot << "[color=green]";
-            } else {
-                dot << "[label=\"" << candidateConnection.segmentPairInformation.commonCount <<
-                    "/" << candidateConnection.segmentPairInformation.missing() << "\"]";
-            }
-            dot << ";\n";
+        const string dotFileName = debugOutputBaseName + "-StrandSplitterConnectionGraph-Tangle-" +
+            to_string(tangleId) + ".dot";
+        connectionGraph.writeGraphviz(dotFileName, assemblyGraph);
+        const double timeout = 30.;
+        const string options = "-Nshape=rectangle";
+        html << "<h2>Connection separation graph</h2>" << dotFileName;
+        try {
+            graphvizToHtml(dotFileName, "dot", timeout, options, html, true);
+        } catch (std::exception&) {
+            html << "The connection graph took too long to display.";
         }
     }
-    dot << "}\n";
-#endif
 }
 
+
+
+void StrandSplitter::ConnectionGraph::writeGraphviz(
+    const string& fileName,
+    const AssemblyGraph& assemblyGraph) const
+{
+    const ConnectionGraph& connectionGraph = *this;
+
+    ofstream dot(fileName);
+    dot << "digraph ConnectionGraph {\n";
+
+    BGL_FORALL_VERTICES(v, connectionGraph, ConnectionGraph) {
+        const Segment segment = connectionGraph[v].segment;
+        dot << assemblyGraph.id(segment) << ";\n";
+    }
+
+    BGL_FORALL_EDGES(e, connectionGraph, ConnectionGraph) {
+        const ConnectionEdge& edge = connectionGraph[e];
+        const vertex_descriptor v0 = source(e, connectionGraph);
+        const vertex_descriptor v1 = target(e, connectionGraph);
+        const Segment segment0 = connectionGraph[v0].segment;
+        const Segment segment1 = connectionGraph[v1].segment;
+        dot <<
+            assemblyGraph.id(segment0) << "->" <<
+            assemblyGraph.id(segment1) << " [";
+
+        if(edge.isDirectConnection) {
+            dot << "color=green";
+        } else {
+            dot <<
+                "label=\"" << edge.segmentPairInformation.commonCount <<
+            "/" << edge.segmentPairInformation.missing() << "\"";
+        }
+        dot << "];\n";
+    }
+
+    dot << "}\n";
+}
+
+
+
+void StrandSplitter::ConnectionGraph::addVertex(Segment segment)
+{
+    ConnectionGraph& connectionGraph = *this;
+
+    if(not vertexMap.contains(segment)) {
+        const vertex_descriptor v = boost::add_vertex(ConnectionVertex(segment), connectionGraph);
+        vertexMap.insert({segment, v});
+    }
+}
 
 
 bool StrandSplitter::isEntrance(Segment segment) const
