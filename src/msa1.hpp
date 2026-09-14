@@ -145,8 +145,26 @@ namespace shasta2 {
     // depends on the mix of homopolymer error shapes in the data, and on a
     // whole assembly rather than one hand-picked locus, mode is not it.
     //
+    // Median's low bias is real and visible in the chr12 data too: of the 39
+    // regions it got wrong, 35 were wrong by exactly one base, and in 34 of
+    // those median's consensus was exactly one base shorter than the
+    // unrepaired alignment already sitting there (adaptive was already
+    // right or closer; median trimmed a run that did not need trimming).
+    // That looks like an obvious fix - just add one to the median - but it
+    // is not: MedianPlusOne (below) tries exactly that and loses badly,
+    // because the same +1 that fixes those 34 regions also gets added to
+    // every other poly run median ever votes on, most of which were already
+    // correct. Run on the same chr12 assembly, MedianPlusOne touched 718
+    // regions (vs plain median's 78) and got 117 right against 506 wrong -
+    // decisively worse than doing nothing, let alone worse than median. The
+    // bias correction needs to trigger only on the specific regions where it
+    // is warranted, not unconditionally; nothing here yet identifies those
+    // regions, so median (uncorrected) stays the default.
+    //
     // Worth revisiting again with more assemblies of known truth (chr21 in
-    // particular - see the harness scripts). Average and mode stay available.
+    // particular - see the harness scripts), and worth finding a signal that
+    // picks out which regions median undershoots on before trying a
+    // correction again. Average, mode and medianPlusOne stay available.
     enum class RunLengthEstimator {
 
         // The most frequent length, by total weight. Ties go to the shorter run.
@@ -159,6 +177,13 @@ namespace shasta2 {
         // The weighted median length. Biased low when the reads under-call, as
         // they do on long homopolymers.
         Median,
+
+        // The weighted median length plus one, capped at the longest length any
+        // row reports. A direct, unconditional correction for the low bias
+        // documented above. Tried and rejected: see the harness measurement
+        // below. Kept available in case a more selective version, applied only
+        // where the bias actually shows up, is worth trying later.
+        MedianPlusOne,
 
         // The weighted mean length, rounded to the nearest integer (ties round
         // up). Unlike mode and median it uses every observed length, so a few
