@@ -102,9 +102,30 @@ namespace shasta2 {
     // How the consensus length of a long homopolymer run is chosen from the
     // lengths observed in the reads that cover it.
     //
-    // Mode is the default, on the strength of the one case here where the true
-    // run lengths are known. At a locus whose true lengths are 12 and 11, the 19
-    // reads report the first run as:
+    // The single-locus case below argued for mode, but revisiting this with
+    // more loci of known truth - the thing the old comment asked for - reverses
+    // that. The msa1 hard-region evaluation harness
+    // (scripts/FindMsa1HardRegions.py, scripts/EvaluateMsa1AgainstTruth.py) was
+    // run on a real HG002 E821 StdMix ONT assembly (chr12:13-14 Mb, stage A,
+    // 57184 AssemblyGraph steps), with truth from the HG002 v1.1 diploid
+    // assembly. Comparing all three estimators over the union of every region
+    // any of them touched (346 candidates, truth established for 328) by total
+    // edit distance to truth:
+    //
+    //     estimator   regions changed   total edit distance   mean
+    //     median      78                663                   2.021
+    //     average     192               746                   2.274
+    //     mode        209               768                   2.341
+    //
+    // Median wins both by touching far fewer regions (it agrees with whatever
+    // abpoa/theseus already produced more often) and by choosing a better
+    // length on the regions it does change (helped 27, hurt 39, vs average's
+    // 62/112 and mode's 48/144 - mode is worse than doing nothing here, not
+    // just worse than the other two). Median is the default on this evidence.
+    //
+    // The single-locus case that used to justify mode, kept for context: at a
+    // locus whose true run lengths are 12 and 11, the 19 reads report the
+    // first run as:
     //
     //     length  6   7  10  11  12  14  15
     //     reads   1   1   2   6   7   1   1
@@ -115,18 +136,17 @@ namespace shasta2 {
     // reads. Usually correct, occasionally a large deletion, so the distribution
     // is peaked at the truth but has more than half its mass at or below it.
     // Any median type estimator lands one base low on such a distribution, while
-    // the mode finds the peak.
+    // the mode finds the peak - on that one locus. Drawing length noise from the
+    // distribution measured at this run gives mode 1.00 and median 1.15 mean
+    // edit distance from the truth; pooling it with the second run, whose
+    // errors are far more symmetric, reverses that to mode 0.40 and median
+    // 0.23. Both beat the majority voting they replace. The chr12 result above
+    // shows that flip is real and not a one-locus fluke: which estimator wins
+    // depends on the mix of homopolymer error shapes in the data, and on a
+    // whole assembly rather than one hand-picked locus, mode is not it.
     //
-    // Which estimator wins is genuinely sensitive to that shape, and simulation
-    // was not able to settle it. Drawing length noise from the distribution
-    // measured at this run gives mode 1.00 and median 1.15 mean edit distance
-    // from the truth; pooling it with the second run, whose errors are far more
-    // symmetric, reverses that to mode 0.40 and median 0.23. Both beat the
-    // majority voting they replace. Since the simulated answer flips with an
-    // assumption that cannot be pinned down from the data available, the real
-    // measured case decides it, and that case says mode.
-    //
-    // Worth revisiting with more loci of known truth. Median stays available.
+    // Worth revisiting again with more assemblies of known truth (chr21 in
+    // particular - see the harness scripts). Average and mode stay available.
     enum class RunLengthEstimator {
 
         // The most frequent length, by total weight. Ties go to the shorter run.
@@ -454,7 +474,7 @@ namespace shasta2 {
         uint64_t encodeThreshold = 1;
 
         // How the consensus length of a long homopolymer run is chosen.
-        RunLengthEstimator estimator = RunLengthEstimator::Average;
+        RunLengthEstimator estimator = RunLengthEstimator::Median;
 
         // Columns of context included on each side of a bad region.
         uint64_t flank = 10;
