@@ -266,22 +266,42 @@ namespace shasta2 {
     // hifiasm does not have this problem because its real acceptance check
     // (CORRECT_THRESHOLD) compares the winning candidate's weight against
     // the ORIGINAL total count, not against whatever is left of the
-    // population by the time the walk gets there. A hybrid - walk
-    // sequentially, but require the survival to also stay above an absolute
-    // fraction of totalWeight, not just a majority of itself - was not
-    // tried.
+    // population by the time the walk gets there. The hybrid this suggests -
+    // walk sequentially from the median (only when the margin gate says the
+    // call is weak), but require the survival to also stay above an
+    // absolute fraction of totalWeight, not just a majority of itself - is
+    // MedianGatedWalk (see its own comment), and it does not pay off either:
+    //
+    //     estimator                total edit distance   exact   helped/hurt
+    //     MedianMarginGated(0.60)  209                    78      106/57
+    //     MedianGatedWalk(0.30)    292                    80      98/63
+    //     MedianGatedWalk(0.45)    262                    64      56/36
+    //
+    // (208-region union of the three, truth established for 193.) Tightening
+    // the floor from 0.30 to 0.45 does reduce the runaway (total edit
+    // distance drops from 292 to 262), but a floor tight enough to stop
+    // every runaway is also tight enough to block many of the genuine +1
+    // corrections MedianMarginGated gets right by never attempting anything
+    // past the median unconditionally - the floor cannot distinguish "this
+    // region needs +2" from "this region's tail is a coverage artifact"
+    // using only the same lengthWeight distribution median already looked
+    // at. For this data, when the margin gate's trigger fires, the
+    // correction actually needed is overwhelmingly +1; the walk's ability to
+    // occasionally choose +2 correctly is not worth what it costs elsewhere.
+    // MedianMarginGated(0.60) remains the default.
     //
     // Worth revisiting again with more assemblies of known truth (chr21 in
-    // particular - see the harness scripts), worth tuning the threshold more
-    // finely than the three points above, worth trying a homopolymer context
-    // aware relaxed threshold the way hifiasm does (0.515 instead of 0.60
-    // specifically inside a run), worth the sequential-walk-with-an-
-    // absolute-floor hybrid described above, and worth instrumenting the
-    // actual per-region vote (lengthWeight distribution, not just the
-    // margin at the chosen length) since none of the harness's own output
-    // columns explain the remaining split. Average, mode, medianPlusOne,
-    // medianConfidenceGated, medianNeighborGated and sequentialMajorityWalk
-    // stay available.
+    // particular - see the harness scripts), worth tuning the margin
+    // threshold more finely than the three points given earlier, worth
+    // trying a homopolymer context aware relaxed threshold the way hifiasm
+    // does (0.515 instead of 0.60 specifically inside a run), and worth
+    // instrumenting the actual per-region vote (lengthWeight distribution,
+    // not just the margin at the chosen length) since none of the harness's
+    // own output columns explain the remaining split - every attempt so far
+    // to separate "needs +1" from "needs nothing" or "needs +2" has used
+    // only the same information the median itself already saw. Average,
+    // mode, medianPlusOne, medianConfidenceGated, medianNeighborGated,
+    // sequentialMajorityWalk and medianGatedWalk stay available.
     enum class RunLengthEstimator {
 
         // The most frequent length, by total weight. Ties go to the shorter run.
@@ -364,6 +384,28 @@ namespace shasta2 {
         // far. A handful of reads that keep agreeing with each other past
         // where the truth ends is enough to carry the walk arbitrarily far.
         SequentialMajorityWalk,
+
+        // MedianMarginGated's trigger (only act when the median's cumulative
+        // support is below 0.60) combined with SequentialMajorityWalk's
+        // mechanism for choosing how far to extend, plus the floor
+        // SequentialMajorityWalk was missing: continue past the median only
+        // while a majority of the remaining reads agree AND the survival is
+        // still at least a fixed floor of the ORIGINAL total, not just of
+        // whatever is left - that fixed floor is exactly the piece hifiasm's
+        // real acceptance check has and the plain sequential walk did not.
+        // Tried and rejected at two floors: see the harness measurement
+        // below. It reduces but does not eliminate the runaway failure - a
+        // handful of regions still overshoot by a lot (length deltas of 7 to
+        // 21 bases seen at a floor of 0.3), and those large misses cost more
+        // total accuracy than the extra correct multi-base corrections gain,
+        // even though a looser floor still finds slightly more exact matches
+        // than MedianMarginGated overall. For this data, when the margin
+        // gate's trigger fires, the correction actually needed is
+        // overwhelmingly +1 - a variable-length walk finds a few genuine +2
+        // corrections MedianMarginGated cannot, but paying for them with
+        // occasional double-digit overshoots is not worth it. The current
+        // code keeps the better-performing of the two floors tried (0.45).
+        MedianGatedWalk,
 
         // The weighted mean length, rounded to the nearest integer (ties round
         // up). Unlike mode and median it uses every observed length, so a few

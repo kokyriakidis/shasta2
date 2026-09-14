@@ -538,6 +538,47 @@ void shasta2::extendedConsensus(
                 consensusRunLength = length;
                 coverage = survival;
 
+            } else if(estimator == RunLengthEstimator::MedianGatedWalk) {
+
+                // MedianMarginGated's trigger (only act when the median's
+                // cumulative support is weak, below 0.60) combined with
+                // SequentialMajorityWalk's mechanism for deciding how far to
+                // extend, but with the floor SequentialMajorityWalk was
+                // missing: continue extending past the median only while a
+                // majority of the REMAINING reads agree (as before) AND the
+                // survival is still at least 0.3 of the ORIGINAL total - a
+                // fixed floor against the whole population, not just against
+                // whatever is left, which is exactly the difference between
+                // this and hifiasm's real acceptance check (CORRECT_THRESHOLD
+                // compares against the original total, not the survivors).
+                // A confident median (>=0.60) is trusted as-is, same as
+                // MedianMarginGated.
+                uint64_t cumulative = 0;
+                uint64_t length = 0;
+                for(length=1; length<=maxObserved; length++) {
+                    cumulative += lengthWeight[length];
+                    if(2 * cumulative >= totalWeight) {
+                        break;
+                    }
+                }
+                const bool weak = 10 * cumulative < 6 * totalWeight;
+                uint64_t survival = totalWeight - (cumulative - lengthWeight[length]);
+                if(weak) {
+                    while(length < maxObserved) {
+                        const uint64_t nextSurvival = survival - lengthWeight[length];
+                        const bool majorityContinues = 2 * nextSurvival > survival;
+                        const bool aboveFloor = 20 * nextSurvival >= 9 * totalWeight;
+                        if(majorityContinues and aboveFloor) {
+                            survival = nextSurvival;
+                            ++length;
+                        } else {
+                            break;
+                        }
+                    }
+                }
+                consensusRunLength = length;
+                coverage = survival;
+
             } else {
 
                 // The weighted mean, rounded to the nearest integer with ties
