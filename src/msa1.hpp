@@ -208,6 +208,23 @@ namespace shasta2 {
     // thresholds narrow it to only the tightest near-ties; 0.60 was not
     // finely tuned beyond these three points and may not be the exact peak.
     //
+    // The numbers above were later found to include a harness bug (fixed in
+    // scripts/EvaluateMsa1AgainstTruth.py): the truth window was built
+    // inclusive of both anchor positions, one base too many, because
+    // LocalAssembly7 actually assembles a core read's window as
+    // [positionA, positionB) - inclusive of anchorIdA's position, exclusive
+    // of anchorIdB's (LocalAssembly7.cpp:377-378,408). This added a constant
+    // +1 to every distance reported here, in both directions, which is why
+    // no comparison in this whole file ever produced an exact match (edit
+    // distance 0) even where the assembly was already perfect. Rerunning
+    // after the fix: the helped/hurt counts above are unchanged (the
+    // constant bias never flipped a relative comparison), but exact matches
+    // are now visible and the margin gate's advantage is sharper for it -
+    // over the 215 regions either estimator touches, plain median gets the
+    // exact HG002 v1.1 sequence in 58 (27.0%), MedianMarginGated(0.60) gets
+    // it in 90 (41.9%), total edit distance 279 vs 219. Any new estimator
+    // measurement from here on should use the fixed script.
+    //
     // The 57 regions MedianMarginGated(0.60) still gets wrong were checked
     // for a pattern that could separate them from the 106 it gets right, to
     // see if a further condition could be added. None of the surface
