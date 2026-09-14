@@ -208,12 +208,39 @@ namespace shasta2 {
     // thresholds narrow it to only the tightest near-ties; 0.60 was not
     // finely tuned beyond these three points and may not be the exact peak.
     //
+    // The 57 regions MedianMarginGated(0.60) still gets wrong were checked
+    // for a pattern that could separate them from the 106 it gets right, to
+    // see if a further condition could be added. None of the surface
+    // features available from the harness's output separate them: run base
+    // (A/T dominate both groups, proportional to overall AT-richness),
+    // homopolymer length near the change (both groups mostly 13+ bases, hurt
+    // only slightly more concentrated there), and local read coverage
+    // (median ~34-35 reads in both groups) are all statistically
+    // indistinguishable between the two. The hurt/helped split is close to a
+    // coin flip on every signal checked so far except the margin itself.
+    //
+    // One more targeted idea was tried: require length+1 to have real
+    // support of its own (lengthWeight[length+1] >= lengthWeight[length]),
+    // not just "some weight sits somewhere past the median" - which the
+    // margin alone cannot distinguish from several small deletions spread
+    // across lengths below the median, none of them actually being
+    // length+1 (MedianNeighborGated). It is worse, not better: on the same
+    // chr12 assembly it touched only 119 regions (down from 184) and got
+    // 55 right against 49 wrong, total edit distance 477 vs
+    // MedianMarginGated's 434 over the same 232-region union - it excludes
+    // more good corrections than bad ones. Genuine support for the +1
+    // correction is evidently not concentrated at length+1 alone; where it
+    // actually is remains open.
+    //
     // Worth revisiting again with more assemblies of known truth (chr21 in
     // particular - see the harness scripts), worth tuning the threshold more
-    // finely than the three points above, and worth trying a homopolymer
-    // context aware relaxed threshold the way hifiasm does (0.515 instead of
-    // 0.60 specifically inside a run). Average, mode, medianPlusOne and
-    // medianConfidenceGated stay available.
+    // finely than the three points above, worth trying a homopolymer context
+    // aware relaxed threshold the way hifiasm does (0.515 instead of 0.60
+    // specifically inside a run), and worth instrumenting the actual per-
+    // region vote (lengthWeight distribution, not just the margin at the
+    // chosen length) since none of the harness's own output columns explain
+    // the remaining split. Average, mode, medianPlusOne,
+    // medianConfidenceGated and medianNeighborGated stay available.
     enum class RunLengthEstimator {
 
         // The most frequent length, by total weight. Ties go to the shorter run.
@@ -261,6 +288,17 @@ namespace shasta2 {
         // The default: see the harness measurement below, where it beats
         // plain median (and every other estimator tried).
         MedianMarginGated,
+
+        // MedianMarginGated, plus a second condition: nudge to length+1 only
+        // when length+1's own vote weight is at least length's - a genuine
+        // rival in the raw vote, not just "some weight sits somewhere past
+        // the median" (which the margin alone cannot tell apart from a few
+        // small deletions scattered across lengths below the median, none
+        // of them actually being length+1). Tried and rejected: see the
+        // harness measurement below. It excludes more good corrections than
+        // bad ones, so genuine support for +1 is evidently not concentrated
+        // at length+1 alone.
+        MedianNeighborGated,
 
         // The weighted mean length, rounded to the nearest integer (ties round
         // up). Unlike mode and median it uses every observed length, so a few
