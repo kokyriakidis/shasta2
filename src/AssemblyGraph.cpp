@@ -874,8 +874,10 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
 
         } else {
 
+            LocalAssembly7::Options options;
+            options.setMethod(assembleMethodName);
             LocalAssembly7 localAssembly(
-                LocalAssembly7::Options(),
+                options,
                 anchors,
                 anchorPair.anchorIdA,
                 anchorPair.anchorIdB,
