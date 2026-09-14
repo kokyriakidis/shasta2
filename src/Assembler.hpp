@@ -12,6 +12,7 @@
 // Standard library.
 #include "memory.hpp"
 #include "string.hpp"
+#include "tuple.hpp"
 #include "utility.hpp"
 
 namespace shasta2 {
@@ -322,6 +323,42 @@ public:
         const string& assemblyStage,
         const Options&);
     std::map<string, shared_ptr<AssemblyGraphPostprocessor> > assemblyGraphTable;
+
+
+
+    // Support for the msa1 hard-region evaluation harness (scripts/FindMsa1HardRegions.py,
+    // scripts/EvaluateMsa1AgainstTruth.py). See src/AssemblerMsa1Eval.cpp.
+
+    // Return the full base sequence of an oriented read, given as a string
+    // of the form "readId-strand" (see OrientedReadId's string constructor).
+    string getOrientedReadSequenceString(const string& orientedReadIdString) const;
+
+    // Return true if the given oriented read appears in the given anchor.
+    // Check this before calling getAnchorPositionInOrientedRead, which asserts
+    // (does not throw) if the oriented read is not in the anchor - this matters
+    // because AssemblyGraph::getAssemblyGraphSteps returns, for each step, some
+    // oriented reads borrowed from the previous/next step that are not
+    // guaranteed to appear in this step's anchorIdA/anchorIdB.
+    bool anchorContainsOrientedRead(
+        AnchorId,
+        const string& orientedReadIdString) const;
+
+    // Return the position, in the given oriented read, of the marker midpoint
+    // of the given anchor. Asserts if the oriented read does not appear in the anchor.
+    uint32_t getAnchorPositionInOrientedRead(
+        AnchorId,
+        const string& orientedReadIdString) const;
+
+    // Run LocalAssembly7 twice for the same (anchorIdA, anchorIdB, orientedReadIds) -
+    // once with Method::Adaptive, once with Method::Msa1 - and return
+    // (successAdaptive, consensusAdaptive, successMsa1, consensusMsa1).
+    // The two runs differ only in whether msa1's homopolymer repair is applied
+    // (see LocalAssembly7::runAdaptiveOrMsa1), so a difference in the two
+    // consensus strings means the repair changed something for this region.
+    std::tuple<bool, string, bool, string> runLocalAssemblyAdaptiveAndMsa1(
+        AnchorId anchorIdA,
+        AnchorId anchorIdB,
+        const vector<string>& orientedReadIdStrings) const;
 
 
 

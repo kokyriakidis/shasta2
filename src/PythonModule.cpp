@@ -156,6 +156,24 @@ PYBIND11_MODULE(shasta2, shasta2Module)
           &Assembler::createAssemblyGraph)
       .def("getAssemblyGraph",
           &Assembler::getAssemblyGraph, return_value_policy::reference)
+
+      // Support for the msa1 hard-region evaluation harness.
+      .def("getOrientedReadSequenceString",
+          &Assembler::getOrientedReadSequenceString,
+          arg("orientedReadIdString"))
+      .def("anchorContainsOrientedRead",
+          &Assembler::anchorContainsOrientedRead,
+          arg("anchorId"),
+          arg("orientedReadIdString"))
+      .def("getAnchorPositionInOrientedRead",
+          &Assembler::getAnchorPositionInOrientedRead,
+          arg("anchorId"),
+          arg("orientedReadIdString"))
+      .def("runLocalAssemblyAdaptiveAndMsa1",
+          &Assembler::runLocalAssemblyAdaptiveAndMsa1,
+          arg("anchorIdA"),
+          arg("anchorIdB"),
+          arg("orientedReadIdStrings"))
     ;
 
 
@@ -182,6 +200,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def("assembleAll", &AssemblyGraph::assembleAll)
         .def("assembleAllStrandSymmetric", &AssemblyGraph::assembleAllStrandSymmetric)
         .def("clearSequence", &AssemblyGraph::clearSequence)
+        .def("getAssemblyGraphSteps", &AssemblyGraph::getAssemblyGraphSteps)
         .def("phaseSuperbubbleChains", &AssemblyGraph::phaseSuperbubbleChains)
         .def("strandSymmetricPhaseSuperbubbleChains", &AssemblyGraph::strandSymmetricPhaseSuperbubbleChains)
         .def("colorStrongComponents", &AssemblyGraph::colorStrongComponents)
