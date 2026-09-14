@@ -480,6 +480,33 @@ void shasta2::extendedConsensus(
                     }
                 }
 
+            } else if(estimator == RunLengthEstimator::MedianNeighborGated) {
+
+                // Same idea as MedianMarginGated, but additionally requires
+                // the +1 candidate to have real, comparable support of its
+                // own, not just weight parked at other lengths - the low
+                // bias can come from several small deletions scattered
+                // across lengths below the median without any of them
+                // actually being length+1. Nudge only when the median's
+                // cumulative support is weak (below 0.60, as in
+                // MedianMarginGated) AND lengthWeight[length+1] is itself a
+                // genuine rival to lengthWeight[length], not a token amount.
+                uint64_t cumulative = 0;
+                for(uint64_t length=1; length<=maxObserved; length++) {
+                    cumulative += lengthWeight[length];
+                    if(2 * cumulative >= totalWeight) {
+                        const uint64_t weightHere = lengthWeight[length];
+                        const uint64_t weightNext =
+                            (length < maxObserved) ? lengthWeight[length + 1] : 0;
+                        const bool weak = 10 * cumulative < 6 * totalWeight;
+                        const bool nextIsRival = weightNext >= weightHere;
+                        consensusRunLength = (weak && nextIsRival) ?
+                            min(length + 1, maxObserved) : length;
+                        coverage = weightHere;
+                        break;
+                    }
+                }
+
             } else {
 
                 // The weighted mean, rounded to the nearest integer with ties
