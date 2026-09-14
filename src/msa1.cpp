@@ -458,6 +458,28 @@ void shasta2::extendedConsensus(
                     }
                 }
 
+            } else if(estimator == RunLengthEstimator::MedianMarginGated) {
+
+                // The weighted median, nudged up by one only when the
+                // CUMULATIVE weight at the median (which by construction is
+                // always >=50%) is not comfortably above 50% - a genuine
+                // near-tie between "at least this long" and "shorter" - as
+                // opposed to MedianConfidenceGated's single-bucket share,
+                // which is diluted by fragmentation across neighboring
+                // lengths even when the cumulative evidence for the run
+                // being at least this long is strong. See the comment on
+                // this estimator in the header.
+                uint64_t cumulative = 0;
+                for(uint64_t length=1; length<=maxObserved; length++) {
+                    cumulative += lengthWeight[length];
+                    if(2 * cumulative >= totalWeight) {
+                        consensusRunLength = (10 * cumulative >= 6 * totalWeight) ?
+                            length : min(length + 1, maxObserved);
+                        coverage = lengthWeight[length];
+                        break;
+                    }
+                }
+
             } else {
 
                 // The weighted mean, rounded to the nearest integer with ties

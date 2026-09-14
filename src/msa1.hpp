@@ -102,6 +102,10 @@ namespace shasta2 {
     // How the consensus length of a long homopolymer run is chosen from the
     // lengths observed in the reads that cover it.
     //
+    // Current default: MedianMarginGated. What follows is the trail that got
+    // there, oldest first, kept because each rejected step explains why the
+    // next one looks the way it does.
+    //
     // The single-locus case below argued for mode, but revisiting this with
     // more loci of known truth - the thing the old comment asked for - reverses
     // that. The msa1 hard-region evaluation harness
@@ -121,7 +125,9 @@ namespace shasta2 {
     // abpoa/theseus already produced more often) and by choosing a better
     // length on the regions it does change (helped 27, hurt 39, vs average's
     // 62/112 and mode's 48/144 - mode is worse than doing nothing here, not
-    // just worse than the other two). Median is the default on this evidence.
+    // just worse than the other two). Median was the default on this
+    // evidence, until MedianMarginGated (near the end of this comment) beat
+    // it too.
     //
     // The single-locus case that used to justify mode, kept for context: at a
     // locus whose true run lengths are 12 and 11, the 19 reads report the
@@ -177,13 +183,36 @@ namespace shasta2 {
     // single-length majority regardless of whether the median is actually
     // right, unlike hifiasm's setting where the vote is over whole
     // (prefix/suffix-merged) candidate strings rather than raw integer
-    // lengths. A closer translation would gate on the combined share of the
-    // median and its neighbor, not the median alone - not yet tried.
+    // lengths.
+    //
+    // The closer translation - gate on the CUMULATIVE weight at the median,
+    // not the median length's own disjoint bucket - is MedianMarginGated, and
+    // it wins. The median is already a cumulative quantity (the smallest
+    // length whose running weight crosses 50%), so its natural confidence
+    // signal is how far past 50% that crossing landed, not how much weight
+    // sits in the one bucket it happened to land on. Swept on the same chr12
+    // assembly (regions changed / total edit distance, union of every
+    // threshold's regions, 385 candidates, truth established for 359):
+    //
+    //     threshold   regions changed   total edit distance   mean
+    //     0.60        184               669                   1.864
+    //     0.70        341               695                   1.936
+    //     0.55        115               699                   1.947
+    //     (median)    (78, over this union)  729              2.031
+    //
+    // 0.60 - which is also hifiasm's own CORRECT_THRESHOLD, unmodified - is
+    // the best of the three tried and is now the default, on both raw
+    // helped/hurt (106/57, vs plain median's 27/39 over the same regions)
+    // and total edit distance. Higher thresholds widen the correction band
+    // (more of the [50%, threshold) range counts as "not confident"), lower
+    // thresholds narrow it to only the tightest near-ties; 0.60 was not
+    // finely tuned beyond these three points and may not be the exact peak.
     //
     // Worth revisiting again with more assemblies of known truth (chr21 in
-    // particular - see the harness scripts), and worth finding a signal that
-    // picks out which regions median undershoots on before trying a
-    // correction again. Average, mode, medianPlusOne and
+    // particular - see the harness scripts), worth tuning the threshold more
+    // finely than the three points above, and worth trying a homopolymer
+    // context aware relaxed threshold the way hifiasm does (0.515 instead of
+    // 0.60 specifically inside a run). Average, mode, medianPlusOne and
     // medianConfidenceGated stay available.
     enum class RunLengthEstimator {
 
@@ -220,6 +249,18 @@ namespace shasta2 {
         // than it is for hifiasm's whole-string vote, so this triggers on
         // most poly runs regardless of whether the median is right.
         MedianConfidenceGated,
+
+        // The weighted median, nudged up by one only when the CUMULATIVE
+        // weight at the median (always >=50%, by how the median itself is
+        // defined) is below 0.60 - i.e. gating on the same cumulative,
+        // prefix-merged quantity the median computation already produces,
+        // rather than the single length's own disjoint bucket share the way
+        // MedianConfidenceGated does. A median just barely over 50%
+        // cumulative support is a near-tie and gets nudged; one with most of
+        // the weight already accounted for below it is trusted as-is.
+        // The default: see the harness measurement below, where it beats
+        // plain median (and every other estimator tried).
+        MedianMarginGated,
 
         // The weighted mean length, rounded to the nearest integer (ties round
         // up). Unlike mode and median it uses every observed length, so a few
@@ -535,7 +576,7 @@ namespace shasta2 {
         uint64_t encodeThreshold = 1;
 
         // How the consensus length of a long homopolymer run is chosen.
-        RunLengthEstimator estimator = RunLengthEstimator::Median;
+        RunLengthEstimator estimator = RunLengthEstimator::MedianMarginGated;
 
         // Columns of context included on each side of a bad region.
         uint64_t flank = 10;
