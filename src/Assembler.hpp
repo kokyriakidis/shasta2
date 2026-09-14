@@ -360,6 +360,20 @@ public:
         AnchorId anchorIdB,
         const vector<string>& orientedReadIdStrings) const;
 
+    // Run LocalAssembly7 with Method::Msa1, and also return one diagnostic
+    // row per poly column the run-length vote touched: (totalWeight,
+    // maxObserved, medianLength, cumulativeAtMedian, weightAtMedian,
+    // weightAtMedianPlusOne, chosenLength) - see Msa1ColumnDiagnostic in
+    // msa1.hpp. This is what the vote actually looked like at each column,
+    // regardless of which RunLengthEstimator is the active default.
+    std::tuple<
+        bool, string,
+        vector< std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t> >
+        > runLocalAssemblyMsa1WithDiagnostics(
+        AnchorId anchorIdA,
+        AnchorId anchorIdB,
+        const vector<string>& orientedReadIdStrings) const;
+
 
 
     // Remove the memory mapped objects owned by an object of type T,
