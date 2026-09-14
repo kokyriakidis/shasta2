@@ -13,6 +13,9 @@ using namespace shasta2;
 
 namespace shasta2 {
 
+    // See msa1.hpp for comments.
+    vector<Msa1ColumnDiagnostic>* msa1ColumnDiagnostics = nullptr;
+
     // A row of an alignment is either bare symbols or symbols paired with a run
     // length, depending on whether it has been through the extended alphabet.
     // These let the handful of functions that only care where the gaps are work
@@ -595,6 +598,28 @@ void shasta2::extendedConsensus(
                 coverage = totalWeight;
             }
             SHASTA2_ASSERT(consensusRunLength > 0);
+
+            if(msa1ColumnDiagnostics) {
+                uint64_t diagnosticCumulative = 0;
+                uint64_t diagnosticMedian = 0;
+                for(uint64_t length=1; length<=maxObserved; length++) {
+                    diagnosticCumulative += lengthWeight[length];
+                    if(2 * diagnosticCumulative >= totalWeight) {
+                        diagnosticMedian = length;
+                        break;
+                    }
+                }
+                Msa1ColumnDiagnostic diagnostic;
+                diagnostic.totalWeight = totalWeight;
+                diagnostic.maxObserved = maxObserved;
+                diagnostic.medianLength = diagnosticMedian;
+                diagnostic.cumulativeAtMedian = diagnosticCumulative;
+                diagnostic.weightAtMedian = lengthWeight[diagnosticMedian];
+                diagnostic.weightAtMedianPlusOne =
+                    (diagnosticMedian < maxObserved) ? lengthWeight[diagnosticMedian + 1] : 0;
+                diagnostic.chosenLength = consensusRunLength;
+                msa1ColumnDiagnostics->push_back(diagnostic);
+            }
         }
 
         alignedConsensus[j] = make_pair(consensusSymbol, consensusRunLength);

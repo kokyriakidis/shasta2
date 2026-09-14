@@ -7,6 +7,7 @@
 #include "Anchor.hpp"
 #include "Base.hpp"
 #include "LocalAssembly7.hpp"
+#include "msa1.hpp"
 #include "ReadId.hpp"
 #include "Reads.hpp"
 using namespace shasta2;
@@ -71,4 +72,44 @@ std::tuple<bool, string, bool, string> Assembler::runLocalAssemblyAdaptiveAndMsa
     return std::make_tuple(
         localAssemblyAdaptive.success, toString(localAssemblyAdaptive.sequence),
         localAssemblyMsa1.success, toString(localAssemblyMsa1.sequence));
+}
+
+
+
+std::tuple<
+    bool, string,
+    vector< std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t> >
+    > Assembler::runLocalAssemblyMsa1WithDiagnostics(
+    AnchorId anchorIdA,
+    AnchorId anchorIdB,
+    const vector<string>& orientedReadIdStrings) const
+{
+    vector<OrientedReadId> orientedReadIds;
+    orientedReadIds.reserve(orientedReadIdStrings.size());
+    for(const string& s: orientedReadIdStrings) {
+        orientedReadIds.push_back(OrientedReadId(s));
+    }
+
+    ostream html(0);
+
+    vector<Msa1ColumnDiagnostic> diagnostics;
+    msa1ColumnDiagnostics = &diagnostics;
+
+    LocalAssembly7::Options optionsMsa1;
+    optionsMsa1.method = LocalAssembly7::Method::Msa1;
+    const LocalAssembly7 localAssemblyMsa1(
+        optionsMsa1, anchors(), anchorIdA, anchorIdB, html, orientedReadIds);
+
+    msa1ColumnDiagnostics = nullptr;
+
+    vector< std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t> > rows;
+    rows.reserve(diagnostics.size());
+    for(const Msa1ColumnDiagnostic& d: diagnostics) {
+        rows.push_back(std::make_tuple(
+            d.totalWeight, d.maxObserved, d.medianLength, d.cumulativeAtMedian,
+            d.weightAtMedian, d.weightAtMedianPlusOne, d.chosenLength));
+    }
+
+    return std::make_tuple(
+        localAssemblyMsa1.success, toString(localAssemblyMsa1.sequence), rows);
 }

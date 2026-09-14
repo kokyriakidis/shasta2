@@ -290,18 +290,43 @@ namespace shasta2 {
     // occasionally choose +2 correctly is not worth what it costs elsewhere.
     // MedianMarginGated(0.60) remains the default.
     //
+    // The per-region vote was instrumented directly (Msa1ColumnDiagnostic,
+    // below, exposed via Assembler::runLocalAssemblyMsa1WithDiagnostics) to
+    // see whether any feature of the actual lengthWeight distribution at the
+    // column MedianMarginGated nudged separates the regions it fixes from
+    // the ones it breaks - not just the margin, everything the vote carries.
+    // Comparing the 68 regions it moved from wrong to exactly right against
+    // the 43 it moved from exactly right to wrong (real HG002 v1.1 truth,
+    // chr12 harness data), at the specific column the nudge fired on:
+    //
+    //                              fixed (n=66 cols)   broke (n=43 cols)
+    //     margin (cumulative/total)      0.556               0.538
+    //     weight-at-median share         0.261               0.273
+    //     weight-at-median+1 share       0.259               0.241
+    //     rival ratio (median+1/median)  1.00                0.89
+    //     total read coverage            30                  26
+    //     homopolymer length             17.8                17.4
+    //
+    // Every one of these overlaps almost completely - not just hard to
+    // separate, but statistically indistinguishable. Whether an ambiguous
+    // column's true length is the median or median+1 is not predictable from
+    // anything the column's own read-length histogram carries: not margin,
+    // not coverage, not run length, not how strong a rival median+1 is. This
+    // is a stronger conclusion than any of the rejected estimators above:
+    // it says no RunLengthEstimator built only from this column's vote can
+    // do better than MedianMarginGated already does, because the column
+    // does not contain the information needed to tell these two cases apart.
+    // Separating them, if it is possible at all, needs a signal from outside
+    // this column's own vote - neighboring columns, phasing, or an
+    // independent second opinion such as running hifiasm on the same reads,
+    // which got the one locus checked by hand exactly right.
+    //
     // Worth revisiting again with more assemblies of known truth (chr21 in
-    // particular - see the harness scripts), worth tuning the margin
-    // threshold more finely than the three points given earlier, worth
-    // trying a homopolymer context aware relaxed threshold the way hifiasm
-    // does (0.515 instead of 0.60 specifically inside a run), and worth
-    // instrumenting the actual per-region vote (lengthWeight distribution,
-    // not just the margin at the chosen length) since none of the harness's
-    // own output columns explain the remaining split - every attempt so far
-    // to separate "needs +1" from "needs nothing" or "needs +2" has used
-    // only the same information the median itself already saw. Average,
-    // mode, medianPlusOne, medianConfidenceGated, medianNeighborGated,
-    // sequentialMajorityWalk and medianGatedWalk stay available.
+    // particular - see the harness scripts), and worth an external-signal
+    // approach along the lines above rather than another RunLengthEstimator
+    // built from this same column's vote. Average, mode, medianPlusOne,
+    // medianConfidenceGated, medianNeighborGated, sequentialMajorityWalk and
+    // medianGatedWalk stay available.
     enum class RunLengthEstimator {
 
         // The most frequent length, by total weight. Ties go to the shorter run.
@@ -741,6 +766,29 @@ namespace shasta2 {
     //
     // alignment, alignedConsensus and consensus are all modified in place.
     // Returns the number of regions repaired, which is usually 0.
+    // Diagnostic hook for the msa1 hard-region evaluation harness
+    // (scripts/EvaluateMsa1AgainstTruth.py via
+    // Assembler::runLocalAssemblyMsa1WithDiagnostics). When
+    // msa1ColumnDiagnostics is non-null, extendedConsensus appends one record
+    // here for every poly column it votes a run length for, regardless of
+    // which RunLengthEstimator is active - this is what the median actually
+    // saw at that column, not just which estimator variant was tried. Off
+    // (null) by default; not thread-safe, intended for single-threaded
+    // harness use only, never touched by the production assembly path.
+    class Msa1ColumnDiagnostic {
+    public:
+        uint64_t totalWeight = 0;
+        uint64_t maxObserved = 0;
+        uint64_t medianLength = 0;
+        uint64_t cumulativeAtMedian = 0;
+        uint64_t weightAtMedian = 0;
+        uint64_t weightAtMedianPlusOne = 0;
+        uint64_t chosenLength = 0;
+    };
+    extern vector<Msa1ColumnDiagnostic>* msa1ColumnDiagnostics;
+
+
+
     uint64_t msa1(
 
         // The alignment computed by abpoa or theseus, one row per input

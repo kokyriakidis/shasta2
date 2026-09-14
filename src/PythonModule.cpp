@@ -174,6 +174,11 @@ PYBIND11_MODULE(shasta2, shasta2Module)
           arg("anchorIdA"),
           arg("anchorIdB"),
           arg("orientedReadIdStrings"))
+      .def("runLocalAssemblyMsa1WithDiagnostics",
+          &Assembler::runLocalAssemblyMsa1WithDiagnostics,
+          arg("anchorIdA"),
+          arg("anchorIdB"),
+          arg("orientedReadIdStrings"))
     ;
 
 
