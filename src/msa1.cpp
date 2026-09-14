@@ -507,6 +507,37 @@ void shasta2::extendedConsensus(
                     }
                 }
 
+            } else if(estimator == RunLengthEstimator::SequentialMajorityWalk) {
+
+                // hifiasm's error correction (Correct.cpp) never computes a
+                // mean/median/mode of raw integer lengths: it builds a graph
+                // of whole candidate insertion strings with common
+                // prefix/suffix nodes merged, then greedily walks the
+                // highest-weight edge from the start (Merge_DAGCon,
+                // generate_best_seq_from_nodes, Correct.cpp:5031,5292). The
+                // walk naturally stops extending once the reads that agree
+                // "at least this far" no longer hold a majority of the reads
+                // that agreed one base back. Translated into this 1D length
+                // domain: walk the length upward one base at a time,
+                // continuing past length L only while a strict majority of
+                // the reads that reached L also reach L+1 - i.e. the reads
+                // that stop at exactly L are a minority of those still in
+                // the running - and stop at the first L where that majority
+                // breaks. See the harness measurement below.
+                uint64_t survival = totalWeight;
+                uint64_t length = 1;
+                while(length < maxObserved) {
+                    const uint64_t nextSurvival = survival - lengthWeight[length];
+                    if(2 * nextSurvival > survival) {
+                        survival = nextSurvival;
+                        ++length;
+                    } else {
+                        break;
+                    }
+                }
+                consensusRunLength = length;
+                coverage = survival;
+
             } else {
 
                 // The weighted mean, rounded to the nearest integer with ties
