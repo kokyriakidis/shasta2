@@ -168,9 +168,7 @@ private:
 
 
     // In the ConnectionGraph, each vertex represents a Segment.
-    // There is a vertex for each strand 0 Segment plus
-    // a vertex for each entrance or exit that is not also a
-    // strand0 segment.
+    // There is a vertex for each strand 0 Segment.
     // Edges correspond to connections already present in the
     // AssemblyGraph or additional connections that can be
     // made to split our Tangle.
@@ -178,7 +176,16 @@ private:
     class ConnectionVertex {
     public:
         Segment segment;
-        ConnectionVertex(Segment segment) : segment(segment) {}
+        bool isEntrance;
+        bool isExit;
+        ConnectionVertex(
+            Segment segment,
+            bool isEntrance,
+            bool isExit) :
+            segment(segment),
+            isEntrance(isEntrance),
+            isExit(isExit)
+        {}
     };
 
     class ConnectionEdge {
@@ -204,7 +211,7 @@ private:
         ConnectionEdge>;
     class ConnectionGraph: public ConnectionGraphBaseClass {
     public:
-        void addVertex(Segment);
+        void addVertex(Segment, bool isEntrance, bool isExit);
         std::map<Segment, vertex_descriptor> vertexMap;
         void writeGraphviz(const string& fileName, const AssemblyGraph&) const;
     };

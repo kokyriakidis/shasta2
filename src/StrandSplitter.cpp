@@ -394,17 +394,9 @@ void StrandSplitter::StrandSeparationGraph::writeGraphviz(
 void StrandSplitter::createConnectionGraph()
 {
     // Create vertices of the ConnectionGraph.
-    // There is a vertex for each strand 0 Segment plus
-    // a vertex for each entrance or exit that is not also a
-    // strand0 segment.
+    // There is a vertex for each strand 0 Segment.
     for(const Segment segment: strandSegments[0]) {
-        connectionGraph.addVertex(segment);
-    }
-    for(const Segment segment: tangle.entrances) {
-        connectionGraph.addVertex(segment);
-    }
-    for(const Segment segment: tangle.exits) {
-        connectionGraph.addVertex(segment);
+        connectionGraph.addVertex(segment, isEntrance(segment), isExit(segment));
     }
 
 
@@ -481,7 +473,7 @@ void StrandSplitter::createConnectionGraph()
         connectionGraph.writeGraphviz(dotFileName, assemblyGraph);
         const double timeout = 30.;
         const string options = "-Nshape=rectangle";
-        html << "<h2>Connection separation graph</h2>" << dotFileName;
+        html << "<h2>Connection graph</h2>" << dotFileName;
         try {
             graphvizToHtml(dotFileName, "dot", timeout, options, html, true);
         } catch (std::exception&) {
@@ -502,8 +494,18 @@ void StrandSplitter::ConnectionGraph::writeGraphviz(
     dot << "digraph ConnectionGraph {\n";
 
     BGL_FORALL_VERTICES(v, connectionGraph, ConnectionGraph) {
-        const Segment segment = connectionGraph[v].segment;
-        dot << assemblyGraph.id(segment) << ";\n";
+        const ConnectionVertex& vertex = connectionGraph[v];
+        const Segment segment = vertex.segment;
+        dot << assemblyGraph.id(segment);
+        if(vertex.isEntrance) {
+            SHASTA2_ASSERT(not vertex.isExit);
+            dot << " [style=filled fillcolor=pink]";
+        }
+        if(vertex.isExit) {
+            SHASTA2_ASSERT(not vertex.isEntrance);
+            dot << " [style=filled fillcolor=cyan]";
+        }
+        dot << ";\n";
     }
 
     BGL_FORALL_EDGES(e, connectionGraph, ConnectionGraph) {
@@ -531,12 +533,16 @@ void StrandSplitter::ConnectionGraph::writeGraphviz(
 
 
 
-void StrandSplitter::ConnectionGraph::addVertex(Segment segment)
+void StrandSplitter::ConnectionGraph::addVertex(
+    Segment segment,
+    bool isEntrance,
+    bool isExit)
 {
     ConnectionGraph& connectionGraph = *this;
 
     if(not vertexMap.contains(segment)) {
-        const vertex_descriptor v = boost::add_vertex(ConnectionVertex(segment), connectionGraph);
+        const vertex_descriptor v = boost::add_vertex(
+            ConnectionVertex(segment, isEntrance, isExit), connectionGraph);
         vertexMap.insert({segment, v});
     }
 }
