@@ -82,7 +82,7 @@ private:
 
 
 
-    // Gather occurrences of reads in the first Segment of each pair.
+    // Gather occurrences of reads in the first Segment of each low coverage Segment pair.
     void findReadOccurrences();
     class ReadOccurrence {
     public:

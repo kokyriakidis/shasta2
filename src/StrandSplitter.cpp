@@ -169,6 +169,23 @@ void StrandSplitter::findReadOccurrences()
         }
     }
 
+
+    if(debug) {
+        ofstream csv(debugOutputBaseName + "-StrandSplitterReadOccurrences-Tangle-" +
+            to_string(tangleId) + ".csv");
+        csv << "ReadId,Strand,Segment,Frequency\n";
+        for(const auto&[readId, occurrences]: readOccurrenceMap) {
+            for(const auto& occurrence: occurrences) {
+                const Segment segment = lowCoverageSegmentPairs[occurrence.segmentPairIndex].first;
+                csv << readId << ",";
+                csv << occurrence.strand << ",";
+                csv << id(segment) << ",";
+                csv << occurrence.frequency << "\n";
+            }
+        }
+
+    }
+
 }
 
 
