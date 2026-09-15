@@ -169,6 +169,15 @@ void StrandSplitter::findReadOccurrences()
         }
     }
 
+    // Remove from the map reads with just one occurrence.
+    std::map<ReadId, vector<ReadOccurrence> > newReadOccurrenceMap;
+    for(const auto&p: readOccurrenceMap) {
+        if(p.second.size() > 1) {
+            newReadOccurrenceMap.insert(p);
+        }
+    }
+    newReadOccurrenceMap.swap(readOccurrenceMap);
+
 
     if(debug) {
         ofstream csv(debugOutputBaseName + "-StrandSplitterReadOccurrences-Tangle-" +
@@ -186,6 +195,19 @@ void StrandSplitter::findReadOccurrences()
 
     }
 
+    ofstream dot(debugOutputBaseName + "-StrandSplitterBipartiteGraph-Tangle-" +
+        to_string(tangleId) + ".dot");
+    dot << "graph BipartiteGraph {\n";
+    for(const auto&[readId, occurrences]: readOccurrenceMap) {
+        for(const auto& occurrence: occurrences) {
+            const auto&[segment, segmentRc] = lowCoverageSegmentPairs[occurrence.segmentPairIndex];
+            OrientedReadId orientedReadId(readId, occurrence.strand);
+            dot << "\"" << orientedReadId << "\"--" << id(segment) << ";\n";
+            orientedReadId.flipStrand();
+            dot << "\"" << orientedReadId << "\"--" << id(segmentRc) << ";\n";
+        }
+    }
+    dot << "}\n";
 }
 
 
