@@ -31,11 +31,22 @@ StrandSplitter::StrandSplitter(
     gatherSegments();
     writeLowCoverageSegmentPairs();
     findReadOccurrences();
-    createStrandSeparationGraph();
 
-    if(not separateStrands()) {
-        return;
+
+    const bool useBipartiteGraph = true;
+    if(useBipartiteGraph) {
+        createBipartiteGraph();
+        const bool strandSeparationSuccess = bipartiteStrandSeparation();
+        if(not strandSeparationSuccess) {
+            return;
+        }
+    } else {
+        createStrandSeparationGraph();
+        if(not separateStrands()) {
+            return;
+        }
     }
+
 
     createConnectionGraph();
 
@@ -406,7 +417,7 @@ void StrandSplitter::StrandSeparationGraph::writeGraphviz(
 
     ofstream dot(fileName);
 
-    dot << "graph StrandSeparationGaph {\n";
+    dot << "graph StrandSeparationGraph {\n";
     BGL_FORALL_VERTICES(segmentIndex, strandSeparationGraph, StrandSeparationGraph) {
         const string color = randomHslColor(strandSeparationGraph[segmentIndex].component, 0.75, 0.5);
         dot << assemblyGraph.id(strandSeparationGraph[segmentIndex].segment) <<
@@ -512,7 +523,7 @@ void StrandSplitter::createConnectionGraph()
         connectionGraph.writeGraphviz(dotFileName, assemblyGraph);
         const double timeout = 30.;
         const string options = "-Nshape=rectangle";
-        html << "<h2>Connection graph</h2>" << dotFileName;
+        html << "<h2>Connection graph</h2>" << dotFileName << "<br>";
         try {
             graphvizToHtml(dotFileName, "dot", timeout, options, html, true);
         } catch (std::exception&) {
@@ -618,4 +629,295 @@ bool StrandSplitter::isStrand1Segment(Segment segment) const
     return std::binary_search(strandSegments[1].begin(), strandSegments[1].end(),
         segment, assemblyGraph.orderById);
 }
+
+
+
+void StrandSplitter::createBipartiteGraph()
+{
+    // Generate the vertices corresponding to low coverage segments.
+    bipartiteGraph.segmentIndexToVertexMap.resize(lowCoverageSegments.size());
+    for(uint64_t segmentIndex=0; segmentIndex<lowCoverageSegments.size(); segmentIndex++) {
+        const Segment segment = lowCoverageSegments[segmentIndex];
+        const BipartiteGraph::vertex_descriptor v =
+            boost::add_vertex(BipartiteGraphVertex(segmentIndex, segment), bipartiteGraph);
+        bipartiteGraph.segmentIndexToVertexMap[segmentIndex] = v;
+    }
+
+    // Generate the vertices corresponding to OrientedReadIds.
+    for(const auto&[readId, ignore]: readOccurrenceMap) {
+        for(Strand strand=0; strand<2; strand++) {
+            const OrientedReadId orientedReadId(readId, strand);
+            const BipartiteGraph::vertex_descriptor v =
+                boost::add_vertex(BipartiteGraphVertex(orientedReadId), bipartiteGraph);
+            bipartiteGraph.orientedReadIdToVertexMap.insert({orientedReadId, v});
+        }
+    }
+
+
+
+    // Now generate the edges.
+    // Each ReadOccurrence generates a pair of reverse complemented edges.
+    for(const auto&[readId, occurrences]: readOccurrenceMap) {
+        for(const auto& occurrence: occurrences) {
+
+            const OrientedReadId orientedReadIdA(readId, occurrence.strand);;
+            const BipartiteGraph::vertex_descriptor vOrientedReadA =
+                bipartiteGraph.orientedReadIdToVertexMap.at(orientedReadIdA);
+            const uint64_t segmentIndexA = 2 * occurrence.segmentPairIndex;
+            const BipartiteGraph::vertex_descriptor vSegmentA =
+                bipartiteGraph.segmentIndexToVertexMap[segmentIndexA];
+            auto[e, ignore] = boost::add_edge(vOrientedReadA, vSegmentA,
+                BipartiteGraphEdge(occurrence.frequency), bipartiteGraph);
+
+
+            const OrientedReadId orientedReadIdB(readId, 1 - occurrence.strand);;
+            const BipartiteGraph::vertex_descriptor vOrientedReadB =
+                bipartiteGraph.orientedReadIdToVertexMap.at(orientedReadIdB);
+            const uint64_t segmentIndexB = 2 * occurrence.segmentPairIndex + 1;
+            const BipartiteGraph::vertex_descriptor vSegmentB =
+                bipartiteGraph.segmentIndexToVertexMap[segmentIndexB];
+            auto [eRc, ignoreRc] = boost::add_edge(vOrientedReadB, vSegmentB,
+                BipartiteGraphEdge(occurrence.frequency), bipartiteGraph);
+
+            bipartiteGraph.edgePairs.push_back({e, eRc, occurrence.frequency});
+        }
+    }
+    sort(bipartiteGraph.edgePairs.begin(), bipartiteGraph.edgePairs.end());
+}
+
+
+
+void StrandSplitter::writeBipartiteGraph()
+{
+
+    if(debug) {
+        const string dotFileName = debugOutputBaseName + "-StrandSplitter-BipartiteGraph-Tangle-" +
+            to_string(tangleId) + ".dot";
+        bipartiteGraph.writeGraphviz(dotFileName, assemblyGraph);
+        const double timeout = 30.;
+        const string options = "-Nshape=point -Epenwidth=0.2 -Gratio=expand -Gsize=15";
+        html << "<h2>Bipartite graph</h2>"
+            "<br>In the bipartite graph, each vertex represents a low coverage segment or "
+            "an oriented read. Oriented reads are displayed as small dots."
+            "<br>" << dotFileName << "<br>";
+
+        try {
+            graphvizToHtml(dotFileName, "sfdp", timeout, options, html, true);
+        } catch (std::exception&) {
+            html << "The bipartite graph is too complex to display.";
+        }
+    }
+}
+
+
+
+void StrandSplitter::BipartiteGraph::writeGraphviz(
+    const string& fileName,
+    const AssemblyGraph& assemblyGraph) const
+{
+    const BipartiteGraph& bipartiteGraph = *this;
+
+    ofstream dot(fileName);
+
+    dot << "graph BipartiteGraph {\n";
+
+    BGL_FORALL_VERTICES(v, bipartiteGraph, BipartiteGraph) {
+        const BipartiteGraphVertex& vertex = bipartiteGraph[v];
+        const string color = randomHslColor(vertex.component, 0.75, 0.5);
+        if(vertex.isSegment) {
+            dot << assemblyGraph.id(vertex.segment);
+            dot << "[width=0.1";
+        } else {
+            dot << "\"" << vertex.orientedReadId << "\"";
+            dot << "[width=0.02";
+        }
+        dot << " color=\"" << color << "\"]";
+        dot << ";\n";
+    }
+
+    BGL_FORALL_EDGES(e, bipartiteGraph, BipartiteGraph) {
+        const vertex_descriptor v0 = source(e, bipartiteGraph);
+        const vertex_descriptor v1 = target(e, bipartiteGraph);
+        const BipartiteGraphVertex& vertex0 = bipartiteGraph[v0];
+        const BipartiteGraphVertex& vertex1 = bipartiteGraph[v1];
+
+        if(vertex0.isSegment) {
+            dot << assemblyGraph.id(vertex0.segment);
+        } else {
+            dot << "\"" << vertex0.orientedReadId << "\"";
+        }
+        dot << "--";
+
+        if(vertex1.isSegment) {
+            dot << assemblyGraph.id(vertex1.segment);
+        } else {
+            dot << "\"" << vertex1.orientedReadId << "\"";
+        }
+
+        dot << "[";
+        dot << "tooltip=\"";
+        if(vertex0.isSegment) {
+            dot << assemblyGraph.id(vertex0.segment);
+        } else {
+            dot << vertex0.orientedReadId;
+        }
+        dot << " ";
+        if(vertex1.isSegment) {
+            dot << assemblyGraph.id(vertex1.segment);
+        } else {
+            dot << vertex1.orientedReadId;
+        }
+        dot << " " << bipartiteGraph[e].frequency;
+        dot << "\"";
+
+        if(bipartiteGraph[e].isCrossStrandEdge) {
+            dot << " color=red";
+        }
+        dot << "]";
+
+        dot << ";\n";
+
+    }
+
+    dot << "}\n";
+}
+
+
+
+// Strand separation using the BipartiteGraph.
+bool StrandSplitter::bipartiteStrandSeparation()
+{
+
+    // Map vertices to integer.
+    std::map<BipartiteGraph::vertex_descriptor, uint64_t> vertexIndexMap;
+    vector<BipartiteGraph::vertex_descriptor> vertexTable;
+    uint64_t vertexIndex = 0;
+    BGL_FORALL_VERTICES(v, bipartiteGraph, BipartiteGraph) {
+        vertexIndexMap.insert({v, vertexIndex++});
+        vertexTable.push_back(v);
+    }
+
+    // Add edges in order of decreasing frequency.
+    DisjointSets disjointSets(vertexIndexMap.size());
+    for(const auto& edgePair: bipartiteGraph.edgePairs) {
+        const auto eA = edgePair.e;
+        const auto eB = edgePair.eRc;
+
+        const auto v0A = source(eA, bipartiteGraph);
+        const auto v1A = target(eA, bipartiteGraph);
+        const auto v0B = source(eB, bipartiteGraph);
+        const auto v1B = target(eB, bipartiteGraph);
+
+        const auto v0ARc = bipartiteGraph.reverseComplement(v0A);
+        const auto v1ARc = bipartiteGraph.reverseComplement(v1A);
+        const auto v0BRc = bipartiteGraph.reverseComplement(v0B);
+        const auto v1BRc = bipartiteGraph.reverseComplement(v1B);
+
+        const uint64_t i0A = vertexIndexMap.at(v0A);
+        const uint64_t i1A = vertexIndexMap.at(v1A);
+        const uint64_t i0B = vertexIndexMap.at(v0B);
+        const uint64_t i1B = vertexIndexMap.at(v1B);
+
+        const uint64_t i0ARc = vertexIndexMap.at(v0ARc);
+        const uint64_t i1ARc = vertexIndexMap.at(v1ARc);
+        const uint64_t i0BRc = vertexIndexMap.at(v0BRc);
+        const uint64_t i1BRc = vertexIndexMap.at(v1BRc);
+
+        const bool strandViolationA = (disjointSets.findSet(i1A) == disjointSets.findSet(i0ARc));
+        const bool strandViolationB = (disjointSets.findSet(i1B) == disjointSets.findSet(i0BRc));
+        const bool strandViolationARc = (disjointSets.findSet(i0A) == disjointSets.findSet(i1ARc));
+        const bool strandViolationBRc = (disjointSets.findSet(i0B) == disjointSets.findSet(i1BRc));
+
+        const bool strandViolation = strandViolationA;
+        SHASTA2_ASSERT(strandViolationB == strandViolation);
+        SHASTA2_ASSERT(strandViolationARc == strandViolation);
+        SHASTA2_ASSERT(strandViolationBRc == strandViolation);
+        if(strandViolation) {
+            bipartiteGraph[eA].isCrossStrandEdge = true;
+            bipartiteGraph[eB].isCrossStrandEdge = true;
+        } else {
+            disjointSets.unionSet(i0A, i1A);
+            disjointSets.unionSet(i0B, i1B);
+        }
+    }
+
+    vector< vector<uint64_t> > components;
+    disjointSets.gatherComponents(1, components);
+
+    // Store the component of each vertex.
+    for(uint64_t componentId=0; componentId<components.size(); componentId++) {
+        const vector<uint64_t>& component = components[componentId];
+        for(const uint64_t i: component) {
+            const BipartiteGraph::vertex_descriptor v = vertexTable[i];
+            bipartiteGraph[v].component = componentId;
+        }
+    }
+
+
+    // Write the BipartiteGraph here so the components have been computed.
+    writeBipartiteGraph();
+
+
+    // If we don't have exactly two components, do nothing.
+    if(components.size() != 2) {
+        if(debug) {
+            html << "<br>Strand separation is not successful. "
+                "Expected exactly 2 components.";
+        }
+        return false;
+    }
+    SHASTA2_ASSERT(components[0].size() == components[1].size());
+
+
+
+    // Each component corresponds to a strand.
+    // Store their Segments.
+    for(uint64_t strand=0; strand<2; strand++) {
+        const vector<uint64_t>& component = components[strand];
+        for(uint64_t vertexIndex: component) {
+            const BipartiteGraph::vertex_descriptor v = vertexTable[vertexIndex];
+            const BipartiteGraphVertex& vertex = bipartiteGraph[v];
+            if(vertex.isSegment) {
+                strandSegments[strand].push_back(vertex.segment);
+            }
+        }
+        sort(strandSegments[strand].begin(), strandSegments[strand].end(),
+            assemblyGraph.orderById);
+    }
+
+    if(debug) {
+        for(uint64_t strand=0; strand<2; strand++) {
+            html << "<h2>Strand " << strand << " segments</h2>";
+            for(uint64_t i=0; i<strandSegments[strand].size(); i++) {
+                if(i != 0) {
+                    html << ",<wbr>";
+                }
+                html << id(strandSegments[strand][i]);
+            }
+        }
+
+    }
+
+    return true;
+}
+
+
+
+StrandSplitter::BipartiteGraph::vertex_descriptor
+    StrandSplitter::BipartiteGraph::reverseComplement(vertex_descriptor v) const
+{
+    const BipartiteGraph& bipartiteGraph = *this;
+    const auto& vertex = bipartiteGraph[v];
+
+    if(vertex.isSegment) {
+        const uint64_t segmentIndex = vertex.segmentIndex;
+        const uint64_t segmentIndexRc = segmentIndex ^ 1;
+        return segmentIndexToVertexMap[segmentIndexRc];
+    } else {
+        OrientedReadId orientedReadId = vertex.orientedReadId;
+        orientedReadId.flipStrand();
+        return orientedReadIdToVertexMap.at(orientedReadId);
+    }
+}
+
 
