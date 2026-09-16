@@ -698,13 +698,19 @@ void StrandSplitter::writeBipartiteGraph()
         const string options = "-Nshape=point -Epenwidth=0.2 -Gratio=expand -Gsize=15";
         html << "<h2>Bipartite graph</h2>"
             "<br>In the bipartite graph, each vertex represents a low coverage segment or "
-            "an oriented read. Oriented reads are displayed as small dots."
+            "an oriented read. Oriented reads are displayed as small dots. "
+            "Multiple views are shown."
             "<br>" << dotFileName << "<br>";
 
-        try {
-            graphvizToHtml(dotFileName, "sfdp", timeout, options, html, true);
-        } catch (std::exception&) {
-            html << "The bipartite graph is too complex to display.";
+        for(uint64_t view=0; view<6; view++) {
+            html << "<h3>Bipartite graph view " << view << "</h3>";
+            try {
+                const uint64_t seed = 71*view + 231;
+                const string viewOptions = " -Gstart=" + to_string(seed);
+                graphvizToHtml(dotFileName, "sfdp", timeout, options + viewOptions, html, true);
+            } catch (std::exception&) {
+                html << "The bipartite graph is too complex to display.";
+            }
         }
     }
 }
