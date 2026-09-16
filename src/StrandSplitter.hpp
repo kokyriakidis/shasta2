@@ -166,6 +166,7 @@ private:
     BipartiteGraph bipartiteGraph;
     void createBipartiteGraph();
     void writeBipartiteGraph();
+    void writeBipartiteGraphSummary();
 
     // Strand separation using the BipartiteGraph.
     // If successful, this stores the strandSegments vectors.

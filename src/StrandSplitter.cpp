@@ -794,7 +794,7 @@ void StrandSplitter::BipartiteGraph::writeGraphviz(
 bool StrandSplitter::bipartiteStrandSeparation()
 {
 
-    // Map vertices to integer.
+    // Map vertices to integers.
     std::map<BipartiteGraph::vertex_descriptor, uint64_t> vertexIndexMap;
     vector<BipartiteGraph::vertex_descriptor> vertexTable;
     uint64_t vertexIndex = 0;
@@ -862,6 +862,9 @@ bool StrandSplitter::bipartiteStrandSeparation()
 
     // Write the BipartiteGraph here so the components have been computed.
     writeBipartiteGraph();
+    writeBipartiteGraphSummary();
+
+
 
 
     // If we don't have exactly two components, do nothing.
@@ -905,6 +908,118 @@ bool StrandSplitter::bipartiteStrandSeparation()
     }
 
     return true;
+}
+
+
+
+void StrandSplitter::writeBipartiteGraphSummary()
+{
+    if(not debug) {
+        return;
+    }
+
+    // Totals over all edges and all cross-strand edges.
+    uint64_t edgeCount = 0;
+    uint64_t totalEdgeFrequency = 0;
+    uint64_t crossStrandEdgeCount = 0;
+    uint64_t totalCrossStrandEdgeFrequency = 0;
+    BGL_FORALL_EDGES(e, bipartiteGraph, BipartiteGraph) {
+        const BipartiteGraphEdge& edge = bipartiteGraph[e];
+        const uint64_t frequency = edge.frequency;
+        ++edgeCount;
+        totalEdgeFrequency += frequency;
+        if(edge.isCrossStrandEdge) {
+            crossStrandEdgeCount++;
+            totalCrossStrandEdgeFrequency += frequency;
+        }
+    }
+
+
+    // Totals for each low coverage segment.
+    class SegmentInfo {
+    public:
+        uint64_t edgeCount = 0;
+        uint64_t totalEdgeFrequency = 0;
+        uint64_t crossStrandEdgeCount = 0;
+        uint64_t totalCrossStrandEdgeFrequency = 0;
+    };
+    vector<SegmentInfo> segmentInfos(lowCoverageSegments.size());
+    for(uint64_t segmentIndex=0; segmentIndex<lowCoverageSegments.size(); segmentIndex++) {
+        const BipartiteGraph::vertex_descriptor v =
+            bipartiteGraph.segmentIndexToVertexMap[segmentIndex];
+        SegmentInfo& segmentInfo = segmentInfos[segmentIndex];
+        BGL_FORALL_OUTEDGES(v, e, bipartiteGraph, BipartiteGraph) {
+            const BipartiteGraphEdge& edge = bipartiteGraph[e];
+            const uint64_t frequency = edge.frequency;
+            ++segmentInfo.edgeCount;
+            segmentInfo.totalEdgeFrequency += frequency;
+            if(edge.isCrossStrandEdge) {
+                segmentInfo.crossStrandEdgeCount++;
+                segmentInfo.totalCrossStrandEdgeFrequency += frequency;
+            }
+        }
+    }
+
+
+    html << "<h2>Bipartite graph and strand separation summary</h3>"
+        "<br><table>"
+        "<tr><th>Edge<br>type<th>Number<th>Total<br>frequency"
+        "<tr><th class=left>All edges<td class=centered>" << edgeCount <<
+        "<td class=centered>" << totalEdgeFrequency <<
+        "<tr><th class=left>Cross-strand edges<td class=centered>" << crossStrandEdgeCount <<
+        "<td class=centered>" << totalCrossStrandEdgeFrequency <<
+        "</table>";
+
+    html <<
+        "<br>Summary by segment. Zero values are omitted.<br>"
+        "<br><table>"
+        "<tr>"
+        "<th>Segment"
+        "<th>In-degree"
+        "<th>Out-degree"
+        "<th>Edges"
+        "<th>Cross-strand<br>edges"
+        "<th>Cross-strand<br>edges<br>fraction"
+        "<th>Total<br>edge<br>frequency"
+        "<th>Total<br>cross-strand<br>edge<br>frequency"
+        "<th>Cross-strand<br>edges<br>frequency<br>fraction";
+    html << std::setprecision(2);
+    for(uint64_t segmentIndex=0; segmentIndex<lowCoverageSegments.size(); segmentIndex++) {
+        const Segment segment = lowCoverageSegments[segmentIndex];
+        const AssemblyGraph::vertex_descriptor v0 = source(segment, assemblyGraph);
+        const AssemblyGraph::vertex_descriptor v1 = target(segment, assemblyGraph);
+        const SegmentInfo& segmentInfo = segmentInfos[segmentIndex];
+        html <<
+            "<tr>"
+            "<td class=centered>" << id(segment) <<
+            "<td class=centered>" << in_degree(v0, assemblyGraph) <<
+            "<td class=centered>" << out_degree(v1, assemblyGraph);
+        html << "<td class=centered>";
+        if(segmentInfo.edgeCount > 0) {
+            html<< segmentInfo.edgeCount;
+        }
+        html << "<td class=centered>";
+        if(segmentInfo.crossStrandEdgeCount > 0) {
+            html << segmentInfo.crossStrandEdgeCount;
+        }
+        html << "<td class=centered>";
+        if((segmentInfo.edgeCount > 0) and (segmentInfo.crossStrandEdgeCount > 0)) {
+            html << double(segmentInfo.crossStrandEdgeCount)/double(segmentInfo.edgeCount );
+        }
+        html << "<td class=centered>";
+        if(segmentInfo.totalEdgeFrequency > 0) {
+            html << segmentInfo.totalEdgeFrequency;
+        }
+        html << "<td class=centered>";
+        if(segmentInfo.totalCrossStrandEdgeFrequency) {
+            html << segmentInfo.totalCrossStrandEdgeFrequency;
+        }
+        html << "<td class=centered>";
+        if((segmentInfo.totalEdgeFrequency > 0) and (segmentInfo.totalCrossStrandEdgeFrequency > 0)) {
+            html << double(segmentInfo.totalCrossStrandEdgeFrequency)/double(segmentInfo.totalEdgeFrequency);
+        }
+    }
+    html << "</table>";
 }
 
 
