@@ -443,6 +443,10 @@ void StrandSplitter::StrandSeparationGraph::writeGraphviz(
 
 void StrandSplitter::createConnectionGraph()
 {
+    const uint32_t representativeRegionStepCount =
+        uint32_t(assemblyGraph.options.representativeRegionStepCount);
+    ostream noOutput(0);
+
     // Create vertices of the ConnectionGraph.
     // There is a vertex for each strand 0 Segment.
     for(const Segment segment: strandSegments[0]) {
@@ -462,7 +466,11 @@ void StrandSplitter::createConnectionGraph()
                 continue;
             }
             const ConnectionGraph::vertex_descriptor v1 = it1->second;
-            boost::add_edge(v0, v1, ConnectionEdge(), connectionGraph);
+            auto[e, ignore] = boost::add_edge(v0, v1, ConnectionEdge(), connectionGraph);
+            ConnectionEdge& edge = connectionGraph[e];
+            edge.segmentPairInformation =
+                SegmentStepSupport::analyzeSegmentPair(noOutput, assemblyGraph, segment0, segment1,
+                representativeRegionStepCount);
         }
     }
 
@@ -476,8 +484,6 @@ void StrandSplitter::createConnectionGraph()
     }
     sort(stopSegments.begin(), stopSegments.end(), assemblyGraph.orderById);
 
-    const uint32_t representativeRegionStepCount = uint32_t(assemblyGraph.options.representativeRegionStepCount);
-    ostream noOutput(0);
     vector<Segment> reachableStopSegments;
     BGL_FORALL_VERTICES(vA, connectionGraph, ConnectionGraph) {
         const Segment segmentA = connectionGraph[vA].segment;
@@ -570,11 +576,12 @@ void StrandSplitter::ConnectionGraph::writeGraphviz(
 
         if(edge.isDirectConnection) {
             dot << "color=green";
-        } else {
-            dot <<
-                "label=\"" << edge.segmentPairInformation.commonCount <<
-            "/" << edge.segmentPairInformation.missing() << "\"";
         }
+
+        dot <<
+            " label=\"" << edge.segmentPairInformation.commonCount <<
+        "/" << edge.segmentPairInformation.missing() << "\"";
+
         dot << "];\n";
     }
 
@@ -961,13 +968,17 @@ void StrandSplitter::writeBipartiteGraphSummary()
     }
 
 
-    html << "<h2>Bipartite graph and strand separation summary</h3>"
+    html <<
+        std::setprecision(3) <<
+        "<h2>Bipartite graph and strand separation summary</h3>"
         "<br><table>"
-        "<tr><th>Edge<br>type<th>Number<th>Total<br>frequency"
+        "<tr><th><th>Number<th>Total<br>frequency"
         "<tr><th class=left>All edges<td class=centered>" << edgeCount <<
         "<td class=centered>" << totalEdgeFrequency <<
         "<tr><th class=left>Cross-strand edges<td class=centered>" << crossStrandEdgeCount <<
         "<td class=centered>" << totalCrossStrandEdgeFrequency <<
+        "<tr><th class=left>Ratio<td class=centered>" << double(crossStrandEdgeCount)/double(edgeCount) <<
+        "<td class=centered>" << double(totalCrossStrandEdgeFrequency)/double(totalEdgeFrequency) <<
         "</table>";
 
     html <<
@@ -983,7 +994,6 @@ void StrandSplitter::writeBipartiteGraphSummary()
         "<th>Total<br>edge<br>frequency"
         "<th>Total<br>cross-strand<br>edge<br>frequency"
         "<th>Cross-strand<br>edges<br>frequency<br>fraction";
-    html << std::setprecision(2);
     for(uint64_t segmentIndex=0; segmentIndex<lowCoverageSegments.size(); segmentIndex++) {
         const Segment segment = lowCoverageSegments[segmentIndex];
         const AssemblyGraph::vertex_descriptor v0 = source(segment, assemblyGraph);
