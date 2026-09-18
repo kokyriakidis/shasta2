@@ -24,6 +24,7 @@
 #include "SimpleMap.hpp"
 #include "splitRange.hpp"
 #include "theseusWrapper.hpp"
+#include "weightedShuffle.hpp"
 using namespace shasta2;
 
 // Pybind11
@@ -301,6 +302,9 @@ PYBIND11_MODULE(shasta2, shasta2Module)
     shasta2Module.def("testTheseus",
         testTheseus
         );
+    shasta2Module.def("testWeightedShuffle",
+        testWeightedShuffle
+        );
     shasta2Module.def("countExactRepeatCopies",
         countExactRepeatCopies
         );
@@ -308,6 +312,5 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         countDistinctSubkmers
         );
 }
-
 #endif
 
