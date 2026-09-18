@@ -19,6 +19,7 @@ assembler.accessJourneys()
 
 assemblyGraph = assembler.getAssemblyGraph(arguments.inputStage, options)
 assemblyGraph.clearSequence()
+assemblyGraph.removeZeroLengthSegmentsStrandSymmetric()
 assemblyGraph.splitSelfComplementaryTangles("Python")
 assemblyGraph.write(arguments.outputStage)
 
