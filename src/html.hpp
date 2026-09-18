@@ -14,5 +14,6 @@ namespace shasta2 {
     void addSvgDragAndZoom(ostream& html);
 
     void writeInformationIcon(ostream& html, const string& message);
+    void writeMakeAllTablesCopyable(ostream& html);
 }
 

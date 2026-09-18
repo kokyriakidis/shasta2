@@ -213,3 +213,101 @@ void shasta2::writeInformationIcon(ostream& html, const string& message)
     html << "<span style='color:Blue;font-weight:bold' title=\"" <<
             message << "\">&#9432;</span>";
 }
+
+
+
+void shasta2::writeMakeAllTablesCopyable(ostream& html)
+{
+    html << R"###(
+    <script>
+
+    // Copy to the clipboard the table that generated the event.
+    function copyToClipboard(event)
+    {
+        // If the CTRL key is not pressed, don't do anything.
+        if(!event.ctrlKey) {
+            return;
+        }
+
+        // Prevent default behavior.
+        // event.preventDefault();
+        // event.stopPropagation();
+        // event.returnValue = false;
+        
+        // Get the table element.
+        var element = event.currentTarget;
+         
+        // Remove any previous selection.
+        var selection = window.getSelection();
+        selection.removeAllRanges();
+        
+        // Select the table.
+        var range = document.createRange();
+        range.selectNodeContents(element);
+        selection.addRange(range);
+        
+        // Copy it to the clipboard.
+        document.execCommand("copy");
+
+        // Unselect it.
+        selection.removeAllRanges();
+
+        window.alert("The table was copied to the clipboard");
+    }
+
+    // Make a table copyable by Ctrl-click.
+    function makeCopyable(element)
+    {
+        element.addEventListener('click', copyToClipboard);
+        element.title = 'Ctrl-click anywhere on the table to copy the entire table to the clipboard';
+    }
+
+    // Make all tables copyable by Ctrl-click.
+    function makeAllTablesCopyable()
+    {
+        var tables = document.getElementsByTagName('table');
+        var i;
+        for(i=0; i<tables.length; i++) {
+            makeCopyable(tables[i]);
+        }
+    }
+    </script>
+    )###";
+
+
+#if 0
+    html << R"###(
+<script>
+
+// Make all tables selectable by double click.
+// This must be called after all tables have
+// already been created, so it can be called during onload.
+
+// This function is called when the user double clicks on a table.
+function selectElement(table)
+{
+    var selection = window.getSelection();
+    selection.removeAllRanges();
+    var range = document.createRange();
+    range.selectNode(table);
+    selection.addRange(range);
+}
+
+// Attach the above function to the double click event
+// for all tables in the document.
+// Also add to each table a title that displays a tooltip 
+// explaining that the table can be selected via double click.
+function makeAllTablesSelectableByDoubleClick()
+{
+    var allTables = document.getElementsByTagName("table");
+    for (var i=0; i<allTables.length; i++) {
+        var table = allTables[i];
+        table.ondblclick = function() {selectElement(this);};
+        table.setAttribute("title", 
+        "Double click to select the entire table. You can then paste it into a spreadsheet.");
+    }
+}
+</script>
+    )###";
+#endif
+}

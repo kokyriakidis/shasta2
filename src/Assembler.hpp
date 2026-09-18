@@ -292,12 +292,6 @@ public:
     };
     HttpServerData httpServerData;
 
-
-
-
-    void writeMakeAllTablesCopyable(ostream&) const;
-
-
     // Access all available assembly data, without thorwing an exception
     // on failures.
     void accessAllSoft();
