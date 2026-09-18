@@ -295,7 +295,8 @@ public:
 
 
     // Detangling and read following.
-    void detangleVertices();
+    void detangleVertices();    //This only handles 2 by 2 vertex tangles.
+    void detangleVertices(const string& debugOutputBaseName);
     void detangleEdges(const string& debugOutputBaseName);
     bool detangleAndReadFollowingSuperbubbles(const string& debugOutputBaseName);
     bool detangleAndReadFollowing(

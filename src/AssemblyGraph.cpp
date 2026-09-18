@@ -392,7 +392,7 @@ bool AssemblyGraph::simplifyIteration([[maybe_unused]] uint64_t iteration)
     if(debug) write(iterationString + "B-Compressed");
 
     // Vertex detangling.
-    detangleVertices();
+    detangleVertices(iterationString);
     if(debug) write(iterationString + "C");
     strandSymmetricCompress();
     if(debug) write(iterationString + "C-Compressed");

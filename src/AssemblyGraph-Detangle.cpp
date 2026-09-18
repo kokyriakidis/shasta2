@@ -16,6 +16,7 @@ using namespace shasta2;
 
 
 
+// This only handles 2 by 2 vertex tangles.
 void AssemblyGraph::detangleVertices()
 {
     performanceLog << timestamp << "AssemblyGraph::detangleVertices begins." << endl;
@@ -255,6 +256,45 @@ void AssemblyGraph::detangleVertices()
         boost::remove_vertex(vRc, assemblyGraph);
     }
 
+}
+
+
+
+// More general version of vertex detangling.
+void AssemblyGraph::detangleVertices(const string& debugOutputBaseName)
+{
+    AssemblyGraph& assemblyGraph = *this;
+    ostream html(0);
+
+    // Vertices that are candidates for detangling define the tangles.
+    vector< vector<vertex_descriptor> > tangles;
+    BGL_FORALL_VERTICES(v, assemblyGraph, AssemblyGraph) {
+        if((out_degree(v, assemblyGraph) >1) and (in_degree(v, assemblyGraph) > 1)) {
+            tangles.push_back({v});
+        }
+    }
+
+    // Create a map that gives the tangle each vertex belongs to, if any.
+    std::map<vertex_descriptor, uint64_t> tangleMap;
+    for(uint64_t tangleId=0; tangleId<tangles.size(); tangleId++) {
+        const vector<vertex_descriptor>& tangle = tangles[tangleId];
+        for(const vertex_descriptor v: tangle) {
+            tangleMap.insert(make_pair(v, tangleId));
+        }
+    }
+
+    // Find the reverse complement of each tangle.
+    vector<uint64_t> tangleRc(tangles.size());
+    for(uint64_t tangleId=0; tangleId<tangles.size(); tangleId++) {
+        const vector<vertex_descriptor>& tangle = tangles[tangleId];
+        const vertex_descriptor v = tangle.front();
+        const vertex_descriptor vRc = assemblyGraph[v].vRc;
+        tangleRc[tangleId] = tangleMap.at(vRc);
+    }
+
+    // Detangling, no read following.
+    const bool attemptReadFollowing = false;
+    detangleAndReadFollowing(tangles, tangleRc, attemptReadFollowing, debugOutputBaseName);
 }
 
 
