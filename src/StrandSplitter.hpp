@@ -162,6 +162,21 @@ private:
             }
         };
         vector<EdgePair> edgePairs;
+
+        // Edge statistics for the entire BipartiteGraph or for a single vertex.
+        class EdgeStatistics {
+        public:
+            uint64_t totalEdgeCount = 0;
+            uint64_t totalEdgeFrequency = 0;
+            uint64_t crossStrandEdgeCount = 0;
+            uint64_t crossStrandEdgeFrequency = 0;
+            void add(const BipartiteGraphEdge&);
+            double crossStrandEdgeFraction() const;
+            double crossStrandEdgeFrequencyFraction() const;
+        };
+        EdgeStatistics countEdges() const;
+        EdgeStatistics countEdges(vertex_descriptor) const;
+
     };
     BipartiteGraph bipartiteGraph;
     void createBipartiteGraph();
