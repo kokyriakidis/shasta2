@@ -73,6 +73,10 @@ void StrandSplitter::writeInitialDebugOutput()
         cout << "StrandSplitter begins for tangle " << tangleId << endl;
         html.open(debugOutputBaseName + "-StrandSplitter-Tangle-" + to_string(tangleId) + ".html");
         writeHtmlBegin(html, "Tangle " + to_string(tangleId));
+        writeMakeAllTablesCopyable(html);
+        html <<
+            "</head>"
+            "<body onload='makeAllTablesCopyable()'>";
         html << "<h1>Self-complementary tangle " << tangleId << "</h1>";
         tangle.writeHtml(html);
     }
@@ -547,21 +551,25 @@ void StrandSplitter::ConnectionGraph::writeGraphviz(
     const ConnectionGraph& connectionGraph = *this;
 
     ofstream dot(fileName);
-    dot << "digraph ConnectionGraph {\n";
+    dot << std::setprecision(1) << std::fixed << "digraph ConnectionGraph {\n";
 
     BGL_FORALL_VERTICES(v, connectionGraph, ConnectionGraph) {
         const ConnectionVertex& vertex = connectionGraph[v];
         const Segment segment = vertex.segment;
-        dot << assemblyGraph.id(segment);
+        dot <<
+            assemblyGraph.id(segment) <<
+            "[label=\"" << assemblyGraph.id(segment) <<
+            "\\n" << assemblyGraph[segment].lengthWeightedAverageCoverage() << "\"";
+
         if(vertex.isEntrance) {
             SHASTA2_ASSERT(not vertex.isExit);
-            dot << " [style=filled fillcolor=pink]";
+            dot << " style=filled fillcolor=pink";
         }
         if(vertex.isExit) {
             SHASTA2_ASSERT(not vertex.isEntrance);
-            dot << " [style=filled fillcolor=cyan]";
+            dot << " style=filled fillcolor=cyan";
         }
-        dot << ";\n";
+        dot << "];\n";
     }
 
     BGL_FORALL_EDGES(e, connectionGraph, ConnectionGraph) {
