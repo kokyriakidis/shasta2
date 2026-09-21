@@ -132,6 +132,14 @@ public:
     bool success = false;
     vector<Base> sequence;
 
+    // The consensus before any msa1 repair - identical to sequence unless
+    // Options::useMsa1 is true and the repair actually changed something.
+    // Populated on every successful path, not just the repaired ones, so a
+    // caller that wants both (the msa1 evaluation harness) gets them from one
+    // run instead of two: running twice would mostly duplicate the alignment,
+    // by far the more expensive part of a run.
+    vector<Base> sequenceBeforeRepair;
+
 private:
 
     // Parameters filled in by the constructor.

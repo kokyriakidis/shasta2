@@ -56,16 +56,17 @@ std::tuple<bool, string, bool, string> Assembler::runLocalAssemblyWithAndWithout
 
     ostream html(0);
 
-    LocalAssembly7::Options optionsNoRepair;
-    const LocalAssembly7 localAssemblyNoRepair(
-        optionsNoRepair, anchors(), anchorIdA, anchorIdB, html, orientedReadIds);
-
-    LocalAssembly7::Options optionsWithRepair;
-    optionsWithRepair.useMsa1 = true;
-    const LocalAssembly7 localAssemblyWithRepair(
-        optionsWithRepair, anchors(), anchorIdA, anchorIdB, html, orientedReadIds);
+    // One run, with the repair on, gives both: LocalAssembly7::sequenceBeforeRepair
+    // is the consensus before the repair, sequence is after. Running twice - once
+    // with useMsa1 false, once true - would recompute the same alignment twice,
+    // which is the expensive part of a run; the repair itself is a small fraction
+    // of the cost.
+    LocalAssembly7::Options options;
+    options.useMsa1 = true;
+    const LocalAssembly7 localAssembly(
+        options, anchors(), anchorIdA, anchorIdB, html, orientedReadIds);
 
     return std::make_tuple(
-        localAssemblyNoRepair.success, toString(localAssemblyNoRepair.sequence),
-        localAssemblyWithRepair.success, toString(localAssemblyWithRepair.sequence));
+        localAssembly.success, toString(localAssembly.sequenceBeforeRepair),
+        localAssembly.success, toString(localAssembly.sequence));
 }

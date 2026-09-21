@@ -177,6 +177,7 @@ void LocalAssembly7::runFastPath()
 
     // All is good. We can just store that best sequence as our consensus.
     sequence = sequences[sequenceIdBest].sequence;
+    sequenceBeforeRepair = sequence;
     success = true;
 
     if(html) {
@@ -257,6 +258,7 @@ void LocalAssembly7::runDeBruijn()
 
     // Assemble sequence.
     assemble(options.k, graph);
+    sequenceBeforeRepair = sequence;
     success = true;
 }
 
@@ -1326,6 +1328,12 @@ void LocalAssembly7::runAbpoaOrPoasta(bool usePoasta)
     const auto t1 = steady_clock::now();
     SHASTA2_ASSERT(alignment.size() == msaSequenceIdsWithWeight.size());
 
+    // Snapshot the consensus before any repair - see sequenceBeforeRepair in
+    // LocalAssembly7.hpp for why.
+    for(const auto& [b, ignore]: consensus) {
+        sequenceBeforeRepair.push_back(b);
+    }
+
     // Repair the bad homopolymer regions of the alignment, if requested (see
     // Options::useMsa1). Every row here spans the whole alignment - abpoa and
     // poasta take no anchoring information - and each entered sequence
@@ -1464,6 +1472,13 @@ void LocalAssembly7::runTheseus(bool useAll)
     const auto t1 = steady_clock::now();
     if(computeAlignment) {
         SHASTA2_ASSERT(alignment.size() == msaSequenceIdsWithWeight.size());
+    }
+
+    // Snapshot the consensus before any repair - see sequenceBeforeRepair in
+    // LocalAssembly7.hpp for why. theseus() always computes consensus, even
+    // when computeAlignment is false.
+    for(const auto& [b, ignore]: consensus) {
+        sequenceBeforeRepair.push_back(b);
     }
 
     // Repair the bad homopolymer regions of the alignment, if requested (see
