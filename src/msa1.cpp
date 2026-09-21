@@ -702,6 +702,16 @@ bool shasta2::msa1TriggerPresent(
 
 
 
+// See msa1.hpp for comments.
+string shasta2::msa1TriggerDescription(Msa1Trigger trigger)
+{
+    return (trigger == Msa1Trigger::PatternOnly) ?
+        "a long homopolymer run bordered by a single base" :
+        "a long homopolymer run";
+}
+
+
+
 namespace shasta2 {
 
     // Return true if a region boundary at this column falls inside a homopolymer

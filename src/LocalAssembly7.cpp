@@ -32,18 +32,13 @@ using namespace shasta2;
 
 
 
-// What makes a homopolymer region worth repairing.
-//
-// This decides both what the prescreen looks for and what the repair acts on,
-// and the two must agree: a prescreen looking for less than the repair acts on
-// would withhold an alignment the repair would have used.
-static const Msa1Trigger localAssembly7Msa1Trigger = Msa1Trigger::AnyLongRun;
-static string localAssembly7Msa1TriggerDescription()
-{
-    return (localAssembly7Msa1Trigger == Msa1Trigger::PatternOnly) ?
-        "a long homopolymer run bordered by a single base" :
-        "a long homopolymer run";
-}
+// How the repair is tuned, at the measured default (see Msa1Options in
+// msa1.hpp). Named here, once, because the prescreen (which decides whether
+// an alignment is even worth computing) and the repair itself (msa1(), called
+// directly at each call site) both need the same trigger, and must agree: a
+// prescreen looking for less than the repair acts on would withhold an
+// alignment the repair would have used.
+static const Msa1Options localAssembly7Msa1Options;
 
 
 
@@ -1324,7 +1319,7 @@ void LocalAssembly7::runAbpoaOrPoasta(bool usePoasta, bool repair)
     const bool triggerPresent = repair and std::ranges::any_of(sequenceIds,
         [&](uint64_t sequenceId) {
             return msa1TriggerPresent(
-                sequences[sequenceId].sequence, localAssembly7Msa1Trigger);
+                sequences[sequenceId].sequence, localAssembly7Msa1Options.trigger);
         });
 
 
@@ -1367,8 +1362,8 @@ void LocalAssembly7::runAbpoaOrPoasta(bool usePoasta, bool repair)
         // never padding. That is what the empty anchoring says. Each sequence was
         // entered once per unit of coverage, so every row votes with weight 1.
         const vector<uint64_t> weights(alignment.size(), 1);
-        repairedRegionCount = repairHomopolymerRegions(
-            alignment, alignedConsensus, consensus, weights, {});
+        repairedRegionCount = msa1(alignment, alignedConsensus, consensus, weights, {},
+            localAssembly7Msa1Options);
     }
     const auto t2 = steady_clock::now();
 
@@ -1508,9 +1503,9 @@ void LocalAssembly7::runTheseus(bool useAll, bool repair)
     // Decide, before running Theseus, whether the repair could have anything to
     // do here. See runAbpoaOrPoasta for why this is asked of the reads.
     const bool triggerPresent = repair and (
-        msa1TriggerPresent(bothSidesFixedSequences, localAssembly7Msa1Trigger) or
-        msa1TriggerPresent(leftFixedSequences, localAssembly7Msa1Trigger) or
-        msa1TriggerPresent(rightFixedSequences, localAssembly7Msa1Trigger));
+        msa1TriggerPresent(bothSidesFixedSequences, localAssembly7Msa1Options.trigger) or
+        msa1TriggerPresent(leftFixedSequences, localAssembly7Msa1Options.trigger) or
+        msa1TriggerPresent(rightFixedSequences, localAssembly7Msa1Options.trigger));
 
     // Run Theseus. The alignment is normally computed only for the html display.
     // It is also needed when there is something to repair.
@@ -1559,8 +1554,8 @@ void LocalAssembly7::runTheseus(bool useAll, bool repair)
             weights.push_back(weight);
         }
 
-        repairedRegionCount = repairHomopolymerRegions(
-            alignment, alignedConsensus, consensus, weights, anchoring);
+        repairedRegionCount = msa1(alignment, alignedConsensus, consensus, weights,
+            anchoring, localAssembly7Msa1Options);
     }
     const auto t2 = steady_clock::now();
 
@@ -1595,13 +1590,14 @@ void LocalAssembly7::writeRepairSummary(
 
     if(not triggerPresent) {
         html << "<br>The reads contain no " <<
-            localAssembly7Msa1TriggerDescription() << ", so no repair was "
-            "attempted and the consensus is exactly as " << alignerName <<
-            " computed it.";
+            msa1TriggerDescription(localAssembly7Msa1Options.trigger) <<
+            ", so no repair was attempted and the consensus is exactly as " <<
+            alignerName << " computed it.";
         return;
     }
 
-    html << "<br>The reads contain " << localAssembly7Msa1TriggerDescription() <<
+    html << "<br>The reads contain " <<
+        msa1TriggerDescription(localAssembly7Msa1Options.trigger) <<
         ". Repair completed in " << repairSeconds << " seconds and rebuilt " <<
         repairedRegionCount << " region(s) of the alignment. Everything outside "
         "those regions, including the coverage of the consensus, is exactly as " <<
@@ -1609,24 +1605,6 @@ void LocalAssembly7::writeRepairSummary(
     if(repairedRegionCount == 0) {
         html << " No region was found that could be improved.";
     }
-}
-
-
-
-// See LocalAssembly7.hpp for comments.
-uint64_t LocalAssembly7::repairHomopolymerRegions(
-    vector< vector<AlignedBase> >& alignment,
-    vector<AlignedBase>& alignedConsensus,
-    vector< pair<Base, uint64_t> >& consensus,
-    const vector<uint64_t>& weights,
-    const vector<Anchoring>& anchoring)
-{
-    // Everything except the trigger is left at the measured default, so a
-    // default changed in msa1.hpp reaches here rather than being overridden by
-    // a copy of it written out at this call site.
-    Msa1Options options;
-    options.trigger = localAssembly7Msa1Trigger;
-    return msa1(alignment, alignedConsensus, consensus, weights, anchoring, options);
 }
 
 

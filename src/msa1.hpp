@@ -307,6 +307,10 @@ namespace shasta2 {
         AnyLongRun
     };
 
+    // A human readable phrase for what a trigger looks for, for a caller
+    // explaining in a report why a repair did or did not fire.
+    string msa1TriggerDescription(Msa1Trigger trigger);
+
 
     // One sequence. This is the primitive the others are built on. It walks the
     // runs keeping only the two previous run lengths, so it allocates nothing

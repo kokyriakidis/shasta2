@@ -3,7 +3,6 @@
 // Shasta.
 #include "Base.hpp"
 #include "invalid.hpp"
-#include "msa1.hpp"
 #include "orderPairs.hpp"
 #include "ReadId.hpp"
 #include "shastaTypes.hpp"
@@ -264,21 +263,14 @@ private:
     void runMsa1();
     void runAdaptiveOrMsa1(bool repair);
 
-    // The repair is available on every aligner, off by default.
+    // The repair is available on every aligner, off by default. It is msa1()
+    // itself, called with the measured default Msa1Options - see msa1.hpp -
+    // directly at each of the two call sites, so there is no wrapper here to
+    // keep in sync with a default that can change independently of it.
     void runAbpoaOrPoasta(bool usePoasta, bool repair = false);
     void runAbpoa();
     void runPoasta();
     void runTheseus(bool useAll, bool repair = false);
-
-    // Rebuild the bad homopolymer regions of an alignment, in place. Returns the
-    // number of regions rebuilt. Pass an empty anchoring when every row spans the
-    // whole alignment, as it does for abpoa and poasta. See msa1.hpp.
-    uint64_t repairHomopolymerRegions(
-        vector< vector<AlignedBase> >& alignment,
-        vector<AlignedBase>& alignedConsensus,
-        vector< pair<Base, uint64_t> >& consensus,
-        const vector<uint64_t>& weights,
-        const vector<Anchoring>& anchoring);
 
     // Say what the repair did, or why it was not attempted. Shared by every
     // aligner path so the wording cannot drift between them.
