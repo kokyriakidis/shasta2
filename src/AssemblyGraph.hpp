@@ -600,6 +600,19 @@ public:
     // (edgeId, stepIndex, anchorIdA, anchorIdB, orientedReadIdStrings).
     vector< tuple<uint64_t, uint64_t, AnchorId, AnchorId, vector<string> > >
         getAssemblyGraphSteps() const;
+
+    // For the msa1 hard-region evaluation harness. Scans every step of every
+    // edge in parallel (the same pattern assemble() itself uses), running
+    // LocalAssembly7 once per step with Options::useMsa1, and returns one row
+    // per step where the repair changed the consensus: (edgeId, stepIndex,
+    // anchorIdA, anchorIdB, orientedReadIdStrings, consensusNoRepair,
+    // consensusWithRepair). This is what FindMsa1HardRegions.py used to do by
+    // calling Assembler::runLocalAssemblyWithAndWithoutMsa1Repair once per
+    // step returned by getAssemblyGraphSteps(), serially, from Python - doing
+    // the whole scan here instead gives it the multithreading assemble()
+    // already has for the identical per-step problem.
+    vector< tuple<uint64_t, uint64_t, AnchorId, AnchorId, vector<string>, string, string> >
+        findMsa1CandidateRegions();
 private:
 
     // Assemble sequence for the specified edge.
@@ -617,6 +630,14 @@ private:
     void assembleThreadFunction(uint64_t threadId);
     vector< pair<edge_descriptor, uint64_t> > stepsToBeAssembled;
     void clearAllSequence();
+
+    // For findMsa1CandidateRegions. Same shape as stepsToBeAssembled/
+    // assembleThreadFunction above, kept separate rather than shared so the
+    // two scans cannot interfere if something ever calls them concurrently.
+    void findMsa1CandidateRegionsThreadFunction(uint64_t threadId);
+    vector< pair<edge_descriptor, uint64_t> > msa1StepsToScan;
+    vector< vector< tuple<uint64_t, uint64_t, AnchorId, AnchorId, vector<string>, string, string> > >
+        msa1CandidatesByThread;
 
 
 
@@ -727,3 +748,22 @@ private:
     void save(const string& stage) const;
     void load(const string& stage);
 };
+
+
+
+namespace shasta2 {
+
+    // Also for the msa1 evaluation harness (scripts/EvaluateMsa1AgainstTruth.py),
+    // not otherwise related to AssemblyGraph - kept here instead of a new file,
+    // for the same "as few files as possible" reason as the rest of the harness.
+    // A plain O(len(a) * len(b)) Levenshtein distance. Python had its own copy
+    // of this, which was fast enough for a handful of candidates but became
+    // the pipeline's bottleneck once run over several thousand of them, purely
+    // from CPython's per-cell interpreter overhead; this is the same
+    // algorithm, just not paying that overhead. Returns -1, not an optional,
+    // across the pybind11 boundary if a.size() * b.size() exceeds cap,
+    // matching the Python version's choice to skip rather than slow down on
+    // oversized regions.
+    int64_t editDistance(const string& a, const string& b, uint64_t cap = 4'000'000);
+
+}

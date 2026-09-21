@@ -32,22 +32,15 @@ def reverseComplement(sequence):
 
 
 
-# A simple O(len(a) * len(b)) edit distance. Candidate regions are local
-# homopolymer-repair windows and are expected to be short; if a pair is too
-# large to make this cheap, the comparison is skipped rather than slowed down.
+# An O(len(a) * len(b)) edit distance, computed in C++ (shasta2.editDistance)
+# rather than here: candidate regions are local homopolymer-repair windows and
+# individually short, but there can be thousands of them, and CPython's
+# per-cell interpreter overhead made this the bottleneck of the whole
+# pipeline. If a pair is too large to make the comparison cheap, it is
+# skipped rather than slowed down, same as before.
 def editDistance(a, b, cap=4_000_000):
-    if len(a) * len(b) > cap:
-        return None
-    previousRow = list(range(len(b) + 1))
-    for i, ca in enumerate(a, 1):
-        currentRow = [i] + [0] * len(b)
-        for j, cb in enumerate(b, 1):
-            currentRow[j] = min(
-                previousRow[j] + 1,
-                currentRow[j - 1] + 1,
-                previousRow[j - 1] + (ca != cb))
-        previousRow = currentRow
-    return previousRow[-1]
+    distance = shasta2.editDistance(a, b, cap)
+    return None if distance < 0 else distance
 
 
 
@@ -109,6 +102,11 @@ parser.add_argument("--truth-index", type=str, default=None,
 parser.add_argument("--output", type=str, default="Msa1TruthReport.csv")
 parser.add_argument("--work-dir", type=str, default=None,
     help="Directory for the temporary reads fasta/sam files (default: a fresh temp dir).")
+parser.add_argument("--window-pad", type=int, default=1000,
+    help="Bases of read context kept on each side of anchorIdA/anchorIdB when mapping "
+         "a core read to truth (see the comment above the mapping step).")
+parser.add_argument("--threads", type=int, default=os.cpu_count() or 4,
+    help="Threads to give minimap2.")
 arguments = parser.parse_args()
 
 options = shasta2.Options()
@@ -150,30 +148,56 @@ for row in rows:
         and assembler.anchorContainsOrientedRead(anchorIdB, orientedReadId)]
 
 allReads = sorted({orientedReadId for row in rows for orientedReadId in row["CoreReads"]})
-print(len(allReads), "distinct oriented reads to map to truth.")
+readSequences = {
+    orientedReadId: assembler.getOrientedReadSequenceString(orientedReadId)
+    for orientedReadId in allReads}
+print(len(allReads), "distinct oriented reads among the candidate regions.")
 
 
 
-# Write them out and map them all to truth in one minimap2 call.
+# Map, per region, only a padded window of each core read around that
+# region's own anchorIdA/anchorIdB - not the whole read - and map every
+# region's windows together in one minimap2 call. A core read can be tens of
+# kb long while every region here is a local homopolymer-repair window a few
+# hundred bases wide; mapping full reads made minimap2 the bottleneck of the
+# whole pipeline (tens of minutes at real-genome candidate counts, dwarfing
+# every other step), purely because its cost tracks total input bases and
+# full reads made that far bigger than the problem needed. A read used by
+# several regions gets one window per region - windows are keyed by
+# (row index, orientedReadId), not just orientedReadId, since the same read
+# can need a different window in each region it contributes to.
 workDir = arguments.work_dir or tempfile.mkdtemp(prefix="msa1Eval_")
 os.makedirs(workDir, exist_ok=True)
 
-readSequences = {}
+# windowInfo[(rowIndex, orientedReadId)] = (localPositionA, localPositionB, windowLength):
+# that read's anchorIdA/anchorIdB positions in this row, re-based to the
+# window's own coordinates, for use once the window's alignment is known.
+windowInfo = {}
 readsFastaName = os.path.join(workDir, "reads.fasta")
 with open(readsFastaName, "w") as fasta:
-    for orientedReadId in allReads:
-        sequence = assembler.getOrientedReadSequenceString(orientedReadId)
-        readSequences[orientedReadId] = sequence
-        fasta.write(f">{orientedReadId}\n{sequence}\n")
+    for rowIndex, row in enumerate(rows):
+        anchorIdA = int(row["AnchorIdA"])
+        anchorIdB = int(row["AnchorIdB"])
+        for orientedReadId in row["CoreReads"]:
+            sequence = readSequences[orientedReadId]
+            positionA = assembler.getAnchorPositionInOrientedRead(anchorIdA, orientedReadId)
+            positionB = assembler.getAnchorPositionInOrientedRead(anchorIdB, orientedReadId)
+            windowBegin = max(0, min(positionA, positionB) - arguments.window_pad)
+            windowEnd = min(len(sequence), max(positionA, positionB) + arguments.window_pad)
+            windowSequence = sequence[windowBegin:windowEnd]
+            windowInfo[(rowIndex, orientedReadId)] = (
+                positionA - windowBegin, positionB - windowBegin, len(windowSequence))
+            fasta.write(f">{rowIndex}_{orientedReadId}\n{windowSequence}\n")
+print(len(windowInfo), "region/read windows to map to truth.")
 
 samFileName = os.path.join(workDir, "reads.sam")
 with open(samFileName, "w") as samFile:
     subprocess.run(
-        [arguments.minimap2, "-a", "--eqx", "-x", "map-ont",
+        [arguments.minimap2, "-a", "--eqx", "-x", "map-ont", "-t", str(arguments.threads),
             truthIndex, readsFastaName],
         stdout=samFile, stderr=subprocess.DEVNULL, check=True)
 
-# Keep only the primary alignment of each read (skip unmapped/secondary/supplementary).
+# Keep only the primary alignment of each window (skip unmapped/secondary/supplementary).
 alignments = {}
 with open(samFileName) as samFile:
     for line in samFile:
@@ -188,7 +212,7 @@ with open(samFileName) as samFile:
         referenceStart = int(fields[3]) - 1   # SAM POS is 1-based.
         cigar = fields[5]
         alignments[queryName] = (referenceName, referenceStart, cigar, bool(flag & 16))
-print(len(alignments), "of", len(allReads), "reads have a primary mapping to truth.")
+print(len(alignments), "of", len(windowInfo), "windows have a primary mapping to truth.")
 
 
 
@@ -218,26 +242,24 @@ with open(arguments.output, "w", newline="") as outputFile:
         "DistanceNoRepair", "DistanceWithRepair", "Verdict",
         "Truth", "ConsensusNoRepair", "ConsensusWithRepair"])
 
-    for row in rows:
+    for rowIndex, row in enumerate(rows):
         anchorIdA = int(row["AnchorIdA"])
         anchorIdB = int(row["AnchorIdB"])
 
         intervals = []
         for orientedReadId in row["CoreReads"]:
-            alignment = alignments.get(orientedReadId)
+            alignment = alignments.get(f"{rowIndex}_{orientedReadId}")
             if alignment is None:
                 continue
             referenceName, referenceStart, cigar, isReverse = alignment
 
-            positionA = assembler.getAnchorPositionInOrientedRead(anchorIdA, orientedReadId)
-            positionB = assembler.getAnchorPositionInOrientedRead(anchorIdB, orientedReadId)
-            sequenceLength = len(readSequences[orientedReadId])
+            localPositionA, localPositionB, windowLength = windowInfo[(rowIndex, orientedReadId)]
 
             # The SAM CIGAR walks the query in the orientation minimap2 aligned it in,
             # which is the reverse complement of our own oriented read sequence when
             # the alignment is on the reverse strand.
-            queryPositionA = (sequenceLength - 1 - positionA) if isReverse else positionA
-            queryPositionB = (sequenceLength - 1 - positionB) if isReverse else positionB
+            queryPositionA = (windowLength - 1 - localPositionA) if isReverse else localPositionA
+            queryPositionB = (windowLength - 1 - localPositionB) if isReverse else localPositionB
 
             referencePositionA = queryToReferencePosition(cigar, referenceStart, queryPositionA)
             referencePositionB = queryToReferencePosition(cigar, referenceStart, queryPositionB)

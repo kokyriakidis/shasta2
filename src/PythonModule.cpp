@@ -206,6 +206,7 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def("assembleAllStrandSymmetric", &AssemblyGraph::assembleAllStrandSymmetric)
         .def("clearSequence", &AssemblyGraph::clearSequence)
         .def("getAssemblyGraphSteps", &AssemblyGraph::getAssemblyGraphSteps)
+        .def("findMsa1CandidateRegions", &AssemblyGraph::findMsa1CandidateRegions)
         .def("phaseSuperbubbleChains", &AssemblyGraph::phaseSuperbubbleChains)
         .def("strandSymmetricPhaseSuperbubbleChains", &AssemblyGraph::strandSymmetricPhaseSuperbubbleChains)
         .def("colorStrongComponents", &AssemblyGraph::colorStrongComponents)
@@ -228,6 +229,11 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         assemblyGraphVertexDescriptorClass(assemblyGraphClass, "AssemblyGraphVertexDescriptor");
     class_<AssemblyGraph::edge_descriptor>
         assemblyGraphEdgeDescriptorClass(assemblyGraphClass, "AssemblyGraphEdgeDescriptor");
+
+    // For the msa1 evaluation harness (scripts/EvaluateMsa1AgainstTruth.py).
+    // Not a method of anything - see AssemblyGraph.hpp for comments.
+    shasta2Module.def("editDistance", &editDistance,
+        arg("a"), arg("b"), arg("cap") = 4'000'000ULL);
 
     class_<AssemblyGraphPostprocessor>(shasta2Module, "AssemblyGraphPostprocessor",
         pybind11::base<AssemblyGraph>())
