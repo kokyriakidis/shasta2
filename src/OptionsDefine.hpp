@@ -140,6 +140,12 @@ SHASTA2_BOOL_OPTION_DEFINE(
     writeAssemblyDetails, "--write-assembly-details", false,
     "Write assembly details in csv format.")
 
+SHASTA2_BOOL_OPTION_DEFINE(
+    useMsa1, "--use-msa1", false,
+    "Use LocalAssembly7::Method::Msa1 (Theseus alignment plus homopolymer "
+    "repair) for local assembly, instead of the default Adaptive method. "
+    "For testing msa1.")
+
 SHASTA2_OPTION_DEFINE(
     uint64_t, bubbleCleanupMaxBubbleLength, "--bubble-cleanup-max-bubble-length", 10000,
     "Maximum bubble length for bubble cleanup.")

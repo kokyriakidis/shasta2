@@ -828,8 +828,12 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
 
         } else {
 
+            LocalAssembly7::Options localAssembly7Options;
+            if(options.useMsa1) {
+                localAssembly7Options.method = LocalAssembly7::Method::Msa1;
+            }
             LocalAssembly7 localAssembly(
-                LocalAssembly7::Options(),
+                localAssembly7Options,
                 anchors,
                 anchorPair.anchorIdA,
                 anchorPair.anchorIdB,
