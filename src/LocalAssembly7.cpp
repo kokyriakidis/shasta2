@@ -1321,14 +1321,33 @@ void LocalAssembly7::runAbpoaOrPoasta(bool usePoasta)
     if(usePoasta) {
         poasta(msaSequences, consensus, alignment, alignedConsensus);
     } else {
-        const bool computeAlignment = bool(html);
+        // The alignment is normally computed only for the html display. It is
+        // also needed when the repair below is requested.
+        const bool computeAlignment = bool(html) or options.useMsa1;
         abpoa(msaSequences, consensus, alignment, alignedConsensus, computeAlignment);
     }
     const auto t1 = steady_clock::now();
     SHASTA2_ASSERT(alignment.size() == msaSequenceIdsWithWeight.size());
 
+    // Repair the bad homopolymer regions of the alignment, if requested (see
+    // Options::useMsa1). Every row here spans the whole alignment - abpoa and
+    // poasta take no anchoring information - and each entered sequence
+    // already stands for one unit of coverage, so every row is anchored on
+    // both sides and votes with weight 1.
+    uint64_t repairedRegionCount = 0;
+    const auto t2 = steady_clock::now();
+    if(options.useMsa1) {
+        const vector<uint64_t> weights(alignment.size(), 1);
+        repairedRegionCount = msa1(alignment, alignedConsensus, consensus, weights, {});
+    }
+    const auto t3 = steady_clock::now();
+
     if(html) {
         html << "<br>" << name << " completed in " << seconds(t1-t0) << " seconds.";
+        if(options.useMsa1) {
+            html << "<br>Msa1 repair completed in " << seconds(t3-t2) <<
+                " seconds and rebuilt " << repairedRegionCount << " region(s) of the alignment.";
+        }
         writeAlignment(alignment, alignedConsensus, consensus, msaSequenceIdsWithWeight);
         writeConsensus(consensus);
     }
@@ -1435,11 +1454,12 @@ void LocalAssembly7::runTheseus(bool useAll)
             "Pericles.fasta");
     }
 
-    // Run Theseus.
+    // Run Theseus. The alignment is normally computed only for the html
+    // display. It is also needed when the repair below is requested.
     vector< pair<Base, uint64_t> > consensus;
     vector<AlignedBase> alignedConsensus;
     vector< vector<AlignedBase> > alignment;
-    const bool computeAlignment = bool(html);
+    const bool computeAlignment = bool(html) or options.useMsa1;
     const auto t0 = steady_clock::now();
     theseus(
         bothSidesFixedSequences, leftFixedSequences, rightFixedSequences,
@@ -1449,8 +1469,51 @@ void LocalAssembly7::runTheseus(bool useAll)
         SHASTA2_ASSERT(alignment.size() == msaSequenceIdsWithWeight.size());
     }
 
+    // Repair the bad homopolymer regions of the alignment, if requested (see
+    // Options::useMsa1).
+    uint64_t repairedRegionCount = 0;
+    const auto t2 = steady_clock::now();
+    if(options.useMsa1) {
+
+        // Theseus returns the rows in the order the groups were given, so
+        // how each row is anchored is known here and does not have to be
+        // guessed from where its gaps are.
+        //
+        // This matters. A read constrained on one side only does not reach
+        // across the whole alignment, and Theseus pads the part it does not
+        // reach with the same '-' it uses for a deletion. Counting that
+        // padding as a deletion deletes bases every read covering them
+        // agrees on; guessing which gaps are padding instead reads an
+        // ordinary read that starts a column late as a padded one, and then
+        // declines to repair.
+        vector<Anchoring> anchoring;
+        anchoring.reserve(alignment.size());
+        anchoring.insert(anchoring.end(), bothSidesFixedSequences.size(),
+            Anchoring::BothSides);
+        anchoring.insert(anchoring.end(), leftFixedSequences.size(),
+            Anchoring::LeftOnly);
+        anchoring.insert(anchoring.end(), rightFixedSequences.size(),
+            Anchoring::RightOnly);
+        SHASTA2_ASSERT(anchoring.size() == alignment.size());
+
+        // Unlike abpoa, Theseus takes a weight per sequence, so each read
+        // appears once and votes with its coverage.
+        vector<uint64_t> weights;
+        weights.reserve(alignment.size());
+        for(const auto& [sequenceId, weight]: msaSequenceIdsWithWeight) {
+            weights.push_back(weight);
+        }
+
+        repairedRegionCount = msa1(alignment, alignedConsensus, consensus, weights, anchoring);
+    }
+    const auto t3 = steady_clock::now();
+
     if(html) {
         html << "<br>Theseus completed in " << seconds(t1-t0) << " seconds.";
+        if(options.useMsa1) {
+            html << "<br>Msa1 repair completed in " << seconds(t3-t2) <<
+                " seconds and rebuilt " << repairedRegionCount << " region(s) of the alignment.";
+        }
         writeAlignment(alignment, alignedConsensus, consensus, msaSequenceIdsWithWeight);
         writeConsensus(consensus);
     }

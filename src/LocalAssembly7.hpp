@@ -49,6 +49,15 @@ public:
         Method method = Method::Adaptive;
         void setMethod(const string&);
 
+        // Whether to repair the bad homopolymer regions of the alignment
+        // computed by whichever Method ran, using msa1 (see msa1.hpp).
+        // Independent of method: any Method that produces a row alignment
+        // (Adaptive, Abpoa, Poasta, TheseusOnly, TheseusAll) can be repaired
+        // or not: this is not itself a Method, because it and the choice of
+        // Method must be selectable independently of each other. Mirrors the
+        // global Options::useMsa1 - see OptionsDefine.hpp.
+        bool useMsa1 = false;
+
         // If the number of oriented reads on both anchors is at least
         // equal to commonThreshold, the adaptive method uses one of:
         // - Fast path.
