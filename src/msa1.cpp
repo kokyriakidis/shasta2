@@ -2,12 +2,20 @@
 #include "msa1.hpp"
 #include "invalid.hpp"
 #include "SHASTA2_ASSERT.hpp"
-#include "theseusWrapper.hpp"
 using namespace shasta2;
+
+// Theseus. Used directly, not through theseusWrapper: see msa1AlignExtended
+// below for why.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wfloat-conversion"
+#include "theseus/theseus_msa_aligner.h"
+#pragma GCC diagnostic pop
 
 // Standard library.
 #include "algorithm.hpp"
 #include "iostream.hpp"
+#include <boost/tokenizer.hpp>
+#include <sstream>
 
 
 
@@ -977,6 +985,106 @@ void shasta2::msa1FindBadRegions(
 
 namespace shasta2 {
 
+    // Align sequences encoded in the extended alphabet, using theseus directly.
+    //
+    // This mirrors theseusWrapper.cpp's theseus() function line for line -
+    // build a theseus::TheseusMSA aligner on the first sequence fixed on both
+    // sides, align the rest into it, and read the alignment back out of
+    // print_as_msa - except it encodes an ExtendedSequence to a string instead
+    // of a vector<Base>, and parses the rows back with AlignedExtendedBase
+    // instead of AlignedBase. Theseus itself does not need to know: the only
+    // place it looks at the content of a sequence is a wavefront extension
+    // that compares two chars with ==, with no ACGT table and no substitution
+    // matrix, only a scalar match/mismatch penalty, so the extended alphabet
+    // passes straight through as the string ACGTacgt, poly symbols aligning as
+    // symbols in their own right (see ExtendedBase in msa1.hpp).
+    //
+    // This is private to msa1.cpp and duplicates a small amount of
+    // theseusWrapper.cpp's own plumbing rather than sharing it, so that the
+    // whole msa1 feature - what it does and how to remove it - is readable and
+    // changeable from this one file, and so that a change made here cannot
+    // affect theseus()'s own callers, or vice versa.
+    //
+    // Only the alignment is computed. The consensus is not, because a
+    // consensus over the extended alphabet also needs the run lengths, which
+    // theseus knows nothing about. See extendedConsensus for that.
+    static void msa1AlignExtended(
+        const vector< pair<ExtendedSequence, uint64_t> >& fixedSequences,
+        const vector< pair<ExtendedSequence, uint64_t> >& leftFixedSequences,
+        const vector< pair<ExtendedSequence, uint64_t> >& rightFixedSequences,
+        vector< vector<AlignedExtendedBase> >& alignment)
+    {
+        // Pericles default penalties, the same theseus() uses.
+        const int match = 0;
+        const int mismatch = 2;
+        const int gapo = 3;
+        const int gape = 1;
+        const theseus::Penalties penalties(match, mismatch, gapo, gape);
+        const theseus::Heuristics heuristics;
+
+        // Create the aligner, passing in the first sequence fixed on both sides.
+        SHASTA2_ASSERT(not fixedSequences.empty());
+        const auto& [firstSequence, firstSequenceWeight] = fixedSequences.front();
+        theseus::TheseusMSA aligner(penalties, heuristics,
+            toString(firstSequence), int(firstSequenceWeight), false);
+
+        // Pass in the remaining sequences fixed on both sides.
+        for(uint64_t i=1; i<fixedSequences.size(); i++) {
+            const auto& [sequence, weight] = fixedSequences[i];
+            const bool densityDrop = false;
+            const bool lagPruning = false;
+            aligner.align(toString(sequence), int(weight), false, false, densityDrop, lagPruning);
+        }
+
+        // Pass in the sequences fixed on the left only.
+        for(const auto& [sequence, weight]: leftFixedSequences) {
+            const bool densityDrop = true;
+            const bool lagPruning = false;
+            aligner.align(toString(sequence), int(weight), false, true, densityDrop, lagPruning);
+        }
+
+        // Pass in the sequences fixed on the right only.
+        for(const auto& [sequence, weight]: rightFixedSequences) {
+            const bool densityDrop = true;
+            const bool lagPruning = false;
+            aligner.align(toString(sequence), int(weight), true, true, densityDrop, lagPruning);
+        }
+
+        // Read the alignment back. print_as_msa writes a header line for each
+        // sequence, then its alignment row, and finally a row for the aligned
+        // consensus, which is not wanted here.
+        alignment.clear();
+        std::ostringstream s;
+        aligner.print_as_msa(s);
+        const string alignmentString = std::move(s).str();
+
+        boost::tokenizer< boost::char_separator<char> > tokenizer(
+            alignmentString, boost::char_separator<char>("\n"));
+        for(const string& line: tokenizer) {
+            SHASTA2_ASSERT(not line.empty());
+            if(line[0] != '>') {
+
+                // Parse with AlignedExtendedBase, NOT AlignedBase.
+                // AlignedBase::fromCharacter maps 'a' to A, which would
+                // silently discard the poly distinction and turn every long
+                // run back into a plain base.
+                alignment.push_back(vectorOfAlignedExtendedBasesFromString(line));
+            }
+        }
+
+        SHASTA2_ASSERT(not alignment.empty());
+        alignment.pop_back();
+        SHASTA2_ASSERT(alignment.size() ==
+            fixedSequences.size() + leftFixedSequences.size() + rightFixedSequences.size());
+
+        // All rows must have the same length.
+        for(const vector<AlignedExtendedBase>& row: alignment) {
+            SHASTA2_ASSERT(row.size() == alignment.front().size());
+        }
+    }
+
+
+
     // Recompute one region of an alignment using the extended alphabet, and
     // return the replacement columns.
     //
@@ -1193,7 +1301,7 @@ namespace shasta2 {
                 return encoded;
             };
             vector< vector<AlignedExtendedBase> > alignedSymbols;
-            theseusExtended(encodedGroup(fixedRows), encodedGroup(leftFixedRows),
+            msa1AlignExtended(encodedGroup(fixedRows), encodedGroup(leftFixedRows),
                 encodedGroup(rightFixedRows), alignedSymbols);
             SHASTA2_ASSERT(alignedSymbols.size() ==
                 fixedRows.size() + leftFixedRows.size() + rightFixedRows.size());
@@ -1707,10 +1815,10 @@ void shasta2::testMsa1ExtendedBase()
 
     // toString and the fromString helpers round trip.
     // This matters because it is how the encoding reaches theseus and comes
-    // back: theseusExtended passes toString(encoded) in and parses the MSA rows
-    // with vectorOfAlignedExtendedBasesFromString. If either mapping folded 'a'
-    // into 'A', as AlignedBase::fromCharacter does, every poly symbol would
-    // silently become a plain one.
+    // back: msa1AlignExtended passes toString(encoded) in and parses the MSA
+    // rows with vectorOfAlignedExtendedBasesFromString. If either mapping
+    // folded 'a' into 'A', as AlignedBase::fromCharacter does, every poly
+    // symbol would silently become a plain one.
     {
         SHASTA2_ASSERT(toString(vectorOfExtendedBasesFromString("ACGTacgt")) == "ACGTacgt");
         SHASTA2_ASSERT(toString(vectorOfAlignedExtendedBasesFromString("ACGTacgt-")) == "ACGTacgt-");
@@ -1721,7 +1829,7 @@ void shasta2::testMsa1ExtendedBase()
             ExtendedBase::fromCharacter('A').base());
 
         // AlignedBase, by contrast, would lose it. This documents exactly why
-        // theseusExtended must not use vectorOfAlignedBasesFromString.
+        // msa1AlignExtended must not use vectorOfAlignedBasesFromString.
         SHASTA2_ASSERT(AlignedBase::fromCharacter('a') == AlignedBase::fromCharacter('A'));
     }
 
