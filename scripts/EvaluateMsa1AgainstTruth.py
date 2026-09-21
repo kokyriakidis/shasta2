@@ -102,9 +102,12 @@ parser.add_argument("--truth-index", type=str, default=None,
 parser.add_argument("--output", type=str, default="Msa1TruthReport.csv")
 parser.add_argument("--work-dir", type=str, default=None,
     help="Directory for the temporary reads fasta/sam files (default: a fresh temp dir).")
-parser.add_argument("--window-pad", type=int, default=1000,
+parser.add_argument("--window-pad", type=int, default=5000,
     help="Bases of read context kept on each side of anchorIdA/anchorIdB when mapping "
          "a core read to truth (see the comment above the mapping step).")
+parser.add_argument("--min-mapq", type=int, default=10,
+    help="Minimum minimap2 MAPQ for a core read's mapping to be trusted (see the "
+         "comment above the mapping step).")
 parser.add_argument("--threads", type=int, default=os.cpu_count() or 4,
     help="Threads to give minimap2.")
 arguments = parser.parse_args()
@@ -166,6 +169,22 @@ print(len(allReads), "distinct oriented reads among the candidate regions.")
 # several regions gets one window per region - windows are keyed by
 # (row index, orientedReadId), not just orientedReadId, since the same read
 # can need a different window in each region it contributes to.
+#
+# A smaller window is also a less unique one, and an unqualified mapping is
+# worse than no mapping at all for a truth harness: measured against full-read
+# mapping as ground truth on a real 3000-window sample, a --window-pad of 1000
+# put only 51.7% of windows at MAPQ>=10, but among those, agreement with the
+# full-read locus was 100% (0/1400) - MAPQ<10 is where essentially all of the
+# disagreement lives (49.4% wrong at MAPQ=0, 14.5% wrong at MAPQ 1-9). Below,
+# --min-mapq drops anything under that bar from the truth vote, same as an
+# unmapped read - silently trusting a low-MAPQ window would occasionally
+# extract truth from the wrong genomic locus entirely (one sampled case
+# mapped to a different chromosome), corrupting the comparison without any
+# sign anything was wrong. The default --window-pad of 5000 exists to reduce
+# how much this filter throws away: at that width MAPQ>=10 covers 59.9% of
+# windows instead of 51.7%, while the mapping call itself is still a small
+# fraction of full-read mapping's cost (total input bases stay two orders of
+# magnitude below mapping every core read in full).
 workDir = arguments.work_dir or tempfile.mkdtemp(prefix="msa1Eval_")
 os.makedirs(workDir, exist_ok=True)
 
@@ -210,9 +229,12 @@ with open(samFileName) as samFile:
             continue
         referenceName = fields[2]
         referenceStart = int(fields[3]) - 1   # SAM POS is 1-based.
+        mapq = int(fields[4])
         cigar = fields[5]
-        alignments[queryName] = (referenceName, referenceStart, cigar, bool(flag & 16))
-print(len(alignments), "of", len(windowInfo), "windows have a primary mapping to truth.")
+        alignments[queryName] = (referenceName, referenceStart, cigar, bool(flag & 16), mapq)
+trustedAlignments = sum(1 for a in alignments.values() if a[4] >= arguments.min_mapq)
+print(len(alignments), "of", len(windowInfo), "windows have a primary mapping to truth,",
+    trustedAlignments, f"at MAPQ>={arguments.min_mapq} or better.")
 
 
 
@@ -251,7 +273,12 @@ with open(arguments.output, "w", newline="") as outputFile:
             alignment = alignments.get(f"{rowIndex}_{orientedReadId}")
             if alignment is None:
                 continue
-            referenceName, referenceStart, cigar, isReverse = alignment
+            referenceName, referenceStart, cigar, isReverse, mapq = alignment
+            if mapq < arguments.min_mapq:
+                # Not unmapped, but not trustworthy either - see the comment
+                # above the mapping step. Treated the same as unmapped: this
+                # read just doesn't get a vote for this region's truth locus.
+                continue
 
             localPositionA, localPositionB, windowLength = windowInfo[(rowIndex, orientedReadId)]
 
