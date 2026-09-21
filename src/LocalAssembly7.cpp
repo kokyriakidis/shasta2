@@ -1472,17 +1472,12 @@ void LocalAssembly7::runTheseus(bool useAll)
     const auto t2 = steady_clock::now();
     if(options.useMsa1) {
 
-        // Theseus returns the rows in the order the groups were given, so
-        // how each row is anchored is known here and does not have to be
-        // guessed from where its gaps are.
-        //
-        // This matters. A read constrained on one side only does not reach
+        // Theseus returns the rows in the order the groups were given, so how
+        // each row is anchored is known here rather than guessed from its
+        // gaps. That matters: a read fixed on one side only does not reach
         // across the whole alignment, and Theseus pads the part it does not
-        // reach with the same '-' it uses for a deletion. Counting that
-        // padding as a deletion deletes bases every read covering them
-        // agrees on; guessing which gaps are padding instead reads an
-        // ordinary read that starts a column late as a padded one, and then
-        // declines to repair.
+        // reach with the same '-' used for a deletion. Counting that padding
+        // as a deletion would delete bases every read covering them agrees on.
         vector<Anchoring> anchoring;
         anchoring.reserve(alignment.size());
         anchoring.insert(anchoring.end(), bothSidesFixedSequences.size(),

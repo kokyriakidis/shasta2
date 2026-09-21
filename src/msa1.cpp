@@ -286,8 +286,8 @@ namespace shasta2 {
 
     // The vote over the TRUE run lengths of the rows sharing one poly symbol
     // at one alignment column: mode, median and mean, computed together in a
-    // single pass over lengthWeight so that every RunLengthEstimator, and the
-    // diagnostics, share one scan instead of each recomputing its own.
+    // single pass over lengthWeight so that every RunLengthEstimator shares
+    // one scan instead of recomputing its own.
     class Msa1LengthVote {
     public:
         uint64_t modeLength = 0;
@@ -978,29 +978,19 @@ void shasta2::msa1FindBadRegions(
 
 namespace shasta2 {
 
-    // Align sequences encoded in the extended alphabet, using theseus directly.
+    // Align sequences encoded in the extended alphabet, using theseus
+    // directly rather than through theseusWrapper.cpp: duplicates a small
+    // amount of its plumbing (build a TheseusMSA aligner, align each
+    // sequence, read the alignment back out of print_as_msa) so the whole
+    // msa1 feature stays readable and changeable from this one file, and a
+    // change here cannot affect theseus()'s own callers or vice versa.
+    // Theseus needs no change to accept the extended alphabet: it only ever
+    // compares two characters with ==, so it passes through as the string
+    // ACGTacgt (see ExtendedBase in msa1.hpp).
     //
-    // This mirrors theseusWrapper.cpp's theseus() function line for line -
-    // build a theseus::TheseusMSA aligner on the first sequence fixed on both
-    // sides, align the rest into it, and read the alignment back out of
-    // print_as_msa - except it encodes an ExtendedSequence to a string instead
-    // of a vector<Base>, and parses the rows back with AlignedExtendedBase
-    // instead of AlignedBase. Theseus itself does not need to know: the only
-    // place it looks at the content of a sequence is a wavefront extension
-    // that compares two chars with ==, with no ACGT table and no substitution
-    // matrix, only a scalar match/mismatch penalty, so the extended alphabet
-    // passes straight through as the string ACGTacgt, poly symbols aligning as
-    // symbols in their own right (see ExtendedBase in msa1.hpp).
-    //
-    // This is private to msa1.cpp and duplicates a small amount of
-    // theseusWrapper.cpp's own plumbing rather than sharing it, so that the
-    // whole msa1 feature - what it does and how to remove it - is readable and
-    // changeable from this one file, and so that a change made here cannot
-    // affect theseus()'s own callers, or vice versa.
-    //
-    // Only the alignment is computed. The consensus is not, because a
-    // consensus over the extended alphabet also needs the run lengths, which
-    // theseus knows nothing about. See extendedConsensus for that.
+    // Only the alignment is computed, not the consensus: a consensus over
+    // the extended alphabet also needs the run lengths, which theseus does
+    // not have. See extendedConsensus for that.
     static void msa1AlignExtended(
         const vector< pair<ExtendedSequence, uint64_t> >& fixedSequences,
         const vector< pair<ExtendedSequence, uint64_t> >& leftFixedSequences,
