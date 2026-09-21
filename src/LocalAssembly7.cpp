@@ -104,9 +104,6 @@ void LocalAssembly7::run()
     case Method::DeBruijn:
         runDeBruijn();
         break;
-    case Method::Msa1:
-        runMsa1();
-        break;
     default:
         throw runtime_error("Invalid LocalAssembly7 Method.");
     }
@@ -1527,125 +1524,6 @@ void LocalAssembly7::runTheseus(bool useAll)
 
 
 
-// Msa1 as its own aligner, independent of Adaptive. Gathering the sequences
-// out of this local assembly's own state, and writing the html report of the
-// result, are this function's job - they need LocalAssembly7's own private
-// data and display conventions, the same as runTheseus's does for Theseus
-// alone. Everything else - aligning, then repairing the bad homopolymer
-// regions of the alignment - is one call into msa1.hpp/msa1.cpp, which is the
-// whole of the msa1 feature.
-void LocalAssembly7::runMsa1()
-{
-    // Get the sequenceIds to be used, sorted in order of decreasing coverage.
-    vector<uint64_t> bothSidesFixedSequenceIds;
-    getSequencesOnBothAnchors(bothSidesFixedSequenceIds);
-    vector<uint64_t> leftFixedSequenceIds;
-    getSequencesOnAnchorA(leftFixedSequenceIds);
-    vector<uint64_t> rightFixedSequenceIds;
-    getSequencesOnAnchorB(rightFixedSequenceIds);
-
-    if(html) {
-        html <<
-            "<h3>Local assembly with msa1</h3>"
-            "The local assembly will use the following "
-            "sequences of oriented reads fixed on one or both anchors."
-            "<br><br><table>"
-            "<tr><th>Sequence<br>id<th>On<br>A<th>On<br>B<th>Coverage<th>Length";
-        for(const uint64_t sequenceId: bothSidesFixedSequenceIds) {
-            const SequenceInfo& sequenceInfo = sequences[sequenceId];
-            html <<
-                "<tr>"
-                "<td class=centered>" << sequenceId <<
-                "<td class=centered>&check;" <<
-                "<td class=centered>&check;" <<
-                "<td class=centered>" << sequenceInfo.coverage() <<
-                "<td class=centered>" << sequenceInfo.sequence.size();
-        }
-        for(const uint64_t sequenceId: leftFixedSequenceIds) {
-            const SequenceInfo& sequenceInfo = sequences[sequenceId];
-            html <<
-                "<tr>"
-                "<td class=centered>" << sequenceId <<
-                "<td class=centered>&check;" <<
-                "<td class=centered>" <<
-                "<td class=centered>" << sequenceInfo.coverage() <<
-                "<td class=centered>" << sequenceInfo.sequence.size();
-        }
-        for(const uint64_t sequenceId: rightFixedSequenceIds) {
-            const SequenceInfo& sequenceInfo = sequences[sequenceId];
-            html <<
-                "<tr>"
-                "<td class=centered>" << sequenceId <<
-                "<td class=centered>" <<
-                "<td class=centered>&check;" <<
-                "<td class=centered>" << sequenceInfo.coverage() <<
-                "<td class=centered>" << sequenceInfo.sequence.size();
-        }
-
-        html << "</table>";
-    }
-
-
-
-    // Gather the sequences to be passed to msa1.
-    uint64_t totalWeight = 0;
-    vector< pair<uint64_t, uint64_t> > msaSequenceIdsWithWeight;
-    vector< pair<vector<Base>, uint64_t> > bothSidesFixedSequences;
-    for(const uint64_t sequenceId: bothSidesFixedSequenceIds) {
-        const SequenceInfo& sequenceInfo = sequences[sequenceId];
-        const uint64_t coverage = sequenceInfo.coverage();
-        bothSidesFixedSequences.push_back(make_pair(sequenceInfo.sequence, coverage));
-        msaSequenceIdsWithWeight.push_back(make_pair(sequenceId, coverage));
-        totalWeight += coverage;
-    }
-    vector< pair<vector<Base>, uint64_t> > leftFixedSequences;
-    for(const uint64_t sequenceId: leftFixedSequenceIds) {
-        const SequenceInfo& sequenceInfo = sequences[sequenceId];
-        const uint64_t coverage = sequenceInfo.coverage();
-        leftFixedSequences.push_back(make_pair(sequenceInfo.sequence, coverage));
-        msaSequenceIdsWithWeight.push_back(make_pair(sequenceId, coverage));
-        totalWeight += coverage;
-    }
-    vector< pair<vector<Base>, uint64_t> > rightFixedSequences;
-    for(const uint64_t sequenceId: rightFixedSequenceIds) {
-        const SequenceInfo& sequenceInfo = sequences[sequenceId];
-        const uint64_t coverage = sequenceInfo.coverage();
-        rightFixedSequences.push_back(make_pair(sequenceInfo.sequence, coverage));
-        msaSequenceIdsWithWeight.push_back(make_pair(sequenceId, coverage));
-        totalWeight += coverage;
-    }
-    if(html) {
-        html << "<br>Total coverage for msa1 is " << totalWeight << ".";
-    }
-
-    // Align and repair. This one call is the entire msa1 feature: see
-    // msa1.hpp for what it does and why.
-    vector< pair<Base, uint64_t> > consensus;
-    vector<AlignedBase> alignedConsensus;
-    vector< vector<AlignedBase> > alignment;
-    const auto t0 = steady_clock::now();
-    const uint64_t repairedRegionCount = msa1(
-        bothSidesFixedSequences, leftFixedSequences, rightFixedSequences,
-        consensus, alignment, alignedConsensus);
-    const auto t1 = steady_clock::now();
-    SHASTA2_ASSERT(alignment.size() == msaSequenceIdsWithWeight.size());
-
-    if(html) {
-        html << "<br>Msa1 completed in " << seconds(t1-t0) <<
-            " seconds and repaired " << repairedRegionCount << " region(s) of the alignment.";
-        writeAlignment(alignment, alignedConsensus, consensus, msaSequenceIdsWithWeight);
-        writeConsensus(consensus);
-    }
-
-    // Store the sequence.
-    for(const auto& [b, ignore]: consensus) {
-        sequence.push_back(b);
-    }
-    success = true;
-}
-
-
-
 void LocalAssembly7::runAdaptive()
 {
     // Try fast path first, if allowed.
@@ -1699,8 +1577,6 @@ void LocalAssembly7::Options::setMethod(const string& s)
         method = Method::TheseusAll;
     } else if(s == "DeBruijn") {
         method = Method::DeBruijn;
-    } else if(s == "Msa1") {
-        method = Method::Msa1;
     } else {
         method = Method::Invalid;
     }

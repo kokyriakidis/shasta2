@@ -895,6 +895,10 @@ void Assembler::exploreSegmentStep(
     getParameterValue(request, "method", methodString);
     localAssembly7Options.setMethod(methodString);
 
+    string useMsa1String;
+    localAssembly7Options.useMsa1 = HttpServer::getParameterValue(request,
+        "useMsa1", useMsa1String);
+
     getParameterValue(request, "commonCoverageThreshold", localAssembly7Options.commonCoverageThreshold);
 
     string disallowFastPathString;
@@ -969,9 +973,13 @@ void Assembler::exploreSegmentStep(
         "> Theseus, using all oriented reads on one or both anchors."
         "<br><input type=radio name=method value=DeBruijn" <<
         (localAssembly7Options.method == LocalAssembly7::Method::DeBruijn ? " checked=on" : "") << "> De Bruijn"
-        "<br><input type=radio name=method value=Msa1" <<
-        (localAssembly7Options.method == LocalAssembly7::Method::Msa1 ? " checked=on" : "") << "> Msa1"
         ;
+
+    html <<
+        "<tr><th class=left>Repair with msa1"
+        "<td class=centered>"
+        "<input type=checkbox name=useMsa1" <<
+        (localAssembly7Options.useMsa1 ? " checked=on" : "") << ">";
 
     html <<
         "<tr><th class=left>commonCoverageThreshold<td class=centered>"

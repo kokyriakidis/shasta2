@@ -526,29 +526,6 @@ namespace shasta2 {
         const Msa1Options& options = Msa1Options());
 
 
-    // As above, but starting from raw sequences instead of an existing
-    // alignment: aligns them with theseus, then repairs the bad homopolymer
-    // regions of the result exactly as the other overload does. This is the
-    // whole of what it takes to use msa1 as an aligner in its own right - a
-    // caller with sequences and no alignment yet, such as
-    // LocalAssembly7::runMsa1, needs nothing from this file but this one
-    // call.
-    //
-    // The three groups and their order match theseusWrapper's theseus():
-    // sequences fixed on both anchors, then fixed on the left only, then
-    // fixed on the right only. alignment and alignedConsensus are always
-    // computed, unlike theseus() itself, because the repair needs them.
-    // Returns the number of regions repaired, same as the other overload.
-    uint64_t msa1(
-        const vector< pair<vector<Base>, uint64_t> >& bothSidesFixedSequences,
-        const vector< pair<vector<Base>, uint64_t> >& leftFixedSequences,
-        const vector< pair<vector<Base>, uint64_t> >& rightFixedSequences,
-        vector< pair<Base, uint64_t> >& consensus,
-        vector< vector<AlignedBase> >& alignment,
-        vector<AlignedBase>& alignedConsensus,
-        const Msa1Options& options = Msa1Options());
-
-
     void testMsa1ExtendedBase();
     void testMsa1Consensus();
     void testMsa1Repair();

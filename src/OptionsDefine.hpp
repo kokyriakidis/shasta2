@@ -142,9 +142,9 @@ SHASTA2_BOOL_OPTION_DEFINE(
 
 SHASTA2_BOOL_OPTION_DEFINE(
     useMsa1, "--use-msa1", false,
-    "Use LocalAssembly7::Method::Msa1 (Theseus alignment plus homopolymer "
-    "repair) for local assembly, instead of the default Adaptive method. "
-    "For testing msa1.")
+    "Repair the bad homopolymer regions of the local assembly alignment "
+    "using msa1 (see msa1.hpp), regardless of which LocalAssembly7::Method "
+    "is used. For testing msa1.")
 
 SHASTA2_OPTION_DEFINE(
     uint64_t, bubbleCleanupMaxBubbleLength, "--bubble-cleanup-max-bubble-length", 10000,
