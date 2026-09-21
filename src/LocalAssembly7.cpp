@@ -27,18 +27,7 @@ using namespace shasta2;
 #include <iomanip>
 #include "iostream.hpp"
 #include <map>
-#include <ranges>
 #include <stack>
-
-
-
-// How the repair is tuned, at the measured default (see Msa1Options in
-// msa1.hpp). Named here, once, because the prescreen (which decides whether
-// an alignment is even worth computing) and the repair itself (msa1(), called
-// directly at each call site) both need the same trigger, and must agree: a
-// prescreen looking for less than the repair acts on would withhold an
-// alignment the repair would have used.
-static const Msa1Options localAssembly7Msa1Options;
 
 
 
@@ -1278,7 +1267,7 @@ void LocalAssembly7::runPoasta()
 
 
 
-void LocalAssembly7::runAbpoaOrPoasta(bool usePoasta, bool repair)
+void LocalAssembly7::runAbpoaOrPoasta(bool usePoasta)
 {
     const string name = (usePoasta ? "Poasta" : "Abpoa");
 
@@ -1308,20 +1297,6 @@ void LocalAssembly7::runAbpoaOrPoasta(bool usePoasta, bool repair)
         html << "</table>";
     }
 
-    // Decide, before running the aligner, whether the repair could have anything
-    // to do here. The test is run on the READS: it needs no alignment, so the
-    // aligner can be asked for one only when it will be used, and the reads have
-    // not been through any vote, so they still show what we are looking for even
-    // where the consensus would have lost the misplaced base altogether.
-    //
-    // It is run on the distinct sequences, before they are repeated by coverage
-    // below, since scanning the repeats would answer the same question twice.
-    const bool triggerPresent = repair and std::ranges::any_of(sequenceIds,
-        [&](uint64_t sequenceId) {
-            return msa1TriggerPresent(
-                sequences[sequenceId].sequence, localAssembly7Msa1Options.trigger);
-        });
-
 
     // Abpoa and poasta don't support weights, so we have to enter each sequence
     // a number of times equal to its coverage.
@@ -1346,31 +1321,14 @@ void LocalAssembly7::runAbpoaOrPoasta(bool usePoasta, bool repair)
     if(usePoasta) {
         poasta(msaSequences, consensus, alignment, alignedConsensus);
     } else {
-        // The alignment is normally computed only for the html display. It is
-        // also needed when there is something to repair.
-        const bool computeAlignment = bool(html) or triggerPresent;
+        const bool computeAlignment = bool(html);
         abpoa(msaSequences, consensus, alignment, alignedConsensus, computeAlignment);
     }
     const auto t1 = steady_clock::now();
     SHASTA2_ASSERT(alignment.size() == msaSequenceIdsWithWeight.size());
 
-    // Repair the bad regions, if any. Everything outside them is untouched.
-    uint64_t repairedRegionCount = 0;
-    if(triggerPresent) {
-        // Every sequence given to abpoa or poasta spans the whole assembly step,
-        // so every row is fixed on both sides and a gap in it is a deletion,
-        // never padding. That is what the empty anchoring says. Each sequence was
-        // entered once per unit of coverage, so every row votes with weight 1.
-        const vector<uint64_t> weights(alignment.size(), 1);
-        repairedRegionCount = msa1(alignment, alignedConsensus, consensus, weights, {},
-            localAssembly7Msa1Options);
-    }
-    const auto t2 = steady_clock::now();
-
     if(html) {
         html << "<br>" << name << " completed in " << seconds(t1-t0) << " seconds.";
-        writeRepairSummary(name, repair, triggerPresent, repairedRegionCount,
-            seconds(t2-t1));
         writeAlignment(alignment, alignedConsensus, consensus, msaSequenceIdsWithWeight);
         writeConsensus(consensus);
     }
@@ -1386,14 +1344,7 @@ void LocalAssembly7::runAbpoaOrPoasta(bool usePoasta, bool repair)
 
 // If useAll is true, this uses oriented reads that
 // appear only in the left or right anchor.
-// See LocalAssembly7.hpp for comments.
-void LocalAssembly7::gatherTheseusSequences(
-    bool useAll,
-    const string& htmlTitle,
-    vector< pair<vector<Base>, uint64_t> >& bothSidesFixedSequences,
-    vector< pair<vector<Base>, uint64_t> >& leftFixedSequences,
-    vector< pair<vector<Base>, uint64_t> >& rightFixedSequences,
-    vector< pair<uint64_t, uint64_t> >& msaSequenceIdsWithWeight)
+void LocalAssembly7::runTheseus(bool useAll)
 {
     // Get the sequenceIds to be used, sorted in order of decreasing coverage.
     vector<uint64_t> bothSidesFixedSequenceIds;
@@ -1407,7 +1358,7 @@ void LocalAssembly7::gatherTheseusSequences(
 
     if(html) {
         html <<
-            "<h3>" << htmlTitle << "</h3>"
+            "<h3>Local assembly with Theseus</h3>"
             "The local assembly will use the following "
             "sequences of oriented reads on both anchors, "
             "presented to Theseus in this order."
@@ -1451,10 +1402,8 @@ void LocalAssembly7::gatherTheseusSequences(
 
     // Gather the sequences to be passed to theseus.
     uint64_t totalWeight = 0;
-    msaSequenceIdsWithWeight.clear();
-    bothSidesFixedSequences.clear();
-    leftFixedSequences.clear();
-    rightFixedSequences.clear();
+    vector< pair<uint64_t, uint64_t> > msaSequenceIdsWithWeight;
+    vector< pair<vector<Base>, uint64_t> > bothSidesFixedSequences;
     for(const uint64_t sequenceId: bothSidesFixedSequenceIds) {
         const SequenceInfo& sequenceInfo = sequences[sequenceId];
         const uint64_t coverage = sequenceInfo.coverage();
@@ -1462,6 +1411,8 @@ void LocalAssembly7::gatherTheseusSequences(
         msaSequenceIdsWithWeight.push_back(make_pair(sequenceId, coverage));
         totalWeight += coverage;
     }
+    vector< pair<vector<Base>, uint64_t> > leftFixedSequences;
+    vector< pair<vector<Base>, uint64_t> > rightFixedSequences;
     if(useAll) {
         for(const uint64_t sequenceId: leftFixedSequenceIds) {
             const SequenceInfo& sequenceInfo = sequences[sequenceId];
@@ -1483,36 +1434,12 @@ void LocalAssembly7::gatherTheseusSequences(
         theseusWriteFile(bothSidesFixedSequences, leftFixedSequences, rightFixedSequences,
             "Pericles.fasta");
     }
-}
 
-
-
-void LocalAssembly7::runTheseus(bool useAll, bool repair)
-{
-    vector< pair<vector<Base>, uint64_t> > bothSidesFixedSequences;
-    vector< pair<vector<Base>, uint64_t> > leftFixedSequences;
-    vector< pair<vector<Base>, uint64_t> > rightFixedSequences;
-    vector< pair<uint64_t, uint64_t> > msaSequenceIdsWithWeight;
-    gatherTheseusSequences(useAll,
-        repair ?
-            "Local assembly with Theseus and homopolymer repair" :
-            "Local assembly with Theseus",
-        bothSidesFixedSequences, leftFixedSequences, rightFixedSequences,
-        msaSequenceIdsWithWeight);
-
-    // Decide, before running Theseus, whether the repair could have anything to
-    // do here. See runAbpoaOrPoasta for why this is asked of the reads.
-    const bool triggerPresent = repair and (
-        msa1TriggerPresent(bothSidesFixedSequences, localAssembly7Msa1Options.trigger) or
-        msa1TriggerPresent(leftFixedSequences, localAssembly7Msa1Options.trigger) or
-        msa1TriggerPresent(rightFixedSequences, localAssembly7Msa1Options.trigger));
-
-    // Run Theseus. The alignment is normally computed only for the html display.
-    // It is also needed when there is something to repair.
+    // Run Theseus.
     vector< pair<Base, uint64_t> > consensus;
     vector<AlignedBase> alignedConsensus;
     vector< vector<AlignedBase> > alignment;
-    const bool computeAlignment = bool(html) or triggerPresent;
+    const bool computeAlignment = bool(html);
     const auto t0 = steady_clock::now();
     theseus(
         bothSidesFixedSequences, leftFixedSequences, rightFixedSequences,
@@ -1522,47 +1449,8 @@ void LocalAssembly7::runTheseus(bool useAll, bool repair)
         SHASTA2_ASSERT(alignment.size() == msaSequenceIdsWithWeight.size());
     }
 
-    // Repair the bad regions, if any. Everything outside them is untouched.
-    uint64_t repairedRegionCount = 0;
-    if(triggerPresent) {
-
-        // Theseus returns the rows in the order it was given the groups, so how
-        // each row is anchored is known here and does not have to be guessed
-        // from where its gaps are.
-        //
-        // This matters. A read constrained on one side only does not reach
-        // across the whole alignment, and Theseus pads the part it does not
-        // reach with the same '-' it uses for a deletion. Counting that padding
-        // as a deletion deletes bases every read covering them agrees on;
-        // guessing which gaps are padding instead reads an ordinary read that
-        // starts a column late as a padded one, and then declines to repair.
-        vector<Anchoring> anchoring;
-        anchoring.reserve(alignment.size());
-        anchoring.insert(anchoring.end(), bothSidesFixedSequences.size(),
-            Anchoring::BothSides);
-        anchoring.insert(anchoring.end(), leftFixedSequences.size(),
-            Anchoring::LeftOnly);
-        anchoring.insert(anchoring.end(), rightFixedSequences.size(),
-            Anchoring::RightOnly);
-        SHASTA2_ASSERT(anchoring.size() == alignment.size());
-
-        // Unlike abpoa, Theseus takes a weight per sequence, so each read
-        // appears once and votes with its coverage.
-        vector<uint64_t> weights;
-        weights.reserve(alignment.size());
-        for(const auto& [sequenceId, weight]: msaSequenceIdsWithWeight) {
-            weights.push_back(weight);
-        }
-
-        repairedRegionCount = msa1(alignment, alignedConsensus, consensus, weights,
-            anchoring, localAssembly7Msa1Options);
-    }
-    const auto t2 = steady_clock::now();
-
     if(html) {
         html << "<br>Theseus completed in " << seconds(t1-t0) << " seconds.";
-        writeRepairSummary("Theseus", repair, triggerPresent,
-            repairedRegionCount, seconds(t2-t1));
         writeAlignment(alignment, alignedConsensus, consensus, msaSequenceIdsWithWeight);
         writeConsensus(consensus);
     }
@@ -1576,71 +1464,154 @@ void LocalAssembly7::runTheseus(bool useAll, bool repair)
 
 
 
-// See LocalAssembly7.hpp for comments.
-void LocalAssembly7::writeRepairSummary(
-    const string& alignerName,
-    bool repair,
-    bool triggerPresent,
-    uint64_t repairedRegionCount,
-    double repairSeconds)
-{
-    if(not (html and repair)) {
-        return;
-    }
-
-    if(not triggerPresent) {
-        html << "<br>The reads contain no " <<
-            msa1TriggerDescription(localAssembly7Msa1Options.trigger) <<
-            ", so no repair was attempted and the consensus is exactly as " <<
-            alignerName << " computed it.";
-        return;
-    }
-
-    html << "<br>The reads contain " <<
-        msa1TriggerDescription(localAssembly7Msa1Options.trigger) <<
-        ". Repair completed in " << repairSeconds << " seconds and rebuilt " <<
-        repairedRegionCount << " region(s) of the alignment. Everything outside "
-        "those regions, including the coverage of the consensus, is exactly as " <<
-        alignerName << " left it.";
-    if(repairedRegionCount == 0) {
-        html << " No region was found that could be improved.";
-    }
-}
-
-
-
-// Local assembly using the same aligner Adaptive would have chosen, followed by
-// a local repair of the bad homopolymer regions of the alignment it produces.
-//
-// The aligner runs exactly as it always does, and what it produces is then
-// handed to msa1, which looks for the regions where a base bordering a long
-// homopolymer run has been misplaced and rebuilds only those. Everything outside
-// them, including the coverage of the consensus, is left exactly as the aligner
-// computed it, and in a local assembly with no such region the result is bit for
-// bit what Adaptive would have given.
-//
-// Sharing the dispatch with runAdaptive is the point. If Msa1 chose its own
-// aligner it would differ from Adaptive in two ways at once, and comparing them
-// would measure the aligner as much as the repair. This way the only difference
-// is the repair.
+// Msa1 as its own aligner, independent of Adaptive: gather all the sequences
+// (both anchors plus the ones fixed on only one), align them with Theseus,
+// then repair the bad homopolymer regions of that alignment with msa1(). See
+// msa1.hpp for the repair itself; everything here is just gathering input for
+// it and writing the html report, exactly as runTheseus does for Theseus
+// alone - this function intentionally does not share code with runTheseus or
+// any other aligner path, so that the whole msa1 feature is confined to this
+// one function plus msa1.hpp/msa1.cpp.
 void LocalAssembly7::runMsa1()
 {
-    runAdaptiveOrMsa1(true);
+    // Get the sequenceIds to be used, sorted in order of decreasing coverage.
+    vector<uint64_t> bothSidesFixedSequenceIds;
+    getSequencesOnBothAnchors(bothSidesFixedSequenceIds);
+    vector<uint64_t> leftFixedSequenceIds;
+    getSequencesOnAnchorA(leftFixedSequenceIds);
+    vector<uint64_t> rightFixedSequenceIds;
+    getSequencesOnAnchorB(rightFixedSequenceIds);
+
+    if(html) {
+        html <<
+            "<h3>Local assembly with msa1</h3>"
+            "The local assembly will use the following "
+            "sequences of oriented reads fixed on one or both anchors."
+            "<br><br><table>"
+            "<tr><th>Sequence<br>id<th>On<br>A<th>On<br>B<th>Coverage<th>Length";
+        for(const uint64_t sequenceId: bothSidesFixedSequenceIds) {
+            const SequenceInfo& sequenceInfo = sequences[sequenceId];
+            html <<
+                "<tr>"
+                "<td class=centered>" << sequenceId <<
+                "<td class=centered>&check;" <<
+                "<td class=centered>&check;" <<
+                "<td class=centered>" << sequenceInfo.coverage() <<
+                "<td class=centered>" << sequenceInfo.sequence.size();
+        }
+        for(const uint64_t sequenceId: leftFixedSequenceIds) {
+            const SequenceInfo& sequenceInfo = sequences[sequenceId];
+            html <<
+                "<tr>"
+                "<td class=centered>" << sequenceId <<
+                "<td class=centered>&check;" <<
+                "<td class=centered>" <<
+                "<td class=centered>" << sequenceInfo.coverage() <<
+                "<td class=centered>" << sequenceInfo.sequence.size();
+        }
+        for(const uint64_t sequenceId: rightFixedSequenceIds) {
+            const SequenceInfo& sequenceInfo = sequences[sequenceId];
+            html <<
+                "<tr>"
+                "<td class=centered>" << sequenceId <<
+                "<td class=centered>" <<
+                "<td class=centered>&check;" <<
+                "<td class=centered>" << sequenceInfo.coverage() <<
+                "<td class=centered>" << sequenceInfo.sequence.size();
+        }
+
+        html << "</table>";
+    }
+
+
+
+    // Gather the sequences to be passed to Theseus.
+    uint64_t totalWeight = 0;
+    vector< pair<uint64_t, uint64_t> > msaSequenceIdsWithWeight;
+    vector< pair<vector<Base>, uint64_t> > bothSidesFixedSequences;
+    for(const uint64_t sequenceId: bothSidesFixedSequenceIds) {
+        const SequenceInfo& sequenceInfo = sequences[sequenceId];
+        const uint64_t coverage = sequenceInfo.coverage();
+        bothSidesFixedSequences.push_back(make_pair(sequenceInfo.sequence, coverage));
+        msaSequenceIdsWithWeight.push_back(make_pair(sequenceId, coverage));
+        totalWeight += coverage;
+    }
+    vector< pair<vector<Base>, uint64_t> > leftFixedSequences;
+    for(const uint64_t sequenceId: leftFixedSequenceIds) {
+        const SequenceInfo& sequenceInfo = sequences[sequenceId];
+        const uint64_t coverage = sequenceInfo.coverage();
+        leftFixedSequences.push_back(make_pair(sequenceInfo.sequence, coverage));
+        msaSequenceIdsWithWeight.push_back(make_pair(sequenceId, coverage));
+        totalWeight += coverage;
+    }
+    vector< pair<vector<Base>, uint64_t> > rightFixedSequences;
+    for(const uint64_t sequenceId: rightFixedSequenceIds) {
+        const SequenceInfo& sequenceInfo = sequences[sequenceId];
+        const uint64_t coverage = sequenceInfo.coverage();
+        rightFixedSequences.push_back(make_pair(sequenceInfo.sequence, coverage));
+        msaSequenceIdsWithWeight.push_back(make_pair(sequenceId, coverage));
+        totalWeight += coverage;
+    }
+    if(html) {
+        html << "<br>Total coverage for msa1 is " << totalWeight << ".";
+    }
+
+    // Align with Theseus. The row alignment is always needed here, not just
+    // for html, because the repair below has to have it.
+    vector< pair<Base, uint64_t> > consensus;
+    vector<AlignedBase> alignedConsensus;
+    vector< vector<AlignedBase> > alignment;
+    const auto t0 = steady_clock::now();
+    theseus(
+        bothSidesFixedSequences, leftFixedSequences, rightFixedSequences,
+        consensus, alignment, alignedConsensus, true);
+    const auto t1 = steady_clock::now();
+    SHASTA2_ASSERT(alignment.size() == msaSequenceIdsWithWeight.size());
+
+    // Theseus returns the rows in the order the groups were given: fixed on
+    // both sides, then left fixed, then right fixed. That is exactly the
+    // anchoring msa1 needs to know which rows it may trim, and it has to come
+    // from here rather than be guessed from the alignment - see Anchoring in
+    // msa1.hpp for why.
+    vector<Anchoring> anchoring;
+    anchoring.reserve(alignment.size());
+    anchoring.insert(anchoring.end(), bothSidesFixedSequences.size(), Anchoring::BothSides);
+    anchoring.insert(anchoring.end(), leftFixedSequences.size(), Anchoring::LeftOnly);
+    anchoring.insert(anchoring.end(), rightFixedSequences.size(), Anchoring::RightOnly);
+    SHASTA2_ASSERT(anchoring.size() == alignment.size());
+
+    vector<uint64_t> weights;
+    weights.reserve(alignment.size());
+    for(const auto& [sequenceId, weight]: msaSequenceIdsWithWeight) {
+        weights.push_back(weight);
+    }
+
+    // Repair the bad homopolymer regions of the alignment, if any. This is a
+    // no-op, quickly, when there is nothing to repair, so it is always called
+    // rather than prescreening the reads first as the Adaptive dispatch does.
+    const auto t2 = steady_clock::now();
+    const uint64_t repairedRegionCount =
+        msa1(alignment, alignedConsensus, consensus, weights, anchoring);
+    const auto t3 = steady_clock::now();
+
+    if(html) {
+        html << "<br>Theseus completed in " << seconds(t1-t0) << " seconds.";
+        html << "<br>Msa1 repair completed in " << seconds(t3-t2) <<
+            " seconds and rebuilt " << repairedRegionCount << " region(s) of the alignment.";
+        writeAlignment(alignment, alignedConsensus, consensus, msaSequenceIdsWithWeight);
+        writeConsensus(consensus);
+    }
+
+    // Store the sequence.
+    for(const auto& [b, ignore]: consensus) {
+        sequence.push_back(b);
+    }
+    success = true;
 }
 
 
 
 void LocalAssembly7::runAdaptive()
-{
-    runAdaptiveOrMsa1(false);
-}
-
-
-
-// The aligner is chosen from the coverage and the length of this assembly step.
-// Msa1 makes the same choice and passes repair = true, so the two paths differ
-// only by the repair.
-void LocalAssembly7::runAdaptiveOrMsa1(bool repair)
 {
     // Try fast path first, if allowed.
     if(options.allowFastPath) {
@@ -1659,18 +1630,18 @@ void LocalAssembly7::runAdaptiveOrMsa1(bool repair)
 
         if(getMaxLengthCommon() <= options.maxAbpoaLength) {
             // The MSA is not too long, use abpoa.
-            runAbpoaOrPoasta(false, repair);
+            runAbpoa();
         } else {
             // The MSA is long, use theseus,
             // using only oriented reads on both anchors.
-            runTheseus(false, repair);
+            runTheseus(false);
         }
 
     } else {
 
         // We don'thave enough oriented reads on both anchors,
         // so we also use oriented reads that are on just one anchor.
-        runTheseus(true, repair);
+        runTheseus(true);
 
     }
 }

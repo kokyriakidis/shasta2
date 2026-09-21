@@ -352,9 +352,16 @@ public:
     // Run LocalAssembly7 twice for the same (anchorIdA, anchorIdB, orientedReadIds) -
     // once with Method::Adaptive, once with Method::Msa1 - and return
     // (successAdaptive, consensusAdaptive, successMsa1, consensusMsa1).
-    // The two runs differ only in whether msa1's homopolymer repair is applied
-    // (see LocalAssembly7::runAdaptiveOrMsa1), so a difference in the two
-    // consensus strings means the repair changed something for this region.
+    //
+    // Msa1 (see LocalAssembly7::runMsa1) always aligns with Theseus and then
+    // repairs the result with msa1(); it does not share Adaptive's aligner
+    // choice. So a difference in the two consensus strings can come from a
+    // different aligner being used, the repair, or both - not from the repair
+    // alone. This matters to every script under scripts/ that calls this
+    // method (FindMsa1HardRegions.py, EvaluateMsa1AgainstTruth.py,
+    // CompareMsa1AgainstHifiasm.py): a "hard region" found this way is a
+    // region where Msa1's whole pipeline - aligner and repair together -
+    // disagrees with Adaptive, not necessarily one the repair changed.
     std::tuple<bool, string, bool, string> runLocalAssemblyAdaptiveAndMsa1(
         AnchorId anchorIdA,
         AnchorId anchorIdB,

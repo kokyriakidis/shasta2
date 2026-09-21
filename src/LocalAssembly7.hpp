@@ -254,47 +254,12 @@ private:
 
     void run();
     void runFastPath();
-
-    // Adaptive picks the aligner from the coverage and the length of this
-    // assembly step. Msa1 makes exactly the same choice and additionally repairs
-    // the bad homopolymer regions of whatever alignment comes back, so the two
-    // differ only by the repair and comparing them measures only the repair.
     void runAdaptive();
-    void runMsa1();
-    void runAdaptiveOrMsa1(bool repair);
-
-    // The repair is available on every aligner, off by default. It is msa1()
-    // itself, called with the measured default Msa1Options - see msa1.hpp -
-    // directly at each of the two call sites, so there is no wrapper here to
-    // keep in sync with a default that can change independently of it.
-    void runAbpoaOrPoasta(bool usePoasta, bool repair = false);
+    void runAbpoaOrPoasta(bool usePoasta);
     void runAbpoa();
     void runPoasta();
-    void runTheseus(bool useAll, bool repair = false);
-
-    // Say what the repair did, or why it was not attempted. Shared by every
-    // aligner path so the wording cannot drift between them.
-    void writeRepairSummary(
-        const string& alignerName,
-        bool repair,
-        bool triggerPresent,
-        uint64_t repairedRegionCount,
-        double repairSeconds);
-
-    // Gather the sequences for a Theseus run, split into the three groups
-    // Theseus takes them in, and write the html table describing them.
-    // Shared by runTheseus and runMsa1, which differ only in what they do with
-    // the alignment afterwards.
-    void gatherTheseusSequences(
-        bool useAll,
-        const string& htmlTitle,
-        vector< pair<vector<Base>, uint64_t> >& bothSidesFixedSequences,
-        vector< pair<vector<Base>, uint64_t> >& leftFixedSequences,
-        vector< pair<vector<Base>, uint64_t> >& rightFixedSequences,
-
-        // One entry per sequence, in the order Theseus is given them and
-        // returns them: fixed on both sides, then left fixed, then right fixed.
-        vector< pair<uint64_t, uint64_t> >& msaSequenceIdsWithWeight);
+    void runTheseus(bool useAll);
+    void runMsa1();
 
 
     // Functions and data to find the consensus using a De Bruijn graph
