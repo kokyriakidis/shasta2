@@ -869,6 +869,7 @@ inline std::ostream& shasta2::operator<<(std::ostream& s, shasta2::AlignedExtend
 inline std::string shasta2::toString(const vector<ExtendedBase>& v)
 {
     string s;
+    s.reserve(v.size());
     for(const ExtendedBase e: v) {
         s.push_back(e.character());
     }
@@ -878,6 +879,7 @@ inline std::string shasta2::toString(const vector<ExtendedBase>& v)
 inline std::string shasta2::toString(const vector<AlignedExtendedBase>& v)
 {
     string s;
+    s.reserve(v.size());
     for(const AlignedExtendedBase e: v) {
         s.push_back(e.character());
     }
@@ -887,6 +889,7 @@ inline std::string shasta2::toString(const vector<AlignedExtendedBase>& v)
 inline std::string shasta2::toString(const ExtendedSequence& v)
 {
     string s;
+    s.reserve(v.size());
     for(const auto& [e, runLength]: v) {
         s.push_back(e.character());
     }
@@ -896,6 +899,7 @@ inline std::string shasta2::toString(const ExtendedSequence& v)
 inline std::string shasta2::toString(const AlignedExtendedSequence& v)
 {
     string s;
+    s.reserve(v.size());
     for(const auto& [e, runLength]: v) {
         s.push_back(e.character());
     }
@@ -907,6 +911,7 @@ inline std::string shasta2::toString(const AlignedExtendedSequence& v)
 inline std::vector<shasta2::ExtendedBase> shasta2::vectorOfExtendedBasesFromString(const string& s)
 {
     vector<ExtendedBase> v;
+    v.reserve(s.size());
     for(const char c: s) {
         v.push_back(ExtendedBase::fromCharacter(c));
     }
@@ -917,6 +922,7 @@ inline std::vector<shasta2::AlignedExtendedBase>
     shasta2::vectorOfAlignedExtendedBasesFromString(const string& s)
 {
     vector<AlignedExtendedBase> v;
+    v.reserve(s.size());
     for(const char c: s) {
         v.push_back(AlignedExtendedBase::fromCharacter(c));
     }

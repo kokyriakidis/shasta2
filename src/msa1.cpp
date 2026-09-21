@@ -382,6 +382,13 @@ void shasta2::extendedConsensus(
 
     alignedConsensus.resize(alignmentLength);
 
+    // Not a guaranteed bound in either direction - a gap column contributes no
+    // base, while a poly column usually contributes several - but the two
+    // effects are both small relative to alignmentLength in practice, so this
+    // is a reasonable estimate that avoids most reallocations without
+    // claiming to know the exact final size.
+    consensus.reserve(alignmentLength);
+
     // Scratch, reused by the run length vote at every poly column.
     vector<uint64_t> lengthWeight;
 
@@ -748,6 +755,9 @@ void shasta2::msa1RowCoverage(
     }
     const uint64_t alignmentLength = alignment.front().size();
 
+    // Exactly one entry is pushed per row.
+    coverage.reserve(alignment.size());
+
     // An empty anchoring argument means every row is fixed on both sides.
     SHASTA2_ASSERT(anchoring.empty() or (anchoring.size() == alignment.size()));
 
@@ -945,6 +955,7 @@ void shasta2::msa1FindBadRegions(
         bool found = false;
         for(const vector<AlignedBase>& row: alignment) {
             windowSequence.clear();
+            windowSequence.reserve(region.end - region.begin);
             for(uint64_t j=region.begin; j<region.end; j++) {
                 if(not row[j].isGap()) {
                     windowSequence.push_back(Base(row[j]));
@@ -1034,6 +1045,7 @@ namespace shasta2 {
         // identical in the alignment; the coverage tells them apart.
         vector<Msa1RepairRow> rows(n);
         vector<Base> windowSequence;
+        windowSequence.reserve(region.end - region.begin);
         for(uint64_t i=0; i<n; i++) {
             windowSequence.clear();
             for(uint64_t j=region.begin; j<region.end; j++) {
@@ -2599,11 +2611,11 @@ void shasta2::testMsa1Repair()
 
         // The known true run lengths at this locus are 12 and 11 (see the 19
         // sequences above). The production default, MedianMarginGated, gets
-        // the first run exactly right but nudges the second from 11 to 12:
-        // its cumulative support at 11 is a near-tie (just over 50%), which
-        // is exactly the gate MedianMarginGated is designed to trip, and
-        // tripping it here overcorrects rather than fixing a real under-call.
-        // This is the documented trade-off in RunLengthEstimator, not a bug:
+        // the first run exactly right (median 11, cumulative support 10/19 =
+        // 52.6%, below the 60% gate, nudged up to the true 12) but overcorrects
+        // the second (median 11, cumulative support 11/19 = 57.9%, also below
+        // the 60% gate, nudged up to 12 though 11 was already correct). This is
+        // the documented trade-off in RunLengthEstimator, not a bug:
         // MedianMarginGated is the default because it minimizes total error
         // over a whole assembly (see msa1.hpp), not because it is exact on
         // every single locus, and this is the one locus this file has always
