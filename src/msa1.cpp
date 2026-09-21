@@ -21,9 +21,6 @@ using namespace shasta2;
 
 namespace shasta2 {
 
-    // See msa1.hpp for comments.
-    vector<Msa1ColumnDiagnostic>* msa1ColumnDiagnostics = nullptr;
-
     // A row of an alignment is either bare AlignedBase symbols, or
     // AlignedExtendedBase symbols paired with a run length once it has been
     // through the extended alphabet - an AlignedExtendedSequence never
@@ -476,8 +473,7 @@ void shasta2::extendedConsensus(
 
             // One shared pass computes mode, median and mean together; the
             // estimator just picks which of them (or which simple function of
-            // them) to use, and the diagnostics below reuse the same median
-            // rather than recomputing it.
+            // them) to use.
             const Msa1LengthVote vote(lengthWeight, maxObserved, totalWeight);
 
             switch(estimator) {
@@ -512,19 +508,6 @@ void shasta2::extendedConsensus(
                 break;
             }
             SHASTA2_ASSERT(consensusRunLength > 0);
-
-            if(msa1ColumnDiagnostics) {
-                Msa1ColumnDiagnostic diagnostic;
-                diagnostic.totalWeight = totalWeight;
-                diagnostic.maxObserved = maxObserved;
-                diagnostic.medianLength = vote.medianLength;
-                diagnostic.cumulativeAtMedian = vote.cumulativeAtMedian;
-                diagnostic.weightAtMedian = vote.weightAtMedian;
-                diagnostic.weightAtMedianPlusOne =
-                    (vote.medianLength < maxObserved) ? lengthWeight[vote.medianLength + 1] : 0;
-                diagnostic.chosenLength = consensusRunLength;
-                msa1ColumnDiagnostics->push_back(diagnostic);
-            }
         }
 
         alignedConsensus[j] = make_pair(consensusSymbol, consensusRunLength);

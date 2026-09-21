@@ -118,18 +118,17 @@ namespace shasta2 {
     // stage A, 57184 AssemblyGraph steps, truth from the HG002 v1.1 diploid
     // assembly), MedianMarginGated has the lowest total edit distance to
     // truth and the most exact matches of any estimator tried, including
-    // plain median, mode and mean. A per-column instrumentation pass (see
-    // Msa1ColumnDiagnostic, below) found no feature of a column's own length
-    // vote - not its margin, not local read coverage, not the run length
-    // itself - that separates the columns where the +1 nudge is right from
-    // the ones where it is wrong. So a better estimator, if one exists, needs
-    // a signal from outside the column's own vote (neighboring columns,
-    // phasing, or an independent second opinion), not another function of
-    // this same histogram.
+    // plain median, mode and mean. A per-column instrumentation pass found no
+    // feature of a column's own length vote - not its margin, not local read
+    // coverage, not the run length itself - that separates the columns where
+    // the +1 nudge is right from the ones where it is wrong. So a better
+    // estimator, if one exists, needs a signal from outside the column's own
+    // vote (neighboring columns, phasing, or an independent second opinion),
+    // not another function of this same histogram.
     //
-    // Mode, Median and Average are kept as baselines: Msa1ColumnDiagnostic
-    // exposes the raw vote so a candidate estimator can be evaluated against
-    // them, but none of the three beats MedianMarginGated on the data above.
+    // Mode, Median and Average are kept as baselines against which a
+    // candidate estimator can be evaluated, but none of the three beats
+    // MedianMarginGated on the data above.
     enum class RunLengthEstimator {
 
         // The most frequent length, by total weight. Ties go to the shorter
@@ -488,29 +487,6 @@ namespace shasta2 {
     //
     // alignment, alignedConsensus and consensus are all modified in place.
     // Returns the number of regions repaired, which is usually 0.
-    // Diagnostic hook for the msa1 hard-region evaluation harness
-    // (scripts/EvaluateMsa1AgainstTruth.py via
-    // Assembler::runLocalAssemblyMsa1WithDiagnostics). When
-    // msa1ColumnDiagnostics is non-null, extendedConsensus appends one record
-    // here for every poly column it votes a run length for, regardless of
-    // which RunLengthEstimator is active - this is what the median actually
-    // saw at that column, not just which estimator variant was tried. Off
-    // (null) by default; not thread-safe, intended for single-threaded
-    // harness use only, never touched by the production assembly path.
-    class Msa1ColumnDiagnostic {
-    public:
-        uint64_t totalWeight = 0;
-        uint64_t maxObserved = 0;
-        uint64_t medianLength = 0;
-        uint64_t cumulativeAtMedian = 0;
-        uint64_t weightAtMedian = 0;
-        uint64_t weightAtMedianPlusOne = 0;
-        uint64_t chosenLength = 0;
-    };
-    extern vector<Msa1ColumnDiagnostic>* msa1ColumnDiagnostics;
-
-
-
     uint64_t msa1(
 
         // The alignment computed by abpoa or theseus, one row per input

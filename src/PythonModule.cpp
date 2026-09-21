@@ -156,29 +156,6 @@ PYBIND11_MODULE(shasta2, shasta2Module)
           &Assembler::createAssemblyGraph)
       .def("getAssemblyGraph",
           &Assembler::getAssemblyGraph, return_value_policy::reference)
-
-      // Support for the msa1 hard-region evaluation harness.
-      .def("getOrientedReadSequenceString",
-          &Assembler::getOrientedReadSequenceString,
-          arg("orientedReadIdString"))
-      .def("anchorContainsOrientedRead",
-          &Assembler::anchorContainsOrientedRead,
-          arg("anchorId"),
-          arg("orientedReadIdString"))
-      .def("getAnchorPositionInOrientedRead",
-          &Assembler::getAnchorPositionInOrientedRead,
-          arg("anchorId"),
-          arg("orientedReadIdString"))
-      .def("runLocalAssemblyAdaptiveAndMsa1",
-          &Assembler::runLocalAssemblyAdaptiveAndMsa1,
-          arg("anchorIdA"),
-          arg("anchorIdB"),
-          arg("orientedReadIdStrings"))
-      .def("runLocalAssemblyMsa1WithDiagnostics",
-          &Assembler::runLocalAssemblyMsa1WithDiagnostics,
-          arg("anchorIdA"),
-          arg("anchorIdB"),
-          arg("orientedReadIdStrings"))
     ;
 
 
@@ -186,7 +163,6 @@ PYBIND11_MODULE(shasta2, shasta2Module)
     class_<AssemblyGraph> assemblyGraphClass(shasta2Module, "AssemblyGraph");
     assemblyGraphClass
         .def_readwrite("compressDebugLevel", &AssemblyGraph::compressDebugLevel)
-        .def_readwrite("assembleMethodName", &AssemblyGraph::assembleMethodName)
         .def("bubbleCleanupIterationMultithreaded", &AssemblyGraph::bubbleCleanupIterationMultithreaded)
         .def("bubblePairCleanupIterationMultithreaded", &AssemblyGraph::bubblePairCleanupIterationMultithreaded)
         .def("setAnnotation", &AssemblyGraph::setAnnotation)
@@ -211,7 +187,6 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def("assembleAll", &AssemblyGraph::assembleAll)
         .def("assembleAllStrandSymmetric", &AssemblyGraph::assembleAllStrandSymmetric)
         .def("clearSequence", &AssemblyGraph::clearSequence)
-        .def("getAssemblyGraphSteps", &AssemblyGraph::getAssemblyGraphSteps)
         .def("phaseSuperbubbleChains", &AssemblyGraph::phaseSuperbubbleChains)
         .def("strandSymmetricPhaseSuperbubbleChains", &AssemblyGraph::strandSymmetricPhaseSuperbubbleChains)
         .def("colorStrongComponents", &AssemblyGraph::colorStrongComponents)

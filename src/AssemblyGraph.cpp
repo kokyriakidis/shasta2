@@ -768,11 +768,6 @@ void AssemblyGraph::assembleAll()
 
 
 
-// AssemblyGraph::getAssemblyGraphSteps() is in AssemblyGraph-Msa1Eval.cpp,
-// with the rest of the msa1 evaluation harness support.
-
-
-
 // Assemble sequence for the specified edge.
 void AssemblyGraph::assemble(edge_descriptor e)
 {
@@ -833,10 +828,8 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
 
         } else {
 
-            LocalAssembly7::Options options;
-            options.setMethod(assembleMethodName);
             LocalAssembly7 localAssembly(
-                options,
+                LocalAssembly7::Options(),
                 anchors,
                 anchorPair.anchorIdA,
                 anchorPair.anchorIdB,

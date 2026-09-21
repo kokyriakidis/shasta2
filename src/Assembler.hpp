@@ -12,7 +12,6 @@
 // Standard library.
 #include "memory.hpp"
 #include "string.hpp"
-#include "tuple.hpp"
 #include "utility.hpp"
 
 namespace shasta2 {
@@ -323,63 +322,6 @@ public:
         const string& assemblyStage,
         const Options&);
     std::map<string, shared_ptr<AssemblyGraphPostprocessor> > assemblyGraphTable;
-
-
-
-    // Support for the msa1 hard-region evaluation harness (scripts/FindMsa1HardRegions.py,
-    // scripts/EvaluateMsa1AgainstTruth.py). See src/AssemblerMsa1Eval.cpp.
-
-    // Return the full base sequence of an oriented read, given as a string
-    // of the form "readId-strand" (see OrientedReadId's string constructor).
-    string getOrientedReadSequenceString(const string& orientedReadIdString) const;
-
-    // Return true if the given oriented read appears in the given anchor.
-    // Check this before calling getAnchorPositionInOrientedRead, which asserts
-    // (does not throw) if the oriented read is not in the anchor - this matters
-    // because AssemblyGraph::getAssemblyGraphSteps returns, for each step, some
-    // oriented reads borrowed from the previous/next step that are not
-    // guaranteed to appear in this step's anchorIdA/anchorIdB.
-    bool anchorContainsOrientedRead(
-        AnchorId,
-        const string& orientedReadIdString) const;
-
-    // Return the position, in the given oriented read, of the marker midpoint
-    // of the given anchor. Asserts if the oriented read does not appear in the anchor.
-    uint32_t getAnchorPositionInOrientedRead(
-        AnchorId,
-        const string& orientedReadIdString) const;
-
-    // Run LocalAssembly7 twice for the same (anchorIdA, anchorIdB, orientedReadIds) -
-    // once with Method::Adaptive, once with Method::Msa1 - and return
-    // (successAdaptive, consensusAdaptive, successMsa1, consensusMsa1).
-    //
-    // Msa1 (see LocalAssembly7::runMsa1) always aligns with Theseus and then
-    // repairs the result with msa1(); it does not share Adaptive's aligner
-    // choice. So a difference in the two consensus strings can come from a
-    // different aligner being used, the repair, or both - not from the repair
-    // alone. This matters to every script under scripts/ that calls this
-    // method (FindMsa1HardRegions.py, EvaluateMsa1AgainstTruth.py,
-    // CompareMsa1AgainstHifiasm.py): a "hard region" found this way is a
-    // region where Msa1's whole pipeline - aligner and repair together -
-    // disagrees with Adaptive, not necessarily one the repair changed.
-    std::tuple<bool, string, bool, string> runLocalAssemblyAdaptiveAndMsa1(
-        AnchorId anchorIdA,
-        AnchorId anchorIdB,
-        const vector<string>& orientedReadIdStrings) const;
-
-    // Run LocalAssembly7 with Method::Msa1, and also return one diagnostic
-    // row per poly column the run-length vote touched: (totalWeight,
-    // maxObserved, medianLength, cumulativeAtMedian, weightAtMedian,
-    // weightAtMedianPlusOne, chosenLength) - see Msa1ColumnDiagnostic in
-    // msa1.hpp. This is what the vote actually looked like at each column,
-    // regardless of which RunLengthEstimator is the active default.
-    std::tuple<
-        bool, string,
-        vector< std::tuple<uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t> >
-        > runLocalAssemblyMsa1WithDiagnostics(
-        AnchorId anchorIdA,
-        AnchorId anchorIdB,
-        const vector<string>& orientedReadIdStrings) const;
 
 
 
