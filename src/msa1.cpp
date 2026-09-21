@@ -16,12 +16,12 @@ namespace shasta2 {
     // See msa1.hpp for comments.
     vector<Msa1ColumnDiagnostic>* msa1ColumnDiagnostics = nullptr;
 
-    // A row of an alignment is either bare symbols or symbols paired with a run
-    // length, depending on whether it has been through the extended alphabet.
-    // These let the handful of functions that only care where the gaps are work
-    // on both without being written twice.
+    // A row of an alignment is either bare AlignedBase symbols, or
+    // AlignedExtendedBase symbols paired with a run length once it has been
+    // through the extended alphabet - an AlignedExtendedSequence never
+    // appears bare. These let the handful of functions that only care where
+    // the gaps are work on both without being written twice.
     inline bool msa1IsGap(AlignedBase b) { return b.isGap(); }
-    inline bool msa1IsGap(AlignedExtendedBase b) { return b.isGap(); }
     template<class Symbol> inline bool msa1IsGap(const pair<Symbol, uint64_t>& p)
     {
         return p.first.isGap();
@@ -1667,7 +1667,6 @@ void shasta2::testMsa1ExtendedBase()
         SHASTA2_ASSERT(gap.isValid());
         SHASTA2_ASSERT(gap.complement().isGap());
         SHASTA2_ASSERT(gap.character() == '-');
-        SHASTA2_ASSERT(gap.htmlColor().empty());
 
         // '-' is not a valid ExtendedBase.
         bool threw = false;

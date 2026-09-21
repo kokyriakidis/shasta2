@@ -656,8 +656,6 @@ public:
         extendedBase.value = i;
         return extendedBase;
     }
-    static ExtendedBase fromInteger(uint16_t i) { return fromInteger(uint8_t(i)); }
-    static ExtendedBase fromInteger(uint32_t i) { return fromInteger(uint8_t(i)); }
     static ExtendedBase fromInteger(uint64_t i) { return fromInteger(uint8_t(i)); }
 
     // Construct the plain symbol for a Base.
@@ -709,28 +707,6 @@ public:
 
     auto operator<=>(const ExtendedBase&) const = default;
     bool operator==(const ExtendedBase&) const = default;
-
-    // The html color used to represent this symbol.
-    // A poly symbol uses a lighter shade of the color of its base, so that the
-    // two are recognizably related in an alignment display.
-    //
-    // The plain shades come from AlignedBase so that an msa1 display and every
-    // other alignment display in the assembler cannot drift apart if the palette
-    // is ever retuned. Only the light shades are ours.
-    string htmlColor() const
-    {
-        checkValid();
-        if(not isPoly()) {
-            return AlignedBase(base()).htmlColor();
-        }
-        switch(value) {
-        case 4: return "#ffb3b3";
-        case 5: return "#b3b3ff";
-        case 6: return "#ffffb3";
-        case 7: return "#b3ffb3";
-        default: return "";
-        }
-    }
 
 private:
 
@@ -787,8 +763,6 @@ public:
         b.value = i;
         return b;
     }
-    static AlignedExtendedBase fromInteger(uint16_t i) { return fromInteger(uint8_t(i)); }
-    static AlignedExtendedBase fromInteger(uint32_t i) { return fromInteger(uint8_t(i)); }
     static AlignedExtendedBase fromInteger(uint64_t i) { return fromInteger(uint8_t(i)); }
 
     // Construct from an ExtendedBase.
@@ -813,10 +787,10 @@ public:
 
     // Return the base this symbol stands for. Asserts if this is a gap.
     //
-    // This and complement() delegate to ExtendedBase, the way character() and
-    // htmlColor() already do. The poly flag arithmetic then lives in exactly one
-    // place, so a change to the encoding cannot be made in one class and
-    // forgotten in the other.
+    // This and complement() delegate to ExtendedBase, the way character()
+    // already does. The poly flag arithmetic then lives in exactly one place,
+    // so a change to the encoding cannot be made in one class and forgotten
+    // in the other.
     Base base() const
     {
         return ExtendedBase(*this).base();
@@ -840,14 +814,6 @@ public:
 
     auto operator<=>(const AlignedExtendedBase&) const = default;
     bool operator==(const AlignedExtendedBase&) const = default;
-
-    string htmlColor() const
-    {
-        if(isGap()) {
-            return "";
-        }
-        return ExtendedBase(*this).htmlColor();
-    }
 };
 
 
