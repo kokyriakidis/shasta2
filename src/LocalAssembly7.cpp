@@ -1464,14 +1464,13 @@ void LocalAssembly7::runTheseus(bool useAll)
 
 
 
-// Msa1 as its own aligner, independent of Adaptive: gather all the sequences
-// (both anchors plus the ones fixed on only one), align them with Theseus,
-// then repair the bad homopolymer regions of that alignment with msa1(). See
-// msa1.hpp for the repair itself; everything here is just gathering input for
-// it and writing the html report, exactly as runTheseus does for Theseus
-// alone - this function intentionally does not share code with runTheseus or
-// any other aligner path, so that the whole msa1 feature is confined to this
-// one function plus msa1.hpp/msa1.cpp.
+// Msa1 as its own aligner, independent of Adaptive. Gathering the sequences
+// out of this local assembly's own state, and writing the html report of the
+// result, are this function's job - they need LocalAssembly7's own private
+// data and display conventions, the same as runTheseus's does for Theseus
+// alone. Everything else - aligning, then repairing the bad homopolymer
+// regions of the alignment - is one call into msa1.hpp/msa1.cpp, which is the
+// whole of the msa1 feature.
 void LocalAssembly7::runMsa1()
 {
     // Get the sequenceIds to be used, sorted in order of decreasing coverage.
@@ -1525,7 +1524,7 @@ void LocalAssembly7::runMsa1()
 
 
 
-    // Gather the sequences to be passed to Theseus.
+    // Gather the sequences to be passed to msa1.
     uint64_t totalWeight = 0;
     vector< pair<uint64_t, uint64_t> > msaSequenceIdsWithWeight;
     vector< pair<vector<Base>, uint64_t> > bothSidesFixedSequences;
@@ -1556,48 +1555,21 @@ void LocalAssembly7::runMsa1()
         html << "<br>Total coverage for msa1 is " << totalWeight << ".";
     }
 
-    // Align with Theseus. The row alignment is always needed here, not just
-    // for html, because the repair below has to have it.
+    // Align and repair. This one call is the entire msa1 feature: see
+    // msa1.hpp for what it does and why.
     vector< pair<Base, uint64_t> > consensus;
     vector<AlignedBase> alignedConsensus;
     vector< vector<AlignedBase> > alignment;
     const auto t0 = steady_clock::now();
-    theseus(
+    const uint64_t repairedRegionCount = msa1(
         bothSidesFixedSequences, leftFixedSequences, rightFixedSequences,
-        consensus, alignment, alignedConsensus, true);
+        consensus, alignment, alignedConsensus);
     const auto t1 = steady_clock::now();
     SHASTA2_ASSERT(alignment.size() == msaSequenceIdsWithWeight.size());
 
-    // Theseus returns the rows in the order the groups were given: fixed on
-    // both sides, then left fixed, then right fixed. That is exactly the
-    // anchoring msa1 needs to know which rows it may trim, and it has to come
-    // from here rather than be guessed from the alignment - see Anchoring in
-    // msa1.hpp for why.
-    vector<Anchoring> anchoring;
-    anchoring.reserve(alignment.size());
-    anchoring.insert(anchoring.end(), bothSidesFixedSequences.size(), Anchoring::BothSides);
-    anchoring.insert(anchoring.end(), leftFixedSequences.size(), Anchoring::LeftOnly);
-    anchoring.insert(anchoring.end(), rightFixedSequences.size(), Anchoring::RightOnly);
-    SHASTA2_ASSERT(anchoring.size() == alignment.size());
-
-    vector<uint64_t> weights;
-    weights.reserve(alignment.size());
-    for(const auto& [sequenceId, weight]: msaSequenceIdsWithWeight) {
-        weights.push_back(weight);
-    }
-
-    // Repair the bad homopolymer regions of the alignment, if any. This is a
-    // no-op, quickly, when there is nothing to repair, so it is always called
-    // rather than prescreening the reads first as the Adaptive dispatch does.
-    const auto t2 = steady_clock::now();
-    const uint64_t repairedRegionCount =
-        msa1(alignment, alignedConsensus, consensus, weights, anchoring);
-    const auto t3 = steady_clock::now();
-
     if(html) {
-        html << "<br>Theseus completed in " << seconds(t1-t0) << " seconds.";
-        html << "<br>Msa1 repair completed in " << seconds(t3-t2) <<
-            " seconds and rebuilt " << repairedRegionCount << " region(s) of the alignment.";
+        html << "<br>Msa1 completed in " << seconds(t1-t0) <<
+            " seconds and repaired " << repairedRegionCount << " region(s) of the alignment.";
         writeAlignment(alignment, alignedConsensus, consensus, msaSequenceIdsWithWeight);
         writeConsensus(consensus);
     }

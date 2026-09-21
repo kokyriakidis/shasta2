@@ -2,10 +2,14 @@
 #include "msa1.hpp"
 #include "invalid.hpp"
 #include "SHASTA2_ASSERT.hpp"
+#include "theseusWrapper.hpp"
 using namespace shasta2;
 
-// Theseus. Used directly, not through theseusWrapper: see msa1AlignExtended
-// below for why.
+// theseusWrapper's theseus() is used, unmodified, by the msa1() overload
+// that takes raw sequences (see below). The extended-alphabet realignment
+// msa1's repair itself needs is a different matter and talks to theseus
+// directly rather than through theseusWrapper: see msa1AlignExtended below
+// for why.
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wfloat-conversion"
 #include "theseus/theseus_msa_aligner.h"
@@ -1597,6 +1601,55 @@ uint64_t shasta2::msa1(
     }
 
     return repairedCount;
+}
+
+
+
+// See msa1.hpp for comments.
+uint64_t shasta2::msa1(
+    const vector< pair<vector<Base>, uint64_t> >& bothSidesFixedSequences,
+    const vector< pair<vector<Base>, uint64_t> >& leftFixedSequences,
+    const vector< pair<vector<Base>, uint64_t> >& rightFixedSequences,
+    vector< pair<Base, uint64_t> >& consensus,
+    vector< vector<AlignedBase> >& alignment,
+    vector<AlignedBase>& alignedConsensus,
+    const Msa1Options& options)
+{
+    // Align. alignment is always wanted here, unlike a plain theseus() call,
+    // because the repair below needs it.
+    theseus(bothSidesFixedSequences, leftFixedSequences, rightFixedSequences,
+        consensus, alignment, alignedConsensus, true);
+    SHASTA2_ASSERT(alignment.size() ==
+        bothSidesFixedSequences.size() + leftFixedSequences.size() + rightFixedSequences.size());
+
+    // theseus() returns the rows in the order the groups were given, so the
+    // anchoring the repair needs is known here and does not have to be
+    // guessed from the alignment - see the anchoring argument of the other
+    // msa1() overload for why guessing would be wrong.
+    vector<Anchoring> anchoring;
+    anchoring.reserve(alignment.size());
+    anchoring.insert(anchoring.end(), bothSidesFixedSequences.size(), Anchoring::BothSides);
+    anchoring.insert(anchoring.end(), leftFixedSequences.size(), Anchoring::LeftOnly);
+    anchoring.insert(anchoring.end(), rightFixedSequences.size(), Anchoring::RightOnly);
+
+    // theseus() takes a weight per sequence, so each row votes with its own
+    // coverage rather than appearing once per unit of coverage.
+    vector<uint64_t> weights;
+    weights.reserve(alignment.size());
+    for(const auto& [sequence, weight]: bothSidesFixedSequences) {
+        weights.push_back(weight);
+    }
+    for(const auto& [sequence, weight]: leftFixedSequences) {
+        weights.push_back(weight);
+    }
+    for(const auto& [sequence, weight]: rightFixedSequences) {
+        weights.push_back(weight);
+    }
+
+    // Repair the bad homopolymer regions of the alignment, if any. This is a
+    // quick no-op when there is nothing to repair, so it is always called
+    // rather than prescreening the sequences first.
+    return msa1(alignment, alignedConsensus, consensus, weights, anchoring, options);
 }
 
 
