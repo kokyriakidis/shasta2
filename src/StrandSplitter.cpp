@@ -7,6 +7,7 @@
 #include "graphvizToHtml.hpp"
 #include "html.hpp"
 #include "Options.hpp"
+#include "weightedShuffle.hpp"
 using namespace shasta2;
 
 // Standard library.
@@ -54,6 +55,9 @@ StrandSplitter::StrandSplitter(
     findHangingSegments();
     findCandidateConnections();
 #endif
+
+    // Test.
+    // bipartiteGraph.separateStrands(tangleId);
 }
 
 
@@ -1099,4 +1103,93 @@ double StrandSplitter::BipartiteGraph::EdgeStatistics::crossStrandEdgeFraction()
 double StrandSplitter::BipartiteGraph::EdgeStatistics::crossStrandEdgeFrequencyFraction() const
 {
     return double(crossStrandEdgeFrequency) / double(totalEdgeFrequency);
+}
+
+
+
+void StrandSplitter::BipartiteGraph::separateStrands(uint64_t tangleId)
+{
+    BipartiteGraph& bipartiteGraph = *this;
+
+    // EXPOSE WHEN CODE STABILIZES.
+    const uint64_t iterationCount = 1000;
+
+    // Gather the weight of each EdgePair.
+    vector<double> weights;
+    for(const EdgePair& edgePair: edgePairs) {
+        weights.push_back(double(edgePair.frequency));
+    }
+
+    // Map vertices to integers.
+    std::map<BipartiteGraph::vertex_descriptor, uint64_t> vertexIndexMap;
+    vector<BipartiteGraph::vertex_descriptor> vertexTable;
+    uint64_t vertexIndex = 0;
+    BGL_FORALL_VERTICES(v, bipartiteGraph, BipartiteGraph) {
+        vertexIndexMap.insert({v, vertexIndex++});
+        vertexTable.push_back(v);
+    }
+
+
+    // At each iteration, use a new random shuffling of the EdgePairs,
+    // weighted used the EdgePair frequency.
+    std::mt19937 generator;
+    vector<uint64_t> shuffle;
+    for(uint64_t iteration=0; iteration<iterationCount; iteration++) {
+        weightedShuffle(weights, generator, shuffle);
+
+        BGL_FORALL_EDGES(e, bipartiteGraph, BipartiteGraph) {
+            bipartiteGraph[e].isCrossStrandEdge = false;
+        }
+
+        // Process the EdgePairs in this order.
+        // Add edges in order of decreasing frequency.
+        DisjointSets disjointSets(vertexIndexMap.size());
+        for(const uint64_t edgePairIndex: shuffle) {
+            const auto& edgePair = bipartiteGraph.edgePairs[edgePairIndex];
+            const auto eA = edgePair.e;
+            const auto eB = edgePair.eRc;
+
+            const auto v0A = source(eA, bipartiteGraph);
+            const auto v1A = target(eA, bipartiteGraph);
+            const auto v0B = source(eB, bipartiteGraph);
+            const auto v1B = target(eB, bipartiteGraph);
+
+            const auto v0ARc = bipartiteGraph.reverseComplement(v0A);
+            const auto v1ARc = bipartiteGraph.reverseComplement(v1A);
+            const auto v0BRc = bipartiteGraph.reverseComplement(v0B);
+            const auto v1BRc = bipartiteGraph.reverseComplement(v1B);
+
+            const uint64_t i0A = vertexIndexMap.at(v0A);
+            const uint64_t i1A = vertexIndexMap.at(v1A);
+            const uint64_t i0B = vertexIndexMap.at(v0B);
+            const uint64_t i1B = vertexIndexMap.at(v1B);
+
+            const uint64_t i0ARc = vertexIndexMap.at(v0ARc);
+            const uint64_t i1ARc = vertexIndexMap.at(v1ARc);
+            const uint64_t i0BRc = vertexIndexMap.at(v0BRc);
+            const uint64_t i1BRc = vertexIndexMap.at(v1BRc);
+
+            const bool strandViolationA = (disjointSets.findSet(i1A) == disjointSets.findSet(i0ARc));
+            const bool strandViolationB = (disjointSets.findSet(i1B) == disjointSets.findSet(i0BRc));
+            const bool strandViolationARc = (disjointSets.findSet(i0A) == disjointSets.findSet(i1ARc));
+            const bool strandViolationBRc = (disjointSets.findSet(i0B) == disjointSets.findSet(i1BRc));
+
+            const bool strandViolation = strandViolationA;
+            SHASTA2_ASSERT(strandViolationB == strandViolation);
+            SHASTA2_ASSERT(strandViolationARc == strandViolation);
+            SHASTA2_ASSERT(strandViolationBRc == strandViolation);
+            if(strandViolation) {
+                bipartiteGraph[eA].isCrossStrandEdge = true;
+                bipartiteGraph[eB].isCrossStrandEdge = true;
+            } else {
+                disjointSets.unionSet(i0A, i1A);
+                disjointSets.unionSet(i0B, i1B);
+            }
+        }
+
+        const EdgeStatistics edgeStatistics = countEdges();
+        cout << tangleId << "," << iteration << "," <<
+            edgeStatistics.crossStrandEdgeCount << "," <<
+            edgeStatistics.crossStrandEdgeFrequency << endl;
+    }
 }

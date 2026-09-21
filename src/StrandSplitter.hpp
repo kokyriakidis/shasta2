@@ -177,6 +177,8 @@ private:
         EdgeStatistics countEdges() const;
         EdgeStatistics countEdges(vertex_descriptor) const;
 
+        void separateStrands(uint64_t tangleId);
+
     };
     BipartiteGraph bipartiteGraph;
     void createBipartiteGraph();
