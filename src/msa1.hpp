@@ -102,339 +102,57 @@ namespace shasta2 {
     // How the consensus length of a long homopolymer run is chosen from the
     // lengths observed in the reads that cover it.
     //
-    // Current default: MedianMarginGated. What follows is the trail that got
-    // there, oldest first, kept because each rejected step explains why the
-    // next one looks the way it does.
+    // The default is MedianMarginGated: the weighted median of the observed
+    // lengths, nudged up by one when its cumulative support is not
+    // comfortably (>=60%) above 50%. ONT homopolymer error is usually a small
+    // under-call - occasionally a large deletion, more often several
+    // single-base under-calls - so raw runs of votes below the truth
+    // outnumber runs at or above it, and any median-type estimator lands one
+    // base low on that distribution. Nudging only the near-ties recovers most
+    // of that bias without overcorrecting the calls that were already
+    // confident; an unconditional +1 correction was tried and made things
+    // decisively worse (see git history for the measurements and the several
+    // other gating and walking schemes tried against it).
     //
-    // The single-locus case below argued for mode, but revisiting this with
-    // more loci of known truth - the thing the old comment asked for - reverses
-    // that. The msa1 hard-region evaluation harness
-    // (scripts/FindMsa1HardRegions.py, scripts/EvaluateMsa1AgainstTruth.py) was
-    // run on a real HG002 E821 StdMix ONT assembly (chr12:13-14 Mb, stage A,
-    // 57184 AssemblyGraph steps), with truth from the HG002 v1.1 diploid
-    // assembly. Comparing all three estimators over the union of every region
-    // any of them touched (346 candidates, truth established for 328) by total
-    // edit distance to truth:
+    // Measured on a real HG002 E821 StdMix ONT assembly (chr12:13-14 Mb,
+    // stage A, 57184 AssemblyGraph steps, truth from the HG002 v1.1 diploid
+    // assembly), MedianMarginGated has the lowest total edit distance to
+    // truth and the most exact matches of any estimator tried, including
+    // plain median, mode and mean. A per-column instrumentation pass (see
+    // Msa1ColumnDiagnostic, below) found no feature of a column's own length
+    // vote - not its margin, not local read coverage, not the run length
+    // itself - that separates the columns where the +1 nudge is right from
+    // the ones where it is wrong. So a better estimator, if one exists, needs
+    // a signal from outside the column's own vote (neighboring columns,
+    // phasing, or an independent second opinion), not another function of
+    // this same histogram.
     //
-    //     estimator   regions changed   total edit distance   mean
-    //     median      78                663                   2.021
-    //     average     192               746                   2.274
-    //     mode        209               768                   2.341
-    //
-    // Median wins both by touching far fewer regions (it agrees with whatever
-    // abpoa/theseus already produced more often) and by choosing a better
-    // length on the regions it does change (helped 27, hurt 39, vs average's
-    // 62/112 and mode's 48/144 - mode is worse than doing nothing here, not
-    // just worse than the other two). Median was the default on this
-    // evidence, until MedianMarginGated (near the end of this comment) beat
-    // it too.
-    //
-    // The single-locus case that used to justify mode, kept for context: at a
-    // locus whose true run lengths are 12 and 11, the 19 reads report the
-    // first run as:
-    //
-    //     length  6   7  10  11  12  14  15
-    //     reads   1   1   2   6   7   1   1
-    //
-    // The mode is 12 and is correct. The median is 11 and is wrong, because 10
-    // of the 19 reads fall below the truth: rare large deletions (-6, -5) plus
-    // six single base under-calls. That is the shape of homopolymer error in ONT
-    // reads. Usually correct, occasionally a large deletion, so the distribution
-    // is peaked at the truth but has more than half its mass at or below it.
-    // Any median type estimator lands one base low on such a distribution, while
-    // the mode finds the peak - on that one locus. Drawing length noise from the
-    // distribution measured at this run gives mode 1.00 and median 1.15 mean
-    // edit distance from the truth; pooling it with the second run, whose
-    // errors are far more symmetric, reverses that to mode 0.40 and median
-    // 0.23. Both beat the majority voting they replace. The chr12 result above
-    // shows that flip is real and not a one-locus fluke: which estimator wins
-    // depends on the mix of homopolymer error shapes in the data, and on a
-    // whole assembly rather than one hand-picked locus, mode is not it.
-    //
-    // Median's low bias is real and visible in the chr12 data too: of the 39
-    // regions it got wrong, 35 were wrong by exactly one base, and in 34 of
-    // those median's consensus was exactly one base shorter than the
-    // unrepaired alignment already sitting there (adaptive was already
-    // right or closer; median trimmed a run that did not need trimming).
-    // That looks like an obvious fix - just add one to the median - but it
-    // is not: MedianPlusOne (below) tries exactly that and loses badly,
-    // because the same +1 that fixes those 34 regions also gets added to
-    // every other poly run median ever votes on, most of which were already
-    // correct. Run on the same chr12 assembly, MedianPlusOne touched 718
-    // regions (vs plain median's 78) and got 117 right against 506 wrong -
-    // decisively worse than doing nothing, let alone worse than median. The
-    // bias correction needs to trigger only on the specific regions where it
-    // is warranted, not unconditionally; nothing here yet identifies those
-    // regions, so median (uncorrected) stays the default.
-    //
-    // A gated version was tried next, on the theory that hifiasm's error
-    // correction (Correct.h) has the same idea: it accepts a correction
-    // outright only above a vote-share confidence bar (CORRECT_THRESHOLD =
-    // 0.60), relaxed to 0.515 specifically near a homopolymer run, rather
-    // than computing a different length statistic there. Translated
-    // directly - nudge the median up by one only when the median length's
-    // own share of the vote is below 0.60 (MedianConfidenceGated) - it is
-    // also worse than plain median: 528 regions touched (vs median's 78),
-    // total edit distance 1211 (vs median's 1119), between plain median and
-    // the unconditional MedianPlusOne's 1977. The threshold does move the
-    // result in the right direction relative to unconditional correction,
-    // but a single length's vote share is evidently too noisy a confidence
-    // signal on its own: most poly runs in real ONT data never reach a 60%
-    // single-length majority regardless of whether the median is actually
-    // right, unlike hifiasm's setting where the vote is over whole
-    // (prefix/suffix-merged) candidate strings rather than raw integer
-    // lengths.
-    //
-    // The closer translation - gate on the CUMULATIVE weight at the median,
-    // not the median length's own disjoint bucket - is MedianMarginGated, and
-    // it wins. The median is already a cumulative quantity (the smallest
-    // length whose running weight crosses 50%), so its natural confidence
-    // signal is how far past 50% that crossing landed, not how much weight
-    // sits in the one bucket it happened to land on. Swept on the same chr12
-    // assembly (regions changed / total edit distance, union of every
-    // threshold's regions, 385 candidates, truth established for 359):
-    //
-    //     threshold   regions changed   total edit distance   mean
-    //     0.60        184               669                   1.864
-    //     0.70        341               695                   1.936
-    //     0.55        115               699                   1.947
-    //     (median)    (78, over this union)  729              2.031
-    //
-    // 0.60 - which is also hifiasm's own CORRECT_THRESHOLD, unmodified - is
-    // the best of the three tried and is now the default, on both raw
-    // helped/hurt (106/57, vs plain median's 27/39 over the same regions)
-    // and total edit distance. Higher thresholds widen the correction band
-    // (more of the [50%, threshold) range counts as "not confident"), lower
-    // thresholds narrow it to only the tightest near-ties; 0.60 was not
-    // finely tuned beyond these three points and may not be the exact peak.
-    //
-    // The numbers above were later found to include a harness bug (fixed in
-    // scripts/EvaluateMsa1AgainstTruth.py): the truth window was built
-    // inclusive of both anchor positions, one base too many, because
-    // LocalAssembly7 actually assembles a core read's window as
-    // [positionA, positionB) - inclusive of anchorIdA's position, exclusive
-    // of anchorIdB's (LocalAssembly7.cpp:377-378,408). This added a constant
-    // +1 to every distance reported here, in both directions, which is why
-    // no comparison in this whole file ever produced an exact match (edit
-    // distance 0) even where the assembly was already perfect. Rerunning
-    // after the fix: the helped/hurt counts above are unchanged (the
-    // constant bias never flipped a relative comparison), but exact matches
-    // are now visible and the margin gate's advantage is sharper for it -
-    // over the 215 regions either estimator touches, plain median gets the
-    // exact HG002 v1.1 sequence in 58 (27.0%), MedianMarginGated(0.60) gets
-    // it in 90 (41.9%), total edit distance 279 vs 219. Any new estimator
-    // measurement from here on should use the fixed script.
-    //
-    // The 57 regions MedianMarginGated(0.60) still gets wrong were checked
-    // for a pattern that could separate them from the 106 it gets right, to
-    // see if a further condition could be added. None of the surface
-    // features available from the harness's output separate them: run base
-    // (A/T dominate both groups, proportional to overall AT-richness),
-    // homopolymer length near the change (both groups mostly 13+ bases, hurt
-    // only slightly more concentrated there), and local read coverage
-    // (median ~34-35 reads in both groups) are all statistically
-    // indistinguishable between the two. The hurt/helped split is close to a
-    // coin flip on every signal checked so far except the margin itself.
-    //
-    // One more targeted idea was tried: require length+1 to have real
-    // support of its own (lengthWeight[length+1] >= lengthWeight[length]),
-    // not just "some weight sits somewhere past the median" - which the
-    // margin alone cannot distinguish from several small deletions spread
-    // across lengths below the median, none of them actually being
-    // length+1 (MedianNeighborGated). It is worse, not better: on the same
-    // chr12 assembly it touched only 119 regions (down from 184) and got
-    // 55 right against 49 wrong, total edit distance 477 vs
-    // MedianMarginGated's 434 over the same 232-region union - it excludes
-    // more good corrections than bad ones. Genuine support for the +1
-    // correction is evidently not concentrated at length+1 alone; where it
-    // actually is remains open.
-    //
-    // A more direct hifiasm translation was tried next: instead of gating a
-    // median, walk the length upward one base at a time and stop where a
-    // strict majority of the REMAINING (already-narrowed) reads stops
-    // agreeing (SequentialMajorityWalk, see its comment above). It nails the
-    // one known-truth locus this file has always cited, but loses badly on
-    // the chr12 assembly: 278 regions touched (vs MedianMarginGated's 184),
-    // 106 right against 119 wrong, total edit distance 551 vs
-    // MedianMarginGated's 284 over the same 302-region union, and fewer
-    // exact matches (92 vs 114). Concretely, one region where adaptive was
-    // already exactly right (length 91, edit distance 0) got walked out to
-    // length 99 - an 8-base overshoot (edge 6, step 14 in the chr12
-    // harness). The failure mode is a thin tail of a handful of
-    // over-calling reads that keep out-voting each other once the crowd
-    // that would have stopped the walk has already been left behind -
-    // hifiasm does not have this problem because its real acceptance check
-    // (CORRECT_THRESHOLD) compares the winning candidate's weight against
-    // the ORIGINAL total count, not against whatever is left of the
-    // population by the time the walk gets there. The hybrid this suggests -
-    // walk sequentially from the median (only when the margin gate says the
-    // call is weak), but require the survival to also stay above an
-    // absolute fraction of totalWeight, not just a majority of itself - is
-    // MedianGatedWalk (see its own comment), and it does not pay off either:
-    //
-    //     estimator                total edit distance   exact   helped/hurt
-    //     MedianMarginGated(0.60)  209                    78      106/57
-    //     MedianGatedWalk(0.30)    292                    80      98/63
-    //     MedianGatedWalk(0.45)    262                    64      56/36
-    //
-    // (208-region union of the three, truth established for 193.) Tightening
-    // the floor from 0.30 to 0.45 does reduce the runaway (total edit
-    // distance drops from 292 to 262), but a floor tight enough to stop
-    // every runaway is also tight enough to block many of the genuine +1
-    // corrections MedianMarginGated gets right by never attempting anything
-    // past the median unconditionally - the floor cannot distinguish "this
-    // region needs +2" from "this region's tail is a coverage artifact"
-    // using only the same lengthWeight distribution median already looked
-    // at. For this data, when the margin gate's trigger fires, the
-    // correction actually needed is overwhelmingly +1; the walk's ability to
-    // occasionally choose +2 correctly is not worth what it costs elsewhere.
-    // MedianMarginGated(0.60) remains the default.
-    //
-    // The per-region vote was instrumented directly (Msa1ColumnDiagnostic,
-    // below, exposed via Assembler::runLocalAssemblyMsa1WithDiagnostics) to
-    // see whether any feature of the actual lengthWeight distribution at the
-    // column MedianMarginGated nudged separates the regions it fixes from
-    // the ones it breaks - not just the margin, everything the vote carries.
-    // Comparing the 68 regions it moved from wrong to exactly right against
-    // the 43 it moved from exactly right to wrong (real HG002 v1.1 truth,
-    // chr12 harness data), at the specific column the nudge fired on:
-    //
-    //                              fixed (n=66 cols)   broke (n=43 cols)
-    //     margin (cumulative/total)      0.556               0.538
-    //     weight-at-median share         0.261               0.273
-    //     weight-at-median+1 share       0.259               0.241
-    //     rival ratio (median+1/median)  1.00                0.89
-    //     total read coverage            30                  26
-    //     homopolymer length             17.8                17.4
-    //
-    // Every one of these overlaps almost completely - not just hard to
-    // separate, but statistically indistinguishable. Whether an ambiguous
-    // column's true length is the median or median+1 is not predictable from
-    // anything the column's own read-length histogram carries: not margin,
-    // not coverage, not run length, not how strong a rival median+1 is. This
-    // is a stronger conclusion than any of the rejected estimators above:
-    // it says no RunLengthEstimator built only from this column's vote can
-    // do better than MedianMarginGated already does, because the column
-    // does not contain the information needed to tell these two cases apart.
-    // Separating them, if it is possible at all, needs a signal from outside
-    // this column's own vote - neighboring columns, phasing, or an
-    // independent second opinion such as running hifiasm on the same reads,
-    // which got the one locus checked by hand exactly right.
-    //
-    // Worth revisiting again with more assemblies of known truth (chr21 in
-    // particular - see the harness scripts), and worth an external-signal
-    // approach along the lines above rather than another RunLengthEstimator
-    // built from this same column's vote. Average, mode, medianPlusOne,
-    // medianConfidenceGated, medianNeighborGated, sequentialMajorityWalk and
-    // medianGatedWalk stay available.
+    // Mode, Median and Average are kept as baselines: Msa1ColumnDiagnostic
+    // exposes the raw vote so a candidate estimator can be evaluated against
+    // them, but none of the three beats MedianMarginGated on the data above.
     enum class RunLengthEstimator {
 
-        // The most frequent length, by total weight. Ties go to the shorter run.
-        // The default, see above. Note that column-wise majority voting cannot
-        // produce this: a column of a left justified run block is occupied by a
-        // majority exactly when over half the reads are at least that long,
-        // which is the median.
+        // The most frequent length, by total weight. Ties go to the shorter
+        // run. Note column-wise majority voting cannot produce this: a
+        // column of a left-justified run block is occupied by a majority
+        // exactly when over half the reads are at least that long, which is
+        // the median.
         Mode,
 
-        // The weighted median length. Biased low when the reads under-call, as
-        // they do on long homopolymers.
+        // The weighted median length. Biased low when the reads under-call,
+        // as they do on long homopolymers.
         Median,
 
-        // The weighted median length plus one, capped at the longest length any
-        // row reports. A direct, unconditional correction for the low bias
-        // documented above. Tried and rejected: see the harness measurement
-        // below. Kept available in case a more selective version, applied only
-        // where the bias actually shows up, is worth trying later.
-        MedianPlusOne,
-
-        // The weighted median, nudged up by one only when the median length
-        // itself is not a clear majority of the vote - i.e. the same
-        // confidence-gating idea hifiasm's error correction uses (see
-        // Correct.h in hifiasm: CORRECT_THRESHOLD = 0.60 normally, relaxed to
-        // CORRECT_THRESHOLD_HOMOPOLYMER = 0.515 near a homopolymer run - a
-        // weaker vote is trusted, rather than a different length statistic
-        // being computed). Here the same idea is turned around: when the
-        // median length's own share of the vote is BELOW 0.60, the vote is
-        // split enough that the low-bias documented above is likely biting,
-        // so add one; a confident (>= 0.60) median is trusted as-is. Tried
-        // and rejected: see the harness measurement below. A single length's
-        // vote share turns out to be a much noisier confidence signal here
-        // than it is for hifiasm's whole-string vote, so this triggers on
-        // most poly runs regardless of whether the median is right.
-        MedianConfidenceGated,
-
-        // The weighted median, nudged up by one only when the CUMULATIVE
-        // weight at the median (always >=50%, by how the median itself is
-        // defined) is below 0.60 - i.e. gating on the same cumulative,
-        // prefix-merged quantity the median computation already produces,
-        // rather than the single length's own disjoint bucket share the way
-        // MedianConfidenceGated does. A median just barely over 50%
-        // cumulative support is a near-tie and gets nudged; one with most of
-        // the weight already accounted for below it is trusted as-is.
-        // The default: see the harness measurement below, where it beats
-        // plain median (and every other estimator tried).
+        // The weighted median, nudged up by one only when its cumulative
+        // support (always >=50%, by construction) is below 0.60 - a
+        // near-tie between "at least this long" and "shorter". The default;
+        // see above.
         MedianMarginGated,
 
-        // MedianMarginGated, plus a second condition: nudge to length+1 only
-        // when length+1's own vote weight is at least length's - a genuine
-        // rival in the raw vote, not just "some weight sits somewhere past
-        // the median" (which the margin alone cannot tell apart from a few
-        // small deletions scattered across lengths below the median, none
-        // of them actually being length+1). Tried and rejected: see the
-        // harness measurement below. It excludes more good corrections than
-        // bad ones, so genuine support for +1 is evidently not concentrated
-        // at length+1 alone.
-        MedianNeighborGated,
-
-        // hifiasm's error correction (Correct.cpp) never computes a
-        // mean/median/mode of raw integer lengths: it merges whole candidate
-        // insertion strings that share a prefix/suffix into one small graph
-        // (Merge_DAGCon, Correct.cpp:5031) and greedily walks the
-        // highest-weight edge from the start (generate_best_seq_from_nodes,
-        // Correct.cpp:5292), so the walk naturally stops extending once the
-        // reads that agree "at least this far" no longer hold a majority of
-        // the reads that agreed one base back. This is that idea translated
-        // into a length distribution directly: walk the length upward one
-        // base at a time, continuing past L only while a strict majority of
-        // the reads that reached L also reach L+1, and stop at the first L
-        // where that majority breaks. On the docstring's own 19-read
-        // example (lengths 6,7,10,11,12,14,15, counts 1,1,2,6,7,1,1, true
-        // length 12) this lands on 12 directly, unlike plain median (11).
-        // Tried and rejected: see the harness measurement below. It gets led
-        // astray by a thin tail of over-calling reads, because it only
-        // requires a majority of an ever-shrinking REMAINING population at
-        // each step, with no floor on absolute support - unlike hifiasm's
-        // actual mechanism, which applies a final confidence check against
-        // the ORIGINAL total (CORRECT_THRESHOLD), not just the survivors so
-        // far. A handful of reads that keep agreeing with each other past
-        // where the truth ends is enough to carry the walk arbitrarily far.
-        SequentialMajorityWalk,
-
-        // MedianMarginGated's trigger (only act when the median's cumulative
-        // support is below 0.60) combined with SequentialMajorityWalk's
-        // mechanism for choosing how far to extend, plus the floor
-        // SequentialMajorityWalk was missing: continue past the median only
-        // while a majority of the remaining reads agree AND the survival is
-        // still at least a fixed floor of the ORIGINAL total, not just of
-        // whatever is left - that fixed floor is exactly the piece hifiasm's
-        // real acceptance check has and the plain sequential walk did not.
-        // Tried and rejected at two floors: see the harness measurement
-        // below. It reduces but does not eliminate the runaway failure - a
-        // handful of regions still overshoot by a lot (length deltas of 7 to
-        // 21 bases seen at a floor of 0.3), and those large misses cost more
-        // total accuracy than the extra correct multi-base corrections gain,
-        // even though a looser floor still finds slightly more exact matches
-        // than MedianMarginGated overall. For this data, when the margin
-        // gate's trigger fires, the correction actually needed is
-        // overwhelmingly +1 - a variable-length walk finds a few genuine +2
-        // corrections MedianMarginGated cannot, but paying for them with
-        // occasional double-digit overshoots is not worth it. The current
-        // code keeps the better-performing of the two floors tried (0.45).
-        MedianGatedWalk,
-
-        // The weighted mean length, rounded to the nearest integer (ties round
-        // up). Unlike mode and median it uses every observed length, so a few
-        // large deletions pull it down while occasional over-calls pull it up.
+        // The weighted mean length, rounded to the nearest integer (ties
+        // round up). Unlike mode and median it uses every observed length,
+        // so a few large deletions pull it down while occasional over-calls
+        // pull it up.
         Average
     };
 
