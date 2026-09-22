@@ -133,11 +133,30 @@ void Msa1BayesianModel::buildFromCounts(const vector<uint64_t>& counts)
     }
 
     // The prior: the marginal over n, pooled across base and strand, from
-    // the same raw counts, with the same Laplace smoothing.
+    // the same raw counts restricted to n >= minPriorN, with the same
+    // Laplace smoothing applied to every bin afterward (so n < minPriorN
+    // stays reachable, just not favored by the pooling below).
+    //
+    // RunLengthEstimator::Bayesian is only ever invoked on a poly-symbol
+    // column - one where a covering row's run already collapsed under
+    // Msa1Options::encodeThreshold (default 1, meaning any run of 2 or
+    // more bases collapses - see msa1.hpp). A prior pooled over every n
+    // without this restriction is dominated by the genome's overwhelming
+    // majority of trivial single-base "runs": on the first real chr21
+    // training run, n=1 alone was 73% of all 1.02 billion observations,
+    // n=12 was 0.0034% - an unrestricted pooled prior would penalize a
+    // genuine long run by roughly 10 nats purely from that imbalance, for
+    // a question ("is this run's true length 1 or 12") the column's own
+    // existence as a poly symbol has already mostly answered. minPriorN=2
+    // matches encodeThreshold's own collapse boundary, not an arbitrary
+    // number: a poly column implies at least one covering row observed a
+    // run of 2 or more, so a prior conditioned on "this is at least a real
+    // repeat" is the prior actually relevant here.
+    const uint64_t minPriorN = 2;
     vector<double> priorCount(nBins, 0.);
     for(uint64_t base=0; base<4; base++) {
         for(uint64_t strand=0; strand<2; strand++) {
-            for(uint64_t n=0; n<nBins; n++) {
+            for(uint64_t n=minPriorN; n<nBins; n++) {
                 for(uint64_t m=0; m<mBins; m++) {
                     priorCount[n] += double(counts[cellIndex(base, strand, n, m)]);
                 }
