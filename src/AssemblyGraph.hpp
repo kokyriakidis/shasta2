@@ -422,6 +422,7 @@ public:
     // Remove zero length segments by collapsing their vertices.
     void removeZeroLengthSegments();
     void removeZeroLengthSegmentsStrandSymmetric();
+    uint64_t countZeroLengthSegments() const;
     void collapseVertices(const vector<vertex_descriptor>&);
     void collapseVerticesStrandSymmetric(const vector<vertex_descriptor>&);
 

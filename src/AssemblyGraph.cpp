@@ -555,7 +555,12 @@ void AssemblyGraph::write(const string& stage)
 {
     cout << "Stage " << stage << ": " <<
         num_vertices(*this) << " vertices, " <<
-        num_edges(*this) << " edges. Next edge id is " << nextEdgeId << "." << endl;
+        num_edges(*this) << " segments. Next segment id is " << nextEdgeId << "." << endl;
+
+    const uint64_t zeroLengthSegmentCount = countZeroLengthSegments();
+    if(zeroLengthSegmentCount) {
+        cout << "There are " << zeroLengthSegmentCount << " zero length segments." << endl;
+    }
 
     if((options.memoryMode == "filesystem") and options.keepBinaryData) {
         save(stage);
@@ -3155,6 +3160,21 @@ void AssemblyGraph::removeZeroLengthSegments()
         }
         collapseVertices(componentVertices);
     }
+}
+
+
+
+uint64_t AssemblyGraph::countZeroLengthSegments() const
+{
+    const AssemblyGraph& assemblyGraph = *this;
+
+    uint64_t n = 0;
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        if(assemblyGraph[e].empty()) {
+            ++n;
+        }
+    }
+    return n;
 }
 
 

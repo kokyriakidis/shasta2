@@ -430,6 +430,8 @@ void AssemblyGraph::separateStrands(const string& debugOutputBaseName)
 
     AssemblyGraph& assemblyGraph = *this;
 
+    SHASTA2_ASSERT(countZeroLengthSegments() == 0);
+
     performanceLog << timestamp << "AssemblyGraph::separateStrands begins: " <<
         debugOutputBaseName << endl;
 
