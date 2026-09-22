@@ -380,10 +380,13 @@ bool AssemblyGraph::detangleAndReadFollowingSuperbubbles(const string& debugOutp
 
     // Detangling and read following.
     const bool attemptReadFollowing = true;
-    return detangleAndReadFollowing(tangles, tangleRc, attemptReadFollowing, debugOutputBaseName);
+    const bool success = detangleAndReadFollowing(tangles, tangleRc, attemptReadFollowing, debugOutputBaseName);
+    removeZeroLengthSegmentsStrandSymmetric();
 
     performanceLog << timestamp << "AssemblyGraph::detangleAndReadFollowingSuperbubbles ends: " <<
         debugOutputBaseName << endl;
+
+    return success;
 }
 
 
@@ -464,6 +467,8 @@ bool AssemblyGraph::detangleAndReadFollowing(
         }
     }
 
+
+    removeZeroLengthSegmentsStrandSymmetric();
     return somethingWasDone;
 }
 
