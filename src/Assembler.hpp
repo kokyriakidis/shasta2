@@ -116,6 +116,8 @@ public:
         return *readsPointer;
     }
     void computeReadIdsSortedByName();
+    uint64_t getReadCount() const;
+    string getOrientedReadSequenceString(const string& orientedReadIdString) const;
     void addReads(
         const vector<string>& fileNames,
         uint64_t minReadLength,

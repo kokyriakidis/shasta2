@@ -3,6 +3,7 @@
 #include "FastaLoader.hpp"
 #include "memoryInformation.hpp"
 #include "performanceLog.hpp"
+#include "ReadId.hpp"
 #include "ReadLoader.hpp"
 #include "timestamp.hpp"
 using namespace shasta2;
@@ -100,5 +101,27 @@ void Assembler::histogramReadLength(const string& fileName)
 void Assembler::computeReadIdsSortedByName()
 {
     readsPointer->computeReadIdsSortedByName();
+}
+
+
+
+// For tools outside shasta2 (e.g. the shasta2-homopolymer-model repository)
+// that only need read sequences, not the anchor/marker structure: enumerate
+// reads with getReadCount(), then get each one's text with
+// getOrientedReadSequenceString(). Both are available right after
+// construction - reads are accessed unconditionally in the constructor,
+// unlike anchors/journeys/markers, which each need their own accessOrCreate
+// call first.
+uint64_t Assembler::getReadCount() const
+{
+    return reads().readCount();
+}
+
+
+
+string Assembler::getOrientedReadSequenceString(const string& orientedReadIdString) const
+{
+    const OrientedReadId orientedReadId(orientedReadIdString);
+    return toString(reads().getOrientedReadSequence(orientedReadId));
 }
 
