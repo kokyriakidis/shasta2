@@ -210,6 +210,8 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def("clearSequence", &AssemblyGraph::clearSequence)
         .def("getAssemblyGraphSteps", &AssemblyGraph::getAssemblyGraphSteps)
         .def("findMsa1CandidateRegions", &AssemblyGraph::findMsa1CandidateRegions)
+        .def("findMsa1BayesianComparisonRegions", &AssemblyGraph::findMsa1BayesianComparisonRegions,
+            arg("bayesianMatrixName"))
         .def("phaseSuperbubbleChains", &AssemblyGraph::phaseSuperbubbleChains)
         .def("strandSymmetricPhaseSuperbubbleChains", &AssemblyGraph::strandSymmetricPhaseSuperbubbleChains)
         .def("colorStrongComponents", &AssemblyGraph::colorStrongComponents)

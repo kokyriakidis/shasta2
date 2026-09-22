@@ -203,6 +203,143 @@ void AssemblyGraph::findMsa1CandidateRegionsThreadFunction(uint64_t threadId)
 
 
 // See AssemblyGraph.hpp for comments.
+vector< tuple<uint64_t, uint64_t, AnchorId, AnchorId, vector<string>, string, string, string> >
+    AssemblyGraph::findMsa1BayesianComparisonRegions(const string& bayesianMatrixName)
+{
+    AssemblyGraph& assemblyGraph = *this;
+
+    msa1BayesianMatrixNameForScan = bayesianMatrixName;
+    msa1BayesianStepsToScan.clear();
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        const AssemblyGraphEdge& edge = assemblyGraph[e];
+        for(uint64_t i=0; i<edge.size(); i++) {
+            msa1BayesianStepsToScan.push_back(make_pair(e, i));
+        }
+    }
+    performanceLog << timestamp << "findMsa1BayesianComparisonRegions: scanning " <<
+        msa1BayesianStepsToScan.size() << " steps." << endl;
+
+    const uint64_t threadCount = options.actualThreadCount();
+    msa1BayesianCandidatesByThread.clear();
+    msa1BayesianCandidatesByThread.resize(threadCount);
+
+    const uint64_t batchCount = 1;
+    setupLoadBalancing(msa1BayesianStepsToScan.size(), batchCount);
+    runThreads(&AssemblyGraph::findMsa1BayesianComparisonThreadFunction, threadCount);
+
+    uint64_t candidateCount = 0;
+    for(const auto& v: msa1BayesianCandidatesByThread) {
+        candidateCount += v.size();
+    }
+    vector< tuple<uint64_t, uint64_t, AnchorId, AnchorId, vector<string>, string, string, string> > candidates;
+    candidates.reserve(candidateCount);
+    for(auto& v: msa1BayesianCandidatesByThread) {
+        for(auto& row: v) {
+            candidates.push_back(std::move(row));
+        }
+    }
+    msa1BayesianCandidatesByThread.clear();
+    msa1BayesianCandidatesByThread.shrink_to_fit();
+    msa1BayesianStepsToScan.clear();
+    msa1BayesianStepsToScan.shrink_to_fit();
+
+    performanceLog << timestamp << "findMsa1BayesianComparisonRegions: found " <<
+        candidates.size() << " candidate regions." << endl;
+
+    return candidates;
+}
+
+
+
+void AssemblyGraph::findMsa1BayesianComparisonThreadFunction(uint64_t threadId)
+{
+    const AssemblyGraph& assemblyGraph = *this;
+    ostream html(0);
+
+    vector< tuple<uint64_t, uint64_t, AnchorId, AnchorId, vector<string>, string, string, string> >&
+        candidates = msa1BayesianCandidatesByThread[threadId];
+
+    LocalAssembly7::Options medianOptions;
+    medianOptions.useMsa1 = true;
+    medianOptions.estimator = RunLengthEstimator::MedianMarginGated;
+
+    LocalAssembly7::Options bayesianOptions;
+    bayesianOptions.useMsa1 = true;
+    bayesianOptions.estimator = RunLengthEstimator::Bayesian;
+    bayesianOptions.msa1BayesianMatrixName = msa1BayesianMatrixNameForScan;
+
+    uint64_t begin, end;
+    while(getNextBatch(begin, end)) {
+        for(uint64_t j=begin; j!=end; j++) {
+
+            if((j % 100000) == 0) {
+                std::lock_guard<std::mutex> lock(mutex);
+                performanceLog << timestamp << "findMsa1BayesianComparisonRegions: step " << j <<
+                    " of " << msa1BayesianStepsToScan.size() << endl;
+            }
+
+            const auto& p = msa1BayesianStepsToScan[j];
+            const edge_descriptor e = p.first;
+            const uint64_t i = p.second;
+            const AssemblyGraphEdge& edge = assemblyGraph[e];
+            const AnchorPair& anchorPair = edge[i].anchorPair;
+            const vector<OrientedReadId> orientedReadIds = msa1StepOrientedReadIds(edge, i);
+
+            bool medianSuccess = false, bayesianSuccess = false;
+            vector<shasta2::Base> consensusNoRepair, consensusMedian, consensusBayesian;
+            try {
+                const LocalAssembly7 medianAssembly(
+                    medianOptions, anchors,
+                    anchorPair.anchorIdA, anchorPair.anchorIdB,
+                    html, orientedReadIds);
+                medianSuccess = medianAssembly.success;
+                consensusNoRepair = medianAssembly.sequenceBeforeRepair;
+                consensusMedian = medianAssembly.sequence;
+            } catch(std::exception&) {
+                medianSuccess = false;
+            }
+            if(not medianSuccess) {
+                continue;
+            }
+
+            try {
+                const LocalAssembly7 bayesianAssembly(
+                    bayesianOptions, anchors,
+                    anchorPair.anchorIdA, anchorPair.anchorIdB,
+                    html, orientedReadIds);
+                bayesianSuccess = bayesianAssembly.success;
+                consensusBayesian = bayesianAssembly.sequence;
+            } catch(std::exception&) {
+                bayesianSuccess = false;
+            }
+            if(not bayesianSuccess) {
+                continue;
+            }
+
+            // A candidate step is one where EITHER estimator's repair
+            // changed anything relative to no repair - see the comment on
+            // this function's declaration.
+            if((consensusNoRepair == consensusMedian) and (consensusNoRepair == consensusBayesian)) {
+                continue;
+            }
+
+            vector<string> orientedReadIdStrings;
+            orientedReadIdStrings.reserve(orientedReadIds.size());
+            for(const OrientedReadId orientedReadId: orientedReadIds) {
+                orientedReadIdStrings.push_back(orientedReadId.getString());
+            }
+
+            candidates.push_back(make_tuple(
+                uint64_t(edge.id), i, anchorPair.anchorIdA, anchorPair.anchorIdB,
+                orientedReadIdStrings, toString(consensusNoRepair),
+                toString(consensusMedian), toString(consensusBayesian)));
+        }
+    }
+}
+
+
+
+// See AssemblyGraph.hpp for comments.
 int64_t shasta2::editDistance(const string& a, const string& b, uint64_t cap)
 {
     if(uint64_t(a.size()) * uint64_t(b.size()) > cap) {

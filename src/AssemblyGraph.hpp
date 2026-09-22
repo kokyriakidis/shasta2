@@ -613,6 +613,21 @@ public:
     // already has for the identical per-step problem.
     vector< tuple<uint64_t, uint64_t, AnchorId, AnchorId, vector<string>, string, string> >
         findMsa1CandidateRegions();
+
+    // For comparing RunLengthEstimator::Bayesian against the production
+    // default (MedianMarginGated). Same scan as findMsa1CandidateRegions,
+    // but runs LocalAssembly7 twice per step - once at each estimator - and
+    // returns one row per step where EITHER estimator's repair changed the
+    // consensus relative to no repair: (edgeId, stepIndex, anchorIdA,
+    // anchorIdB, orientedReadIdStrings, consensusNoRepair,
+    // consensusMedianMarginGated, consensusBayesian). Two LocalAssembly7
+    // constructions per candidate step rather than one - the estimator
+    // choice only affects the repair, not the alignment that precedes it,
+    // so this duplicates that alignment work, but doing so keeps this
+    // function independent of findMsa1CandidateRegions's own single-estimator
+    // assumption rather than trying to retrofit a second estimator through it.
+    vector< tuple<uint64_t, uint64_t, AnchorId, AnchorId, vector<string>, string, string, string> >
+        findMsa1BayesianComparisonRegions(const string& bayesianMatrixName);
 private:
 
     // Assemble sequence for the specified edge.
@@ -638,6 +653,15 @@ private:
     vector< pair<edge_descriptor, uint64_t> > msa1StepsToScan;
     vector< vector< tuple<uint64_t, uint64_t, AnchorId, AnchorId, vector<string>, string, string> > >
         msa1CandidatesByThread;
+
+    // For findMsa1BayesianComparisonRegions. Kept separate from the members
+    // above for the same reason those are kept separate from
+    // stepsToBeAssembled - independent scans should not share state.
+    void findMsa1BayesianComparisonThreadFunction(uint64_t threadId);
+    vector< pair<edge_descriptor, uint64_t> > msa1BayesianStepsToScan;
+    string msa1BayesianMatrixNameForScan;
+    vector< vector< tuple<uint64_t, uint64_t, AnchorId, AnchorId, vector<string>, string, string, string> > >
+        msa1BayesianCandidatesByThread;
 
 
 
