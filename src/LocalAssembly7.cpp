@@ -104,9 +104,6 @@ void LocalAssembly7::run()
     case Method::DeBruijn:
         runDeBruijn();
         break;
-    case Method::Msa1:
-        runMsa1();
-        break;
     default:
         throw runtime_error("Invalid LocalAssembly7 Method.");
     }
@@ -1321,14 +1318,33 @@ void LocalAssembly7::runAbpoaOrPoasta(bool usePoasta)
     if(usePoasta) {
         poasta(msaSequences, consensus, alignment, alignedConsensus);
     } else {
-        const bool computeAlignment = bool(html);
+        // The alignment is normally computed only for the html display. It is
+        // also needed when the repair below is requested.
+        const bool computeAlignment = bool(html) or options.useMsa1;
         abpoa(msaSequences, consensus, alignment, alignedConsensus, computeAlignment);
     }
     const auto t1 = steady_clock::now();
     SHASTA2_ASSERT(alignment.size() == msaSequenceIdsWithWeight.size());
 
+    // Repair the bad homopolymer regions of the alignment, if requested (see
+    // Options::useMsa1). Every row here spans the whole alignment - abpoa and
+    // poasta take no anchoring information - and each entered sequence
+    // already stands for one unit of coverage, so every row is anchored on
+    // both sides and votes with weight 1.
+    uint64_t repairedRegionCount = 0;
+    const auto t2 = steady_clock::now();
+    if(options.useMsa1) {
+        const vector<uint64_t> weights(alignment.size(), 1);
+        repairedRegionCount = msa1(alignment, alignedConsensus, consensus, weights, {});
+    }
+    const auto t3 = steady_clock::now();
+
     if(html) {
         html << "<br>" << name << " completed in " << seconds(t1-t0) << " seconds.";
+        if(options.useMsa1) {
+            html << "<br>Msa1 repair completed in " << seconds(t3-t2) <<
+                " seconds and rebuilt " << repairedRegionCount << " region(s) of the alignment.";
+        }
         writeAlignment(alignment, alignedConsensus, consensus, msaSequenceIdsWithWeight);
         writeConsensus(consensus);
     }
@@ -1435,11 +1451,12 @@ void LocalAssembly7::runTheseus(bool useAll)
             "Pericles.fasta");
     }
 
-    // Run Theseus.
+    // Run Theseus. The alignment is normally computed only for the html
+    // display. It is also needed when the repair below is requested.
     vector< pair<Base, uint64_t> > consensus;
     vector<AlignedBase> alignedConsensus;
     vector< vector<AlignedBase> > alignment;
-    const bool computeAlignment = bool(html);
+    const bool computeAlignment = bool(html) or options.useMsa1;
     const auto t0 = steady_clock::now();
     theseus(
         bothSidesFixedSequences, leftFixedSequences, rightFixedSequences,
@@ -1449,121 +1466,46 @@ void LocalAssembly7::runTheseus(bool useAll)
         SHASTA2_ASSERT(alignment.size() == msaSequenceIdsWithWeight.size());
     }
 
+    // Repair the bad homopolymer regions of the alignment, if requested (see
+    // Options::useMsa1).
+    uint64_t repairedRegionCount = 0;
+    const auto t2 = steady_clock::now();
+    if(options.useMsa1) {
+
+        // Theseus returns the rows in the order the groups were given, so how
+        // each row is anchored is known here rather than guessed from its
+        // gaps. That matters: a read fixed on one side only does not reach
+        // across the whole alignment, and Theseus pads the part it does not
+        // reach with the same '-' used for a deletion. Counting that padding
+        // as a deletion would delete bases every read covering them agrees on.
+        vector<Anchoring> anchoring;
+        anchoring.reserve(alignment.size());
+        anchoring.insert(anchoring.end(), bothSidesFixedSequences.size(),
+            Anchoring::BothSides);
+        anchoring.insert(anchoring.end(), leftFixedSequences.size(),
+            Anchoring::LeftOnly);
+        anchoring.insert(anchoring.end(), rightFixedSequences.size(),
+            Anchoring::RightOnly);
+        SHASTA2_ASSERT(anchoring.size() == alignment.size());
+
+        // Unlike abpoa, Theseus takes a weight per sequence, so each read
+        // appears once and votes with its coverage.
+        vector<uint64_t> weights;
+        weights.reserve(alignment.size());
+        for(const auto& [sequenceId, weight]: msaSequenceIdsWithWeight) {
+            weights.push_back(weight);
+        }
+
+        repairedRegionCount = msa1(alignment, alignedConsensus, consensus, weights, anchoring);
+    }
+    const auto t3 = steady_clock::now();
+
     if(html) {
         html << "<br>Theseus completed in " << seconds(t1-t0) << " seconds.";
-        writeAlignment(alignment, alignedConsensus, consensus, msaSequenceIdsWithWeight);
-        writeConsensus(consensus);
-    }
-
-    // Store the sequence.
-    for(const auto& [b, ignore]: consensus) {
-        sequence.push_back(b);
-    }
-    success = true;
-}
-
-
-
-void LocalAssembly7::runMsa1()
-{
-    // Get the sequenceIds to be used, sorted in order of decreasing coverage.
-    vector<uint64_t> bothSidesFixedSequenceIds;
-    getSequencesOnBothAnchors(bothSidesFixedSequenceIds);
-    vector<uint64_t> leftFixedSequenceIds;
-    getSequencesOnAnchorA(leftFixedSequenceIds);
-    vector<uint64_t> rightFixedSequenceIds;
-    getSequencesOnAnchorB(rightFixedSequenceIds);
-
-    if(html) {
-        html <<
-            "<h3>Local assembly with msa1</h3>"
-            "The local assembly will use the following "
-            "sequences of oriented reads fixed on one or both anchors."
-            "<br><br><table>"
-            "<tr><th>Sequence<br>id<th>On<br>A<th>On<br>B<th>Coverage<th>Length";
-        for(const uint64_t sequenceId: bothSidesFixedSequenceIds) {
-            const SequenceInfo& sequenceInfo = sequences[sequenceId];
-            html <<
-                "<tr>"
-                "<td class=centered>" << sequenceId <<
-                "<td class=centered>&check;" <<
-                "<td class=centered>&check;" <<
-                "<td class=centered>" << sequenceInfo.coverage() <<
-                "<td class=centered>" << sequenceInfo.sequence.size();
+        if(options.useMsa1) {
+            html << "<br>Msa1 repair completed in " << seconds(t3-t2) <<
+                " seconds and rebuilt " << repairedRegionCount << " region(s) of the alignment.";
         }
-        for(const uint64_t sequenceId: leftFixedSequenceIds) {
-            const SequenceInfo& sequenceInfo = sequences[sequenceId];
-            html <<
-                "<tr>"
-                "<td class=centered>" << sequenceId <<
-                "<td class=centered>&check;" <<
-                "<td class=centered>" <<
-                "<td class=centered>" << sequenceInfo.coverage() <<
-                "<td class=centered>" << sequenceInfo.sequence.size();
-        }
-        for(const uint64_t sequenceId: rightFixedSequenceIds) {
-            const SequenceInfo& sequenceInfo = sequences[sequenceId];
-            html <<
-                "<tr>"
-                "<td class=centered>" << sequenceId <<
-                "<td class=centered>" <<
-                "<td class=centered>&check;" <<
-                "<td class=centered>" << sequenceInfo.coverage() <<
-                "<td class=centered>" << sequenceInfo.sequence.size();
-        }
-
-        html << "</table>";
-    }
-
-
-
-    // Gather the sequences to be passed to msa1.
-    uint64_t totalWeight = 0;
-    vector< pair<uint64_t, uint64_t> > msaSequenceIdsWithWeight;
-    vector< pair<vector<Base>, uint64_t> > bothSidesFixedSequences;
-    for(const uint64_t sequenceId: bothSidesFixedSequenceIds) {
-        const SequenceInfo& sequenceInfo = sequences[sequenceId];
-        const uint64_t coverage = sequenceInfo.coverage();
-        bothSidesFixedSequences.push_back(make_pair(sequenceInfo.sequence, coverage));
-        msaSequenceIdsWithWeight.push_back(make_pair(sequenceId, coverage));
-        totalWeight += coverage;
-    }
-    vector< pair<vector<Base>, uint64_t> > leftFixedSequences;
-    for(const uint64_t sequenceId: leftFixedSequenceIds) {
-        const SequenceInfo& sequenceInfo = sequences[sequenceId];
-        const uint64_t coverage = sequenceInfo.coverage();
-        leftFixedSequences.push_back(make_pair(sequenceInfo.sequence, coverage));
-        msaSequenceIdsWithWeight.push_back(make_pair(sequenceId, coverage));
-        totalWeight += coverage;
-    }
-    vector< pair<vector<Base>, uint64_t> > rightFixedSequences;
-    for(const uint64_t sequenceId: rightFixedSequenceIds) {
-        const SequenceInfo& sequenceInfo = sequences[sequenceId];
-        const uint64_t coverage = sequenceInfo.coverage();
-        rightFixedSequences.push_back(make_pair(sequenceInfo.sequence, coverage));
-        msaSequenceIdsWithWeight.push_back(make_pair(sequenceId, coverage));
-        totalWeight += coverage;
-    }
-    if(html) {
-        html << "<br>Total coverage for msa1 is " << totalWeight << ".";
-    }
-
-    // Run msa1.
-    vector< pair<Base, uint64_t> > consensus;
-    vector<AlignedBase> alignedConsensus;
-    vector< vector<AlignedBase> > alignment;
-    const bool computeAlignment = bool(html);
-    const auto t0 = steady_clock::now();
-    msa1(
-        bothSidesFixedSequences, leftFixedSequences, rightFixedSequences,
-        consensus, alignment, alignedConsensus, computeAlignment);
-    const auto t1 = steady_clock::now();
-    if(computeAlignment) {
-        SHASTA2_ASSERT(alignment.size() == msaSequenceIdsWithWeight.size());
-    }
-
-    if(html) {
-        html << "<br>Msa1 completed in " << seconds(t1-t0) << " seconds.";
         writeAlignment(alignment, alignedConsensus, consensus, msaSequenceIdsWithWeight);
         writeConsensus(consensus);
     }
@@ -1630,8 +1572,6 @@ void LocalAssembly7::Options::setMethod(const string& s)
         method = Method::TheseusAll;
     } else if(s == "DeBruijn") {
         method = Method::DeBruijn;
-    } else if(s == "Msa1") {
-        method = Method::Msa1;
     } else {
         method = Method::Invalid;
     }

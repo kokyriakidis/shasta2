@@ -32,7 +32,6 @@ public:
         TheseusOnly,    // Only use oriented reads that are on both anchors
         TheseusAll,     // Also use oriented reads that are om just one anchor.
         DeBruijn,
-        Msa1,
         Invalid
     };
 
@@ -48,6 +47,13 @@ public:
         // The Method chosen for the local assembly.
         Method method = Method::Adaptive;
         void setMethod(const string&);
+
+        // Whether to repair the bad homopolymer regions of the alignment
+        // computed by whichever Method ran, using msa1 (see msa1.hpp).
+        // Independent of Method, so any Method that produces a row alignment
+        // (Adaptive, Abpoa, Poasta, TheseusOnly, TheseusAll) can be repaired
+        // or not. Mirrors the global Options::useMsa1 - see OptionsDefine.hpp.
+        bool useMsa1 = false;
 
         // If the number of oriented reads on both anchors is at least
         // equal to commonThreshold, the adaptive method uses one of:
@@ -259,7 +265,6 @@ private:
     void runAbpoa();
     void runPoasta();
     void runTheseus(bool useAll);
-    void runMsa1();
 
 
     // Functions and data to find the consensus using a De Bruijn graph

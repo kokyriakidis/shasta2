@@ -140,6 +140,12 @@ SHASTA2_BOOL_OPTION_DEFINE(
     writeAssemblyDetails, "--write-assembly-details", false,
     "Write assembly details in csv format.")
 
+SHASTA2_BOOL_OPTION_DEFINE(
+    useMsa1, "--use-msa1", false,
+    "Repair the bad homopolymer regions of the local assembly alignment "
+    "using msa1 (see msa1.hpp), regardless of which LocalAssembly7::Method "
+    "is used. For testing msa1.")
+
 SHASTA2_OPTION_DEFINE(
     uint64_t, bubbleCleanupMaxBubbleLength, "--bubble-cleanup-max-bubble-length", 10000,
     "Maximum bubble length for bubble cleanup.")
