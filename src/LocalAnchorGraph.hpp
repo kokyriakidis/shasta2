@@ -92,7 +92,8 @@ public:
         const AnchorGraph&,
         const vector<AnchorId>&,
         uint64_t maxDistance,
-		uint64_t minCoverage,
+        uint64_t minEdgeCoverage,
+        double minEdgeCoverageFraction,
         bool edgesMarkedForAssembly);
 
     const Anchors& anchors;

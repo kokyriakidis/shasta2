@@ -30,7 +30,8 @@ LocalAnchorGraph::LocalAnchorGraph(
     const AnchorGraph& anchorGraph,
     const vector<AnchorId>& anchorIds,
     uint64_t maxDistance,
-	uint64_t minCoverage,
+	uint64_t minEdgeCoverage,
+	double minEdgeCoverageFraction,
     bool edgesMarkedForAssembly) :
     anchors(anchors),
     anchorGraphPointer(&anchorGraph),
@@ -70,11 +71,18 @@ LocalAnchorGraph::LocalAnchorGraph(
             if(edgesMarkedForAssembly and (not anchorGraph[eG].useForAssembly)) {
                 continue;
             }
-            if(anchorGraph[eG].coverage() < minCoverage) {
+            const uint64_t edgeCoverage = anchorGraph[eG].coverage();
+            if(edgeCoverage < minEdgeCoverage) {
             	continue;
             }
             const AnchorGraph::vertex_descriptor v1G = target(eG, anchorGraph);
             const AnchorId anchorId1 = v1G;
+
+            // Edge coverage must satisfy both minEdgeCoverage and minEdgeCoverageFraction.
+            if(double(edgeCoverage) < minEdgeCoverageFraction * double(min(
+                anchors[anchorId0].coverage(), anchors[anchorId1].coverage()))) {
+                continue;
+            }
 
             auto it1 = vertexMap.find(anchorId1);
             if(it1 != vertexMap.end()) {
@@ -93,11 +101,18 @@ LocalAnchorGraph::LocalAnchorGraph(
             if(edgesMarkedForAssembly and (not anchorGraph[eG].useForAssembly)) {
                 continue;
             }
-            if(anchorGraph[eG].coverage() < minCoverage) {
+            const uint64_t edgeCoverage = anchorGraph[eG].coverage();
+            if(edgeCoverage < minEdgeCoverage) {
             	continue;
             }
             const AnchorGraph::vertex_descriptor v1G = source(eG, anchorGraph);
             const AnchorId anchorId1 = v1G;
+
+            // Edge coverage must satisfy both minEdgeCoverage and minEdgeCoverageFraction.
+            if(double(edgeCoverage) < minEdgeCoverageFraction * double(min(
+                anchors[anchorId0].coverage(), anchors[anchorId1].coverage()))) {
+                continue;
+            }
 
             auto it1 = vertexMap.find(anchorId1);
             if(it1 != vertexMap.end()) {
@@ -128,11 +143,18 @@ LocalAnchorGraph::LocalAnchorGraph(
             if(edgesMarkedForAssembly and (not anchorGraph[eG].useForAssembly)) {
                 continue;
             }
-            if(anchorGraph[eG].coverage() < minCoverage) {
+            const uint64_t edgeCoverage = anchorGraph[eG].coverage();
+            if(edgeCoverage < minEdgeCoverage) {
             	continue;
             }
             const AnchorGraph::vertex_descriptor v1G = target(eG, anchorGraph);
             const AnchorId anchorId1 = v1G;
+
+            // Edge coverage must satisfy both minEdgeCoverage and minEdgeCoverageFraction.
+            if(double(edgeCoverage) < minEdgeCoverageFraction * double(min(
+                anchors[anchorId0].coverage(), anchors[anchorId1].coverage()))) {
+                continue;
+            }
 
             auto it1 = vertexMap.find(anchorId1);
             if(it1 != vertexMap.end()) {

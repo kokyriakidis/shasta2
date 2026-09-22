@@ -561,8 +561,11 @@ void Assembler::exploreLocalAnchorGraph(
     uint64_t distance = 10;
     HttpServer::getParameterValue(request, "distance", distance);
 
-    uint64_t minCoverage = 1;
-    HttpServer::getParameterValue(request, "minCoverage", minCoverage);
+    uint64_t minEdgeCoverage = 0;
+    HttpServer::getParameterValue(request, "minEdgeCoverage", minEdgeCoverage);
+
+    double minEdgeCoverageFraction = 0.;
+    HttpServer::getParameterValue(request, "minEdgeCoverageFraction", minEdgeCoverageFraction);
 
     string useCompleteAnchorGraphString;
     bool useCompleteAnchorGraph = HttpServer::getParameterValue(request,
@@ -601,10 +604,16 @@ void Assembler::exploreLocalAnchorGraph(
         distance << ">";
 
     html << "<tr>"
-        "<th class=left>Minimum coverage"
+        "<th class=left>Minimum edge coverage"
         "<td class=centered>"
-        "<input type=text name=minCoverage style='text-align:center' required size=8 value=" <<
-        minCoverage << ">";
+        "<input type=text name=minEdgeCoverage style='text-align:center' required size=8 value=" <<
+        minEdgeCoverage << ">";
+
+    html << "<tr>"
+        "<th class=left>Minimum edge coverage fraction"
+        "<td class=centered>"
+        "<input type=text name=minEdgeCoverageFraction style='text-align:center' required size=8 value=" <<
+        minEdgeCoverageFraction << ">";
 
     html << "<tr>"
         "<th class=left>Use the complete AnchorGraph"
@@ -693,7 +702,8 @@ void Assembler::exploreLocalAnchorGraph(
         *anchorGraph,
         anchorIds,
         distance,
-		minCoverage,
+        minEdgeCoverage,
+        minEdgeCoverageFraction,
         not includeEdgesNotMarkedForAssembly);
 
     html << "<h1>Local anchor graph</h1>";
