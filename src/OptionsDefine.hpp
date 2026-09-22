@@ -147,6 +147,18 @@ SHASTA2_BOOL_OPTION_DEFINE(
     "is used. For testing msa1.")
 
 SHASTA2_OPTION_DEFINE(
+    string, msa1EstimatorName, "--msa1-estimator", "MedianMarginGated",
+    "Run-length estimator used by msa1 when --use-msa1 is set. One of "
+    "Mode, Median, MedianMarginGated, Average, Bayesian. See "
+    "RunLengthEstimator in msa1.hpp.")
+
+SHASTA2_OPTION_DEFINE(
+    string, msa1BayesianMatrixName, "--msa1-bayesian-matrix-name", "",
+    "Path to the P(observed length | true length, base, strand) matrix "
+    "file used by the msa1 Bayesian run-length estimator. Required if "
+    "--msa1-estimator Bayesian is used, ignored otherwise.")
+
+SHASTA2_OPTION_DEFINE(
     uint64_t, bubbleCleanupMaxBubbleLength, "--bubble-cleanup-max-bubble-length", 10000,
     "Maximum bubble length for bubble cleanup.")
 

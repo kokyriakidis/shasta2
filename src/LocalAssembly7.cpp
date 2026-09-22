@@ -6,6 +6,7 @@
 #include "findReachableVertices.hpp"
 #include "graphvizToHtml.hpp"
 #include "msa1.hpp"
+#include "Msa1BayesianModel.hpp"
 #include "poastaWrapper.hpp"
 #include "Reads.hpp"
 #include "theseusWrapper.hpp"
@@ -21,6 +22,7 @@ using namespace shasta2;
 #include <boost/uuid/uuid_io.hpp>
 
 // Standard library.
+#include "array.hpp"
 #include "chrono.hpp"
 #include <cmath>
 #include "fstream.hpp"
@@ -1296,14 +1298,18 @@ void LocalAssembly7::runAbpoaOrPoasta(bool usePoasta)
 
 
     // Abpoa and poasta don't support weights, so we have to enter each sequence
-    // a number of times equal to its coverage.
+    // a number of times equal to its coverage - once per contributing
+    // OrientedReadId, which (unlike a bare repeat-count loop) also gives us
+    // that read's strand for free, for RunLengthEstimator::Bayesian.
     vector< vector<Base> > msaSequences;
     vector< pair<uint64_t, uint64_t> > msaSequenceIdsWithWeight;
+    vector<Strand> msaStrands;
     for(const uint64_t sequenceId: sequenceIds) {
         const SequenceInfo& sequenceInfo = sequences[sequenceId];
-        for(uint64_t i=0; i<sequenceInfo.coverage(); i++) {
+        for(const OrientedReadId orientedReadId: sequenceInfo.orientedReadIds) {
             msaSequences.push_back(sequenceInfo.sequence);
             msaSequenceIdsWithWeight.push_back(make_pair(sequenceId, 1));
+            msaStrands.push_back(orientedReadId.getStrand());
         }
     }
     if(html) {
@@ -1335,7 +1341,8 @@ void LocalAssembly7::runAbpoaOrPoasta(bool usePoasta)
     const auto t2 = steady_clock::now();
     if(options.useMsa1) {
         const vector<uint64_t> weights(alignment.size(), 1);
-        repairedRegionCount = msa1(alignment, alignedConsensus, consensus, weights, {});
+        repairedRegionCount = msa1(alignment, alignedConsensus, consensus, weights, {},
+            buildMsa1Options(), msaStrands);
     }
     const auto t3 = steady_clock::now();
 
@@ -1417,33 +1424,62 @@ void LocalAssembly7::runTheseus(bool useAll)
 
 
     // Gather the sequences to be passed to theseus.
+    //
+    // Normally one row per distinct sequenceId, weighted by its coverage.
+    // SequenceInfo groups by sequence text only, never by strand, and
+    // strand-normalization (each sequence here is already in its own
+    // OrientedReadId's orientation) means two reads on opposite physical
+    // strands routinely produce identical text - so a group mixing strands
+    // is the common case, not a rare one. That is invisible to every
+    // estimator except RunLengthEstimator::Bayesian, which needs to know
+    // each vote's strand, so only when that estimator is in use (never
+    // otherwise, to leave every other estimator's row count and
+    // performance unchanged) a group is split into up to two same-text
+    // rows, one per strand actually present, each weighted by how many of
+    // the group's reads have that strand. Theseus aligns two rows with
+    // identical text identically either way, so this only changes which
+    // weight (and later, which strand) each row of votes carries, not the
+    // alignment itself.
+    const bool splitByStrand = options.useMsa1 and (options.estimator == RunLengthEstimator::Bayesian);
     uint64_t totalWeight = 0;
     vector< pair<uint64_t, uint64_t> > msaSequenceIdsWithWeight;
+    vector<Strand> msaStrands;
+    const auto gatherGroup = [&](
+        const vector<uint64_t>& sequenceIds,
+        vector< pair<vector<Base>, uint64_t> >& fixedSequences)
+    {
+        for(const uint64_t sequenceId: sequenceIds) {
+            const SequenceInfo& sequenceInfo = sequences[sequenceId];
+            if(splitByStrand) {
+                array<uint64_t, 2> weightByStrand = {0, 0};
+                for(const OrientedReadId orientedReadId: sequenceInfo.orientedReadIds) {
+                    weightByStrand[orientedReadId.getStrand()]++;
+                }
+                for(Strand strand=0; strand<2; strand++) {
+                    const uint64_t weight = weightByStrand[strand];
+                    if(weight == 0) {
+                        continue;
+                    }
+                    fixedSequences.push_back(make_pair(sequenceInfo.sequence, weight));
+                    msaSequenceIdsWithWeight.push_back(make_pair(sequenceId, weight));
+                    msaStrands.push_back(strand);
+                    totalWeight += weight;
+                }
+            } else {
+                const uint64_t coverage = sequenceInfo.coverage();
+                fixedSequences.push_back(make_pair(sequenceInfo.sequence, coverage));
+                msaSequenceIdsWithWeight.push_back(make_pair(sequenceId, coverage));
+                totalWeight += coverage;
+            }
+        }
+    };
     vector< pair<vector<Base>, uint64_t> > bothSidesFixedSequences;
-    for(const uint64_t sequenceId: bothSidesFixedSequenceIds) {
-        const SequenceInfo& sequenceInfo = sequences[sequenceId];
-        const uint64_t coverage = sequenceInfo.coverage();
-        bothSidesFixedSequences.push_back(make_pair(sequenceInfo.sequence, coverage));
-        msaSequenceIdsWithWeight.push_back(make_pair(sequenceId, coverage));
-        totalWeight += coverage;
-    }
+    gatherGroup(bothSidesFixedSequenceIds, bothSidesFixedSequences);
     vector< pair<vector<Base>, uint64_t> > leftFixedSequences;
     vector< pair<vector<Base>, uint64_t> > rightFixedSequences;
     if(useAll) {
-        for(const uint64_t sequenceId: leftFixedSequenceIds) {
-            const SequenceInfo& sequenceInfo = sequences[sequenceId];
-            const uint64_t coverage = sequenceInfo.coverage();
-            leftFixedSequences.push_back(make_pair(sequenceInfo.sequence, coverage));
-            msaSequenceIdsWithWeight.push_back(make_pair(sequenceId, coverage));
-            totalWeight += coverage;
-        }
-        for(const uint64_t sequenceId: rightFixedSequenceIds) {
-            const SequenceInfo& sequenceInfo = sequences[sequenceId];
-            const uint64_t coverage = sequenceInfo.coverage();
-            rightFixedSequences.push_back(make_pair(sequenceInfo.sequence, coverage));
-            msaSequenceIdsWithWeight.push_back(make_pair(sequenceId, coverage));
-            totalWeight += coverage;
-        }
+        gatherGroup(leftFixedSequenceIds, leftFixedSequences);
+        gatherGroup(rightFixedSequenceIds, rightFixedSequences);
     }
     if(html) {
         html << "<br>Total coverage for Theseus is " << totalWeight << ".";
@@ -1496,7 +1532,8 @@ void LocalAssembly7::runTheseus(bool useAll)
             weights.push_back(weight);
         }
 
-        repairedRegionCount = msa1(alignment, alignedConsensus, consensus, weights, anchoring);
+        repairedRegionCount = msa1(alignment, alignedConsensus, consensus, weights, anchoring,
+            buildMsa1Options(), msaStrands);
     }
     const auto t3 = steady_clock::now();
 
@@ -1574,6 +1611,43 @@ void LocalAssembly7::Options::setMethod(const string& s)
         method = Method::DeBruijn;
     } else {
         method = Method::Invalid;
+    }
+}
+
+
+
+// Unlike setMethod above, an unrecognized name throws rather than mapping
+// to a sentinel value: Method::Invalid is itself a usable, checked state
+// elsewhere in this class, but RunLengthEstimator has no such sentinel, and
+// silently substituting a default estimator for a typo'd command line
+// option would be a silent correctness change, not a safe fallback.
+Msa1Options LocalAssembly7::buildMsa1Options() const
+{
+    Msa1Options msa1Options;
+    msa1Options.estimator = options.estimator;
+    if(options.estimator == RunLengthEstimator::Bayesian) {
+        msa1Options.bayesianModel = &Msa1BayesianModel::instance(options.msa1BayesianMatrixName);
+    }
+    return msa1Options;
+}
+
+
+
+void LocalAssembly7::Options::setEstimator(const string& s)
+{
+    if(s == "Mode") {
+        estimator = RunLengthEstimator::Mode;
+    } else if(s == "Median") {
+        estimator = RunLengthEstimator::Median;
+    } else if(s == "MedianMarginGated") {
+        estimator = RunLengthEstimator::MedianMarginGated;
+    } else if(s == "Average") {
+        estimator = RunLengthEstimator::Average;
+    } else if(s == "Bayesian") {
+        estimator = RunLengthEstimator::Bayesian;
+    } else {
+        throw runtime_error("Invalid msa1 estimator \"" + s +
+            "\". Must be one of Mode, Median, MedianMarginGated, Average, Bayesian.");
     }
 }
 

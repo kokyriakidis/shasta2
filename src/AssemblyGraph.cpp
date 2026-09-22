@@ -830,6 +830,8 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
 
             LocalAssembly7::Options localAssembly7Options;
             localAssembly7Options.useMsa1 = options.useMsa1;
+            localAssembly7Options.setEstimator(options.msa1EstimatorName);
+            localAssembly7Options.msa1BayesianMatrixName = options.msa1BayesianMatrixName;
             LocalAssembly7 localAssembly(
                 localAssembly7Options,
                 anchors,

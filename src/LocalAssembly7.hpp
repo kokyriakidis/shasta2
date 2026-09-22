@@ -3,6 +3,7 @@
 // Shasta.
 #include "Base.hpp"
 #include "invalid.hpp"
+#include "msa1.hpp"
 #include "orderPairs.hpp"
 #include "ReadId.hpp"
 #include "shastaTypes.hpp"
@@ -54,6 +55,17 @@ public:
         // (Adaptive, Abpoa, Poasta, TheseusOnly, TheseusAll) can be repaired
         // or not. Mirrors the global Options::useMsa1 - see OptionsDefine.hpp.
         bool useMsa1 = false;
+
+        // Which RunLengthEstimator msa1 uses when useMsa1 is set. Mirrors
+        // the global Options::msa1EstimatorName - see OptionsDefine.hpp.
+        RunLengthEstimator estimator = RunLengthEstimator::MedianMarginGated;
+        void setEstimator(const string&);
+
+        // Path to the P(observed length | true length, base, strand)
+        // matrix file, required when estimator is
+        // RunLengthEstimator::Bayesian. Mirrors the global
+        // Options::msa1BayesianMatrixName - see OptionsDefine.hpp.
+        string msa1BayesianMatrixName;
 
         // If the number of oriented reads on both anchors is at least
         // equal to commonThreshold, the adaptive method uses one of:
@@ -265,6 +277,13 @@ private:
     void runAbpoa();
     void runPoasta();
     void runTheseus(bool useAll);
+
+    // The Msa1Options to pass to msa1(), built from options.estimator and,
+    // when that is RunLengthEstimator::Bayesian, from the matrix loaded via
+    // options.msa1BayesianMatrixName. Shared by runAbpoaOrPoasta and
+    // runTheseus so the two cannot drift on how a Bayesian model gets
+    // attached.
+    Msa1Options buildMsa1Options() const;
 
 
     // Functions and data to find the consensus using a De Bruijn graph

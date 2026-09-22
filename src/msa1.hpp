@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Base.hpp"
+#include "ReadId.hpp"
 #include "SHASTA2_ASSERT.hpp"
 
 #include "cstdint.hpp"
@@ -12,6 +13,12 @@ namespace shasta2 {
 
     class Base;
     class AlignedBase;
+
+    // The empirical P(m | n, base, strand) model used by
+    // RunLengthEstimator::Bayesian. Declared in Msa1BayesianModel.hpp;
+    // forward-declared here so Msa1Options can hold a pointer to one
+    // without msa1.hpp depending on that header.
+    class Msa1BayesianModel;
 
     // ExtendedBase is the 8 symbol alphabet itself: A, C, G, T and the four poly
     // symbols. AlignedExtendedBase is the same plus a gap, for use in an
@@ -152,7 +159,21 @@ namespace shasta2 {
         // round up). Unlike mode and median it uses every observed length,
         // so a few large deletions pull it down while occasional over-calls
         // pull it up.
-        Average
+        Average,
+
+        // Maximum a posteriori estimate under an empirical error model
+        // P(observed length m | true length n, base, strand), built outside
+        // shasta2 from reads mapped to a truth reference (see
+        // Msa1BayesianModel.hpp) and supplied via Msa1Options::bayesianModel.
+        // Unlike the other four, which are order statistics of the observed
+        // lengths, this combines each row's observed length AND the strand
+        // it came from (OrientedReadId's own strand bit) into a posterior
+        // over n, weighted by a prior over n. It requires strand-tagged
+        // rows - the strands argument of extendedConsensus()/msa1() - and a
+        // non-null Msa1Options::bayesianModel; using it without either is a
+        // programming error and asserts rather than silently falling back
+        // to another estimator.
+        Bayesian
     };
 
 
@@ -206,7 +227,18 @@ namespace shasta2 {
 
         // The aligned consensus: one symbol per column, with its voted run
         // length. A gap column has a gap with length 0.
-        AlignedExtendedSequence& alignedConsensus);
+        AlignedExtendedSequence& alignedConsensus,
+
+        // The OrientedReadId strand (0 or 1) each row came from, same order
+        // as weights. Only consulted when estimator is Bayesian - every
+        // other estimator ignores it, so it defaults to empty for them.
+        // Must be the same length as alignment when estimator is Bayesian.
+        const vector<Strand>& strands = vector<Strand>(),
+
+        // The model estimator == Bayesian evaluates each row against.
+        // Ignored by every other estimator. Must be non-null when estimator
+        // is Bayesian - see RunLengthEstimator::Bayesian.
+        const Msa1BayesianModel* bayesianModel = nullptr);
 
     // As above, but with the span of each row inferred as the columns between
     // its first and last non-gap symbol. Use this only when the anchoring is not
@@ -216,7 +248,9 @@ namespace shasta2 {
         const vector<uint64_t>& weights,
         RunLengthEstimator estimator,
         vector< pair<Base, uint64_t> >& consensus,
-        AlignedExtendedSequence& alignedConsensus);
+        AlignedExtendedSequence& alignedConsensus,
+        const vector<Strand>& strands = vector<Strand>(),
+        const Msa1BayesianModel* bayesianModel = nullptr);
 
 
     // Which ends of a sequence are anchored. This determines which end theseus
@@ -469,6 +503,14 @@ namespace shasta2 {
         // How the consensus length of a long homopolymer run is chosen.
         RunLengthEstimator estimator = RunLengthEstimator::MedianMarginGated;
 
+        // The model estimator == Bayesian evaluates rows against. Ignored
+        // unless estimator is Bayesian, in which case it must be non-null -
+        // see RunLengthEstimator::Bayesian. Not owned: the caller is
+        // responsible for the model outliving this Msa1Options, which is
+        // always true of a caller using Msa1BayesianModel::instance(), the
+        // normal way to obtain one (see Msa1BayesianModel.hpp).
+        const Msa1BayesianModel* bayesianModel = nullptr;
+
         // Columns of context included on each side of a bad region.
         uint64_t flank = 10;
 
@@ -523,12 +565,19 @@ namespace shasta2 {
         const vector<Anchoring>& anchoring = vector<Anchoring>(),
 
         // How the repair is tuned. The defaults are the measured values.
-        const Msa1Options& options = Msa1Options());
+        const Msa1Options& options = Msa1Options(),
+
+        // The OrientedReadId strand (0 or 1) each row came from, same order
+        // and length as weights (or, if weights is empty, as alignment).
+        // Only consulted when options.estimator is Bayesian; empty is only
+        // legal otherwise. See RunLengthEstimator::Bayesian.
+        const vector<Strand>& strands = vector<Strand>());
 
 
     void testMsa1ExtendedBase();
     void testMsa1Consensus();
     void testMsa1Repair();
+    void testMsa1BayesianEstimator();
 }
 
 

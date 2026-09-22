@@ -1,6 +1,7 @@
 // Shasta2.
 #include "msa1.hpp"
 #include "invalid.hpp"
+#include "Msa1BayesianModel.hpp"
 #include "SHASTA2_ASSERT.hpp"
 using namespace shasta2;
 
@@ -14,7 +15,10 @@ using namespace shasta2;
 // Standard library.
 #include "algorithm.hpp"
 #include "iostream.hpp"
+#include "tuple.hpp"
 #include <boost/tokenizer.hpp>
+#include <cmath>
+#include <limits>
 #include <sstream>
 
 
@@ -344,7 +348,9 @@ void shasta2::extendedConsensus(
     const vector<uint64_t>& weights,
     RunLengthEstimator estimator,
     vector< pair<Base, uint64_t> >& consensus,
-    AlignedExtendedSequence& alignedConsensus)
+    AlignedExtendedSequence& alignedConsensus,
+    const vector<Strand>& strands,
+    const Msa1BayesianModel* bayesianModel)
 {
     // The span of each row is the columns between its first and last non-gap
     // symbol. Everything outside that is read as padding.
@@ -355,7 +361,7 @@ void shasta2::extendedConsensus(
     }
 
     extendedConsensus(alignment, weights, estimator, spans,
-        consensus, alignedConsensus);
+        consensus, alignedConsensus, strands, bayesianModel);
 }
 
 
@@ -366,7 +372,9 @@ void shasta2::extendedConsensus(
     RunLengthEstimator estimator,
     const vector< pair<uint64_t, uint64_t> >& spans,
     vector< pair<Base, uint64_t> >& consensus,
-    AlignedExtendedSequence& alignedConsensus)
+    AlignedExtendedSequence& alignedConsensus,
+    const vector<Strand>& strands,
+    const Msa1BayesianModel* bayesianModel)
 {
     consensus.clear();
     alignedConsensus.clear();
@@ -377,6 +385,10 @@ void shasta2::extendedConsensus(
     }
     SHASTA2_ASSERT(weights.size() == n);
     SHASTA2_ASSERT(spans.size() == n);
+    if(estimator == RunLengthEstimator::Bayesian) {
+        SHASTA2_ASSERT(strands.size() == n);
+        SHASTA2_ASSERT(bayesianModel != nullptr);
+    }
 
     const uint64_t alignmentLength = alignment.front().size();
     for(uint64_t i=0; i<n; i++) {
@@ -396,6 +408,14 @@ void shasta2::extendedConsensus(
 
     // Scratch, reused by the run length vote at every poly column.
     vector<uint64_t> lengthWeight;
+
+    // Scratch for RunLengthEstimator::Bayesian only: the (length, weight,
+    // strand) of each covering row sharing the consensus symbol at the
+    // current column. Unlike lengthWeight, this cannot be a plain
+    // length-indexed histogram, because collapsing rows with the same
+    // length into one bucket would also collapse their strands, and strand
+    // is exactly what the Bayesian likelihood conditions on.
+    vector< tuple<uint64_t, uint64_t, Strand> > observations;
 
     // Loop over alignment columns.
     for(uint64_t j=0; j<alignmentLength; j++) {
@@ -450,62 +470,105 @@ void shasta2::extendedConsensus(
             // same reason they may not vote on the symbol.
             uint64_t maxObserved = 0;
             uint64_t totalWeight = 0;
+            observations.clear();
             for(uint64_t i=0; i<n; i++) {
                 if((j < spans[i].first) or (j >= spans[i].second)) {
                     continue;
                 }
                 if(alignment[i][j].first == consensusSymbol) {
-                    maxObserved = max(maxObserved, alignment[i][j].second);
+                    const uint64_t length = alignment[i][j].second;
+                    maxObserved = max(maxObserved, length);
                     totalWeight += weights[i];
+                    if(estimator == RunLengthEstimator::Bayesian) {
+                        observations.push_back(make_tuple(length, weights[i], strands[i]));
+                    }
                 }
             }
             SHASTA2_ASSERT(totalWeight > 0);
 
-            lengthWeight.assign(maxObserved + 1, 0);
-            for(uint64_t i=0; i<n; i++) {
-                if((j < spans[i].first) or (j >= spans[i].second)) {
-                    continue;
+            if(estimator == RunLengthEstimator::Bayesian) {
+
+                // Maximum a posteriori estimate: for every true length the
+                // model has an opinion about (not just lengths actually
+                // observed here - see Msa1BayesianModel::maxN, a real
+                // posterior can legitimately prefer a length no single row
+                // reported), sum each observation's weighted
+                // log-likelihood and add the model's prior once. This is
+                // log P(n) + sum_i weight_i * log P(m_i | n, base, strand_i),
+                // the statistically correct way to combine independent
+                // per-read evidence under one shared prior - see
+                // RunLengthEstimator::Bayesian.
+                const Base base = consensusSymbol.base();
+                double bestLogPosterior = -std::numeric_limits<double>::infinity();
+                uint64_t bestN = 1;
+                for(uint64_t candidateN=1; candidateN<=bayesianModel->maxN(); candidateN++) {
+                    double logPosterior = bayesianModel->logPrior(candidateN);
+                    for(const auto& [length, weight, strand]: observations) {
+                        logPosterior += double(weight) *
+                            bayesianModel->logLikelihood(base, strand, candidateN, length);
+                    }
+                    // Ties go to the shorter length, matching Mode's
+                    // tie-breaking convention: strict > scanning candidateN
+                    // in increasing order keeps the first (smallest) tie.
+                    if(logPosterior > bestLogPosterior) {
+                        bestLogPosterior = logPosterior;
+                        bestN = candidateN;
+                    }
                 }
-                if(alignment[i][j].first == consensusSymbol) {
-                    lengthWeight[alignment[i][j].second] += weights[i];
-                }
-            }
-
-            // One shared pass computes mode, median and mean together; the
-            // estimator just picks which of them (or which simple function of
-            // them) to use.
-            const Msa1LengthVote vote(lengthWeight, maxObserved, totalWeight);
-
-            switch(estimator) {
-
-            case RunLengthEstimator::Mode:
-                consensusRunLength = vote.modeLength;
-                coverage = vote.modeWeight;
-                break;
-
-            case RunLengthEstimator::Median:
-                consensusRunLength = vote.medianLength;
-                coverage = vote.weightAtMedian;
-                break;
-
-            case RunLengthEstimator::MedianMarginGated:
-                // Nudge the median up by one only when its cumulative support
-                // is not comfortably (>=60%) above 50% - a near-tie between
-                // "at least this long" and "shorter" - capped at maxObserved:
-                // never invent a length longer than what some row actually
-                // reports. See the comment on this estimator in the header.
-                consensusRunLength = (10 * vote.cumulativeAtMedian >= 6 * totalWeight) ?
-                    vote.medianLength : min(vote.medianLength + 1, maxObserved);
-                coverage = vote.weightAtMedian;
-                break;
-
-            case RunLengthEstimator::Average:
-                // The weighted mean. Every observed length contributes, so
-                // this uses the whole distribution rather than a single
-                // order statistic.
-                consensusRunLength = vote.meanLength;
+                consensusRunLength = bestN;
                 coverage = totalWeight;
-                break;
+
+            } else {
+                lengthWeight.assign(maxObserved + 1, 0);
+                for(uint64_t i=0; i<n; i++) {
+                    if((j < spans[i].first) or (j >= spans[i].second)) {
+                        continue;
+                    }
+                    if(alignment[i][j].first == consensusSymbol) {
+                        lengthWeight[alignment[i][j].second] += weights[i];
+                    }
+                }
+
+                // One shared pass computes mode, median and mean together; the
+                // estimator just picks which of them (or which simple function of
+                // them) to use.
+                const Msa1LengthVote vote(lengthWeight, maxObserved, totalWeight);
+
+                switch(estimator) {
+
+                case RunLengthEstimator::Mode:
+                    consensusRunLength = vote.modeLength;
+                    coverage = vote.modeWeight;
+                    break;
+
+                case RunLengthEstimator::Median:
+                    consensusRunLength = vote.medianLength;
+                    coverage = vote.weightAtMedian;
+                    break;
+
+                case RunLengthEstimator::MedianMarginGated:
+                    // Nudge the median up by one only when its cumulative support
+                    // is not comfortably (>=60%) above 50% - a near-tie between
+                    // "at least this long" and "shorter" - capped at maxObserved:
+                    // never invent a length longer than what some row actually
+                    // reports. See the comment on this estimator in the header.
+                    consensusRunLength = (10 * vote.cumulativeAtMedian >= 6 * totalWeight) ?
+                        vote.medianLength : min(vote.medianLength + 1, maxObserved);
+                    coverage = vote.weightAtMedian;
+                    break;
+
+                case RunLengthEstimator::Average:
+                    // The weighted mean. Every observed length contributes, so
+                    // this uses the whole distribution rather than a single
+                    // order statistic.
+                    consensusRunLength = vote.meanLength;
+                    coverage = totalWeight;
+                    break;
+
+                case RunLengthEstimator::Bayesian:
+                    SHASTA2_ASSERT(0);   // Handled above; unreachable.
+                    break;
+                }
             }
             SHASTA2_ASSERT(consensusRunLength > 0);
         }
@@ -1109,7 +1172,12 @@ namespace shasta2 {
         RunLengthEstimator estimator,
         vector< vector<AlignedBase> >& newRows,
         vector<AlignedBase>& newAlignedConsensus,
-        vector< pair<Base, uint64_t> >& newConsensus)
+        vector< pair<Base, uint64_t> >& newConsensus,
+
+        // Same length and row order as weights. Only consulted when
+        // estimator is Bayesian - see RunLengthEstimator::Bayesian.
+        const vector<Strand>& strands,
+        const Msa1BayesianModel* bayesianModel)
     {
         const uint64_t n = alignment.size();
 
@@ -1394,7 +1462,7 @@ namespace shasta2 {
         // Vote, then expand.
         AlignedExtendedSequence alignedExtendedConsensus;
         extendedConsensus(extendedAlignment, weights, estimator, spans,
-            newConsensus, alignedExtendedConsensus);
+            newConsensus, alignedExtendedConsensus, strands, bayesianModel);
         expandExtendedAlignment(extendedAlignment, alignedExtendedConsensus,
             newRows, newAlignedConsensus);
 
@@ -1424,9 +1492,10 @@ uint64_t shasta2::msa1(
     vector< pair<Base, uint64_t> >& consensus,
     const vector<uint64_t>& weights,
     const vector<Anchoring>& anchoring,
-    const Msa1Options& options)
+    const Msa1Options& options,
+    const vector<Strand>& strands)
 {
-    const auto& [trigger, threshold, encodeThreshold, estimator, flank, mergeDistance] =
+    const auto& [trigger, threshold, encodeThreshold, estimator, bayesianModel, flank, mergeDistance] =
         options;
     const uint64_t n = alignment.size();
     if(n == 0) {
@@ -1444,6 +1513,15 @@ uint64_t shasta2::msa1(
     }
     const vector<uint64_t>& rowWeights = weights.empty() ? unitWeights : weights;
     SHASTA2_ASSERT(rowWeights.size() == n);
+
+    // strands is only meaningful for RunLengthEstimator::Bayesian - see
+    // msa1.hpp. Asserting the requirement here, once, means every function
+    // this calls into can simply trust strands.size() == n whenever it
+    // matters instead of re-checking.
+    if(estimator == RunLengthEstimator::Bayesian) {
+        SHASTA2_ASSERT(strands.size() == n);
+        SHASTA2_ASSERT(bayesianModel != nullptr);
+    }
 
     // The columns each row covers. An empty anchoring argument means every row
     // is fixed on both sides and so covers the whole alignment, which is what
@@ -1484,7 +1562,7 @@ uint64_t shasta2::msa1(
         vector<AlignedBase> newAlignedConsensus;
         vector< pair<Base, uint64_t> > newConsensus;
         if(not msa1RepairRegion(alignment, region, rowWeights, coverage, encodeThreshold,
-            estimator, newRows, newAlignedConsensus, newConsensus)) {
+            estimator, newRows, newAlignedConsensus, newConsensus, strands, bayesianModel)) {
             continue;
         }
         SHASTA2_ASSERT(newRows.size() == n);
@@ -2526,6 +2604,218 @@ void shasta2::testMsa1Consensus()
 
     cout << "testMsa1Consensus passed." << endl;
 }
+
+
+
+// Test RunLengthEstimator::Bayesian, in isolation from the rest of the
+// repair pipeline: a hand-built Msa1BayesianModel with a known-by-hand
+// posterior, and a minimal one-column extendedConsensus call around it.
+void shasta2::testMsa1BayesianEstimator()
+{
+    // A tiny model: n and m each range over 0..5 (nBins = mBins = 6). Only
+    // base A is populated - the other three bases are left all zero, which
+    // Laplace smoothing turns into a uniform distribution per row; the test
+    // never queries them, so this is just "don't care", not "zero".
+    //
+    // Deliberately asymmetric between strands, which is the whole point of
+    // the estimator: strand 0's peak for a given n sits at m == n (no
+    // systematic error), while strand 1's peak sits at m == n - 1 (a
+    // systematic one-base under-call). Both n=2 and n=3 get an equally
+    // strong (count 100) peak on both strands, so the prior comes out equal
+    // for the two and every comparison below is decided by the likelihood
+    // terms alone, not by an accidental prior imbalance.
+    const uint64_t nBins = 6;
+    const uint64_t mBins = 6;
+    vector<uint64_t> counts(4 * 2 * nBins * mBins, 0);
+    const auto index = [&](uint64_t base, uint64_t strand, uint64_t n, uint64_t m) {
+        return (((base * 2) + strand) * nBins + n) * mBins + m;
+    };
+    const uint64_t baseA = Base::fromCharacter('A').value;
+    counts[index(baseA, 0, 3, 3)] = 100;   // strand 0, true 3: peaks at m=3.
+    counts[index(baseA, 0, 2, 2)] = 100;   // strand 0, true 2: peaks at m=2.
+    counts[index(baseA, 1, 3, 2)] = 100;   // strand 1, true 3: peaks at m=2 (under-call).
+    counts[index(baseA, 1, 2, 1)] = 100;   // strand 1, true 2: peaks at m=1 (under-call).
+    const Msa1BayesianModel model(nBins, mBins, counts);
+
+    // Direct check of the model itself, independent of extendedConsensus:
+    // the strand-0 and strand-1 likelihoods for what was built as each
+    // other's "peak" observation should be close to equal and both close
+    // to the smoothed-peak probability (101/106), while the same base's
+    // off-peak observations should be far smaller.
+    {
+        const double onPeakStrand0 = model.logLikelihood(Base::fromCharacter('A'), 0, 3, 3);
+        const double onPeakStrand1 = model.logLikelihood(Base::fromCharacter('A'), 1, 3, 2);
+        const double offPeakStrand0 = model.logLikelihood(Base::fromCharacter('A'), 0, 3, 2);
+        cout << "Bayesian model sanity: on-peak log-likelihoods " << onPeakStrand0 <<
+            ", " << onPeakStrand1 << "; off-peak " << offPeakStrand0 << "." << endl;
+        SHASTA2_ASSERT(std::abs(onPeakStrand0 - onPeakStrand1) < 0.01);
+        SHASTA2_ASSERT(onPeakStrand0 > offPeakStrand0 + 3.);
+    }
+
+    // A helper that builds a one-column, poly-A alignment from
+    // (observed length, weight, strand) triples and returns the run length
+    // extendedConsensus assigns it under RunLengthEstimator::Bayesian.
+    const auto bayesianConsensusLength = [&](
+        const vector< tuple<uint64_t, uint64_t, Strand> >& observations)
+    {
+        vector<AlignedExtendedSequence> alignment;
+        vector<uint64_t> weights;
+        vector<Strand> strands;
+        for(const auto& [length, weight, strand]: observations) {
+            alignment.push_back(AlignedExtendedSequence(1,
+                make_pair(AlignedExtendedBase(ExtendedBase::polyFromBase(Base::fromCharacter('A'))),
+                    length)));
+            weights.push_back(weight);
+            strands.push_back(strand);
+        }
+        vector< pair<Base, uint64_t> > consensus;
+        AlignedExtendedSequence alignedConsensus;
+        extendedConsensus(alignment, weights, RunLengthEstimator::Bayesian,
+            consensus, alignedConsensus, strands, &model);
+        SHASTA2_ASSERT(alignedConsensus.size() == 1);
+        return alignedConsensus.front().second;
+    };
+
+    // Case (a)/(b): one strand-0 row observing m=3 (strongly supporting
+    // n=3 on strand 0) and one strand-1 row observing m=2 (strongly
+    // supporting n=3 on strand 1, since strand 1 under-calls by one - but
+    // strongly supporting n=2 if strand were, incorrectly, ignored and
+    // both rows scored under strand 0's model instead). The two rows agree
+    // on n=3 only when each is scored under its own strand's likelihood,
+    // so this fails if strands[i] is not actually being consulted per row.
+    {
+        const uint64_t n = bayesianConsensusLength({
+            make_tuple(3UL, 5UL, Strand(0)),
+            make_tuple(2UL, 5UL, Strand(1))});
+        cout << "Bayesian estimate with per-row strand: " << n << "." << endl;
+        SHASTA2_ASSERT(n == 3);
+    }
+
+    // Case (c): weight acts as a repeat count. One row with weight 5 must
+    // give the same answer as five rows each with weight 1, all reporting
+    // the same (length, strand).
+    {
+        const uint64_t nSingleRow = bayesianConsensusLength({
+            make_tuple(3UL, 5UL, Strand(0))});
+        vector< tuple<uint64_t, uint64_t, Strand> > repeated;
+        for(uint64_t i=0; i<5; i++) {
+            repeated.push_back(make_tuple(3UL, 1UL, Strand(0)));
+        }
+        const uint64_t nRepeatedRows = bayesianConsensusLength(repeated);
+        cout << "Bayesian estimate: weight 5 on one row gives " << nSingleRow <<
+            ", five rows of weight 1 give " << nRepeatedRows << "." << endl;
+        SHASTA2_ASSERT(nSingleRow == 3);
+        SHASTA2_ASSERT(nRepeatedRows == nSingleRow);
+    }
+
+    // The tests above exercise extendedConsensus() directly, in isolation
+    // from the rest of the repair pipeline. This exercises the same
+    // estimator through the full msa1() entry point instead - trigger
+    // detection, theseus realignment in symbol space, msa1RepairRegion's
+    // own strand/model threading - on the same real 19-read locus
+    // testMsa1Repair() uses, whose two true homopolymer run lengths (12
+    // and 11) are known by direct inspection of the input, not inferred
+    // from any estimator. A diffuse, symmetric-around-truth synthetic
+    // model (not the asymmetric one above - this test is about the
+    // pipeline wiring, not about strand-specific behavior, so every row is
+    // given strand 0) should recover something close to both.
+    {
+        const Msa1Trigger trigger = Msa1Trigger::PatternOnly;
+        const uint64_t threshold = defaultHomopolymerThreshold;
+
+        vector< vector<AlignedBase> > alignment;
+        vector<string> reads;
+        for(const string& row: msa1BadAlignmentRows) {
+            alignment.push_back(vectorOfAlignedBasesFromString(row));
+            string ungapped;
+            for(const char c: row) {
+                if(c != '-') {
+                    ungapped.push_back(c);
+                }
+            }
+            reads.push_back(ungapped);
+        }
+        const vector<uint64_t> weights(alignment.size(), 1);
+        const vector<Strand> strands(alignment.size(), 0);
+
+        const uint64_t wideNBins = 20;
+        const uint64_t wideMBins = 20;
+        vector<uint64_t> wideCounts(4 * 2 * wideNBins * wideMBins, 0);
+        const auto wideIndex = [&](uint64_t base, uint64_t strand, uint64_t n, uint64_t m) {
+            return (((base * 2) + strand) * wideNBins + n) * wideMBins + m;
+        };
+        for(uint64_t base=0; base<4; base++) {
+            for(uint64_t strand=0; strand<2; strand++) {
+                for(uint64_t n=1; n<wideNBins; n++) {
+                    for(const auto& [dm, w]: {
+                        make_pair(-2L, 1UL), make_pair(-1L, 3UL), make_pair(0L, 10UL),
+                        make_pair(1L, 3UL), make_pair(2L, 1UL)}) {
+                        const int64_t mSigned = int64_t(n) + dm;
+                        if((mSigned < 0) or (mSigned >= int64_t(wideMBins))) {
+                            continue;
+                        }
+                        wideCounts[wideIndex(base, strand, n, uint64_t(mSigned))] += w;
+                    }
+                }
+            }
+        }
+        const Msa1BayesianModel wideModel(wideNBins, wideMBins, wideCounts);
+
+        Msa1Options options = msa1TestOptions(trigger);
+        options.estimator = RunLengthEstimator::Bayesian;
+        options.bayesianModel = &wideModel;
+
+        vector<AlignedBase> alignedConsensus;
+        vector< pair<Base, uint64_t> > consensus;
+        msa1ColumnConsensus(alignment, weights, alignedConsensus, consensus);
+
+        const uint64_t repaired = msa1(alignment, alignedConsensus, consensus, weights, {},
+            options, strands);
+        cout << "Bayesian repair (full msa1() pipeline) repaired " << repaired << " region(s)." << endl;
+        SHASTA2_ASSERT(repaired > 0);
+        SHASTA2_ASSERT(msa1ImpureColumnCount(alignment) == 0);
+        for(uint64_t i=0; i<alignment.size(); i++) {
+            SHASTA2_ASSERT(msa1Ungap(alignment[i]) == reads[i]);
+        }
+
+        // The consensus should hold two runs of A close to the known true
+        // lengths (12 and 11, each appearing twice - the fixture is the
+        // same 91-base pattern repeated). Extracted by scanning consensus
+        // for maximal runs of 'A', rather than asserting exact equality:
+        // this is a plumbing test, not a re-check of the estimator's exact
+        // numeric behavior (already covered above), so it only needs to
+        // confirm the answer is plausible, not identical to any one
+        // estimator's specific answer.
+        const string s = msa1ToString(consensus);
+        vector<uint64_t> aRunLengths;
+        for(uint64_t i=0; i<s.size(); ) {
+            if(s[i] != 'A') {
+                ++i;
+                continue;
+            }
+            uint64_t j = i;
+            while((j < s.size()) and (s[j] == 'A')) {
+                ++j;
+            }
+            if((j - i) > threshold) {
+                aRunLengths.push_back(j - i);
+            }
+            i = j;
+        }
+        cout << "Long A runs in the Bayesian consensus: ";
+        for(const uint64_t length: aRunLengths) {
+            cout << length << " ";
+        }
+        cout << endl;
+        SHASTA2_ASSERT(aRunLengths.size() == 4);
+        for(const uint64_t length: aRunLengths) {
+            SHASTA2_ASSERT((length >= 9) and (length <= 14));
+        }
+    }
+
+    cout << "testMsa1BayesianEstimator passed." << endl;
+}
+
 
 
 // Test the local repair.

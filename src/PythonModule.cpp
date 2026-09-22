@@ -317,6 +317,9 @@ PYBIND11_MODULE(shasta2, shasta2Module)
     shasta2Module.def("testMsa1Repair",
         testMsa1Repair
         );
+    shasta2Module.def("testMsa1BayesianEstimator",
+        testMsa1BayesianEstimator
+        );
 }
 
 #endif
