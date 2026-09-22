@@ -14,12 +14,13 @@ using namespace shasta2;
 
 
 
-string Assembler::getOrientedReadSequenceString(const string& orientedReadIdString) const
-{
-    const OrientedReadId orientedReadId(orientedReadIdString);
-    const vector<Base> sequence = anchors().reads.getOrientedReadSequence(orientedReadId);
-    return toString(sequence);
-}
+// getOrientedReadSequenceString is declared in Assembler.hpp alongside the
+// rest of this file's functions but defined in AssemblerReads.cpp - it
+// does not need accessAnchors() first (unlike the rest of this file),
+// since it only touches reads(), which is available immediately after
+// construction. Kept in AssemblerReads.cpp so tools that need only read
+// sequences (e.g. the shasta2-homopolymer-model repository) are not
+// implicitly coupled to this file's anchor-based helpers.
 
 
 

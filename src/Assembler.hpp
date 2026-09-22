@@ -117,8 +117,6 @@ public:
         return *readsPointer;
     }
     void computeReadIdsSortedByName();
-    uint64_t getReadCount() const;
-    string getOrientedReadSequenceString(const string& orientedReadIdString) const;
     void addReads(
         const vector<string>& fileNames,
         uint64_t minReadLength,
@@ -245,7 +243,14 @@ public:
 
 
     // Support for the msa1 hard-region evaluation harness (scripts/FindMsa1HardRegions.py,
-    // scripts/EvaluateMsa1AgainstTruth.py). See src/AssemblerMsa1Eval.cpp.
+    // scripts/EvaluateMsa1AgainstTruth.py) and for tools outside shasta2 (e.g. the
+    // shasta2-homopolymer-model repository) that only need read sequences, not the
+    // anchor/marker structure. See src/AssemblerMsa1Eval.cpp and src/AssemblerReads.cpp.
+
+    // The number of reads. Available immediately after construction - reads
+    // are accessed unconditionally in the constructor, unlike
+    // anchors/journeys/markers, which each need their own access call first.
+    uint64_t getReadCount() const;
 
     // Return the full base sequence of an oriented read, given as a string
     // of the form "readId-strand" (see OrientedReadId's string constructor).

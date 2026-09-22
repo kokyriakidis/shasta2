@@ -162,10 +162,8 @@ PYBIND11_MODULE(shasta2, shasta2Module)
       .def("getAssemblyGraph",
           &Assembler::getAssemblyGraph, return_value_policy::reference)
 
-      // Support for the msa1 hard-region evaluation harness.
-      .def("getOrientedReadSequenceString",
-          &Assembler::getOrientedReadSequenceString,
-          arg("orientedReadIdString"))
+      // Support for the msa1 hard-region evaluation harness. (getOrientedReadSequenceString
+      // is bound above, next to getReadCount - it isn't harness-specific, see Assembler.hpp.)
       .def("anchorContainsOrientedRead",
           &Assembler::anchorContainsOrientedRead,
           arg("anchorId"),
