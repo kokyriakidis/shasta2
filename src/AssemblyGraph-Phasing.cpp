@@ -238,6 +238,8 @@ void AssemblyGraph::strandSymmetricPhaseSuperbubbleChains(const string& debugOut
     data.superbubbleChainPairs.clear();
     data.superbubbleChainPairs.shrink_to_fit();
 
+    // The phasing process can introduce zero length segments. Remove them.
+    removeZeroLengthSegmentsStrandSymmetric();
 
     performanceLog << timestamp << "AssemblyGraph::strandSymmetricPhaseSuperbubbleChains ends." << endl;
 }
