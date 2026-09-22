@@ -12,6 +12,7 @@
 // Standard library.
 #include "memory.hpp"
 #include "string.hpp"
+#include "tuple.hpp"
 #include "utility.hpp"
 
 namespace shasta2 {
@@ -240,6 +241,42 @@ public:
 
     // AssemblyGraph.
     void createAssemblyGraph(const Options&, bool removeAnchorGraph);
+
+
+
+    // Support for the msa1 hard-region evaluation harness (scripts/FindMsa1HardRegions.py,
+    // scripts/EvaluateMsa1AgainstTruth.py). See src/AssemblerMsa1Eval.cpp.
+
+    // Return the full base sequence of an oriented read, given as a string
+    // of the form "readId-strand" (see OrientedReadId's string constructor).
+    string getOrientedReadSequenceString(const string& orientedReadIdString) const;
+
+    // Return true if the given oriented read appears in the given anchor.
+    // Check this before calling getAnchorPositionInOrientedRead, which asserts
+    // (does not throw) if the oriented read is not in the anchor - this matters
+    // because AssemblyGraph::getAssemblyGraphSteps returns, for each step, some
+    // oriented reads borrowed from the previous/next step that are not
+    // guaranteed to appear in this step's anchorIdA/anchorIdB.
+    bool anchorContainsOrientedRead(
+        AnchorId,
+        const string& orientedReadIdString) const;
+
+    // Return the position, in the given oriented read, of the marker midpoint
+    // of the given anchor. Asserts if the oriented read does not appear in the anchor.
+    uint32_t getAnchorPositionInOrientedRead(
+        AnchorId,
+        const string& orientedReadIdString) const;
+
+    // Run LocalAssembly7 twice for the same (anchorIdA, anchorIdB, orientedReadIds),
+    // both with Method::Adaptive, once with Options::useMsa1 false and once true,
+    // and return (successNoRepair, consensusNoRepair, successWithRepair,
+    // consensusWithRepair). The two runs share the same aligner choice and differ
+    // only by the repair, so a difference between the two consensus strings means
+    // the repair changed something for this region - not a different aligner.
+    std::tuple<bool, string, bool, string> runLocalAssemblyWithAndWithoutMsa1Repair(
+        AnchorId anchorIdA,
+        AnchorId anchorIdB,
+        const vector<string>& orientedReadIdStrings) const;
 
 
 

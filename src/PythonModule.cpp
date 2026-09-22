@@ -161,6 +161,24 @@ PYBIND11_MODULE(shasta2, shasta2Module)
           &Assembler::createAssemblyGraph)
       .def("getAssemblyGraph",
           &Assembler::getAssemblyGraph, return_value_policy::reference)
+
+      // Support for the msa1 hard-region evaluation harness.
+      .def("getOrientedReadSequenceString",
+          &Assembler::getOrientedReadSequenceString,
+          arg("orientedReadIdString"))
+      .def("anchorContainsOrientedRead",
+          &Assembler::anchorContainsOrientedRead,
+          arg("anchorId"),
+          arg("orientedReadIdString"))
+      .def("getAnchorPositionInOrientedRead",
+          &Assembler::getAnchorPositionInOrientedRead,
+          arg("anchorId"),
+          arg("orientedReadIdString"))
+      .def("runLocalAssemblyWithAndWithoutMsa1Repair",
+          &Assembler::runLocalAssemblyWithAndWithoutMsa1Repair,
+          arg("anchorIdA"),
+          arg("anchorIdB"),
+          arg("orientedReadIdStrings"))
     ;
 
 
@@ -192,6 +210,8 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         .def("assembleAll", &AssemblyGraph::assembleAll)
         .def("assembleAllStrandSymmetric", &AssemblyGraph::assembleAllStrandSymmetric)
         .def("clearSequence", &AssemblyGraph::clearSequence)
+        .def("getAssemblyGraphSteps", &AssemblyGraph::getAssemblyGraphSteps)
+        .def("findMsa1CandidateRegions", &AssemblyGraph::findMsa1CandidateRegions)
         .def("phaseSuperbubbleChains", &AssemblyGraph::phaseSuperbubbleChains)
         .def("strandSymmetricPhaseSuperbubbleChains", &AssemblyGraph::strandSymmetricPhaseSuperbubbleChains)
         .def("colorStrongComponents", &AssemblyGraph::colorStrongComponents)
@@ -214,6 +234,11 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         assemblyGraphVertexDescriptorClass(assemblyGraphClass, "AssemblyGraphVertexDescriptor");
     class_<AssemblyGraph::edge_descriptor>
         assemblyGraphEdgeDescriptorClass(assemblyGraphClass, "AssemblyGraphEdgeDescriptor");
+
+    // For the msa1 evaluation harness (scripts/EvaluateMsa1AgainstTruth.py).
+    // Not a method of anything - see AssemblyGraph.hpp for comments.
+    shasta2Module.def("editDistance", &editDistance,
+        arg("a"), arg("b"), arg("cap") = 4'000'000ULL);
 
     class_<AssemblyGraphPostprocessor>(shasta2Module, "AssemblyGraphPostprocessor",
         pybind11::base<AssemblyGraph>())
