@@ -424,6 +424,7 @@ uint64_t AssemblyGraph::bubblePairCleanup()
         modifiedCount += modifiedCountThisIteration;
     }
 
+    clearSequence();
     return modifiedCount;
 }
 
