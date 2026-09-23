@@ -3,6 +3,7 @@
 #include "AnchorGraph.hpp"
 #include "AssemblyGraph.hpp"
 #include "deduplicate.hpp"
+#include "HomopolymerModel.hpp"
 #include "Journeys.hpp"
 #include "KmerCheckerFactory.hpp"
 #include "Markers.hpp"
@@ -75,6 +76,9 @@ void Assembler::assemble(
 {
     cout << "Number of threads: " << options.threadCount << endl;
 
+    // Create the HomopolymerModel.
+    createHomopolymerModel(options);
+
     // Load the reads.
     addReads(
         inputFileNames,
@@ -146,6 +150,30 @@ void Assembler::assemble(
 }
 
 
+
+
+
+// Create the HomopolymerModel from the file named by --homopolymer-model.
+// - If the file name is empty, the pointer is left null, and msa1 uses the
+//   median instead of a model.
+// - Otherwise, this throws if the file name is not an absolute path, or if
+//   the file cannot be read or its format is invalid (see HomopolymerModel).
+// The file name must be an absolute path so the same Options can also be
+// used from the http server and the Python API, which run in a different
+// directory.
+void Assembler::createHomopolymerModel(const Options& options)
+{
+    const string& fileName = options.homopolymerModelName;
+    if(fileName.empty()) {
+        homopolymerModelPointer = 0;
+        return;
+    }
+    if(fileName[0] != '/') {
+        throw runtime_error("--homopolymer-model must be an absolute path: " + fileName);
+    }
+    cout << "Reading homopolymer model " << fileName << endl;
+    homopolymerModelPointer = make_shared<const HomopolymerModel>(fileName);
+}
 
 
 
@@ -307,7 +335,8 @@ void Assembler::createAssemblyGraph(const Options& options, bool removeAnchorGra
         anchors(),
         journeys(),
         *anchorGraphPointer,
-        options);
+        options,
+        homopolymerModelPointer);
 
     writeMemoryStatistics("Before removing AnchorGraph");
 

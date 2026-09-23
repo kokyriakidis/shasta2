@@ -3,7 +3,9 @@
 #include "Base.hpp"
 #include "SHASTA2_ASSERT.hpp"
 
+#include "array.hpp"
 #include "cstdint.hpp"
+#include "memory.hpp"
 #include "string.hpp"
 #include "utility.hpp"
 #include "vector.hpp"
@@ -12,6 +14,7 @@ namespace shasta2 {
 
     class Base;
     class AlignedBase;
+    class HomopolymerModel;
 
     // ExtendedBase is the 8 symbol alphabet itself: A, C, G, T and the four poly
     // symbols. AlignedExtendedBase is the same plus a gap, for use in an
@@ -206,7 +209,16 @@ namespace shasta2 {
 
         // The aligned consensus: one symbol per column, with its voted run
         // length. A gap column has a gap with length 0.
-        AlignedExtendedSequence& alignedConsensus);
+        AlignedExtendedSequence& alignedConsensus,
+
+        // If not null, the length of every poly column is the most likely one
+        // under this model, and estimator is not used.
+        shared_ptr<const HomopolymerModel> homopolymerModelPointer = nullptr,
+
+        // Required when homopolymerModelPointer is not null, and ignored otherwise:
+        // the weight of each row split by the strand of the reads it stands
+        // for. strandWeights[i][0] + strandWeights[i][1] must equal weights[i].
+        const vector< array<uint64_t, 2> >& strandWeights = {});
 
     // As above, but with the span of each row inferred as the columns between
     // its first and last non-gap symbol. Use this only when the anchoring is not
@@ -469,6 +481,11 @@ namespace shasta2 {
         // How the consensus length of a long homopolymer run is chosen.
         RunLengthEstimator estimator = RunLengthEstimator::MedianMarginGated;
 
+        // If not null, the consensus length of a long homopolymer run is the
+        // most likely one under this model, and estimator is not used. This
+        // requires the strandWeights argument of msa1().
+        shared_ptr<const HomopolymerModel> homopolymerModelPointer;
+
         // Columns of context included on each side of a bad region.
         uint64_t flank = 10;
 
@@ -523,7 +540,14 @@ namespace shasta2 {
         const vector<Anchoring>& anchoring = vector<Anchoring>(),
 
         // How the repair is tuned. The defaults are the measured values.
-        const Msa1Options& options = Msa1Options());
+        const Msa1Options& options = Msa1Options(),
+
+        // Required when options.homopolymerModelPointer is not null, and ignored
+        // otherwise: the weight of each row split by the OrientedReadId strand
+        // of the reads it stands for, one entry per row.
+        // strandWeights[i][0] + strandWeights[i][1] must equal the weight of
+        // row i.
+        const vector< array<uint64_t, 2> >& strandWeights = {});
 
 
     void testMsa1ExtendedBase();

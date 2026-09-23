@@ -12,6 +12,7 @@
 #include "extractKmer128.hpp"
 #include "findConvergingVertex.hpp"
 #include "HashedKmerChecker.hpp"
+#include "HomopolymerModel.hpp"
 #include "LongBaseSequence.hpp"
 #include "mappedCopy.hpp"
 #include "msa1.hpp"
@@ -151,6 +152,11 @@ PYBIND11_MODULE(shasta2, shasta2Module)
           &Assembler::createCompleteAnchorGraph)
       .def("accessCompleteAnchorGraph",
           &Assembler::accessCompleteAnchorGraph)
+
+      // HomopolymerModel. Call createHomopolymerModel before
+      // getAssemblyGraph for the AssemblyGraph to use it.
+      .def("createHomopolymerModel",
+          &Assembler::createHomopolymerModel)
 
       // AssemblyGraph.
       .def("createAssemblyGraph",
@@ -321,6 +327,9 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         );
     shasta2Module.def("testMsa1Repair",
         testMsa1Repair
+        );
+    shasta2Module.def("testHomopolymerModel",
+        testHomopolymerModel
         );
 }
 #endif

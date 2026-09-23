@@ -12,12 +12,14 @@
 
 // Standard library.
 #include "iosfwd.hpp"
+#include "memory.hpp"
 #include "vector.hpp"
 
 namespace shasta2 {
     class LocalAssembly7;
 
     class Anchors;
+    class HomopolymerModel;
 }
 
 
@@ -120,9 +122,13 @@ public:
     // When this completes successfully, the assembled sequence is stored
     // in the sequence vector below. If an error occurs,
     // this throws a std::runtime_error.
+    // If homopolymerModelPointer is not null, msa1 uses it to choose the length of
+    // long homopolymer runs (see HomopolymerModel.hpp). Only used if
+    // Options::useMsa1 is set.
     LocalAssembly7(
         const Options&,
         const Anchors&,
+        shared_ptr<const HomopolymerModel> homopolymerModelPointer,
         AnchorId anchorIdA,
         AnchorId anchorIdB,
         ostream& html,
@@ -137,6 +143,7 @@ private:
     // Parameters filled in by the constructor.
     Options options;
     const Anchors& anchors;
+    shared_ptr<const HomopolymerModel> homopolymerModelPointer;
     AnchorId anchorIdA;     // Left Anchor.
     AnchorId anchorIdB;     // Right Anchor.
     ostream& html;          // Pass ostream(0) to suppress html output.

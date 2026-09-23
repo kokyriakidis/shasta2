@@ -34,12 +34,14 @@ using namespace shasta2;
 LocalAssembly7::LocalAssembly7(
     const Options& options,
     const Anchors& anchors,
+    shared_ptr<const HomopolymerModel> homopolymerModelPointer,
     AnchorId anchorIdA,
     AnchorId anchorIdB,
     ostream& html,
     const vector<OrientedReadId>& orientedReadIds) :
     options(options),
     anchors(anchors),
+    homopolymerModelPointer(homopolymerModelPointer),
     anchorIdA(anchorIdA),
     anchorIdB(anchorIdB),
     html(html)
@@ -1335,7 +1337,23 @@ void LocalAssembly7::runAbpoaOrPoasta(bool usePoasta)
     const auto t2 = steady_clock::now();
     if(options.useMsa1) {
         const vector<uint64_t> weights(alignment.size(), 1);
-        repairedRegionCount = msa1(alignment, alignedConsensus, consensus, weights, {});
+
+        // Each row is one read, in the order entered above.
+        vector< array<uint64_t, 2> > strandWeights;
+        if(homopolymerModelPointer) {
+            for(const uint64_t sequenceId: sequenceIds) {
+                for(const OrientedReadId orientedReadId: sequences[sequenceId].orientedReadIds) {
+                    array<uint64_t, 2> strandWeight = {0, 0};
+                    strandWeight[orientedReadId.getStrand()] = 1;
+                    strandWeights.push_back(strandWeight);
+                }
+            }
+        }
+
+        Msa1Options msa1Options;
+        msa1Options.homopolymerModelPointer = homopolymerModelPointer;
+        repairedRegionCount = msa1(alignment, alignedConsensus, consensus, weights, {},
+            msa1Options, strandWeights);
     }
     const auto t3 = steady_clock::now();
 
@@ -1496,7 +1514,23 @@ void LocalAssembly7::runTheseus(bool useAll)
             weights.push_back(weight);
         }
 
-        repairedRegionCount = msa1(alignment, alignedConsensus, consensus, weights, anchoring);
+        // A row stands for all the reads with its sequence, which can be on
+        // either strand.
+        vector< array<uint64_t, 2> > strandWeights;
+        if(homopolymerModelPointer) {
+            for(const auto& [sequenceId, weight]: msaSequenceIdsWithWeight) {
+                array<uint64_t, 2> strandWeight = {0, 0};
+                for(const OrientedReadId orientedReadId: sequences[sequenceId].orientedReadIds) {
+                    ++strandWeight[orientedReadId.getStrand()];
+                }
+                strandWeights.push_back(strandWeight);
+            }
+        }
+
+        Msa1Options msa1Options;
+        msa1Options.homopolymerModelPointer = homopolymerModelPointer;
+        repairedRegionCount = msa1(alignment, alignedConsensus, consensus, weights, anchoring,
+            msa1Options, strandWeights);
     }
     const auto t3 = steady_clock::now();
 

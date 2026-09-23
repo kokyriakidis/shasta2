@@ -21,6 +21,7 @@ public:
         const Anchors&,
         const Journeys&,
         const Options&,
+        shared_ptr<const HomopolymerModel>,
         const string& assemblyStage);
 
     // Map from vertex id to edge_descriptor.

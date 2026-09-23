@@ -899,6 +899,10 @@ void Assembler::exploreSegmentStep(
     localAssembly7Options.useMsa1 = HttpServer::getParameterValue(request,
         "useMsa1", useMsa1String);
 
+    string useHomopolymerModelString;
+    const bool useHomopolymerModel = HttpServer::getParameterValue(request,
+        "useHomopolymerModel", useHomopolymerModelString);
+
     getParameterValue(request, "commonCoverageThreshold", localAssembly7Options.commonCoverageThreshold);
 
     string disallowFastPathString;
@@ -980,6 +984,16 @@ void Assembler::exploreSegmentStep(
         "<td class=centered>"
         "<input type=checkbox name=useMsa1" <<
         (localAssembly7Options.useMsa1 ? " checked=on" : "") << ">";
+
+    html <<
+        "<tr><th class=left>Use the homopolymer model in msa1"
+        "<td class=centered>"
+        "<input type=checkbox name=useHomopolymerModel" <<
+        (useHomopolymerModel ? " checked=on" : "") << ">"
+        "<br>Only used when repairing with msa1.";
+    if(not homopolymerModelPointer) {
+        html << "<br>No homopolymer model is loaded (see --homopolymer-model).";
+    }
 
     html <<
         "<tr><th class=left>commonCoverageThreshold<td class=centered>"
@@ -1110,6 +1124,7 @@ void Assembler::exploreSegmentStep(
             LocalAssembly7 localAssembly(
                 localAssembly7Options,
                 anchors(),
+                useHomopolymerModel ? homopolymerModelPointer : nullptr,
                 anchorPair.anchorIdA,
                 anchorPair.anchorIdB,
                 html,
@@ -1131,7 +1146,8 @@ AssemblyGraphPostprocessor& Assembler::getAssemblyGraph(
     auto it = assemblyGraphTable.find(assemblyStage);
     if(it == assemblyGraphTable.end()) {
         shared_ptr<AssemblyGraphPostprocessor> p =
-            make_shared<AssemblyGraphPostprocessor>(anchors(), journeys(), options, assemblyStage);
+            make_shared<AssemblyGraphPostprocessor>(
+                anchors(), journeys(), options, homopolymerModelPointer, assemblyStage);
         tie(it, ignore) = assemblyGraphTable.insert(make_pair(assemblyStage, p));
     }
     return *(it->second);
