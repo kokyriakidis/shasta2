@@ -787,7 +787,7 @@ void StrandContact::classifySegments()
         for(uint64_t i=0; i<allSegmentsById.size(); i++) {
             const auto segmentClassification = segmentClassifications[i];
 
-            string type = "Nothing";
+            const string type = description(segmentClassification);
 
             csv << id(allSegmentsById[i]) << ",";
             csv << type << ",";
@@ -862,3 +862,44 @@ string StrandContact::color(SegmentClassification segmentClassification)
     SHASTA2_ASSERT(index < colorTable.size());
     return colorTable[index];
 }
+
+
+
+
+
+
+string StrandContact::description(SegmentClassification segmentClassification)
+{
+    // The descriptionTable is filled in at the first call.
+    static array<string, static_cast<uint64_t>(SegmentClassification::MaxValue)> descriptionTable;
+
+    static bool isFirstTime = true;
+    if(isFirstTime) {
+        isFirstTime = false;
+
+
+        // Strand 0.
+        descriptionTable[static_cast<uint64_t>(SegmentClassification::LowCoverageStrand0)] =
+            "Low coverage strand 0";
+        descriptionTable[static_cast<uint64_t>(SegmentClassification::HighCoverageStrand0)] =
+            "High coverage strand 0";
+
+        // Strand 1.
+        descriptionTable[static_cast<uint64_t>(SegmentClassification::LowCoverageStrand1)] =
+            "Low coverage strand 1";
+        descriptionTable[static_cast<uint64_t>(SegmentClassification::HighCoverageStrand1)] =
+            "High coverage strand 1";
+
+        // Unclassified/ambiguous.
+        descriptionTable[static_cast<uint64_t>(SegmentClassification::LowCoverageUnclassified)] =
+            "Low coverage unclassified";
+        descriptionTable[static_cast<uint64_t>(SegmentClassification::HighCoverageAmbiguous)] =
+            "High coverage ambiguous";
+
+    }
+
+    const uint64_t index = static_cast<uint64_t>(segmentClassification);
+    SHASTA2_ASSERT(index < descriptionTable.size());
+    return descriptionTable[index];
+}
+

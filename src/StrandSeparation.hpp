@@ -261,6 +261,7 @@ public:
         MaxValue
     };
     static string color(SegmentClassification);
+    static string description(SegmentClassification);
 private:
     vector<SegmentClassification> segmentClassifications;
     void classifySegments();
