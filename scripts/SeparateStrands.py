@@ -18,8 +18,6 @@ assembler.accessAnchors()
 assembler.accessJourneys()
 
 assemblyGraph = assembler.getAssemblyGraph(arguments.inputStage, options)
-assemblyGraph.clearSequence()
-assemblyGraph.removeZeroLengthSegmentsStrandSymmetric()
 assemblyGraph.separateStrands("Python")
 # assemblyGraph.write(arguments.outputStage)
 

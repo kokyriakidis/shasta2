@@ -10,17 +10,19 @@ using namespace StrandSeparation;
 
 // Standard library.
 #include "fstream.hpp"
+#include <iomanip>
 #include "iostream.hpp"
 
 
 
 StrandContact::StrandContact(
     AssemblyGraph& assemblyGraph,
-    const vector<Segment>& allSegments, // All Segments,sorted by id.
+    const vector<Segment>& allSegmentsById, // All Segments,sorted by id.
     const string& debugOutputBaseName,  // Only used for debug output.
     uint64_t strandContactId            // Only used for debug output.
     ) :
     assemblyGraph(assemblyGraph),
+    allSegmentsById(allSegmentsById),
     debugOutputBaseName(debugOutputBaseName),
     strandContactId(strandContactId)
 {
@@ -30,16 +32,20 @@ StrandContact::StrandContact(
         cout << "Working on strand contact " << strandContactId << endl;
         writeHtmlBegin(html, "Strand contact " + to_string(strandContactId));
         html << "<h1>Strand contact " << strandContactId << "</h1>";
-        writeAllSegments(allSegments);
+        writeAllSegmentsById();
     }
 
-    gatherSegments(allSegments);
+    gatherSegments();
     countReadOccurrences();
     createBipartiteGraph();
 
     vector< vector<uint64_t> > componentsIndexes;
     bipartiteGraph.strandSeparation(componentsIndexes);
     writeBipartiteGraph(componentsIndexes);
+    writeComponents(componentsIndexes);
+    SHASTA2_ASSERT(not componentsIndexes.empty());
+    gatherStrands(componentsIndexes);
+    classifySegments();
 
     if(debug) {
         writeHtmlEnd(html);
@@ -56,39 +62,38 @@ uint64_t StrandContact::id(Segment segment) const
 
 
 
-void StrandContact::writeAllSegments(const vector<Segment>& allSegments)
+void StrandContact::writeAllSegmentsById()
 {
     if(not html) {
         return;
     }
 
     html << "<h2>All segments, sorted by id</h2>";
-    for(uint64_t i=0; i<allSegments.size(); i++) {
+    for(uint64_t i=0; i<allSegmentsById.size(); i++) {
         if(i != 0) {
             html << ",<wbr>";
         }
-        html << id(allSegments[i]);
+        html << id(allSegmentsById[i]);
     }
 }
 
 
 
-void StrandContact::gatherSegments(const vector<Segment>& allSegments)
+void StrandContact::gatherSegments()
 {
-    // Sanity check: allSegments must be sorted by id.
-    SHASTA2_ASSERT(std::is_sorted(allSegments.begin(), allSegments.end(), assemblyGraph.orderById));
+    SHASTA2_ASSERT(std::is_sorted(allSegmentsById.begin(), allSegmentsById.end(), assemblyGraph.orderById));
 
     // Sanity check: if allSegments contains segment0, it must
     // also contain its reverse complement, segment1.
-    for(const Segment segment0: allSegments) {
+    for(const Segment segment0: allSegmentsById) {
         const Segment segment1 = assemblyGraph[segment0].eRc;
         SHASTA2_ASSERT(segment0 != segment1);
-        SHASTA2_ASSERT(std::binary_search(allSegments.begin(), allSegments.end(),
+        SHASTA2_ASSERT(std::binary_search(allSegmentsById.begin(), allSegmentsById.end(),
             segment1, assemblyGraph.orderById));
     }
 
     // Gather the SegmentPairs.
-    for(const Segment segment0: allSegments) {
+    for(const Segment segment0: allSegmentsById) {
         const Segment segment1 = assemblyGraph[segment0].eRc;
         if(id(segment0) < id(segment1)) {
             allSegmentPairs.push_back({segment0, segment1});
@@ -101,12 +106,21 @@ void StrandContact::gatherSegments(const vector<Segment>& allSegments)
         const AssemblyGraphEdge& edge1 = assemblyGraph[segmentPair.segment1];
         const double coverage0 = edge0.lengthWeightedAverageCoverage();
         const double coverage1 = edge1.lengthWeightedAverageCoverage();
-        SHASTA2_ASSERT(coverage0 == coverage1);
+        if(coverage0 != coverage1) {
+            throw runtime_error("Coverage check failed at segments " +
+                to_string(edge0.id) + " " + to_string(edge1.id) + ".");
+        }
         if(coverage0 <= coverageThreshold) {
             lowCoverageSegmentPairs.push_back(segmentPair);
         } else {
             highCoverageSegmentPairs.push_back(segmentPair);
         }
+    }
+
+    // Fill in the allSegments vector.
+    for(const SegmentPair& segmentPair: allSegmentPairs) {
+        allSegments.push_back(segmentPair.segment0);
+        allSegments.push_back(segmentPair.segment1);
     }
 
     // Fill in the lowCoverageSegments vector.
@@ -179,6 +193,7 @@ void StrandContact::countReadOccurrences()
         }
     }
 
+    /*
     // Remove from the map reads that occur in just one Segment.
     std::map<ReadId, vector<ReadOccurrence> > newReadOccurrenceMap;
     for(const auto&p: readOccurrenceMap) {
@@ -187,6 +202,7 @@ void StrandContact::countReadOccurrences()
         }
     }
     newReadOccurrenceMap.swap(readOccurrenceMap);
+    */
 
     writeReadOccurrences();
 }
@@ -306,7 +322,16 @@ void BipartiteGraph::writeGraphviz(
         const Segment segment = lowCoverageSegments[vertex.segmentIndex];
         const uint64_t vertexIndex = vertexIndexMap.at(v);
         const uint64_t componentId = componentTable[vertexIndex];
-        const string color = randomHslColor(componentId, 0.75, 0.5);
+
+        string color;
+        if(componentId == 0) {
+            color = StrandContact::color(StrandContact::SegmentClassification::LowCoverageStrand0);
+        } else if(componentId == 1) {
+            color = StrandContact::color(StrandContact::SegmentClassification::LowCoverageStrand1);
+        } else {
+            color = randomHslColor(componentId, 0.75, 0.5);
+        }
+
         SHASTA2_ASSERT(componentId != invalid<uint64_t>);
         if(vertex.isSegment) {
             dot << assemblyGraph.id(segment);
@@ -323,8 +348,16 @@ void BipartiteGraph::writeGraphviz(
     BGL_FORALL_EDGES(e, bipartiteGraph, BipartiteGraph) {
         const vertex_descriptor v0 = source(e, bipartiteGraph);
         const vertex_descriptor v1 = target(e, bipartiteGraph);
+        const uint64_t vertexIndex0 = vertexIndexMap.at(v0);
+        const uint64_t vertexIndex1 = vertexIndexMap.at(v1);
         const BipartiteGraphVertex& vertex0 = bipartiteGraph[v0];
         const BipartiteGraphVertex& vertex1 = bipartiteGraph[v1];
+
+        const uint64_t componentId0 = componentTable[vertexIndex0];
+        const uint64_t componentId1 = componentTable[vertexIndex1];
+
+        const uint64_t frequency = bipartiteGraph[e].frequency;
+        const double thickness = 0.3 * (1. + std::log10(frequency));
 
         if(vertex0.isSegment) {
             const Segment segment0 = lowCoverageSegments[vertex0.segmentIndex];
@@ -358,6 +391,12 @@ void BipartiteGraph::writeGraphviz(
         }
         dot << " " << bipartiteGraph[e].frequency;
         dot << "\"";
+
+        dot << " penwidth=\"" << thickness << "\"";
+
+        if(componentId0 != componentId1) {
+            dot << " color=red";
+        }
 
         dot << "]";
 
@@ -508,4 +547,289 @@ void BipartiteGraph::strandSeparation(vector< vector<uint64_t> >& componentsInde
         }
     };
     sort(componentsIndexes.begin(), componentsIndexes.end(), SortByFirstElement());
+}
+
+
+
+void StrandContact::writeComponents(const vector< vector<uint64_t> >& componentsIndexes)
+{
+    if(not html) {
+        return;
+    }
+
+    for(uint64_t componentId=0; componentId<componentsIndexes.size(); componentId++) {
+        const vector<uint64_t>& componentIndexes = componentsIndexes[componentId];
+
+        html << "<h2>Component "<< componentId << "</h2>";
+
+        // Segments.
+        bool isFirstTime = true;
+        for(uint64_t i=0; i<componentIndexes.size(); i++) {
+            const uint64_t vertexIndex = componentIndexes[i];
+            const BipartiteGraph::vertex_descriptor v = bipartiteGraph.vertexTable[vertexIndex];
+            const BipartiteGraphVertex& vertex = bipartiteGraph[v];
+            if(vertex.isSegment) {
+                const Segment segment = lowCoverageSegments[vertex.segmentIndex];
+                if(isFirstTime) {
+                    isFirstTime = false;
+                } else {
+                    html << ",<wbr>";
+                }
+                html << id(segment);
+            }
+        }
+
+        // Oriented reads.
+        html << "<br><br>";
+        isFirstTime = true;
+        for(uint64_t i=0; i<componentIndexes.size(); i++) {
+            const uint64_t vertexIndex = componentIndexes[i];
+            const BipartiteGraph::vertex_descriptor v = bipartiteGraph.vertexTable[vertexIndex];
+            const BipartiteGraphVertex& vertex = bipartiteGraph[v];
+            if(not vertex.isSegment) {
+                if(isFirstTime) {
+                    isFirstTime = false;
+                } else {
+                    html << ",<wbr>";
+                }
+                html << vertex.orientedReadId;
+            }
+        }
+    }
+}
+
+
+
+void StrandContact::gatherStrands(const vector< vector<uint64_t> >& componentsIndexes)
+{
+    SHASTA2_ASSERT(componentsIndexes.size() >= 2);
+
+    for(uint64_t strand=0; strand<2; strand++) {
+        const vector<uint64_t>& componentIndexes = componentsIndexes[strand];
+        for(const uint64_t vertexIndex: componentIndexes) {
+            const BipartiteGraph::vertex_descriptor v = bipartiteGraph.vertexTable[vertexIndex];
+            const BipartiteGraphVertex& vertex = bipartiteGraph[v];
+            if(vertex.isSegment) {
+                const Segment segment = lowCoverageSegments[vertex.segmentIndex];
+                strandSegments[strand].push_back(segment);
+            } else {
+                strandOrientedReadIds[strand].push_back(vertex.orientedReadId);
+            }
+        }
+    }
+
+
+
+    if(html) {
+        for(uint64_t strand=0; strand<2; strand++) {
+            html << "<h2>Strand " << strand << " low coverage segments</h2>";
+            for(uint64_t i=0; i<strandSegments[strand].size(); i++) {
+                if(i != 0) {
+                    html << ",<wbr>";
+                }
+                html << id(strandSegments[strand][i]);
+            }
+
+            html << "<h2>Strand " << strand << " oriented reads</h2>";
+            for(uint64_t i=0; i<strandOrientedReadIds[strand].size(); i++) {
+                if(i != 0) {
+                    html << ",<wbr>";
+                }
+                html << strandOrientedReadIds[strand][i];
+            }
+
+            sort(
+                strandSegments[strand].begin(),
+                strandSegments[strand].end(),
+                assemblyGraph.orderById);
+            sort(
+                strandOrientedReadIds[strand].begin(),
+                strandOrientedReadIds[strand].end());
+        }
+    }
+
+}
+
+
+
+void StrandContact::classifySegments()
+{
+
+    segmentClassifications.resize(allSegments.size(), SegmentClassification::Invalid);
+
+    // Classify low coverage segments.
+    for(const Segment segment: lowCoverageSegments) {
+        const bool isStrand0 = std::binary_search(
+            strandSegments[0].begin(),
+            strandSegments[0].end(),
+            segment, assemblyGraph.orderById);
+        const bool isStrand1 = std::binary_search(
+            strandSegments[1].begin(),
+            strandSegments[1].end(),
+            segment, assemblyGraph.orderById);
+        const uint64_t indexInAllSegments = std::lower_bound(
+            allSegmentsById.begin(),
+            allSegmentsById.end(),
+            segment,
+            assemblyGraph.orderById) - allSegmentsById.begin();
+        if(isStrand0) {
+            SHASTA2_ASSERT(not isStrand1);
+            segmentClassifications[indexInAllSegments] = SegmentClassification::LowCoverageStrand0;
+        } else if(isStrand1) {
+            segmentClassifications[indexInAllSegments] = SegmentClassification::LowCoverageStrand1;
+        } else {
+            segmentClassifications[indexInAllSegments] = SegmentClassification::LowCoverageUnclassified;
+        }
+
+    }
+
+
+
+    // Classify high coverage segments.
+    if(html) {
+        html << "<h2>Classifying high coverage segments</h2>"
+            "<table>"
+            "<tr><th>Segment0<th>Segment1"
+            "<th>n0<th>n1"
+            "<th>Fraction0<th>Fraction1" <<
+            std::fixed << std::setprecision(2);
+    }
+
+    for(const SegmentPair& segmentPair: highCoverageSegmentPairs) {
+        const Segment segment0 = segmentPair.segment0;
+        const Segment segment1 = segmentPair.segment1;
+        const AssemblyGraphEdge& edge = assemblyGraph[segment0];
+        uint64_t n0 = 0;
+        uint64_t n1 = 0;
+        for(const AssemblyGraphEdgeStep& step: edge) {
+            for(const OrientedReadId orientedReadId: step.anchorPair.orientedReadIds) {
+                if(std::binary_search(
+                    strandOrientedReadIds[0].begin(), strandOrientedReadIds[0].end(), orientedReadId)) {
+                    ++n0;
+                }
+                if(std::binary_search(
+                    strandOrientedReadIds[1].begin(), strandOrientedReadIds[1].end(), orientedReadId)) {
+                    ++n1;
+                }
+            }
+        }
+        const double fraction0 = double(n0) / double(n0 + n1);
+        const double fraction1 = 1. - fraction0;
+
+        const bool isStrand0 = (fraction0 >= strandFractionThreshold);
+        const bool isStrand1 = (fraction1 >= strandFractionThreshold);
+
+        const uint64_t indexInAllSegments0 = std::lower_bound(
+            allSegmentsById.begin(),
+            allSegmentsById.end(),
+            segment0,
+            assemblyGraph.orderById) - allSegmentsById.begin();
+        const uint64_t indexInAllSegments1 = std::lower_bound(
+            allSegmentsById.begin(),
+            allSegmentsById.end(),
+            segment1,
+            assemblyGraph.orderById) - allSegmentsById.begin();
+        if(isStrand0) {
+            SHASTA2_ASSERT(not isStrand1);
+            segmentClassifications[indexInAllSegments0] = SegmentClassification::HighCoverageStrand0;
+            segmentClassifications[indexInAllSegments1] = SegmentClassification::HighCoverageStrand1;
+        } else if(isStrand1) {
+            segmentClassifications[indexInAllSegments0] = SegmentClassification::HighCoverageStrand1;
+            segmentClassifications[indexInAllSegments1] = SegmentClassification::HighCoverageStrand0;
+        } else {
+            segmentClassifications[indexInAllSegments0] = SegmentClassification::HighCoverageAmbiguous;
+            segmentClassifications[indexInAllSegments1] = SegmentClassification::HighCoverageAmbiguous;
+        }
+
+
+        if(html) {
+            html << "<tr>";
+
+            html <<"<td class=centered";
+            if(isStrand0) {
+                html << " style='background-color:" << color(SegmentClassification::HighCoverageStrand0) << "'";
+            }
+            if(isStrand1) {
+                html << " style='background-color:" << color(SegmentClassification::HighCoverageStrand1) << "'";
+            }
+            html << ">" << id(segment0);
+
+            html << "<td class=centered";
+            if(isStrand1) {
+                html << " style='background-color:" << color(SegmentClassification::HighCoverageStrand0) << "'";
+            }
+            if(isStrand0) {
+                html << " style='background-color:" << color(SegmentClassification::HighCoverageStrand1) << "'";
+            }
+            html << ">" << id(segment1);
+
+            html <<
+                "<td class=centered>" << n0 <<
+                "<td class=centered>" << n1 <<
+                "<td class=centered>" << fraction0 <<
+                "<td class=centered>" << fraction1;
+        }
+    }
+    html << "</table>";
+
+    // Check that all segments have a valid classification.
+    for(const auto& segmentClassification: segmentClassifications) {
+        SHASTA2_ASSERT(segmentClassification != SegmentClassification::Invalid);
+    }
+
+
+
+    // Write a csv file containing the file of each Segment which can be loaded in Bandage.
+    if(html) {
+        const string fileName = debugOutputBaseName + "-StrandContact-" + to_string(strandContactId) + "-Bandage.csv";
+        ofstream csv(fileName);
+        csv << "Segment,Classification,Color\n";
+        for(uint64_t i=0; i<allSegmentsById.size(); i++) {
+            const auto segmentClassification = segmentClassifications[i];
+
+            string type = "Nothing";
+
+            csv << id(allSegmentsById[i]) << ",";
+            csv << type << ",";
+            csv << color(segmentClassification) << "\n";
+        }
+
+    }
+}
+
+
+
+string StrandContact::color(SegmentClassification segmentClassification)
+{
+    // The colorTable is filled in at the first call.
+    static array<string, static_cast<uint64_t>(SegmentClassification::MaxValue)> colorTable;
+
+    static bool isFirstTime = true;
+    if(isFirstTime) {
+        isFirstTime = false;
+
+
+        // Strand 0 uses hue=0.6 (blue).
+        colorTable[static_cast<uint64_t>(SegmentClassification::LowCoverageStrand0)] =
+            hslToRgbString(0.6, 1., 0.5);
+        colorTable[static_cast<uint64_t>(SegmentClassification::HighCoverageStrand0)] =
+            hslToRgbString(0.6, 1, 0.75);
+
+        // Strand 1 uses hue=0.1 (orange).
+        colorTable[static_cast<uint64_t>(SegmentClassification::LowCoverageStrand1)] =
+            hslToRgbString(0.1, 1., 0.5);
+        colorTable[static_cast<uint64_t>(SegmentClassification::HighCoverageStrand1)] =
+            hslToRgbString(0.1, 1, 0.75);
+
+        // Unclassified/ambiguous uses hue=0.9 (purple).
+        colorTable[static_cast<uint64_t>(SegmentClassification::LowCoverageUnclassified)] =
+            hslToRgbString(0.9, 1., 0.5);
+        colorTable[static_cast<uint64_t>(SegmentClassification::HighCoverageAmbiguous)] =
+            hslToRgbString(0.9, 1, 0.75);
+
+    }
+
+    const uint64_t index = static_cast<uint64_t>(segmentClassification);
+    SHASTA2_ASSERT(index < colorTable.size());
+    return colorTable[index];
 }

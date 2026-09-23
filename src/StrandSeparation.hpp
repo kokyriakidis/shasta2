@@ -7,6 +7,7 @@
 #include "ReadId.hpp"
 
 // Standard library.
+#include "array.hpp"
 #include "fstream.hpp"
 #include <map>
 #include "string.hpp"
@@ -168,7 +169,7 @@ public:
 
     StrandContact(
         AssemblyGraph&,
-        const vector<Segment>& allSegments, // All Segments,sorted by id.
+        const vector<Segment>& allSegmentsById, // All Segments,sorted by id.
         const string& debugOutputBaseName,  // Only used for debug output.
         uint64_t strandContactId            // Only used for debug output.
         );
@@ -177,10 +178,14 @@ private:
 
     // EXPOSE WHEN CODE STABILIZES.
     const double coverageThreshold = 16.;
+    const double strandFractionThreshold = 0.7;
 
+    // Constructor arguments.
     AssemblyGraph& assemblyGraph;
+    vector<Segment> allSegmentsById;
     const string& debugOutputBaseName;
     uint64_t strandContactId;
+
     ofstream html;
 
     uint64_t id(Segment) const;
@@ -196,14 +201,22 @@ private:
     vector<SegmentPair> lowCoverageSegmentPairs;
     vector<SegmentPair> highCoverageSegmentPairs;
 
+    // All the Segments, stored in the same order as they
+    // appear in the lowCoverageSegmentPairs. This means that pairs
+    // of reverse complemented Segments have consecutive indexes
+    // in this vector.
+    // This means that they are not sorted by id.
+    vector<Segment> allSegments;
+
     // The low coverage Segments, stored in the same order as they
     // appear in the lowCoverageSegmentPairs. This means that pairs
     // of reverse complemented Segments have consecutive indexes
     // in this vector.
+    // This means that they are not sorted by id.
     vector<Segment> lowCoverageSegments;
 
-    void gatherSegments(const vector<Segment>& allSegments);
-    void writeAllSegments(const vector<Segment>& allSegments);
+    void gatherSegments();
+    void writeAllSegmentsById();
     void writeSegments();
 
 
@@ -222,4 +235,33 @@ private:
     BipartiteGraph bipartiteGraph;
     void createBipartiteGraph();
     void writeBipartiteGraph(const vector< vector<uint64_t> >& componentsIndexes);
+    void writeComponents(const vector< vector<uint64_t> >& componentsIndexes);
+
+    // The low coverage Segments and OrientedReadIds of the first two components,
+    // after strand separation.
+    // These are assumed to define strand0 and strand1.
+    // The two strandSegments vectors are sorted by id.
+    array<vector<Segment>, 2> strandSegments;
+    array<vector<OrientedReadId>, 2> strandOrientedReadIds;
+    void gatherStrands(const vector< vector<uint64_t> >& componentsIndexes);
+
+
+
+    // Classify segments.
+    // There is an entry for each Segment in the allSegments vector.
+public:
+    enum class SegmentClassification {
+        Invalid,
+        LowCoverageStrand0,
+        LowCoverageStrand1,
+        LowCoverageUnclassified,
+        HighCoverageStrand0,
+        HighCoverageStrand1,
+        HighCoverageAmbiguous,
+        MaxValue
+    };
+    static string color(SegmentClassification);
+private:
+    vector<SegmentClassification> segmentClassifications;
+    void classifySegments();
 };
