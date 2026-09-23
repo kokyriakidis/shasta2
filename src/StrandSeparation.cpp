@@ -793,6 +793,35 @@ void StrandContact::classifySegments()
             csv << type << ",";
             csv << color(segmentClassification) << "\n";
         }
+    }
+
+
+
+    // Write a gfa file containing only the segments that will
+    // be used in the rest of the strand separation process
+    // for this StrandContact.
+    // These are segments classified as one of the following:
+    // - LowCoverageStrand0.
+    // - LowCoverageUnclassified.
+    // - HighCoverageStrand0.
+    // - HighCoverageAmbiguous.
+    if(html) {
+        vector<Segment> segmentsForOutput;
+        for(uint64_t i=0; i<allSegmentsById.size(); i++) {
+            const auto segmentClassification = segmentClassifications[i];
+            if(
+                (segmentClassification == SegmentClassification::LowCoverageStrand0) or
+                (segmentClassification == SegmentClassification::LowCoverageUnclassified) or
+                (segmentClassification == SegmentClassification::HighCoverageStrand0) or
+                (segmentClassification == SegmentClassification::HighCoverageAmbiguous)
+                ) {
+                segmentsForOutput.push_back(allSegmentsById[i]);
+            }
+        }
+
+        const string fileName = debugOutputBaseName + "-StrandContact-" + to_string(strandContactId) + ".gfa";
+        ofstream gfa(fileName);
+        assemblyGraph.writeGfa(fileName, segmentsForOutput);
 
     }
 }

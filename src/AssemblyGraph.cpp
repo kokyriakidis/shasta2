@@ -702,6 +702,91 @@ void AssemblyGraph::writeGfa(ostream& gfa) const
 
 
 
+// GFA output of a subset of Segments.
+// The Segments must be sorted by id.
+void AssemblyGraph::writeGfa(const string& fileName, const vector<Segment>& segments) const
+{
+    ofstream gfa(fileName);
+    writeGfa(gfa, segments);
+}
+
+
+
+void AssemblyGraph::writeGfa(ostream& gfa, const vector<Segment>& segments) const
+{
+    const AssemblyGraph& assemblyGraph = *this;
+
+    SHASTA2_ASSERT(std::is_sorted(segments.begin(), segments.end(), orderById));
+
+    // Write the header line.
+    gfa << "H\tVN:Z:1.0\n";
+
+    vector<shasta2::Base> sequence;
+    BGL_FORALL_EDGES(e, assemblyGraph, AssemblyGraph) {
+        if(not std::binary_search(segments.begin(), segments.end(), e, orderById)) {
+            continue;
+        }
+        const AssemblyGraphEdge& edge = assemblyGraph[e];
+        if(not std::binary_search(segments.begin(), segments.end(), e)) {
+            continue;
+        }
+        const double coverage = edge.lengthWeightedAverageCoverage();
+
+        // Record type.
+        gfa << "S\t";
+
+        // Name.
+        gfa << edge.id << "\t";
+
+        // Sequence.
+        if(edge.wasAssembled) {
+            edge.getSequence(sequence);
+            copy(sequence.begin(), sequence.end(), ostream_iterator<shasta2::Base>(gfa));
+            const uint64_t length = sequence.size();
+            gfa << "\tLN:i:" << length;
+            gfa << "\tRC:i:" << uint64_t(std::round(coverage * double(length)));
+            gfa << "\n";
+
+        } else {
+            if(edge.empty()) {
+                gfa << "*\tLN:i:0\n";
+
+            } else {
+                const uint64_t offset = edge.offset();
+                gfa << "*\tLN:i:" << offset;
+                gfa << "\tRC:i:" << uint64_t(std::round(coverage * double(offset)));
+                gfa << "\n";
+            }
+        }
+    }
+
+
+
+    // For each vertex, generate a link between each pair of
+    // incoming/outgoing edges.
+    BGL_FORALL_VERTICES(v, assemblyGraph, AssemblyGraph) {
+        BGL_FORALL_INEDGES(v, e0, assemblyGraph, AssemblyGraph) {
+            if(not std::binary_search(segments.begin(), segments.end(), e0, orderById)) {
+                continue;
+            }
+            const uint64_t id0 = assemblyGraph[e0].id;
+            BGL_FORALL_OUTEDGES(v, e1, assemblyGraph, AssemblyGraph) {
+                if(not std::binary_search(segments.begin(), segments.end(), e1, orderById)) {
+                    continue;
+                }
+                const uint64_t id1 = assemblyGraph[e1].id;
+
+                gfa <<
+                    "L\t" <<
+                    id0 << "\t+\t" <<
+                    id1 << "\t+\t*\n";
+            }
+        }
+    }
+}
+
+
+
 void AssemblyGraph::writeGraphviz(const string& fileName) const
 {
     ofstream dot(fileName);

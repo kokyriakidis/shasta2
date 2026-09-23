@@ -178,7 +178,7 @@ private:
 
     // EXPOSE WHEN CODE STABILIZES.
     const double coverageThreshold = 16.;
-    const double strandFractionThreshold = 0.7;
+    const double strandFractionThreshold = 0.8;
 
     // Constructor arguments.
     AssemblyGraph& assemblyGraph;

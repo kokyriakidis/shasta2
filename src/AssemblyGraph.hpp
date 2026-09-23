@@ -584,6 +584,12 @@ private:
     void writeSequenceLengthByCoverageCsv(const string& fileName) const;
     void writeSequenceLengthByCoverageCsv(ostream&) const;
 
+public:
+    // GFA output of a subset of Segments.
+    // The Segments must be sorted by id.
+    void writeGfa(const string& fileName, const vector<Segment>&) const;
+    void writeGfa(ostream&, const vector<Segment>&) const;
+private:
 
 
     // Sequence assembly.
