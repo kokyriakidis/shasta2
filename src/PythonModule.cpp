@@ -6,6 +6,7 @@
 #include "Assembler.hpp"
 #include "AssemblyGraphPostprocessor.hpp"
 #include "Base.hpp"
+#include "color.hpp"
 #include "CycleAvoider.hpp"
 #include "deduplicate.hpp"
 #include "ExternalAnchors.hpp"
@@ -270,6 +271,9 @@ PYBIND11_MODULE(shasta2, shasta2Module)
         );
     shasta2Module.def("mappedCopy",
         mappedCopy
+        );
+    shasta2Module.def("hslToRgbString",
+        hslToRgbString
         );
     shasta2Module.def("testLongBaseSequence",
         testLongBaseSequence
