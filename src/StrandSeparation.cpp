@@ -46,6 +46,7 @@ StrandContact::StrandContact(
     SHASTA2_ASSERT(not componentsIndexes.empty());
     gatherStrands(componentsIndexes);
     classifySegments();
+    updateAssemblyGraph();
 
     if(debug) {
         writeHtmlEnd(html);
@@ -903,3 +904,129 @@ string StrandContact::description(SegmentClassification segmentClassification)
     return descriptionTable[index];
 }
 
+
+
+// We update the AssemblyGraph as follows:
+// - We make identical copies of Segments with the following classifications:
+//   * LowCoverageStrand0.
+//   * HighCoverageStrand0.
+// - We also make copies of Segments with the following classifications,
+//   but in this case we remove from all the steps of the copies
+//   the OrientedReadIds classified as strand 1.
+//   * LowCoverageUnclassified.
+//   * HighCoverageAmbiguous.
+// - All copies keep the same id.
+// - Except for interface vertices (vertices connected to Segments
+//   outside this StrandContact), the copies of the segments use
+//   newly generated vertices.
+// - As we create new vertices and Segments, we also
+//   create the corresponding reverse complemented copies.
+void StrandContact::updateAssemblyGraph()
+{
+    using vertex_descriptor = AssemblyGraph::vertex_descriptor;
+
+    // Find all the vertices.
+    vector<vertex_descriptor> strandContactVertices;
+    for(const Segment& segment: allSegmentsById) {
+        const vertex_descriptor v0 = source(segment, assemblyGraph);
+        const vertex_descriptor v1 = target(segment, assemblyGraph);
+        strandContactVertices.push_back(v0);
+        strandContactVertices.push_back(v1);
+    }
+    deduplicate(strandContactVertices);
+    sort(strandContactVertices.begin(), strandContactVertices.end(), assemblyGraph.orderById);
+
+    // Find the interface vertices.
+    vector<vertex_descriptor> interfaceVertices;
+    for(const vertex_descriptor v: strandContactVertices) {
+        bool isInterfaceVertex = false;
+        BGL_FORALL_OUTEDGES(v, segment, assemblyGraph, AssemblyGraph) {
+            if(not std::binary_search(allSegmentsById.begin(), allSegmentsById.end(),
+                segment, assemblyGraph.orderById)) {
+                isInterfaceVertex = true;
+                break;
+            }
+        }
+        BGL_FORALL_INEDGES(v, segment, assemblyGraph, AssemblyGraph) {
+            if(not std::binary_search(allSegmentsById.begin(), allSegmentsById.end(),
+                segment, assemblyGraph.orderById)) {
+                isInterfaceVertex = true;
+                break;
+            }
+        }
+        if(isInterfaceVertex) {
+            interfaceVertices.push_back(v);
+        }
+    }
+
+
+
+    // A map that gives the new vertex corresponding to an old vertex
+    // in the replicated copies of segments.
+    // For interface vertices, the new vertex is the same as the old vertex.
+    std::map<vertex_descriptor, vertex_descriptor> newVertexMap;
+    for(const vertex_descriptor v: interfaceVertices) {
+        newVertexMap.insert({v, v});
+    }
+
+
+
+    // Replicate Segments as described at the beginning of this function.
+    for(uint64_t i=0; i<allSegmentsById.size(); i++) {
+        const auto segmentClassification = segmentClassifications[i];
+        const bool copySegment =
+            (segmentClassification == SegmentClassification::LowCoverageStrand0) or
+            (segmentClassification == SegmentClassification::LowCoverageUnclassified) or
+            (segmentClassification == SegmentClassification::HighCoverageStrand0) or
+            (segmentClassification == SegmentClassification::HighCoverageAmbiguous);
+        if(not copySegment) {
+            continue;
+        }
+        /*
+        const bool removeStrand1OrientedReadIds =
+            (segmentClassification == SegmentClassification::LowCoverageUnclassified) or
+            (segmentClassification == SegmentClassification::HighCoverageAmbiguous);
+        */
+        const Segment segment = allSegmentsById[i];
+
+        // Get the new vertices for the copy of this segment, creating them if necessary.
+        const vertex_descriptor v0Old = source(segment, assemblyGraph);
+        const vertex_descriptor v1Old = target(segment, assemblyGraph);
+        const auto it0 = newVertexMap.find(v0Old);
+        const auto it1 = newVertexMap.find(v1Old);
+        vertex_descriptor v0New;
+        vertex_descriptor v1New;
+        if(it0 == newVertexMap.end()) {
+            const AnchorId anchorId0 = assemblyGraph[v0Old].anchorId;
+            v0New = add_vertex(AssemblyGraphVertex(anchorId0, assemblyGraph.nextVertexId++), assemblyGraph);
+            newVertexMap.insert({v0Old, v0New});
+            assemblyGraph.createReverseComplementVertex(v0New);
+        } else {
+            v0New = it0->second;
+        }
+        if(it1 == newVertexMap.end()) {
+            const AnchorId anchorId1 = assemblyGraph[v1Old].anchorId;
+            v1New = add_vertex(AssemblyGraphVertex(anchorId1, assemblyGraph.nextVertexId++), assemblyGraph);
+            newVertexMap.insert({v1Old, v1New});
+            assemblyGraph.createReverseComplementVertex(v1New);
+        } else {
+            v1New = it1->second;
+        }
+
+        // Make an exact copy of this Segment, between these new vertices.
+        // For now make an exact copy regardless of the Segment classification.
+        if(true) {
+            auto[newSegment, wasAdded] = add_edge(v0New, v1New, assemblyGraph[segment], assemblyGraph);
+            SHASTA2_ASSERT(wasAdded);
+            assemblyGraph.createReverseComplementEdge(newSegment);
+        } else {
+
+        }
+    }
+
+    // Now we can remove all the Segments of this StrandContact.
+    for(const Segment segment: allSegmentsById) {
+        boost::remove_edge(segment, assemblyGraph);
+    }
+    assemblyGraph.removeIsolatedVertices();
+}

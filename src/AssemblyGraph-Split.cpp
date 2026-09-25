@@ -499,6 +499,7 @@ void AssemblyGraph::separateStrands(const string& debugOutputBaseName)
     }
 
 
+    strandSymmetricCompress();
 
     performanceLog << timestamp << "AssemblyGraph::separateStrands ends: " <<
         debugOutputBaseName << endl;

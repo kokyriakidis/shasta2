@@ -265,4 +265,6 @@ public:
 private:
     vector<SegmentClassification> segmentClassifications;
     void classifySegments();
+
+    void updateAssemblyGraph();
 };
