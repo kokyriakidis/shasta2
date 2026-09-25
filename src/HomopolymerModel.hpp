@@ -59,7 +59,8 @@ public:
     explicit HomopolymerModel(const string& fileName);
 
     // The value of a flank argument when the flanking base is not known.
-    static const uint64_t unknownFlank = 4;
+    // Defined in the cpp file.
+    static const uint64_t unknownFlank;
 
     // A flank argument from its character: A, C, G, T, or * for
     // unknownFlank. Throws on anything else.

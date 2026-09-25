@@ -18,6 +18,7 @@ using namespace shasta2;
 #include <sstream>
 #include <unistd.h>
 
+const uint64_t HomopolymerModel::unknownFlank = 4;
 
 
 // See HomopolymerModel.hpp for the file format.
