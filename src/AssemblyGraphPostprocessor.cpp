@@ -13,8 +13,9 @@ AssemblyGraphPostprocessor::AssemblyGraphPostprocessor(
     const Anchors& anchors,
     const Journeys& journeys,
     const Options& options,
+    shared_ptr<const HomopolymerModel> homopolymerModelPointer,
     const string& assemblyStage) :
-    AssemblyGraph(anchors, journeys, options, assemblyStage)
+    AssemblyGraph(anchors, journeys, options, homopolymerModelPointer, assemblyStage)
 {
     const AssemblyGraph& assemblyGraph = *this;
 

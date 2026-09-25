@@ -43,12 +43,14 @@ AssemblyGraph::AssemblyGraph(
     const Anchors& anchors,
     const Journeys& journeys,
     const AnchorGraph& anchorGraph,
-    const Options& options) :
+    const Options& options,
+    shared_ptr<const HomopolymerModel> homopolymerModelPointer) :
     MappedMemoryOwner(anchors),
     MultithreadedObject<AssemblyGraph>(*this),
     anchors(anchors),
     journeys(journeys),
     options(options),
+    homopolymerModelPointer(homopolymerModelPointer),
     orderById(*this),
     edgesToBeAssembledA(orderById),
     edgesToBeAssembledB(orderById)
@@ -314,12 +316,14 @@ AssemblyGraph::AssemblyGraph(
     const Anchors& anchors,
     const Journeys& journeys,
     const Options& options,
+    shared_ptr<const HomopolymerModel> homopolymerModelPointer,
     const string& stage) :
     MappedMemoryOwner(anchors),
     MultithreadedObject<AssemblyGraph>(*this),
     anchors(anchors),
     journeys(journeys),
     options(options),
+    homopolymerModelPointer(homopolymerModelPointer),
     orderById(*this),
     edgesToBeAssembledA(orderById),
     edgesToBeAssembledB(orderById)
@@ -923,6 +927,7 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
             LocalAssembly7 localAssembly(
                 localAssembly7Options,
                 anchors,
+                homopolymerModelPointer,
                 anchorPair.anchorIdA,
                 anchorPair.anchorIdB,
                 html,
@@ -957,6 +962,16 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
 // then assembles each of the steps in parallel.
 void AssemblyGraph::assemble(const vector<edge_descriptor>& edgesToBeAssembled)
 {
+    // The homopolymer model must be consistent with the Options: present if
+    // and only if the Options specify one (see
+    // Assembler::createHomopolymerModel). All sequence assembly goes through
+    // here.
+    if(options.homopolymerModelName.empty()) {
+        SHASTA2_ASSERT(not homopolymerModelPointer);
+    } else {
+        SHASTA2_ASSERT(homopolymerModelPointer);
+    }
+
     performanceLog << timestamp << "Sequence assembly begins for " << edgesToBeAssembled.size() <<
         " assembly graph edges." << endl;
     AssemblyGraph& assemblyGraph = *this;

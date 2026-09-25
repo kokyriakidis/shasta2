@@ -242,6 +242,21 @@ void shasta2::main::assemble(
         externalAnchorGraphNameAbsolutePath = filesystem::getAbsolutePath(options.externalAnchorGraphName);
     }
 
+    // Check --homopolymer-model. It must be an absolute path, because it is
+    // also used by the http server and the Python API.
+    if(not options.homopolymerModelName.empty()) {
+        if(not options.useMsa1) {
+            throw runtime_error("--homopolymer-model requires --use-msa1.");
+        }
+        if(options.homopolymerModelName[0] != '/') {
+            throw runtime_error("--homopolymer-model must be an absolute path: " +
+                options.homopolymerModelName);
+        }
+        if(!std::filesystem::is_regular_file(options.homopolymerModelName)) {
+            throw runtime_error("Homopolymer model not found: " + options.homopolymerModelName);
+        }
+    }
+
 
 
     // Create the assembly directory. If it exists, stop.

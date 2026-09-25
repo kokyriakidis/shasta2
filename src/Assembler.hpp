@@ -24,6 +24,7 @@ namespace shasta2 {
     class Anchors;
     class AssemblerInfo;
     class FastaLoader;
+    class HomopolymerModel;
     class Journeys;
     class KmerChecker;
     class KmersOptions;
@@ -107,6 +108,11 @@ public:
         const vector<string>& inputFileNames,
         const string& externalAnchorsNameAbsolutePath,
         const string& externalAnchorGraphNameAbsolutePath);
+
+    // The homopolymer model used by msa1, if one was specified with
+    // --homopolymer-model. Null otherwise.
+    shared_ptr<const HomopolymerModel> homopolymerModelPointer;
+    void createHomopolymerModel(const Options&);
 
 
     // Reads.

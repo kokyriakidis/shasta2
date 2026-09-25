@@ -37,6 +37,7 @@ namespace shasta2 {
     class Assembler;
 
     class Bubble;
+    class HomopolymerModel;
     class Options;
     class Superbubble;
     class SuperbubbleChain;
@@ -173,17 +174,20 @@ class shasta2::AssemblyGraph :
 public:
 
     // Initial construction from the AnchorGraph.
+    // The HomopolymerModel is created by the Assembler and may be null.
     AssemblyGraph(
         const Anchors&,
         const Journeys&,
         const AnchorGraph&,
-        const Options&);
+        const Options&,
+        shared_ptr<const HomopolymerModel>);
 
     // Deserialize constructor.
     AssemblyGraph(
         const Anchors&,
         const Journeys&,
         const Options&,
+        shared_ptr<const HomopolymerModel>,
         const string& stage);
 
     // Detangle, phase, assemble sequence, output.
@@ -197,6 +201,9 @@ public:
     uint64_t nextVertexId = 0;
     uint64_t nextEdgeId = 0;
     const Options& options;
+
+    // The homopolymer model used by msa1, or null if there is none.
+    shared_ptr<const HomopolymerModel> homopolymerModelPointer;
 
     void check(bool writeDetails = false) const;
 

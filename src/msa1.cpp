@@ -1,5 +1,6 @@
 // Shasta2.
 #include "msa1.hpp"
+#include "HomopolymerModel.hpp"
 #include "invalid.hpp"
 #include "SHASTA2_ASSERT.hpp"
 using namespace shasta2;
@@ -366,7 +367,9 @@ void shasta2::extendedConsensus(
     RunLengthEstimator estimator,
     const vector< pair<uint64_t, uint64_t> >& spans,
     vector< pair<Base, uint64_t> >& consensus,
-    AlignedExtendedSequence& alignedConsensus)
+    AlignedExtendedSequence& alignedConsensus,
+    shared_ptr<const HomopolymerModel> homopolymerModelPointer,
+    const vector< array<uint64_t, 2> >& strandWeights)
 {
     consensus.clear();
     alignedConsensus.clear();
@@ -377,6 +380,12 @@ void shasta2::extendedConsensus(
     }
     SHASTA2_ASSERT(weights.size() == n);
     SHASTA2_ASSERT(spans.size() == n);
+    if(homopolymerModelPointer) {
+        SHASTA2_ASSERT(strandWeights.size() == n);
+        for(uint64_t i=0; i<n; i++) {
+            SHASTA2_ASSERT(strandWeights[i][0] + strandWeights[i][1] == weights[i]);
+        }
+    }
 
     const uint64_t alignmentLength = alignment.front().size();
     for(uint64_t i=0; i<n; i++) {
@@ -396,12 +405,14 @@ void shasta2::extendedConsensus(
 
     // Scratch, reused by the run length vote at every poly column.
     vector<uint64_t> lengthWeight;
+    array<vector<uint64_t>, 2> observedLengths;
 
-    // Loop over alignment columns.
-    for(uint64_t j=0; j<alignmentLength; j++) {
+    // The consensus symbol of column j, the one with the most weight over the
+    // rows that cover it, and that weight. A column no row covers gets a gap
+    // with weight 0.
+    const auto voteSymbol = [&](uint64_t j) {
 
-        // Total weight for each symbol at this column, including the gap, over
-        // the rows that cover this column.
+        // Total weight for each symbol at this column, including the gap.
         array<uint64_t, AlignedExtendedBase::gapValue + 1> symbolWeight;
         fill(symbolWeight.begin(), symbolWeight.end(), 0);
         uint64_t coveringWeight = 0;
@@ -412,25 +423,54 @@ void shasta2::extendedConsensus(
             symbolWeight[alignment[i][j].first.value] += weights[i];
             coveringWeight += weights[i];
         }
-
-        // A column no row covers contributes nothing.
         if(coveringWeight == 0) {
-            alignedConsensus[j] = make_pair(AlignedExtendedBase::gap(), 0UL);
-            continue;
+            return make_pair(AlignedExtendedBase::gap(), 0UL);
         }
-
-        // The consensus symbol is the one with the most weight.
         const auto it = std::ranges::max_element(symbolWeight);
-        const AlignedExtendedBase consensusSymbol =
-            AlignedExtendedBase::fromInteger(uint64_t(it - symbolWeight.begin()));
+        return make_pair(AlignedExtendedBase::fromInteger(uint64_t(it - symbolWeight.begin())), *it);
+    };
 
+    // The homopolymer model also uses the bases on each side of a run: for
+    // each column, the base of the nearest consensus symbol to its left and to
+    // its right that is not a gap, or HomopolymerModel::unknownFlank if there
+    // is none.
+    vector<uint64_t> leftFlank;
+    vector<uint64_t> rightFlank;
+    if(homopolymerModelPointer) {
+        vector<AlignedExtendedBase> symbols(alignmentLength);
+        for(uint64_t j=0; j<alignmentLength; j++) {
+            symbols[j] = voteSymbol(j).first;
+        }
+        leftFlank.assign(alignmentLength, HomopolymerModel::unknownFlank);
+        rightFlank.assign(alignmentLength, HomopolymerModel::unknownFlank);
+        uint64_t flank = HomopolymerModel::unknownFlank;
+        for(uint64_t j=0; j<alignmentLength; j++) {
+            leftFlank[j] = flank;
+            if(not symbols[j].isGap()) {
+                flank = symbols[j].base().value;
+            }
+        }
+        flank = HomopolymerModel::unknownFlank;
+        for(uint64_t j=alignmentLength; j>0; j--) {
+            rightFlank[j - 1] = flank;
+            if(not symbols[j - 1].isGap()) {
+                flank = symbols[j - 1].base().value;
+            }
+        }
+    }
+
+    // Loop over alignment columns.
+    for(uint64_t j=0; j<alignmentLength; j++) {
+        const auto [consensusSymbol, symbolCoverage] = voteSymbol(j);
+
+        // A column no row covers contributes nothing, and neither does a gap.
         if(consensusSymbol.isGap()) {
             alignedConsensus[j] = make_pair(consensusSymbol, 0UL);
             continue;
         }
 
         // The weight supporting this symbol.
-        uint64_t coverage = *it;
+        uint64_t coverage = symbolCoverage;
 
         // The consensus run length. A plain symbol always stands for one base.
         // A poly symbol gets its length by voting on the TRUE run lengths of the
@@ -461,51 +501,77 @@ void shasta2::extendedConsensus(
             }
             SHASTA2_ASSERT(totalWeight > 0);
 
-            lengthWeight.assign(maxObserved + 1, 0);
-            for(uint64_t i=0; i<n; i++) {
-                if((j < spans[i].first) or (j >= spans[i].second)) {
-                    continue;
+            if(homopolymerModelPointer) {
+
+                // The most likely length under the model, given the length
+                // each covering row reports on each strand. A row that
+                // stands for several reads enters its length once per read.
+                for(vector<uint64_t>& v: observedLengths) {
+                    v.clear();
                 }
-                if(alignment[i][j].first == consensusSymbol) {
-                    lengthWeight[alignment[i][j].second] += weights[i];
+                for(uint64_t i=0; i<n; i++) {
+                    if((j < spans[i].first) or (j >= spans[i].second)) {
+                        continue;
+                    }
+                    if(alignment[i][j].first == consensusSymbol) {
+                        for(uint64_t strand=0; strand<2; strand++) {
+                            observedLengths[strand].insert(observedLengths[strand].end(),
+                                strandWeights[i][strand], alignment[i][j].second);
+                        }
+                    }
                 }
-            }
-
-            // One shared pass computes mode, median and mean together; the
-            // estimator just picks which of them (or which simple function of
-            // them) to use.
-            const Msa1LengthVote vote(lengthWeight, maxObserved, totalWeight);
-
-            switch(estimator) {
-
-            case RunLengthEstimator::Mode:
-                consensusRunLength = vote.modeLength;
-                coverage = vote.modeWeight;
-                break;
-
-            case RunLengthEstimator::Median:
-                consensusRunLength = vote.medianLength;
-                coverage = vote.weightAtMedian;
-                break;
-
-            case RunLengthEstimator::MedianMarginGated:
-                // Nudge the median up by one only when its cumulative support
-                // is not comfortably (>=60%) above 50% - a near-tie between
-                // "at least this long" and "shorter" - capped at maxObserved:
-                // never invent a length longer than what some row actually
-                // reports. See the comment on this estimator in the header.
-                consensusRunLength = (10 * vote.cumulativeAtMedian >= 6 * totalWeight) ?
-                    vote.medianLength : min(vote.medianLength + 1, maxObserved);
-                coverage = vote.weightAtMedian;
-                break;
-
-            case RunLengthEstimator::Average:
-                // The weighted mean. Every observed length contributes, so
-                // this uses the whole distribution rather than a single
-                // order statistic.
-                consensusRunLength = vote.meanLength;
+                consensusRunLength = homopolymerModelPointer->mostLikelyLength(
+                    consensusSymbol.base(), leftFlank[j], rightFlank[j], observedLengths);
                 coverage = totalWeight;
-                break;
+
+            } else {
+
+                lengthWeight.assign(maxObserved + 1, 0);
+                for(uint64_t i=0; i<n; i++) {
+                    if((j < spans[i].first) or (j >= spans[i].second)) {
+                        continue;
+                    }
+                    if(alignment[i][j].first == consensusSymbol) {
+                        lengthWeight[alignment[i][j].second] += weights[i];
+                    }
+                }
+
+                // One shared pass computes mode, median and mean together; the
+                // estimator just picks which of them (or which simple function of
+                // them) to use.
+                const Msa1LengthVote vote(lengthWeight, maxObserved, totalWeight);
+
+                switch(estimator) {
+
+                case RunLengthEstimator::Mode:
+                    consensusRunLength = vote.modeLength;
+                    coverage = vote.modeWeight;
+                    break;
+
+                case RunLengthEstimator::Median:
+                    consensusRunLength = vote.medianLength;
+                    coverage = vote.weightAtMedian;
+                    break;
+
+                case RunLengthEstimator::MedianMarginGated:
+                    // Nudge the median up by one only when its cumulative support
+                    // is not comfortably (>=60%) above 50% - a near-tie between
+                    // "at least this long" and "shorter" - capped at maxObserved:
+                    // never invent a length longer than what some row actually
+                    // reports. See the comment on this estimator in the header.
+                    consensusRunLength = (10 * vote.cumulativeAtMedian >= 6 * totalWeight) ?
+                        vote.medianLength : min(vote.medianLength + 1, maxObserved);
+                    coverage = vote.weightAtMedian;
+                    break;
+
+                case RunLengthEstimator::Average:
+                    // The weighted mean. Every observed length contributes, so
+                    // this uses the whole distribution rather than a single
+                    // order statistic.
+                    consensusRunLength = vote.meanLength;
+                    coverage = totalWeight;
+                    break;
+                }
             }
             SHASTA2_ASSERT(consensusRunLength > 0);
         }
@@ -1107,6 +1173,8 @@ namespace shasta2 {
         const vector< pair<uint64_t, uint64_t> >& coverage,
         uint64_t encodeThreshold,
         RunLengthEstimator estimator,
+        shared_ptr<const HomopolymerModel> homopolymerModelPointer,
+        const vector< array<uint64_t, 2> >& strandWeights,
         vector< vector<AlignedBase> >& newRows,
         vector<AlignedBase>& newAlignedConsensus,
         vector< pair<Base, uint64_t> >& newConsensus)
@@ -1394,7 +1462,7 @@ namespace shasta2 {
         // Vote, then expand.
         AlignedExtendedSequence alignedExtendedConsensus;
         extendedConsensus(extendedAlignment, weights, estimator, spans,
-            newConsensus, alignedExtendedConsensus);
+            newConsensus, alignedExtendedConsensus, homopolymerModelPointer, strandWeights);
         expandExtendedAlignment(extendedAlignment, alignedExtendedConsensus,
             newRows, newAlignedConsensus);
 
@@ -1424,10 +1492,11 @@ uint64_t shasta2::msa1(
     vector< pair<Base, uint64_t> >& consensus,
     const vector<uint64_t>& weights,
     const vector<Anchoring>& anchoring,
-    const Msa1Options& options)
+    const Msa1Options& options,
+    const vector< array<uint64_t, 2> >& strandWeights)
 {
-    const auto& [trigger, threshold, encodeThreshold, estimator, flank, mergeDistance] =
-        options;
+    const auto& [trigger, threshold, encodeThreshold, estimator, homopolymerModelPointer,
+        flank, mergeDistance] = options;
     const uint64_t n = alignment.size();
     if(n == 0) {
         return 0;
@@ -1484,7 +1553,8 @@ uint64_t shasta2::msa1(
         vector<AlignedBase> newAlignedConsensus;
         vector< pair<Base, uint64_t> > newConsensus;
         if(not msa1RepairRegion(alignment, region, rowWeights, coverage, encodeThreshold,
-            estimator, newRows, newAlignedConsensus, newConsensus)) {
+            estimator, homopolymerModelPointer, strandWeights,
+            newRows, newAlignedConsensus, newConsensus)) {
             continue;
         }
         SHASTA2_ASSERT(newRows.size() == n);

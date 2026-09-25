@@ -306,6 +306,16 @@ void Assembler::accessAllSoft()
     } catch(const exception& e) {
     }
 
+    // The homopolymer model, if the options specify one.
+    if(httpServerData.options) {
+        try {
+            createHomopolymerModel(*httpServerData.options);
+        } catch(const exception& e) {
+            cout << "The homopolymer model is not accessible: " << e.what() << endl;
+            allDataAreAvailable = false;
+        }
+    }
+
 
     if(!allDataAreAvailable) {
         cout << "Not all assembly data are accessible." << endl;
