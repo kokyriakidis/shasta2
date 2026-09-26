@@ -318,6 +318,7 @@ public:
         const vector<vertex_descriptor>& tangle,
         const string& debugOutputBaseName);
     void separateStrands(const string& debugOutputBaseName);
+    void separateStrands1(const string& debugOutputBaseName);
 private:
     bool detangleStrandSymmetric(const Tangle&, ostream& html);
     bool detangleTanglePair(const Tangle&, ostream& html);
