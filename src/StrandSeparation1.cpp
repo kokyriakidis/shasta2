@@ -2,6 +2,7 @@
 #include "StrandSeparation1.hpp"
 #include "AssemblyGraph.hpp"
 #include "color.hpp"
+#include "computeLayout.hpp"
 #include "deduplicate.hpp"
 #include "DisjointSets.hpp"
 #include "graphvizToHtml.hpp"
@@ -54,7 +55,8 @@ StrandContact::StrandContact(
         html << "<h2>Best strand separation found</h2>";
         writeSplitSummary(split);
         writeSplitDetails(split);
-        writeBipartiteGraph(split);
+        writeBipartiteGraphGraphviz(split);
+        writeBipartiteGraphCustom(split);
 
         writeHtmlEnd(html);
         cout << "Done working on strand contact " << strandContactId << endl;
@@ -385,7 +387,7 @@ BipartiteGraph::vertex_descriptor BipartiteGraph::addVertex(uint64_t segmentPair
 
 
 
-void StrandContact::writeBipartiteGraph(const Split& split)
+void StrandContact::writeBipartiteGraphGraphviz(const Split& split)
 {
     if(not html) {
         return;
@@ -415,6 +417,136 @@ void StrandContact::writeBipartiteGraph(const Split& split)
     } catch (std::exception&) {
         html << "The bipartite graph is too complex to display.";
     }
+}
+
+
+
+void StrandContact::writeBipartiteGraphCustom(const Split& split)
+{
+    if(not html) {
+        return;
+    }
+
+    // If command "customLayout" is not available, don't do anything.
+    const int commandStatus = std::system("which customLayout > /dev/null");
+    SHASTA2_ASSERT(WIFEXITED(commandStatus));
+    const int returnCode = WEXITSTATUS(commandStatus);
+    if(returnCode != 0) {
+        return;
+    }
+
+    // Create a map containing the desired length for each edge.
+    std::map<BipartiteGraph::edge_descriptor, double> edgeLengthMap;
+    BGL_FORALL_EDGES(e, bipartiteGraph, BipartiteGraph) {
+        const BipartiteGraph::vertex_descriptor v0 = source(e, bipartiteGraph);
+        const BipartiteGraph::vertex_descriptor v1 = target(e, bipartiteGraph);
+        const bool isSameComponent = (split.vertexComponent[v0] == split.vertexComponent[v1]);
+        const double length = (isSameComponent ? 1. : 10.);
+        edgeLengthMap.insert({e, length});
+    }
+
+    // Compute the layout.
+    std::map<BipartiteGraph::vertex_descriptor, array<double, 2> > positionMap;
+    const int quality = 2;
+    const double timeout = 30.;
+    const auto layoutReturnCode = computeLayoutCustom(bipartiteGraph, edgeLengthMap, positionMap, quality, timeout);
+    if(layoutReturnCode != ComputeLayoutReturnCode::Success) {
+        html << "<br>The custom layout of the bipartite graph cannot be displayed.";
+        return;
+    }
+
+    // Compute the bounding box of the layout.
+    double xMin = std::numeric_limits<double>::max();
+    double xMax = std::numeric_limits<double>::min();
+    double yMin = xMin;
+    double yMax = xMax;
+    for(const auto& p: positionMap) {
+        const array<double, 2>& xy = p.second;
+        const double x = xy[0];
+        const double y = xy[1];
+        xMin = min(xMin, x);
+        xMax = max(xMax, x);
+        yMin = min(yMin, y);
+        yMax = max(yMax, y);
+    }
+
+    // Enlarge the bounding box a bit.
+    const double extend = 0.05 * max(xMax-xMin, yMax-yMin);
+    xMin -= extend;
+    xMax += extend;
+    yMin -= extend;
+    yMax += extend;
+
+    // Make it square,
+    if((xMax - xMin) > (yMax - yMin)) {
+        const double delta = ((xMax - xMin) - (yMax - yMin)) / 2.;
+        yMin -= delta;
+        yMax += delta;
+    } else {
+        const double delta = ((yMax - yMin) - (xMax - xMin)) / 2.;;
+        xMin -= delta;
+        xMax += delta;
+    }
+
+
+    // Begin the svg.
+    // Use scientific notation because svg does not accept floating points
+    // ending with a decimal point.
+    const uint64_t sizePixels = 900;
+    html << std::scientific;
+    const string svgId = "BipartiteGraph";
+    html <<
+        "\n<br><div style='display:inline-block;vertical-align:top;'>"
+        "<svg id='" << svgId <<
+        "' width='" <<  sizePixels <<
+        "' height='" << sizePixels <<
+        "' viewbox='" << xMin << " " << yMin << " " <<
+        xMax-xMin << " " <<
+        yMax-yMin << "'"
+        " style='background-color:#f0f0f0'"
+        ">\n";
+
+
+
+    // Write the edges first so they don't obscure the vertices.
+    const double edgeThicknessFactor = (xMax - xMin) * 0.0001;
+    BGL_FORALL_EDGES(e, bipartiteGraph, BipartiteGraph) {
+        const BipartiteGraph::vertex_descriptor v0 = source(e, bipartiteGraph);
+        const BipartiteGraph::vertex_descriptor v1 = target(e, bipartiteGraph);
+        const auto&[x0, y0] = positionMap.at(v0);
+        const auto&[x1, y1] = positionMap.at(v1);
+        const bool isSameComponent = (split.vertexComponent[v0] == split.vertexComponent[v1]);
+        const string color = (isSameComponent ? "Black" : "Red");
+
+        const uint64_t frequency = bipartiteGraph[e].frequency;
+        const double thickness = edgeThicknessFactor * (1. + 6. * std::log10(frequency));
+
+        html <<
+            "<line x1='" << x0 << "' y1='" << y0 <<
+            "' x2='" << x1 << "' y2='" << y1 <<
+            "' stroke='" << color <<
+            "' stroke-width='" << thickness <<
+            "' />";
+    }
+
+
+
+    // Write the vertices.
+    const double segmentRadius = (xMax - xMin) * 0.006;
+    const double orientedReadRadius = (xMax - xMin) * 0.002;
+    BGL_FORALL_VERTICES(v, bipartiteGraph, BipartiteGraph) {
+        const string color = randomHslColor(split.vertexComponent[v], 0.5, 0.6);
+        const double radius = (bipartiteGraph[v].isSegment ? segmentRadius : orientedReadRadius);
+        const auto&[x, y] = positionMap.at(v);
+        html << "<circle cx='" << x << "' cy='" << y <<
+            "' fill='" << color <<
+            "' r='" << radius <<
+            "' />";
+    }
+
+
+    // Finish the svg.
+    html << "</svg></div>";
 }
 
 

@@ -252,7 +252,8 @@ private:
     BipartiteGraph bipartiteGraph;
     std::map<OrientedReadId, BipartiteGraph::vertex_descriptor> orientedReadIdVertexMap;
     void createBipartiteGraph();
-    void writeBipartiteGraph(const Split&);
+    void writeBipartiteGraphGraphviz(const Split&);
+    void writeBipartiteGraphCustom(const Split&);
     void computeSplit(Split&) const;
     void writeSplitSummary(const Split&) const;
     void writeSplitDetails(const Split&) const;
