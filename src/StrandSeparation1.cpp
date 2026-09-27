@@ -6,11 +6,13 @@
 #include "DisjointSets.hpp"
 #include "graphvizToHtml.hpp"
 #include "html.hpp"
+#include "weightedShuffle.hpp"
 using namespace shasta2;
 using namespace StrandSeparation1;
 
 // Standard library.
 #include <iomanip>
+#include <random>
 
 
 // StrandContact constructor.
@@ -39,14 +41,21 @@ StrandContact::StrandContact(
         html << "<h1>Strand contact " << strandContactId << "</h1>";
     }
 
+    // Create the BipartiteGraph.
     gatherSegmentPairs();
     countReadOccurrences();
     createBipartiteGraph();
-    bipartiteGraph.strandSeparation();
-    writeBipartiteGraph();
-    evaluateStrandSeparation(true);
 
-    if(debug) {
+    // Strand separation in the BipartiteGraph.
+    Split split;
+    computeSplit(split);
+
+    if(html) {
+        html << "<h2>Best strand separation found</h2>";
+        writeSplitSummary(split);
+        writeSplitDetails(split);
+        writeBipartiteGraph(split);
+
         writeHtmlEnd(html);
         cout << "Done working on strand contact " << strandContactId << endl;
     }
@@ -254,13 +263,17 @@ void StrandContact::countReadOccurrences()
     }
 
     // Remove from the map reads that occur in just one Segment.
-    for(auto it=readOccurrenceMap.begin(); it!=readOccurrenceMap.end(); ++it) {
+    for(auto it=readOccurrenceMap.begin(); it!=readOccurrenceMap.end(); /* Increment later */) {
         auto itNext = it;
         ++itNext;
         if(it->second.size() == 1) {
             readOccurrenceMap.erase(it);
         }
         it = itNext;
+    }
+
+    for(const auto&[readId, occurrences]: readOccurrenceMap) {
+        SHASTA2_ASSERT(occurrences.size() > 1);
     }
 
     writeReadOccurrences();
@@ -324,6 +337,7 @@ void StrandContact::createBipartiteGraph()
 
         // Now loop over the occurrences of this ReadId.
         for(const auto& occurrence: occurrences) {
+            SHASTA2_ASSERT(occurrences.size() > 1);
 
             // Get the two OrientedReadIds of this ReadId.
             const OrientedReadId orientedReadId0(readId, occurrence.strand);;
@@ -371,7 +385,7 @@ BipartiteGraph::vertex_descriptor BipartiteGraph::addVertex(uint64_t segmentPair
 
 
 
-void StrandContact::writeBipartiteGraph()
+void StrandContact::writeBipartiteGraph(const Split& split)
 {
     if(not html) {
         return;
@@ -379,14 +393,22 @@ void StrandContact::writeBipartiteGraph()
 
     const string dotFileName = debugOutputBaseName + "-StrandContact-" +
         to_string(strandContactId) + ".dot";
-    bipartiteGraph.writeGraphviz(dotFileName, segmentPairs, assemblyGraph);
+    bipartiteGraph.writeGraphviz(dotFileName, segmentPairs, assemblyGraph, split);
 
     const double timeout = 30.;
     const string options = "-Nshape=point -Epenwidth=0.2 -Gratio=expand -Gsize=15";
     html << "<h2>Bipartite graph</h2>"
         "<br>In the bipartite graph, each vertex represents a segment or "
-        "an oriented read. Oriented reads are displayed as small dots. "
-        "<br><br>" << dotFileName << "<br>";
+        "an oriented read. Oriented reads are displayed as small dots. ";
+
+    html << "<br><br><table>"
+        "<tr><th class=left>Total number of vertices<td class=centered>" << num_vertices(bipartiteGraph) <<
+        "<tr><th class=left>Number of vertices representing segments<td class=centered>" << 2 * segmentPairs.size() <<
+        "<tr><th class=left>Number of vertices representing oriented reads<td class=centered>" << 2 * readOccurrenceMap.size() <<
+        "<tr><th class=left>Total number of edges<td class=centered>" << num_edges(bipartiteGraph) <<
+        "</table>";
+
+    html << "<br>" << dotFileName << "<br>";
 
     try {
         graphvizToHtml(dotFileName, "sfdp", timeout, options, html, true);
@@ -400,7 +422,8 @@ void StrandContact::writeBipartiteGraph()
 void BipartiteGraph::writeGraphviz(
     const string& fileName,
     const vector<SegmentPair>& segmentPairs,
-    const AssemblyGraph& assemblyGraph) const
+    const AssemblyGraph& assemblyGraph,
+    const Split& split) const
 {
     const BipartiteGraph& bipartiteGraph = *this;
 
@@ -413,7 +436,7 @@ void BipartiteGraph::writeGraphviz(
     // Vertices.
     BGL_FORALL_VERTICES(v, bipartiteGraph, BipartiteGraph) {
         const BipartiteGraphVertex& vertex = bipartiteGraph[v];
-        const string color = randomHslColor(vertex.componentId, 0.5, 0.6);
+        const string color = randomHslColor(split.vertexComponent[v], 0.5, 0.6);
 
         if(vertex.isSegment) {
             const uint64_t segmentPairId = vertex.segmentPairId;
@@ -435,54 +458,62 @@ void BipartiteGraph::writeGraphviz(
 
 
     // Edges.
-    BGL_FORALL_EDGES(e, bipartiteGraph, BipartiteGraph) {
-        const vertex_descriptor v0 = source(e, bipartiteGraph);
-        const vertex_descriptor v1 = target(e, bipartiteGraph);
-        const BipartiteGraphVertex& vertex0 = bipartiteGraph[v0];
-        const BipartiteGraphVertex& vertex1 = bipartiteGraph[v1];
+    for(uint64_t edgePairIndex=0; edgePairIndex<edgePairs.size(); edgePairIndex++) {
+        const EdgePair& edgePair = edgePairs[edgePairIndex];
+        const array<edge_descriptor, 2> edgePairEdges = {edgePair.e, edgePair.eRc};
 
-        const uint64_t frequency = bipartiteGraph[e].frequency;
-        const double thickness = 0.1 * (1. + std::log10(frequency));
+        for(const edge_descriptor e: edgePairEdges) {
 
-        if(vertex0.isSegment) {
-            const uint64_t segmentPairId0 = vertex0.segmentPairId;
-            const uint64_t segmentIndexInPair0 = vertex0.segmentIndexInPair;
-            const SegmentPair& segmentPair0 = segmentPairs[segmentPairId0];
-            const SegmentInfo& segmentInfo0 = segmentPair0.segmentInfos[segmentIndexInPair0];
-            const Segment segment0 = segmentInfo0.segment;
-            dot << assemblyGraph.id(segment0);
-        } else {
-            dot << "\"" << vertex0.orientedReadId << "\"";
+            const vertex_descriptor v0 = source(e, bipartiteGraph);
+            const vertex_descriptor v1 = target(e, bipartiteGraph);
+            const BipartiteGraphVertex& vertex0 = bipartiteGraph[v0];
+            const BipartiteGraphVertex& vertex1 = bipartiteGraph[v1];
+
+            const uint64_t frequency = bipartiteGraph[e].frequency;
+            const double thickness = 0.1 * (1. + std::log10(frequency));
+
+            if(vertex0.isSegment) {
+                const uint64_t segmentPairId0 = vertex0.segmentPairId;
+                const uint64_t segmentIndexInPair0 = vertex0.segmentIndexInPair;
+                const SegmentPair& segmentPair0 = segmentPairs[segmentPairId0];
+                const SegmentInfo& segmentInfo0 = segmentPair0.segmentInfos[segmentIndexInPair0];
+                const Segment segment0 = segmentInfo0.segment;
+                dot << assemblyGraph.id(segment0);
+            } else {
+                dot << "\"" << vertex0.orientedReadId << "\"";
+            }
+
+            dot << "--";
+
+            if(vertex1.isSegment) {
+                const uint64_t segmentPairId1 = vertex1.segmentPairId;
+                const uint64_t segmentIndexInPair1 = vertex1.segmentIndexInPair;
+                const SegmentPair& segmentPair1 = segmentPairs[segmentPairId1];
+                const SegmentInfo& segmentInfo1 = segmentPair1.segmentInfos[segmentIndexInPair1];
+                const Segment segment1 = segmentInfo1.segment;
+                dot << assemblyGraph.id(segment1);
+            } else {
+                dot << "\"" << vertex1.orientedReadId << "\"";
+            }
+
+            dot << "[";
+            dot << "penwidth=\"" << thickness << "\"";
+
+            if(split.isCrossStrandEdgePair(edgePairIndex)) {
+                dot << " color=red";
+            }
+
+            dot << "]";
+
+            dot << ";\n";
         }
-
-        dot << "--";
-
-        if(vertex1.isSegment) {
-            const uint64_t segmentPairId1 = vertex1.segmentPairId;
-            const uint64_t segmentIndexInPair1 = vertex1.segmentIndexInPair;
-            const SegmentPair& segmentPair1 = segmentPairs[segmentPairId1];
-            const SegmentInfo& segmentInfo1 = segmentPair1.segmentInfos[segmentIndexInPair1];
-            const Segment segment1 = segmentInfo1.segment;
-            dot << assemblyGraph.id(segment1);
-        } else {
-            dot << "\"" << vertex1.orientedReadId << "\"";
-        }
-
-        dot << "[";
-        dot << "penwidth=\"" << thickness << "\"";
-
-        if(vertex0.componentId != vertex1.componentId) {
-            dot << " color=red";
-        }
-
-        dot << "]";
-
-        dot << ";\n";
 
     }
 
     dot << "}\n";
 }
+
+
 
 // Add a vertex representing an OrientedReadId.
 BipartiteGraph::vertex_descriptor BipartiteGraph::addVertex(OrientedReadId orientedReadId)
@@ -494,11 +525,60 @@ BipartiteGraph::vertex_descriptor BipartiteGraph::addVertex(OrientedReadId orien
 
 
 
-void BipartiteGraph::strandSeparation()
+// At the first iteration, use the EdgePairs sorted by decreasing
+// frequency. At subsequent iterations, use random shuffles of
+// the EdgePairs, weighted by their frequency.
+void StrandContact::computeSplit(Split& bestSplit) const
 {
-    vector<uint64_t> edgePairsIndexes(edgePairs.size());
-    std::ranges::iota(edgePairsIndexes, 0);
-    strandSeparation(edgePairsIndexes);
+    // EXPOSE WHEN CODE STABILIZES.
+    const uint64_t iterationCount = 1000;
+
+    // Gather the weight of each EdgePair.
+    vector<double> weights;
+    for(const auto& edgePair: bipartiteGraph.edgePairs) {
+        weights.push_back(double(edgePair.frequency));
+    }
+
+    std::mt19937 generator;
+    vector<uint64_t> shuffle;
+
+    vector<uint64_t> edgePairsIndexes(bipartiteGraph.edgePairs.size());
+
+    if(html) {
+        html << "<h2>Strand separation iterations</h2>"
+            "<table><tr><th>Iteration<th>Cross-strand<br>frequency";
+    }
+
+    Split split;
+    for(uint64_t iteration=0; iteration<iterationCount; iteration++) {
+        split.clear();
+        if(iteration == 0) {
+            std::ranges::iota(edgePairsIndexes, 0);
+        } else {
+            weightedShuffle(weights, generator, edgePairsIndexes);
+        }
+        bipartiteGraph.computeSplit(edgePairsIndexes, split);
+
+        const bool isBestSoFar = (iteration == 0) or (split.crossStrandFrequency < bestSplit.crossStrandFrequency);
+        if(isBestSoFar) {
+            bestSplit = split;
+        }
+
+        if(html) {
+            html << "<tr";
+            if(isBestSoFar) {
+                html << " style='background-color:Pink'";
+            }
+            html << ">";
+            html <<
+                "<td class=centered>" << iteration <<
+                "<td class=centered>" << 2 * split.crossStrandFrequency;
+        }
+    }
+
+    if(html) {
+        html << "</table>";
+    }
 }
 
 
@@ -518,9 +598,12 @@ BipartiteGraph::vertex_descriptor BipartiteGraph::reverseComplement(vertex_descr
 // It stores the components in the components vector
 // and also fills in the componentIndex in all the vertices.
 // Reverse complemented components are numbered consecutively.
-void BipartiteGraph::strandSeparation(const vector<uint64_t>& edgePairsIndexes)
+void BipartiteGraph::computeSplit(
+    const vector<uint64_t>& edgePairsIndexes,
+    Split& split) const
 {
-    BipartiteGraph& bipartiteGraph = *this;
+    const BipartiteGraph& bipartiteGraph = *this;
+    split.clear();
 
     DisjointSets disjointSets(num_vertices(bipartiteGraph));
 
@@ -549,14 +632,19 @@ void BipartiteGraph::strandSeparation(const vector<uint64_t>& edgePairsIndexes)
         SHASTA2_ASSERT(strandViolationARc == strandViolation);
         SHASTA2_ASSERT(strandViolationBRc == strandViolation);
 
-        if(not strandViolation) {
+        if(strandViolation) {
+            split.crossStrandEdgePairIndexes.push_back(edgePairIndex);
+            split.crossStrandFrequency += edgePair.frequency;
+        } else {
             disjointSets.unionSet(v0A, v1A);
             disjointSets.unionSet(v0B, v1B);
         }
     }
 
+    std::ranges::sort(split.crossStrandEdgePairIndexes);
+
     // Gather the components.
-    disjointSets.gatherComponents(1, components);
+    disjointSets.gatherComponents(1, split.components);
 
     // Reorder the components so pairs of
     // reverse complemented components are numbered consecutively.
@@ -572,92 +660,160 @@ void BipartiteGraph::strandSeparation(const vector<uint64_t>& edgePairsIndexes)
              return v0.front() < v1.front();
         }
     };
-    sort(components.begin(), components.end(), SortByFirstElement());
+    std::ranges::sort(split.components, SortByFirstElement());
 
     // Store the componentId of the vertices.
-    for(uint64_t componentId=0; componentId<components.size(); componentId++) {
-        const vector<vertex_descriptor>& component = components[componentId];
+    split.vertexComponent.resize(num_vertices(bipartiteGraph));
+    for(uint64_t componentId=0; componentId<split.components.size(); componentId++) {
+        const vector<vertex_descriptor>& component = split.components[componentId];
         for(const vertex_descriptor v: component) {
-            bipartiteGraph[v].componentId = componentId;
+            split.vertexComponent[v] = componentId;
         }
     }
 }
 
 
 
-void StrandContact::evaluateStrandSeparation(bool writeCsvFile)
+void StrandContact::writeSplitSummary(const Split& split) const
 {
-
-    ofstream csv;
-    if(writeCsvFile) {
-        csv.open(debugOutputBaseName + "-StrandContact-" + to_string(strandContactId) + "-EvaluateStrandSeparation.csv");
+    if(not html) {
+        return;
     }
+
+    uint64_t totalEdgeCount = 0;
+    uint64_t totalEdgeFrequency = 0;
+    uint64_t crossStrandEdgeCount = 0;
+    uint64_t crossStrandEdgeFrequency = 0;
+    BGL_FORALL_EDGES(e, bipartiteGraph, BipartiteGraph) {
+        const BipartiteGraph::vertex_descriptor v0 = source(e, bipartiteGraph);
+        const BipartiteGraph::vertex_descriptor v1 = target(e, bipartiteGraph);
+
+        const uint64_t frequency = bipartiteGraph[e].frequency;
+        ++totalEdgeCount;
+        totalEdgeFrequency += frequency;
+
+        if(split.vertexComponent[v0] != split.vertexComponent[v1]) {
+            ++crossStrandEdgeCount;
+            crossStrandEdgeFrequency += frequency;
+        }
+    }
+
+    html <<
+        std::setprecision(6) <<
+        "<table>"
+        "<tr><th><th>Total<th>Cross-strand<th>Ratio"
+        "<tr><th class=left>Number of edges"
+        "<td class=centered>" << totalEdgeCount <<
+        "<td class=centered>" << crossStrandEdgeCount <<
+        "<td class=centered>" << double(crossStrandEdgeCount) / double(totalEdgeCount) <<
+        "<tr><th class=left>Edge frequency"
+        "<td class=centered>" << totalEdgeFrequency <<
+        "<td class=centered>" << crossStrandEdgeFrequency <<
+        "<td class=centered>" << double(crossStrandEdgeFrequency) / double(totalEdgeFrequency) <<
+        "</table>";
+}
+
+
+
+void StrandContact::writeSplitDetails(const Split& split) const
+{
+    if(not html) {
+        return;
+    }
+
+    const string csvFileName =
+        debugOutputBaseName + "-StrandContact-" + to_string(strandContactId) + "-EvaluateStrandSeparation.csv";
+    ofstream csv(csvFileName);
 
     csv <<
         "Vertex,Segment,OrientedReadId,"
         "Total edge count,Cross-strand edge count,Cross-strand edge ratio,"
-        "Total edge frequency,Cross-strand edge frequency,Cross-strand edge frequency ratio,\n";
+        "Total edge frequency,Same-strand edge frequency,Cross-strand edge frequency,"
+        "Cross-strand edge frequency excess,"
+        "Cross-strand edge frequency ratio,\n";
 
     BGL_FORALL_VERTICES(v0, bipartiteGraph, BipartiteGraph) {
         const BipartiteGraphVertex& vertex0 = bipartiteGraph[v0];
-        uint64_t totalEdgeCount = 0;
-        uint64_t crossStrandEdgeCount = 0;
-        uint64_t totalEdgeFrequency = 0;
-        uint64_t crossStrandEdgeFrequency = 0;
+        uint64_t vertexTotalEdgeCount = 0;
+        uint64_t vertexCrossStrandEdgeCount = 0;
+        uint64_t vertexTotalEdgeFrequency = 0;
+        uint64_t vertexCrossStrandEdgeFrequency = 0;
         BGL_FORALL_OUTEDGES(v0, e, bipartiteGraph, BipartiteGraph) {
             const BipartiteGraph::vertex_descriptor v1 = target(e, bipartiteGraph);
-            const BipartiteGraphVertex& vertex1 = bipartiteGraph[v1];
             const uint64_t frequency = bipartiteGraph[e].frequency;
-            ++totalEdgeCount;
-            totalEdgeFrequency += frequency;
-            if(vertex0.componentId != vertex1.componentId) {
-                ++crossStrandEdgeCount;
-                crossStrandEdgeFrequency += frequency;
+            ++vertexTotalEdgeCount;
+            vertexTotalEdgeFrequency += frequency;
+            if(split.vertexComponent[v0] != split.vertexComponent[v1]) {
+                ++vertexCrossStrandEdgeCount;
+                vertexCrossStrandEdgeFrequency += frequency;
             }
         }
-        const double crossStrandEdgeRatio = double(crossStrandEdgeCount) / double(totalEdgeCount);
-        const double crossStrandEdgeFrequencyRatio = double(crossStrandEdgeFrequency) / double(totalEdgeFrequency);
 
-        if(writeCsvFile) {
-            csv << v0 << ",";
+        const double vertexCrossStrandEdgeRatio = double(vertexCrossStrandEdgeCount) / double(vertexTotalEdgeCount);
+        const double vertexCrossStrandEdgeFrequencyRatio = double(vertexCrossStrandEdgeFrequency) / double(vertexTotalEdgeFrequency);
+        csv << v0 << ",";
 
-            if(vertex0.isSegment) {
-                csv << segmentPairs[vertex0.segmentPairId].segmentInfos[vertex0.segmentIndexInPair].id;
-            }
-            csv << ",";
-
-            if(not vertex0.isSegment) {
-                csv << vertex0.orientedReadId;
-            }
-            csv << ",";
-
-            csv << totalEdgeCount << ",";
-
-            if(crossStrandEdgeCount) {
-                csv << crossStrandEdgeCount;
-            }
-            csv << ",";
-
-            if(crossStrandEdgeCount) {
-                csv << crossStrandEdgeRatio;
-            }
-            csv << ",";
-
-            csv << totalEdgeFrequency << ",";
-
-            if(crossStrandEdgeFrequency) {
-                csv << crossStrandEdgeFrequency;
-            }
-            csv << ",";
-
-            if(crossStrandEdgeFrequency) {
-                csv << crossStrandEdgeFrequencyRatio;
-            }
-            csv << ",";
-
-            csv << "\n";
+        if(vertex0.isSegment) {
+            csv << segmentPairs[vertex0.segmentPairId].segmentInfos[vertex0.segmentIndexInPair].id;
         }
+        csv << ",";
+
+        if(not vertex0.isSegment) {
+            csv << vertex0.orientedReadId;
+        }
+        csv << ",";
+
+        csv << vertexTotalEdgeCount << ",";
+
+        if(vertexCrossStrandEdgeCount) {
+            csv << vertexCrossStrandEdgeCount;
+        }
+        csv << ",";
+
+        if(vertexCrossStrandEdgeCount) {
+            csv << vertexCrossStrandEdgeRatio;
+        }
+        csv << ",";
+
+        csv << vertexTotalEdgeFrequency << ",";
+        csv << vertexTotalEdgeFrequency - vertexCrossStrandEdgeFrequency << ",";
+
+        if(vertexCrossStrandEdgeFrequency) {
+            csv << vertexCrossStrandEdgeFrequency;
+        }
+        csv << ",";
+
+        csv << int64_t(vertexCrossStrandEdgeFrequency) -
+            int64_t(vertexTotalEdgeFrequency - vertexCrossStrandEdgeFrequency) << ",";
+
+
+        if(vertexCrossStrandEdgeFrequency) {
+            csv << vertexCrossStrandEdgeFrequencyRatio;
+        }
+        csv << ",";
+
+        csv << "\n";
+
     }
+    html << "<br>See <a href='" << csvFileName << "'>" << csvFileName <<
+        "</a> for detailed evaluation of strand separation.";
 
-    html << "</table>";
+
+}
+
+
+
+void Split::clear()
+{
+    components.clear();
+    vertexComponent.clear();
+    crossStrandEdgePairIndexes.clear();
+    crossStrandFrequency = 0;
+}
+
+
+
+bool Split::isCrossStrandEdgePair(uint64_t i) const
+{
+    return std::ranges::binary_search(crossStrandEdgePairIndexes, i);
 }
