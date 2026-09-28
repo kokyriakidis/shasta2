@@ -30,6 +30,7 @@ namespace shasta2 {
             BipartiteGraphVertex,
             BipartiteGraphEdge>;
         class BipartiteGraph;
+        class BipartiteGraphVertexStatistics;
     }
 }
 
@@ -43,6 +44,7 @@ public:
     bool isEntrance = false;
     bool isExit = false;
     BipartiteGraphBaseClass::vertex_descriptor v = BipartiteGraphBaseClass::null_vertex();
+    uint64_t componentId = invalid<uint64_t>;
 };
 
 
@@ -55,6 +57,7 @@ public:
     array<SegmentInfo, 2> segmentInfos;
     uint64_t length;
     double coverage;
+    double crossStrandEdgeFrequencyRatio = invalid<double>;
 
     uint64_t id0() const
     {
@@ -124,6 +127,22 @@ public:
 
 
 
+class shasta2::StrandSeparation1::BipartiteGraphVertexStatistics {
+public:
+    uint64_t totalEdgeCount = 0;
+    uint64_t crossStrandEdgeCount = 0;
+    uint64_t totalEdgeFrequency = 0;
+    uint64_t crossStrandEdgeFrequency = 0;
+
+    double crossStrandEdgeRatio() const;
+    double crossStrandEdgeFrequencyRatio() const;
+    uint64_t sameStrandEdgeCount() const;
+    uint64_t sameStrandEdgeFrequency() const;
+    int64_t crossStrandEdgeFrequencyExcess() const;
+};
+
+
+
 class shasta2::StrandSeparation1::BipartiteGraph : public BipartiteGraphBaseClass {
 public:
 
@@ -153,6 +172,10 @@ public:
     void computeSplit(
         const vector<uint64_t>& edgePairsIndexes,
         Split&) const;
+
+    BipartiteGraphVertexStatistics getVertexStatistics(
+        const Split&,
+        vertex_descriptor) const;
 
     void writeGraphviz(
         const string& dotFileName,
@@ -202,6 +225,9 @@ public:
 
 class shasta2::StrandSeparation1::StrandContact {
 public:
+
+    // EXPOSE WHEN CODE STABILIZES.
+    const double maxCrossStrandFrequencyRatio = 0.2;
 
     // StrandContact constructor.
     // The strandContactVerticesmust be sorted by id.
@@ -257,4 +283,11 @@ private:
     void computeSplit(Split&) const;
     void writeSplitSummary(const Split&) const;
     void writeSplitDetails(const Split&) const;
+
+    // Store component information in the SegmentPairs.
+    void storeSegmentInformation(const Split&);
+
+public:
+    static string componentColor(uint64_t componentId);
+    static string ambiguousColor();
 };
