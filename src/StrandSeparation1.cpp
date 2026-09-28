@@ -132,6 +132,36 @@ void StrandContact::storeSegmentInformation(const Split& split)
     }
 
     html << "</table>";
+
+
+
+    // Write a csv file that can be loaded in Bandage to show the Split.
+    const string fileName = debugOutputBaseName + "-StrandContact-" + to_string(strandContactId) + "-Split-Bandage.csv";
+    ofstream csv(fileName);
+    csv << "Segment,Component,Color\n";
+    for(const SegmentPair& segmentPair: segmentPairs) {
+        const bool isAmbiguous = (segmentPair.crossStrandEdgeFrequencyRatio > maxCrossStrandFrequencyRatio);
+        for(const SegmentInfo& segmentInfo: segmentPair.segmentInfos) {
+            const uint64_t componentId = segmentInfo.componentId;
+            csv << segmentInfo.id << ",";
+
+            if(isAmbiguous) {
+                csv << "?";
+            } else {
+                csv << componentId;
+            }
+            csv << ",";
+
+            if(isAmbiguous) {
+                csv << ambiguousColor();
+            } else {
+                csv << componentColor(componentId);
+            }
+            csv << ",";
+
+            csv << "\n";
+        }
+    }
 }
 
 
@@ -274,7 +304,7 @@ void StrandContact::writeSegmentPairs()
 
 
 
-    // Write a csv file that cna be loaded in Bandage to show this StrandContact
+    // Write a csv file that can be loaded in Bandage to show this StrandContact
     // with its entrances ane exits.
     const string fileName = debugOutputBaseName + "-StrandContact-" + to_string(strandContactId) + "-Bandage.csv";
     ofstream csv(fileName);
