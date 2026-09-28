@@ -162,6 +162,29 @@ void StrandContact::storeSegmentInformation(const Split& split)
             csv << "\n";
         }
     }
+
+
+
+    // Write a gfa file containing only the segments that will
+    // be used in the rest of the strand separation process
+    // for this StrandContact.
+    // These are segments that belong to an even number component
+    // or are flagged as ambiguous.
+    vector<Segment> segmentsForOutput;
+    for(const SegmentPair& segmentPair: segmentPairs) {
+        const bool isAmbiguous = (segmentPair.crossStrandEdgeFrequencyRatio > maxCrossStrandFrequencyRatio);
+        for(const SegmentInfo& segmentInfo: segmentPair.segmentInfos) {
+            const uint64_t componentId = segmentInfo.componentId;
+            if(isAmbiguous or ((componentId % 2) == 0)) {
+                segmentsForOutput.push_back(segmentInfo.segment);
+            }
+        }
+    }
+    std::ranges::sort(segmentsForOutput, assemblyGraph.orderById);
+
+    const string gfaFileName = debugOutputBaseName + "-StrandContact-" + to_string(strandContactId) + "-Split-Bandage.gfa";
+    assemblyGraph.writeGfa(gfaFileName, segmentsForOutput);
+
 }
 
 
@@ -1091,12 +1114,12 @@ bool Split::isCrossStrandEdgePair(uint64_t i) const
 
 string StrandContact::componentColor(uint64_t componentId)
 {
-    return randomHslColor(componentId, 0.5, 0.6);
+    return randomHslColor(componentId + 1000, 0.5, 0.6);
 }
 
 
 
 string StrandContact::ambiguousColor()
 {
-    return hslToRgbString(0.8, 1., 0.5);
+    return hslToRgbString(0.0, 0., 0.4);
 }
