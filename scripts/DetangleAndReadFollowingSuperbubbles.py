@@ -4,7 +4,7 @@ import shasta2
 
 # Get the arguments.
 import argparse
-parser = argparse.ArgumentParser(description = "Run a single one detangling iteration.")
+parser = argparse.ArgumentParser(description = "Run a single detangling iteration.")
 parser.add_argument("inputStage", type=str, help="Input assembly stage.")
 parser.add_argument("outputStage", type=str, help="Output assembly stage.")
 arguments = parser.parse_args()
