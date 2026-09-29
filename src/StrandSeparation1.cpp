@@ -60,6 +60,7 @@ StrandContact::StrandContact(
     }
 
     storeSegmentInformation(split);
+    updateAssemblyGraph();
 
     if(html) {
         writeHtmlEnd(html);
@@ -1122,4 +1123,123 @@ string StrandContact::componentColor(uint64_t componentId)
 string StrandContact::ambiguousColor()
 {
     return hslToRgbString(0.0, 0., 0.4);
+}
+
+
+
+// We update the AssemblyGraph as follows:
+// - We make identical copies of Segments that are not entrances or exits
+//   and that either:
+//   * Are classified as ambiguous
+//   or
+//   * Are assigned an evenly number component.
+//   For the ambiguous case, it may be necessary to remove from the copy
+//   oriented reads that don't belong to the same evenly number component.
+// - Except for interface vertices (targets of entrances and source of exits),
+//   the copies of the Segments use newly generated vertices.
+//   So they are only connected to each other and to the entrances and exits.
+// - As we create new vertices and Segments, we also
+//   create the corresponding reverse complemented copies.
+void StrandContact::updateAssemblyGraph()
+{
+    using vertex_descriptor = AssemblyGraph::vertex_descriptor;
+
+    // Find the interface vertices.
+    vector<vertex_descriptor> interfaceVertices;
+    for(const SegmentPair& segmentPair: segmentPairs) {
+        for(const SegmentInfo& segmentInfo: segmentPair.segmentInfos) {
+            if(segmentInfo.isEntrance) {
+                const Segment segment = segmentInfo.segment;
+                const vertex_descriptor v = target(segment, assemblyGraph);
+                interfaceVertices.push_back(v);
+            }
+            if(segmentInfo.isExit) {
+                const Segment segment = segmentInfo.segment;
+                const vertex_descriptor v = source(segment, assemblyGraph);
+                interfaceVertices.push_back(v);
+            }
+        }
+    }
+    deduplicate(interfaceVertices);
+
+    // A map that gives the new vertex corresponding to an old vertex
+    // in the replicated copies of segments.
+    // For interface vertices, the new vertex is the same as the old vertex.
+    std::map<vertex_descriptor, vertex_descriptor> newVertexMap;
+    for(const vertex_descriptor v: interfaceVertices) {
+        newVertexMap.insert({v, v});
+    }
+
+
+
+    // Replicate Segments as described at the beginning of this function.
+    for(const SegmentPair& segmentPair: segmentPairs) {
+        const bool isAmbiguous = (segmentPair.crossStrandEdgeFrequencyRatio > maxCrossStrandFrequencyRatio);
+        for(const SegmentInfo& segmentInfo: segmentPair.segmentInfos) {
+            if(segmentInfo.isEntrance) {
+                continue;
+            }
+            if(segmentInfo.isExit) {
+                continue;
+            }
+            if(isAmbiguous or (segmentInfo.componentId %2)) {
+
+                // Ok, we are going to make a copy of this Segment.
+                const Segment segment = segmentInfo.segment;
+
+                // But first we need to make sure we have the vertices.
+                // Get the new vertices for the copy of this segment, creating them if necessary.
+                // Also create their reverse complements.
+                const vertex_descriptor v0Old = source(segment, assemblyGraph);
+                const vertex_descriptor v1Old = target(segment, assemblyGraph);
+                const auto it0 = newVertexMap.find(v0Old);
+                const auto it1 = newVertexMap.find(v1Old);
+                vertex_descriptor v0New;
+                vertex_descriptor v1New;
+                if(it0 == newVertexMap.end()) {
+                    const AnchorId anchorId0 = assemblyGraph[v0Old].anchorId;
+                    v0New = add_vertex(AssemblyGraphVertex(anchorId0, assemblyGraph.nextVertexId++), assemblyGraph);
+                    newVertexMap.insert({v0Old, v0New});
+                    assemblyGraph.createReverseComplementVertex(v0New);
+                } else {
+                    v0New = it0->second;
+                }
+                if(it1 == newVertexMap.end()) {
+                    const AnchorId anchorId1 = assemblyGraph[v1Old].anchorId;
+                    v1New = add_vertex(AssemblyGraphVertex(anchorId1, assemblyGraph.nextVertexId++), assemblyGraph);
+                    newVertexMap.insert({v1Old, v1New});
+                    assemblyGraph.createReverseComplementVertex(v1New);
+                } else {
+                    v1New = it1->second;
+                }
+
+                // Make an exact copy of this Segment, between these new vertices.
+                // For the ambiguous case, it may be necessary to remove from the copy
+                // oriented reads that don't belong to the same evenly number component.
+                auto[newSegment, wasAdded] = add_edge(v0New, v1New, assemblyGraph[segment], assemblyGraph);
+                SHASTA2_ASSERT(wasAdded);
+
+                // Also create the reverse complement edge.
+                assemblyGraph.createReverseComplementEdge(newSegment);
+            }
+        }
+    }
+
+
+
+    // Now we can remove all the Segments of this StrandContact,
+    // except for entrances or exits.
+    for(const SegmentPair& segmentPair: segmentPairs) {
+        for(const SegmentInfo& segmentInfo: segmentPair.segmentInfos) {
+            if(segmentInfo.isEntrance) {
+                continue;
+            }
+            if(segmentInfo.isExit) {
+                continue;
+            }
+            boost::remove_edge(segmentInfo.segment, assemblyGraph);
+        }
+    }
+
+    // This leaves some isolated vertices that will be removed later.
 }

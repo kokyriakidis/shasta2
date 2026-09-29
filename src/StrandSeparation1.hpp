@@ -287,6 +287,8 @@ private:
     // Store component information in the SegmentPairs.
     void storeSegmentInformation(const Split&);
 
+    void updateAssemblyGraph();
+
 public:
     static string componentColor(uint64_t componentId);
     static string ambiguousColor();

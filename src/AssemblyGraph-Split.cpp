@@ -552,7 +552,9 @@ void AssemblyGraph::separateStrands1(const string& debugOutputBaseName)
             strandContactId);
     }
 
+    removeIsolatedVertices();
     strandSymmetricCompress();
+    check();
 
     performanceLog << timestamp << "AssemblyGraph::separateStrands1 ends: " <<
         debugOutputBaseName << endl;

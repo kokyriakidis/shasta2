@@ -19,7 +19,8 @@ assembler.accessJourneys()
 
 assemblyGraph = assembler.getAssemblyGraph(arguments.inputStage, options)
 assemblyGraph.separateStrands1("Python")
-# assemblyGraph.write(arguments.outputStage)
+assemblyGraph.strandSymmetricCompress()
+assemblyGraph.write(arguments.outputStage)
 
 
 
