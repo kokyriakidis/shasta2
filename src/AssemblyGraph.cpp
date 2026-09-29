@@ -413,6 +413,12 @@ bool AssemblyGraph::simplifyIteration([[maybe_unused]] uint64_t iteration)
     strandSymmetricCompress();
     if(debug) write(iterationString + "E-Compressed");
 
+    // Strand separation for self-complementary tangles.
+    separateStrands1(iterationString);
+    if(debug) write(iterationString + "F");
+    strandSymmetricCompress();
+    if(debug) write(iterationString + "F-Compressed");
+
     const bool changesWereMade = (nextEdgeId > oldNextEdgeId);
     return changesWereMade;
 }
