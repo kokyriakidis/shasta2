@@ -30,7 +30,6 @@ public:
     enum class Method {
         Adaptive,
         Abpoa,
-        Poasta,
         TheseusOnly,    // Only use oriented reads that are on both anchors
         TheseusAll,     // Also use oriented reads that are om just one anchor.
         DeBruijn,
@@ -53,7 +52,7 @@ public:
         // Whether to repair the bad homopolymer regions of the alignment
         // computed by whichever Method ran, using msa1 (see msa1.hpp).
         // Independent of Method, so any Method that produces a row alignment
-        // (Adaptive, Abpoa, Poasta, TheseusOnly, TheseusAll) can be repaired
+        // (Adaptive, Abpoa, TheseusOnly, TheseusAll) can be repaired
         // or not. Mirrors the global Options::useMsa1 - see OptionsDefine.hpp.
         bool useMsa1 = false;
 
@@ -61,7 +60,6 @@ public:
         // equal to commonThreshold, the adaptive method uses one of:
         // - Fast path.
         // - Abpoa.
-        // - Poasta.
         // Otherwise it uses Theseus.
         uint64_t commonCoverageThreshold = 6;
 
@@ -78,7 +76,7 @@ public:
         // equal to commonThreshold and the fast path cannot be used,
         // we use abpoa if the maximum length of a sequence
         // fixed on both sides is less than maxAbpoaLength, and
-        // poasta otherwise.
+        // theseus otherwise.
         uint64_t maxAbpoaLength = 5000;
 
         Options() {}
@@ -248,7 +246,7 @@ private:
 
     // Get  sequenceIds for the SequenceInfos on both anchors,
     // sorted by decreasing coverage.
-    // These are used for assembly with abpoa, poasta, or theseus.
+    // These are used for assembly with abpoa or theseus.
     // SequenceId is the index in the sequences vector above.
     void getSequencesOnBothAnchors(vector<uint64_t>&) const;
 
@@ -268,9 +266,7 @@ private:
     void run();
     void runFastPath();
     void runAdaptive();
-    void runAbpoaOrPoasta(bool usePoasta);
     void runAbpoa();
-    void runPoasta();
     void runTheseus(bool useAll);
 
 

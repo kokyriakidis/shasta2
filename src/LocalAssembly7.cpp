@@ -6,7 +6,6 @@
 #include "findReachableVertices.hpp"
 #include "graphvizToHtml.hpp"
 #include "msa1.hpp"
-#include "poastaWrapper.hpp"
 #include "Reads.hpp"
 #include "theseusWrapper.hpp"
 #include "tmpDirectory.hpp"
@@ -93,9 +92,6 @@ void LocalAssembly7::run()
         break;
     case Method::Abpoa:
         runAbpoa();
-        break;
-    case Method::Poasta:
-        runPoasta();
         break;
     case Method::TheseusOnly:
         runTheseus(false);
@@ -1254,33 +1250,17 @@ void LocalAssembly7::writeKmerOccurrences(const Graph& graph, ostream& csv) cons
 
 void LocalAssembly7::runAbpoa()
 {
-    runAbpoaOrPoasta(false);
-}
-
-
-
-void LocalAssembly7::runPoasta()
-{
-    runAbpoaOrPoasta(true);
-}
-
-
-
-void LocalAssembly7::runAbpoaOrPoasta(bool usePoasta)
-{
-    const string name = (usePoasta ? "Poasta" : "Abpoa");
-
     // Get the sequenceIds to be used, sorted in order of decreasing coverage.
     vector<uint64_t> sequenceIds;
     getSequencesOnBothAnchors(sequenceIds);
 
     if(html) {
         html <<
-            "<h3>Local assembly with " << name << "</h3>"
+            "<h3>Local assembly with abpoa</h3>"
             "The local assembly will use the following "
             "sequences of oriented reads on both anchors, "
-            "presented to " << name << " in this order of decreasing coverage."
-            "<br>Each sequence is presented to " << name << " a number of times "
+            "presented to abpoa in this order of decreasing coverage."
+            "<br>Each sequence is presented to abpoa a number of times "
             "equal to its coverage, with (implicit) weight 1."
             "<br><br><table>"
             "<tr><th>Sequence<br>id<th>Coverage<th>Length";
@@ -1297,7 +1277,7 @@ void LocalAssembly7::runAbpoaOrPoasta(bool usePoasta)
     }
 
 
-    // Abpoa and poasta don't support weights, so we have to enter each sequence
+    // Abpoa doesn't support weights, so we have to enter each sequence
     // a number of times equal to its coverage.
     vector< vector<Base> > msaSequences;
     vector< pair<uint64_t, uint64_t> > msaSequenceIdsWithWeight;
@@ -1309,28 +1289,24 @@ void LocalAssembly7::runAbpoaOrPoasta(bool usePoasta)
         }
     }
     if(html) {
-        html << "<br>Total coverage for " << name << " is " << msaSequences.size() << ".";
+        html << "<br>Total coverage for abpoa is " << msaSequences.size() << ".";
     }
 
-    // Run abpoa or poasta.
+    // Run abpoa.
     vector< pair<Base, uint64_t> > consensus;
     vector< vector<AlignedBase> > alignment;
     vector<AlignedBase> alignedConsensus;
     const auto t0 = steady_clock::now();
-    if(usePoasta) {
-        poasta(msaSequences, consensus, alignment, alignedConsensus);
-    } else {
-        // The alignment is normally computed only for the html display. It is
-        // also needed when the repair below is requested.
-        const bool computeAlignment = bool(html) or options.useMsa1;
-        abpoa(msaSequences, consensus, alignment, alignedConsensus, computeAlignment);
-    }
+    // The alignment is normally computed only for the html display. It is
+    // also needed when the repair below is requested.
+    const bool computeAlignment = bool(html) or options.useMsa1;
+    abpoa(msaSequences, consensus, alignment, alignedConsensus, computeAlignment);
     const auto t1 = steady_clock::now();
     SHASTA2_ASSERT(alignment.size() == msaSequenceIdsWithWeight.size());
 
     // Repair the bad homopolymer regions of the alignment, if requested (see
-    // Options::useMsa1). Every row here spans the whole alignment - abpoa and
-    // poasta take no anchoring information - and each entered sequence
+    // Options::useMsa1). Every row here spans the whole alignment - abpoa
+    // takes no anchoring information - and each entered sequence
     // already stands for one unit of coverage, so every row is anchored on
     // both sides and votes with weight 1.
     uint64_t repairedRegionCount = 0;
@@ -1358,7 +1334,7 @@ void LocalAssembly7::runAbpoaOrPoasta(bool usePoasta)
     const auto t3 = steady_clock::now();
 
     if(html) {
-        html << "<br>" << name << " completed in " << seconds(t1-t0) << " seconds.";
+        html << "<br>Abpoa completed in " << seconds(t1-t0) << " seconds.";
         if(options.useMsa1) {
             html << "<br>Msa1 repair completed in " << seconds(t3-t2) <<
                 " seconds and rebuilt " << repairedRegionCount << " region(s) of the alignment.";
@@ -1598,8 +1574,6 @@ void LocalAssembly7::Options::setMethod(const string& s)
         method = Method::Adaptive;
     } else if(s == "Abpoa") {
         method = Method::Abpoa;
-    } else if(s == "Poasta") {
-        method = Method::Poasta;
     } else if(s == "TheseusOnly") {
         method = Method::TheseusOnly;
     } else if(s == "TheseusAll") {
@@ -1615,7 +1589,7 @@ void LocalAssembly7::Options::setMethod(const string& s)
 
 // Get  pairs(sequenceId, coverage) for the SequenceInfos on both anchors,
 // sorted by decreasing coverage.
-// These are used for assembly with abpoa, poasta, or theseus.
+// These are used for assembly with abpoa or theseus.
 // SequenceId is the index in the sequences vector.
 void LocalAssembly7::getSequencesOnBothAnchors(
     vector<uint64_t>& v) const

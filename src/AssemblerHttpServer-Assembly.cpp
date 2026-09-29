@@ -967,8 +967,6 @@ void Assembler::exploreSegmentStep(
         (localAssembly7Options.method == LocalAssembly7::Method::Adaptive ? " checked=on" : "") << "> Adaptive"
         "<br><input type=radio name=method value=Abpoa" <<
         (localAssembly7Options.method == LocalAssembly7::Method::Abpoa ? " checked=on" : "") << "> Abpoa"
-        "<br><input type=radio name=method value=Poasta" <<
-        (localAssembly7Options.method == LocalAssembly7::Method::Poasta ? " checked=on" : "") << "> Poasta"
         "<br><input type=radio name=method value=TheseusOnly" <<
         (localAssembly7Options.method == LocalAssembly7::Method::TheseusOnly ? " checked=on" : "") <<
         "> Theseus, using only oriented reads on both anchors"
