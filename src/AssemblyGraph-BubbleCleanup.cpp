@@ -478,7 +478,7 @@ uint64_t AssemblyGraph::bubblePairCleanupIterationMultithreaded(
 
     // Assemble sequence for all the edges of the first bubble of each BubblePair.
     vector<edge_descriptor> edgesToBeAssembled;
-    for(const auto& [bubbleA, bubbleB]: allBubblePairs) {
+    for(const auto& [bubbleA, bubbleB]: candidateBubblePairs) {
         for(const edge_descriptor e: bubbleA.edges) {
             if(not assemblyGraph[e].wasAssembled) {
                 edgesToBeAssembled.push_back(e);
