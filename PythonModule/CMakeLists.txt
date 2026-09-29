@@ -28,12 +28,10 @@ file(GLOB SOURCES ../src/*.cpp)
 # Include directories.
 include_directories(../src)
 include_directories(~/.shasta2Build/abpoa/abPOA/include)
-include_directories(~/.shasta2Build/poasta-c/poasta-c)
 include_directories(~/.shasta2Build/theseus/theseus-lib/include)
 
 # Link directories for abpoa and poasta.
 link_directories(~/.shasta2Build/abpoa/abPOA/lib)
-link_directories(~/.shasta2Build/poasta-c/poasta-c/target/release)
 link_directories(~/.shasta2Build/theseus/theseus-lib/sharedBuild)
 
 # Define our library.
@@ -60,12 +58,11 @@ SET(CMAKE_LINKER_FLAGS  "${CMAKE_LINKER_FLAGS} ${SHASTA2_PYTHON_LIBRARIES}")
 target_link_libraries(
     shasta2PythonModule 
     atomic png boost_program_options boost_serialization boost_chrono pthread 
-    abpoa poasta_c theseus z m ${SHASTA2_PYTHON_LIBRARIES})
+    abpoa theseus z m ${SHASTA2_PYTHON_LIBRARIES})
 
-# Install the shared library and the abpoa, poasta-c, and theseus libraries it needs into the bin directory.
+# Install the shared library and the abpoa, and theseus libraries it needs into the bin directory.
 install(TARGETS shasta2PythonModule DESTINATION shasta2-install/bin)
 install(FILES ~/.shasta2Build/abpoa/abPOA/lib/libabpoa.so DESTINATION shasta2-install/bin)
-install(FILES ~/.shasta2Build/poasta-c/poasta-c/target/release/libpoasta_c.so DESTINATION shasta2-install/bin)
 install(FILES ~/.shasta2Build/theseus/theseus-lib/sharedBuild/libtheseus.so DESTINATION shasta2-install/bin)
 
 
