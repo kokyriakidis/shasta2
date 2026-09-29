@@ -565,6 +565,8 @@ uint64_t AssemblyGraphEdge::offset() const
 
 void AssemblyGraph::write(const string& stage)
 {
+    performanceLog << timestamp << "AssemblyGraph::write begins for stage " << stage << endl;
+
     cout << "Stage " << stage << ": " <<
         num_vertices(*this) << " vertices, " <<
         num_edges(*this) << " segments. Next segment id is " << nextEdgeId << "." << endl;
@@ -586,6 +588,7 @@ void AssemblyGraph::write(const string& stage)
         writeDetailsCsv("AssemblyDetails-" + stage + ".csv");
     }
 
+    performanceLog << timestamp << "AssemblyGraph::write ends for stage " << stage << endl;
 }
 
 
@@ -970,6 +973,9 @@ void AssemblyGraph::assembleStep(edge_descriptor e, uint64_t i)
 // then assembles each of the steps in parallel.
 void AssemblyGraph::assemble(const vector<edge_descriptor>& edgesToBeAssembled)
 {
+    const bool debug = false;
+    AssemblyGraph& assemblyGraph = *this;
+
     // The homopolymer model must be consistent with the Options: present if
     // and only if the Options specify one (see
     // Assembler::createHomopolymerModel). All sequence assembly goes through
@@ -982,7 +988,13 @@ void AssemblyGraph::assemble(const vector<edge_descriptor>& edgesToBeAssembled)
 
     performanceLog << timestamp << "Sequence assembly begins for " << edgesToBeAssembled.size() <<
         " assembly graph edges." << endl;
-    AssemblyGraph& assemblyGraph = *this;
+    if(debug) {
+        cout << "Edges to be assembled:" << endl;
+        for(const Segment segment: edgesToBeAssembled) {
+            cout << "Segment  " << id(segment) << ": " << assemblyGraph[segment].size() << " steps." << endl;
+        }
+    }
+
 
     stepsToBeAssembled.clear();
     for(const edge_descriptor e: edgesToBeAssembled) {
