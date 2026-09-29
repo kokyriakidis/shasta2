@@ -404,7 +404,9 @@ bool AssemblyGraph::detangleAndReadFollowing(
     bool somethingWasDone = false;
     for(uint64_t tangleId=0; tangleId<tangles.size(); tangleId++) {
         if(tangleId <= tangleRc[tangleId]) {
+            SHASTA2_ASSERT(not tangles[tangleId].empty());
             const Tangle tangle(assemblyGraph, tangles[tangleId]);
+            SHASTA2_ASSERT(not tangle.tangleVertices.empty());
 
             ofstream html;
             if(debug) {
@@ -415,7 +417,8 @@ bool AssemblyGraph::detangleAndReadFollowing(
                     tangle.entrances.size() << " entrances, " <<
                     tangle.exits.size() << " exits, " <<
                     tangle.tangleEdges.size() << " segments, " <<
-                    tangle.entrances.size() << " vertices." << endl;
+                    tangle.tangleVertices.size() << " vertices." << endl;
+                cout << "Next edge id is " << nextEdgeId << endl;
 
             }
 
@@ -719,6 +722,14 @@ bool AssemblyGraph::detangleTanglePair(
     // For the special case we have to use a "deep" connect.
     if(isSpecialCase) {
         connectPairs.push_back({{specialCaseEntranceId, specialCaseExitId}, true});
+    }
+
+    // Don't detangle if the tangle is a single vertex and
+    // all entrances are to be connected to all exits.
+    if(
+        (tangle.tangleVertices.size() == 1) and
+        (connectPairs.size() == (tangle.entrances.size() * tangle.exits.size()))) {
+        return false;
     }
 
     // Make the connections.
@@ -1159,6 +1170,7 @@ void AssemblyGraph::createTanglesBySegmentLength(
             tangle.push_back(vertexTable[vertexIndex]);
         }
         std::ranges::sort(tangle, orderById);
+        SHASTA2_ASSERT(not tangle.empty());
     }
 
     // Create a map that gives the tangle each vertex belongs to.
