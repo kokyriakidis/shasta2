@@ -344,17 +344,6 @@ void AssemblyGraph::simplifyAndAssemble()
     // Initial output.
     writeIntermediateStageIfRequested("A");
 
-    // Remove small connected components and strict pruning.
-    removeSmallComponents();
-    strictPrune();
-    strandSymmetricCompress();
-    writeIntermediateStageIfRequested("B");
-
-    // Remove or simplify bubbles likely caused by errors.
-    bubblePairCleanup();
-    strandSymmetricCompress();
-    writeIntermediateStageIfRequested("C");
-
     // Iterate detangling, read following, phasing.
     for(uint64_t iteration=0; iteration<maxIterationCount; ++iteration) {
         if(not simplifyIteration(iteration)) {
@@ -362,7 +351,7 @@ void AssemblyGraph::simplifyAndAssemble()
             break;
         }
     }
-    writeIntermediateStageIfRequested("D");
+    writeIntermediateStageIfRequested("B");
 
     // Make the AssemblyGraph single-stranded.
     makeSingleStranded();
@@ -380,7 +369,7 @@ void AssemblyGraph::simplifyAndAssemble()
 
 // This runs one iteration of phasing, detangling, read following.
 // It returns true if any changes in the AssemblyGraph were made.
-bool AssemblyGraph::simplifyIteration([[maybe_unused]] uint64_t iteration)
+bool AssemblyGraph::simplifyIteration(uint64_t iteration)
 {
     const string iterationString = to_string(iteration);
     const bool debug = false;
@@ -389,35 +378,48 @@ bool AssemblyGraph::simplifyIteration([[maybe_unused]] uint64_t iteration)
 
     if(debug) write(iterationString + "A");
 
-    // Phasing.
-    strandSymmetricPhaseSuperbubbleChains();
+    // Remove small connected components and strict pruning.
+    removeSmallComponents();
+    strictPrune();
     if(debug) write(iterationString + "B");
     strandSymmetricCompress();
     if(debug) write(iterationString + "B-Compressed");
 
-    // Vertex detangling.
-    detangleVertices(iterationString);
+    // Remove or simplify bubbles likely caused by errors.
+    bubblePairCleanup();
     if(debug) write(iterationString + "C");
     strandSymmetricCompress();
     if(debug) write(iterationString + "C-Compressed");
 
-    // Superbubble detangling and read following.
-    detangleAndReadFollowingSuperbubbles(iterationString);
+    // Phasing.
+    strandSymmetricPhaseSuperbubbleChains();
     if(debug) write(iterationString + "D");
     strandSymmetricCompress();
     if(debug) write(iterationString + "D-Compressed");
 
-    // Edge detangling.
-    detangleEdges(iterationString);
+    // Vertex detangling.
+    detangleVertices(iterationString);
     if(debug) write(iterationString + "E");
     strandSymmetricCompress();
     if(debug) write(iterationString + "E-Compressed");
 
-    // Strand separation for self-complementary tangles.
-    separateStrands1(iterationString);
+    // Superbubble detangling and read following.
+    detangleAndReadFollowingSuperbubbles(iterationString);
     if(debug) write(iterationString + "F");
     strandSymmetricCompress();
     if(debug) write(iterationString + "F-Compressed");
+
+    // Edge detangling.
+    detangleEdges(iterationString);
+    if(debug) write(iterationString + "G");
+    strandSymmetricCompress();
+    if(debug) write(iterationString + "G-Compressed");
+
+    // Strand separation for self-complementary tangles.
+    separateStrands1(iterationString);
+    if(debug) write(iterationString + "H");
+    strandSymmetricCompress();
+    if(debug) write(iterationString + "H-Compressed");
 
     const bool changesWereMade = (nextEdgeId > oldNextEdgeId);
     return changesWereMade;
