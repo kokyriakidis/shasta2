@@ -25,8 +25,9 @@ add_definitions(-DSHASTA2_STATIC_LIBRARY)
 # Sources files.
 file(GLOB SOURCES ../src/*.cpp)
 
-# Include directory.
+# Include directories.
 include_directories(../src ~/.shasta2Build/abpoa/abPOA/include)
+include_directories(~/.shasta2Build/theseus/theseus-lib/include)
 
 # Define our library.
 add_library(shasta2StaticLibrary STATIC ${SOURCES})
