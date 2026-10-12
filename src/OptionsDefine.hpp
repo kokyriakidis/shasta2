@@ -139,9 +139,10 @@ SHASTA2_OPTION_DEFINE(
 
 
 // Assembly graph.
-SHASTA2_BOOL_OPTION_DEFINE(
-    writeIntermediateAssemblyStages, "--write-intermediate-assembly-stages", false,
-    "Write intermediate assembly stages.")
+SHASTA2_OPTION_DEFINE(
+    uint64_t, writeIntermediateAssemblyStages, "--write-intermediate-assembly-stages", 0,
+    "Controls output of intermediate assembly stages. "
+    "0 = none, 1 = minimal, 2 = extensive, 3 = all.")
 
 SHASTA2_BOOL_OPTION_DEFINE(
     createPseudoAssembly, "--create-pseudo-assembly", false,

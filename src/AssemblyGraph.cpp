@@ -340,7 +340,7 @@ void AssemblyGraph::simplifyAndAssemble()
     writeMemoryStatistics("AssemblyGraph::simplifyAndAssemble begins");
 
     // Initial output.
-    writeIntermediateStageIfRequested("A");
+    writeIntermediateStageIfRequested("A", 1);
 
     // Iterate detangling, read following, phasing.
     for(uint64_t iteration=0; iteration<maxIterationCount; ++iteration) {
@@ -349,7 +349,7 @@ void AssemblyGraph::simplifyAndAssemble()
             break;
         }
     }
-    writeIntermediateStageIfRequested("B");
+    writeIntermediateStageIfRequested("B", 1);
 
     // Make the AssemblyGraph single-stranded.
     makeSingleStranded();
@@ -384,54 +384,53 @@ bool AssemblyGraph::simplifyIteration(uint64_t iteration)
         " segments are present when simplify iteration " << iteration << " begins." << endl;
 
     const string iterationString = to_string(iteration);
-    const bool debug = false;
 
     const uint64_t oldNextEdgeId = nextEdgeId;
 
-    if(debug) write(iterationString + "A");
+    writeIntermediateStageIfRequested(iterationString + "A", 3);
 
     // Remove small connected components and strict pruning.
     removeSmallComponents();
     strictPrune();
-    if(debug) write(iterationString + "B");
+    writeIntermediateStageIfRequested(iterationString + "B", 3);
     strandSymmetricCompress();
-    if(debug) write(iterationString + "B-Compressed");
+    writeIntermediateStageIfRequested(iterationString + "B-Compressed", 2);
 
     // Remove or simplify bubbles likely caused by errors.
     bubblePairCleanup();
-    if(debug) write(iterationString + "C");
+    writeIntermediateStageIfRequested(iterationString + "C", 3);
     strandSymmetricCompress();
-    if(debug) write(iterationString + "C-Compressed");
+    writeIntermediateStageIfRequested(iterationString + "C-Compressed", 2);
 
     // Phasing.
     strandSymmetricPhaseSuperbubbleChains();
-    if(debug) write(iterationString + "D");
+    writeIntermediateStageIfRequested(iterationString + "D", 3);
     strandSymmetricCompress();
-    if(debug) write(iterationString + "D-Compressed");
+    writeIntermediateStageIfRequested(iterationString + "D-Compressed", 2);
 
     // Vertex detangling.
     detangleVertices(iterationString);
-    if(debug) write(iterationString + "E");
+    writeIntermediateStageIfRequested(iterationString + "E", 3);
     strandSymmetricCompress();
-    if(debug) write(iterationString + "E-Compressed");
+    writeIntermediateStageIfRequested(iterationString + "E-Compressed", 2);
 
     // Superbubble detangling and read following.
     detangleAndReadFollowingSuperbubbles(iterationString);
-    if(debug) write(iterationString + "F");
+    writeIntermediateStageIfRequested(iterationString + "F", 3);
     strandSymmetricCompress();
-    if(debug) write(iterationString + "F-Compressed");
+    writeIntermediateStageIfRequested(iterationString + "F-Compressed", 2);
 
     // Edge detangling.
     detangleEdges(iterationString);
-    if(debug) write(iterationString + "G");
+    writeIntermediateStageIfRequested(iterationString + "G", 3);
     strandSymmetricCompress();
-    if(debug) write(iterationString + "G-Compressed");
+    writeIntermediateStageIfRequested(iterationString + "G-Compressed", 2);
 
     // Strand separation for self-complementary tangles.
     separateStrands1(iterationString);
-    if(debug) write(iterationString + "H");
+    writeIntermediateStageIfRequested(iterationString + "H", 3);
     strandSymmetricCompress();
-    if(debug) write(iterationString + "H-Compressed");
+    writeIntermediateStageIfRequested(iterationString + "H-Compressed", 2);
 
     const bool changesWereMade = (nextEdgeId > oldNextEdgeId);
 
@@ -608,9 +607,11 @@ void AssemblyGraph::write(const string& stage)
 
 
 
-void AssemblyGraph::writeIntermediateStageIfRequested(const string& name)
+void AssemblyGraph::writeIntermediateStageIfRequested(
+    const string& name,
+    uint64_t outputLevel)
 {
-    if(options.writeIntermediateAssemblyStages) {
+    if(outputLevel <= options.writeIntermediateAssemblyStages) {
         write(name);
     }
 }

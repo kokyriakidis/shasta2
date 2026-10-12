@@ -583,7 +583,7 @@ public:
 
     // Output.
     void write(const string& stage);
-    void writeIntermediateStageIfRequested(const string& name);
+    void writeIntermediateStageIfRequested(const string& name, uint64_t outputLevel);
     void writeFasta(const string& stage) const;
 private:
     void writeGfa(const string& fileName) const;
