@@ -322,7 +322,11 @@ private:
     bool readFollowingStrandSymmetric5(uint64_t tangleId, const Tangle&, ostream& html);
 
     // This uses ReadFollowing6 code.
-    bool readFollowingStrandSymmetric6(uint64_t tangleId, const Tangle&, ostream& html);
+    bool readFollowingStrandSymmetric6(
+        uint64_t tangleId,
+        const Tangle&,
+        ostream& html,
+        const string& debugOutputBaseName);
 
 
     // Make connections for detangling a detangle.

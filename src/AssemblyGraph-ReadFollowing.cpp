@@ -233,14 +233,17 @@ void AssemblyGraph::separateStrands1(const string& debugOutputBaseName)
 bool AssemblyGraph::readFollowingStrandSymmetric6(
     [[maybe_unused]] uint64_t tangleId,
     [[maybe_unused]] const shasta2::Tangle& shasta2Tangle,
-    [[maybe_unused]] ostream& html)
+    [[maybe_unused]] ostream& html,
+    const string& debugOutputBaseName)
 {
     SHASTA2_ASSERT(not shasta2Tangle.isSelfComplementary());
 
     ReadFollowing6::Tangle tangle(
         *this,
         shasta2Tangle.tangleVertices,
-        html);
+        html,
+        tangleId,
+        debugOutputBaseName);
 
     return false;
 }

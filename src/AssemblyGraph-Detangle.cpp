@@ -352,6 +352,7 @@ void AssemblyGraph::detangleEdges([[maybe_unused]] const string& debugOutputBase
     // Detangle each pair.
     for(uint64_t tangleId=0; tangleId<tangles.size(); tangleId++) {
         if(tangleId < tangleRc[tangleId]) {
+            // cout << "Working on tangle " << tangleId << endl;
             const Tangle tangle(assemblyGraph, tangles[tangleId]);
             // ofstream html("Debug-Tangle-" + to_string(tangleId) + ".html");
             // writeHtmlBegin(html, "Tangle-" + to_string(tangleId));
@@ -460,7 +461,14 @@ bool AssemblyGraph::detangleAndReadFollowing(
                 if(debug) {
                     cout << "Attempting read following." << endl;
                 }
-                if(readFollowingStrandSymmetric5(tangleId, tangle, html)) {
+
+#if 1
+                const bool success = readFollowingStrandSymmetric5(tangleId, tangle, html);
+#else
+                const bool success = readFollowingStrandSymmetric6(tangleId, tangle, html, debugOutputBaseName);
+#endif
+
+                if(success) {
                     if(debug) {
                         cout << "Read following was successful on this tangle." << endl;
                     }
@@ -947,8 +955,14 @@ bool AssemblyGraph::detangleTanglePairStrict(
     const Tangle& tangle, ostream& html)
 {
     AssemblyGraph& assemblyGraph = *this;
-    SHASTA2_ASSERT(not tangle.entrances.empty());
-    SHASTA2_ASSERT(not tangle.exits.empty());
+    if(html) {
+        html << "<h2>Detangling</h2>";
+        tangle.writeHtml(html);
+    }
+
+    if(tangle.entrances.empty() or tangle.exits.empty()) {
+        return false;
+    }
 
     if(tangle.entrances.size() != tangle.exits.size()) {
         return false;
@@ -956,11 +970,6 @@ bool AssemblyGraph::detangleTanglePairStrict(
 
     if(tangle.isSelfComplementary()) {
         return false;
-    }
-
-    if(html) {
-        html << "<h2>Detangling</h2>";
-        tangle.writeHtml(html);
     }
 
     // Run the likelihood ratio test on the entire matrix,
