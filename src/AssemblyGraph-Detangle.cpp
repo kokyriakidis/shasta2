@@ -403,7 +403,7 @@ bool AssemblyGraph::detangleAndReadFollowing(
     const string& debugOutputBaseName)
 {
     AssemblyGraph& assemblyGraph = *this;
-    const bool debug = false;
+    const bool debug = true;
 
     // Detangle or read following on each pair of reverse complemented tangles.
     bool somethingWasDone = false;
