@@ -26,7 +26,6 @@ bool AssemblyGraph::readFollowingStrandSymmetric5(
     AssemblyGraph& assemblyGraph = tangle.assemblyGraph;
     const bool isSelfComplementary = tangle.isSelfComplementary();
 
-#if 0
     // For now, only do it for tangles with a number of entrances
     // equal to the number of exits.
     if(tangle.entrances.size() != tangle.exits.size()) {
@@ -35,7 +34,6 @@ bool AssemblyGraph::readFollowingStrandSymmetric5(
         }
         return false;
     }
-#endif
 
     // Create the ReadFollowing5::Graph.
     const ReadFollowing5::Graph graph(*this, tangleId, tangle, html);
