@@ -687,6 +687,8 @@ bool AssemblyGraph::detangleTanglePair(
             specialCaseExit = block0.exits.front();
         }
 
+#if 0
+        // DON'T USE THE SPECIAL CASE CODE BECAUSE IT SOMETIMES CAUSES ERRORS.
         // We still need to check if this entrance/exit pair
         // can be connected using a deep RestrictedAnchorGraph.
         if(specialCaseEntrance != assemblyGraphNullEdge) {
@@ -705,6 +707,7 @@ bool AssemblyGraph::detangleTanglePair(
                 }
             }
         }
+#endif
     }
     uint64_t specialCaseEntranceId = invalid<uint64_t>;
     uint64_t specialCaseExitId = invalid<uint64_t>;
