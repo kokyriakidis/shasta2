@@ -1,6 +1,7 @@
 // Shasta2.
 #include "ReadFollowing5.hpp"
 #include "deduplicate.hpp"
+#include "graphvizToHtml.hpp"
 #include "html.hpp"
 #include "Options.hpp"
 #include "SegmentStepSupport.hpp"
@@ -44,7 +45,9 @@ Graph::Graph(
             num_edges(graph) << " edges." << endl;
         const string fileName = debugOutputBaseName + "-ReadFollowingGraph-Tangle-" + to_string(tangleId) + ".dot";
         writeGraphviz(fileName);
-        html << "<br>See " << fileName;
+        html << "<br>See " << fileName << "<br>";
+        const double timeout = 30.;
+        graphvizToHtml(fileName, "dot", timeout, "-Nshape=rectangle", html);
     }
 
     findShortestPaths();
