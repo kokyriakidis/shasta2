@@ -85,11 +85,17 @@ public:
         ostream& html,
         const string& debugOutputBaseName);
 
+    bool updateAssemblyGraph();
+
 private:
+
+    // Constructor arguments.
     AssemblyGraph& assemblyGraph;
-    const Tangle& tangle;
     uint64_t tangleId;
+    const Tangle& tangle;
+    ostream& html;
     string debugOutputBaseName;
+
     bool isSelfComplementaryTangle;
 
     vector<vertex_descriptor> entranceVertices;
