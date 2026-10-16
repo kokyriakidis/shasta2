@@ -78,12 +78,18 @@ public:
 
 class shasta2::ReadFollowing5::Graph: public GraphBaseClass {
 public:
-    Graph(const AssemblyGraph&, uint64_t tangleId, const Tangle&, ostream& html);
+    Graph(
+        AssemblyGraph&,
+        uint64_t tangleId,
+        const Tangle&,
+        ostream& html,
+        const string& debugOutputBaseName);
 
 private:
-    const AssemblyGraph& assemblyGraph;
+    AssemblyGraph& assemblyGraph;
     const Tangle& tangle;
     uint64_t tangleId;
+    string debugOutputBaseName;
     bool isSelfComplementaryTangle;
 
     vector<vertex_descriptor> entranceVertices;

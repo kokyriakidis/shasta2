@@ -319,7 +319,11 @@ private:
     bool detangleSelfComplementaryTangle2By2(const Tangle&, ostream& html);
 
     // This uses ReadFollowing5 code.
-    bool readFollowingStrandSymmetric5(uint64_t tangleId, const Tangle&, ostream& html);
+    bool readFollowingStrandSymmetric5(
+        uint64_t tangleId,
+        const Tangle&,
+        ostream& html,
+        const string& debugOutputBaseName);
 
     // This uses ReadFollowing6 code.
     bool readFollowingStrandSymmetric6(

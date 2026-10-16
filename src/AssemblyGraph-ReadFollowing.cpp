@@ -18,25 +18,17 @@ using namespace ReadFollowing6;
 bool AssemblyGraph::readFollowingStrandSymmetric5(
     uint64_t tangleId,
     const Tangle& tangle,
-    ostream& html)
+    ostream& html,
+    const string& debugOutputBaseName)
 {
     SHASTA2_ASSERT(not tangle.entrances.empty());
     SHASTA2_ASSERT(not tangle.exits.empty());
 
-    AssemblyGraph& assemblyGraph = tangle.assemblyGraph;
+    AssemblyGraph& assemblyGraph = *this;
     const bool isSelfComplementary = tangle.isSelfComplementary();
 
-    // For now, only do it for tangles with a number of entrances
-    // equal to the number of exits.
-    if(tangle.entrances.size() != tangle.exits.size()) {
-        if(html) {
-            html << "<br>Skipping read following because the number of entrances is not the same as the number of exits.";
-        }
-        return false;
-    }
-
     // Create the ReadFollowing5::Graph.
-    const ReadFollowing5::Graph graph(*this, tangleId, tangle, html);
+    const ReadFollowing5::Graph graph(*this, tangleId, tangle, html, debugOutputBaseName);
 
     // For now, require a one-on-one matching of the entrances
     // and exits.

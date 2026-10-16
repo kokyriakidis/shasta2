@@ -17,13 +17,15 @@ using namespace ReadFollowing5;
 
 
 Graph::Graph(
-    const AssemblyGraph& assemblyGraph,
+    AssemblyGraph& assemblyGraph,
     uint64_t tangleId,
     const Tangle& tangle,
-    ostream& html) :
+    ostream& html,
+    const string& debugOutputBaseName) :
     assemblyGraph(assemblyGraph),
     tangle(tangle),
     tangleId(tangleId),
+    debugOutputBaseName(debugOutputBaseName),
     isSelfComplementaryTangle(tangle.isSelfComplementary())
 {
     Graph& graph = *this;
@@ -39,7 +41,7 @@ Graph::Graph(
         html << "The read following graph for this tangle has " <<
             num_vertices(graph) << " vertices and " <<
             num_edges(graph) << " edges." << endl;
-        const string fileName = "ReadFollowingGraph-Tangle-" + to_string(tangleId) + ".dot";
+        const string fileName = debugOutputBaseName + "-ReadFollowingGraph-Tangle-" + to_string(tangleId) + ".dot";
         writeGraphviz(fileName);
         html << "<br>See " << fileName;
     }
