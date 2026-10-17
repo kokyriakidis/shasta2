@@ -26,6 +26,10 @@ namespace shasta2 {
         Vertex,
         Edge>;
 
+    class CondensedGraphVertex;
+    class CondensedGraphEdge;
+    using CondensedGraph =
+        boost::adjacency_list<boost::listS, boost::vecS, boost::bidirectionalS, CondensedGraphVertex, CondensedGraphEdge>;
 
     }
 
@@ -60,17 +64,29 @@ public:
 
 
 
+
+// An edge can be created for one or both of two reasons:
+// - The two Segments have sufficiently similar read compositions,
+//   as determined based on commonCount and logP.
+// - The two Segments are adjacent in the AssemblyGraph.
 class shasta2::ReadFollowing5::Edge {
 public:
-    uint64_t commonCount;
-    double logP;
-    double weight;
+
+    bool areAdjacent = false;
+    bool haveSimilarReadCompositions = false;
+
+    uint64_t commonCount = invalid<uint64_t>;
+    double logP = invalid<double>;
+    double weight = invalid<double>;
 
     Edge(uint64_t commonCount, double logP) :
+        haveSimilarReadCompositions(true),
         commonCount(commonCount),
         logP(logP),
         weight(std::pow(10., -0.1 * logP))
     {}
+
+    Edge() : areAdjacent(true) {}
 
 };
 
@@ -85,7 +101,8 @@ public:
         ostream& html,
         const string& debugOutputBaseName);
 
-    bool updateAssemblyGraph();
+    bool updateAssemblyGraph1();
+    bool updateAssemblyGraph2();
 
 private:
 
@@ -102,12 +119,24 @@ private:
     vector<vertex_descriptor> exitVertices;
 
     void createVertices();
-    void createEdges();
+    std::map<Segment, vertex_descriptor> vertexMap;
+    void createReadSimilarityEdges();
+    void createAdjacencyEdges();
+
+    void partialTransitiveReduction();
+    void disconnectBranchVertices();
+    void cleanupEdges();
+
+    // Remove inaccessible vertices.
+    // This returns false if any entrances or exits
+    // are inaccessible.
+    bool removeInaccessibleVertices();
 
     void writeGraphviz(const string& fileName) const;
     void writeGraphviz(ostream&) const;
-
-public:
+    void writeGraphToHtml(
+        const string& title,
+        const string& fileNameSuffix) const;
 
     // Shortest paths on the graph between each entrance/exit pair.
     class ShortestPath {
@@ -133,7 +162,7 @@ public:
     };
     vector< vector<ShortestPath> > shortestPaths;
     void findShortestPaths();
-    void writeShortestPaths(ostream& html);
+    void writeShortestPaths();
 
     // Return the number of exits reachable from an entrance.
     uint64_t countReachableExits(uint64_t iEntrance) const;
@@ -143,3 +172,16 @@ public:
 
 };
 
+
+
+class shasta2::ReadFollowing5::CondensedGraphVertex {
+public:
+    vector<Graph::vertex_descriptor> vertices;
+};
+
+
+
+class shasta2::ReadFollowing5::CondensedGraphEdge {
+public:
+    Graph::edge_descriptor e = {0, 0, 0};
+};

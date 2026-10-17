@@ -3302,6 +3302,24 @@ void AssemblyGraph::removeZeroLengthSegmentsStrandSymmetric()
 
     AssemblyGraph& assemblyGraph = *this;
 
+    // First, remove any zero-length self-edges.
+    {
+        vector<Segment> segmentsToBeRemoved;
+        BGL_FORALL_EDGES(segment, assemblyGraph, AssemblyGraph) {
+            if(assemblyGraph[segment].empty()) {
+                const vertex_descriptor v0 = source(segment, assemblyGraph);
+                const vertex_descriptor v1 = target(segment, assemblyGraph);
+                if(v0 == v1) {
+                    segmentsToBeRemoved.push_back(segment);
+                }
+            }
+        }
+        for(const Segment segment: segmentsToBeRemoved) {
+            boost::remove_edge(segment, assemblyGraph);
+        }
+    }
+
+
     // Map vertices to integers.
     std::map<vertex_descriptor, uint64_t> vertexIndexMap;
     vector<vertex_descriptor> vertexTable;
@@ -4015,6 +4033,8 @@ AssemblyGraph::edge_descriptor AssemblyGraph::disconnectAtEnd(edge_descriptor eO
     // Also create the new reverse complement segment.
     createReverseComplementEdge(eNew, id(eOldRc));
 
+    // cout << "disconnectAtEnd removing " << id(eOld) << " " << id(eOldRc) << endl;
+
     // Remove eOld and its reverse complement.
     boost::remove_edge(eOld, assemblyGraph);
     boost::remove_edge(eOldRc, assemblyGraph);
@@ -4048,6 +4068,8 @@ AssemblyGraph::edge_descriptor AssemblyGraph::disconnectAtBeginning(edge_descrip
 
     // Also create the new reverse complement segment. Keep the same id.
     createReverseComplementEdge(eNew, id(eOldRc));
+
+    // cout << "disconnectAtBeginning removing " << id(eOld) << " " << id(eOldRc) << endl;
 
     // Remove eOld and its reverse complement.
     boost::remove_edge(eOld, assemblyGraph);

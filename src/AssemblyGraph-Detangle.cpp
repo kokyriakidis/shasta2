@@ -403,11 +403,11 @@ bool AssemblyGraph::detangleAndReadFollowing(
     const string& debugOutputBaseName)
 {
     AssemblyGraph& assemblyGraph = *this;
-    const bool debug = false;
 
     // Detangle or read following on each pair of reverse complemented tangles.
     bool somethingWasDone = false;
     for(uint64_t tangleId=0; tangleId<tangles.size(); tangleId++) {
+        const bool debug = false;
         if(tangleId <= tangleRc[tangleId]) {
             SHASTA2_ASSERT(not tangles[tangleId].empty());
             const Tangle tangle(assemblyGraph, tangles[tangleId]);
@@ -481,9 +481,11 @@ bool AssemblyGraph::detangleAndReadFollowing(
             }
         }
     }
-
+    check();
 
     removeZeroLengthSegmentsStrandSymmetric();
+    removeIsolatedVertices();
+
     return somethingWasDone;
 }
 

@@ -1,11 +1,14 @@
 // Shasta2.
 #include "ReadFollowing5.hpp"
+#include "CondensedGraph.hpp"
 #include "deduplicate.hpp"
+#include "findReachableVertices.hpp"
 #include "graphvizToHtml.hpp"
 #include "html.hpp"
 #include "Options.hpp"
 #include "SegmentStepSupport.hpp"
 #include "Tangle.hpp"
+#include "transitiveReduction.hpp"
 using namespace shasta2;
 using namespace ReadFollowing5;
 
@@ -30,30 +33,17 @@ Graph::Graph(
     debugOutputBaseName(debugOutputBaseName),
     isSelfComplementaryTangle(tangle.isSelfComplementary())
 {
-    Graph& graph = *this;
 
     if(html) {
-        html << "<h2>Read following</h2>";
+        html << "<h2>Simple read following</h2>";
     }
 
     createVertices();
-    createEdges();
-
-    if(html) {
-        html << "The read following graph for this tangle has " <<
-            num_vertices(graph) << " vertices and " <<
-            num_edges(graph) << " edges." << endl;
-        const string fileName = debugOutputBaseName + "-ReadFollowingGraph-Tangle-" + to_string(tangleId) + ".dot";
-        writeGraphviz(fileName);
-        html << "<br>See " << fileName << "<br>";
-        const double timeout = 30.;
-        graphvizToHtml(fileName, "dot", timeout, "-Nshape=rectangle", html);
-    }
+    createReadSimilarityEdges();
+    writeGraphToHtml("Initial read following graph", "A");
 
     findShortestPaths();
-    if(html) {
-        writeShortestPaths(html);
-    }
+    writeShortestPaths();
 
 }
 
@@ -73,6 +63,10 @@ void Graph::createVertices()
         exitVertices.push_back(add_vertex(Vertex(assemblyGraph, segment, false, true), graph));
     }
 
+
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        vertexMap.insert({graph[v].segment, v});
+    }
 
 
     // If this is a self-complementary tangle, fill in the vRc fields in the vertices.
@@ -172,7 +166,7 @@ Vertex::Vertex(
 
 
 
-void Graph::createEdges()
+void Graph::createReadSimilarityEdges()
 {
     Graph& graph = *this;
     const bool debug = false;
@@ -323,29 +317,98 @@ void Graph::writeGraphviz(const string& fileName) const
 void Graph::writeGraphviz(ostream& dot) const
 {
     const Graph& graph = *this;
+
+
+    // Fot better display, write vertices in topological order
+    // of the CondensedGraph.
+    std::map<vertex_descriptor, CondensedGraph::vertex_descriptor> condensedVertexMap;
+    const CondensedGraph condensedGraph = createCondensedGraph<Graph, CondensedGraph>(graph, condensedVertexMap);
+    vector<CondensedGraph::vertex_descriptor> topologicalOrder;
+    boost::topological_sort(condensedGraph, back_inserter(topologicalOrder));
+    std::ranges::reverse(topologicalOrder);
+
+
+
     dot << "digraph ReadFollowingGraph {\n";
 
-    BGL_FORALL_VERTICES(v, graph, Graph) {
-        dot << assemblyGraph.id(graph[v].segment);
-        if(graph[v].isEntrance) {
-            dot << "[style=filled fillcolor=pink]";
+    BGL_FORALL_VERTICES(cv, condensedGraph, CondensedGraph) {
+        for(const vertex_descriptor v: condensedGraph[cv].vertices) {
+            dot << assemblyGraph.id(graph[v].segment);
+            if(graph[v].isEntrance) {
+                dot << "[style=filled fillcolor=pink]";
+            }
+            if(graph[v].isExit) {
+                dot << "[style=filled fillcolor=green]";
+            }
+            dot << ";\n";
         }
-        if(graph[v].isExit) {
-            dot << "[style=filled fillcolor=green]";
-        }
-        dot << ";\n";
     }
 
+
+
     BGL_FORALL_EDGES(e, graph, Graph) {
+        const Edge& edge = graph[e];
         const vertex_descriptor v0 = source(e, graph);
         const vertex_descriptor v1 = target(e, graph);
-        dot << assemblyGraph.id(graph[v0].segment) << "->" <<
-            assemblyGraph.id(graph[v1].segment) <<
-            "[ label=\"" << int64_t(std::round(graph[e].logP)) << "\"]"
-            "\n";
+
+        // For clarity, write the edge as one or two arrows.
+
+        if(edge.haveSimilarReadCompositions) {
+            dot <<
+                assemblyGraph.id(graph[v0].segment) << "->" <<
+                assemblyGraph.id(graph[v1].segment) <<
+                "["
+                "label=\"" << int64_t(std::round(graph[e].logP)) << "\""
+                " color=orange"
+                "]\n";
+        }
+
+        if(edge.areAdjacent) {
+            dot <<
+                assemblyGraph.id(graph[v0].segment) << "->" <<
+                assemblyGraph.id(graph[v1].segment) << "\n";
+        }
+
     }
 
     dot << "}\n";
+}
+
+
+
+void Graph::writeGraphToHtml(
+    const string& title,
+    const string& fileNameSuffix) const
+{
+    const Graph& graph = *this;
+
+    if(not html) {
+        return;
+    }
+
+    html <<
+        "<h3>" << title << "</h3>"
+        "The read following graph has " <<
+        num_vertices(graph) << " vertices and " <<
+        num_edges(graph) << " edges." << endl;
+
+    const string fileName =
+        debugOutputBaseName +
+        "-ReadFollowingGraph-" +
+        fileNameSuffix +
+        "-Tangle-" +
+        to_string(tangleId) +
+        ".dot";
+
+    writeGraphviz(fileName);
+    html << "<br>See " << fileName << "<br>";
+
+    try {
+        const double timeout = 30.;
+        graphvizToHtml(fileName, "dot", timeout, "-Nshape=rectangle", html, true);
+    } catch(std::exception& e) {
+        html << "<br>The read following graph could not be displayed: " << e.what();
+    }
 }
 
 
@@ -411,8 +474,13 @@ void Graph::findShortestPaths()
 
 
 
-void Graph::writeShortestPaths(ostream& html)
+void Graph::writeShortestPaths()
 {
+    if(not html) {
+        return;
+
+    }
+
     // Write the distance matrix.
     html <<
         "<h3>Distance matrix</h3>"
@@ -515,14 +583,14 @@ uint64_t Graph::countReachableEntrances(uint64_t iExit) const
 
 
 
-bool Graph::updateAssemblyGraph()
+bool Graph::updateAssemblyGraph1()
 {
     // For now, require a one-on-one matching of the entrances
     // and exits.
     for(uint64_t iEntrance=0; iEntrance<tangle.entrances.size(); iEntrance++) {
         if(countReachableExits(iEntrance) != 1) {
             if(html) {
-                html << "<br>Skipping read following because of ambiguous or missing reachability.";
+                html << "<br>Simple read following failed because of ambiguous or missing reachability.";
             }
             return false;
         }
@@ -530,7 +598,7 @@ bool Graph::updateAssemblyGraph()
     for(uint64_t iExit=0; iExit<tangle.exits.size(); iExit++) {
         if(countReachableEntrances(iExit) != 1) {
             if(html) {
-                html << "<br>Skipping read following because of ambiguous or missing reachability.";
+                html << "<br>Simple read following failed because of ambiguous or missing reachability.";
             }
             return false;
         }
@@ -538,7 +606,7 @@ bool Graph::updateAssemblyGraph()
 
     // If getting here, read following can proceed.
     if(html) {
-        html << "<br>Read following can proceed for this tangle.";
+        html << "<br>Simple read following can proceed for this tangle.";
     }
 
 
@@ -650,4 +718,328 @@ bool Graph::updateAssemblyGraph()
     // If getting here, read following was successful on this tangle.
     return true;
 
+}
+
+
+
+bool Graph::updateAssemblyGraph2()
+{
+    Graph& graph = *this;
+
+    if(html) {
+        html << "<h2>Complex read following</h2>" << endl;
+    }
+
+    // For now skip the self-complementary case.
+    if(isSelfComplementaryTangle) {
+        if(html) {
+            html << "<br>Skipping complex read following of a self-complementaty tangle." << endl;
+        }
+        return false;
+    }
+
+    partialTransitiveReduction();
+    writeGraphToHtml("Read following graph after transitive reduction", "B");
+
+    // We only want unambiguous vertex chains, so we disconnect all branch vertices;
+    disconnectBranchVertices();
+    writeGraphToHtml("Read following graph after disconnecting branch vertices", "C");
+
+    createAdjacencyEdges();
+    writeGraphToHtml("Read following graph after adding adjacency edges", "D");
+
+    cleanupEdges();
+    writeGraphToHtml("Read following graph after edge cleanup", "E");
+
+    if(not removeInaccessibleVertices()) {
+        if(html) {
+            html << "<br>Complex read following failed due to accessibility." << endl;
+        }
+        return false;
+    }
+    writeGraphToHtml("Read following graph after removing inaccessible vertices", "F");
+
+
+
+    // If getting here, read following was successful.
+
+
+
+    // For each vertex still surviving that,
+    // make a disconnected copy of the corresponding segment.
+    html << flush;
+    std::map<Segment, Segment> newSegmentMap;
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        const Vertex& vertex = graph[v];
+        const Segment segment = vertex.segment;
+
+        Segment newSegment;
+        if(vertex.isEntrance) {
+            if(vertex.isExit) {
+                SHASTA2_ASSERT(0);  // FOR NOW
+                newSegment = assemblyGraph.createDisconnectedCopy(segment); // Does not remove the original.
+                if(not isSelfComplementaryTangle) {
+                    // Entrance and exit.
+                    const AssemblyGraph::vertex_descriptor v0New = source(newSegment, assemblyGraph);
+                    const AssemblyGraph::vertex_descriptor v1New = target(newSegment, assemblyGraph);
+                    assemblyGraph.createReverseComplementVertex(v0New);
+                    assemblyGraph.createReverseComplementVertex(v1New);
+                    assemblyGraph.createReverseComplementEdge(newSegment);
+                }
+            } else {
+                // Entrance, but not an exit.
+                // This also creates the reverse complement and removes the two original ones.
+                newSegment = assemblyGraph.disconnectAtEnd(segment);
+#if 0
+                if(not isSelfComplementaryTangle) {
+                    const AssemblyGraph::vertex_descriptor v1New = target(newSegment, assemblyGraph);
+                    assemblyGraph.createReverseComplementVertex(v1New);
+                    const Segment newSegmentRc = assemblyGraph.createReverseComplementEdge(newSegment);
+                    cout << "BBB created " << assemblyGraph.id(newSegment) << " " << assemblyGraph.id(newSegmentRc) << endl;
+                }
+#endif
+            }
+        } else if(vertex.isExit) {
+            // Exit but not entrance.
+            // This also creates the reverse complement and removes the two original ones.
+            SHASTA2_ASSERT(not vertex.isEntrance);
+            newSegment = assemblyGraph.disconnectAtBeginning(segment);
+        } else {
+            // Not entrance and not exit.
+            newSegment = assemblyGraph.createDisconnectedCopy(segment); // Does not remove the original.
+            if(not isSelfComplementaryTangle) {
+                const AssemblyGraph::vertex_descriptor v0New = source(newSegment, assemblyGraph);
+                const AssemblyGraph::vertex_descriptor v1New = target(newSegment, assemblyGraph);
+                assemblyGraph.createReverseComplementVertex(v0New);
+                assemblyGraph.createReverseComplementVertex(v1New);
+                assemblyGraph.createReverseComplementEdge(newSegment);
+            }
+        }
+
+        newSegmentMap.insert({segment, newSegment});
+    }
+
+
+
+    // For each edge, connect the new segments.
+    BGL_FORALL_EDGES(e, graph, Graph) {
+        const vertex_descriptor v0 = source(e, graph);
+        const vertex_descriptor v1 = target(e, graph);
+        const Segment segment0 = graph[v0].segment;
+        const Segment segment1 = graph[v1].segment;
+        const Segment newSegment0 = newSegmentMap.at(segment0);
+        const Segment newSegment1 = newSegmentMap.at(segment1);
+        const Segment newSegment = assemblyGraph.connect(newSegment0, newSegment1);
+        if(not isSelfComplementaryTangle) {
+            assemblyGraph.createReverseComplementEdge(newSegment);
+        }
+    }
+
+
+    // Now we can remove all the internal Segments of the Tangle.
+    // This leaves some isolated vertices and some zero length segments
+    // that will be taken care of later.
+    for(const Segment segment: tangle.tangleEdges) {
+        const Segment segmentRc = assemblyGraph[segment].eRc;
+        boost::remove_edge(segment, assemblyGraph);
+        if(not isSelfComplementaryTangle) {
+            boost::remove_edge(segmentRc, assemblyGraph);
+        }
+    }
+
+    return true;
+}
+
+
+
+// If a vertex has any out-edges with haveSimilarReadCompositions set
+// (there can be at most one), remove all other out-edges.
+// If a vertex has any in-edges with haveSimilarReadCompositions set
+// (there can be at most one), remove all other in-edges.
+void Graph::cleanupEdges()
+{
+    Graph& graph = *this;
+
+    vector<edge_descriptor> edgesToBeRemoved;
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+
+        bool removeOut = false;
+        BGL_FORALL_OUTEDGES(v, e, graph, Graph) {
+            if(graph[e].haveSimilarReadCompositions) {
+                removeOut = true;
+                break;
+            }
+        }
+        if(removeOut) {
+            BGL_FORALL_OUTEDGES(v, e, graph, Graph) {
+                if(not graph[e].haveSimilarReadCompositions) {
+                    edgesToBeRemoved.push_back(e);
+                }
+            }
+        }
+
+        bool removeIn = false;
+        BGL_FORALL_INEDGES(v, e, graph, Graph) {
+            if(graph[e].haveSimilarReadCompositions) {
+                removeIn = true;
+                break;
+            }
+        }
+        if(removeIn) {
+            BGL_FORALL_INEDGES(v, e, graph, Graph) {
+                if(not graph[e].haveSimilarReadCompositions) {
+                    edgesToBeRemoved.push_back(e);
+                }
+            }
+        }
+    }
+    deduplicate(edgesToBeRemoved);
+    for(const edge_descriptor e: edgesToBeRemoved) {
+        if(html) {
+            const vertex_descriptor v0 = source(e, graph);
+            const vertex_descriptor v1 = target(e, graph);
+            html << "<br>Removing edge " << assemblyGraph.id(graph[v0].segment) <<
+                " " << assemblyGraph.id(graph[v1].segment);
+        }
+        boost::remove_edge(e, graph);
+    }
+}
+
+
+
+void Graph::createAdjacencyEdges()
+{
+    Graph& graph = *this;
+
+    for(const AssemblyGraph::vertex_descriptor v: tangle.tangleVertices) {
+        BGL_FORALL_INEDGES(v, segment0, assemblyGraph, AssemblyGraph) {
+            const vertex_descriptor u0 = vertexMap.at(segment0);
+            BGL_FORALL_OUTEDGES(v, segment1, assemblyGraph, AssemblyGraph) {
+                const vertex_descriptor u1 = vertexMap.at(segment1);
+
+                const auto[e, edgeExists] = boost::edge(u0, u1, *this);
+                if(edgeExists) {
+                    graph[e].areAdjacent = true;
+                } else {
+                    boost::add_edge(u0, u1, *this);
+                }
+            }
+        }
+    }
+}
+
+
+
+void Graph::partialTransitiveReduction()
+{
+    Graph& graph = *this;
+
+    // Create the CondensedGraph.
+    std::map<vertex_descriptor, CondensedGraph::vertex_descriptor> condensedVertexMap;
+    CondensedGraph condensedGraph = createCondensedGraph<Graph, CondensedGraph>(graph, condensedVertexMap);
+
+    // Transitive reduction of the CondensedGraph.
+    // The CondensedGraph is guaranteed to be acyclic, so this will not fail.
+    transitiveReductionAny(condensedGraph);
+
+
+
+    // Now remove transitive reduction edges from the Graph.
+    vector<edge_descriptor> edgesToBeRemoved;
+    BGL_FORALL_EDGES(e, graph, Graph) {
+        const vertex_descriptor v0 = source(e, graph);
+        const vertex_descriptor v1 = target(e, graph);
+
+        // If v0 or v1 are in non-trivial strong components,
+        // leave this edge alone.
+        const auto cv0 = condensedVertexMap.at(v0);
+        if(condensedGraph[cv0].vertices.size() > 1) {
+            continue;
+        }
+        const auto cv1 = condensedVertexMap.at(v1);
+        if(condensedGraph[cv1].vertices.size() > 1) {
+            continue;
+        }
+
+        const auto[_, edgeExists] = boost::edge(cv0, cv1, condensedGraph);
+        if(not edgeExists) {
+            edgesToBeRemoved.push_back(e);
+        }
+    }
+    for(const edge_descriptor e: edgesToBeRemoved) {
+        boost::remove_edge(e, graph);
+    }
+
+}
+
+
+
+void Graph::disconnectBranchVertices()
+{
+    Graph& graph = *this;
+
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        if((out_degree(v, graph) > 1) or (in_degree(v, graph) > 1 )) {
+            boost::clear_vertex(v, graph);
+        }
+    }
+}
+
+
+
+// Remove inaccessible vertices.
+// This returns false if any entrances or exits
+// are inaccessible.
+bool Graph::removeInaccessibleVertices()
+{
+    Graph& graph = *this;
+
+    // Find vertices reachable from the entrances.
+    vector<vertex_descriptor> verticesReachableFromEntrances;
+    for(const vertex_descriptor entranceVertex: entranceVertices) {
+        std::set<vertex_descriptor> verticesReachableFromThisEntrance;
+        findReachableVertices(graph, entranceVertex, 0, verticesReachableFromThisEntrance);
+        std::ranges::copy(verticesReachableFromThisEntrance, back_inserter(verticesReachableFromEntrances));
+    }
+    deduplicate(verticesReachableFromEntrances);
+
+    // Find vertices reachable from the exits.
+    vector<vertex_descriptor> verticesReachableFromExits;
+    for(const vertex_descriptor exitVertex: exitVertices) {
+        std::set<vertex_descriptor> verticesReachableFromThisExit;
+        findReachableVertices(graph, exitVertex, 1, verticesReachableFromThisExit);
+        std::ranges::copy(verticesReachableFromThisExit, back_inserter(verticesReachableFromExits));
+    }
+    deduplicate(verticesReachableFromExits);
+
+    // Check that the exits are reachable from the entrances.
+    for(const vertex_descriptor exitVertex: exitVertices) {
+        if(not std::ranges::binary_search(verticesReachableFromEntrances, exitVertex)) {
+            return false;
+        }
+    }
+    for(const vertex_descriptor entranceVertex: entranceVertices) {
+        if(not std::ranges::binary_search(verticesReachableFromExits, entranceVertex)) {
+            return false;
+        }
+    }
+
+    vector<vertex_descriptor> reachableVertices;
+    std::ranges::set_intersection(verticesReachableFromEntrances, verticesReachableFromExits,
+        back_inserter(reachableVertices));
+
+    // Now we can remove the unreachable vertices.
+    vector<vertex_descriptor> verticesToBeRemoved;
+    BGL_FORALL_VERTICES(v, graph, Graph) {
+        if(not std::ranges::binary_search(reachableVertices, v)) {
+            verticesToBeRemoved.push_back(v);
+        }
+    }
+    for(const vertex_descriptor v: verticesToBeRemoved) {
+        boost::clear_vertex(v, graph);
+        boost::remove_vertex(v, graph);
+    }
+
+
+    return true;
 }

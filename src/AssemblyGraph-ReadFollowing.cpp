@@ -25,8 +25,12 @@ bool AssemblyGraph::readFollowingStrandSymmetric5(
     SHASTA2_ASSERT(not tangle.exits.empty());
 
     ReadFollowing5::Graph graph(*this, tangleId, tangle, html, debugOutputBaseName);
-    return graph.updateAssemblyGraph();
 
+    if(graph.updateAssemblyGraph1()) {
+        return true;
+    } else {
+        return graph.updateAssemblyGraph2();
+    }
 }
 
 
