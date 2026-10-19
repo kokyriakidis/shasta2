@@ -125,7 +125,9 @@ private:
 
     void partialTransitiveReduction();
     void disconnectBranchVertices();
-    void cleanupEdges();
+
+    // This returns the number of adjacency edges that were removed.
+    uint64_t cleanupEdges();
 
     // Remove inaccessible vertices.
     // This returns false if any entrances or exits

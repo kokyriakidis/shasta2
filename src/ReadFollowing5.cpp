@@ -748,7 +748,13 @@ bool Graph::updateAssemblyGraph2()
     createAdjacencyEdges();
     writeGraphToHtml("Read following graph after adding adjacency edges", "D");
 
-    cleanupEdges();
+    const uint64_t adjacencyEdgesRemoved = cleanupEdges();
+    if(adjacencyEdgesRemoved == 0) {
+        if(html) {
+            html << "<br>Complex read following failed because it would not simplify the AssemblyGraph.";
+        }
+        return false;
+    }
     writeGraphToHtml("Read following graph after edge cleanup", "E");
 
     if(not removeInaccessibleVertices()) {
@@ -856,7 +862,7 @@ bool Graph::updateAssemblyGraph2()
 // (there can be at most one), remove all other out-edges.
 // If a vertex has any in-edges with haveSimilarReadCompositions set
 // (there can be at most one), remove all other in-edges.
-void Graph::cleanupEdges()
+uint64_t Graph::cleanupEdges()
 {
     Graph& graph = *this;
 
@@ -894,6 +900,8 @@ void Graph::cleanupEdges()
         }
     }
     deduplicate(edgesToBeRemoved);
+
+    uint64_t adjacencyEdgesRemoved = 0;
     for(const edge_descriptor e: edgesToBeRemoved) {
         if(html) {
             const vertex_descriptor v0 = source(e, graph);
@@ -901,8 +909,13 @@ void Graph::cleanupEdges()
             html << "<br>Removing edge " << assemblyGraph.id(graph[v0].segment) <<
                 " " << assemblyGraph.id(graph[v1].segment);
         }
+        if(graph[e].areAdjacent) {
+            ++adjacencyEdgesRemoved;
+        }
         boost::remove_edge(e, graph);
     }
+
+    return adjacencyEdgesRemoved;
 }
 
 
