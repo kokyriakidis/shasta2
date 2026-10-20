@@ -1,7 +1,7 @@
 #pragma once
 
 // Shasta2.
-#include "AssemblyGraphBaseClass.hpp"
+#include "AssemblyGraph.hpp"
 #include "invalid.hpp"
 #include "ReadId.hpp"
 
@@ -31,7 +31,17 @@ namespace shasta2 {
             BipartiteGraphEdge>;
         class BipartiteGraph;
         class BipartiteGraphVertexStatistics;
-    }
+
+        class ConnectGraphVertex;
+        class ConnectGraphEdge;
+        class ConnectGraph;
+        using ConnectGraphBaseClass = boost::adjacency_list<
+            boost::listS,
+            boost::listS,
+            boost::undirectedS,
+            ConnectGraphVertex,
+            ConnectGraphEdge>;
+   }
 }
 
 
@@ -45,6 +55,7 @@ public:
     bool isExit = false;
     BipartiteGraphBaseClass::vertex_descriptor v = BipartiteGraphBaseClass::null_vertex();
     uint64_t componentId = invalid<uint64_t>;
+    ConnectGraphBaseClass::vertex_descriptor cv = ConnectGraphBaseClass::null_vertex();
 };
 
 
@@ -223,6 +234,46 @@ public:
 
 
 
+class shasta2::StrandSeparation1::ConnectGraphVertex {
+public:
+    uint64_t segmentPairId = invalid<uint64_t>;
+    uint64_t segmentIndexInPair = invalid<uint64_t>;
+    uint64_t componentId = invalid<uint64_t>;
+    bool isAmbiguous = false;
+
+    ConnectGraphVertex() {}
+    ConnectGraphVertex(
+        uint64_t segmentPairId,
+        uint64_t segmentIndexInPair,
+        uint64_t componentId, 
+        bool isAmbiguous) :
+        segmentPairId(segmentPairId),
+        segmentIndexInPair(segmentIndexInPair),
+        componentId(componentId),
+        isAmbiguous(isAmbiguous)
+    {}
+};
+
+
+
+class shasta2::StrandSeparation1::ConnectGraphEdge {
+public:
+};
+
+
+
+class shasta2::StrandSeparation1::ConnectGraph : public shasta2::StrandSeparation1::ConnectGraphBaseClass {
+public:
+    std::map<Segment, vertex_descriptor> vertexMap;
+    void keepStrand0();
+    void writeGraphviz(
+        const string& dotFileName, 
+        const vector<SegmentPair>&, 
+        const AssemblyGraph&) const;
+};
+
+
+
 class shasta2::StrandSeparation1::StrandContact {
 public:
 
@@ -287,7 +338,18 @@ private:
     // Store component information in the SegmentPairs.
     void storeSegmentInformation(const Split&);
 
+    // The ConnectGraph describes trhe connections between Segments that
+    // exist in the AssemblyGraph and/or should be removed
+    // for strand separation.
+    ConnectGraph connectGraph;
+    void createConnectGraph();
+    void writeConnectGraph(const string& stage);
+ 
+    // Initial version.
     void updateAssemblyGraph();
+
+    // Version that uses the ConnectGraph.
+    void updateAssemblyGraph1();
 
 public:
     static string componentColor(uint64_t componentId);

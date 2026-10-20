@@ -4010,7 +4010,9 @@ AssemblyGraph::vertex_descriptor AssemblyGraph::createReverseComplementVertex(ve
 // to keep the AssemblyGraph strand symmetric, and sets the eRc and vRc
 // fields of the newly created edges and vertices.
 // It returns the edge_descriptor for the newly created copy.
-AssemblyGraph::edge_descriptor AssemblyGraph::disconnectAtEnd(edge_descriptor eOld)
+AssemblyGraph::edge_descriptor AssemblyGraph::disconnectAtEnd(
+    edge_descriptor eOld,
+    bool removeOriginal)
 {
     AssemblyGraph& assemblyGraph = *this;
 
@@ -4036,8 +4038,10 @@ AssemblyGraph::edge_descriptor AssemblyGraph::disconnectAtEnd(edge_descriptor eO
     // cout << "disconnectAtEnd removing " << id(eOld) << " " << id(eOldRc) << endl;
 
     // Remove eOld and its reverse complement.
-    boost::remove_edge(eOld, assemblyGraph);
-    boost::remove_edge(eOldRc, assemblyGraph);
+    if(removeOriginal) {
+        boost::remove_edge(eOld, assemblyGraph);
+        boost::remove_edge(eOldRc, assemblyGraph);
+    }
 
     return eNew;
 }
@@ -4046,7 +4050,9 @@ AssemblyGraph::edge_descriptor AssemblyGraph::disconnectAtEnd(edge_descriptor eO
 
 
 // Same as above, but disconnect at the beginning.
-AssemblyGraph::edge_descriptor AssemblyGraph::disconnectAtBeginning(edge_descriptor eOld)
+AssemblyGraph::edge_descriptor AssemblyGraph::disconnectAtBeginning(
+    edge_descriptor eOld,
+    bool removeOriginal)
 {
     AssemblyGraph& assemblyGraph = *this;
 
@@ -4072,8 +4078,10 @@ AssemblyGraph::edge_descriptor AssemblyGraph::disconnectAtBeginning(edge_descrip
     // cout << "disconnectAtBeginning removing " << id(eOld) << " " << id(eOldRc) << endl;
 
     // Remove eOld and its reverse complement.
-    boost::remove_edge(eOld, assemblyGraph);
-    boost::remove_edge(eOldRc, assemblyGraph);
+    if(removeOriginal) {
+        boost::remove_edge(eOld, assemblyGraph);
+        boost::remove_edge(eOldRc, assemblyGraph);
+    }
 
     return eNew;
 }

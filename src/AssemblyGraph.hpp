@@ -254,10 +254,10 @@ public:
     // to keep the AssemblyGraph strand symmetric, and sets the eRc and vRc
     // fields of the newly created edges and vertices.
     // It returns the edge_descriptor for the newly created copy.
-    edge_descriptor disconnectAtEnd(edge_descriptor);
+    edge_descriptor disconnectAtEnd(edge_descriptor, bool removeOriginal=true);
 
     // Same as above, but disconnect at the beginning.
-    edge_descriptor disconnectAtBeginning(edge_descriptor);
+    edge_descriptor disconnectAtBeginning(edge_descriptor, bool removeOriginal=true);
 
     edge_descriptor createDisconnectedCopy(edge_descriptor);
 

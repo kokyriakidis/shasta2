@@ -31,6 +31,7 @@ StrandContact::StrandContact(
     debugOutputBaseName(debugOutputBaseName),
     strandContactId(strandContactId)
 {
+  
     const bool debug = false;
     if(debug) {
         html.open(debugOutputBaseName + "-StrandContact-" + to_string(strandContactId) + ".html");
@@ -48,7 +49,7 @@ StrandContact::StrandContact(
     countReadOccurrences();
     createBipartiteGraph();
 
-    // Strand separation in the BipartiteGraph.
+     // Strand separation in the BipartiteGraph.
     Split split;
     computeSplit(split);
 
@@ -61,6 +62,16 @@ StrandContact::StrandContact(
     }
 
     storeSegmentInformation(split);
+
+#if 0
+    // ConnectGraph.
+    // Activate to use updateAssemblyGraph1 instead of updateAssemblyGraph below.
+    createConnectGraph();
+    writeConnectGraph("A");
+    connectGraph.keepStrand0();
+    writeConnectGraph("B");
+#endif
+
     updateAssemblyGraph();
 
     if(html) {
@@ -1450,4 +1461,234 @@ void StrandContact::updateAssemblyGraph()
     }
 
     // This leaves some isolated vertices that will be removed later.
+}
+
+
+
+// Version that uses the ConnectGraph.
+void StrandContact::updateAssemblyGraph1()
+{
+    // Make disconnected copies of the segments we will use for strand0.
+    // This are all the segments that are ambiguous or have even componentId.
+    // Also make copies of their reverse complements.
+    std::map<Segment, Segment> newSegmentMap;
+    for(SegmentPair& segmentPair: segmentPairs) {
+        const bool isAmbiguous = (segmentPair.crossStrandEdgeFrequencyRatio > maxCrossStrandFrequencyRatio);        
+        for(const SegmentInfo& segmentInfo: segmentPair.segmentInfos) {
+            const bool isStrand0 = isAmbiguous or
+                ((segmentInfo.componentId %2) == 0);
+            if(isStrand0) {
+                const Segment oldSegment = segmentInfo.segment;
+
+                if(segmentInfo.isExit) {
+                    SHASTA2_ASSERT(not segmentInfo.isEntrance);
+                    // This also takes care of the reverse complement.
+                    const Segment newSegment = assemblyGraph.disconnectAtBeginning(oldSegment, false);
+                    newSegmentMap.insert({oldSegment, newSegment});
+                }
+
+                else if(segmentInfo.isEntrance) {
+                    SHASTA2_ASSERT(not segmentInfo.isExit);
+                    // This also takes care of the reverse complement.
+                    const Segment newSegment = assemblyGraph.disconnectAtEnd(oldSegment, false);
+                    newSegmentMap.insert({oldSegment, newSegment});
+                }
+
+                else {
+                    // Not an entrance or an exit.
+                    const Segment newSegment = assemblyGraph.createDisconnectedCopy(oldSegment);
+                    newSegmentMap.insert({oldSegment, newSegment});
+                    // createDisconnectedCopy does not create the reverse complement,
+                    // so we do it here.
+                    assemblyGraph.createReverseComplementVertex(source(newSegment, assemblyGraph));
+                    assemblyGraph.createReverseComplementVertex(target(newSegment, assemblyGraph));
+                    assemblyGraph.createReverseComplementEdge(newSegment);
+                 }
+
+            }
+        }
+    } 
+
+
+
+    // Now use the ConnectGraph to connect the copies.
+    BGL_FORALL_EDGES(e, connectGraph, ConnectGraph) {
+        const ConnectGraph::vertex_descriptor v0 = source(e, connectGraph);
+        const ConnectGraph::vertex_descriptor v1 = target(e, connectGraph);
+        const ConnectGraphVertex& vertex0 = connectGraph[v0];
+        const ConnectGraphVertex& vertex1 = connectGraph[v1];
+        const SegmentPair& segmentPair0 = segmentPairs[vertex0.segmentPairId];
+        const SegmentPair& segmentPair1 = segmentPairs[vertex1.segmentPairId];
+        const SegmentInfo& segmentInfo0 = segmentPair0.segmentInfos[vertex0.segmentIndexInPair];
+        const SegmentInfo& segmentInfo1 = segmentPair1.segmentInfos[vertex1.segmentIndexInPair];
+        const Segment oldSegment0 = segmentInfo0.segment;
+        const Segment oldSegment1 = segmentInfo1.segment;
+        const Segment newSegment0 = newSegmentMap.at(oldSegment0);
+        const Segment newSegment1 = newSegmentMap.at(oldSegment1);
+        const Segment connectSegment = assemblyGraph.connect(newSegment0, newSegment1);
+        assemblyGraph.createReverseComplementEdge(connectSegment);
+    }
+
+
+
+    // Finally, we can remove the original segments.
+    for(SegmentPair& segmentPair: segmentPairs) {
+        for(const SegmentInfo& segmentInfo: segmentPair.segmentInfos) {
+            boost::remove_edge(segmentInfo.segment, assemblyGraph);
+        }
+    }
+}
+
+
+
+void StrandContact::createConnectGraph()
+{
+    // Create the vertices.
+     for(uint64_t segmentPairId=0; segmentPairId<segmentPairs.size(); segmentPairId++) {
+        SegmentPair& segmentPair = segmentPairs[segmentPairId];
+        for(uint64_t segmentIndexInPair=0; segmentIndexInPair<2; segmentIndexInPair++) {
+            SegmentInfo& segmentInfo = segmentPair.segmentInfos[segmentIndexInPair];
+            const Segment segment = segmentInfo.segment;
+            const bool isAmbiguous = (segmentPair.crossStrandEdgeFrequencyRatio > maxCrossStrandFrequencyRatio);
+            const ConnectGraph::vertex_descriptor v = 
+                boost::add_vertex(
+                ConnectGraphVertex(segmentPairId, segmentIndexInPair, segmentInfo.componentId, isAmbiguous), 
+                connectGraph);
+            connectGraph.vertexMap.insert(make_pair(segment, v));
+        }
+    }
+
+
+
+    // Create the edges.
+    for(uint64_t segmentPairId0=0; segmentPairId0<segmentPairs.size(); segmentPairId0++) {
+        SegmentPair& segmentPair0 = segmentPairs[segmentPairId0];
+        for(uint64_t segmentIndexInPair0=0; segmentIndexInPair0<2; segmentIndexInPair0++) {
+            SegmentInfo& segmentInfo0 = segmentPair0.segmentInfos[segmentIndexInPair0];
+            if(segmentInfo0.isExit) {
+                continue;
+            }
+            const Segment segment0 = segmentInfo0.segment;
+            const ConnectGraph::vertex_descriptor v0 = connectGraph.vertexMap.at(segment0);
+            const AssemblyGraph::vertex_descriptor av = target(segment0, assemblyGraph);
+
+            BGL_FORALL_OUTEDGES(av, segment1, assemblyGraph, AssemblyGraph) {
+                const ConnectGraph::vertex_descriptor v1 = connectGraph.vertexMap.at(segment1);
+                boost::add_edge(v0, v1, connectGraph);
+            }
+        }
+    }
+    
+}
+
+
+void StrandContact::writeConnectGraph(const string& stage)
+{
+    if(not html) {
+        return;
+    }
+
+    const string dotFileName = debugOutputBaseName + "-StrandContact-ConnectGraph-" +
+        stage + "-" + 
+        to_string(strandContactId) + ".dot";
+    connectGraph.writeGraphviz(dotFileName, segmentPairs, assemblyGraph);
+
+    const double timeout = 30.;
+    html << "<h2>Connect graph stage " << stage << "</h2>";
+    html << "<br>" << dotFileName << "<br>";
+
+    // Full-blown dot.
+    try {
+        const string options = "-Nshape=rectangle";
+        graphvizToHtml(dotFileName, "dot", timeout, options, html, true);
+        return;
+    } catch (std::exception&) {}
+    
+    // Dot with drastic options to speed it up.
+    try {
+        const string options = "-Nshape=rectangle -Gnslimit=2 -Gnslimit1=2 -Gmclimit=2 -Gmaxiter=2";
+        graphvizToHtml(dotFileName, "dot", timeout, options, html, true);
+        return;
+    } catch (std::exception&) {}
+   
+    // Sfdp.
+    try {
+        const string options = "-Nshape=rectangle -Goverlap=false";
+        graphvizToHtml(dotFileName, "sfdp", timeout, options, html, true);
+        return;
+    } catch (std::exception&) {}
+    
+    html << "The ConnectGraph is too complex to display.";
+ 
+}
+
+
+
+void ConnectGraph::writeGraphviz(
+    const string& dotFileName, 
+    [[maybe_unused]] const vector<SegmentPair>& segmentPairs, 
+    const AssemblyGraph& assemblyGraph) const
+{
+    const ConnectGraph& connectGraph = *this;
+
+    ofstream dot(dotFileName);
+    dot << "digraph ConnectGraph {\n";
+
+    BGL_FORALL_VERTICES(v, connectGraph, ConnectGraph) {
+        const ConnectGraphVertex& vertex = connectGraph[v];
+        const SegmentPair& segmentPair = segmentPairs[vertex.segmentPairId];
+        const SegmentInfo& segmentInfo = segmentPair.segmentInfos[vertex.segmentIndexInPair];
+        const string color = (vertex.isAmbiguous ? StrandContact::ambiguousColor() : 
+        StrandContact::componentColor(vertex.componentId));
+        dot << assemblyGraph.id(segmentInfo.segment) << 
+            " [style=filled fillcolor=\"" << color << "\"";
+        if(segmentInfo.isEntrance) {
+            SHASTA2_ASSERT(not segmentInfo.isExit);
+            dot << " shape=invtriangle";
+        }
+        if(segmentInfo.isExit) {
+            SHASTA2_ASSERT(not segmentInfo.isEntrance);
+            dot << " shape=triangle";
+        }
+        dot << "];\n";
+    }
+
+    BGL_FORALL_EDGES(e, connectGraph, ConnectGraph) {
+        const vertex_descriptor v0 = source(e, connectGraph);
+        const vertex_descriptor v1 = target(e, connectGraph);
+        const ConnectGraphVertex& vertex0 = connectGraph[v0];
+        const ConnectGraphVertex& vertex1 = connectGraph[v1];
+        const SegmentPair& segmentPair0 = segmentPairs[vertex0.segmentPairId];
+        const SegmentPair& segmentPair1 = segmentPairs[vertex1.segmentPairId];
+        const SegmentInfo& segmentInfo0 = segmentPair0.segmentInfos[vertex0.segmentIndexInPair];
+        const SegmentInfo& segmentInfo1 = segmentPair1.segmentInfos[vertex1.segmentIndexInPair];
+        dot << assemblyGraph.id(segmentInfo0.segment) << "->" <<
+            assemblyGraph.id(segmentInfo1.segment) << ";\n";
+    }
+    
+    dot << "}";
+}
+
+
+
+// This keeps only the vertices that are ambiguous or have
+// an even componentId.
+void ConnectGraph::keepStrand0()
+{
+    ConnectGraph& connectGraph = *this;
+
+    vector<vertex_descriptor> verticesToBeRemoved;
+    BGL_FORALL_VERTICES(v, connectGraph, ConnectGraph) {
+        const ConnectGraphVertex& vertex = connectGraph[v];
+        if(vertex.isAmbiguous or ((vertex.componentId % 2) == 0)) {
+            continue;
+        }
+        verticesToBeRemoved.push_back(v);
+    }
+
+    for(const vertex_descriptor v: verticesToBeRemoved) {
+        boost::clear_vertex(v, connectGraph);
+        boost::remove_vertex(v, connectGraph);
+    }
+
 }
