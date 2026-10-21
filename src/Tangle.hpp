@@ -50,6 +50,8 @@ public:
     vector<edge_descriptor> tangleEdges;
     void findTangleEdges();
 
+    bool isDegenerate() const;
+
     // The tangle matrix constructed using the entrances and exits.
     shared_ptr<TangleMatrix> tangleMatrixPointer;
     const TangleMatrix& tangleMatrix() const

@@ -400,3 +400,29 @@ void Tangle::checkSegmentMap(const std::map<uint64_t, Segment>& segmentMap) cons
     }
 
 }
+
+
+
+bool Tangle::isDegenerate() const
+{
+    vector<Segment> allSegments;
+    std::ranges::copy(entrances, back_inserter(allSegments));    
+    std::ranges::copy(exits, back_inserter(allSegments));    
+    std::ranges::copy(tangleEdges, back_inserter(allSegments));    
+    sort(allSegments.begin(), allSegments.end(), assemblyGraph.orderById);
+
+    // Check for duplicates.
+    if(std::ranges::adjacent_find(allSegments, assemblyGraph.orderById) != allSegments.end()) {
+        return true;
+    }
+
+    // Check for the presence of reverse complement Segments.
+    for(const Segment segment: allSegments) {
+        const Segment segmentRc = assemblyGraph[segment].eRc;
+        if(std::binary_search(allSegments.begin(), allSegments.end(),segmentRc, assemblyGraph.orderById)) {
+            return true;
+        }
+    }
+
+    return false;
+}
