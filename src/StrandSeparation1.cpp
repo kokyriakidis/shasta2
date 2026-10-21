@@ -63,16 +63,16 @@ StrandContact::StrandContact(
 
     storeSegmentInformation(split);
 
-#if 0
-    // ConnectGraph.
-    // Activate to use updateAssemblyGraph1 instead of updateAssemblyGraph below.
-    createConnectGraph();
+#if 1
+    // To use updateAssemblyGraph1 we need the ConnectGraph.
+     createConnectGraph();
     writeConnectGraph("A");
     connectGraph.keepStrand0();
     writeConnectGraph("B");
-#endif
-
+    updateAssemblyGraph1();
+#else
     updateAssemblyGraph();
+#endif
 
     if(html) {
         writeHtmlEnd(html);
