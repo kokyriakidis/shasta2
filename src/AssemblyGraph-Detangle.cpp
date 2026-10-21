@@ -462,6 +462,13 @@ bool AssemblyGraph::detangleAndReadFollowing(
                     cout << "Attempting read following." << endl;
                 }
 
+                if(tangle.isDegenerate()) {
+                    if(debug) {
+                        cout << "Skipping degenerate tangle " << tangleId << "." << endl;
+                    }
+                    continue;
+                }
+
 #if 1
                 const bool success = readFollowingStrandSymmetric5(tangleId, tangle, html, debugOutputBaseName);
 #else
