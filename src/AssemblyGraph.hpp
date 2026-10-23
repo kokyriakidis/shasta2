@@ -312,6 +312,7 @@ public:
         bool attemptReadFollowing,
         const string& debugOutputBaseName);
     void separateStrands1(const string& debugOutputBaseName);
+    void findStrandContactsInteractive();
 private:
     bool detangleStrandSymmetric(const Tangle&, ostream& html);
     bool detangleTanglePair(const Tangle&, ostream& html);
