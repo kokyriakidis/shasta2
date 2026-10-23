@@ -1468,6 +1468,8 @@ void StrandContact::updateAssemblyGraph()
 // Version that uses the ConnectGraph.
 void StrandContact::updateAssemblyGraph1()
 {
+    const bool debug = false;
+
     // Make disconnected copies of the segments we will use for strand0.
     // This are all the segments that are ambiguous or have even componentId.
     // Also make copies of their reverse complements.
@@ -1488,6 +1490,13 @@ void StrandContact::updateAssemblyGraph1()
                         // To avoid duplicate ids.
                         assemblyGraph[newSegment].id = assemblyGraph.nextEdgeId++;
                     }
+                    if(html and debug) {
+                        html << "<br>Exit" 
+                            ": old " << id(oldSegment) << 
+                            ", new " << id(newSegment) <<
+                            ", oldRc " << id(assemblyGraph[oldSegment].eRc) << 
+                            ", newRc " << id(assemblyGraph[newSegment].eRc);
+                    }
                     newSegmentMap.insert({oldSegment, newSegment});
                 }
 
@@ -1498,6 +1507,13 @@ void StrandContact::updateAssemblyGraph1()
                     if(isAmbiguous) {
                         // To avoid duplicate ids.
                         assemblyGraph[newSegment].id = assemblyGraph.nextEdgeId++;
+                    }
+                    if(html and debug) {
+                        html << "<br>Entrance" 
+                            ": old " << id(oldSegment) << 
+                            ", new " << id(newSegment) <<
+                            ", oldRc " << id(assemblyGraph[oldSegment].eRc) << 
+                            ", newRc " << id(assemblyGraph[newSegment].eRc);
                     }
                     newSegmentMap.insert({oldSegment, newSegment});
                 }
