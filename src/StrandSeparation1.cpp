@@ -1484,6 +1484,10 @@ void StrandContact::updateAssemblyGraph1()
                     SHASTA2_ASSERT(not segmentInfo.isEntrance);
                     // This also takes care of the reverse complement.
                     const Segment newSegment = assemblyGraph.disconnectAtBeginning(oldSegment, false);
+                    if(isAmbiguous) {
+                        // To avoid duplicate ids.
+                        assemblyGraph[newSegment].id = assemblyGraph.nextEdgeId++;
+                    }
                     newSegmentMap.insert({oldSegment, newSegment});
                 }
 
@@ -1491,6 +1495,10 @@ void StrandContact::updateAssemblyGraph1()
                     SHASTA2_ASSERT(not segmentInfo.isExit);
                     // This also takes care of the reverse complement.
                     const Segment newSegment = assemblyGraph.disconnectAtEnd(oldSegment, false);
+                    if(isAmbiguous) {
+                        // To avoid duplicate ids.
+                        assemblyGraph[newSegment].id = assemblyGraph.nextEdgeId++;
+                    }
                     newSegmentMap.insert({oldSegment, newSegment});
                 }
 
