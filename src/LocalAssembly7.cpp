@@ -22,6 +22,7 @@ using namespace shasta2;
 // Standard library.
 #include "chrono.hpp"
 #include <cmath>
+#include <cstdlib>
 #include "fstream.hpp"
 #include <iomanip>
 #include "iostream.hpp"
@@ -65,6 +66,7 @@ LocalAssembly7::LocalAssembly7(
     run();
 
     writeSequence();
+    dump();
 }
 
 
@@ -175,6 +177,7 @@ void LocalAssembly7::runFastPath()
 
     // All is good. We can just store that best sequence as our consensus.
     sequence = sequences[sequenceIdBest].sequence;
+    methodUsed = "FastPath";
     success = true;
 
     if(html) {
@@ -1309,9 +1312,14 @@ void LocalAssembly7::runAbpoa()
     // takes no anchoring information - and each entered sequence
     // already stands for one unit of coverage, so every row is anchored on
     // both sides and votes with weight 1.
-    uint64_t repairedRegionCount = 0;
+    methodUsed = "Abpoa";
+    repairedRegionCount = 0;
     const auto t2 = steady_clock::now();
     if(options.useMsaRepair) {
+        sequenceBeforeRepair.clear();
+        for(const auto& [b, ignore]: consensus) {
+            sequenceBeforeRepair.push_back(b);
+        }
         const vector<uint64_t> weights(alignment.size(), 1);
 
         // Each row is one read, in the order entered above.
@@ -1462,9 +1470,14 @@ void LocalAssembly7::runTheseus(bool useAll)
 
     // Repair the bad homopolymer regions of the alignment, if requested (see
     // Options::useMsaRepair).
-    uint64_t repairedRegionCount = 0;
+    methodUsed = useAll ? "TheseusAll" : "TheseusOnly";
+    repairedRegionCount = 0;
     const auto t2 = steady_clock::now();
     if(options.useMsaRepair) {
+        sequenceBeforeRepair.clear();
+        for(const auto& [b, ignore]: consensus) {
+            sequenceBeforeRepair.push_back(b);
+        }
 
         // Theseus returns the rows in the order the groups were given, so how
         // each row is anchored is known here rather than guessed from its
@@ -1656,4 +1669,89 @@ void LocalAssembly7::getSequencesOnAnchorB(
         v.push_back(sequenceId);
     }
 
+}
+
+
+
+// If environment variable SHASTA2_LA7_DUMP names a directory, write this local assembly
+// there as three FASTA files, named by the two anchor ids:
+// - A_B.reads.fa: every oriented read's sequence used for the assembly (one record per
+//   oriented read), its header naming the anchors it is on: anchor=both, anchor=left
+//   (anchor A only) or anchor=right (anchor B only).
+// - A_B.consensus.fa: the assembled sequence (header: method, success, msaRepair regions)
+//   and, when msaRepair ran, the consensus before it.
+// - A_B.windows.fa: for each oriented read on both anchors, its sequence from 5000 bases
+//   before anchor A to 5000 after anchor B, the header giving the anchor positions in it,
+//   for mapping to a truth assembly.
+// SHASTA2_LA7_DUMP_EVERY=n keeps about one local assembly in n.
+void LocalAssembly7::dump() const
+{
+    const char* directory = std::getenv("SHASTA2_LA7_DUMP");
+    if(not directory) {
+        return;
+    }
+    const char* everyText = std::getenv("SHASTA2_LA7_DUMP_EVERY");
+    const uint64_t every = everyText ? std::max(uint64_t(1), uint64_t(std::stoull(everyText))) : 1;
+    const uint64_t key = (anchorIdA * 0x9E3779B97F4A7C15ULL) ^ (anchorIdB * 0xC2B2AE3D27D4EB4FULL);
+    if(((key >> 17) % every) != 0) {
+        return;
+    }
+    const string prefix = string(directory) + "/" + to_string(anchorIdA) + "_" + to_string(anchorIdB);
+    const Reads& reads = anchors.reads;
+
+    {
+        ofstream fasta(prefix + ".reads.fa");
+        for(const OrientedRead& orientedRead: orientedReads) {
+            if(orientedRead.sequenceId >= sequences.size()) {
+                continue;
+            }
+            const string anchor =
+                orientedRead.isOnBothAnchors() ? "both" : (orientedRead.isOnAnchorA() ? "left" : "right");
+            fasta << ">" << orientedRead.orientedReadId.getString() << " anchor=" << anchor << "\n";
+            for(const Base b: sequences[orientedRead.sequenceId].sequence) {
+                fasta << b.character();
+            }
+            fasta << "\n";
+        }
+    }
+
+    {
+        ofstream fasta(prefix + ".consensus.fa");
+        fasta << ">shasta2 method=" << (methodUsed.empty() ? "none" : methodUsed) <<
+            " success=" << int(success) <<
+            " msaRepair=" << int(options.useMsaRepair) <<
+            " repairedRegions=" << repairedRegionCount << "\n";
+        for(const Base b: sequence) {
+            fasta << b.character();
+        }
+        fasta << "\n";
+        if(options.useMsaRepair and not sequenceBeforeRepair.empty()) {
+            fasta << ">shasta2_before_repair method=" << methodUsed << "\n";
+            for(const Base b: sequenceBeforeRepair) {
+                fasta << b.character();
+            }
+            fasta << "\n";
+        }
+    }
+
+    {
+        const uint32_t pad = 5000;
+        ofstream fasta(prefix + ".windows.fa");
+        for(const OrientedRead& orientedRead: orientedReads) {
+            if(not orientedRead.isOnBothAnchors()) {
+                continue;
+            }
+            const OrientedReadId orientedReadId = orientedRead.orientedReadId;
+            const uint32_t readLength = uint32_t(reads.getReadSequenceLength(orientedReadId.getReadId()));
+            const uint32_t begin = (orientedRead.positionA > pad) ? orientedRead.positionA - pad : 0;
+            const uint32_t end = std::min(readLength, orientedRead.positionB + pad);
+            fasta << ">" << orientedReadId.getString() <<
+                " a=" << orientedRead.positionA - begin <<
+                " b=" << orientedRead.positionB - begin << "\n";
+            for(uint32_t position=begin; position!=end; position++) {
+                fasta << reads.getOrientedReadBase(orientedReadId, position).character();
+            }
+            fasta << "\n";
+        }
+    }
 }

@@ -136,7 +136,19 @@ public:
     bool success = false;
     vector<Base> sequence;
 
+    // For evaluation (see dump): the Method that produced the sequence, the consensus
+    // before msaRepair changed it, and how many regions msaRepair rebuilt.
+    string methodUsed;
+    vector<Base> sequenceBeforeRepair;
+    uint64_t repairedRegionCount = 0;
+
 private:
+
+    // If environment variable SHASTA2_LA7_DUMP names a directory, write this local assembly's
+    // input sequences, consensus and core read windows there, for evaluating consensus
+    // tools offline. SHASTA2_LA7_DUMP_EVERY=n keeps only about one local assembly in n.
+    void dump() const;
+
 
     // Parameters filled in by the constructor.
     Options options;
