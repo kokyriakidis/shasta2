@@ -1,5 +1,6 @@
 // Shasta.
 #include "LocalAssembly7.hpp"
+#include <mutex>
 #include "abpoaWrapper.hpp"
 #include "Anchor.hpp"
 #include "deduplicate.hpp"
@@ -1699,6 +1700,36 @@ void LocalAssembly7::getSequencesOnAnchorB(
 // SHASTA2_LA7_DUMP_EVERY=n keeps about one local assembly in n.
 void LocalAssembly7::dump() const
 {
+    // SHASTA2_LA7_DUMP_FILE: every local assembly appended to one file (the directory dump writes three files
+    // each, too many for a whole assembly): a line "#la A B method", its reads (FASTA, anchor and strand in the
+    // header), then ">consensus" and the sequence.
+    if(const char* fileName = std::getenv("SHASTA2_LA7_DUMP_FILE")) {
+        string record = "#la " + to_string(anchorIdA) + " " + to_string(anchorIdB) + " " +
+            (methodUsed.empty() ? string("none") : methodUsed) + "\n";
+        for(const OrientedRead& orientedRead: orientedReads) {
+            if(orientedRead.sequenceId >= sequences.size()) {
+                continue;
+            }
+            const string anchor =
+                orientedRead.isOnBothAnchors() ? "both" : (orientedRead.isOnAnchorA() ? "left" : "right");
+            record += ">" + orientedRead.orientedReadId.getString() + " anchor=" + anchor +
+                " strand=" + to_string(orientedRead.orientedReadId.getStrand()) + "\n";
+            for(const Base b: sequences[orientedRead.sequenceId].sequence) {
+                record += b.character();
+            }
+            record += "\n";
+        }
+        record += ">consensus\n";
+        for(const Base b: sequence) {
+            record += b.character();
+        }
+        record += "\n";
+        static std::mutex mutex;
+        std::lock_guard<std::mutex> lock(mutex);
+        std::ofstream file(fileName, std::ios::app);
+        file << record;
+    }
+
     const char* directory = std::getenv("SHASTA2_LA7_DUMP");
     if(not directory) {
         return;
