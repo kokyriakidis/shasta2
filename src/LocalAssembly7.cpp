@@ -1852,7 +1852,10 @@ void LocalAssembly7::runPlegma()
                 orientedReadId.getStrand() == 0 ? plegma::Strand::Forward : plegma::Strand::Reverse});
         }
     }
-    const vector<string> parts = plegma::consensus(reads, plegmaModel(homopolymerModelPointer.get()));
+    // Unpinned: a local assembly's reads are of one place, where pinning each read to the consensus (for long,
+    // divergent sequences) only costs time (2.4 times on chr21, the same consensus).
+    const vector<string> parts = plegma::consensus(
+        reads, plegmaModel(homopolymerModelPointer.get()), plegma::Options().pinned(false));
     sequence.clear();
     for(const char c: parts.front()) {
         sequence.push_back(Base::fromCharacter(c));
