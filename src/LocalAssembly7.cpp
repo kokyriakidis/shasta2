@@ -46,6 +46,14 @@ LocalAssembly7::LocalAssembly7(
     anchorIdB(anchorIdB),
     html(html)
 {
+    // For evaluation: SHASTA2_LA7_METHOD overrides the Method, SHASTA2_LA7_REPAIR (0 or 1) whether msaRepair runs.
+    if(const char* method = std::getenv("SHASTA2_LA7_METHOD")) {
+        this->options.setMethod(method);
+    }
+    if(const char* repair = std::getenv("SHASTA2_LA7_REPAIR")) {
+        this->options.useMsaRepair = (string(repair) == "1");
+    }
+
     if(html) {
         html <<
             "<table>" <<
@@ -103,6 +111,9 @@ void LocalAssembly7::run()
         break;
     case Method::DeBruijn:
         runDeBruijn();
+        break;
+    case Method::Plegma:
+        runPlegma();
         break;
     default:
         throw runtime_error("Invalid LocalAssembly7 Method.");
@@ -1593,6 +1604,8 @@ void LocalAssembly7::Options::setMethod(const string& s)
         method = Method::TheseusAll;
     } else if(s == "DeBruijn") {
         method = Method::DeBruijn;
+    } else if(s == "Plegma") {
+        method = Method::Plegma;
     } else {
         method = Method::Invalid;
     }
@@ -1754,4 +1767,61 @@ void LocalAssembly7::dump() const
             fasta << "\n";
         }
     }
+}
+
+
+
+// Local assembly by the plegma executable (SHASTA2_PLEGMA, else plegma on the path): every
+// oriented read's sequence, as many times as its coverage, tagged with the anchors it is on
+// (anchor=both, left for anchor A only, right for anchor B only), through plegma poa; its
+// consensus is the sequence. For evaluating plegma against the other Methods.
+void LocalAssembly7::runPlegma()
+{
+    const char* plegmaEnvironment = std::getenv("SHASTA2_PLEGMA");
+    const string plegma = plegmaEnvironment ? plegmaEnvironment : "plegma";
+    const string base = tmpDirectory() + "plegma-" + boost::uuids::to_string(boost::uuids::random_generator()());
+    const string inputName = base + ".fa";
+    const string outputName = base + ".out";
+    {
+        ofstream input(inputName);
+        for(const SequenceInfo& sequenceInfo: sequences) {
+            const string anchor =
+                (sequenceInfo.isOnAnchorA and sequenceInfo.isOnAnchorB) ? "both" :
+                (sequenceInfo.isOnAnchorA ? "left" : "right");
+            for(const OrientedReadId orientedReadId: sequenceInfo.orientedReadIds) {
+                input << ">" << orientedReadId.getString() << " anchor=" << anchor << "\n";
+                for(const Base b: sequenceInfo.sequence) {
+                    input << b.character();
+                }
+                input << "\n";
+            }
+        }
+    }
+    const string command = plegma + " poa -r 0 -o " + outputName + " " + inputName;
+    const int status = std::system(command.c_str());
+    std::remove(inputName.c_str());
+    if(status != 0) {
+        std::remove(outputName.c_str());
+        throw runtime_error("plegma failed: " + command);
+    }
+    ifstream output(outputName);
+    string line;
+    bool inFirst = false;
+    sequence.clear();
+    while(std::getline(output, line)) {
+        if(not line.empty() and line[0] == '>') {
+            if(inFirst) {
+                break;
+            }
+            inFirst = true;
+            continue;
+        }
+        for(const char c: line) {
+            sequence.push_back(Base::fromCharacter(c));
+        }
+    }
+    output.close();
+    std::remove(outputName.c_str());
+    methodUsed = "Plegma";
+    success = not sequence.empty();
 }

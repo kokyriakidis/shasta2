@@ -33,6 +33,7 @@ public:
         TheseusOnly,    // Only use oriented reads that are on both anchors
         TheseusAll,     // Also use oriented reads that are om just one anchor.
         DeBruijn,
+        Plegma,         // The plegma executable (poa), reads anchored as they are: for evaluation.
         Invalid
     };
 
@@ -284,6 +285,7 @@ private:
 
     // Functions and data to find the consensus using a De Bruijn graph
     void runDeBruijn();
+    void runPlegma();
 
     // An occurrence of a k-mer in one of our sequences.
     class KmerOccurrence {
