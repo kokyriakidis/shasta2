@@ -1,6 +1,10 @@
 // Shasta.
 #include "LocalAssembly7.hpp"
 #include <mutex>
+#ifdef SHASTA2_PLEGMA
+#include "HomopolymerModel.hpp"
+#include "plegma.hpp"
+#endif
 #include "abpoaWrapper.hpp"
 #include "Anchor.hpp"
 #include "deduplicate.hpp"
@@ -1806,8 +1810,56 @@ void LocalAssembly7::dump() const
 // oriented read's sequence, as many times as its coverage, tagged with the anchors it is on
 // (anchor=both, left for anchor A only, right for anchor B only), through plegma poa; its
 // consensus is the sequence. For evaluating plegma against the other Methods.
+#ifdef SHASTA2_PLEGMA
+// plegma's homopolymer model made once from shasta2's own (its csv text), shared by every thread.
+static const plegma::Model* plegmaModel(const HomopolymerModel* homopolymerModel)
+{
+    if(not homopolymerModel) {
+        return nullptr;
+    }
+    static std::mutex mutex;
+    static std::map<const HomopolymerModel*, std::unique_ptr<plegma::Model> > models;
+    std::lock_guard<std::mutex> lock(mutex);
+    std::unique_ptr<plegma::Model>& model = models[homopolymerModel];
+    if(not model) {
+        model = std::make_unique<plegma::Model>(plegma::Model::parse(homopolymerModel->text()));
+    }
+    return model.get();
+}
+#endif
+
+
+
 void LocalAssembly7::runPlegma()
 {
+#ifdef SHASTA2_PLEGMA
+    // plegma as a library, in this process: every oriented read anchored as it is in this local
+    // assembly and on its strand, the homopolymer model shasta2's own (when there is one).
+    vector<string> texts;
+    texts.reserve(sequences.size());
+    vector<plegma::Read> reads;
+    for(const SequenceInfo& sequenceInfo: sequences) {
+        string& text = texts.emplace_back();
+        text.reserve(sequenceInfo.sequence.size());
+        for(const Base b: sequenceInfo.sequence) {
+            text.push_back(b.character());
+        }
+        const plegma::Anchor anchor =
+            (sequenceInfo.isOnAnchorA and sequenceInfo.isOnAnchorB) ? plegma::Anchor::Both :
+            (sequenceInfo.isOnAnchorA ? plegma::Anchor::Left : plegma::Anchor::Right);
+        for(const OrientedReadId orientedReadId: sequenceInfo.orientedReadIds) {
+            reads.push_back({text, anchor,
+                orientedReadId.getStrand() == 0 ? plegma::Strand::Forward : plegma::Strand::Reverse});
+        }
+    }
+    const vector<string> parts = plegma::consensus(reads, plegmaModel(homopolymerModelPointer.get()));
+    sequence.clear();
+    for(const char c: parts.front()) {
+        sequence.push_back(Base::fromCharacter(c));
+    }
+    methodUsed = "Plegma";
+    success = not sequence.empty();
+#else
     const char* plegmaEnvironment = std::getenv("SHASTA2_PLEGMA");
     const string plegma = plegmaEnvironment ? plegmaEnvironment : "plegma";
     const string base = tmpDirectory() + "plegma-" + boost::uuids::to_string(boost::uuids::random_generator()());
@@ -1859,4 +1911,5 @@ void LocalAssembly7::runPlegma()
     std::remove(outputName.c_str());
     methodUsed = "Plegma";
     success = not sequence.empty();
+#endif
 }

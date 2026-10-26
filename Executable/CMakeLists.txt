@@ -21,6 +21,12 @@ endif(BUILD_DEBUG)
 # Source files
 file(GLOB SOURCES ../src/*.cpp)
 
+# plegma as a library (PLEGMA_DIR, see the top level CMakeLists.txt).
+if(PLEGMA_DIR)
+    add_definitions(-DSHASTA2_PLEGMA)
+    include_directories(${PLEGMA_DIR}/capi)
+endif(PLEGMA_DIR)
+
 # Include directories.
 include_directories(../src)
 include_directories(~/.shasta2Build/abpoa/abPOA/include)
@@ -35,7 +41,10 @@ add_executable(shasta2Executable ${SOURCES})
 set_target_properties(shasta2Executable PROPERTIES OUTPUT_NAME "shasta2")
 
 # Request a static executable.
-set_target_properties(shasta2Executable PROPERTIES LINK_FLAGS "-static" )
+# (Dynamic with plegma: libplegma.so and the Mojo runtime are shared libraries.)
+if(NOT PLEGMA_DIR)
+    set_target_properties(shasta2Executable PROPERTIES LINK_FLAGS "-static" )
+endif(NOT PLEGMA_DIR)
 
 # Libraries to link with.
 target_link_libraries(
@@ -47,4 +56,8 @@ target_link_libraries(
 # The static executable goes to the bin directory.
 install(TARGETS shasta2Executable DESTINATION shasta2-install/bin)
 
-
+if(PLEGMA_DIR)
+    target_link_libraries(shasta2Executable ${PLEGMA_DIR}/build/libplegma.so)
+    set_property(TARGET shasta2Executable APPEND PROPERTY BUILD_RPATH ${PLEGMA_DIR}/build)
+    set_property(TARGET shasta2Executable APPEND PROPERTY INSTALL_RPATH ${PLEGMA_DIR}/build)
+endif(PLEGMA_DIR)

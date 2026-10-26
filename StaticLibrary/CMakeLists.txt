@@ -25,6 +25,12 @@ add_definitions(-DSHASTA2_STATIC_LIBRARY)
 # Sources files.
 file(GLOB SOURCES ../src/*.cpp)
 
+# plegma as a library (PLEGMA_DIR, see the top level CMakeLists.txt).
+if(PLEGMA_DIR)
+    add_definitions(-DSHASTA2_PLEGMA)
+    include_directories(${PLEGMA_DIR}/capi)
+endif(PLEGMA_DIR)
+
 # Include directories.
 include_directories(../src ~/.shasta2Build/abpoa/abPOA/include)
 include_directories(~/.shasta2Build/theseus/theseus-lib/include)

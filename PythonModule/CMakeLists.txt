@@ -25,6 +25,12 @@ add_definitions(-DSHASTA2_PYTHON_API)
 # Sources files.
 file(GLOB SOURCES ../src/*.cpp)
 
+# plegma as a library (PLEGMA_DIR, see the top level CMakeLists.txt).
+if(PLEGMA_DIR)
+    add_definitions(-DSHASTA2_PLEGMA)
+    include_directories(${PLEGMA_DIR}/capi)
+endif(PLEGMA_DIR)
+
 # Include directories.
 include_directories(../src)
 include_directories(~/.shasta2Build/abpoa/abPOA/include)
@@ -65,6 +71,8 @@ install(TARGETS shasta2PythonModule DESTINATION shasta2-install/bin)
 install(FILES ~/.shasta2Build/abpoa/abPOA/lib/libabpoa.so DESTINATION shasta2-install/bin)
 install(FILES ~/.shasta2Build/theseus/theseus-lib/sharedBuild/libtheseus.so DESTINATION shasta2-install/bin)
 
-
-
-
+if(PLEGMA_DIR)
+    target_link_libraries(shasta2PythonModule ${PLEGMA_DIR}/build/libplegma.so)
+    set_property(TARGET shasta2PythonModule APPEND PROPERTY BUILD_RPATH ${PLEGMA_DIR}/build)
+    set_property(TARGET shasta2PythonModule APPEND PROPERTY INSTALL_RPATH ${PLEGMA_DIR}/build)
+endif(PLEGMA_DIR)

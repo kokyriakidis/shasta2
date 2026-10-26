@@ -21,6 +21,12 @@ message(STATUS "BUILD_STATIC_LIBRARY is " ${BUILD_STATIC_LIBRARY})
 option(BUILD_DEBUG "Make a debuggable build." OFF)
 message(STATUS "BUILD_DEBUG is " ${BUILD_DEBUG})
 
+# plegma (github.com/kokyriakidis/plegma) as a library for the Plegma local assembly method: a plegma checkout
+# with build/libplegma.so (pixi run build-capi). Without it the Plegma method runs the plegma command. The
+# executable is then linked dynamically (libplegma.so and the Mojo runtime are shared libraries).
+set(PLEGMA_DIR "" CACHE PATH "plegma checkout with build/libplegma.so; empty: Plegma runs the plegma command")
+message(STATUS "PLEGMA_DIR is " ${PLEGMA_DIR})
+
 # Add the subdirectories we need.
 if(BUILD_EXECUTABLE)
     add_subdirectory(Executable)

@@ -91,6 +91,12 @@ public:
         const array<vector<uint64_t>, 2>& observedLengths,
         vector<double>* logPosteriorDb = nullptr) const;
 
+    // The csv the model was read from (for a caller that hands the same model to another library, plegma).
+    const string& text() const
+    {
+        return csvText;
+    }
+
     uint64_t maxN() const
     {
         return nCount - 1;
@@ -101,6 +107,7 @@ public:
     }
 
 private:
+    string csvText;
     uint64_t nCount = 0;
     uint64_t mCount = 0;
 
