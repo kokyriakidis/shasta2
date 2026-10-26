@@ -1789,7 +1789,8 @@ void LocalAssembly7::runPlegma()
                 (sequenceInfo.isOnAnchorA and sequenceInfo.isOnAnchorB) ? "both" :
                 (sequenceInfo.isOnAnchorA ? "left" : "right");
             for(const OrientedReadId orientedReadId: sequenceInfo.orientedReadIds) {
-                input << ">" << orientedReadId.getString() << " anchor=" << anchor << "\n";
+                input << ">" << orientedReadId.getString() << " anchor=" << anchor <<
+                    " strand=" << orientedReadId.getStrand() << "\n";
                 for(const Base b: sequenceInfo.sequence) {
                     input << b.character();
                 }
@@ -1797,7 +1798,10 @@ void LocalAssembly7::runPlegma()
             }
         }
     }
-    const string command = plegma + " poa -r 0 -o " + outputName + " " + inputName;
+    // SHASTA2_PLEGMA_ARGS: more plegma options, for example -H with a homopolymer model csv.
+    const char* argsEnvironment = std::getenv("SHASTA2_PLEGMA_ARGS");
+    const string extra = argsEnvironment ? string(" ") + argsEnvironment : string();
+    const string command = plegma + " poa -r 0" + extra + " -o " + outputName + " " + inputName;
     const int status = std::system(command.c_str());
     std::remove(inputName.c_str());
     if(status != 0) {
